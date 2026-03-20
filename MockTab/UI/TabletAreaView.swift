@@ -68,11 +68,18 @@ struct TabletAreaView: View {
                 }
             }
 
-            Button("Reset to full area") {
-                settings.activeAreaX = 0; settings.activeAreaY = 0
-                settings.activeAreaWidth = 1; settings.activeAreaHeight = 1
+            HStack {
+                Button("Reset to full area") {
+                    settings.activeAreaX = 0; settings.activeAreaY = 0
+                    settings.activeAreaWidth = 1; settings.activeAreaHeight = 1
+                }
+                .buttonStyle(.borderless)
+
+                Spacer()
+
+                Toggle("Proportional mapping", isOn: $settings.proportionalMapping)
+                    .toggleStyle(.checkbox)
             }
-            .buttonStyle(.borderless)
         }
         .padding()
     }

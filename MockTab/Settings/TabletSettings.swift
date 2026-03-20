@@ -1,21 +1,26 @@
 import Foundation
 import SwiftUI
+import AppKit
+import Carbon
 
 /// All user-configurable settings, persisted via UserDefaults / @AppStorage.
-/// Published so SwiftUI views update automatically.
 @MainActor
 final class TabletSettings: ObservableObject {
 
     // MARK: - Active area (fractions of the full digitizer surface, 0.0..1.0)
 
-    @AppStorage("activeAreaX") var activeAreaX: Double = 0.0
-    @AppStorage("activeAreaY") var activeAreaY: Double = 0.0
+    @AppStorage("activeAreaX")      var activeAreaX:      Double = 0.0
+    @AppStorage("activeAreaY")      var activeAreaY:      Double = 0.0
     @AppStorage("activeAreaWidth")  var activeAreaWidth:  Double = 1.0
     @AppStorage("activeAreaHeight") var activeAreaHeight: Double = 1.0
 
+    /// When true, the active area is cropped to match the target display's aspect ratio
+    /// so the pen moves without distortion.  Enabled by default.
+    @AppStorage("proportionalMapping") var proportionalMapping: Bool = true
+
     // MARK: - Display mapping
 
-    /// 0 = primary display, 1..N = specific display by index in CGGetActiveDisplayList order.
+    /// 0 = primary display, 1..N = specific display by CGGetActiveDisplayList index.
     @AppStorage("targetDisplayIndex") var targetDisplayIndex: Int = 0
 
     // MARK: - Pressure curve
@@ -26,41 +31,47 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Input smoothing
 
-    /// Extra software EMA smoothing on top of hardware filtering.
-    /// 0 = raw hardware output, 1 = maximum smoothing (less jitter, more lag).
-    @AppStorage("smoothingStrength") var smoothingStrength: Double = 0.0
-
-    /// Radius in screen pixels within which a second tap is snapped to the
-    /// first tap position, ensuring reliable double- and triple-click detection.
-    /// 0 = disabled.  Wacom typically defaults to ~10 pt.
+    @AppStorage("smoothingStrength")  var smoothingStrength:  Double = 0.0
     @AppStorage("doubleClickDistance") var doubleClickDistance: Double = 10.0
 
-    // MARK: - Button mapping
+    // MARK: - Button bindings (JSON-encoded ButtonBinding)
 
-    @AppStorage("penButton1Action") var penButton1Action: Int = ButtonAction.rightClick.rawValue
-    @AppStorage("penButton2Action") var penButton2Action: Int = ButtonAction.middleClick.rawValue
+    @AppStorage("penButton1Binding") private var pen1Raw: String = ""
+    @AppStorage("penButton2Binding") private var pen2Raw: String = ""
+    @AppStorage("expressKeyBindings") private var expressKeyRaw: String = ""
 
-    // Express key mappings (up to 8 keys, stored as comma-separated raw values)
-    @AppStorage("expressKeyActions") private var expressKeyActionsRaw: String = ""
+    var penButton1Binding: ButtonBinding {
+        get { ButtonBinding.decode(pen1Raw) ?? .rightClick }
+        set { pen1Raw = newValue.encoded }
+    }
 
-    var expressKeyActions: [ButtonAction] {
+    var penButton2Binding: ButtonBinding {
+        get { ButtonBinding.decode(pen2Raw) ?? .middleClick }
+        set { pen2Raw = newValue.encoded }
+    }
+
+    var expressKeyBindings: [ButtonBinding] {
         get {
-            expressKeyActionsRaw
-                .split(separator: ",")
-                .compactMap { Int($0).flatMap(ButtonAction.init) }
+            guard !expressKeyRaw.isEmpty,
+                  let data = expressKeyRaw.data(using: .utf8),
+                  let arr = try? JSONDecoder().decode([ButtonBinding].self, from: data)
+            else { return Array(repeating: .none, count: 8) }
+            var res = arr
+            while res.count < 8 { res.append(.none) }
+            return Array(res.prefix(8))
         }
         set {
-            expressKeyActionsRaw = newValue.map { String($0.rawValue) }.joined(separator: ",")
+            guard let data = try? JSONEncoder().encode(newValue),
+                  let s = String(data: data, encoding: .utf8) else { return }
+            expressKeyRaw = s
         }
     }
 
     // MARK: - Init
 
-    init() {
-        loadPressureCurve()
-    }
+    init() { loadPressureCurve() }
 
-    // MARK: - Persistence helpers
+    // MARK: - Pressure curve persistence
 
     private func savePressureCurve() {
         if let data = try? JSONEncoder().encode(pressureCurve) {
@@ -75,45 +86,196 @@ final class TabletSettings: ObservableObject {
         pressureCurve = curve
     }
 
-    // MARK: - Convenience
+    // MARK: - Reset
 
     func resetToDefaults() {
         activeAreaX = 0; activeAreaY = 0
         activeAreaWidth = 1; activeAreaHeight = 1
+        proportionalMapping = true
         targetDisplayIndex = 0
         pressureCurve = .linear
         smoothingStrength = 0.0
         doubleClickDistance = 10.0
-        penButton1Action = ButtonAction.rightClick.rawValue
-        penButton2Action = ButtonAction.middleClick.rawValue
-        expressKeyActionsRaw = ""
+        pen1Raw = ""; pen2Raw = ""; expressKeyRaw = ""
     }
 }
 
-// MARK: - Button action type
+// MARK: - ButtonBinding
 
-enum ButtonAction: Int, CaseIterable, Identifiable {
-    case none         = 0
-    case leftClick    = 1
-    case rightClick   = 2
-    case middleClick  = 3
-    case undo         = 4
-    case redo         = 5
-    case spaceBar     = 6
-    case escape       = 7
+/// A hardware button assignment: a predefined click action, a recorded key combo, or nothing.
+struct ButtonBinding: Codable, Equatable {
 
-    var id: Int { rawValue }
+    enum Kind: String, Codable {
+        case none, leftClick, rightClick, middleClick, keyCombo
+    }
 
-    var label: String {
-        switch self {
+    var kind:          Kind   = .none
+    var keyCode:       UInt16 = 0
+    var modifierFlags: UInt64 = 0   // CGEventFlags raw value
+    var keyLabel:      String = ""  // display string for the key (e.g. "Z", "↩", "Space")
+
+    // MARK: Presets
+
+    static let none        = ButtonBinding()
+    static let rightClick  = ButtonBinding(kind: .rightClick)
+    static let middleClick = ButtonBinding(kind: .middleClick)
+
+    // MARK: Init
+
+    init(kind: Kind = .none, keyCode: UInt16 = 0,
+         modifierFlags: UInt64 = 0, keyLabel: String = "") {
+        self.kind = kind
+        self.keyCode = keyCode
+        self.modifierFlags = modifierFlags
+        self.keyLabel = keyLabel
+    }
+
+    /// Build a key-combo binding from a captured NSEvent keyDown.
+    init(fromKey event: NSEvent) {
+        kind = .keyCombo
+        keyCode = event.keyCode
+        // Map NSEvent.ModifierFlags → CGEventFlags raw value.
+        let ns = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        var f = CGEventFlags()
+        if ns.contains(.command)  { f.insert(.maskCommand) }
+        if ns.contains(.shift)    { f.insert(.maskShift) }
+        if ns.contains(.option)   { f.insert(.maskAlternate) }
+        if ns.contains(.control)  { f.insert(.maskControl) }
+        modifierFlags = f.rawValue
+        // Pass the full modifier flags so UCKeyTranslate applies any layout-switching
+        // modifier behaviour (e.g. Dvorak Qwerty-Command shows QWERTY char with ⌘).
+        keyLabel = ButtonBinding.charLabel(keyCode: event.keyCode, modifiers: ns)
+    }
+
+    // MARK: Display
+
+    var displayLabel: String {
+        switch kind {
         case .none:        return "None"
         case .leftClick:   return "Left Click"
         case .rightClick:  return "Right Click"
         case .middleClick: return "Middle Click"
-        case .undo:        return "Undo (⌘Z)"
-        case .redo:        return "Redo (⌘⇧Z)"
-        case .spaceBar:    return "Space"
-        case .escape:      return "Escape"
+        case .keyCombo:
+            let f = CGEventFlags(rawValue: modifierFlags)
+            var s = ""
+            if f.contains(.maskControl)   { s += "⌃" }
+            if f.contains(.maskAlternate) { s += "⌥" }
+            if f.contains(.maskShift)     { s += "⇧" }
+            if f.contains(.maskCommand)   { s += "⌘" }
+            return s + keyLabel
         }
+    }
+
+    // MARK: JSON helpers
+
+    var encoded: String {
+        (try? String(data: JSONEncoder().encode(self), encoding: .utf8)) ?? ""
+    }
+
+    static func decode(_ s: String) -> ButtonBinding? {
+        guard !s.isEmpty, let data = s.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(ButtonBinding.self, from: data)
+    }
+
+    // MARK: Key label lookup
+
+    /// Returns the display label for a keyCode + full modifier state.
+    ///
+    /// Uses `UCKeyTranslate` with the live keyboard layout so that layout-switching
+    /// modifiers work correctly.  The notable case is Dvorak Qwerty-Command: holding
+    /// ⌘ switches the layout to QWERTY, so ⌘C should display as "C" not "J".
+    /// `UCKeyTranslate` handles this automatically because it consults the layout's
+    /// own modifier table, which for that layout maps Command-held keycodes to the
+    /// QWERTY character set.
+    private static func charLabel(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> String {
+        // Non-printing / navigation keys don't go through UCKeyTranslate.
+        switch Int(keyCode) {
+        case 36:  return "↩"    // Return
+        case 48:  return "⇥"    // Tab
+        case 49:  return "Space"
+        case 51:  return "⌫"    // Delete
+        case 53:  return "⎋"    // Escape
+        case 71:  return "⌧"    // Clear
+        case 76:  return "⌅"    // Enter (numpad)
+        case 115: return "↖"    // Home
+        case 116: return "⇞"    // Page Up
+        case 117: return "⌦"    // Forward Delete
+        case 119: return "↘"    // End
+        case 121: return "⇟"    // Page Down
+        case 123: return "←"
+        case 124: return "→"
+        case 125: return "↓"
+        case 126: return "↑"
+        case 122: return "F1"
+        case 120: return "F2"
+        case 99:  return "F3"
+        case 118: return "F4"
+        case 96:  return "F5"
+        case 97:  return "F6"
+        case 98:  return "F7"
+        case 100: return "F8"
+        case 101: return "F9"
+        case 109: return "F10"
+        case 103: return "F11"
+        case 111: return "F12"
+        default:  break
+        }
+
+        // Translate with the full modifier state (handles Dvorak Qwerty-Command, etc.).
+        if let ch = translateKeyCode(keyCode, modifiers: modifiers) { return ch }
+        // Fallback: translate with no modifiers to get the bare layout character.
+        return translateKeyCode(keyCode, modifiers: []) ?? "?"
+    }
+
+    /// Calls `UCKeyTranslate` with the current keyboard layout and returns the
+    /// printable character for the given keyCode + modifier combination,
+    /// or `nil` if the result is empty or a control character.
+    private static func translateKeyCode(_ keyCode: UInt16,
+                                         modifiers: NSEvent.ModifierFlags) -> String? {
+        guard
+            let source  = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+            let rawData = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
+        else { return nil }
+
+        let cfData = unsafeBitCast(rawData, to: CFData.self)
+        guard let bytes = CFDataGetBytePtr(cfData) else { return nil }
+
+        // Build the Carbon modifier key state for UCKeyTranslate.
+        // Each constant is the old Mac OS modifier bit >> 8:
+        //   cmdKey = 0x0100, shiftKey = 0x0200, alphaLock = 0x0400,
+        //   optionKey = 0x0800, controlKey = 0x1000
+        var carbonMods: UInt32 = 0
+        if modifiers.contains(.command)  { carbonMods |= 1  }
+        if modifiers.contains(.shift)    { carbonMods |= 2  }
+        if modifiers.contains(.capsLock) { carbonMods |= 4  }
+        if modifiers.contains(.option)   { carbonMods |= 8  }
+        if modifiers.contains(.control)  { carbonMods |= 16 }
+
+        var chars:     [UniChar] = [0, 0, 0, 0]
+        var charCount: Int      = 0
+        var deadState: UInt32   = 0
+
+        // Rebind within the closure to satisfy Swift's strict aliasing rules.
+        let status = bytes.withMemoryRebound(to: UCKeyboardLayout.self, capacity: 1) { layout in
+            UCKeyTranslate(
+                layout,
+                keyCode,
+                UInt16(kUCKeyActionDown),
+                carbonMods,
+                UInt32(LMGetKbdType()),
+                OptionBits(kUCKeyTranslateNoDeadKeysBit),
+                &deadState,
+                4,
+                &charCount,
+                &chars
+            )
+        }
+        guard status == noErr, charCount > 0 else { return nil }
+
+        let str = String(chars.prefix(Int(charCount)).compactMap { Unicode.Scalar($0).map(Character.init) })
+        // Discard control characters (some layouts return e.g. ETX for ⌘C
+        // when Command is not in their modifier table).
+        guard str.unicodeScalars.allSatisfy({ $0.value >= 0x20 }) else { return nil }
+        return str.uppercased()
     }
 }

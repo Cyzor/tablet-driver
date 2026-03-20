@@ -67,6 +67,11 @@ final class TabletManager: ObservableObject {
             self.injector?.inject(point: point, settings: self.settings)
         }
 
+        let onAux: (AuxButtons) -> Void = { [weak self] aux in
+            guard let self else { return }
+            self.injector?.injectAux(buttons: aux, settings: self.settings)
+        }
+
         let wacomDevice: (any TabletDevice)?
         switch productID {
         case 0x0317:
@@ -74,7 +79,7 @@ final class TabletManager: ObservableObject {
             wacomDevice = PTH851Device(device: device, onTablet: onTablet)
         case 0x0358:
             print("TabletManager: PTH-860 connected")
-            wacomDevice = PTH860Device(device: device, onTablet: onTablet)
+            wacomDevice = PTH860Device(device: device, onTablet: onTablet, onAux: onAux)
         default:
             print("TabletManager: unsupported product 0x\(String(productID, radix: 16))")
             return
