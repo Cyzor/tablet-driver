@@ -138,12 +138,15 @@ Post target: always `.cghidEventTap`.
 
 ## App Compatibility
 
-| App | Pressure | Notes |
-|-----|----------|-------|
-| Acorn, Nomad, Blender | ✅ | Simple `NSEvent.pressure` on mouse drag |
-| Photoshop, Affinity, Illustrator | ✅ | Need full proximity device registration |
-| Krita (Qt) | ✅ | Needs tabletPointer events + proximity deviceID |
-| GIMP (GTK) | ✅ | Same as Krita |
+| App | Pressure | Middle-click | Notes |
+|-----|----------|--------------|-------|
+| Acorn, Nomad, Blender | ✅ | ✅ | Simple `NSEvent.pressure` on mouse drag |
+| Houdini | ✅ | ✅ | |
+| Smooze Pro | ✅ | ✅ | |
+| Photoshop, Affinity, Illustrator | ✅ | ✅ | Need full proximity device registration |
+| Krita (Qt) | ✅ | ✅ | Needs tabletPointer events + proximity deviceID |
+| GIMP (GTK) | ✅ | ✅ | Same as Krita |
+| Marc Moini Smart Scroll | — | ❌ | Also failed with official Wacom drivers; likely intercepts input below `otherMouseDown/Up` or filters by device type. Not a MockTab bug. |
 
 ---
 
