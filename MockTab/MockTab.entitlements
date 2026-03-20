@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        Allows CGEventPost to inject mouse and tablet events.
+        Required for cursor movement and pressure event injection.
+    -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+
+    <!--
+        For ad-hoc / development signing without notarization,
+        the sandbox must be disabled. Remove this and add the
+        sandbox key if you later distribute through the Mac App Store
+        (which also requires specific IOKit entitlements from Apple).
+    -->
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+</dict>
+</plist>
