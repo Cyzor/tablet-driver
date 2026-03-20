@@ -1,0 +1,47 @@
+{
+  "fill" : {
+    "solid" : "srgb:0.15871,0.18618,0.23425,1.00000"
+  },
+  "groups" : [
+    {
+      "hidden-specializations" : [
+        {
+          "idiom" : "macOS",
+          "value" : false
+        }
+      ],
+      "layers" : [
+        {
+          "fill" : {
+            "solid" : "display-p3:0.96841,0.79160,0.41636,1.00000"
+          },
+          "glass" : false,
+          "image-name" : "app-icon-basic.svg",
+          "name" : "app-icon-basic",
+          "position" : {
+            "scale" : 1.6,
+            "translation-in-points" : [
+              0,
+              -29
+            ]
+          }
+        }
+      ],
+      "lighting" : "combined",
+      "shadow" : {
+        "kind" : "none",
+        "opacity" : 0.5
+      },
+      "specular" : false,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : [
+      "macOS"
+    ]
+  }
+}

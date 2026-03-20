@@ -32,6 +32,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             TabletManager.shared.injector = injector
             TabletManager.shared.start()
         }
+
+        // Show preferences window immediately on first launch.
+        // Deferred so the SwiftUI Settings scene has time to register its window.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
