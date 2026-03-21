@@ -16,6 +16,7 @@ final class TabletManager: ObservableObject {
     @Published var connectedProductIDs: [Int] = [] // all currently connected devices
     @Published var connectedTransport: String = "—" // "USB", "Bluetooth", etc.
     @Published var connectedUSBSpeed:  String = "—" // "Full Speed (12 Mb/s)", etc.
+    @Published var hidManagerOpen: Bool = false     // set after IOHIDManagerOpen
 
     /// Human-readable name for a product ID, including a hex fallback for unknowns.
     static func deviceName(forProductID pid: Int) -> String {
@@ -69,7 +70,8 @@ final class TabletManager: ObservableObject {
 
         IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
         let ret = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-        if ret != kIOReturnSuccess {
+        hidManagerOpen = (ret == kIOReturnSuccess)
+        if !hidManagerOpen {
             print("TabletManager: failed to open HID manager (\(ret)). " +
                   "Check Input Monitoring permission or uninstall any existing tablet driver.")
         }

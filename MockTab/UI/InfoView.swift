@@ -54,39 +54,44 @@ struct InfoView: View {
                 ok: accessibilityGranted,
                 fix: accessibilityGranted ? nil : requestAccessibility)
 
-            row("Background Process", value: "Alive", ok: true)
+            row("HID Manager",
+                value: tabletManager.hidManagerOpen ? "Running" : "Failed to open",
+                ok: tabletManager.hidManagerOpen ? true : false)
 
             row("Launch at Login",
                 value: launchAtLogin ? "Enabled" : "Disabled",
-                ok: launchAtLogin ? true : nil)
+                ok: launchAtLogin ? true : nil,
+                fix: launchAtLogin ? nil : enableLaunchAtLogin)
         }
     }
 
     /// One row of the status grid.
     /// - `ok: true`  → green ✓    device / condition is fine
-    /// - `ok: false` → black ✗    problem, shows Fix button when `fix` is supplied
+    /// - `ok: false` → black ✗    problem; shows Fix button when `fix` is supplied
     /// - `ok: nil`   → gray  –    informational, no pass/fail judgement
     @ViewBuilder
     private func row(_ label: String, value: String,
                      ok: Bool?, fix: (() -> Void)? = nil) -> some View {
         GridRow {
+            // Right-aligned label column.
             Text(label)
                 .foregroundStyle(.secondary)
-                .frame(minWidth: 150, alignment: .leading)
-                .gridColumnAlignment(.leading)
+                .frame(minWidth: 150, alignment: .trailing)
+                .gridColumnAlignment(.trailing)
 
-            HStack(spacing: 6) {
+            // Icon + value + optional Fix button — all in one HStack so the
+            // Fix button sits immediately beside the value text, not at the
+            // far edge of the window.
+            HStack(spacing: 8) {
                 statusIcon(ok)
                 Text(value)
+                if let fix {
+                    Button("Fix", action: fix)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Fix button occupies column 3 only when a repair action exists.
-            if let fix {
-                Button("Fix", action: fix)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-            }
         }
     }
 
@@ -157,6 +162,7 @@ struct InfoView: View {
         }
 
         lines += [""]
+        lines += ["HID Manager    : \(tabletManager.hidManagerOpen ? "open" : "failed to open")"]
         lines += ["Accessibility  : \(accessibilityGranted ? "granted" : "not granted")"]
         lines += ["Launch at login: \(launchAtLogin ? "enabled" : "disabled")"]
 
@@ -177,5 +183,19 @@ struct InfoView: View {
         _ = AXIsProcessTrustedWithOptions(
             ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         )
+    }
+
+    /// Registers MockTab as a login item via SMAppService (macOS 13+).
+    /// Falls back to opening System Settings > General > Login Items & Extensions
+    /// if registration fails (e.g. the app isn't in /Applications yet).
+    private func enableLaunchAtLogin() {
+        do {
+            try SMAppService.mainApp.register()
+            refresh()
+        } catch {
+            NSWorkspace.shared.open(
+                URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!
+            )
+        }
     }
 }
