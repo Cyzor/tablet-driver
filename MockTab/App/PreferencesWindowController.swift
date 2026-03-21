@@ -27,6 +27,7 @@ final class PreferencesWindowController: NSWindowController {
         add(tabVC, label: "Pressure",     symbol: "waveform.path",      height: 450) { PressureCurveView(settings: s) }
         add(tabVC, label: "Buttons",      symbol: "hand.point.up.left", height: 540) { ButtonMappingView(settings: s) }
         add(tabVC, label: "Display",      symbol: "display",            height: 340) { DisplayMappingView(settings: s) }
+        add(tabVC, label: "Presets",      symbol: "star.circle",        height: 420) { PresetsView(settings: s) }
         add(tabVC, label: "Scratchpad",   symbol: "scribble",           height: 330) { ScratchpadView() }
         add(tabVC, label: "Info",         symbol: "info.circle",        height: 370) { InfoView(tabletManager: TabletManager.shared) }
     }

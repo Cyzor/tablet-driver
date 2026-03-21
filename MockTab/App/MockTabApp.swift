@@ -10,6 +10,7 @@ struct MockTabApp: App {
         MenuBarExtra("MockTab", image: "MenuBarIcon") {
             MenuBarView()
                 .environmentObject(TabletManager.shared)
+                .environmentObject(PreferencesWindowController.shared.settings)
         }
         .menuBarExtraStyle(.menu)
     }

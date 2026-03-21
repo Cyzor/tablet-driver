@@ -8,6 +8,11 @@ import Carbon
 ///
 /// On first load for a given device, the legacy unprefixed keys (from before
 /// per-device support) are used as a fallback, providing seamless migration.
+///
+/// Layer 2 — Named Presets: an optional overlay on top of device settings.
+/// A preset stores only the keys it explicitly overrides; everything else falls
+/// through to the device default.  Activating/deactivating a preset republishes
+/// all @Published properties transparently to SwiftUI.
 @MainActor
 final class TabletSettings: ObservableObject {
 
@@ -17,7 +22,7 @@ final class TabletSettings: ObservableObject {
     /// Changed by `loadForDevice(_:)` when a tablet connects.
     private(set) var devicePrefix = "device-default."
 
-    /// Suppresses UserDefaults writes during `loadForDevice()`.
+    /// Suppresses UserDefaults writes during `loadForDevice()` / `activate()`.
     private var isLoading = false
 
     private let ud = UserDefaults.standard
@@ -82,6 +87,22 @@ final class TabletSettings: ObservableObject {
         }
     }
 
+    // MARK: - Presets
+
+    /// A named configuration snapshot.  `overriddenKeys` tracks which settings
+    /// the preset stores; all other keys fall through to device defaults.
+    struct Preset: Identifiable, Codable, Equatable {
+        var id:            UUID        = UUID()
+        var name:          String
+        var overriddenKeys: Set<String> = []
+    }
+
+    /// All presets saved for the current device.
+    @Published var presets: [Preset] = []
+
+    /// The currently active preset, or `nil` when using raw device settings.
+    @Published var activePreset: Preset? = nil
+
     // MARK: - Init
 
     init() { reloadAll() }
@@ -93,59 +114,199 @@ final class TabletSettings: ObservableObject {
     func loadForDevice(_ productID: Int) {
         let hex = String(productID, radix: 16, uppercase: true)
         devicePrefix = "device-0x\(hex)."
+        loadPresetList()
         reloadAll()
     }
 
-    /// Reloads every setting from UserDefaults using the current `devicePrefix`.
-    /// Falls back to legacy unprefixed keys (pre-per-device migration), then
-    /// to compile-time defaults.
+    // MARK: - Preset management
+
+    /// UserDefaults key prefix for a specific preset's overridden values.
+    private func presetKeyPrefix(_ preset: Preset) -> String {
+        "\(devicePrefix)preset-\(preset.id.uuidString)."
+    }
+
+    /// Activates `preset` (or pass `nil` to revert to raw device settings).
+    /// Republishes all settings values so SwiftUI bindings reflect the change.
+    func activate(_ preset: Preset?) {
+        activePreset = preset
+        saveActivePresetID()
+        reloadAll()
+    }
+
+    /// Snapshots the current in-memory settings into a new preset, saves it,
+    /// and makes it active.
+    func saveAsPreset(name: String) {
+        var preset = Preset(name: name)
+        let prefix = presetKeyPrefix(preset)
+
+        // Copy every current live value into the preset namespace.
+        ud.set(activeAreaX,         forKey: prefix + "activeAreaX")
+        ud.set(activeAreaY,         forKey: prefix + "activeAreaY")
+        ud.set(activeAreaWidth,     forKey: prefix + "activeAreaWidth")
+        ud.set(activeAreaHeight,    forKey: prefix + "activeAreaHeight")
+        ud.set(proportionalMapping, forKey: prefix + "proportionalMapping")
+        ud.set(targetDisplayIndex,  forKey: prefix + "targetDisplayIndex")
+        ud.set(smoothingStrength,   forKey: prefix + "smoothingStrength")
+        ud.set(doubleClickDistance, forKey: prefix + "doubleClickDistance")
+        ud.set(pen1Raw,             forKey: prefix + "penButton1Binding")
+        ud.set(pen2Raw,             forKey: prefix + "penButton2Binding")
+        ud.set(expressKeyRaw,       forKey: prefix + "expressKeyBindings")
+        if let data = try? JSONEncoder().encode(pressureCurve) {
+            ud.set(data, forKey: prefix + "pressureCurve")
+        }
+
+        preset.overriddenKeys = [
+            "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
+            "proportionalMapping", "targetDisplayIndex", "smoothingStrength",
+            "doubleClickDistance", "penButton1Binding", "penButton2Binding",
+            "expressKeyBindings", "pressureCurve"
+        ]
+
+        presets.append(preset)
+        savePresetList()
+        activePreset = preset
+        saveActivePresetID()
+    }
+
+    /// Renames `preset` to `newName`.
+    func renamePreset(_ preset: Preset, to newName: String) {
+        guard let idx = presets.firstIndex(of: preset) else { return }
+        presets[idx].name = newName
+        if activePreset?.id == preset.id { activePreset?.name = newName }
+        savePresetList()
+    }
+
+    /// Deletes `preset` and all its stored values.
+    /// If it was active, reverts to device defaults.
+    func deletePreset(_ preset: Preset) {
+        let prefix = presetKeyPrefix(preset)
+        let allKeys = ["activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
+                       "proportionalMapping", "targetDisplayIndex", "smoothingStrength",
+                       "doubleClickDistance", "penButton1Binding", "penButton2Binding",
+                       "expressKeyBindings", "pressureCurve"]
+        for key in allKeys { ud.removeObject(forKey: prefix + key) }
+        presets.removeAll { $0.id == preset.id }
+        if activePreset?.id == preset.id {
+            activate(nil)
+        } else {
+            savePresetList()
+        }
+    }
+
+    // MARK: - Preset persistence
+
+    private var presetListKey:     String { devicePrefix + "_presets" }
+    private var activePresetIDKey: String { devicePrefix + "_activePreset" }
+
+    private func loadPresetList() {
+        guard let data = ud.data(forKey: presetListKey),
+              let list = try? JSONDecoder().decode([Preset].self, from: data)
+        else { presets = []; activePreset = nil; return }
+        presets = list
+        if let uuidStr = ud.string(forKey: activePresetIDKey),
+           let uuid    = UUID(uuidString: uuidStr),
+           let match   = list.first(where: { $0.id == uuid }) {
+            activePreset = match
+        } else {
+            activePreset = nil
+        }
+    }
+
+    private func savePresetList() {
+        guard let data = try? JSONEncoder().encode(presets) else { return }
+        ud.set(data, forKey: presetListKey)
+    }
+
+    private func saveActivePresetID() {
+        if let id = activePreset?.id.uuidString {
+            ud.set(id, forKey: activePresetIDKey)
+        } else {
+            ud.removeObject(forKey: activePresetIDKey)
+        }
+    }
+
+    // MARK: - Reload
+
+    /// Reloads every setting from UserDefaults using the current `devicePrefix`
+    /// and `activePreset`.  Falls back to legacy unprefixed keys, then to
+    /// compile-time defaults.
     private func reloadAll() {
         isLoading = true
-        activeAreaX          = loadDouble("activeAreaX",         default: 0.0)
-        activeAreaY          = loadDouble("activeAreaY",         default: 0.0)
-        activeAreaWidth      = loadDouble("activeAreaWidth",     default: 1.0)
-        activeAreaHeight     = loadDouble("activeAreaHeight",    default: 1.0)
-        proportionalMapping  = loadBool("proportionalMapping",   default: true)
-        targetDisplayIndex   = loadInt("targetDisplayIndex",     default: 0)
-        smoothingStrength    = loadDouble("smoothingStrength",   default: 0.0)
-        doubleClickDistance  = loadDouble("doubleClickDistance",  default: 10.0)
-        pen1Raw              = loadString("penButton1Binding",   default: "")
-        pen2Raw              = loadString("penButton2Binding",   default: "")
-        expressKeyRaw        = loadString("expressKeyBindings",  default: "")
+        activeAreaX          = loadDouble("activeAreaX",        default: 0.0)
+        activeAreaY          = loadDouble("activeAreaY",        default: 0.0)
+        activeAreaWidth      = loadDouble("activeAreaWidth",    default: 1.0)
+        activeAreaHeight     = loadDouble("activeAreaHeight",   default: 1.0)
+        proportionalMapping  = loadBool("proportionalMapping",  default: true)
+        targetDisplayIndex   = loadInt("targetDisplayIndex",    default: 0)
+        smoothingStrength    = loadDouble("smoothingStrength",  default: 0.0)
+        doubleClickDistance  = loadDouble("doubleClickDistance", default: 10.0)
+        pen1Raw              = loadString("penButton1Binding",  default: "")
+        pen2Raw              = loadString("penButton2Binding",  default: "")
+        expressKeyRaw        = loadString("expressKeyBindings", default: "")
         loadPressureCurve()
         isLoading = false
     }
 
     // MARK: - Persistence helpers
 
-    /// Writes a value to UserDefaults under the current device prefix.
+    /// Routes a write to the active preset's namespace (marking the key as
+    /// overridden) or to the device namespace when no preset is active.
     /// No-ops while `isLoading` to avoid echoing values back during reload.
     private func persist(_ key: String, _ value: Any) {
         guard !isLoading else { return }
-        ud.set(value, forKey: devicePrefix + key)
+        if var preset = activePreset {
+            ud.set(value, forKey: presetKeyPrefix(preset) + key)
+            guard !preset.overriddenKeys.contains(key) else { return }
+            preset.overriddenKeys.insert(key)
+            activePreset = preset
+            if let idx = presets.firstIndex(where: { $0.id == preset.id }) {
+                presets[idx] = preset
+            }
+            savePresetList()
+        } else {
+            ud.set(value, forKey: devicePrefix + key)
+        }
     }
 
-    // Fallback chain: prefixed key → legacy unprefixed key → compile-time default.
+    // MARK: - Load helpers
+
+    // Fallback chain: active preset (if key is overridden) → device prefix
+    //                 → legacy unprefixed key → compile-time default.
 
     private func loadDouble(_ key: String, default d: Double) -> Double {
+        if let preset = activePreset, preset.overriddenKeys.contains(key),
+           ud.object(forKey: presetKeyPrefix(preset) + key) != nil {
+            return ud.double(forKey: presetKeyPrefix(preset) + key)
+        }
         if ud.object(forKey: devicePrefix + key) != nil { return ud.double(forKey: devicePrefix + key) }
         if ud.object(forKey: key) != nil                { return ud.double(forKey: key) }
         return d
     }
 
     private func loadBool(_ key: String, default d: Bool) -> Bool {
+        if let preset = activePreset, preset.overriddenKeys.contains(key),
+           ud.object(forKey: presetKeyPrefix(preset) + key) != nil {
+            return ud.bool(forKey: presetKeyPrefix(preset) + key)
+        }
         if ud.object(forKey: devicePrefix + key) != nil { return ud.bool(forKey: devicePrefix + key) }
         if ud.object(forKey: key) != nil                { return ud.bool(forKey: key) }
         return d
     }
 
     private func loadInt(_ key: String, default d: Int) -> Int {
+        if let preset = activePreset, preset.overriddenKeys.contains(key),
+           ud.object(forKey: presetKeyPrefix(preset) + key) != nil {
+            return ud.integer(forKey: presetKeyPrefix(preset) + key)
+        }
         if ud.object(forKey: devicePrefix + key) != nil { return ud.integer(forKey: devicePrefix + key) }
         if ud.object(forKey: key) != nil                { return ud.integer(forKey: key) }
         return d
     }
 
     private func loadString(_ key: String, default d: String) -> String {
+        if let preset = activePreset, preset.overriddenKeys.contains(key) {
+            if let v = ud.string(forKey: presetKeyPrefix(preset) + key) { return v }
+        }
         if let v = ud.string(forKey: devicePrefix + key) { return v }
         if let v = ud.string(forKey: key)                { return v }
         return d
@@ -155,14 +316,31 @@ final class TabletSettings: ObservableObject {
 
     private func savePressureCurve() {
         guard !isLoading else { return }
-        if let data = try? JSONEncoder().encode(pressureCurve) {
+        guard let data = try? JSONEncoder().encode(pressureCurve) else { return }
+        if var preset = activePreset {
+            ud.set(data, forKey: presetKeyPrefix(preset) + "pressureCurve")
+            guard !preset.overriddenKeys.contains("pressureCurve") else { return }
+            preset.overriddenKeys.insert("pressureCurve")
+            activePreset = preset
+            if let idx = presets.firstIndex(where: { $0.id == preset.id }) {
+                presets[idx] = preset
+            }
+            savePresetList()
+        } else {
             ud.set(data, forKey: devicePrefix + "pressureCurve")
         }
     }
 
     private func loadPressureCurve() {
-        let data = ud.data(forKey: devicePrefix + "pressureCurve")
+        let data: Data?
+        if let preset = activePreset, preset.overriddenKeys.contains("pressureCurve") {
+            data = ud.data(forKey: presetKeyPrefix(preset) + "pressureCurve")
+                ?? ud.data(forKey: devicePrefix + "pressureCurve")
                 ?? ud.data(forKey: "pressureCurve")
+        } else {
+            data = ud.data(forKey: devicePrefix + "pressureCurve")
+                ?? ud.data(forKey: "pressureCurve")
+        }
         guard let data,
               let curve = try? JSONDecoder().decode(BezierCurve.self, from: data)
         else { return }
