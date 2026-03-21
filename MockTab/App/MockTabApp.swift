@@ -33,6 +33,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             TabletManager.shared.settings = settings
             // Wire app-watcher for preset auto-switching.
             AppWatcher.shared.settings = settings
+            // Build Presets and View application menus.
+            AppMenuController.shared.setup(settings: settings)
             TabletManager.shared.start()
         }
 

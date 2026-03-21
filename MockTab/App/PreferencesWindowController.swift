@@ -9,8 +9,15 @@ final class PreferencesWindowController: NSWindowController {
     /// Shared settings instance — owned here for the app's lifetime.
     let settings = TabletSettings()
 
+    /// The tab view controller — stored so `showTab` can switch tabs programmatically.
+    private let tabVC = NSTabViewController()
+
+    /// Ordered tab labels, parallel to the tabs added in init.
+    static let tabLabels = [
+        "Tablet Area", "Pressure", "Buttons", "Display", "Presets", "Scratchpad", "Info"
+    ]
+
     private init() {
-        let tabVC = NSTabViewController()
         tabVC.tabStyle = .toolbar   // icon + label toolbar; window auto-resizes per tab
 
         let window = NSWindow(contentViewController: tabVC)
@@ -40,6 +47,19 @@ final class PreferencesWindowController: NSWindowController {
         TabletManager.shared.settings = settings
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Shows the window and switches to the tab at `index` (0-based).
+    func showTab(at index: Int) {
+        show()
+        guard index >= 0, index < tabVC.tabViewItems.count else { return }
+        tabVC.selectedTabViewItemIndex = index
+    }
+
+    /// Shows the window and switches to the first tab whose label matches `name`.
+    func showTab(named name: String) {
+        let idx = tabVC.tabViewItems.firstIndex(where: { $0.label == name })
+        showTab(at: idx ?? 0)
     }
 
     // MARK: - Private
