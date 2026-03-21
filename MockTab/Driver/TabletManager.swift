@@ -128,6 +128,7 @@ final class TabletManager: ObservableObject {
             injector?.deviceProductID = productID
             wacomDevice.open()
             refreshConnectedIDs(mostRecent: productID)
+            settings?.loadForDevice(productID)
         }
     }
 
@@ -136,6 +137,10 @@ final class TabletManager: ObservableObject {
         wacomDevice.close()
         print("TabletManager: \(type(of: wacomDevice)) disconnected")
         refreshConnectedIDs(mostRecent: nil)
+        // Load settings for the next active device, if any remain.
+        if connectedProductID != 0 {
+            settings?.loadForDevice(connectedProductID)
+        }
     }
 
     /// Recomputes `connectedProductIDs` / `isConnected` / `connectedProductID` from the live

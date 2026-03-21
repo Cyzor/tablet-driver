@@ -3,25 +3,40 @@ import SwiftUI
 import AppKit
 import Carbon
 
-/// All user-configurable settings, persisted via UserDefaults / @AppStorage.
+/// All user-configurable settings, persisted via UserDefaults with a per-device
+/// key prefix so that each tablet remembers its own configuration independently.
+///
+/// On first load for a given device, the legacy unprefixed keys (from before
+/// per-device support) are used as a fallback, providing seamless migration.
 @MainActor
 final class TabletSettings: ObservableObject {
 
+    // MARK: - Per-device backing store
+
+    /// Current UserDefaults key prefix, e.g. `"device-0x0357."`.
+    /// Changed by `loadForDevice(_:)` when a tablet connects.
+    private(set) var devicePrefix = "device-default."
+
+    /// Suppresses UserDefaults writes during `loadForDevice()`.
+    private var isLoading = false
+
+    private let ud = UserDefaults.standard
+
     // MARK: - Active area (fractions of the full digitizer surface, 0.0..1.0)
 
-    @AppStorage("activeAreaX")      var activeAreaX:      Double = 0.0
-    @AppStorage("activeAreaY")      var activeAreaY:      Double = 0.0
-    @AppStorage("activeAreaWidth")  var activeAreaWidth:  Double = 1.0
-    @AppStorage("activeAreaHeight") var activeAreaHeight: Double = 1.0
+    @Published var activeAreaX:      Double = 0.0 { didSet { persist("activeAreaX", activeAreaX) } }
+    @Published var activeAreaY:      Double = 0.0 { didSet { persist("activeAreaY", activeAreaY) } }
+    @Published var activeAreaWidth:  Double = 1.0 { didSet { persist("activeAreaWidth", activeAreaWidth) } }
+    @Published var activeAreaHeight: Double = 1.0 { didSet { persist("activeAreaHeight", activeAreaHeight) } }
 
     /// When true, the active area is cropped to match the target display's aspect ratio
     /// so the pen moves without distortion.  Enabled by default.
-    @AppStorage("proportionalMapping") var proportionalMapping: Bool = true
+    @Published var proportionalMapping: Bool = true { didSet { persist("proportionalMapping", proportionalMapping) } }
 
     // MARK: - Display mapping
 
     /// 0 = primary display, 1..N = specific display by CGGetActiveDisplayList index.
-    @AppStorage("targetDisplayIndex") var targetDisplayIndex: Int = 0
+    @Published var targetDisplayIndex: Int = 0 { didSet { persist("targetDisplayIndex", targetDisplayIndex) } }
 
     // MARK: - Pressure curve
 
@@ -31,14 +46,14 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Input smoothing
 
-    @AppStorage("smoothingStrength")  var smoothingStrength:  Double = 0.0
-    @AppStorage("doubleClickDistance") var doubleClickDistance: Double = 10.0
+    @Published var smoothingStrength:  Double = 0.0  { didSet { persist("smoothingStrength", smoothingStrength) } }
+    @Published var doubleClickDistance: Double = 10.0 { didSet { persist("doubleClickDistance", doubleClickDistance) } }
 
     // MARK: - Button bindings (JSON-encoded ButtonBinding)
 
-    @AppStorage("penButton1Binding") private var pen1Raw: String = ""
-    @AppStorage("penButton2Binding") private var pen2Raw: String = ""
-    @AppStorage("expressKeyBindings") private var expressKeyRaw: String = ""
+    @Published private var pen1Raw: String = ""       { didSet { persist("penButton1Binding", pen1Raw) } }
+    @Published private var pen2Raw: String = ""       { didSet { persist("penButton2Binding", pen2Raw) } }
+    @Published private var expressKeyRaw: String = "" { didSet { persist("expressKeyBindings", expressKeyRaw) } }
 
     var penButton1Binding: ButtonBinding {
         get { ButtonBinding.decode(pen1Raw) ?? .rightClick }
@@ -69,18 +84,86 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Init
 
-    init() { loadPressureCurve() }
+    init() { reloadAll() }
+
+    // MARK: - Per-device loading
+
+    /// Switches the settings backing store to the given device's namespace
+    /// and reloads all values.  Called by TabletManager when a device connects.
+    func loadForDevice(_ productID: Int) {
+        let hex = String(productID, radix: 16, uppercase: true)
+        devicePrefix = "device-0x\(hex)."
+        reloadAll()
+    }
+
+    /// Reloads every setting from UserDefaults using the current `devicePrefix`.
+    /// Falls back to legacy unprefixed keys (pre-per-device migration), then
+    /// to compile-time defaults.
+    private func reloadAll() {
+        isLoading = true
+        activeAreaX          = loadDouble("activeAreaX",         default: 0.0)
+        activeAreaY          = loadDouble("activeAreaY",         default: 0.0)
+        activeAreaWidth      = loadDouble("activeAreaWidth",     default: 1.0)
+        activeAreaHeight     = loadDouble("activeAreaHeight",    default: 1.0)
+        proportionalMapping  = loadBool("proportionalMapping",   default: true)
+        targetDisplayIndex   = loadInt("targetDisplayIndex",     default: 0)
+        smoothingStrength    = loadDouble("smoothingStrength",   default: 0.0)
+        doubleClickDistance  = loadDouble("doubleClickDistance",  default: 10.0)
+        pen1Raw              = loadString("penButton1Binding",   default: "")
+        pen2Raw              = loadString("penButton2Binding",   default: "")
+        expressKeyRaw        = loadString("expressKeyBindings",  default: "")
+        loadPressureCurve()
+        isLoading = false
+    }
+
+    // MARK: - Persistence helpers
+
+    /// Writes a value to UserDefaults under the current device prefix.
+    /// No-ops while `isLoading` to avoid echoing values back during reload.
+    private func persist(_ key: String, _ value: Any) {
+        guard !isLoading else { return }
+        ud.set(value, forKey: devicePrefix + key)
+    }
+
+    // Fallback chain: prefixed key → legacy unprefixed key → compile-time default.
+
+    private func loadDouble(_ key: String, default d: Double) -> Double {
+        if ud.object(forKey: devicePrefix + key) != nil { return ud.double(forKey: devicePrefix + key) }
+        if ud.object(forKey: key) != nil                { return ud.double(forKey: key) }
+        return d
+    }
+
+    private func loadBool(_ key: String, default d: Bool) -> Bool {
+        if ud.object(forKey: devicePrefix + key) != nil { return ud.bool(forKey: devicePrefix + key) }
+        if ud.object(forKey: key) != nil                { return ud.bool(forKey: key) }
+        return d
+    }
+
+    private func loadInt(_ key: String, default d: Int) -> Int {
+        if ud.object(forKey: devicePrefix + key) != nil { return ud.integer(forKey: devicePrefix + key) }
+        if ud.object(forKey: key) != nil                { return ud.integer(forKey: key) }
+        return d
+    }
+
+    private func loadString(_ key: String, default d: String) -> String {
+        if let v = ud.string(forKey: devicePrefix + key) { return v }
+        if let v = ud.string(forKey: key)                { return v }
+        return d
+    }
 
     // MARK: - Pressure curve persistence
 
     private func savePressureCurve() {
+        guard !isLoading else { return }
         if let data = try? JSONEncoder().encode(pressureCurve) {
-            UserDefaults.standard.set(data, forKey: "pressureCurve")
+            ud.set(data, forKey: devicePrefix + "pressureCurve")
         }
     }
 
     private func loadPressureCurve() {
-        guard let data = UserDefaults.standard.data(forKey: "pressureCurve"),
+        let data = ud.data(forKey: devicePrefix + "pressureCurve")
+                ?? ud.data(forKey: "pressureCurve")
+        guard let data,
               let curve = try? JSONDecoder().decode(BezierCurve.self, from: data)
         else { return }
         pressureCurve = curve
