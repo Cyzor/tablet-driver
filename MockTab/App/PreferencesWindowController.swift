@@ -8,6 +8,7 @@ final class PreferencesWindowController: NSWindowController {
 
     private init() {
         let hosting = NSHostingController(rootView: PreferencesView())
+        hosting.preferredContentSize = NSSize(width: 500, height: 560)
         let window  = NSWindow(contentViewController: hosting)
         window.title = "MockTab"
         window.styleMask = [.titled, .closable, .miniaturizable]

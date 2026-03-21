@@ -7,7 +7,7 @@ struct MockTabApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("MockTab", systemImage: "pencil.tip") {
+        MenuBarExtra("MockTab", image: "MenuBarIcon") {
             MenuBarView()
                 .environmentObject(TabletManager.shared)
         }

@@ -20,7 +20,7 @@ struct PreferencesView: View {
             ScratchpadView()
                 .tabItem { Label("Scratchpad", systemImage: "scribble") }
         }
-        .frame(width: 500, height: 440)
+        .frame(width: 500, height: 560)
         .onAppear {
             // Wire updated settings into the running TabletManager.
             Task { @MainActor in
