@@ -4,14 +4,26 @@ import SwiftUI
 /// Draws the curve on a Canvas with two draggable control point handles.
 struct PressureCurveView: View {
     @ObservedObject var settings: TabletSettings
+    @ObservedObject private var tabletManager: TabletManager = TabletManager.shared
+    @ObservedObject private var registry:      DeviceRegistry = DeviceRegistry.shared
 
     @State private var draggingP1 = false
     @State private var draggingP2 = false
 
     var body: some View {
+        VStack(spacing: 0) {
+            mainContent
+            Spacer(minLength: 0)
+            PresetStatusBar(settings: settings)
+        }
+    }
+
+    private var mainContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Pressure Curve")
-                .font(.headline)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Pressure Curve").font(.headline)
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+            }
 
             curveCanvas
                 .frame(height: 180)

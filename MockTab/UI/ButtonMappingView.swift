@@ -3,39 +3,48 @@ import AppKit
 
 struct ButtonMappingView: View {
     @ObservedObject var settings: TabletSettings
+    @ObservedObject private var tabletManager: TabletManager = TabletManager.shared
+    @ObservedObject private var registry:      DeviceRegistry = DeviceRegistry.shared
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
 
-                // ── Pen buttons ──────────────────────────────────────────────
-                Text("Pen Buttons").font(.headline)
-
-                Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
-                    GridRow {
-                        Text("Side button 1").frame(width: 110, alignment: .leading)
-                        ButtonBindingControl(binding: Binding(
-                            get: { settings.penButton1Binding },
-                            set: { settings.penButton1Binding = $0 }
-                        ))
+                    // ── Pen buttons ──────────────────────────────────────────────
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Pen Buttons").font(.headline)
+                        DeviceNameLabel(tabletManager: tabletManager, registry: registry)
                     }
-                    GridRow {
-                        Text("Side button 2").frame(width: 110, alignment: .leading)
-                        ButtonBindingControl(binding: Binding(
-                            get: { settings.penButton2Binding },
-                            set: { settings.penButton2Binding = $0 }
-                        ))
+
+                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
+                        GridRow {
+                            Text("Side button 1").frame(width: 110, alignment: .leading)
+                            ButtonBindingControl(binding: Binding(
+                                get: { settings.penButton1Binding },
+                                set: { settings.penButton1Binding = $0 }
+                            ))
+                        }
+                        GridRow {
+                            Text("Side button 2").frame(width: 110, alignment: .leading)
+                            ButtonBindingControl(binding: Binding(
+                                get: { settings.penButton2Binding },
+                                set: { settings.penButton2Binding = $0 }
+                            ))
+                        }
                     }
-                }
 
-                Divider()
+                    Divider()
 
-                // ── Express keys ─────────────────────────────────────────────
-                Text("Express Keys").font(.headline)
+                    // ── Express keys ─────────────────────────────────────────────
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Express Keys").font(.headline)
+                        DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+                    }
 
-                Text("Up to 8 express keys on the PTH-860 (PTH-851 has none).")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    Text("Up to 8 configurable express keys.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
 
                 Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
                     ForEach(0..<8, id: \.self) { i in
@@ -52,8 +61,10 @@ struct ButtonMappingView: View {
                         }
                     }
                 }
+                }
+                .padding()
             }
-            .padding()
+            PresetStatusBar(settings: settings)
         }
     }
 }

@@ -4,12 +4,25 @@ import AppKit
 
 struct DisplayMappingView: View {
     @ObservedObject var settings: TabletSettings
+    @ObservedObject private var tabletManager: TabletManager = TabletManager.shared
+    @ObservedObject private var registry:      DeviceRegistry = DeviceRegistry.shared
     @State private var displays: [DisplayInfo] = []
 
     var body: some View {
+        VStack(spacing: 0) {
+            mainContent
+            Spacer(minLength: 0)
+            PresetStatusBar(settings: settings)
+        }
+        .onAppear { displays = DisplayInfo.all() }
+    }
+
+    private var mainContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Display Mapping")
-                .font(.headline)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Display Mapping").font(.headline)
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+            }
 
             Text("The active tablet area maps to the selected display.")
                 .font(.caption)
@@ -26,7 +39,6 @@ struct DisplayMappingView: View {
             displayCanvas
         }
         .padding()
-        .onAppear { displays = DisplayInfo.all() }
     }
 
     // MARK: - Canvas layout

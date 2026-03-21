@@ -22,6 +22,12 @@ final class DTK2400Device: TabletDevice {
     private var reportBuffer = [UInt8](repeating: 0, count: 10)
     private var lastX = 0
     private var lastY = 0
+    // Pressure from the most recent EA-type (sensor-data) report.
+    // Carried forward into the interleaved E0 (position-only) reports to
+    // prevent them from causing spurious mouseUp events mid-stroke.
+    private var lastEAPressure = 0
+    private var diagCount = 0
+    private static let kDiagReports = 20
 
     init(device: IOHIDDevice,
          onTablet: @escaping (TabletPoint) -> Void,
@@ -74,6 +80,15 @@ final class DTK2400Device: TabletDevice {
     }
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
+        // Log all report IDs we see (first kDiagReports only, so we can spot
+        // unexpected IDs reaching this callback after device seizure).
+        if diagCount < DTK2400Device.kDiagReports {
+            let hex = (0..<Swift.min(Int(length), 10))
+                .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+            print("DTK-2400 RAW[\(diagCount)] len=\(length): \(hex)")
+            diagCount += 1
+        }
+
         guard length >= 10 else { return }
 
         // Report IDs seen on this device: 0x02 (pen), 0x0C (touch/ring — ignored here).
@@ -106,6 +121,12 @@ final class DTK2400Device: TabletDevice {
         let x        = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
         let y        = ((Int(report[5]) | Int(report[4]) << 8) << 1) | (Int(report[9]) & 1)
         let pressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | (Int(report[1]) & 1)
+
+        // Diagnostic: log every report where button1 bit fires at zero pressure.
+        if (status & 0x02) != 0 && pressure == 0 {
+            let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+            print("DTK-2400 BTN1@hover: \(hex)  pressure=\(pressure)")
+        }
         let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64
         let tiltYRaw = (Int(report[8]) & 0x7F) - 64
 

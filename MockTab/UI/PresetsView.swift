@@ -15,17 +15,20 @@ struct PresetsView: View {
     @State private var editingName   = ""
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                activeBanner
-                Divider()
-                presetList
-                Divider()
-                createRow
-                Divider()
-                autoSwitchSection
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    activeBanner
+                    Divider()
+                    presetList
+                    Divider()
+                    createRow
+                    Divider()
+                    autoSwitchSection
+                }
+                .padding()
             }
-            .padding()
+            PresetStatusBar(settings: settings)
         }
     }
 

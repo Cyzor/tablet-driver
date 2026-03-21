@@ -9,15 +9,10 @@
 /* Begin PBXBuildFile section */
 		AA000001 /* MockTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MockTabApp.swift */; };
 		AA000002 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* MenuBarView.swift */; };
-		AA000017 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* PreferencesWindowController.swift */; };
 		AA000003 /* TabletPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* TabletPoint.swift */; };
 		AA000004 /* TabletDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000004 /* TabletDevice.swift */; };
 		AA000005 /* PTH851Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000005 /* PTH851Device.swift */; };
 		AA000006 /* PTH860Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000006 /* PTH860Device.swift */; };
-		AA000032 /* PTH660Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000032 /* PTH660Device.swift */; };
-		AA000031 /* PTZ631WDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000031 /* PTZ631WDevice.swift */; };
-		AA000037 /* WacomProbeDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* WacomProbeDevice.swift */; };
-		AA000038 /* DTK2400Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* DTK2400Device.swift */; };
 		AA000007 /* TabletManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000007 /* TabletManager.swift */; };
 		AA000008 /* InputInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000008 /* InputInjector.swift */; };
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
@@ -27,25 +22,28 @@
 		AA000014 /* ButtonMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ButtonMappingView.swift */; };
 		AA000015 /* DisplayMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* DisplayMappingView.swift */; };
 		AA000016 /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* ScratchpadView.swift */; };
+		AA000017 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* PreferencesWindowController.swift */; };
+		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* Assets.xcassets */; };
+		AA000031 /* PTZ631WDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000031 /* PTZ631WDevice.swift */; };
+		AA000032 /* PTH660Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000032 /* PTH660Device.swift */; };
 		AA000033 /* InfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* InfoView.swift */; };
 		AA000034 /* PresetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* PresetsView.swift */; };
 		AA000035 /* AppWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* AppWatcher.swift */; };
 		AA000036 /* AppMenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000036 /* AppMenuController.swift */; };
-		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* Assets.xcassets */; };
+		AA000037 /* WacomProbeDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* WacomProbeDevice.swift */; };
+		AA000038 /* DTK2400Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* DTK2400Device.swift */; };
+		AA000039 /* DeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000039 /* DeviceRegistry.swift */; };
+		AA000040 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* DevicesView.swift */; };
+		AA000041 /* TabStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000041 /* TabStatusBar.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		AB000001 /* MockTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTabApp.swift; sourceTree = "<group>"; };
 		AB000002 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
-		AB000017 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
 		AB000003 /* TabletPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletPoint.swift; sourceTree = "<group>"; };
 		AB000004 /* TabletDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletDevice.swift; sourceTree = "<group>"; };
 		AB000005 /* PTH851Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH851Device.swift; sourceTree = "<group>"; };
 		AB000006 /* PTH860Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH860Device.swift; sourceTree = "<group>"; };
-		AB000032 /* PTH660Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH660Device.swift; sourceTree = "<group>"; };
-		AB000031 /* PTZ631WDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTZ631WDevice.swift; sourceTree = "<group>"; };
-		AB000037 /* WacomProbeDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomProbeDevice.swift; sourceTree = "<group>"; };
-		AB000038 /* DTK2400Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTK2400Device.swift; sourceTree = "<group>"; };
 		AB000007 /* TabletManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletManager.swift; sourceTree = "<group>"; };
 		AB000008 /* InputInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputInjector.swift; sourceTree = "<group>"; };
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
@@ -55,15 +53,33 @@
 		AB000014 /* ButtonMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingView.swift; sourceTree = "<group>"; };
 		AB000015 /* DisplayMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMappingView.swift; sourceTree = "<group>"; };
 		AB000016 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
+		AB000017 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
+		AB000020 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AB000021 /* MockTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MockTab.entitlements; sourceTree = "<group>"; };
+		AB000030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AB000031 /* PTZ631WDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTZ631WDevice.swift; sourceTree = "<group>"; };
+		AB000032 /* PTH660Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH660Device.swift; sourceTree = "<group>"; };
 		AB000033 /* InfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoView.swift; sourceTree = "<group>"; };
 		AB000034 /* PresetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetsView.swift; sourceTree = "<group>"; };
 		AB000035 /* AppWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWatcher.swift; sourceTree = "<group>"; };
 		AB000036 /* AppMenuController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMenuController.swift; sourceTree = "<group>"; };
-		AB000020 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AB000030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AB000021 /* MockTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MockTab.entitlements; sourceTree = "<group>"; };
+		AB000037 /* WacomProbeDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomProbeDevice.swift; sourceTree = "<group>"; };
+		AB000038 /* DTK2400Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTK2400Device.swift; sourceTree = "<group>"; };
+		AB000039 /* DeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRegistry.swift; sourceTree = "<group>"; };
+		AB000040 /* DevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesView.swift; sourceTree = "<group>"; };
+		AB000041 /* TabStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabStatusBar.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AD000011 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		AC000000 /* MockTab */ = {
@@ -102,6 +118,7 @@
 				AB000031 /* PTZ631WDevice.swift */,
 				AB000037 /* WacomProbeDevice.swift */,
 				AB000038 /* DTK2400Device.swift */,
+				AB000039 /* DeviceRegistry.swift */,
 				AB000007 /* TabletManager.swift */,
 				AB000035 /* AppWatcher.swift */,
 				AB000008 /* InputInjector.swift */,
@@ -126,8 +143,10 @@
 				AB000014 /* ButtonMappingView.swift */,
 				AB000015 /* DisplayMappingView.swift */,
 				AB000016 /* ScratchpadView.swift */,
-			AB000033 /* InfoView.swift */,
+				AB000033 /* InfoView.swift */,
 				AB000034 /* PresetsView.swift */,
+				AB000040 /* DevicesView.swift */,
+				AB000041 /* TabStatusBar.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -140,7 +159,7 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		AC000099 /* root */ = {
+		AC000099 = {
 			isa = PBXGroup;
 			children = (
 				AC000000 /* MockTab */,
@@ -191,7 +210,7 @@
 				en,
 				Base,
 			);
-			mainGroup = AC000099 /* root */;
+			mainGroup = AC000099;
 			productRefGroup = AC000010 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -200,6 +219,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AD000012 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000030 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		AD000010 /* Sources */ = {
@@ -218,6 +248,7 @@
 				AA000031 /* PTZ631WDevice.swift in Sources */,
 				AA000037 /* WacomProbeDevice.swift in Sources */,
 				AA000038 /* DTK2400Device.swift in Sources */,
+				AA000039 /* DeviceRegistry.swift in Sources */,
 				AA000007 /* TabletManager.swift in Sources */,
 				AA000035 /* AppWatcher.swift in Sources */,
 				AA000008 /* InputInjector.swift in Sources */,
@@ -228,33 +259,14 @@
 				AA000014 /* ButtonMappingView.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,
 				AA000016 /* ScratchpadView.swift in Sources */,
-			AA000033 /* InfoView.swift in Sources */,
+				AA000033 /* InfoView.swift in Sources */,
 				AA000034 /* PresetsView.swift in Sources */,
+				AA000040 /* DevicesView.swift in Sources */,
+				AA000041 /* TabStatusBar.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		AD000011 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXResourcesBuildPhase section */
-		AD000012 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				AA000030 /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
 		AE000002 /* Debug */ = {
@@ -373,6 +385,7 @@
 		AE000012 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = MockTab/MockTab.entitlements;
@@ -384,24 +397,25 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MockTab/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.mocktab";
+				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				ARCHS = "$(ARCHS_STANDARD)";
 			};
 			name = Debug;
 		};
 		AE000013 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = MockTab/MockTab.entitlements;
@@ -413,18 +427,18 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MockTab/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "io.mocktab";
+				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				ARCHS = "$(ARCHS_STANDARD)";
 			};
 			name = Release;
 		};
@@ -450,7 +464,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
 	};
 	rootObject = AF000001 /* Project object */;
 }

@@ -42,6 +42,14 @@ struct TabletAreaView: View {
     private var selectedModel: TabletModel { TabletModel(rawValue: selectedModelRaw) ?? .pth860 }
 
     var body: some View {
+        VStack(spacing: 0) {
+            mainContent
+            Spacer(minLength: 0)
+            PresetStatusBar(settings: settings)
+        }
+    }
+
+    private var mainContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Picker("Tablet model", selection: $selectedModelRaw) {
@@ -114,6 +122,7 @@ struct TabletAreaView: View {
         .onAppear { autoSelectModel(tabletManager.connectedProductID) }
         .onChange(of: tabletManager.connectedProductID) { autoSelectModel($0) }
     }
+
 
     private func autoSelectModel(_ productID: Int) {
         if let model = TabletModel(productID: productID) {

@@ -4,10 +4,19 @@ import AppKit
 // MARK: - SwiftUI wrapper
 
 struct ScratchpadView: View {
+    @ObservedObject var settings: TabletSettings
     @State private var currentPressure: Double = 0
     @State private var clearID = 0  // toggle to trigger a clear
 
     var body: some View {
+        VStack(spacing: 0) {
+            mainContent
+            Spacer(minLength: 0)
+            PresetStatusBar(settings: settings)
+        }
+    }
+
+    private var mainContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Test Area")
                 .font(.headline)

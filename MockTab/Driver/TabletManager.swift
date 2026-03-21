@@ -92,6 +92,9 @@ final class TabletManager: ObservableObject {
 
         let onTablet: (TabletPoint) -> Void = { [weak self] point in
             guard let self else { return }
+            if point.inProximity {
+                DeviceRegistry.shared.recordTool(isEraser: point.eraser, forDevice: productID)
+            }
             self.injector?.inject(point: point, settings: self.settings)
         }
 
@@ -143,6 +146,7 @@ final class TabletManager: ObservableObject {
             wacomDevice.open()
             refreshConnectedIDs(mostRecent: productID)
             settings?.loadForDevice(productID)
+            DeviceRegistry.shared.recordTablet(productID: productID)
         }
     }
 

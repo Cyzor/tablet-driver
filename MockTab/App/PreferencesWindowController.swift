@@ -14,7 +14,7 @@ final class PreferencesWindowController: NSWindowController {
 
     /// Ordered tab labels, parallel to the tabs added in init.
     static let tabLabels = [
-        "Tablet Area", "Pressure", "Buttons", "Display", "Presets", "Scratchpad", "Info"
+        "Tablet Area", "Pressure", "Buttons", "Display", "Devices", "Presets", "Scratchpad", "Info"
     ]
 
     private init() {
@@ -30,13 +30,14 @@ final class PreferencesWindowController: NSWindowController {
         super.init(window: window)
 
         let s = settings
-        add(tabVC, label: "Tablet Area",  symbol: "rectangle.dashed",  height: 390) { TabletAreaView(settings: s, tabletManager: TabletManager.shared) }
-        add(tabVC, label: "Pressure",     symbol: "waveform.path",      height: 450) { PressureCurveView(settings: s) }
-        add(tabVC, label: "Buttons",      symbol: "hand.point.up.left", height: 540) { ButtonMappingView(settings: s) }
-        add(tabVC, label: "Display",      symbol: "display",            height: 340) { DisplayMappingView(settings: s) }
-        add(tabVC, label: "Presets",      symbol: "star.circle",        height: 420) { PresetsView(settings: s) }
-        add(tabVC, label: "Scratchpad",   symbol: "scribble",           height: 330) { ScratchpadView() }
-        add(tabVC, label: "Info",         symbol: "info.circle",        height: 400) { InfoView(tabletManager: TabletManager.shared, settings: s) }
+        add(tabVC, label: "Tablet Area",  symbol: "rectangle.dashed",  height: 420) { TabletAreaView(settings: s, tabletManager: TabletManager.shared) }
+        add(tabVC, label: "Pressure",     symbol: "waveform.path",      height: 480) { PressureCurveView(settings: s) }
+        add(tabVC, label: "Buttons",      symbol: "hand.point.up.left", height: 575) { ButtonMappingView(settings: s) }
+        add(tabVC, label: "Display",      symbol: "display",            height: 370) { DisplayMappingView(settings: s) }
+        add(tabVC, label: "Devices",      symbol: "externaldrive",      height: 480) { DevicesView(tabletManager: TabletManager.shared, registry: DeviceRegistry.shared) }
+        add(tabVC, label: "Presets",      symbol: "star.circle",        height: 450) { PresetsView(settings: s) }
+        add(tabVC, label: "Scratchpad",   symbol: "scribble",           height: 360) { ScratchpadView(settings: s) }
+        add(tabVC, label: "Info",         symbol: "info.circle",        height: 430) { InfoView(tabletManager: TabletManager.shared, settings: s) }
     }
 
     required init?(coder: NSCoder) { fatalError() }

@@ -26,12 +26,14 @@ struct MockTabApp: App {
                     .keyboardShortcut("3", modifiers: .command)
                 Button("Display")      { PreferencesWindowController.shared.showTab(at: 3) }
                     .keyboardShortcut("4", modifiers: .command)
-                Button("Presets")      { PreferencesWindowController.shared.showTab(at: 4) }
+                Button("Devices")      { PreferencesWindowController.shared.showTab(at: 4) }
                     .keyboardShortcut("5", modifiers: .command)
-                Button("Scratchpad")   { PreferencesWindowController.shared.showTab(at: 5) }
+                Button("Presets")      { PreferencesWindowController.shared.showTab(at: 5) }
                     .keyboardShortcut("6", modifiers: .command)
-                Button("Info")         { PreferencesWindowController.shared.showTab(at: 6) }
+                Button("Scratchpad")   { PreferencesWindowController.shared.showTab(at: 6) }
                     .keyboardShortcut("7", modifiers: .command)
+                Button("Info")         { PreferencesWindowController.shared.showTab(at: 7) }
+                    .keyboardShortcut("8", modifiers: .command)
             }
         }
     }

@@ -13,19 +13,22 @@ struct InfoView: View {
     @State private var diagnosticsExpanded = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                statusTable
-                Divider()
-                diagnosticSection
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    statusTable
+                    Divider()
+                    diagnosticSection
+                }
+                .padding()
             }
-            .padding()
+            // Refresh immediately on appear and whenever the user switches back to
+            // MockTab (e.g. after granting accessibility in System Settings).
+            .onAppear { refresh() }
+            .onReceive(NotificationCenter.default.publisher(
+                for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }
+            PresetStatusBar(settings: settings)
         }
-        // Refresh immediately on appear and whenever the user switches back to
-        // MockTab (e.g. after granting accessibility in System Settings).
-        .onAppear { refresh() }
-        .onReceive(NotificationCenter.default.publisher(
-            for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }
     }
 
     // MARK: - Status table
