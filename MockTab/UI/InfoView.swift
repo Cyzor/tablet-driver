@@ -6,6 +6,7 @@ import ServiceManagement
 /// and a collapsible diagnostic dump for technical analysis.
 struct InfoView: View {
     @ObservedObject var tabletManager: TabletManager
+    @ObservedObject var settings: TabletSettings
 
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var launchAtLogin       = false
@@ -57,6 +58,10 @@ struct InfoView: View {
             row("HID Manager",
                 value: tabletManager.hidManagerOpen ? "Running" : "Failed to open",
                 ok: tabletManager.hidManagerOpen ? true : false)
+
+            row("Preset",
+                value: presetLabel,
+                ok: nil)
 
             row("Launch at Login",
                 value: launchAtLogin ? "Enabled" : "Disabled",
@@ -124,6 +129,16 @@ struct InfoView: View {
         }
     }
 
+    private var presetLabel: String {
+        guard let preset = settings.activePreset else { return "None (device defaults)" }
+        switch settings.activationSource {
+        case .manual:
+            return "\(preset.name)"
+        case .app(_, let appName):
+            return "\(preset.name)  (Auto: \(appName))"
+        }
+    }
+
     private var diagnosticText: String {
         var lines: [String] = []
 
@@ -165,6 +180,7 @@ struct InfoView: View {
         lines += ["HID Manager    : \(tabletManager.hidManagerOpen ? "open" : "failed to open")"]
         lines += ["Accessibility  : \(accessibilityGranted ? "granted" : "not granted")"]
         lines += ["Launch at login: \(launchAtLogin ? "enabled" : "disabled")"]
+        lines += ["Preset         : \(presetLabel)"]
 
         return lines.joined(separator: "\n")
     }

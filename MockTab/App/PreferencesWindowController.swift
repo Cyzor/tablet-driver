@@ -29,7 +29,7 @@ final class PreferencesWindowController: NSWindowController {
         add(tabVC, label: "Display",      symbol: "display",            height: 340) { DisplayMappingView(settings: s) }
         add(tabVC, label: "Presets",      symbol: "star.circle",        height: 420) { PresetsView(settings: s) }
         add(tabVC, label: "Scratchpad",   symbol: "scribble",           height: 330) { ScratchpadView() }
-        add(tabVC, label: "Info",         symbol: "info.circle",        height: 370) { InfoView(tabletManager: TabletManager.shared) }
+        add(tabVC, label: "Info",         symbol: "info.circle",        height: 400) { InfoView(tabletManager: TabletManager.shared, settings: s) }
     }
 
     required init?(coder: NSCoder) { fatalError() }

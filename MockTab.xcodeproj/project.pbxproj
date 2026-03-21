@@ -27,6 +27,7 @@
 		AA000016 /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* ScratchpadView.swift */; };
 		AA000033 /* InfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* InfoView.swift */; };
 		AA000034 /* PresetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* PresetsView.swift */; };
+		AA000035 /* AppWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* AppWatcher.swift */; };
 		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -51,6 +52,7 @@
 		AB000016 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
 		AB000033 /* InfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoView.swift; sourceTree = "<group>"; };
 		AB000034 /* PresetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetsView.swift; sourceTree = "<group>"; };
+		AB000035 /* AppWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWatcher.swift; sourceTree = "<group>"; };
 		AB000020 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AB000030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000021 /* MockTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MockTab.entitlements; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 				AB000032 /* PTH660Device.swift */,
 				AB000031 /* PTZ631WDevice.swift */,
 				AB000007 /* TabletManager.swift */,
+				AB000035 /* AppWatcher.swift */,
 				AB000008 /* InputInjector.swift */,
 			);
 			path = Driver;
@@ -204,6 +207,7 @@
 				AA000032 /* PTH660Device.swift in Sources */,
 				AA000031 /* PTZ631WDevice.swift in Sources */,
 				AA000007 /* TabletManager.swift in Sources */,
+				AA000035 /* AppWatcher.swift in Sources */,
 				AA000008 /* InputInjector.swift in Sources */,
 				AA000009 /* TabletSettings.swift in Sources */,
 				AA000010 /* BezierCurve.swift in Sources */,

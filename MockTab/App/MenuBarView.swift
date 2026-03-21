@@ -46,7 +46,12 @@ struct MenuBarView: View {
                     }
                 }
             } label: {
-                Text("Preset: \(settings.activePreset?.name ?? "Device Defaults")")
+                switch settings.activationSource {
+                case .manual:
+                    Text("Preset: \(settings.activePreset?.name ?? "Device Defaults")")
+                case .app(_, let appName):
+                    Text("Preset: \(settings.activePreset?.name ?? "Device Defaults")  (\(appName))")
+                }
             }
 
             Divider()

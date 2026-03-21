@@ -28,8 +28,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             let injector = InputInjector()
             TabletManager.shared.injector = injector
+            let settings = PreferencesWindowController.shared.settings
             // Wire settings before start() so the driver uses persisted preferences immediately.
-            TabletManager.shared.settings = PreferencesWindowController.shared.settings
+            TabletManager.shared.settings = settings
+            // Wire app-watcher for preset auto-switching.
+            AppWatcher.shared.settings = settings
             TabletManager.shared.start()
         }
 

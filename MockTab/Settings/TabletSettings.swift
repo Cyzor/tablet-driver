@@ -97,11 +97,33 @@ final class TabletSettings: ObservableObject {
         var overriddenKeys: Set<String> = []
     }
 
+    /// A mapping from one app (by bundle ID) to a preset.
+    /// Stored per device; used by app auto-switching.
+    struct AppPresetBinding: Identifiable, Codable, Equatable {
+        var id:       String { bundleID }
+        var bundleID: String
+        var appName:  String   // display name captured at bind time
+        var presetID: UUID
+    }
+
     /// All presets saved for the current device.
     @Published var presets: [Preset] = []
 
     /// The currently active preset, or `nil` when using raw device settings.
     @Published var activePreset: Preset? = nil
+
+    /// How the current preset was activated — for status display only, not persisted.
+    enum ActivationSource: Equatable {
+        case manual
+        case app(bundleID: String, name: String)
+    }
+    @Published var activationSource: ActivationSource = .manual
+
+    /// When true, switching the frontmost app automatically activates the bound preset.
+    @Published var autoSwitchEnabled: Bool = false { didSet { persist("autoSwitchEnabled", autoSwitchEnabled) } }
+
+    /// Per-app preset assignments for this device.
+    @Published var appBindings: [AppPresetBinding] = []
 
     // MARK: - Init
 
@@ -115,7 +137,9 @@ final class TabletSettings: ObservableObject {
         let hex = String(productID, radix: 16, uppercase: true)
         devicePrefix = "device-0x\(hex)."
         loadPresetList()
+        loadAppBindings()
         reloadAll()
+        activationSource = .manual
     }
 
     // MARK: - Preset management
@@ -126,11 +150,12 @@ final class TabletSettings: ObservableObject {
     }
 
     /// Activates `preset` (or pass `nil` to revert to raw device settings).
-    /// Republishes all settings values so SwiftUI bindings reflect the change.
+    /// Marks the source as `.manual` and republishes all settings values.
     func activate(_ preset: Preset?) {
         activePreset = preset
         saveActivePresetID()
         reloadAll()
+        activationSource = .manual
     }
 
     /// Snapshots the current in-memory settings into a new preset, saves it,
@@ -177,7 +202,7 @@ final class TabletSettings: ObservableObject {
     }
 
     /// Deletes `preset` and all its stored values.
-    /// If it was active, reverts to device defaults.
+    /// Removes any app bindings pointing to it.  If it was active, reverts to device defaults.
     func deletePreset(_ preset: Preset) {
         let prefix = presetKeyPrefix(preset)
         let allKeys = ["activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
@@ -186,11 +211,57 @@ final class TabletSettings: ObservableObject {
                        "expressKeyBindings", "pressureCurve"]
         for key in allKeys { ud.removeObject(forKey: prefix + key) }
         presets.removeAll { $0.id == preset.id }
+        // Remove app bindings that referenced this preset.
+        let before = appBindings.count
+        appBindings.removeAll { $0.presetID == preset.id }
+        if appBindings.count != before { saveAppBindings() }
         if activePreset?.id == preset.id {
             activate(nil)
         } else {
             savePresetList()
         }
+    }
+
+    // MARK: - App auto-switching
+
+    /// Called by `AppWatcher` on every app-focus change.
+    /// Switches to the bound preset for `bundleID`, or reverts to device defaults
+    /// if no binding exists.  No-ops when `autoSwitchEnabled` is false or the
+    /// desired preset is already active.
+    func handleAppActivation(bundleID: String, appName: String) {
+        guard autoSwitchEnabled else { return }
+        let target = appBindings.first(where: { $0.bundleID == bundleID })
+            .flatMap { b in presets.first { $0.id == b.presetID } }
+        guard target?.id != activePreset?.id || activationSource == .manual else {
+            // Same preset already active via auto-switch — just refresh the label.
+            activationSource = .app(bundleID: bundleID, name: appName)
+            return
+        }
+        if target?.id != activePreset?.id {
+            activePreset = target
+            saveActivePresetID()
+            reloadAll()
+        }
+        activationSource = .app(bundleID: bundleID, name: appName)
+    }
+
+    /// Binds the currently frontmost app to `preset`.
+    /// Replaces any existing binding for that bundle ID.
+    func bindFrontmostApp(to preset: Preset) {
+        guard let app      = NSWorkspace.shared.frontmostApplication,
+              let bundleID = app.bundleIdentifier else { return }
+        let name = app.localizedName ?? bundleID
+        appBindings.removeAll { $0.bundleID == bundleID }
+        appBindings.append(AppPresetBinding(bundleID: bundleID,
+                                            appName:  name,
+                                            presetID: preset.id))
+        saveAppBindings()
+    }
+
+    /// Removes the app binding with the given bundle ID.
+    func unbindApp(bundleID: String) {
+        appBindings.removeAll { $0.bundleID == bundleID }
+        saveAppBindings()
     }
 
     // MARK: - Preset persistence
@@ -225,6 +296,20 @@ final class TabletSettings: ObservableObject {
         }
     }
 
+    private var appBindingsKey: String { devicePrefix + "_appBindings" }
+
+    private func saveAppBindings() {
+        guard let data = try? JSONEncoder().encode(appBindings) else { return }
+        ud.set(data, forKey: appBindingsKey)
+    }
+
+    private func loadAppBindings() {
+        guard let data = ud.data(forKey: appBindingsKey),
+              let list = try? JSONDecoder().decode([AppPresetBinding].self, from: data)
+        else { appBindings = []; return }
+        appBindings = list
+    }
+
     // MARK: - Reload
 
     /// Reloads every setting from UserDefaults using the current `devicePrefix`
@@ -243,6 +328,7 @@ final class TabletSettings: ObservableObject {
         pen1Raw              = loadString("penButton1Binding",  default: "")
         pen2Raw              = loadString("penButton2Binding",  default: "")
         expressKeyRaw        = loadString("expressKeyBindings", default: "")
+        autoSwitchEnabled    = loadBool("autoSwitchEnabled",    default: false)
         loadPressureCurve()
         isLoading = false
     }
