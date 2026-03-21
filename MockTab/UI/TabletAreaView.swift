@@ -51,28 +51,13 @@ struct TabletAreaView: View {
                 }
                 .pickerStyle(.menu)
 
-                // "Detect Connected" — lists all live Wacom devices; tap one to
-                // pin the picker and canvas proportions to that model.
-                // Shows as a plain button when exactly one tablet is connected.
-                if tabletManager.connectedProductIDs.count == 1,
-                   let pid = tabletManager.connectedProductIDs.first {
-                    Button("Detect Connected") { autoSelectModel(pid) }
-                        .buttonStyle(.bordered)
-                } else {
-                    Menu("Detect Connected") {
-                        if tabletManager.connectedProductIDs.isEmpty {
-                            Text("No tablets detected").foregroundStyle(.secondary)
-                        } else {
-                            ForEach(tabletManager.connectedProductIDs, id: \.self) { pid in
-                                Button(TabletModel.displayName(forProductID: pid)) {
-                                    autoSelectModel(pid)
-                                }
-                            }
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(tabletManager.connectedProductIDs.isEmpty)
+                // Pins the picker to whichever tablet is currently connected.
+                // When multiple tablets are present, uses the most recently connected one.
+                Button("Detect Connected") {
+                    autoSelectModel(tabletManager.connectedProductID)
                 }
+                .fixedSize()
+                .disabled(!tabletManager.isConnected)
             }
 
             GeometryReader { geo in
