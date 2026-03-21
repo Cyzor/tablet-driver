@@ -23,7 +23,6 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         // defer one run-loop tick to let SwiftUI finish its menu scaffolding.
         DispatchQueue.main.async { [self] in
             insertPresetsMenu()
-            buildViewMenu()
         }
     }
 
@@ -96,40 +95,4 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         PreferencesWindowController.shared.showTab(named: "Presets")
     }
 
-    // MARK: - View menu  (⌘1–⌘7 for each preferences tab)
-
-    private func buildViewMenu() {
-        guard let mainMenu = NSApp.mainMenu else { return }
-
-        // Find or create the View menu.
-        let viewMenu: NSMenu
-        if let existing = mainMenu.items.first(where: { $0.title == "View" })?.submenu {
-            existing.removeAllItems()
-            viewMenu = existing
-        } else {
-            let vm = NSMenu(title: "View")
-            let vmItem = NSMenuItem(title: "View", action: nil, keyEquivalent: "")
-            vmItem.submenu = vm
-            // Insert before Window, or at end.
-            let idx = mainMenu.items.firstIndex(where: { $0.title == "Window" })
-                      ?? mainMenu.items.count
-            mainMenu.insertItem(vmItem, at: idx)
-            viewMenu = vm
-        }
-
-        for (index, label) in PreferencesWindowController.tabLabels.enumerated() {
-            let key  = String(index + 1)           // "1" through "7"
-            let item = NSMenuItem(title: label,
-                                  action: #selector(showTabByTag(_:)),
-                                  keyEquivalent: key)
-            item.keyEquivalentModifierMask = .command
-            item.target = self
-            item.tag    = index
-            viewMenu.addItem(item)
-        }
-    }
-
-    @objc private func showTabByTag(_ sender: NSMenuItem) {
-        PreferencesWindowController.shared.showTab(at: sender.tag)
-    }
 }

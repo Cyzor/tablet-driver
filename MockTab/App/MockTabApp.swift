@@ -13,6 +13,27 @@ struct MockTabApp: App {
                 .environmentObject(PreferencesWindowController.shared.settings)
         }
         .menuBarExtraStyle(.menu)
+        .commands {
+            // View menu with ⌘1–⌘7 tab shortcuts.
+            // Declared here so SwiftUI owns the menu lifecycle and it is never
+            // overwritten by SwiftUI's own menu-rebuild passes.
+            CommandMenu("View") {
+                Button("Tablet Area")  { PreferencesWindowController.shared.showTab(at: 0) }
+                    .keyboardShortcut("1", modifiers: .command)
+                Button("Pressure")     { PreferencesWindowController.shared.showTab(at: 1) }
+                    .keyboardShortcut("2", modifiers: .command)
+                Button("Buttons")      { PreferencesWindowController.shared.showTab(at: 2) }
+                    .keyboardShortcut("3", modifiers: .command)
+                Button("Display")      { PreferencesWindowController.shared.showTab(at: 3) }
+                    .keyboardShortcut("4", modifiers: .command)
+                Button("Presets")      { PreferencesWindowController.shared.showTab(at: 4) }
+                    .keyboardShortcut("5", modifiers: .command)
+                Button("Scratchpad")   { PreferencesWindowController.shared.showTab(at: 5) }
+                    .keyboardShortcut("6", modifiers: .command)
+                Button("Info")         { PreferencesWindowController.shared.showTab(at: 6) }
+                    .keyboardShortcut("7", modifiers: .command)
+            }
+        }
     }
 }
 
