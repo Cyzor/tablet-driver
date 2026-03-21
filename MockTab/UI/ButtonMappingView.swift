@@ -2,9 +2,9 @@ import SwiftUI
 import AppKit
 
 struct ButtonMappingView: View {
-    @ObservedObject var settings: TabletSettings
-    @ObservedObject private var tabletManager: TabletManager = TabletManager.shared
-    @ObservedObject private var registry:      DeviceRegistry = DeviceRegistry.shared
+    @ObservedObject var settings:      TabletSettings
+    @ObservedObject var tabletManager: TabletManager
+    @ObservedObject var registry:      DeviceRegistry
 
     var body: some View {
         VStack(spacing: 0) {

@@ -14,18 +14,51 @@ import AppKit
 @MainActor
 final class InputInjector {
 
-    // MARK: - Device identity  (set by TabletManager on connect)
+    // MARK: - Device identity
 
-    var deviceVendorID:  Int = 0x056A
-    var deviceProductID: Int = 0
+    /// Vendor ID for proximity events.  Defaults to Wacom (0x056A).
+    /// Can be set at init or updated later when a device connects.
+    var deviceVendorID: Int
+
+    /// Product ID for proximity events.  Identifies the physical tablet model
+    /// so drawing apps (Photoshop, Krita, etc.) route pressure correctly.
+    var deviceProductID: Int
+
+    init(vendorID: Int = 0x056A, productID: Int = 0) {
+        self.deviceVendorID  = vendorID
+        self.deviceProductID = productID
+    }
 
     // MARK: - State
 
-    private var lastProximity   = false
+    /// Whether the pen is currently in proximity.  Read by TabletManager
+    /// during multi-device handoff so the outgoing device can post its
+    /// proximity-exit event before the incoming device takes over.
+    private(set) var lastProximity = false
     private var lastTipDown     = false
     private var lastButton1Down = false
     private var lastButton2Down = false
     private var activeButton: CGMouseButton = .left
+
+    // MARK: - Jitter tracking
+
+    /// Rolling window of consecutive raw-position deltas while hovering.
+    /// Used by the Info pane to flag potential RF interference.
+    private var hoverDeltas: [CGFloat] = []
+    private var lastRawPoint: CGPoint = .zero
+    private var hasLastRawPoint = false
+    private static let jitterWindow = 60    // ~0.5s at 133 Hz
+
+    /// Mean hover-delta over the rolling window (points per sample).
+    /// Spikes above ~3 pt/sample while hovering suggest RF noise.
+    var jitterLevel: CGFloat {
+        guard hoverDeltas.count >= 10 else { return 0 }
+        return hoverDeltas.reduce(0, +) / CGFloat(hoverDeltas.count)
+    }
+
+    /// True when the recent hover movement looks like electrical noise
+    /// rather than intentional pen motion.
+    var isJittery: Bool { jitterLevel > 3.0 }
 
     // EMA-smoothed cursor position
     private var smoothedPoint: CGPoint = .zero
@@ -61,6 +94,8 @@ final class InputInjector {
                     lastTipDown = false
                 }
                 hasSmoothedPoint = false
+                hasLastRawPoint = false
+                hoverDeltas.removeAll()
             }
             lastProximity = point.inProximity
         }
@@ -83,6 +118,25 @@ final class InputInjector {
             }
         }
         let screenPoint = smoothedPoint
+
+        // ── Jitter tracking (hover only) ──────────────────────────────────────
+        if !tipDown {
+            if hasLastRawPoint {
+                let delta = hypot(rawPoint.x - lastRawPoint.x,
+                                  rawPoint.y - lastRawPoint.y)
+                hoverDeltas.append(delta)
+                if hoverDeltas.count > Self.jitterWindow {
+                    hoverDeltas.removeFirst(hoverDeltas.count - Self.jitterWindow)
+                }
+            }
+            lastRawPoint = rawPoint
+            hasLastRawPoint = true
+        } else {
+            // While drawing, don't accumulate deltas — intentional strokes
+            // would inflate the jitter metric.
+            hasLastRawPoint = false
+            hoverDeltas.removeAll()
+        }
 
         // ── Raw tablet event (for Qt/GTK drawing apps: Krita, GIMP, etc.) ──────
         postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)

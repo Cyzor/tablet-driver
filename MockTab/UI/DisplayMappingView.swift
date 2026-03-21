@@ -3,9 +3,9 @@ import CoreGraphics
 import AppKit
 
 struct DisplayMappingView: View {
-    @ObservedObject var settings: TabletSettings
-    @ObservedObject private var tabletManager: TabletManager = TabletManager.shared
-    @ObservedObject private var registry:      DeviceRegistry = DeviceRegistry.shared
+    @ObservedObject var settings:      TabletSettings
+    @ObservedObject var tabletManager: TabletManager
+    @ObservedObject var registry:      DeviceRegistry
     @State private var displays: [DisplayInfo] = []
 
     var body: some View {

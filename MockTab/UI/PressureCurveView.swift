@@ -3,9 +3,9 @@ import SwiftUI
 /// Bezier pressure curve editor.
 /// Draws the curve on a Canvas with two draggable control point handles.
 struct PressureCurveView: View {
-    @ObservedObject var settings: TabletSettings
-    @ObservedObject private var tabletManager: TabletManager = TabletManager.shared
-    @ObservedObject private var registry:      DeviceRegistry = DeviceRegistry.shared
+    @ObservedObject var settings:      TabletSettings
+    @ObservedObject var tabletManager: TabletManager
+    @ObservedObject var registry:      DeviceRegistry
 
     @State private var draggingP1 = false
     @State private var draggingP2 = false

@@ -33,6 +33,7 @@
 		AA000037 /* WacomProbeDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* WacomProbeDevice.swift */; };
 		AA000038 /* DTK2400Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* DTK2400Device.swift */; };
 		AA000039 /* DeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000039 /* DeviceRegistry.swift */; };
+		AA000042 /* DeviceContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* DeviceContext.swift */; };
 		AA000040 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* DevicesView.swift */; };
 		AA000041 /* TabStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000041 /* TabStatusBar.swift */; };
 /* End PBXBuildFile section */
@@ -66,6 +67,7 @@
 		AB000037 /* WacomProbeDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomProbeDevice.swift; sourceTree = "<group>"; };
 		AB000038 /* DTK2400Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTK2400Device.swift; sourceTree = "<group>"; };
 		AB000039 /* DeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRegistry.swift; sourceTree = "<group>"; };
+		AB000042 /* DeviceContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceContext.swift; sourceTree = "<group>"; };
 		AB000040 /* DevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesView.swift; sourceTree = "<group>"; };
 		AB000041 /* TabStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabStatusBar.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -119,6 +121,7 @@
 				AB000037 /* WacomProbeDevice.swift */,
 				AB000038 /* DTK2400Device.swift */,
 				AB000039 /* DeviceRegistry.swift */,
+				AB000042 /* DeviceContext.swift */,
 				AB000007 /* TabletManager.swift */,
 				AB000035 /* AppWatcher.swift */,
 				AB000008 /* InputInjector.swift */,
@@ -249,6 +252,7 @@
 				AA000037 /* WacomProbeDevice.swift in Sources */,
 				AA000038 /* DTK2400Device.swift in Sources */,
 				AA000039 /* DeviceRegistry.swift in Sources */,
+				AA000042 /* DeviceContext.swift in Sources */,
 				AA000007 /* TabletManager.swift in Sources */,
 				AA000035 /* AppWatcher.swift in Sources */,
 				AA000008 /* InputInjector.swift in Sources */,

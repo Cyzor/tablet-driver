@@ -11,6 +11,7 @@ struct InfoView: View {
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var launchAtLogin       = false
     @State private var diagnosticsExpanded = false
+    @State private var conflicts: [String] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,6 +23,8 @@ struct InfoView: View {
                 }
                 .padding()
             }
+            .contentShape(Rectangle())
+            .onTapGesture { refresh() }
             // Refresh immediately on appear and whenever the user switches back to
             // MockTab (e.g. after granting accessibility in System Settings).
             .onAppear { refresh() }
@@ -70,6 +73,11 @@ struct InfoView: View {
                 value: launchAtLogin ? "Enabled" : "Disabled",
                 ok: launchAtLogin ? true : nil,
                 fix: launchAtLogin ? nil : enableLaunchAtLogin)
+
+            row("Conflicts",
+                value: conflicts.isEmpty ? "None detected" : "\(conflicts.count) issue\(conflicts.count == 1 ? "" : "s")",
+                ok: conflicts.isEmpty ? true : false,
+                fix: conflicts.isEmpty ? nil : showConflictAlert)
         }
     }
 
@@ -185,6 +193,21 @@ struct InfoView: View {
         lines += ["Launch at login: \(launchAtLogin ? "enabled" : "disabled")"]
         lines += ["Preset         : \(presetLabel)"]
 
+        lines += [""]
+        if conflicts.isEmpty {
+            lines += ["Conflicts      : none"]
+        } else {
+            lines += ["Conflicts      : \(conflicts.count)"]
+            for conflict in conflicts {
+                lines += ["  ⚠ \(conflict)"]
+            }
+        }
+
+        if let ctx = tabletManager.activeContext {
+            let jitter = String(format: "%.2f", ctx.injector.jitterLevel)
+            lines += ["Jitter level   : \(jitter) pt/sample\(ctx.injector.isJittery ? " (HIGH)" : "")"]
+        }
+
         return lines.joined(separator: "\n")
     }
 
@@ -193,6 +216,7 @@ struct InfoView: View {
     private func refresh() {
         accessibilityGranted = AXIsProcessTrusted()
         launchAtLogin = SMAppService.mainApp.status == .enabled
+        conflicts = detectConflicts()
     }
 
     /// Prompts the system accessibility dialog.  If it doesn't appear
@@ -202,6 +226,109 @@ struct InfoView: View {
         _ = AXIsProcessTrustedWithOptions(
             ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         )
+    }
+
+    // MARK: - Conflict detection
+
+    /// Known executable names that indicate a competing tablet driver is running.
+    /// Matched against both the executable name from the process list and
+    /// NSWorkspace's localizedName / bundleIdentifier for GUI apps.
+    private static let competingProcesses: [(name: String, label: String)] = [
+        ("WacomTabletDriver",        "Wacom Tablet Driver"),
+        ("TabletDriver",             "Wacom TabletDriver"),
+        ("Wacom_IOManager",          "Wacom I/O Manager"),
+        ("WacomTabletSpringboard",   "Wacom Springboard"),
+        ("DataStoreMgr",             "Wacom DataStore Manager"),
+        ("OpenTabletDriver.Daemon",  "OpenTabletDriver Daemon"),
+        ("OpenTabletDriver.UX",      "OpenTabletDriver UX"),
+        ("OpenTabletDriver",         "OpenTabletDriver (GUI)"),
+    ]
+
+    /// Scans running processes and injector state for potential conflicts.
+    /// Uses both NSWorkspace (for GUI apps) and a POSIX-level process scan
+    /// (for daemons like OpenTabletDriver.Daemon that have no UI presence).
+    private func detectConflicts() -> [String] {
+        var found: [String] = []
+
+        // Collect names from NSWorkspace (GUI apps).
+        let running = NSWorkspace.shared.runningApplications
+        var liveNames = Set(running.compactMap { $0.localizedName })
+        liveNames.formUnion(running.compactMap { $0.bundleIdentifier })
+
+        // Collect executable names via POSIX (catches daemons / CLI tools).
+        // sysctl KERN_PROC_ALL gives us every process; we extract the
+        // comm field (up to 16 chars of the executable name).
+        let posixNames = Self.runningProcessNames()
+        liveNames.formUnion(posixNames)
+
+        // Track which live names have already been claimed by a more-specific
+        // entry so "OpenTabletDriver" doesn't duplicate "OpenTabletDriver.Daemon".
+        var claimedNames = Set<String>()
+        for (name, label) in Self.competingProcesses {
+            // Exact match from NSWorkspace (full names) or from sysctl.
+            // sysctl's p_comm is truncated to 16 chars, so also check whether
+            // any running process name starts with our target (or vice-versa)
+            // to catch e.g. "OpenTabletDriver." matching "OpenTabletDriver.Daemon".
+            let matchingLive = liveNames.filter {
+                ($0 == name || name.hasPrefix($0) || $0.hasPrefix(name))
+                && !claimedNames.contains($0)
+            }
+            if !matchingLive.isEmpty {
+                claimedNames.formUnion(matchingLive)
+                found.append("\(label) is running — may conflict with MockTab's HID access")
+            }
+        }
+
+        // Check jitter from the active context's injector.
+        if let ctx = tabletManager.activeContext, ctx.injector.isJittery {
+            let level = String(format: "%.1f", ctx.injector.jitterLevel)
+            found.append("High hover jitter (\(level) pt/sample) — possible RF interference")
+        }
+
+        return found
+    }
+
+    /// Returns a set of executable names for all running processes using sysctl.
+    private static func runningProcessNames() -> Set<String> {
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
+        var size: Int = 0
+        guard sysctl(&mib, UInt32(mib.count), nil, &size, nil, 0) == 0,
+              size > 0 else { return [] }
+
+        let count = size / MemoryLayout<kinfo_proc>.stride
+        var procs = [kinfo_proc](repeating: kinfo_proc(), count: count)
+        guard sysctl(&mib, UInt32(mib.count), &procs, &size, nil, 0) == 0 else { return [] }
+
+        let actualCount = size / MemoryLayout<kinfo_proc>.stride
+        var names = Set<String>()
+        for i in 0..<actualCount {
+            let comm = procs[i].kp_proc.p_comm
+            let name = withUnsafeBytes(of: comm) { buf in
+                guard let base = buf.baseAddress?.assumingMemoryBound(to: CChar.self) else { return "" }
+                return String(cString: base)
+            }
+            if !name.isEmpty { names.insert(name) }
+        }
+        return names
+    }
+
+    /// Shows an alert listing all detected conflicts with recommendations.
+    private func showConflictAlert() {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Potential Conflicts Detected"
+
+        var body = "MockTab found the following issues that may interfere with tablet operation:\n\n"
+        for (i, conflict) in conflicts.enumerated() {
+            body += "  \(i + 1). \(conflict)\n"
+        }
+        body += "\nRecommendation: Quit or disable the listed processes, then restart MockTab. "
+        body += "For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. "
+        body += "For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet."
+
+        alert.informativeText = body
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     /// Registers MockTab as a login item via SMAppService (macOS 13+).

@@ -127,7 +127,18 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Init
 
-    init() { reloadAll() }
+    /// Creates a settings instance.  If `productID` is provided, the backing
+    /// store is immediately switched to that device's namespace — useful for
+    /// constructing a pre-loaded settings object inside a `DeviceContext`.
+    init(productID: Int? = nil) {
+        if let pid = productID {
+            let hex = String(pid, radix: 16, uppercase: true)
+            devicePrefix = "device-0x\(hex)."
+            loadPresetList()
+            loadAppBindings()
+        }
+        reloadAll()
+    }
 
     // MARK: - Per-device loading
 

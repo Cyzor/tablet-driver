@@ -1,22 +1,45 @@
 import Foundation
 import IOKit.hid
 
-/// Manages IOHIDManager lifecycle and dispatches reports to InputInjector.
-/// @MainActor because all IOHIDManager callbacks are scheduled on CFRunLoopGetMain() = main thread.
+/// Manages IOHIDManager lifecycle, per-device contexts, and proximity-based
+/// activation for multi-tablet support.
+///
+/// Each connected tablet gets its own `DeviceContext` (settings, injector,
+/// driver).  Only the *active* context posts CGEvents — activation happens
+/// automatically when a pen enters proximity on a given tablet.
+///
+/// @MainActor because all IOHIDManager callbacks are scheduled on
+/// CFRunLoopGetMain() = main thread.
 @MainActor
 final class TabletManager: ObservableObject {
 
     static let shared = TabletManager()
 
     private let manager: IOHIDManager
-    private var devices: [IOHIDDevice: any TabletDevice] = [:]
+
+    // MARK: - Per-device state
+
+    /// All device contexts, keyed by product ID.  Contexts survive
+    /// disconnect so settings and injector state are preserved for
+    /// reconnection.
+    @Published var contexts: [Int: DeviceContext] = [:]
+
+    /// The context currently posting CGEvents.  Switches automatically
+    /// when a pen enters proximity on a different tablet.
+    @Published var activeContext: DeviceContext? = nil
+
+    /// Internal lookup from raw IOHIDDevice to context — needed for
+    /// deviceDisconnected which receives the IOHIDDevice handle.
+    private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
+
+    // MARK: - Legacy published state (consumed by views)
 
     @Published var isConnected = false
-    @Published var connectedProductID: Int = 0   // most recently connected device
-    @Published var connectedProductIDs: [Int] = [] // all currently connected devices
-    @Published var connectedTransport: String = "—" // "USB", "Bluetooth", etc.
-    @Published var connectedUSBSpeed:  String = "—" // "Full Speed (12 Mb/s)", etc.
-    @Published var hidManagerOpen: Bool = false     // set after IOHIDManagerOpen
+    @Published var connectedProductID: Int = 0
+    @Published var connectedProductIDs: [Int] = []
+    @Published var connectedTransport: String = "—"
+    @Published var connectedUSBSpeed:  String = "—"
+    @Published var hidManagerOpen: Bool = false
 
     /// Human-readable name for a product ID, including a hex fallback for unknowns.
     static func deviceName(forProductID pid: Int) -> String {
@@ -40,8 +63,25 @@ final class TabletManager: ObservableObject {
         }
     }
 
-    weak var settings: TabletSettings?
-    var injector: InputInjector?
+    // MARK: - Legacy single-device accessors (transitional)
+    //
+    // These forward to the active context so that existing code that
+    // reads `tabletManager.settings` / `tabletManager.injector`
+    // continues to work during the migration to per-device windows.
+
+    /// The active context's settings, or a fallback.
+    /// UI code should migrate to reading `activeContext?.settings` directly.
+    var settings: TabletSettings? {
+        get { activeContext?.settings }
+        set { /* no-op: settings are now per-context */ }
+    }
+
+    /// The active context's injector.
+    var injector: InputInjector? {
+        activeContext?.injector
+    }
+
+    // MARK: - Init
 
     private init() {
         manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -81,8 +121,12 @@ final class TabletManager: ObservableObject {
     func stop() {
         IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-        for (_, dev) in devices { dev.close() }
-        devices.removeAll()
+        for (_, ctx) in hidDeviceMap {
+            ctx.tabletDevice?.close()
+        }
+        hidDeviceMap.removeAll()
+        contexts.removeAll()
+        activeContext = nil
     }
 
     // MARK: - Device lifecycle
@@ -90,19 +134,55 @@ final class TabletManager: ObservableObject {
     private func deviceConnected(_ device: IOHIDDevice) {
         let productID = hidIntProperty(device, kIOHIDProductIDKey)
 
-        let onTablet: (TabletPoint) -> Void = { [weak self] point in
-            guard let self else { return }
+        // Reuse or create a DeviceContext for this product ID.
+        let context = contexts[productID] ?? DeviceContext(productID: productID)
+        contexts[productID] = context
+        context.hidDevice = device
+
+        // ── Tablet point closure with proximity-based activation ─────────
+        let onTablet: (TabletPoint) -> Void = { [weak self, weak context] point in
+            guard let self, let context else { return }
+
+            // Record tool type for the Devices tab.
             if point.inProximity {
                 DeviceRegistry.shared.recordTool(isEraser: point.eraser, forDevice: productID)
             }
-            self.injector?.inject(point: point, settings: self.settings)
+
+            // Proximity-enter activates this device's context.
+            if point.inProximity && self.activeContext !== context {
+                // Post proximity-exit for the outgoing device so apps
+                // (Photoshop, Krita, etc.) clean up their tablet state.
+                if let old = self.activeContext, old.injector.lastProximity {
+                    let exitPoint = TabletPoint(
+                        x: 0, y: 0, maxX: 1, maxY: 1,
+                        pressure: 0, maxPressure: 1,
+                        tiltX: 0, tiltY: 0,
+                        penButton1: false, penButton2: false,
+                        eraser: false, inProximity: false, hoverDistance: 0)
+                    old.injector.inject(point: exitPoint, settings: old.settings)
+                }
+                self.activeContext = context
+            }
+
+            // Proximity-exit from a non-active device: still post it so
+            // apps don't get stuck with a dangling proximity state.
+            if !point.inProximity && context.injector.lastProximity {
+                context.injector.inject(point: point, settings: context.settings)
+                return
+            }
+
+            // Only the active context posts normal events.
+            guard self.activeContext === context else { return }
+            context.injector.inject(point: point, settings: context.settings)
         }
 
-        let onAux: (AuxButtons) -> Void = { [weak self] aux in
-            guard let self else { return }
-            self.injector?.injectAux(buttons: aux, settings: self.settings)
+        // ── Express key closure ──────────────────────────────────────────
+        let onAux: (AuxButtons) -> Void = { [weak context] aux in
+            guard let context else { return }
+            context.injector.injectAux(buttons: aux, settings: context.settings)
         }
 
+        // ── Create the device driver ─────────────────────────────────────
         let wacomDevice: (any TabletDevice)?
         switch productID {
         case 0x0317:
@@ -124,9 +204,6 @@ final class TabletManager: ObservableObject {
             let pid = String(productID, radix: 16, uppercase: true)
             let reportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
             if reportSize == 10 {
-                // IntuosV1 wire format — attach a probe to measure the coordinate
-                // space.  Watch Xcode console or Console.app (filter: com.mocktab)
-                // while moving the pen to all four corners and pressing hard.
                 print("TabletManager: unknown Wacom 0x\(pid) with 10-byte reports — attaching WacomProbeDevice")
                 wacomDevice = WacomProbeDevice(device: device)
             } else {
@@ -136,37 +213,40 @@ final class TabletManager: ObservableObject {
         }
 
         if let wacomDevice {
-            devices[device] = wacomDevice
-            // Tell the injector which physical device is active so it can populate
-            // proximity events with the correct vendorID / productID.  Apps like
-            // Krita, GIMP, Photoshop and Affinity use these fields to register the
-            // virtual tablet and then route pressure to their tablet input path.
-            injector?.deviceVendorID  = 0x056A   // Wacom Co., Ltd.
-            injector?.deviceProductID = productID
+            context.tabletDevice = wacomDevice
+            hidDeviceMap[device] = context
             wacomDevice.open()
             refreshConnectedIDs(mostRecent: productID)
-            settings?.loadForDevice(productID)
+
+            // If this is the only device, auto-activate it.
+            if activeContext == nil {
+                activeContext = context
+            }
+
             DeviceRegistry.shared.recordTablet(productID: productID)
         }
     }
 
     private func deviceDisconnected(_ device: IOHIDDevice) {
-        guard let wacomDevice = devices.removeValue(forKey: device) else { return }
-        wacomDevice.close()
-        print("TabletManager: \(type(of: wacomDevice)) disconnected")
+        guard let context = hidDeviceMap.removeValue(forKey: device) else { return }
+        context.tabletDevice?.close()
+        context.tabletDevice = nil
+        context.hidDevice = nil
+        print("TabletManager: \(Self.deviceName(forProductID: context.productID)) disconnected")
         refreshConnectedIDs(mostRecent: nil)
-        // Load settings for the next active device, if any remain.
-        if connectedProductID != 0 {
-            settings?.loadForDevice(connectedProductID)
+
+        // If the active context disconnected, fall back to another.
+        if activeContext === context {
+            activeContext = hidDeviceMap.values.first
         }
     }
 
     /// Recomputes `connectedProductIDs` / `isConnected` / `connectedProductID` from the live
-    /// `devices` dict.  `mostRecent` pins `connectedProductID` to the just-connected product so
+    /// `hidDeviceMap` dict.  `mostRecent` pins `connectedProductID` to the just-connected product so
     /// the UI auto-selects it even when multiple tablets are present.
     private func refreshConnectedIDs(mostRecent: Int?) {
-        connectedProductIDs = devices.keys
-            .map { hidIntProperty($0, kIOHIDProductIDKey) }
+        connectedProductIDs = hidDeviceMap.values
+            .map { $0.productID }
             .sorted()
         isConnected = !connectedProductIDs.isEmpty
         if let pid = mostRecent, connectedProductIDs.contains(pid) {
@@ -175,7 +255,7 @@ final class TabletManager: ObservableObject {
             connectedProductID = connectedProductIDs.last ?? 0
         }
         // Update transport / speed for the primary device.
-        if let primary = devices.keys.first(where: {
+        if let primary = hidDeviceMap.keys.first(where: {
             hidIntProperty($0, kIOHIDProductIDKey) == connectedProductID
         }) {
             let info = Self.connectionInfo(for: primary)

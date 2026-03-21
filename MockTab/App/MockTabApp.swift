@@ -49,14 +49,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         Task { @MainActor in
-            let injector = InputInjector()
-            TabletManager.shared.injector = injector
+            // Each tablet now creates its own InputInjector and TabletSettings
+            // inside a DeviceContext.  The PreferencesWindowController's settings
+            // instance is used for the UI and menu bar until per-device windows
+            // are implemented.
             let settings = PreferencesWindowController.shared.settings
-            // Wire settings before start() so the driver uses persisted preferences immediately.
-            TabletManager.shared.settings = settings
-            // Wire app-watcher for preset auto-switching.
             AppWatcher.shared.settings = settings
-            // Build Presets and View application menus.
             AppMenuController.shared.setup(settings: settings)
             TabletManager.shared.start()
         }
