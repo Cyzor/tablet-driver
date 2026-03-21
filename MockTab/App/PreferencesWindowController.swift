@@ -23,7 +23,7 @@ final class PreferencesWindowController: NSWindowController {
         super.init(window: window)
 
         let s = settings
-        add(tabVC, label: "Tablet Area",  symbol: "rectangle.dashed",  height: 390) { TabletAreaView(settings: s) }
+        add(tabVC, label: "Tablet Area",  symbol: "rectangle.dashed",  height: 390) { TabletAreaView(settings: s, tabletManager: TabletManager.shared) }
         add(tabVC, label: "Pressure",     symbol: "waveform.path",      height: 450) { PressureCurveView(settings: s) }
         add(tabVC, label: "Buttons",      symbol: "hand.point.up.left", height: 540) { ButtonMappingView(settings: s) }
         add(tabVC, label: "Display",      symbol: "display",            height: 340) { DisplayMappingView(settings: s) }

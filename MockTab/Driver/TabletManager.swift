@@ -12,6 +12,16 @@ final class TabletManager: ObservableObject {
     private var devices: [IOHIDDevice: any TabletDevice] = [:]
 
     @Published var isConnected = false
+    @Published var connectedProductID: Int = 0
+
+    var connectedDeviceName: String {
+        switch connectedProductID {
+        case 0x0317: return "PTH-851"
+        case 0x0358: return "PTH-860"
+        case 0x00B5: return "PTZ-631W"
+        default:     return "Tablet"
+        }
+    }
 
     weak var settings: TabletSettings?
     var injector: InputInjector?
@@ -80,6 +90,9 @@ final class TabletManager: ObservableObject {
         case 0x0358:
             print("TabletManager: PTH-860 connected")
             wacomDevice = PTH860Device(device: device, onTablet: onTablet, onAux: onAux)
+        case 0x00B5:
+            print("TabletManager: PTZ-631W connected")
+            wacomDevice = PTZ631WDevice(device: device, onTablet: onTablet, onAux: onAux)
         default:
             print("TabletManager: unsupported product 0x\(String(productID, radix: 16))")
             return
@@ -95,6 +108,7 @@ final class TabletManager: ObservableObject {
             injector?.deviceProductID = productID
             wacomDevice.open()
             isConnected = true
+            connectedProductID = productID
         }
     }
 
@@ -102,6 +116,7 @@ final class TabletManager: ObservableObject {
         guard let wacomDevice = devices.removeValue(forKey: device) else { return }
         wacomDevice.close()
         isConnected = !devices.isEmpty
+        if !isConnected { connectedProductID = 0 }
         print("TabletManager: \(type(of: wacomDevice)) disconnected")
     }
 }

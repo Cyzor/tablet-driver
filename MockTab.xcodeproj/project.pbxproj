@@ -14,6 +14,7 @@
 		AA000004 /* TabletDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000004 /* TabletDevice.swift */; };
 		AA000005 /* PTH851Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000005 /* PTH851Device.swift */; };
 		AA000006 /* PTH860Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000006 /* PTH860Device.swift */; };
+		AA000031 /* PTZ631WDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000031 /* PTZ631WDevice.swift */; };
 		AA000007 /* TabletManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000007 /* TabletManager.swift */; };
 		AA000008 /* InputInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000008 /* InputInjector.swift */; };
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
@@ -34,6 +35,7 @@
 		AB000004 /* TabletDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletDevice.swift; sourceTree = "<group>"; };
 		AB000005 /* PTH851Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH851Device.swift; sourceTree = "<group>"; };
 		AB000006 /* PTH860Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH860Device.swift; sourceTree = "<group>"; };
+		AB000031 /* PTZ631WDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTZ631WDevice.swift; sourceTree = "<group>"; };
 		AB000007 /* TabletManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletManager.swift; sourceTree = "<group>"; };
 		AB000008 /* InputInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputInjector.swift; sourceTree = "<group>"; };
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
@@ -81,6 +83,7 @@
 				AB000004 /* TabletDevice.swift */,
 				AB000005 /* PTH851Device.swift */,
 				AB000006 /* PTH860Device.swift */,
+				AB000031 /* PTZ631WDevice.swift */,
 				AB000007 /* TabletManager.swift */,
 				AB000008 /* InputInjector.swift */,
 			);
@@ -189,6 +192,7 @@
 				AA000004 /* TabletDevice.swift in Sources */,
 				AA000005 /* PTH851Device.swift in Sources */,
 				AA000006 /* PTH860Device.swift in Sources */,
+				AA000031 /* PTZ631WDevice.swift in Sources */,
 				AA000007 /* TabletManager.swift in Sources */,
 				AA000008 /* InputInjector.swift in Sources */,
 				AA000009 /* TabletSettings.swift in Sources */,

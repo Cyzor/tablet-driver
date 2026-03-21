@@ -5,20 +5,31 @@ import SwiftUI
 struct TabletAreaView: View {
     @ObservedObject var settings: TabletSettings
 
-    // Aspect ratios for the two supported tablets.
-    // User can select which model is connected.
+    // Aspect ratios for supported tablets.
+    // Auto-selected on connection; user can override via the picker.
     enum TabletModel: String, CaseIterable, Identifiable {
-        case pth851 = "Intuos 5 Large (PTH-851)"
-        case pth860 = "Intuos Pro Large (PTH-860)"
+        case pth851  = "Intuos 5 Large (PTH-851)"
+        case pth860  = "Intuos Pro Large (PTH-860)"
+        case ptz631w = "Intuos3 Widescreen (PTZ-631W)"
         var id: String { rawValue }
         var aspectRatio: Double {
             switch self {
-            case .pth851: return 44704.0 / 27940.0
-            case .pth860: return 62200.0 / 43200.0
+            case .pth851:  return 44704.0 / 27940.0
+            case .pth860:  return 62200.0 / 43200.0
+            case .ptz631w: return 54204.0 / 31750.0
+            }
+        }
+        init?(productID: Int) {
+            switch productID {
+            case 0x0317: self = .pth851
+            case 0x0358: self = .pth860
+            case 0x00B5: self = .ptz631w
+            default: return nil
             }
         }
     }
 
+    @ObservedObject var tabletManager: TabletManager
     @AppStorage("selectedTabletModel") private var selectedModelRaw = TabletModel.pth860.rawValue
     private var selectedModel: TabletModel { TabletModel(rawValue: selectedModelRaw) ?? .pth860 }
 
@@ -82,6 +93,14 @@ struct TabletAreaView: View {
             }
         }
         .padding()
+        .onAppear { autoSelectModel(tabletManager.connectedProductID) }
+        .onChange(of: tabletManager.connectedProductID) { autoSelectModel($0) }
+    }
+
+    private func autoSelectModel(_ productID: Int) {
+        if let model = TabletModel(productID: productID) {
+            selectedModelRaw = model.rawValue
+        }
     }
 
     // MARK: - Active area drag rectangle

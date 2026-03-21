@@ -1,6 +1,16 @@
 # MockTab
 
-A native Swift driver for Wacom Intuos 5 (PTH-851) and Intuos Pro (PTH-860) tablets on Apple Silicon Macs. MockTab uses IOHIDManager to read raw HID reports and CGEvent injection to deliver pressure, tilt, and click events to any app — no kernel extension, no Apple Developer account, no Rosetta.
+A native Swift driver for Wacom tablets on Apple Silicon Macs. MockTab uses IOHIDManager to read raw HID reports and CGEvent injection to deliver pressure, tilt, and click events to any app — no kernel extension, no Apple Developer account, no Rosetta.
+
+**Supported hardware**
+
+| Model | Product ID | Notes |
+|---|---|---|
+| Intuos 5 Large (PTH-851) | 0x0317 | IntuosV1 10-byte reports |
+| Intuos Pro Large (PTH-860) | 0x0358 | IntuosV2 192-byte reports |
+| Intuos3 Widescreen (PTZ-631W) | 0x00B5 | IntuosV1 10-byte reports |
+
+The architecture is designed to make adding further Wacom tablets (any VendorID 0x056A device) straightforward: each tablet is a small Swift class implementing `TabletDevice`, and the UI auto-detects which one is connected.
 
 <!-- Screenshots coming soon -->
 
@@ -18,7 +28,7 @@ The HID report decoding for both devices draws on OpenTabletDriver's `IntuosV1Ta
 
 - macOS 13 Ventura or later
 - Xcode 15 or later (command-line build) or any recent Xcode (GUI build)
-- Wacom Intuos 5 Large (PTH-851) or Intuos Pro Large (PTH-860)
+- A supported Wacom tablet (see table above)
 
 ---
 
@@ -50,13 +60,14 @@ On first launch the app requests Accessibility permission — CGEvent injection 
 **Tablet Area**
 - Drag the active rectangle interactively or type percentages
 - Proportional mapping (on by default) crops the area to match the target display's aspect ratio — circles stay round
+- The tablet model picker auto-selects the detected device on connection; you can override it to use a different model's canvas proportions
 
 **Pressure Curve**
 - Drag two Bézier control points to shape the pressure response
 - Quick presets: Linear, Soft, Firm
 
 **Button Mapping**
-- Bind any key combination or mouse button to the pen's side buttons and the PTH-860's eight express keys
+- Bind any key combination or mouse button to the pen's side buttons and express keys (PTH-860 and PTZ-631W each have eight)
 - Live key capture: click the field, press the shortcut, done
 
 **Display Mapping**
