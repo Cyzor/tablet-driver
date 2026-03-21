@@ -147,7 +147,7 @@ struct DevicesView: View {
     @ViewBuilder
     private func toolRow(_ tool: DeviceRegistry.KnownTool) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: tool.id == "eraser" ? "eraser" : "pencil.tip")
+            Image(systemName: tool.id == "eraser" ? "eraser" : "pencil.tip.crop.circle.fill")
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
 

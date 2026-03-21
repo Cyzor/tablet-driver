@@ -31,12 +31,12 @@ final class PreferencesWindowController: NSWindowController {
 
         let s = settings
         add(tabVC, label: "Tablet Area",  symbol: "rectangle.dashed",  height: 420) { TabletAreaView(settings: s, tabletManager: TabletManager.shared) }
-        add(tabVC, label: "Pressure",     symbol: "waveform.path",      height: 480) { PressureCurveView(settings: s) }
+        add(tabVC, label: "Pressure",     symbol: "scribble.variable",  height: 480) { PressureCurveView(settings: s) }
         add(tabVC, label: "Buttons",      symbol: "hand.point.up.left", height: 575) { ButtonMappingView(settings: s) }
         add(tabVC, label: "Display",      symbol: "display",            height: 370) { DisplayMappingView(settings: s) }
-        add(tabVC, label: "Devices",      symbol: "externaldrive",      height: 480) { DevicesView(tabletManager: TabletManager.shared, registry: DeviceRegistry.shared) }
+        add(tabVC, label: "Devices",      symbol: "rectangle.on.rectangle",      height: 480) { DevicesView(tabletManager: TabletManager.shared, registry: DeviceRegistry.shared) }
         add(tabVC, label: "Presets",      symbol: "star.circle",        height: 450) { PresetsView(settings: s) }
-        add(tabVC, label: "Scratchpad",   symbol: "scribble",           height: 360) { ScratchpadView(settings: s) }
+        add(tabVC, label: "Scratchpad",   symbol: "pencil.and.outline", height: 360) { ScratchpadView(settings: s) }
         add(tabVC, label: "Info",         symbol: "info.circle",        height: 430) { InfoView(tabletManager: TabletManager.shared, settings: s) }
     }
 

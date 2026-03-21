@@ -60,34 +60,78 @@ struct DisplayMappingView: View {
                     let selected = settings.targetDisplayIndex == index + 1
                     let path     = Path(roundedRect: rect, cornerRadius: 3, style: .continuous)
 
-                    // Fill
-                    ctx.fill(path, with: .color(
-                        selected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.1)
-                    ))
+                    if let wallpaper = info.wallpaper {
+                        // Aspect-fill the wallpaper thumbnail, clipped to the display rect.
+                        let iSize = wallpaper.size
+                        if iSize.width > 0, iSize.height > 0 {
+                            let iAspect  = iSize.width / iSize.height
+                            let rAspect  = rect.width  / rect.height
+                            let drawRect: CGRect
+                            if iAspect > rAspect {
+                                // Image is wider — fit height, crop sides.
+                                let w = rect.height * iAspect
+                                drawRect = CGRect(x: rect.midX - w / 2, y: rect.minY,
+                                                  width: w, height: rect.height)
+                            } else {
+                                // Image is taller — fit width, crop top/bottom.
+                                let h = rect.width / iAspect
+                                drawRect = CGRect(x: rect.minX, y: rect.midY - h / 2,
+                                                  width: rect.width, height: h)
+                            }
+                            ctx.drawLayer { layer in
+                                layer.clip(to: path)
+                                layer.draw(Image(nsImage: wallpaper), in: drawRect)
+                            }
+                        }
+                        // Scrim — dark tint for readability; accent tint when selected.
+                        let scrim: Color = selected
+                            ? Color.accentColor.opacity(0.30)
+                            : Color.black.opacity(0.15)
+                        ctx.fill(path, with: .color(scrim))
+                    } else {
+                        // Fallback flat fill when no wallpaper image is available.
+                        ctx.fill(path, with: .color(
+                            selected ? Color.accentColor.opacity(0.18)
+                                     : Color.secondary.opacity(0.1)
+                        ))
+                    }
 
                     // Border
                     ctx.stroke(path, with: .color(
                         selected ? Color.accentColor : Color.secondary.opacity(0.45)
                     ), style: StrokeStyle(lineWidth: selected ? 2 : 1))
 
-                    // Labels — clipped to the rectangle.
+                    // Labels — measure first so the badge fits the text exactly.
+                    let nameResolved = ctx.resolve(
+                        Text(info.name).font(.caption2).bold().foregroundColor(.white))
+                    let resResolved  = ctx.resolve(
+                        Text(info.resolution).font(.caption2).foregroundColor(.white))
+                    let measure  = CGSize(width: rect.width - 8, height: 40)
+                    let nameSize = nameResolved.measure(in: measure)
+                    let resSize  = resResolved.measure(in: measure)
+
+                    // Caption-style badge: dark translucent pill behind both lines.
+                    let hPad: CGFloat = 6
+                    let vPad: CGFloat = 4
+                    let nameY   = rect.midY - 8
+                    let resY    = rect.midY + 8
+                    let badgeW  = min(max(nameSize.width, resSize.width) + hPad * 2,
+                                     rect.width - 4)
+                    let badge   = CGRect(x: rect.midX - badgeW / 2,
+                                         y: nameY - nameSize.height / 2 - vPad,
+                                         width:  badgeW,
+                                         height: (resY + resSize.height / 2 + vPad)
+                                               - (nameY - nameSize.height / 2 - vPad))
+
                     ctx.drawLayer { layer in
-                        layer.clip(to: Path(rect.insetBy(dx: 4, dy: 4)))
-                        let fg: GraphicsContext.Shading = .color(
-                            selected ? Color.accentColor : Color.secondary
-                        )
-                        let nameText = Text(info.name)
-                            .font(.caption2)
-                            .bold()
-                        let resText  = Text(info.resolution)
-                            .font(.caption2)
-                        let midX = rect.midX
-                        let midY = rect.midY
-                        layer.draw(nameText.foregroundColor(selected ? .accentColor : .secondary),
-                                   at: CGPoint(x: midX, y: midY - 8), anchor: .center)
-                        layer.draw(resText.foregroundColor(selected ? .accentColor : .secondary),
-                                   at: CGPoint(x: midX, y: midY + 8), anchor: .center)
-                        _ = fg // suppress unused warning
+                        layer.clip(to: Path(rect.insetBy(dx: 2, dy: 2)))
+                        layer.fill(Path(roundedRect: badge, cornerRadius: 3,
+                                        style: .continuous),
+                                   with: .color(.black.opacity(0.42)))
+                        layer.draw(nameResolved,
+                                   at: CGPoint(x: rect.midX, y: nameY), anchor: .center)
+                        layer.draw(resResolved,
+                                   at: CGPoint(x: rect.midX, y: resY),  anchor: .center)
                     }
                 }
             }
@@ -146,9 +190,10 @@ struct DisplayMappingView: View {
 
 struct DisplayInfo {
     var id:         CGDirectDisplayID
-    var bounds:     CGRect   // in CGDisplayBounds / Quartz coordinates
-    var name:       String   // localised device name if available
-    var resolution: String   // e.g. "2560×1440"
+    var bounds:     CGRect    // in CGDisplayBounds / Quartz coordinates
+    var name:       String    // localised device name if available
+    var resolution: String    // e.g. "2560×1440"
+    var wallpaper:  NSImage?  // desktop image, or nil for solid colour / animated backdrops
 
     /// Label shown in the radio-button picker.
     var pickerLabel: String { "\(name) (\(resolution))" }
@@ -159,21 +204,33 @@ struct DisplayInfo {
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return [] }
 
-        // Map CGDirectDisplayID → NSScreen.localizedName (macOS 10.15+).
-        var nameMap: [CGDirectDisplayID: String] = [:]
+        // Build ID → NSScreen map in one pass; used for both name and wallpaper lookup.
+        var screenMap: [CGDirectDisplayID: NSScreen] = [:]
         for screen in NSScreen.screens {
             if let num = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")]
                             as? CGDirectDisplayID {
-                nameMap[num] = screen.localizedName
+                screenMap[num] = screen
             }
         }
 
         return ids.enumerated().map { index, id in
-            let name = nameMap[id] ?? "Display \(index + 1)"
-            let w    = Int(CGDisplayPixelsWide(id))
-            let h    = Int(CGDisplayPixelsHigh(id))
+            let name   = screenMap[id]?.localizedName ?? "Display \(index + 1)"
+            let w      = Int(CGDisplayPixelsWide(id))
+            let h      = Int(CGDisplayPixelsHigh(id))
+
+            // NSWorkspace.desktopImageURL(for:) requires no permissions and fires
+            // no prompts — it is a plain metadata read available since macOS 10.6.
+            // NSImage(contentsOf:) is an ordinary file read; this app is not
+            // sandboxed so no entitlement or consent dialog is involved.
+            // Both calls return nil gracefully for solid-colour / animated backdrops.
+            let wallpaper: NSImage? = screenMap[id].flatMap { screen in
+                NSWorkspace.shared.desktopImageURL(for: screen)
+                    .flatMap { NSImage(contentsOf: $0) }
+            }
+
             return DisplayInfo(id: id, bounds: CGDisplayBounds(id),
-                               name: name, resolution: "\(w)×\(h)")
+                               name: name, resolution: "\(w)×\(h)",
+                               wallpaper: wallpaper)
         }
     }
 }
