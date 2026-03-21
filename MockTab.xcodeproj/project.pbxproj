@@ -16,6 +16,7 @@
 		AA000006 /* PTH860Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000006 /* PTH860Device.swift */; };
 		AA000032 /* PTH660Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000032 /* PTH660Device.swift */; };
 		AA000031 /* PTZ631WDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000031 /* PTZ631WDevice.swift */; };
+		AA000037 /* WacomProbeDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* WacomProbeDevice.swift */; };
 		AA000007 /* TabletManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000007 /* TabletManager.swift */; };
 		AA000008 /* InputInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000008 /* InputInjector.swift */; };
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
@@ -42,6 +43,7 @@
 		AB000006 /* PTH860Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH860Device.swift; sourceTree = "<group>"; };
 		AB000032 /* PTH660Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH660Device.swift; sourceTree = "<group>"; };
 		AB000031 /* PTZ631WDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTZ631WDevice.swift; sourceTree = "<group>"; };
+		AB000037 /* WacomProbeDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomProbeDevice.swift; sourceTree = "<group>"; };
 		AB000007 /* TabletManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletManager.swift; sourceTree = "<group>"; };
 		AB000008 /* InputInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputInjector.swift; sourceTree = "<group>"; };
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
@@ -96,6 +98,7 @@
 				AB000006 /* PTH860Device.swift */,
 				AB000032 /* PTH660Device.swift */,
 				AB000031 /* PTZ631WDevice.swift */,
+				AB000037 /* WacomProbeDevice.swift */,
 				AB000007 /* TabletManager.swift */,
 				AB000035 /* AppWatcher.swift */,
 				AB000008 /* InputInjector.swift */,
@@ -210,6 +213,7 @@
 				AA000006 /* PTH860Device.swift in Sources */,
 				AA000032 /* PTH660Device.swift in Sources */,
 				AA000031 /* PTZ631WDevice.swift in Sources */,
+				AA000037 /* WacomProbeDevice.swift in Sources */,
 				AA000007 /* TabletManager.swift in Sources */,
 				AA000035 /* AppWatcher.swift in Sources */,
 				AA000008 /* InputInjector.swift in Sources */,

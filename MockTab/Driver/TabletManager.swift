@@ -114,8 +114,18 @@ final class TabletManager: ObservableObject {
             print("TabletManager: PTZ-631W connected")
             wacomDevice = PTZ631WDevice(device: device, onTablet: onTablet, onAux: onAux)
         default:
-            print("TabletManager: unsupported Wacom product 0x\(String(productID, radix: 16, uppercase: true)) — add a device class to support it")
-            return
+            let pid = String(productID, radix: 16, uppercase: true)
+            let reportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
+            if reportSize == 10 {
+                // IntuosV1 wire format — attach a probe to measure the coordinate
+                // space.  Watch Xcode console or Console.app (filter: com.mocktab)
+                // while moving the pen to all four corners and pressing hard.
+                print("TabletManager: unknown Wacom 0x\(pid) with 10-byte reports — attaching WacomProbeDevice")
+                wacomDevice = WacomProbeDevice(device: device)
+            } else {
+                print("TabletManager: unsupported Wacom 0x\(pid) (reportSize=\(reportSize)) — add a device class to support it")
+                return
+            }
         }
 
         if let wacomDevice {
