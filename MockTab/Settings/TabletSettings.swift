@@ -130,6 +130,27 @@ struct ButtonBinding: Codable, Equatable {
         self.keyLabel = keyLabel
     }
 
+    /// Build a modifier-only binding (no base key).
+    /// `keyLabel` is left empty — InputInjector uses this as the signal to post a
+    /// `.flagsChanged` CGEvent rather than a `keyDown/Up`.
+    /// `keyCode` is set to the canonical left-side virtualKey of the primary modifier
+    /// so the flagsChanged event carries a sensible keycode (55 ⌘, 56 ⇧, 58 ⌥, 59 ⌃).
+    init(modifierOnly flags: NSEvent.ModifierFlags) {
+        kind = .keyCombo
+        keyLabel = ""
+        var f = CGEventFlags()
+        if flags.contains(.command)  { f.insert(.maskCommand) }
+        if flags.contains(.shift)    { f.insert(.maskShift) }
+        if flags.contains(.option)   { f.insert(.maskAlternate) }
+        if flags.contains(.control)  { f.insert(.maskControl) }
+        modifierFlags = f.rawValue
+        if      flags.contains(.command)  { keyCode = 55 }  // kVK_Command
+        else if flags.contains(.shift)    { keyCode = 56 }  // kVK_Shift
+        else if flags.contains(.option)   { keyCode = 58 }  // kVK_Option
+        else if flags.contains(.control)  { keyCode = 59 }  // kVK_Control
+        else                              { keyCode = 0  }
+    }
+
     /// Build a key-combo binding from a captured NSEvent keyDown.
     init(fromKey event: NSEvent) {
         kind = .keyCombo

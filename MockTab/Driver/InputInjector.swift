@@ -270,11 +270,22 @@ final class InputInjector {
             CGEvent(mouseEventSource: nil, mouseType: type,
                     mouseCursorPosition: location, mouseButton: .center)?.post(tap: .cghidEventTap)
         case .keyCombo:
-            guard let e = CGEvent(keyboardEventSource: nil,
-                                  virtualKey: CGKeyCode(binding.keyCode),
-                                  keyDown: down) else { return }
-            e.flags = CGEventFlags(rawValue: binding.modifierFlags)
-            e.post(tap: .cghidEventTap)
+            if binding.keyLabel.isEmpty && binding.modifierFlags != 0 {
+                // Modifier-only binding: post a flagsChanged event so apps see the
+                // modifier held/released without any base key being pressed.
+                // keyCode holds the primary modifier's left-side virtualKey (55/56/58/59).
+                guard let e = CGEvent(source: nil) else { return }
+                e.type = .flagsChanged
+                e.setIntegerValueField(.keyboardEventKeycode, value: Int64(binding.keyCode))
+                e.flags = down ? CGEventFlags(rawValue: binding.modifierFlags) : CGEventFlags()
+                e.post(tap: .cghidEventTap)
+            } else {
+                guard let e = CGEvent(keyboardEventSource: nil,
+                                      virtualKey: CGKeyCode(binding.keyCode),
+                                      keyDown: down) else { return }
+                e.flags = CGEventFlags(rawValue: binding.modifierFlags)
+                e.post(tap: .cghidEventTap)
+            }
         }
     }
 

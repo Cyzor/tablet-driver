@@ -69,6 +69,8 @@ struct ButtonBindingControl: View {
     @Binding var binding: ButtonBinding
     @State private var isRecording = false
     @State private var monitor: Any?
+    /// Modifier keys accumulated while recording (before any base key is pressed).
+    @State private var pendingModifiers: NSEvent.ModifierFlags = []
 
     var body: some View {
         HStack(spacing: 4) {
@@ -105,6 +107,11 @@ struct ButtonBindingControl: View {
                 Button("Right Click")  { set(.rightClick)  }
                 Button("Middle Click") { set(.middleClick) }
                 Divider()
+                Button("⌘ Command")  { binding = ButtonBinding(modifierOnly: .command) }
+                Button("⌥ Option")   { binding = ButtonBinding(modifierOnly: .option)  }
+                Button("⇧ Shift")    { binding = ButtonBinding(modifierOnly: .shift)   }
+                Button("⌃ Control")  { binding = ButtonBinding(modifierOnly: .control) }
+                Divider()
                 Button("None")         { set(.none)        }
             } label: {
                 Image(systemName: "ellipsis")
@@ -122,9 +129,23 @@ struct ButtonBindingControl: View {
     // MARK: - Visual state
 
     private var fieldText: String {
-        if isRecording        { return "Type shortcut…" }
+        if isRecording {
+            return pendingModifiers.isEmpty
+                ? "Type shortcut…"
+                : modifierGlyphs(pendingModifiers) + "…"
+        }
         if binding.kind == .none { return "Record Shortcut" }
         return binding.displayLabel
+    }
+
+    /// Modifier key symbols in standard macOS display order (⌃⌥⇧⌘).
+    private func modifierGlyphs(_ flags: NSEvent.ModifierFlags) -> String {
+        var s = ""
+        if flags.contains(.control) { s += "⌃" }
+        if flags.contains(.option)  { s += "⌥" }
+        if flags.contains(.shift)   { s += "⇧" }
+        if flags.contains(.command) { s += "⌘" }
+        return s
     }
 
     private var fieldTextColor: Color {
@@ -160,9 +181,13 @@ struct ButtonBindingControl: View {
 
     private func startRecording() {
         isRecording = true
-        // addLocalMonitorForEvents runs handler on the main thread.
-        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            self.handleKey(event)
+        pendingModifiers = []
+        // Monitor both keyDown (regular keys) and flagsChanged (modifier-only presses).
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+            switch event.type {
+            case .flagsChanged: self.handleFlagsChanged(event)
+            default:            self.handleKey(event)
+            }
             return nil  // consume — prevents the key from reaching any other responder
         }
     }
@@ -170,6 +195,23 @@ struct ButtonBindingControl: View {
     private func stopRecording() {
         if let m = monitor { NSEvent.removeMonitor(m); monitor = nil }
         isRecording = false
+        pendingModifiers = []
+    }
+
+    private func handleFlagsChanged(_ event: NSEvent) {
+        let current = event.modifierFlags
+            .intersection(.deviceIndependentFlagsMask)
+            .subtracting([.capsLock, .numericPad, .function, .help])
+        if current.isEmpty {
+            // Every modifier key has been released.
+            guard !pendingModifiers.isEmpty else { return }
+            binding = ButtonBinding(modifierOnly: pendingModifiers)
+            stopRecording()
+        } else {
+            // Accumulate — releasing one modifier of a combo (e.g. ⌘ before ⇧)
+            // must not lose the earlier modifier from the committed set.
+            pendingModifiers.formUnion(current)
+        }
     }
 
     private func handleKey(_ event: NSEvent) {
