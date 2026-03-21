@@ -33,9 +33,16 @@ final class DTK2400Device: TabletDevice {
     }
 
     func open() {
-        let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        // Seize the device so macOS's built-in IOHIDEventDriver stops processing it.
+        // The Cintiq 24HD descriptor includes a mouse-compatible collection (Report ID 1,
+        // tip-switch → left button).  Without seizure the system fires spurious left-click
+        // CGEvents from the pen's tip-switch independently of our pressure logic, causing
+        // rapid phantom clicks whenever the pen is near the surface.
+        // kIOHIDOptionsTypeSeizeDevice also prevents a second DTK2400Device from being
+        // created if the OS exposes two IOHIDDevice entries for the same interface.
+        let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeSeizeDevice))
         guard ret == kIOReturnSuccess else {
-            print("DTK-2400: failed to open — \(ret). Is another tablet driver running?")
+            print("DTK-2400: failed to seize device (\(ret)). Is another tablet driver running?")
             return
         }
 
@@ -55,7 +62,7 @@ final class DTK2400Device: TabletDevice {
         IOHIDDeviceUnscheduleFromRunLoop(device, CFRunLoopGetCurrent(),
                                          RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
-        IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeSeizeDevice))
     }
 
     // MARK: - C callback
