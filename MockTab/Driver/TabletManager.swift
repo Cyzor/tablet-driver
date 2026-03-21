@@ -14,6 +14,8 @@ final class TabletManager: ObservableObject {
     @Published var isConnected = false
     @Published var connectedProductID: Int = 0   // most recently connected device
     @Published var connectedProductIDs: [Int] = [] // all currently connected devices
+    @Published var connectedTransport: String = "—" // "USB", "Bluetooth", etc.
+    @Published var connectedUSBSpeed:  String = "—" // "Full Speed (12 Mb/s)", etc.
 
     /// Human-readable name for a product ID, including a hex fallback for unknowns.
     static func deviceName(forProductID pid: Int) -> String {
@@ -147,5 +149,47 @@ final class TabletManager: ObservableObject {
         } else {
             connectedProductID = connectedProductIDs.last ?? 0
         }
+        // Update transport / speed for the primary device.
+        if let primary = devices.keys.first(where: {
+            hidIntProperty($0, kIOHIDProductIDKey) == connectedProductID
+        }) {
+            let info = Self.connectionInfo(for: primary)
+            connectedTransport = info.transport
+            connectedUSBSpeed  = info.speed
+        } else {
+            connectedTransport = "—"
+            connectedUSBSpeed  = "—"
+        }
+    }
+
+    /// Reads the HID transport type and USB bus speed from IOKit for a device.
+    /// Falls back gracefully if the speed property is absent (e.g. Bluetooth).
+    private static func connectionInfo(for device: IOHIDDevice
+    ) -> (transport: String, speed: String) {
+        let transport = IOHIDDeviceGetProperty(device,
+            kIOHIDTransportKey as CFString) as? String ?? "Unknown"
+        guard transport.caseInsensitiveCompare("USB") == .orderedSame else {
+            return (transport, "—")
+        }
+        let service = IOHIDDeviceGetService(device)
+        guard service != IO_OBJECT_NULL else { return ("USB", "USB") }
+        // Both key names appear in different macOS / driver versions.
+        for key in ["USB Device Speed", "Device Speed"] as [CFString] {
+            if let prop = IORegistryEntrySearchCFProperty(
+                service, kIOServicePlane, key, kCFAllocatorDefault,
+                IOOptionBits(kIORegistryIterateRecursively | kIORegistryIterateParents)
+            ) {
+                if let n = (prop.takeRetainedValue() as? NSNumber)?.intValue {
+                    switch n {
+                    case 0: return ("USB", "Low Speed (1.5 Mb/s)")
+                    case 1: return ("USB", "Full Speed (12 Mb/s)")
+                    case 2: return ("USB", "High Speed (480 Mb/s)")
+                    case 3: return ("USB", "SuperSpeed (5 Gb/s)")
+                    default: break
+                    }
+                }
+            }
+        }
+        return ("USB", "USB")
     }
 }

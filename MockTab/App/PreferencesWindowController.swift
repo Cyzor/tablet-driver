@@ -28,6 +28,7 @@ final class PreferencesWindowController: NSWindowController {
         add(tabVC, label: "Buttons",      symbol: "hand.point.up.left", height: 540) { ButtonMappingView(settings: s) }
         add(tabVC, label: "Display",      symbol: "display",            height: 340) { DisplayMappingView(settings: s) }
         add(tabVC, label: "Scratchpad",   symbol: "scribble",           height: 330) { ScratchpadView() }
+        add(tabVC, label: "Info",         symbol: "info.circle",        height: 370) { InfoView(tabletManager: TabletManager.shared) }
     }
 
     required init?(coder: NSCoder) { fatalError() }
