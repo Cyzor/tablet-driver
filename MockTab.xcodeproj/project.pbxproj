@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		AA000001 /* MockTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MockTabApp.swift */; };
 		AA000002 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* MenuBarView.swift */; };
+		AA000017 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* PreferencesWindowController.swift */; };
 		AA000003 /* TabletPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* TabletPoint.swift */; };
 		AA000004 /* TabletDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000004 /* TabletDevice.swift */; };
 		AA000005 /* PTH851Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000005 /* PTH851Device.swift */; };
@@ -29,6 +30,7 @@
 /* Begin PBXFileReference section */
 		AB000001 /* MockTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTabApp.swift; sourceTree = "<group>"; };
 		AB000002 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		AB000017 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
 		AB000003 /* TabletPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletPoint.swift; sourceTree = "<group>"; };
 		AB000004 /* TabletDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletDevice.swift; sourceTree = "<group>"; };
 		AB000005 /* PTH851Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH851Device.swift; sourceTree = "<group>"; };
@@ -69,6 +71,7 @@
 			children = (
 				AB000001 /* MockTabApp.swift */,
 				AB000002 /* MenuBarView.swift */,
+				AB000017 /* PreferencesWindowController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -184,6 +187,7 @@
 			files = (
 				AA000001 /* MockTabApp.swift in Sources */,
 				AA000002 /* MenuBarView.swift in Sources */,
+				AA000017 /* PreferencesWindowController.swift in Sources */,
 				AA000003 /* TabletPoint.swift in Sources */,
 				AA000004 /* TabletDevice.swift in Sources */,
 				AA000005 /* PTH851Device.swift in Sources */,

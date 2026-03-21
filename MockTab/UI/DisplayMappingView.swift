@@ -23,55 +23,66 @@ struct DisplayMappingView: View {
             }
             .pickerStyle(.radioGroup)
 
-            displayLayout
+            displayCanvas
         }
         .padding()
         .onAppear { displays = DisplayInfo.all() }
     }
 
-    // MARK: - Visual layout
+    // MARK: - Canvas layout
 
-    private var displayLayout: some View {
+    private var displayCanvas: some View {
         GeometryReader { geo in
             let scale  = layoutScale(in: geo.size)
             let offset = layoutOffset(in: geo.size, scale: scale)
             // Maximum Y in CG coordinates — used to flip from CG (Y up) → SwiftUI (Y down).
             let maxCGY = displays.map(\.bounds.maxY).max() ?? 0
+            // Pre-compute rects so the tap handler can use them.
+            let rects: [CGRect] = displays.map {
+                swiftUIRect(for: $0, maxCGY: maxCGY, scale: scale, offset: offset)
+            }
 
-            ZStack(alignment: .topLeading) {
-                ForEach(Array(displays.enumerated()), id: \.offset) { index, info in
-                    let rect = swiftUIRect(for: info, maxCGY: maxCGY, scale: scale, offset: offset)
+            Canvas { ctx, _ in
+                for (index, info) in displays.enumerated() {
+                    let rect     = rects[index]
                     let selected = settings.targetDisplayIndex == index + 1
+                    let path     = Path(roundedRect: rect, cornerRadius: 3, style: .continuous)
 
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .fill(selected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.1))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                .strokeBorder(
-                                    selected ? Color.accentColor : Color.secondary.opacity(0.45),
-                                    lineWidth: selected ? 2 : 1
-                                )
+                    // Fill
+                    ctx.fill(path, with: .color(
+                        selected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.1)
+                    ))
+
+                    // Border
+                    ctx.stroke(path, with: .color(
+                        selected ? Color.accentColor : Color.secondary.opacity(0.45)
+                    ), style: StrokeStyle(lineWidth: selected ? 2 : 1))
+
+                    // Labels — clipped to the rectangle.
+                    ctx.drawLayer { layer in
+                        layer.clip(to: Path(rect.insetBy(dx: 4, dy: 4)))
+                        let fg: GraphicsContext.Shading = .color(
+                            selected ? Color.accentColor : Color.secondary
                         )
-                        .frame(width: rect.width, height: rect.height)
-                        .offset(x: rect.minX, y: rect.minY)
-                        .overlay(
-                            VStack(spacing: 2) {
-                                Text(info.name)
-                                    .font(.caption2)
-                                    .fontWeight(.semibold)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.6)
-                                Text(info.resolution)
-                                    .font(.caption2)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.6)
-                            }
-                            .foregroundStyle(selected ? Color.accentColor : Color.secondary)
-                            .padding(4)
-                            .frame(width: rect.width, height: rect.height)
-                        )
-                        .clipped()
-                        .onTapGesture { settings.targetDisplayIndex = index + 1 }
+                        let nameText = Text(info.name)
+                            .font(.caption2)
+                            .bold()
+                        let resText  = Text(info.resolution)
+                            .font(.caption2)
+                        let midX = rect.midX
+                        let midY = rect.midY
+                        layer.draw(nameText.foregroundColor(selected ? .accentColor : .secondary),
+                                   at: CGPoint(x: midX, y: midY - 8), anchor: .center)
+                        layer.draw(resText.foregroundColor(selected ? .accentColor : .secondary),
+                                   at: CGPoint(x: midX, y: midY + 8), anchor: .center)
+                        _ = fg // suppress unused warning
+                    }
+                }
+            }
+            .onTapGesture { location in
+                for (index, rect) in rects.enumerated() where rect.contains(location) {
+                    settings.targetDisplayIndex = index + 1
+                    break
                 }
             }
         }
@@ -106,11 +117,11 @@ struct DisplayMappingView: View {
 
     private func layoutOffset(in size: CGSize, scale: CGFloat) -> CGPoint {
         guard !displays.isEmpty else { return .zero }
-        let minX     = displays.map(\.bounds.minX).min()!
-        let minY     = displays.map(\.bounds.minY).min()!
-        let maxY     = displays.map(\.bounds.maxY).max()!
-        let scaledW  = (displays.map(\.bounds.maxX).max()! - minX) * scale
-        let scaledH  = (maxY - minY) * scale
+        let minX    = displays.map(\.bounds.minX).min()!
+        let minY    = displays.map(\.bounds.minY).min()!
+        let maxY    = displays.map(\.bounds.maxY).max()!
+        let scaledW = (displays.map(\.bounds.maxX).max()! - minX) * scale
+        let scaledH = (maxY - minY) * scale
         return CGPoint(
             x: (size.width  - scaledW) / 2 - minX * scale,
             y: (size.height - scaledH) / 2

@@ -12,13 +12,10 @@ struct MockTabApp: App {
                 .environmentObject(TabletManager.shared)
         }
         .menuBarExtraStyle(.window)
-
-        Settings {
-            PreferencesView()
-        }
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -33,11 +30,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             TabletManager.shared.start()
         }
 
-        // Show preferences window immediately on first launch.
-        // Deferred so the SwiftUI Settings scene has time to register its window.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            NSApp.activate(ignoringOtherApps: true)
+        // Show preferences window on first launch.
+        DispatchQueue.main.async {
+            PreferencesWindowController.shared.show()
         }
     }
 
@@ -48,9 +43,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Clicking the Dock icon when no windows are open re-shows preferences.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         if !hasVisibleWindows {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            PreferencesWindowController.shared.show()
         }
         NSApp.activate(ignoringOtherApps: true)
         return true
+    }
+
+    // ⌘, opens preferences from anywhere.
+    @objc func showPreferences(_ sender: Any?) {
+        PreferencesWindowController.shared.show()
     }
 }
