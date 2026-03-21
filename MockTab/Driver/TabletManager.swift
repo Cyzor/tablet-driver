@@ -25,6 +25,7 @@ final class TabletManager: ObservableObject {
         case 0x0357: return "PTH-660"
         case 0x0358: return "PTH-860"
         case 0x00B5: return "PTZ-631W"
+        case 0x00F4: return "DTK-2400"
         default:     return "Wacom 0x\(String(pid, radix: 16, uppercase: true))"
         }
     }
@@ -113,6 +114,9 @@ final class TabletManager: ObservableObject {
         case 0x00B5:
             print("TabletManager: PTZ-631W connected")
             wacomDevice = PTZ631WDevice(device: device, onTablet: onTablet, onAux: onAux)
+        case 0x00F4:
+            print("TabletManager: DTK-2400 (Cintiq 24HD) connected")
+            wacomDevice = DTK2400Device(device: device, onTablet: onTablet, onAux: onAux)
         default:
             let pid = String(productID, radix: 16, uppercase: true)
             let reportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
