@@ -175,7 +175,7 @@ struct InfoView: View {
     /// the pane directly via System Settings > Privacy & Security > Accessibility.
     private func requestAccessibility() {
         _ = AXIsProcessTrustedWithOptions(
-            [kAXTrustedCheckOptionPrompt: true] as CFDictionary
+            ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         )
     }
 }

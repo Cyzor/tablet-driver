@@ -179,7 +179,7 @@ final class TabletManager: ObservableObject {
                 service, kIOServicePlane, key, kCFAllocatorDefault,
                 IOOptionBits(kIORegistryIterateRecursively | kIORegistryIterateParents)
             ) {
-                if let n = (prop.takeRetainedValue() as? NSNumber)?.intValue {
+                if let n = (prop as? NSNumber)?.intValue {
                     switch n {
                     case 0: return ("USB", "Low Speed (1.5 Mb/s)")
                     case 1: return ("USB", "Full Speed (12 Mb/s)")
