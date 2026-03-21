@@ -7,6 +7,7 @@ A native Swift driver for Wacom tablets on Apple Silicon Macs. MockTab uses IOHI
 | Model | Product ID | Notes |
 |---|---|---|
 | Intuos 5 Large (PTH-851) | 0x0317 | IntuosV1 10-byte reports |
+| Intuos Pro M (PTH-660) | 0x0357 | IntuosV2 192-byte reports |
 | Intuos Pro Large (PTH-860) | 0x0358 | IntuosV2 192-byte reports |
 | Intuos3 Widescreen (PTZ-631W) | 0x00B5 | IntuosV1 10-byte reports |
 
@@ -18,7 +19,7 @@ The architecture is designed to make adding further Wacom tablets (any VendorID 
 
 ## Why this exists
 
-[OpenTabletDriver](https://opentabletdriver.net) is a well-engineered cross-platform tablet driver that directly inspired this project. Its macOS port, however, depends on Eto.Platform.Mac64, which pulls in Xamarin.Mac and only runs x64 — broken on Apple Silicon without Rosetta. MockTab trades OpenTabletDriver's broad hardware support for a small, fully native codebase that targets the two specific tablets it was written for.
+[OpenTabletDriver](https://opentabletdriver.net) is a well-engineered cross-platform tablet driver that directly inspired this project. Its macOS port, however, depends on Eto.Platform.Mac64, which pulls in Xamarin.Mac and only runs x64 — broken on Apple Silicon without Rosetta. MockTab trades OpenTabletDriver's broad hardware support for a small, fully native codebase. It started life targeting two specific tablets; compatible hardware has grown as more devices have been tested.
 
 The HID report decoding for both devices draws on OpenTabletDriver's `IntuosV1TabletReport.cs` and `IntuosV2Report.cs` as a reference for field offsets and bit layouts.
 
@@ -67,7 +68,7 @@ On first launch the app requests Accessibility permission — CGEvent injection 
 - Quick presets: Linear, Soft, Firm
 
 **Button Mapping**
-- Bind any key combination or mouse button to the pen's side buttons and express keys (PTH-860 and PTZ-631W each have eight)
+- Bind any key combination or mouse button to the pen's side buttons and express keys (PTH-660, PTH-860, and PTZ-631W each have eight)
 - Live key capture: click the field, press the shortcut, done
 
 **Display Mapping**

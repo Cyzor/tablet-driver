@@ -9,12 +9,14 @@ struct TabletAreaView: View {
     // Auto-selected on connection; user can override via the picker.
     enum TabletModel: String, CaseIterable, Identifiable {
         case pth851  = "Intuos 5 Large (PTH-851)"
+        case pth660  = "Intuos Pro M (PTH-660)"
         case pth860  = "Intuos Pro Large (PTH-860)"
         case ptz631w = "Intuos3 Widescreen (PTZ-631W)"
         var id: String { rawValue }
         var aspectRatio: Double {
             switch self {
             case .pth851:  return 44704.0 / 27940.0
+            case .pth660:  return 44800.0 / 29600.0
             case .pth860:  return 62200.0 / 43200.0
             case .ptz631w: return 54204.0 / 31750.0
             }
@@ -22,10 +24,16 @@ struct TabletAreaView: View {
         init?(productID: Int) {
             switch productID {
             case 0x0317: self = .pth851
+            case 0x0357: self = .pth660
             case 0x0358: self = .pth860
             case 0x00B5: self = .ptz631w
             default: return nil
             }
+        }
+        /// Display label for any product ID — falls back to hex for unknowns.
+        static func displayName(forProductID pid: Int) -> String {
+            TabletModel(productID: pid).map(\.rawValue)
+                ?? "Unknown (0x\(String(pid, radix: 16, uppercase: true)))"
         }
     }
 
@@ -35,12 +43,37 @@ struct TabletAreaView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("Tablet model", selection: $selectedModelRaw) {
-                ForEach(TabletModel.allCases) { model in
-                    Text(model.rawValue).tag(model.rawValue)
+            HStack(spacing: 8) {
+                Picker("Tablet model", selection: $selectedModelRaw) {
+                    ForEach(TabletModel.allCases) { model in
+                        Text(model.rawValue).tag(model.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                // "Detect Connected" — lists all live Wacom devices; tap one to
+                // pin the picker and canvas proportions to that model.
+                // Shows as a plain button when exactly one tablet is connected.
+                if tabletManager.connectedProductIDs.count == 1,
+                   let pid = tabletManager.connectedProductIDs.first {
+                    Button("Detect Connected") { autoSelectModel(pid) }
+                        .buttonStyle(.bordered)
+                } else {
+                    Menu("Detect Connected") {
+                        if tabletManager.connectedProductIDs.isEmpty {
+                            Text("No tablets detected").foregroundStyle(.secondary)
+                        } else {
+                            ForEach(tabletManager.connectedProductIDs, id: \.self) { pid in
+                                Button(TabletModel.displayName(forProductID: pid)) {
+                                    autoSelectModel(pid)
+                                }
+                            }
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(tabletManager.connectedProductIDs.isEmpty)
                 }
             }
-            .pickerStyle(.menu)
 
             GeometryReader { geo in
                 let canvasSize = canvasSize(in: geo.size)

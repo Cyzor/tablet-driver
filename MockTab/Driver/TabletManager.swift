@@ -12,14 +12,27 @@ final class TabletManager: ObservableObject {
     private var devices: [IOHIDDevice: any TabletDevice] = [:]
 
     @Published var isConnected = false
-    @Published var connectedProductID: Int = 0
+    @Published var connectedProductID: Int = 0   // most recently connected device
+    @Published var connectedProductIDs: [Int] = [] // all currently connected devices
 
-    var connectedDeviceName: String {
-        switch connectedProductID {
+    /// Human-readable name for a product ID, including a hex fallback for unknowns.
+    static func deviceName(forProductID pid: Int) -> String {
+        switch pid {
         case 0x0317: return "PTH-851"
+        case 0x0357: return "PTH-660"
         case 0x0358: return "PTH-860"
         case 0x00B5: return "PTZ-631W"
-        default:     return "Tablet"
+        default:     return "Wacom 0x\(String(pid, radix: 16, uppercase: true))"
+        }
+    }
+
+    var connectedDeviceName: String {
+        switch connectedProductIDs.count {
+        case 0:  return "No tablet"
+        case 1:  return Self.deviceName(forProductID: connectedProductIDs[0])
+        default:
+            let first = Self.deviceName(forProductID: connectedProductIDs[0])
+            return "\(first) + \(connectedProductIDs.count - 1) more"
         }
     }
 
@@ -87,6 +100,9 @@ final class TabletManager: ObservableObject {
         case 0x0317:
             print("TabletManager: PTH-851 connected")
             wacomDevice = PTH851Device(device: device, onTablet: onTablet)
+        case 0x0357:
+            print("TabletManager: PTH-660 connected")
+            wacomDevice = PTH660Device(device: device, onTablet: onTablet, onAux: onAux)
         case 0x0358:
             print("TabletManager: PTH-860 connected")
             wacomDevice = PTH860Device(device: device, onTablet: onTablet, onAux: onAux)
@@ -94,7 +110,7 @@ final class TabletManager: ObservableObject {
             print("TabletManager: PTZ-631W connected")
             wacomDevice = PTZ631WDevice(device: device, onTablet: onTablet, onAux: onAux)
         default:
-            print("TabletManager: unsupported product 0x\(String(productID, radix: 16))")
+            print("TabletManager: unsupported Wacom product 0x\(String(productID, radix: 16, uppercase: true)) — add a device class to support it")
             return
         }
 
@@ -107,16 +123,29 @@ final class TabletManager: ObservableObject {
             injector?.deviceVendorID  = 0x056A   // Wacom Co., Ltd.
             injector?.deviceProductID = productID
             wacomDevice.open()
-            isConnected = true
-            connectedProductID = productID
+            refreshConnectedIDs(mostRecent: productID)
         }
     }
 
     private func deviceDisconnected(_ device: IOHIDDevice) {
         guard let wacomDevice = devices.removeValue(forKey: device) else { return }
         wacomDevice.close()
-        isConnected = !devices.isEmpty
-        if !isConnected { connectedProductID = 0 }
         print("TabletManager: \(type(of: wacomDevice)) disconnected")
+        refreshConnectedIDs(mostRecent: nil)
+    }
+
+    /// Recomputes `connectedProductIDs` / `isConnected` / `connectedProductID` from the live
+    /// `devices` dict.  `mostRecent` pins `connectedProductID` to the just-connected product so
+    /// the UI auto-selects it even when multiple tablets are present.
+    private func refreshConnectedIDs(mostRecent: Int?) {
+        connectedProductIDs = devices.keys
+            .map { hidIntProperty($0, kIOHIDProductIDKey) }
+            .sorted()
+        isConnected = !connectedProductIDs.isEmpty
+        if let pid = mostRecent, connectedProductIDs.contains(pid) {
+            connectedProductID = pid
+        } else {
+            connectedProductID = connectedProductIDs.last ?? 0
+        }
     }
 }
