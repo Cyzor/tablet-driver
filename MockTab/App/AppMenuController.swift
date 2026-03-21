@@ -1,13 +1,16 @@
 import AppKit
 
-/// Builds and maintains two application-menu contributions:
+/// Builds and maintains the application-menu contributions that cannot be
+/// expressed purely through SwiftUI's command system:
 ///
 /// **Presets menu** — inserted after the Edit menu.  Rebuilt on every open
 /// via `NSMenuDelegate.menuNeedsUpdate(_:)` so it always reflects the
 /// current device's presets and active selection.
 ///
-/// **View menu** — populated with one item per preferences tab (⌘1–⌘7),
-/// creating the menu if SwiftUI hasn't generated one.
+/// **Duplicate View menu removal** — SwiftUI generates an empty "View" menu
+/// for every app; `CommandMenu("View")` in MockTabApp adds a second one with
+/// our items.  The empty duplicate is removed here once SwiftUI has finished
+/// its initial menu-building pass.
 @MainActor
 final class AppMenuController: NSObject, NSMenuDelegate {
 
@@ -23,6 +26,22 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         // defer one run-loop tick to let SwiftUI finish its menu scaffolding.
         DispatchQueue.main.async { [self] in
             insertPresetsMenu()
+            removeEmptyViewMenu()
+        }
+    }
+
+    // MARK: - Duplicate View menu removal
+
+    /// SwiftUI generates a default empty "View" menu; our `CommandMenu("View")`
+    /// creates a second one.  Walk the main menu and drop whichever "View" entry
+    /// has no items — that is always the SwiftUI-generated stub.
+    private func removeEmptyViewMenu() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        for item in mainMenu.items where item.title == "View" {
+            if item.submenu?.items.isEmpty ?? true {
+                mainMenu.removeItem(item)
+                return   // only one stub expected
+            }
         }
     }
 
