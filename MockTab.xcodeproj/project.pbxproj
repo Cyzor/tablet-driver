@@ -18,7 +18,6 @@
 		AA000008 /* InputInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000008 /* InputInjector.swift */; };
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
 		AA000010 /* BezierCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* BezierCurve.swift */; };
-		AA000011 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000011 /* PreferencesView.swift */; };
 		AA000012 /* TabletAreaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000012 /* TabletAreaView.swift */; };
 		AA000013 /* PressureCurveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* PressureCurveView.swift */; };
 		AA000014 /* ButtonMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ButtonMappingView.swift */; };
@@ -39,7 +38,6 @@
 		AB000008 /* InputInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputInjector.swift; sourceTree = "<group>"; };
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
 		AB000010 /* BezierCurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BezierCurve.swift; sourceTree = "<group>"; };
-		AB000011 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		AB000012 /* TabletAreaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletAreaView.swift; sourceTree = "<group>"; };
 		AB000013 /* PressureCurveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PressureCurveView.swift; sourceTree = "<group>"; };
 		AB000014 /* ButtonMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingView.swift; sourceTree = "<group>"; };
@@ -101,7 +99,6 @@
 		AC000004 /* UI */ = {
 			isa = PBXGroup;
 			children = (
-				AB000011 /* PreferencesView.swift */,
 				AB000012 /* TabletAreaView.swift */,
 				AB000013 /* PressureCurveView.swift */,
 				AB000014 /* ButtonMappingView.swift */,
@@ -196,7 +193,6 @@
 				AA000008 /* InputInjector.swift in Sources */,
 				AA000009 /* TabletSettings.swift in Sources */,
 				AA000010 /* BezierCurve.swift in Sources */,
-				AA000011 /* PreferencesView.swift in Sources */,
 				AA000012 /* TabletAreaView.swift in Sources */,
 				AA000013 /* PressureCurveView.swift in Sources */,
 				AA000014 /* ButtonMappingView.swift in Sources */,

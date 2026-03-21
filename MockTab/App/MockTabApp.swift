@@ -11,7 +11,7 @@ struct MockTabApp: App {
             MenuBarView()
                 .environmentObject(TabletManager.shared)
         }
-        .menuBarExtraStyle(.window)
+        .menuBarExtraStyle(.menu)
     }
 }
 
@@ -27,6 +27,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             let injector = InputInjector()
             TabletManager.shared.injector = injector
+            // Wire settings before start() so the driver uses persisted preferences immediately.
+            TabletManager.shared.settings = PreferencesWindowController.shared.settings
             TabletManager.shared.start()
         }
 
@@ -40,17 +42,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
-    // Clicking the Dock icon when no windows are open re-shows preferences.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         if !hasVisibleWindows {
             PreferencesWindowController.shared.show()
         }
         NSApp.activate(ignoringOtherApps: true)
         return true
-    }
-
-    // ⌘, opens preferences from anywhere.
-    @objc func showPreferences(_ sender: Any?) {
-        PreferencesWindowController.shared.show()
     }
 }
