@@ -11,7 +11,7 @@ final class PreferencesWindowController: NSWindowController {
 
     private init() {
         let tabVC = NSTabViewController()
-        tabVC.tabStyle = .toolbar   // icon + label toolbar, like Fork / System Preferences
+        tabVC.tabStyle = .toolbar   // icon + label toolbar; window auto-resizes per tab
 
         let window = NSWindow(contentViewController: tabVC)
         window.title = "MockTab"
@@ -22,12 +22,12 @@ final class PreferencesWindowController: NSWindowController {
         window.setFrameAutosaveName("PreferencesWindow")
         super.init(window: window)
 
-        let s = settings   // capture for closures below
-        add(tabVC, label: "Tablet Area",  symbol: "rectangle.dashed")  { TabletAreaView(settings: s) }
-        add(tabVC, label: "Pressure",     symbol: "waveform.path")      { PressureCurveView(settings: s) }
-        add(tabVC, label: "Buttons",      symbol: "hand.point.up.left") { ButtonMappingView(settings: s) }
-        add(tabVC, label: "Display",      symbol: "display")            { DisplayMappingView(settings: s) }
-        add(tabVC, label: "Scratchpad",   symbol: "scribble")           { ScratchpadView() }
+        let s = settings
+        add(tabVC, label: "Tablet Area",  symbol: "rectangle.dashed",  height: 390) { TabletAreaView(settings: s) }
+        add(tabVC, label: "Pressure",     symbol: "waveform.path",      height: 450) { PressureCurveView(settings: s) }
+        add(tabVC, label: "Buttons",      symbol: "hand.point.up.left", height: 540) { ButtonMappingView(settings: s) }
+        add(tabVC, label: "Display",      symbol: "display",            height: 340) { DisplayMappingView(settings: s) }
+        add(tabVC, label: "Scratchpad",   symbol: "scribble",           height: 330) { ScratchpadView() }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -46,10 +46,17 @@ final class PreferencesWindowController: NSWindowController {
         _ tabVC: NSTabViewController,
         label: String,
         symbol: String,
+        height: CGFloat,
         @ViewBuilder content: () -> Content
     ) {
-        let hosting = NSHostingController(rootView: content())
-        hosting.preferredContentSize = NSSize(width: 500, height: 560)
+        // Top-align content so shorter views don't float in the middle of the area.
+        let aligned = content()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+        let hosting = NSHostingController(rootView: aligned)
+        hosting.title = label                          // shown in the title bar for this tab
+        hosting.preferredContentSize = NSSize(width: 500, height: height)
+
         let item = NSTabViewItem(viewController: hosting)
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
