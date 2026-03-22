@@ -146,10 +146,10 @@ struct DevicesView: View {
 
     @ViewBuilder
     private func toolRow(_ tool: DeviceRegistry.KnownTool) -> some View {
+        let isInProximity = tool.id == tabletManager.activeToolID
         HStack(spacing: 8) {
-            Image(systemName: tool.id == "eraser" ? "eraser" : "pencil.tip.crop.circle.fill")
-                .foregroundStyle(.secondary)
-                .frame(width: 16)
+            Image(systemName: isInProximity ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isInProximity ? Color.green : Color.clear)
 
             if editingToolID == tool.id {
                 TextField("Tool name", text: $editingName)

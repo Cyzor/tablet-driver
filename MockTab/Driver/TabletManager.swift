@@ -28,6 +28,11 @@ final class TabletManager: ObservableObject {
     /// when a pen enters proximity on a different tablet.
     @Published var activeContext: DeviceContext? = nil
 
+    /// The tool ID of the pen currently in proximity, or nil when no pen
+    /// is detected.  Matches DeviceRegistry.KnownTool.id so DevicesView
+    /// can highlight the row without additional lookups.
+    @Published var activeToolID: String? = nil
+
     /// Internal lookup from raw IOHIDDevice to context — needed for
     /// deviceDisconnected which receives the IOHIDDevice handle.
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
@@ -140,14 +145,15 @@ final class TabletManager: ObservableObject {
         context.hidDevice = device
 
         // ── Tool-enter closure (IntuosV2 only — fires on serial change) ─
-        let onToolEnter: (ToolIdentity) -> Void = { [weak context] identity in
-            guard let context else { return }
+        let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
+            guard let self, let context else { return }
             context.activeToolSerial = identity.serial
             DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
             let toolID   = DeviceRegistry.toolID(for: identity)
             let toolSets = context.settings.toolSettings(forID: toolID)
             context.activeTool             = toolSets
             context.injector.activeToolSettings = toolSets
+            self.activeToolID = toolID
         }
 
         // ── Tablet point closure with proximity-based activation ─────────
@@ -161,6 +167,7 @@ final class TabletManager: ObservableObject {
                                             toolCode: point.eraser ? 0x080A : 0x0802,
                                             isEraser: point.eraser)
                 DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
+                self.activeToolID = DeviceRegistry.toolID(for: identity)
             }
 
             // Proximity-enter activates this device's context.
@@ -188,6 +195,7 @@ final class TabletManager: ObservableObject {
 
             // Only the active context posts normal events.
             guard self.activeContext === context else { return }
+            if !point.inProximity { self.activeToolID = nil }
             context.injector.inject(point: point, settings: context.settings)
         }
 
