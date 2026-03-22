@@ -180,6 +180,7 @@ struct DevicesView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .background(isInProximity ? Color.accentColor.opacity(0.08) : Color.clear)
     }
 
     // MARK: - Shared layout helpers
