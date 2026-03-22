@@ -3,14 +3,14 @@ import AppKit
 /// Builds and maintains the application-menu contributions that cannot be
 /// expressed purely through SwiftUI's command system:
 ///
-/// **Presets menu** — inserted after the Edit menu.  Rebuilt on every open
-/// via `NSMenuDelegate.menuNeedsUpdate(_:)` so it always reflects the
-/// current device's presets and active selection.
+/// **Tablet menu** — first menu after the application menu.  Contains
+/// "New Settings Window" and a dynamic list of known tablets from
+/// DeviceRegistry.  Rebuilt on every open via `menuNeedsUpdate(_:)`.
 ///
-/// **Duplicate View menu removal** — SwiftUI generates an empty "View" menu
-/// for every app; `CommandMenu("View")` in MockTabApp adds a second one with
-/// our items.  The empty duplicate is removed here once SwiftUI has finished
-/// its initial menu-building pass.
+/// **Presets menu** — inserted after the Tablet menu.  Rebuilt on every open.
+///
+/// **Duplicate View menu removal** — SwiftUI generates an empty "View" menu;
+/// we remove it here so only the one with ⌘1–⌘8 shortcuts remains.
 @MainActor
 final class AppMenuController: NSObject, NSMenuDelegate {
 
@@ -25,6 +25,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         // Main menu is available by applicationDidFinishLaunching, but
         // defer one run-loop tick to let SwiftUI finish its menu scaffolding.
         DispatchQueue.main.async { [self] in
+            insertTabletMenu()
             insertPresetsMenu()
             removeEmptyViewMenu()
         }
@@ -45,6 +46,68 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         }
     }
 
+    // MARK: - Tablet menu
+
+    private var tabletMenu: NSMenu?
+
+    private func insertTabletMenu() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        guard mainMenu.items.allSatisfy({ $0.title != "Tablet" }) else { return }
+
+        let menu = NSMenu(title: "Tablet")
+        menu.delegate = self
+        tabletMenu = menu
+
+        let menuItem = NSMenuItem(title: "Tablet", action: nil, keyEquivalent: "")
+        menuItem.submenu = menu
+
+        // Insert immediately after the application menu (index 0).
+        mainMenu.insertItem(menuItem, at: 1)
+    }
+
+    private func rebuildTabletMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+
+        // "New Settings Window" — opens a generic window.
+        let newItem = NSMenuItem(title: "New Settings Window",
+                                  action: #selector(newSettingsWindow),
+                                  keyEquivalent: "n")
+        newItem.keyEquivalentModifierMask = [.command, .shift]
+        newItem.target = self
+        menu.addItem(newItem)
+
+        // List known tablets from DeviceRegistry.
+        let registry = DeviceRegistry.shared
+        let tm = TabletManager.shared
+        if !registry.knownTablets.isEmpty {
+            menu.addItem(.separator())
+
+            for tablet in registry.knownTablets {
+                let label = PreferencesWindowController.shared.menuLabel(forProductID: tablet.id)
+                let item = NSMenuItem(title: label,
+                                       action: #selector(openDeviceWindow(_:)),
+                                       keyEquivalent: "")
+                item.target = self
+                item.tag = tablet.id
+                // Show a dot for currently connected tablets.
+                if tm.connectedProductIDs.contains(tablet.id) {
+                    item.image = NSImage(systemSymbolName: "circle.fill",
+                                         accessibilityDescription: "Connected")
+                    item.image?.size = NSSize(width: 6, height: 6)
+                }
+                menu.addItem(item)
+            }
+        }
+    }
+
+    @objc private func newSettingsWindow() {
+        PreferencesWindowController.shared.openNewWindow()
+    }
+
+    @objc private func openDeviceWindow(_ sender: NSMenuItem) {
+        PreferencesWindowController.shared.openWindow(forProductID: sender.tag)
+    }
+
     // MARK: - Presets menu
 
     private var presetsMenu: NSMenu?
@@ -60,18 +123,19 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         let menuItem = NSMenuItem(title: "Presets", action: nil, keyEquivalent: "")
         menuItem.submenu = menu
 
-        // Insert after Edit; fall back to index 1 (after the app menu).
-        let insertAfter = mainMenu.items.firstIndex(where: { $0.title == "Edit" }) ?? 1
+        // Insert after Tablet menu.
+        let insertAfter = mainMenu.items.firstIndex(where: { $0.title == "Tablet" })
+                        ?? mainMenu.items.firstIndex(where: { $0.title == "Edit" })
+                        ?? 1
         mainMenu.insertItem(menuItem, at: insertAfter + 1)
     }
 
     /// Rebuild the Presets menu every time it is about to open.
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        guard menu === presetsMenu, let settings else { return }
+    private func rebuildPresetsMenu(_ menu: NSMenu) {
+        guard let settings else { return }
         menu.removeAllItems()
 
         if !settings.presets.isEmpty {
-            // Device defaults (always present when presets exist).
             let defsItem = NSMenuItem(title: "Device Defaults",
                                       action: #selector(activateDeviceDefaults),
                                       keyEquivalent: "")
@@ -98,6 +162,18 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         showItem.target = self
         menu.addItem(showItem)
     }
+
+    // MARK: - NSMenuDelegate
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        if menu === tabletMenu {
+            rebuildTabletMenu(menu)
+        } else if menu === presetsMenu {
+            rebuildPresetsMenu(menu)
+        }
+    }
+
+    // MARK: - Preset actions
 
     @objc private func activateDeviceDefaults() {
         settings?.activate(nil)

@@ -1,89 +1,205 @@
 import AppKit
+import Combine
 import SwiftUI
 
+/// Manages all settings windows.
+///
+/// Maintains a default window (for the active device or generic settings)
+/// and any number of per-device windows spawned via the Tablet menu.
+/// Selecting a tablet from the menu activates an existing window for that
+/// device if one is already open; only "New Settings Window" creates
+/// additional windows unconditionally.
+///
+/// When the user selects a different tablet from the Tablet Area model
+/// picker, the affected window is replaced in-place (same position and
+/// tab) with one bound to the new device's settings.
 @MainActor
-final class PreferencesWindowController: NSWindowController {
+final class PreferencesWindowController {
 
     static let shared = PreferencesWindowController()
 
-    /// Shared settings instance — owned here for the app's lifetime.
+    /// Shared settings instance — used by the menu bar.
     let settings = TabletSettings()
 
-    /// The tab view controller — stored so `showTab` can switch tabs programmatically.
-    private let tabVC = NSTabViewController()
+    /// All open settings windows, including the default.
+    private var windows: [SettingsWindowController] = []
 
-    /// Ordered tab labels, parallel to the tabs added in init.
-    static let tabLabels = [
-        "Tablet Area", "Pressure", "Buttons", "Display", "Devices", "Presets", "Scratchpad", "Info"
-    ]
+    /// The default (first) window — created lazily.
+    private var defaultWindow: SettingsWindowController?
+
+    private var deviceObserver: AnyCancellable?
 
     private init() {
-        tabVC.tabStyle = .toolbar   // icon + label toolbar; window auto-resizes per tab
-
-        let window = NSWindow(contentViewController: tabVC)
-        window.title = "MockTab"
-        window.styleMask = [.titled, .closable, .miniaturizable]
-        window.isReleasedWhenClosed = false
-        window.center()
-        // setFrameAutosaveName after center() so a saved position overrides the default.
-        window.setFrameAutosaveName("PreferencesWindow")
-        super.init(window: window)
-
-        let s = settings
-        let tm = TabletManager.shared
-        let dr = DeviceRegistry.shared
-        add(tabVC, label: "Tablet Area",  symbol: "rectangle.dashed",  height: 420) { TabletAreaView(settings: s, tabletManager: tm) }
-        add(tabVC, label: "Pressure",     symbol: "scribble.variable",  height: 480) { PressureCurveView(settings: s, tabletManager: tm, registry: dr) }
-        add(tabVC, label: "Buttons",      symbol: "hand.point.up.left", height: 575) { ButtonMappingView(settings: s, tabletManager: tm, registry: dr) }
-        add(tabVC, label: "Display",      symbol: "display",            height: 370) { DisplayMappingView(settings: s, tabletManager: tm, registry: dr) }
-        add(tabVC, label: "Devices",      symbol: "rectangle.on.rectangle",      height: 480) { DevicesView(tabletManager: tm, registry: dr) }
-        add(tabVC, label: "Presets",      symbol: "star.circle",        height: 450) { PresetsView(settings: s) }
-        add(tabVC, label: "Scratchpad",   symbol: "pencil.and.outline", height: 360) { ScratchpadView(settings: s) }
-        add(tabVC, label: "Info",         symbol: "info.circle",        height: 430) { InfoView(tabletManager: tm, settings: s) }
+        // When the first device connects and the default window has no
+        // productID (launched before any tablet was plugged in), replace
+        // it so its titles and settings bind to the real device.
+        deviceObserver = TabletManager.shared.$connectedProductIDs
+            .dropFirst()   // skip the initial empty value
+            .first(where: { !$0.isEmpty })
+            .receive(on: RunLoop.main)
+            .sink { [weak self] ids in
+                guard let self,
+                      let dw = self.defaultWindow,
+                      dw.productID == nil,
+                      let pid = ids.first else { return }
+                self.replaceWindow(dw, withDeviceID: pid)
+            }
     }
 
-    required init?(coder: NSCoder) { fatalError() }
+    // MARK: - Default window (backward-compatible API)
 
-    // MARK: - Public
-
+    /// Shows the default settings window (creating it if needed).
     func show() {
-        showWindow(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        ensureDefaultWindow().show()
     }
 
-    /// Shows the window and switches to the tab at `index` (0-based).
+    /// Shows the default window and switches to the tab at `index`.
     func showTab(at index: Int) {
-        show()
-        guard index >= 0, index < tabVC.tabViewItems.count else { return }
-        tabVC.selectedTabViewItemIndex = index
+        ensureDefaultWindow().showTab(at: index)
     }
 
-    /// Shows the window and switches to the first tab whose label matches `name`.
+    /// Shows the default window and switches to the first tab named `name`.
     func showTab(named name: String) {
-        let idx = tabVC.tabViewItems.firstIndex(where: { $0.label == name })
-        showTab(at: idx ?? 0)
+        ensureDefaultWindow().showTab(named: name)
+    }
+
+    // MARK: - Multi-window
+
+    /// Opens or activates a window for a specific device.
+    /// If a window for this product ID already exists, it is brought to front.
+    @discardableResult
+    func openWindow(forProductID productID: Int) -> SettingsWindowController {
+        // If a window for this device already exists, just activate it.
+        if let existing = windows.first(where: { $0.productID == productID }) {
+            existing.show()
+            return existing
+        }
+
+        let (s, label) = settingsAndLabel(forProductID: productID)
+        let wc = SettingsWindowController(settings: s, deviceLabel: label, productID: productID)
+
+        // Offset from the last window so they cascade.
+        if let lastFrame = windows.last?.window?.frame {
+            wc.window?.setFrameOrigin(NSPoint(x: lastFrame.minX + 20,
+                                               y: lastFrame.minY - 20))
+        }
+
+        windows.append(wc)
+        observeClose(wc)
+        wc.show()
+        return wc
+    }
+
+    /// Creates a brand-new window unconditionally (for "New Settings Window").
+    @discardableResult
+    func openNewWindow() -> SettingsWindowController {
+        let pid = activeDeviceProductID()
+        let (s, label) = settingsAndLabel(forProductID: pid)
+        let wc = SettingsWindowController(settings: s, deviceLabel: label, productID: pid)
+
+        if let lastFrame = windows.last?.window?.frame {
+            wc.window?.setFrameOrigin(NSPoint(x: lastFrame.minX + 20,
+                                               y: lastFrame.minY - 20))
+        }
+
+        windows.append(wc)
+        observeClose(wc)
+        wc.show()
+        return wc
+    }
+
+    /// Replaces an existing window with one bound to a different device.
+    /// Preserves the window position and selected tab index.
+    func replaceWindow(_ old: SettingsWindowController, withDeviceID pid: Int) {
+        let frame = old.window?.frame
+        let tabIndex = old.selectedTabIndex
+        let wasDefault = defaultWindow === old
+
+        // Close the old window.
+        old.window?.close()
+        // close notification removes it from `windows` and clears defaultWindow
+
+        let (s, label) = settingsAndLabel(forProductID: pid)
+        let wc = SettingsWindowController(settings: s, deviceLabel: label, productID: pid)
+
+        if let frame { wc.window?.setFrame(frame, display: false) }
+
+        windows.append(wc)
+        observeClose(wc)
+        if wasDefault { defaultWindow = wc }
+        wc.showTab(at: tabIndex)
+    }
+
+    // MARK: - Labels
+
+    /// Display label for a device, preferring nickname over model name.
+    func displayLabel(forProductID productID: Int?) -> String {
+        guard let productID else { return "MockTab" }
+        let registry = DeviceRegistry.shared
+        if let tablet = registry.knownTablets.first(where: { $0.id == productID }) {
+            if tablet.nickname != tablet.modelName {
+                return "\(tablet.nickname)"
+            }
+            return tablet.modelName
+        }
+        return TabletManager.deviceName(forProductID: productID)
+    }
+
+    /// Menu-ready label: nickname if different from model, else model name.
+    /// Includes the model in parentheses when a nickname is set.
+    func menuLabel(forProductID productID: Int) -> String {
+        let registry = DeviceRegistry.shared
+        if let tablet = registry.knownTablets.first(where: { $0.id == productID }) {
+            if tablet.nickname != tablet.modelName {
+                return "\(tablet.nickname) — \(tablet.modelName)"
+            }
+            return tablet.modelName
+        }
+        return TabletManager.deviceName(forProductID: productID)
     }
 
     // MARK: - Private
 
-    private func add<Content: View>(
-        _ tabVC: NSTabViewController,
-        label: String,
-        symbol: String,
-        height: CGFloat,
-        @ViewBuilder content: () -> Content
-    ) {
-        // Top-align content so shorter views don't float in the middle of the area.
-        let aligned = content()
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    /// Returns the best product ID for a generic/default window.
+    private func activeDeviceProductID() -> Int? {
+        TabletManager.shared.activeContext?.productID
+            ?? TabletManager.shared.connectedProductIDs.first
+            ?? DeviceRegistry.shared.knownTablets.first?.id
+    }
 
-        let hosting = NSHostingController(rootView: aligned)
-        hosting.title = label                          // shown in the title bar for this tab
-        hosting.preferredContentSize = NSSize(width: 500, height: height)
+    private func ensureDefaultWindow() -> SettingsWindowController {
+        if let dw = defaultWindow, windows.contains(where: { $0 === dw }) {
+            return dw
+        }
+        let pid = activeDeviceProductID()
+        let (s, label) = settingsAndLabel(forProductID: pid)
+        let wc = SettingsWindowController(settings: s, deviceLabel: label, productID: pid)
+        wc.window?.setFrameAutosaveName("PreferencesWindow")
+        defaultWindow = wc
+        windows.append(wc)
+        observeClose(wc)
+        return wc
+    }
 
-        let item = NSTabViewItem(viewController: hosting)
-        item.label = label
-        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
-        tabVC.addTabViewItem(item)
+    private func settingsAndLabel(forProductID productID: Int?) -> (TabletSettings, String) {
+        if let pid = productID {
+            let tm = TabletManager.shared
+            let s = tm.contexts[pid]?.settings ?? TabletSettings(productID: pid)
+            return (s, displayLabel(forProductID: pid))
+        }
+        return (settings, "MockTab")
+    }
+
+    /// Watch for window close so we can remove it from our tracking list.
+    private func observeClose(_ wc: SettingsWindowController) {
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: wc.window,
+            queue: .main
+        ) { [weak self, weak wc] _ in
+            guard let self, let wc else { return }
+            self.windows.removeAll(where: { $0 === wc })
+            if self.defaultWindow === wc { self.defaultWindow = nil }
+        }
     }
 }

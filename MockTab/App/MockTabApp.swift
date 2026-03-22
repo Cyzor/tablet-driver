@@ -14,7 +14,7 @@ struct MockTabApp: App {
         }
         .menuBarExtraStyle(.menu)
         .commands {
-            // View menu with ⌘1–⌘7 tab shortcuts.
+            // View menu with ⌘1–⌘8 tab shortcuts.
             // Declared here so SwiftUI owns the menu lifecycle and it is never
             // overwritten by SwiftUI's own menu-rebuild passes.
             CommandMenu("View") {
@@ -49,10 +49,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         Task { @MainActor in
-            // Each tablet now creates its own InputInjector and TabletSettings
-            // inside a DeviceContext.  The PreferencesWindowController's settings
-            // instance is used for the UI and menu bar until per-device windows
-            // are implemented.
             let settings = PreferencesWindowController.shared.settings
             AppWatcher.shared.settings = settings
             AppMenuController.shared.setup(settings: settings)

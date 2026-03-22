@@ -12,6 +12,7 @@ struct TabletAreaView: View {
         case pth660  = "Intuos Pro M (PTH-660)"
         case pth860  = "Intuos Pro Large (PTH-860)"
         case ptz631w = "Intuos3 Widescreen (PTZ-631W)"
+        case dtk2400 = "Cintiq 24HD (DTK-2400)"
         var id: String { rawValue }
         var aspectRatio: Double {
             switch self {
@@ -19,6 +20,16 @@ struct TabletAreaView: View {
             case .pth660:  return 44800.0 / 29600.0
             case .pth860:  return 62200.0 / 43200.0
             case .ptz631w: return 54204.0 / 31750.0
+            case .dtk2400: return 104480.0 / 65600.0
+            }
+        }
+        var productID: Int {
+            switch self {
+            case .pth851:  return 0x0317
+            case .pth660:  return 0x0357
+            case .pth860:  return 0x0358
+            case .ptz631w: return 0x00B5
+            case .dtk2400: return 0x00F4
             }
         }
         init?(productID: Int) {
@@ -27,6 +38,7 @@ struct TabletAreaView: View {
             case 0x0357: self = .pth660
             case 0x0358: self = .pth860
             case 0x00B5: self = .ptz631w
+            case 0x00F4: self = .dtk2400
             default: return nil
             }
         }
@@ -38,8 +50,20 @@ struct TabletAreaView: View {
     }
 
     @ObservedObject var tabletManager: TabletManager
-    @AppStorage("selectedTabletModel") private var selectedModelRaw = TabletModel.pth860.rawValue
-    private var selectedModel: TabletModel { TabletModel(rawValue: selectedModelRaw) ?? .pth860 }
+
+    /// Called when the user selects a different tablet model from the picker.
+    /// The window controller uses this to rebind the entire window to that
+    /// device's settings.
+    var onDeviceSelected: ((Int) -> Void)?
+
+    /// The product ID this view is currently showing.  Drives the model
+    /// picker selection and the canvas aspect ratio.
+    var boundProductID: Int?
+
+    private var selectedModel: TabletModel {
+        if let pid = boundProductID, let m = TabletModel(productID: pid) { return m }
+        return .pth860
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,22 +75,12 @@ struct TabletAreaView: View {
 
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Picker("Tablet model", selection: $selectedModelRaw) {
-                    ForEach(TabletModel.allCases) { model in
-                        Text(model.rawValue).tag(model.rawValue)
-                    }
+            Picker("Tablet model", selection: pickerBinding) {
+                ForEach(TabletModel.allCases) { model in
+                    Text(model.rawValue).tag(model.productID)
                 }
-                .pickerStyle(.menu)
-
-                // Pins the picker to whichever tablet is currently connected.
-                // When multiple tablets are present, uses the most recently connected one.
-                Button("Detect Connected") {
-                    autoSelectModel(tabletManager.connectedProductID)
-                }
-                .fixedSize()
-                .disabled(!tabletManager.isConnected)
             }
+            .pickerStyle(.menu)
 
             GeometryReader { geo in
                 let canvasSize = canvasSize(in: geo.size)
@@ -119,15 +133,18 @@ struct TabletAreaView: View {
             }
         }
         .padding()
-        .onAppear { autoSelectModel(tabletManager.connectedProductID) }
-        .onChange(of: tabletManager.connectedProductID) { autoSelectModel($0) }
     }
 
-
-    private func autoSelectModel(_ productID: Int) {
-        if let model = TabletModel(productID: productID) {
-            selectedModelRaw = model.rawValue
-        }
+    /// Binding that fires `onDeviceSelected` when the user picks a different model.
+    private var pickerBinding: Binding<Int> {
+        Binding(
+            get: { boundProductID ?? selectedModel.productID },
+            set: { newPID in
+                if newPID != boundProductID {
+                    onDeviceSelected?(newPID)
+                }
+            }
+        )
     }
 
     // MARK: - Active area drag rectangle
@@ -200,4 +217,3 @@ struct TabletAreaView: View {
             .frame(minWidth: 80)
     }
 }
-

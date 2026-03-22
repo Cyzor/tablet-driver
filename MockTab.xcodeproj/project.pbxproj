@@ -36,6 +36,7 @@
 		AA000042 /* DeviceContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* DeviceContext.swift */; };
 		AA000040 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* DevicesView.swift */; };
 		AA000041 /* TabStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000041 /* TabStatusBar.swift */; };
+		AA000043 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* SettingsWindowController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -70,6 +71,7 @@
 		AB000042 /* DeviceContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceContext.swift; sourceTree = "<group>"; };
 		AB000040 /* DevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesView.swift; sourceTree = "<group>"; };
 		AB000041 /* TabStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabStatusBar.swift; sourceTree = "<group>"; };
+		AB000043 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -104,6 +106,7 @@
 				AB000001 /* MockTabApp.swift */,
 				AB000002 /* MenuBarView.swift */,
 				AB000017 /* PreferencesWindowController.swift */,
+				AB000043 /* SettingsWindowController.swift */,
 				AB000036 /* AppMenuController.swift */,
 			);
 			path = App;
@@ -242,6 +245,7 @@
 				AA000001 /* MockTabApp.swift in Sources */,
 				AA000002 /* MenuBarView.swift in Sources */,
 				AA000017 /* PreferencesWindowController.swift in Sources */,
+				AA000043 /* SettingsWindowController.swift in Sources */,
 				AA000036 /* AppMenuController.swift in Sources */,
 				AA000003 /* TabletPoint.swift in Sources */,
 				AA000004 /* TabletDevice.swift in Sources */,
