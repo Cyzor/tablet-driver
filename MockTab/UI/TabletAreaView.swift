@@ -87,12 +87,20 @@ struct TabletAreaView: View {
 
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("Tablet model", selection: pickerBinding) {
-                ForEach(TabletModel.allCases) { model in
-                    Text(model.rawValue).tag(model.productID)
+            HStack(spacing: 8) {
+                Picker("Tablet model", selection: pickerBinding) {
+                    ForEach(TabletModel.allCases) { model in
+                        Text(model.rawValue).tag(model.productID)
+                    }
                 }
+                .pickerStyle(.menu)
+
+                Button("Detect Tablet") {
+                    AppMenuController.activateBestDevice()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
-            .pickerStyle(.menu)
 
             GeometryReader { geo in
                 let cs = canvasSize(in: geo.size)

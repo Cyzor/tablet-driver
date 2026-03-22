@@ -76,6 +76,14 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         newItem.target = self
         menu.addItem(newItem)
 
+        // "Detect Tablet" — re-evaluates the active device and focuses its window.
+        let detectItem = NSMenuItem(title: "Detect Tablet",
+                                     action: #selector(detectTablet),
+                                     keyEquivalent: "r")
+        detectItem.keyEquivalentModifierMask = [.command]
+        detectItem.target = self
+        menu.addItem(detectItem)
+
         // List known tablets from DeviceRegistry.
         let registry = DeviceRegistry.shared
         let tm = TabletManager.shared
@@ -106,6 +114,25 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     @objc private func openDeviceWindow(_ sender: NSMenuItem) {
         PreferencesWindowController.shared.openWindow(forProductID: sender.tag)
+    }
+
+    @objc private func detectTablet() {
+        AppMenuController.activateBestDevice()
+    }
+
+    /// Picks the most relevant connected (or known) device and activates its
+    /// settings window.  Called from both the menu item and TabletAreaView's
+    /// "Detect Tablet" button.
+    @MainActor
+    static func activateBestDevice() {
+        let tm = TabletManager.shared
+        // Prefer the pen-in-proximity context; fall back to first connected,
+        // then first ever-seen device.
+        let pid = tm.activeContext?.productID
+            ?? tm.connectedProductIDs.first
+            ?? DeviceRegistry.shared.knownTablets.first?.id
+        guard let pid else { return }
+        PreferencesWindowController.shared.openWindow(forProductID: pid)
     }
 
     // MARK: - Presets menu
