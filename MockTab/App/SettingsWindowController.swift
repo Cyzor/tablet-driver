@@ -58,7 +58,7 @@ final class SettingsWindowController: NSWindowController {
             PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
         }
         addTab(label: "Tablet Area", symbol: "rectangle.dashed", height: 420) {
-            TabletAreaView(settings: s, tabletManager: tm,
+            TabletAreaView(settings: s, tabletManager: tm, registry: dr,
                            onDeviceSelected: onDevice, boundProductID: productID)
         }
         addTab(label: "Pressure",     symbol: "scribble.variable",       height: 480) { PressureCurveView(settings: s, tabletManager: tm, registry: dr) }
