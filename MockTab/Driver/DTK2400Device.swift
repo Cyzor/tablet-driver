@@ -22,12 +22,11 @@ final class DTK2400Device: TabletDevice {
     private var reportBuffer = [UInt8](repeating: 0, count: 10)
     private var lastX = 0
     private var lastY = 0
+    private var prevInProximity = false
     // Pressure from the most recent EA-type (sensor-data) report.
     // Carried forward into the interleaved E0 (position-only) reports to
     // prevent them from causing spurious mouseUp events mid-stroke.
     private var lastEAPressure = 0
-    private var diagCount = 0
-    private static let kDiagReports = 20
 
     init(device: IOHIDDevice,
          onTablet: @escaping (TabletPoint) -> Void,
@@ -80,26 +79,24 @@ final class DTK2400Device: TabletDevice {
     }
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
-        // Log all report IDs we see (first kDiagReports only, so we can spot
-        // unexpected IDs reaching this callback after device seizure).
-        if diagCount < DTK2400Device.kDiagReports {
-            let hex = (0..<Swift.min(Int(length), 10))
-                .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-            print("DTK-2400 RAW[\(diagCount)] len=\(length): \(hex)")
-            diagCount += 1
-        }
-
         guard length >= 10 else { return }
 
         // Report IDs seen on this device: 0x02 (pen), 0x0C (touch/ring — ignored here).
         let id = report[0]
-        guard id == 0x02 || id == 0x10 else { return }
+        guard id == 0x02 || id == 0x10 else {
+            // Phase 1 serial probe: log any report ID we don't recognise.
+            let hex = (0..<Swift.min(Int(length), 20))
+                .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+            print("DTK-2400 UNKNOWN REPORT id=\(String(format:"0x%02X", id)) len=\(length): \(hex)")
+            return
+        }
 
         let status      = report[1]
         let inProximity = (status & 0x20) != 0  // bit 5
         let highConf    = (status & 0x40) != 0  // bit 6
 
         if !inProximity {
+            prevInProximity = false
             onTablet(TabletPoint(x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
                                  pressure: 0, maxPressure: spec.maxPressure,
                                  tiltX: 0, tiltY: 0,
@@ -116,6 +113,13 @@ final class DTK2400Device: TabletDevice {
                                  eraser: false, inProximity: true, hoverDistance: 0))
             return
         }
+
+        // Phase 1 serial probe: log all 10 bytes on proximity-enter transition.
+        if !prevInProximity {
+            let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+            print("DTK-2400 PROXIMITY-ENTER: \(hex)")
+        }
+        prevInProximity = true
 
         // IntuosV1 coordinate / pressure / tilt decode — identical to PTH851Device.
         let x        = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)

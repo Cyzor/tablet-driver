@@ -4,6 +4,11 @@ import IOKit.hid
 /// Wacom Intuos Pro M (PTH-660) — IntuosV2 HID report format.
 /// VendorID: 0x056A  ProductID: 0x0357  InputReportLength: 192 bytes
 /// Digitizer surface: 44800 × 29600 lp (224 × 148 mm), 13-bit pressure.
+///
+/// Serial number layout (verified by live capture, 27-byte 0x10 reports):
+///   Bytes 17–20: pen serial (32-bit LE) — unique per physical pen body
+///   Bytes 21–22: tool code (16-bit LE) — e.g. 0x0802, 0x0842
+///   Bytes 25–26: tool code repeated
 final class PTH660Device: TabletDevice {
 
     let spec = DigitizerSpec(maxX: 44800, maxY: 29600, maxPressure: 8191)
@@ -11,17 +16,21 @@ final class PTH660Device: TabletDevice {
     private let device: IOHIDDevice
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((AuxButtons) -> Void)?
+    private let onToolEnter: ((ToolIdentity) -> Void)?
     private var reportBuffer = [UInt8](repeating: 0, count: 192)
     private var lastX = 0
     private var lastY = 0
+    private var lastSerial: UInt32 = 0
 
     init(device: IOHIDDevice,
          onTablet: @escaping (TabletPoint) -> Void,
-         onAux: ((AuxButtons) -> Void)? = nil)
+         onAux: ((AuxButtons) -> Void)? = nil,
+         onToolEnter: ((ToolIdentity) -> Void)? = nil)
     {
         self.device = device
         self.onTablet = onTablet
         self.onAux = onAux
+        self.onToolEnter = onToolEnter
     }
 
     func open() {
@@ -54,7 +63,7 @@ final class PTH660Device: TabletDevice {
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
         guard length >= 12 else { return }
         switch report[0] {
-        case 0x10: handlePenReport(report: report)
+        case 0x10: handlePenReport(report: report, length: length)
         case 0x1E: handleOffsetPenReport(report: report)
         case 0x11: handleAuxReport(report: report, length: length)
         default: break
@@ -62,7 +71,7 @@ final class PTH660Device: TabletDevice {
     }
 
     /// Standard pen report (Report ID 0x10) — IntuosV2Report layout.
-    private func handlePenReport(report: UnsafePointer<UInt8>) {
+    private func handlePenReport(report: UnsafePointer<UInt8>, length: CFIndex) {
         let status = report[1]
         let highConfidence = (status & 0x20) != 0
 
@@ -84,6 +93,22 @@ final class PTH660Device: TabletDevice {
                                  penButton1: false, penButton2: false,
                                  eraser: false, inProximity: true, hoverDistance: 0))
             return
+        }
+
+        // Extract pen serial (bytes 17–20 LE) and tool code (bytes 21–22 LE).
+        // Present in every 27-byte report; fire onToolEnter whenever the active pen changes.
+        if length >= 27 {
+            let serial   = UInt32(report[17])
+                         | UInt32(report[18]) << 8
+                         | UInt32(report[19]) << 16
+                         | UInt32(report[20]) << 24
+            let toolCode = UInt16(report[21]) | UInt16(report[22]) << 8
+            if serial != 0 && serial != lastSerial {
+                lastSerial = serial
+                onToolEnter?(ToolIdentity(serial: serial,
+                                          toolCode: toolCode,
+                                          isEraser: (toolCode & 0x0008) != 0))
+            }
         }
 
         let x        = Int(UInt16(report[2]) | UInt16(report[3]) << 8) | (Int(report[4]) << 16)

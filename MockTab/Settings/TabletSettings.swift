@@ -27,6 +27,32 @@ final class TabletSettings: ObservableObject {
 
     private let ud = UserDefaults.standard
 
+    // MARK: - Per-tool settings
+
+    /// The tool settings currently active on this device.
+    /// Starts as the device-default tool; swapped by TabletManager on tool-enter.
+    @Published var activeTool: ToolSettings = ToolSettings(prefix: "device-default.")
+
+    /// Cache of per-serial ToolSettings instances for this device.
+    private var toolCache: [String: ToolSettings] = [:]
+
+    /// Returns (creating if needed) the ToolSettings for the given KnownTool.id.
+    /// The device-default (id "stylus") shares the devicePrefix namespace so that
+    /// existing stored values are read without migration.
+    func toolSettings(forID id: String) -> ToolSettings {
+        if let cached = toolCache[id] { return cached }
+        let ts: ToolSettings
+        if id == "stylus" || id == "eraser" {
+            // Device-default tool: reads/writes to the same devicePrefix as TabletSettings.
+            ts = ToolSettings(prefix: devicePrefix)
+        } else {
+            // Per-serial tool: reads from its own namespace, falls back to device defaults.
+            ts = ToolSettings(prefix: "\(devicePrefix)tool-\(id).", fallbackPrefix: devicePrefix)
+        }
+        toolCache[id] = ts
+        return ts
+    }
+
     // MARK: - Active area (fractions of the full digitizer surface, 0.0..1.0)
 
     @Published var activeAreaX:      Double = 0.0 { didSet { persist("activeAreaX", activeAreaX) } }
@@ -137,6 +163,7 @@ final class TabletSettings: ObservableObject {
             loadPresetList()
             loadAppBindings()
         }
+        activeTool = ToolSettings(prefix: devicePrefix)
         reloadAll()
     }
 
@@ -147,6 +174,8 @@ final class TabletSettings: ObservableObject {
     func loadForDevice(_ productID: Int) {
         let hex = String(productID, radix: 16, uppercase: true)
         devicePrefix = "device-0x\(hex)."
+        toolCache.removeAll()
+        activeTool = ToolSettings(prefix: devicePrefix)
         loadPresetList()
         loadAppBindings()
         reloadAll()

@@ -139,13 +139,28 @@ final class TabletManager: ObservableObject {
         contexts[productID] = context
         context.hidDevice = device
 
+        // ── Tool-enter closure (IntuosV2 only — fires on serial change) ─
+        let onToolEnter: (ToolIdentity) -> Void = { [weak context] identity in
+            guard let context else { return }
+            context.activeToolSerial = identity.serial
+            DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
+            let toolID   = DeviceRegistry.toolID(for: identity)
+            let toolSets = context.settings.toolSettings(forID: toolID)
+            context.activeTool             = toolSets
+            context.injector.activeToolSettings = toolSets
+        }
+
         // ── Tablet point closure with proximity-based activation ─────────
         let onTablet: (TabletPoint) -> Void = { [weak self, weak context] point in
             guard let self, let context else { return }
 
-            // Record tool type for the Devices tab.
-            if point.inProximity {
-                DeviceRegistry.shared.recordTool(isEraser: point.eraser, forDevice: productID)
+            // Record tool type for IntuosV1 devices (no onToolEnter callback).
+            // IntuosV2 devices (PTH-660/860) use onToolEnter for serial-keyed recording.
+            if point.inProximity && productID != 0x0357 && productID != 0x0358 {
+                let identity = ToolIdentity(serial: 0,
+                                            toolCode: point.eraser ? 0x080A : 0x0802,
+                                            isEraser: point.eraser)
+                DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
             }
 
             // Proximity-enter activates this device's context.
@@ -190,10 +205,10 @@ final class TabletManager: ObservableObject {
             wacomDevice = PTH851Device(device: device, onTablet: onTablet)
         case 0x0357:
             print("TabletManager: PTH-660 connected")
-            wacomDevice = PTH660Device(device: device, onTablet: onTablet, onAux: onAux)
+            wacomDevice = PTH660Device(device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
         case 0x0358:
             print("TabletManager: PTH-860 connected")
-            wacomDevice = PTH860Device(device: device, onTablet: onTablet, onAux: onAux)
+            wacomDevice = PTH860Device(device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
         case 0x00B5:
             print("TabletManager: PTZ-631W connected")
             wacomDevice = PTZ631WDevice(device: device, onTablet: onTablet, onAux: onAux)

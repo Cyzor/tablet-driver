@@ -11,6 +11,7 @@ final class PTZ631WDevice: TabletDevice {
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((AuxButtons) -> Void)?
     private var reportBuffer = [UInt8](repeating: 0, count: 10)
+    private var prevInProximity = false
 
     init(device: IOHIDDevice,
          onTablet: @escaping (TabletPoint) -> Void,
@@ -83,19 +84,34 @@ final class PTZ631WDevice: TabletDevice {
         }
 
         // Pen reports: direct tablet report (0x10) or dispatch wrapper (0x02).
-        guard id == 0x02 || id == 0x10 else { return }
+        guard id == 0x02 || id == 0x10 else {
+            // Phase 1 serial probe: log any report ID we don't recognise.
+            let hex = (0..<Swift.min(Int(length), 20))
+                .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+            print("PTZ-631W UNKNOWN REPORT id=\(String(format:"0x%02X", id)) len=\(length): \(hex)")
+            return
+        }
 
         // For 0x02 reports, skip tool-change (0xC2) and mouse (0xF0/0xB0) sub-types.
         let status = report[1]
         if id == 0x02 {
             let hi = status & 0xF0
-            if status == 0xC2 || hi == 0xF0 || hi == 0xB0 { return }
+            // Phase 1 serial probe: the 0xC2 sub-type is the IntuosV1 tool-change/proximity
+            // report — it likely carries the pen serial number in bytes 2–5.
+            if status == 0xC2 {
+                let hex = (0..<Swift.min(Int(length), 20))
+                    .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+                print("PTZ-631W TOOL-CHANGE 0xC2: \(hex)")
+                return
+            }
+            if hi == 0xF0 || hi == 0xB0 { return }
         }
 
         // Bit 6 of status = nearProximity. On lift it goes low; emit zero-pressure so
         // InputInjector fires mouseUp and releases any held button.
         let inProximity = (status & 0x40) != 0
         guard inProximity else {
+            prevInProximity = false
             onTablet(TabletPoint(x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
                                  pressure: 0, maxPressure: spec.maxPressure,
                                  tiltX: 0, tiltY: 0,
@@ -103,6 +119,13 @@ final class PTZ631WDevice: TabletDevice {
                                  eraser: false, inProximity: false, hoverDistance: 0))
             return
         }
+
+        // Phase 1 serial probe: log all 10 bytes on proximity-enter transition.
+        if !prevInProximity {
+            let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+            print("PTZ-631W PROXIMITY-ENTER: \(hex)")
+        }
+        prevInProximity = true
 
         // IntuosV1TabletReport field decoding (matches OpenTabletDriver IntuosV1TabletReport).
         let x        = ((Int(report[2]) << 8 | Int(report[3])) << 1) | ((Int(report[9]) >> 1) & 1)

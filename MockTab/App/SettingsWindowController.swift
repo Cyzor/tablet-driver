@@ -61,8 +61,8 @@ final class SettingsWindowController: NSWindowController {
             TabletAreaView(settings: s, tabletManager: tm, registry: dr,
                            onDeviceSelected: onDevice, boundProductID: productID)
         }
-        addTab(label: "Pressure",     symbol: "scribble.variable",       height: 480) { PressureCurveView(settings: s, tabletManager: tm, registry: dr) }
-        addTab(label: "Buttons",      symbol: "hand.point.up.left",      height: 575) { ButtonMappingView(settings: s, tabletManager: tm, registry: dr) }
+        addTab(label: "Pressure",     symbol: "scribble.variable",       height: 480) { PressureCurveView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr) }
+        addTab(label: "Buttons",      symbol: "hand.point.up.left",      height: 575) { ButtonMappingView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr) }
         addTab(label: "Display",      symbol: "display",                 height: 370) { DisplayMappingView(settings: s, tabletManager: tm, registry: dr) }
         addTab(label: "Devices",      symbol: "rectangle.on.rectangle",  height: 480) { DevicesView(tabletManager: tm, registry: dr) }
         addTab(label: "Presets",      symbol: "star.circle",             height: 450) { PresetsView(settings: s) }

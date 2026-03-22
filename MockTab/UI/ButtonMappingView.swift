@@ -3,6 +3,7 @@ import AppKit
 
 struct ButtonMappingView: View {
     @ObservedObject var settings:      TabletSettings
+    @ObservedObject var tool:          ToolSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
 
@@ -21,15 +22,15 @@ struct ButtonMappingView: View {
                         GridRow {
                             Text("Side button 1").frame(width: 110, alignment: .leading)
                             ButtonBindingControl(binding: Binding(
-                                get: { settings.penButton1Binding },
-                                set: { settings.penButton1Binding = $0 }
+                                get: { tool.penButton1Binding },
+                                set: { tool.penButton1Binding = $0 }
                             ))
                         }
                         GridRow {
                             Text("Side button 2").frame(width: 110, alignment: .leading)
                             ButtonBindingControl(binding: Binding(
-                                get: { settings.penButton2Binding },
-                                set: { settings.penButton2Binding = $0 }
+                                get: { tool.penButton2Binding },
+                                set: { tool.penButton2Binding = $0 }
                             ))
                         }
                     }

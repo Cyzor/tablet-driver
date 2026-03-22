@@ -26,6 +26,17 @@ struct TabletPoint {
     var hoverDistance: Int
 }
 
+/// Identity of a physical pen as reported by the tablet firmware.
+/// Fires once per `onToolEnter` callback whenever the active tool changes.
+struct ToolIdentity {
+    /// Unique 32-bit serial per physical pen body.  0 means not available (IntuosV1).
+    let serial:   UInt32
+    /// Wacom product code — e.g. 0x0802 Grip Pen, 0x0832 Pro Pen 2, 0x0842 Pro Pen 3.
+    let toolCode: UInt16
+    /// True for the eraser end.  Derived from toolCode: bit 3 of the low byte is set.
+    let isEraser: Bool
+}
+
 struct AuxButtons {
     var buttons: [Bool]  // up to 8 express key buttons
 

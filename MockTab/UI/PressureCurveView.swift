@@ -4,6 +4,7 @@ import SwiftUI
 /// Draws the curve on a Canvas with two draggable control point handles.
 struct PressureCurveView: View {
     @ObservedObject var settings:      TabletSettings
+    @ObservedObject var tool:          ToolSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
 
@@ -31,9 +32,9 @@ struct PressureCurveView: View {
                 .cornerRadius(6)
 
             HStack {
-                Button("Linear")  { settings.pressureCurve = .linear }
-                Button("Soft")    { settings.pressureCurve = .soft }
-                Button("Firm")    { settings.pressureCurve = .firm }
+                Button("Linear")  { tool.pressureCurve = .linear }
+                Button("Soft")    { tool.pressureCurve = .soft }
+                Button("Firm")    { tool.pressureCurve = .firm }
             }
             .buttonStyle(.borderless)
             .controlSize(.small)
@@ -50,7 +51,7 @@ struct PressureCurveView: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
-                Slider(value: $settings.smoothingStrength, in: 0...1)
+                Slider(value: $tool.smoothingStrength, in: 0...1)
                 Text("Reduces cursor jitter. Higher values add lag.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -80,7 +81,7 @@ struct PressureCurveView: View {
     // MARK: - Smoothing label
 
     private var smoothingLabel: String {
-        switch settings.smoothingStrength {
+        switch tool.smoothingStrength {
         case 0..<0.15:  return "Off"
         case 0.15..<0.4: return "Low"
         case 0.4..<0.65: return "Medium"
@@ -123,7 +124,7 @@ struct PressureCurveView: View {
 
     private func drawCurve(ctx: GraphicsContext, size: CGSize) {
         var path = Path()
-        let curve = settings.pressureCurve
+        let curve = tool.pressureCurve
         // Draw 64-point polyline approximation of the bezier.
         path.move(to: toCanvas(x: 0, y: 0, size: size))
         for i in 1...64 {
@@ -134,7 +135,7 @@ struct PressureCurveView: View {
     }
 
     private func drawHandles(ctx: GraphicsContext, size: CGSize) {
-        let curve = settings.pressureCurve
+        let curve = tool.pressureCurve
         let p0 = toCanvas(x: 0, y: 0, size: size)
         let p1 = toCanvas(x: curve.p1.x, y: curve.p1.y, size: size)
         let p2 = toCanvas(x: curve.p2.x, y: curve.p2.y, size: size)
@@ -160,10 +161,10 @@ struct PressureCurveView: View {
     private func handle(drag: DragGesture.Value, size: CGSize) {
         let pt = fromCanvas(drag.location, size: size)
 
-        let p1Canvas = toCanvas(x: settings.pressureCurve.p1.x,
-                                y: settings.pressureCurve.p1.y, size: size)
-        let p2Canvas = toCanvas(x: settings.pressureCurve.p2.x,
-                                y: settings.pressureCurve.p2.y, size: size)
+        let p1Canvas = toCanvas(x: tool.pressureCurve.p1.x,
+                                y: tool.pressureCurve.p1.y, size: size)
+        let p2Canvas = toCanvas(x: tool.pressureCurve.p2.x,
+                                y: tool.pressureCurve.p2.y, size: size)
 
         let hitRadius: Double = 16
         if !draggingP1 && !draggingP2 {
@@ -175,9 +176,9 @@ struct PressureCurveView: View {
 
         let clamp01: (Double) -> Double = { Swift.min(Swift.max($0, 0), 1) }
         if draggingP1 {
-            settings.pressureCurve.p1 = CGPoint(x: clamp01(pt.x), y: clamp01(pt.y))
+            tool.pressureCurve.p1 = CGPoint(x: clamp01(pt.x), y: clamp01(pt.y))
         } else if draggingP2 {
-            settings.pressureCurve.p2 = CGPoint(x: clamp01(pt.x), y: clamp01(pt.y))
+            tool.pressureCurve.p2 = CGPoint(x: clamp01(pt.x), y: clamp01(pt.y))
         }
     }
 

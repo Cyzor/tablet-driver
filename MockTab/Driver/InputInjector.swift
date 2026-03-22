@@ -24,6 +24,10 @@ final class InputInjector {
     /// so drawing apps (Photoshop, Krita, etc.) route pressure correctly.
     var deviceProductID: Int
 
+    /// The tool settings for the pen currently in proximity.
+    /// Set by TabletManager on tool-enter; nil reverts to reading from TabletSettings.
+    var activeToolSettings: ToolSettings? = nil
+
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID  = vendorID
         self.deviceProductID = productID
@@ -77,8 +81,9 @@ final class InputInjector {
 
     func inject(point: TabletPoint, settings: TabletSettings?) {
         let settings = settings ?? TabletSettings()
+        let tool = activeToolSettings ?? settings.activeTool
         let rawPoint = mapToScreen(point, settings: settings)
-        let pressure = settings.pressureCurve.evaluate(point.normalizedPressure)
+        let pressure = tool.pressureCurve.evaluate(point.normalizedPressure)
         let tipDown  = pressure > 0.004
 
         let enteringProximity = point.inProximity && !lastProximity
@@ -106,7 +111,7 @@ final class InputInjector {
             smoothedPoint = rawPoint
             hasSmoothedPoint = true
         } else {
-            let s = settings.smoothingStrength
+            let s = tool.smoothingStrength
             if s > 0 {
                 let α = 1.0 - s * 0.85
                 smoothedPoint = CGPoint(
@@ -159,8 +164,8 @@ final class InputInjector {
         lastTipDown = tipDown
 
         // ── Pen button transitions ─────────────────────────────────────────────
-        let btn1 = settings.penButton1Binding
-        let btn2 = settings.penButton2Binding
+        let btn1 = tool.penButton1Binding
+        let btn2 = tool.penButton2Binding
 
         if point.penButton1 && !lastButton1Down {
             fireButtonAction(btn1, down: true, at: screenPoint)

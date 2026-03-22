@@ -37,6 +37,7 @@
 		AA000040 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* DevicesView.swift */; };
 		AA000041 /* TabStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000041 /* TabStatusBar.swift */; };
 		AA000043 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* SettingsWindowController.swift */; };
+		AA000044 /* ToolSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* ToolSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -72,6 +73,7 @@
 		AB000040 /* DevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesView.swift; sourceTree = "<group>"; };
 		AB000041 /* TabStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabStatusBar.swift; sourceTree = "<group>"; };
 		AB000043 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		AB000044 /* ToolSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolSettings.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -136,6 +138,7 @@
 			isa = PBXGroup;
 			children = (
 				AB000009 /* TabletSettings.swift */,
+				AB000044 /* ToolSettings.swift */,
 				AB000010 /* BezierCurve.swift */,
 			);
 			path = Settings;
@@ -261,6 +264,7 @@
 				AA000035 /* AppWatcher.swift in Sources */,
 				AA000008 /* InputInjector.swift in Sources */,
 				AA000009 /* TabletSettings.swift in Sources */,
+				AA000044 /* ToolSettings.swift in Sources */,
 				AA000010 /* BezierCurve.swift in Sources */,
 				AA000012 /* TabletAreaView.swift in Sources */,
 				AA000013 /* PressureCurveView.swift in Sources */,

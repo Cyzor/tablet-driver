@@ -23,10 +23,20 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// The raw IOHIDDevice handle — weak because IOKit owns the lifetime.
     weak var hidDevice: IOHIDDevice?
 
+    /// Serial number of the pen currently in proximity on this device.
+    /// 0 = unknown (IntuosV1) or no pen in proximity.
+    @Published var activeToolSerial: UInt32 = 0
+
+    /// The ToolSettings for the pen currently in proximity.
+    /// Points to the device-default ToolSettings until the first tool-enter fires.
+    @Published var activeTool: ToolSettings
+
     init(productID: Int) {
         self.id        = productID
         self.productID = productID
-        self.settings  = TabletSettings(productID: productID)
+        let s = TabletSettings(productID: productID)
+        self.settings  = s
         self.injector  = InputInjector(vendorID: 0x056A, productID: productID)
+        self.activeTool = s.activeTool
     }
 }

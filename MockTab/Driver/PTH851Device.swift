@@ -14,6 +14,7 @@ final class PTH851Device: TabletDevice {
     private var reportBuffer = [UInt8](repeating: 0, count: 10)
     private var lastX = 0
     private var lastY = 0
+    private var prevInProximity = false
 
     init(device: IOHIDDevice,
          onTablet: @escaping (TabletPoint) -> Void,
@@ -59,7 +60,13 @@ final class PTH851Device: TabletDevice {
         guard length >= 10 else { return }
 
         let id = report[0]
-        guard id == 0x02 || id == 0x10 else { return }
+        guard id == 0x02 || id == 0x10 else {
+            // Phase 1 serial probe: log any report ID we don't recognise.
+            let hex = (0..<Swift.min(Int(length), 20))
+                .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+            print("PTH-851 UNKNOWN REPORT id=\(String(format:"0x%02X", id)) len=\(length): \(hex)")
+            return
+        }
 
         let status = report[1]
         let inProximity = (status & 0x20) != 0  // bit 5
@@ -67,6 +74,7 @@ final class PTH851Device: TabletDevice {
 
         // Proximity-out packet — report lift but no coordinates.
         if !inProximity {
+            prevInProximity = false
             let pt = TabletPoint(x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
                                  pressure: 0, maxPressure: spec.maxPressure,
                                  tiltX: 0, tiltY: 0,
@@ -86,6 +94,14 @@ final class PTH851Device: TabletDevice {
             onTablet(pt)
             return
         }
+
+        // Phase 1 serial probe: log all 10 bytes on proximity-enter transition.
+        // IntuosV1 may carry tool type/serial in the first in-proximity report.
+        if !prevInProximity {
+            let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+            print("PTH-851 PROXIMITY-ENTER: \(hex)")
+        }
+        prevInProximity = true
 
         // IntuosV1TabletReport field decoding (see OpenTabletDriver IntuosV1TabletReport.cs)
         let x = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
