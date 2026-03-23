@@ -116,6 +116,16 @@ final class DTK2400Device: TabletDevice {
     // clear counter to 0.  On a frame with the bit clear, increment the counter; only
     // release after `buttonClearThreshold` consecutive clear frames (~45 ms at 66 Hz).
     // This survives up to (threshold−1) consecutive clear frames without false release.
+    // Tip-switch state from report ID 0x01 (mouse-compatible HID collection).
+    // The Cintiq 24HD descriptor includes a mouse-compatible collection that fires
+    // its left-button bit (byte 1, bit 0) as a physical tip-contact signal.
+    // This is the ground-truth contact flag that the official Wacom driver uses:
+    // it fires on physical pen-screen contact regardless of whether the pressure
+    // sensor in report 0x02 activates.  The OS is prevented from processing it
+    // via kIOHIDOptionsTypeSeizeDevice; we read it ourselves and use it to set a
+    // synthetic minimum pressure when the EA pressure frames carry rawPressure=0.
+    private var lastTipSwitch: Bool = false
+
     private var lastButton1: Bool = false
     private var lastButton2: Bool = false
     private var btn1ClearCount = 0
@@ -193,10 +203,42 @@ final class DTK2400Device: TabletDevice {
     }
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
+        guard length >= 2 else { return }
+
+        let id = report[0]
+
+        // ── Report 0x01: mouse-compatible collection — physical tip-switch ─────────
+        // The Cintiq 24HD exposes a standard mouse HID collection alongside the
+        // digitizer.  kIOHIDOptionsTypeSeizeDevice prevents the OS from turning this
+        // into CGEvents; we read it here instead to get ground-truth contact state.
+        // Byte 1, bit 0 = left button = tip-switch = pen physically touching screen.
+        // This fires on real contact regardless of whether the pressure sensor in the
+        // 0x02 EA frames activates — which fixes Grip Pen bare-tap clicks.
+        if id == 0x01 {
+            let tipDown = (report[1] & 0x01) != 0
+            if tipDown != lastTipSwitch {
+                lastTipSwitch = tipDown
+                print(String(format: "DTK-2400 [\(penLabel)] TIP-SWITCH %@ bytes=[%@]",
+                             tipDown ? "DOWN" : "UP  ",
+                             (0..<Swift.min(Int(length), 6)).map { String(format: "%02X", report[$0]) }.joined(separator: " ")))
+                if tipDown {
+                    // Physical contact confirmed: set minimum pressure if not already set.
+                    if lastEAPressure == 0 {
+                        lastEAPressure = Self.tipContactThreshold
+                        framesSinceLastContactEA = 0
+                    }
+                } else {
+                    // Physical release: clear pressure immediately regardless of EA state.
+                    lastEAPressure = 0
+                    framesSinceLastContactEA = 0
+                }
+            }
+            return
+        }
+
         guard length >= 10 else { return }
 
         // Report IDs seen on this device: 0x02 (pen), 0x0C (touch/ring — ignored here).
-        let id = report[0]
         guard id == 0x02 || id == 0x10 else {
             // Phase 1 serial probe: log any report ID we don't recognise.
             let hex = (0..<Swift.min(Int(length), 20))
@@ -211,6 +253,7 @@ final class DTK2400Device: TabletDevice {
 
         if !inProximity {
             lastEAPressure = 0
+            lastTipSwitch = false
             framesSinceLastContactEA = 0
             lastButton1 = false
             lastButton2 = false
