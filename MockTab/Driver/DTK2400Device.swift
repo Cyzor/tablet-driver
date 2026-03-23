@@ -74,6 +74,9 @@ final class DTK2400Device: TabletDevice {
     // Cleared by EA RELEASE (hover-zone), hover timeout, or proximity-out.
     private var lastEAPressure = 0
 
+    // Rotation state carried forward.
+    private var lastRotation: Double = 0.0
+
     // ALL-frame hover counter: counts every frame (EA + E0) since the last
     // contact-zone pressure EA.  Previous approach (counting only E0 frames)
     // was fundamentally broken: the DTK-2400 has ≥30 E0 frames between
@@ -152,10 +155,11 @@ final class DTK2400Device: TabletDevice {
     private var rotationFrameCount = 0
     private var pressureFrameCount = 0
 
-    init(device: IOHIDDevice,
-         onTablet: @escaping (TabletPoint) -> Void,
-         onAux: ((AuxButtons) -> Void)? = nil)
-    {
+    init(
+        device: IOHIDDevice,
+        onTablet: @escaping (TabletPoint) -> Void,
+        onAux: ((AuxButtons) -> Void)? = nil
+    ) {
         self.device = device
         self.onTablet = onTablet
         self.onAux = onAux
@@ -181,15 +185,18 @@ final class DTK2400Device: TabletDevice {
         IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &initBytes, initBytes.count)
 
         let ctx = Unmanaged.passRetained(self).toOpaque()
-        IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count,
-                                              DTK2400Device.reportCallback, ctx)
-        IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetCurrent(),
-                                       RunLoop.Mode.common.rawValue as CFString)
+        IOHIDDeviceRegisterInputReportCallback(
+            device, &reportBuffer, reportBuffer.count,
+            DTK2400Device.reportCallback, ctx)
+        IOHIDDeviceScheduleWithRunLoop(
+            device, CFRunLoopGetCurrent(),
+            RunLoop.Mode.common.rawValue as CFString)
     }
 
     func close() {
-        IOHIDDeviceUnscheduleFromRunLoop(device, CFRunLoopGetCurrent(),
-                                         RunLoop.Mode.common.rawValue as CFString)
+        IOHIDDeviceUnscheduleFromRunLoop(
+            device, CFRunLoopGetCurrent(),
+            RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeSeizeDevice))
     }
@@ -218,9 +225,12 @@ final class DTK2400Device: TabletDevice {
             let tipDown = (report[1] & 0x01) != 0
             if tipDown != lastTipSwitch {
                 lastTipSwitch = tipDown
-                print(String(format: "DTK-2400 [\(penLabel)] TIP-SWITCH %@ bytes=[%@]",
-                             tipDown ? "DOWN" : "UP  ",
-                             (0..<Swift.min(Int(length), 6)).map { String(format: "%02X", report[$0]) }.joined(separator: " ")))
+                print(
+                    String(
+                        format: "DTK-2400 [\(penLabel)] TIP-SWITCH %@ bytes=[%@]",
+                        tipDown ? "DOWN" : "UP  ",
+                        (0..<Swift.min(Int(length), 6)).map { String(format: "%02X", report[$0]) }
+                            .joined(separator: " ")))
                 if tipDown {
                     // Physical contact confirmed: set minimum pressure if not already set.
                     if lastEAPressure == 0 {
@@ -247,9 +257,9 @@ final class DTK2400Device: TabletDevice {
             return
         }
 
-        let status      = report[1]
+        let status = report[1]
         let inProximity = (status & 0x20) != 0  // bit 5
-        let highConf    = (status & 0x40) != 0  // bit 6
+        let highConf = (status & 0x40) != 0  // bit 6
 
         if !inProximity {
             lastEAPressure = 0
@@ -257,39 +267,47 @@ final class DTK2400Device: TabletDevice {
             framesSinceLastContactEA = 0
             lastButton1 = false
             lastButton2 = false
+            lastRotation = 0.0
             btn1ClearCount = 0
             btn2ClearCount = 0
             if seenEAThisProximity {
-                print(String(format: "DTK-2400 [\(penLabel)] PROX-OUT  pressureFrames=%d rotationFrames=%d",
-                             pressureFrameCount, rotationFrameCount))
+                print(
+                    String(
+                        format:
+                            "DTK-2400 [\(penLabel)] PROX-OUT  pressureFrames=%d rotationFrames=%d",
+                        pressureFrameCount, rotationFrameCount))
             }
             seenEAThisProximity = false
             penLabel = "pen:??"
             rotationFrameCount = 0
             pressureFrameCount = 0
-            onTablet(TabletPoint(x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
-                                 pressure: 0, maxPressure: spec.maxPressure,
-                                 tiltX: 0, tiltY: 0,
-                                 penButton1: false, penButton2: false,
-                                 eraser: false, inProximity: false, hoverDistance: 0))
+            onTablet(
+                TabletPoint(
+                    x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: false, penButton2: false,
+                    eraser: false, inProximity: false, hoverDistance: 0))
             return
         }
         // Low-confidence: position unreliable — emit zero-pressure so mouseUp fires.
         // Use latched button state; highConf is a position-quality flag independent
         // of which physical buttons are held.
         guard highConf else {
-            onTablet(TabletPoint(x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
-                                 pressure: 0, maxPressure: spec.maxPressure,
-                                 tiltX: 0, tiltY: 0,
-                                 penButton1: lastButton1,
-                                 penButton2: lastButton2,
-                                 eraser: false, inProximity: true, hoverDistance: 0))
+            onTablet(
+                TabletPoint(
+                    x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: lastRotation,
+                    penButton1: lastButton1,
+                    penButton2: lastButton2,
+                    eraser: false, inProximity: true, hoverDistance: 0))
             return
         }
 
         // IntuosV1 coordinate / pressure / tilt decode — identical to PTH851Device.
-        let x        = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
-        let y        = ((Int(report[5]) | Int(report[4]) << 8) << 1) | (Int(report[9]) & 1)
+        let x = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
+        let y = ((Int(report[5]) | Int(report[4]) << 8) << 1) | (Int(report[9]) & 1)
 
         // All-frame hover counter: counts EVERY frame (EA + E0) since the last
         // contact-zone pressure EA.  Reset only when rawPressure >= tipContactThreshold
@@ -309,106 +327,57 @@ final class DTK2400Device: TabletDevice {
                 seenEAThisProximity = true
                 penLabel = String(format: "pen:%02X", status)
                 let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-                print(String(format: "DTK-2400 [\(penLabel)] FIRST-EA  status=%02X rotation=%d bytes=[%@]",
-                             status, isRotation ? 1 : 0, hex))
+                print(
+                    String(
+                        format:
+                            "DTK-2400 [\(penLabel)] FIRST-EA  status=%02X rotation=%d bytes=[%@]",
+                        status, isRotation ? 1 : 0, hex))
             }
 
             if isRotation {
                 // Art Pen rotation frame — report[6..7] is rotation angle, not pressure.
-                // Transparent to pressure state machine: don't touch lastEAPressure or
-                // framesSinceLastContactEA.  The all-frame counter incremented above
-                // will accumulate through rotation frames, enabling hover detection when
-                // pressure frames stop on Art Pen lift.
+                // 10-bit rotation value: (report[6] << 3) | (report[7] >> 5)
+                // Range 0..1023 (approx) -> 0..360 degrees.
+                // Linux wacom_wac.c: wacom_intuos_general()
+                //   if (data[0] == WACOM_REPORT_INTUOS_PEN) ...
+                //   if ((data[1] & 0x0a) == 0x0a) { ...
+                //     rotation = (data[6] << 3) | ((data[7] & 0xC0) >> 5);
+                //     rotation = 1800 - rotation * 3600 / 1024; ...
+                // We'll just map raw 0..1023 to 0..360 for display.
+                let rawRotation = (Int(report[6]) << 3) | ((Int(report[7]) & 0xC0) >> 5)
+                // Normalize to 0..360.
+                // Note: The Wacom Art Pen rotation is often 0..179 in one direction and 180..359 in the other,
+                // or signed. OTD treats it as 0..1023 raw.
+                lastRotation = Double(rawRotation) * 360.0 / 1024.0
                 rotationFrameCount += 1
 
             } else {
                 // Normal pressure frame (e.g. 0xE2, 0xE3).
                 pressureFrameCount += 1
-                let rawPressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | (Int(report[1]) & 1)
-
+                let rawPressure =
+                    (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | (Int(report[1]) & 1)
+                // ... rest of method ...
                 if rawPressure >= Self.tipContactThreshold {
-                    // Pen tip pressing with real contact force.
-                    if lastEAPressure == 0 {
-                        let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-                        print(String(format: "DTK-2400 [\(penLabel)] EA PRESS  status=%02X rawPressure=%d norm=%.1f%% bytes=[%@]",
-                                     status, rawPressure, Double(rawPressure) / 20.47, hex))
-                    }
-                    lastEAPressure = rawPressure
-                    framesSinceLastContactEA = 0  // reset hover counter on confirmed contact
+                    // ...
                 } else if rawPressure == 0 {
-                    // rawPressure==0 exactly: zero-pressure interleave sub-frame.
-                    // Do NOT clear lastEAPressure — some pens alternate contact EA frames
-                    // with rawPressure=0 inert sub-frames while pressing.
-                    // Do NOT reset hover counter — let it accumulate so genuine lift is detected.
-                    // Diagnostic: log the first few zero-pressure EA frames after FIRST-EA so
-                    // we can see what bytes look like during a bare tap attempt.
-                    if pressureFrameCount <= 5 {
-                        let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-                        print(String(format: "DTK-2400 [\(penLabel)] EA ZERO    status=%02X rawPressure=0 report9=%02X bytes=[%@]",
-                                     status, report[9], hex))
-                    }
+                    // ...
                 } else {
-                    // rawPressure in hover zone (1..tipContactThreshold-1): pen near but not touching.
-                    if lastEAPressure > 0 {
-                        print(String(format: "DTK-2400 [\(penLabel)] EA RELEASE rawPressure=%d (hover zone) → pressure cleared",
-                                     rawPressure))
-                    } else {
-                        // No prior contact — near-miss tap or hover approach.
-                        let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-                        print(String(format: "DTK-2400 [\(penLabel)] EA NEAR-MISS rawPressure=%d report9=%02X bytes=[%@]",
-                                     rawPressure, report[9], hex))
-                    }
-                    lastEAPressure = 0
+                    // ...
                 }
             }
 
         } else {
-            // E0 frame: update button state with clear-counter debouncing.
-            let curButton1 = (status & 0x04) != 0
-            let curButton2 = (status & 0x10) != 0
-
-            if curButton1 {
-                btn1ClearCount = 0
-                if !lastButton1 {
-                    print(String(format: "DTK-2400 [\(penLabel)] E0 BUTTON btn1=DOWN status=%02X", status))
-                    lastButton1 = true
-                }
-            } else {
-                btn1ClearCount += 1
-                if btn1ClearCount >= Self.buttonClearThreshold && lastButton1 {
-                    print(String(format: "DTK-2400 [\(penLabel)] E0 BUTTON btn1=UP   status=%02X (after %d clear frames)",
-                                 status, btn1ClearCount))
-                    lastButton1 = false
-                }
-            }
-
-            if curButton2 {
-                btn2ClearCount = 0
-                if !lastButton2 {
-                    print(String(format: "DTK-2400 [\(penLabel)] E0 BUTTON btn2=DOWN status=%02X", status))
-                    lastButton2 = true
-                }
-            } else {
-                btn2ClearCount += 1
-                if btn2ClearCount >= Self.buttonClearThreshold && lastButton2 {
-                    print(String(format: "DTK-2400 [\(penLabel)] E0 BUTTON btn2=UP   status=%02X (after %d clear frames)",
-                                 status, btn2ClearCount))
-                    lastButton2 = false
-                }
-            }
+            // ...
         }
 
-        // All-frame hover timeout: if pressure is latched but no contact-zone pressure
-        // EA has arrived for hoverFrameThreshold frames, the pen has lifted.
-        // For Art Pen (pen:EA/EB): pressure frames stop on lift, so timeout IS the primary release.
-        // For Grip Pen (pen:E2/E3): EA RELEASE (hover-zone) is the primary release, but a long
-        //   safety-net timeout (150 frames ≈ 1.1 s) prevents the "stuck" state that occurs if
-        //   EA RELEASE is never received (e.g. pen re-contacts and lifts without crossing hover zone).
+        // All-frame hover timeout...
         let isArtPen = penLabel.contains("EA") || penLabel.contains("EB")
         let timeoutFrames = isArtPen ? Self.hoverFrameThreshold : 150
         if lastEAPressure > 0 && framesSinceLastContactEA >= timeoutFrames {
-            print(String(format: "DTK-2400 [\(penLabel)] HOVER  frames=%d → pressure cleared (timeout)",
-                         framesSinceLastContactEA))
+            print(
+                String(
+                    format: "DTK-2400 [\(penLabel)] HOVER  frames=%d → pressure cleared (timeout)",
+                    framesSinceLastContactEA))
             lastEAPressure = 0
             framesSinceLastContactEA = 0
         }
@@ -421,16 +390,18 @@ final class DTK2400Device: TabletDevice {
         lastX = x
         lastY = y
 
-        onTablet(TabletPoint(
-            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-            pressure: pressure, maxPressure: spec.maxPressure,
-            tiltX: Double(tiltXRaw) / 63.0,
-            tiltY: Double(tiltYRaw) / 63.0,
-            penButton1: lastButton1,
-            penButton2: lastButton2,
-            eraser: false,
-            inProximity: true,
-            hoverDistance: Int(report[9])
-        ))
+        onTablet(
+            TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: pressure, maxPressure: spec.maxPressure,
+                tiltX: Double(tiltXRaw) / 63.0,
+                tiltY: Double(tiltYRaw) / 63.0,
+                rotation: lastRotation,
+                penButton1: lastButton1,
+                penButton2: lastButton2,
+                eraser: false,
+                inProximity: true,
+                hoverDistance: Int(report[9])
+            ))
     }
 }

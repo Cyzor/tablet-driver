@@ -19,6 +19,8 @@ struct TabletPoint {
     var tiltX: Double
     /// Tilt Y, -1.0..1.0
     var tiltY: Double
+    /// Pen rotation (twist), 0.0..360.0 degrees (approximate)
+    var rotation: Double = 0.0
     var penButton1: Bool
     var penButton2: Bool
     var eraser: Bool
@@ -30,7 +32,7 @@ struct TabletPoint {
 /// Fires once per `onToolEnter` callback whenever the active tool changes.
 struct ToolIdentity {
     /// Unique 32-bit serial per physical pen body.  0 means not available (IntuosV1).
-    let serial:   UInt32
+    let serial: UInt32
     /// Wacom product code — e.g. 0x0802 Grip Pen, 0x0832 Pro Pen 2, 0x0842 Pro Pen 3.
     let toolCode: UInt16
     /// True for the eraser end.  Derived from toolCode: bit 3 of the low byte is set.
@@ -51,9 +53,9 @@ struct AuxButtons {
 /// in real time, like a keyboard viewer for the tablet.
 struct LiveButtonState {
     /// Pen tip pressed (non-eraser end).
-    var tipDown:     Bool = false
+    var tipDown: Bool = false
     /// Eraser tip pressed.
-    var eraserDown:  Bool = false
+    var eraserDown: Bool = false
     /// Side button 1 held.
     var button1Down: Bool = false
     /// Side button 2 held.

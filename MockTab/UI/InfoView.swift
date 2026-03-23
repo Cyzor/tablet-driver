@@ -1,6 +1,6 @@
-import SwiftUI
 import AppKit
 import ServiceManagement
+import SwiftUI
 
 /// Status dashboard tab — shows live device state, system permissions,
 /// and a collapsible diagnostic dump for technical analysis.
@@ -9,7 +9,7 @@ struct InfoView: View {
     @ObservedObject var settings: TabletSettings
 
     @State private var accessibilityGranted = AXIsProcessTrusted()
-    @State private var launchAtLogin       = false
+    @State private var launchAtLogin = false
     @State private var diagnosticsExpanded = false
     @State private var conflicts: [String] = []
 
@@ -18,6 +18,8 @@ struct InfoView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     statusTable
+                    Divider()
+                    liveInputSection
                     Divider()
                     diagnosticSection
                 }
@@ -28,8 +30,10 @@ struct InfoView: View {
             // Refresh immediately on appear and whenever the user switches back to
             // MockTab (e.g. after granting accessibility in System Settings).
             .onAppear { refresh() }
-            .onReceive(NotificationCenter.default.publisher(
-                for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: NSApplication.didBecomeActiveNotification)
+            ) { _ in refresh() }
             PresetStatusBar(settings: settings)
         }
     }
@@ -38,44 +42,55 @@ struct InfoView: View {
 
     private var statusTable: some View {
         Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
-            row("Device",
+            row(
+                "Device",
                 value: tabletManager.isConnected
                     ? tabletManager.connectedDeviceName
                     : "Not connected",
                 ok: tabletManager.isConnected)
 
-            row("Connection",
+            row(
+                "Connection",
                 value: tabletManager.isConnected ? tabletManager.connectedTransport : "—",
                 ok: tabletManager.isConnected ? true : nil)
 
-            row("Speed",
+            row(
+                "Speed",
                 value: tabletManager.isConnected ? tabletManager.connectedUSBSpeed : "—",
                 ok: tabletManager.isConnected ? true : nil)
 
-            row("Status",
+            row(
+                "Status",
                 value: tabletManager.isConnected ? "Active" : "Idle",
                 ok: tabletManager.isConnected ? true : nil)
 
-            row("Permission",
+            row(
+                "Permission",
                 value: accessibilityGranted ? "Granted" : "Not granted",
                 ok: accessibilityGranted,
                 fix: accessibilityGranted ? nil : requestAccessibility)
 
-            row("HID Manager",
+            row(
+                "HID Manager",
                 value: tabletManager.hidManagerOpen ? "Running" : "Failed to open",
                 ok: tabletManager.hidManagerOpen ? true : false)
 
-            row("Preset",
+            row(
+                "Preset",
                 value: presetLabel,
                 ok: nil)
 
-            row("Launch at Login",
+            row(
+                "Launch at Login",
                 value: launchAtLogin ? "Enabled" : "Disabled",
                 ok: launchAtLogin ? true : nil,
                 fix: launchAtLogin ? nil : enableLaunchAtLogin)
 
-            row("Conflicts",
-                value: conflicts.isEmpty ? "None detected" : "\(conflicts.count) issue\(conflicts.count == 1 ? "" : "s")",
+            row(
+                "Conflicts",
+                value: conflicts.isEmpty
+                    ? "None detected"
+                    : "\(conflicts.count) issue\(conflicts.count == 1 ? "" : "s")",
                 ok: conflicts.isEmpty ? true : false,
                 fix: conflicts.isEmpty ? nil : showConflictAlert)
         }
@@ -86,8 +101,10 @@ struct InfoView: View {
     /// - `ok: false` → black ✗    problem; shows Fix button when `fix` is supplied
     /// - `ok: nil`   → gray  –    informational, no pass/fail judgement
     @ViewBuilder
-    private func row(_ label: String, value: String,
-                     ok: Bool?, fix: (() -> Void)? = nil) -> some View {
+    private func row(
+        _ label: String, value: String,
+        ok: Bool?, fix: (() -> Void)? = nil
+    ) -> some View {
         GridRow {
             // Right-aligned label column.
             Text(label)
@@ -119,6 +136,143 @@ struct InfoView: View {
             Image(systemName: "xmark.circle.fill").foregroundStyle(.primary)
         } else {
             Image(systemName: "minus.circle.fill").foregroundStyle(.tertiary)
+        }
+    }
+
+    // MARK: - Live Input section
+
+    private var liveInputSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Live Input")
+                .font(.headline)
+
+            Group {
+                if let point = tabletManager.livePoint {
+                    Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
+
+                        // ── Stylus Info ──────────────────────────────────────────
+                        if let toolID = tabletManager.activeToolID,
+                            let tool = DeviceRegistry.shared.knownTools.first(where: {
+                                $0.id == toolID
+                            })
+                        {
+                            GridRow {
+                                Text("Stylus Name")
+                                    .foregroundStyle(.secondary)
+                                    .gridColumnAlignment(.leading)
+                                Text(tool.nickname)
+                            }
+                            GridRow {
+                                Text("Stylus Type")
+                                    .foregroundStyle(.secondary)
+                                Text(tool.kind)
+                            }
+                            GridRow {
+                                Text("Serial / ID")
+                                    .foregroundStyle(.secondary)
+                                Text(tool.displayID)
+                                    .monospacedDigit()
+                            }
+                            Divider()
+                                .gridCellColumns(2)
+                                .padding(.vertical, 4)
+                        }
+
+                        // ── Live Data ────────────────────────────────────────────
+                        GridRow {
+                            Text("Coordinate")
+                                .foregroundStyle(.secondary)
+                            Text("X: \(point.x)   Y: \(point.y)")
+                                .monospacedDigit()
+                        }
+                        GridRow {
+                            Text("Pressure")
+                                .foregroundStyle(.secondary)
+                            HStack {
+                                Text("\(point.pressure)")
+                                    .monospacedDigit()
+                                    .frame(width: 40, alignment: .leading)
+
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        Capsule().fill(Color.secondary.opacity(0.2))
+                                        Capsule().fill(Color.accentColor)
+                                            .frame(
+                                                width: geo.size.width
+                                                    * CGFloat(point.normalizedPressure))
+                                    }
+                                }
+                                .frame(width: 60, height: 6)
+                            }
+                        }
+                        GridRow {
+                            Text("Tilt")
+                                .foregroundStyle(.secondary)
+                            Text(
+                                "X: \(String(format: "%+.2f", point.tiltX))   Y: \(String(format: "%+.2f", point.tiltY))"
+                            )
+                            .monospacedDigit()
+                        }
+                        GridRow {
+                            Text("Rotation")
+                                .foregroundStyle(.secondary)
+                            Text("\(String(format: "%.1f°", point.rotation))")
+                                .monospacedDigit()
+                        }
+                        GridRow {
+                            Text("Buttons")
+                                .foregroundStyle(.secondary)
+                            HStack(spacing: 4) {
+                                let lb = tabletManager.liveButtons
+                                if lb.tipDown {
+                                    Text("Tip").font(.caption2).padding(.horizontal, 4).background(
+                                        Color.accentColor.opacity(0.2)
+                                    ).cornerRadius(3)
+                                }
+                                if lb.eraserDown {
+                                    Text("Eraser").font(.caption2).padding(.horizontal, 4)
+                                        .background(Color.accentColor.opacity(0.2)).cornerRadius(3)
+                                }
+                                if lb.button1Down {
+                                    Text("B1").font(.caption2).padding(.horizontal, 4).background(
+                                        Color.accentColor.opacity(0.2)
+                                    ).cornerRadius(3)
+                                }
+                                if lb.button2Down {
+                                    Text("B2").font(.caption2).padding(.horizontal, 4).background(
+                                        Color.accentColor.opacity(0.2)
+                                    ).cornerRadius(3)
+                                }
+                                if !lb.tipDown && !lb.eraserDown && !lb.button1Down
+                                    && !lb.button2Down
+                                {
+                                    Text("None").foregroundStyle(.tertiary).font(.caption2)
+                                }
+                            }
+                        }
+                        GridRow {
+                            Text("Hover")
+                                .foregroundStyle(.secondary)
+                            Text(
+                                "\(point.hoverDistance)   \(point.inProximity ? "(In Range)" : "(Out)")"
+                            )
+                            .monospacedDigit()
+                        }
+                    }
+                } else {
+                    Text("No input detected. Move pen into range.")
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 8)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(NSColor.controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
+            )
         }
     }
 
@@ -158,19 +312,23 @@ struct InfoView: View {
         fmt.timeStyle = .medium
         lines += ["Generated : \(fmt.string(from: Date()))"]
 
-        let ver   = Bundle.main.object(forInfoDictionaryKey:
-                        "CFBundleShortVersionString") as? String ?? "?"
-        let build = Bundle.main.object(forInfoDictionaryKey:
-                        "CFBundleVersion") as? String ?? "?"
+        let ver =
+            Bundle.main.object(
+                forInfoDictionaryKey:
+                    "CFBundleShortVersionString") as? String ?? "?"
+        let build =
+            Bundle.main.object(
+                forInfoDictionaryKey:
+                    "CFBundleVersion") as? String ?? "?"
         lines += ["App       : MockTab \(ver) (build \(build))"]
 
         let os = ProcessInfo.processInfo.operatingSystemVersion
         lines += ["macOS     : \(os.majorVersion).\(os.minorVersion).\(os.patchVersion)"]
 
         #if arch(arm64)
-        lines += ["CPU       : Apple Silicon (arm64)"]
+            lines += ["CPU       : Apple Silicon (arm64)"]
         #else
-        lines += ["CPU       : Intel (x86_64)"]
+            lines += ["CPU       : Intel (x86_64)"]
         #endif
 
         lines += [""]
@@ -205,7 +363,9 @@ struct InfoView: View {
 
         if let ctx = tabletManager.activeContext {
             let jitter = String(format: "%.2f", ctx.injector.jitterLevel)
-            lines += ["Jitter level   : \(jitter) pt/sample\(ctx.injector.isJittery ? " (HIGH)" : "")"]
+            lines += [
+                "Jitter level   : \(jitter) pt/sample\(ctx.injector.isJittery ? " (HIGH)" : "")"
+            ]
         }
 
         return lines.joined(separator: "\n")
@@ -234,14 +394,14 @@ struct InfoView: View {
     /// Matched against both the executable name from the process list and
     /// NSWorkspace's localizedName / bundleIdentifier for GUI apps.
     private static let competingProcesses: [(name: String, label: String)] = [
-        ("WacomTabletDriver",        "Wacom Tablet Driver"),
-        ("TabletDriver",             "Wacom TabletDriver"),
-        ("Wacom_IOManager",          "Wacom I/O Manager"),
-        ("WacomTabletSpringboard",   "Wacom Springboard"),
-        ("DataStoreMgr",             "Wacom DataStore Manager"),
-        ("OpenTabletDriver.Daemon",  "OpenTabletDriver Daemon"),
-        ("OpenTabletDriver.UX",      "OpenTabletDriver UX"),
-        ("OpenTabletDriver",         "OpenTabletDriver (GUI)"),
+        ("WacomTabletDriver", "Wacom Tablet Driver"),
+        ("TabletDriver", "Wacom TabletDriver"),
+        ("Wacom_IOManager", "Wacom I/O Manager"),
+        ("WacomTabletSpringboard", "Wacom Springboard"),
+        ("DataStoreMgr", "Wacom DataStore Manager"),
+        ("OpenTabletDriver.Daemon", "OpenTabletDriver Daemon"),
+        ("OpenTabletDriver.UX", "OpenTabletDriver UX"),
+        ("OpenTabletDriver", "OpenTabletDriver (GUI)"),
     ]
 
     /// Scans running processes and injector state for potential conflicts.
@@ -271,7 +431,7 @@ struct InfoView: View {
             // to catch e.g. "OpenTabletDriver." matching "OpenTabletDriver.Daemon".
             let matchingLive = liveNames.filter {
                 ($0 == name || name.hasPrefix($0) || $0.hasPrefix(name))
-                && !claimedNames.contains($0)
+                    && !claimedNames.contains($0)
             }
             if !matchingLive.isEmpty {
                 claimedNames.formUnion(matchingLive)
@@ -293,7 +453,8 @@ struct InfoView: View {
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
         var size: Int = 0
         guard sysctl(&mib, UInt32(mib.count), nil, &size, nil, 0) == 0,
-              size > 0 else { return [] }
+            size > 0
+        else { return [] }
 
         let count = size / MemoryLayout<kinfo_proc>.stride
         var procs = [kinfo_proc](repeating: kinfo_proc(), count: count)
@@ -304,7 +465,9 @@ struct InfoView: View {
         for i in 0..<actualCount {
             let comm = procs[i].kp_proc.p_comm
             let name = withUnsafeBytes(of: comm) { buf in
-                guard let base = buf.baseAddress?.assumingMemoryBound(to: CChar.self) else { return "" }
+                guard let base = buf.baseAddress?.assumingMemoryBound(to: CChar.self) else {
+                    return ""
+                }
                 return String(cString: base)
             }
             if !name.isEmpty { names.insert(name) }
@@ -318,13 +481,16 @@ struct InfoView: View {
         alert.alertStyle = .warning
         alert.messageText = "Potential Conflicts Detected"
 
-        var body = "MockTab found the following issues that may interfere with tablet operation:\n\n"
+        var body =
+            "MockTab found the following issues that may interfere with tablet operation:\n\n"
         for (i, conflict) in conflicts.enumerated() {
             body += "  \(i + 1). \(conflict)\n"
         }
         body += "\nRecommendation: Quit or disable the listed processes, then restart MockTab. "
-        body += "For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. "
-        body += "For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet."
+        body +=
+            "For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. "
+        body +=
+            "For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet."
 
         alert.informativeText = body
         alert.addButton(withTitle: "OK")

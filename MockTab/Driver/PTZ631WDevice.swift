@@ -15,11 +15,12 @@ final class PTZ631WDevice: TabletDevice {
     private var prevInProximity = false
     private var lastSerial: UInt32 = 0
 
-    init(device: IOHIDDevice,
-         onTablet: @escaping (TabletPoint) -> Void,
-         onAux: ((AuxButtons) -> Void)? = nil,
-         onToolEnter: ((ToolIdentity) -> Void)? = nil)
-    {
+    init(
+        device: IOHIDDevice,
+        onTablet: @escaping (TabletPoint) -> Void,
+        onAux: ((AuxButtons) -> Void)? = nil,
+        onToolEnter: ((ToolIdentity) -> Void)? = nil
+    ) {
         self.device = device
         self.onTablet = onTablet
         self.onAux = onAux
@@ -43,13 +44,16 @@ final class PTZ631WDevice: TabletDevice {
         }
 
         let ctx = Unmanaged.passRetained(self).toOpaque()
-        IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count,
-                                              PTZ631WDevice.reportCallback, ctx)
-        IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+        IOHIDDeviceRegisterInputReportCallback(
+            device, &reportBuffer, reportBuffer.count,
+            PTZ631WDevice.reportCallback, ctx)
+        IOHIDDeviceScheduleWithRunLoop(
+            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
     }
 
     func close() {
-        IOHIDDeviceUnscheduleFromRunLoop(device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+        IOHIDDeviceUnscheduleFromRunLoop(
+            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
     }
@@ -79,9 +83,11 @@ final class PTZ631WDevice: TabletDevice {
         // Aux button report — Intuos3 style: 4 keys in byte 5, 4 keys in byte 6.
         if id == 0x0C {
             if let onAux {
-                let lo = report[5], hi = report[6]
-                let buttons = (0..<4).map { (lo & (1 << $0)) != 0 }
-                           + (0..<4).map { (hi & (1 << $0)) != 0 }
+                let lo = report[5]
+                let hi = report[6]
+                let buttons =
+                    (0..<4).map { (lo & (1 << $0)) != 0 }
+                    + (0..<4).map { (hi & (1 << $0)) != 0 }
                 onAux(AuxButtons(buttons: buttons))
             }
             return
@@ -101,18 +107,21 @@ final class PTZ631WDevice: TabletDevice {
             if status == 0xC2 {
                 guard length >= 8 else { return }
                 let toolCode = UInt16(report[2]) << 4 | UInt16(report[3]) >> 4
-                let serial   = (UInt32(report[3] & 0x0F) << 28)
-                             | (UInt32(report[4]) << 20)
-                             | (UInt32(report[5]) << 12)
-                             | (UInt32(report[6]) << 4)
-                             | (UInt32(report[7]) >> 4)
+                let serial =
+                    (UInt32(report[3] & 0x0F) << 28)
+                    | (UInt32(report[4]) << 20)
+                    | (UInt32(report[5]) << 12)
+                    | (UInt32(report[6]) << 4)
+                    | (UInt32(report[7]) >> 4)
                 if serial != 0 && serial != lastSerial {
                     lastSerial = serial
                     // IntuosV1 eraser type codes have bit 4 set in the lower byte (e.g. 0x096).
                     let isEraser = (toolCode & 0x006) == 0x006
-                    onToolEnter?(ToolIdentity(serial: serial,
-                                              toolCode: toolCode,
-                                              isEraser: isEraser))
+                    onToolEnter?(
+                        ToolIdentity(
+                            serial: serial,
+                            toolCode: toolCode,
+                            isEraser: isEraser))
                 }
                 return
             }
@@ -124,37 +133,41 @@ final class PTZ631WDevice: TabletDevice {
         let inProximity = (status & 0x40) != 0
         guard inProximity else {
             prevInProximity = false
-            onTablet(TabletPoint(x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
-                                 pressure: 0, maxPressure: spec.maxPressure,
-                                 tiltX: 0, tiltY: 0,
-                                 penButton1: false, penButton2: false,
-                                 eraser: false, inProximity: false, hoverDistance: 0))
+            onTablet(
+                TabletPoint(
+                    x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: false, penButton2: false,
+                    eraser: false, inProximity: false, hoverDistance: 0))
             return
         }
 
         prevInProximity = true
 
         // IntuosV1TabletReport field decoding (matches OpenTabletDriver IntuosV1TabletReport).
-        let x        = ((Int(report[2]) << 8 | Int(report[3])) << 1) | ((Int(report[9]) >> 1) & 1)
-        let y        = ((Int(report[4]) << 8 | Int(report[5])) << 1) |  (Int(report[9]) & 1)
+        let x = ((Int(report[2]) << 8 | Int(report[3])) << 1) | ((Int(report[9]) >> 1) & 1)
+        let y = ((Int(report[4]) << 8 | Int(report[5])) << 1) | (Int(report[9]) & 1)
         let pressure = (Int(report[6]) << 3) | ((Int(report[7]) & 0xC0) >> 5) | (Int(status) & 1)
         let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64
-        let tiltYRaw =   (Int(report[8]) & 0x7F) - 64
+        let tiltYRaw = (Int(report[8]) & 0x7F) - 64
 
-        onTablet(TabletPoint(
-            x: x,
-            y: y,
-            maxX: spec.maxX,
-            maxY: spec.maxY,
-            pressure: pressure,
-            maxPressure: spec.maxPressure,
-            tiltX: Double(tiltXRaw) / 63.0,
-            tiltY: Double(tiltYRaw) / 63.0,
-            penButton1: (status & 0x02) != 0,
-            penButton2: (status & 0x04) != 0,
-            eraser: false,
-            inProximity: true,
-            hoverDistance: Int(report[9])
-        ))
+        onTablet(
+            TabletPoint(
+                x: x,
+                y: y,
+                maxX: spec.maxX,
+                maxY: spec.maxY,
+                pressure: pressure,
+                maxPressure: spec.maxPressure,
+                tiltX: Double(tiltXRaw) / 63.0,
+                tiltY: Double(tiltYRaw) / 63.0,
+                rotation: 0.0,
+                penButton1: (status & 0x02) != 0,
+                penButton2: (status & 0x04) != 0,
+                eraser: false,
+                inProximity: true,
+                hoverDistance: Int(report[9])
+            ))
     }
 }

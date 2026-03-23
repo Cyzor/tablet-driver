@@ -37,6 +37,10 @@ final class TabletManager: ObservableObject {
     /// Consumed by ButtonMappingView to highlight rows when pressed.
     @Published var liveButtons = LiveButtonState()
 
+    /// Real-time raw tablet point data for the active device.
+    /// Consumed by InfoView for live diagnostics.
+    @Published var livePoint: TabletPoint? = nil
+
     /// Internal lookup from raw IOHIDDevice to context — needed for
     /// deviceDisconnected which receives the IOHIDDevice handle.
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
@@ -47,7 +51,7 @@ final class TabletManager: ObservableObject {
     @Published var connectedProductID: Int = 0
     @Published var connectedProductIDs: [Int] = []
     @Published var connectedTransport: String = "—"
-    @Published var connectedUSBSpeed:  String = "—"
+    @Published var connectedUSBSpeed: String = "—"
     @Published var hidManagerOpen: Bool = false
 
     /// Human-readable name for a product ID, including a hex fallback for unknowns.
@@ -58,14 +62,14 @@ final class TabletManager: ObservableObject {
         case 0x0358: return "PTH-860"
         case 0x00B5: return "PTZ-631W"
         case 0x00F4: return "DTK-2400"
-        default:     return "Wacom 0x\(String(pid, radix: 16, uppercase: true))"
+        default: return "Wacom 0x\(String(pid, radix: 16, uppercase: true))"
         }
     }
 
     var connectedDeviceName: String {
         switch connectedProductIDs.count {
-        case 0:  return "No tablet"
-        case 1:  return Self.deviceName(forProductID: connectedProductIDs[0])
+        case 0: return "No tablet"
+        case 1: return Self.deviceName(forProductID: connectedProductIDs[0])
         default:
             let first = Self.deviceName(forProductID: connectedProductIDs[0])
             return "\(first) + \(connectedProductIDs.count - 1) more"
@@ -82,7 +86,7 @@ final class TabletManager: ObservableObject {
     /// UI code should migrate to reading `activeContext?.settings` directly.
     var settings: TabletSettings? {
         get { activeContext?.settings }
-        set { /* no-op: settings are now per-context */ }
+        set { /* no-op: settings are now per-context */  }
     }
 
     /// The active context's injector.
@@ -106,29 +110,36 @@ final class TabletManager: ObservableObject {
 
         let ctx = Unmanaged.passRetained(self).toOpaque()
 
-        IOHIDManagerRegisterDeviceMatchingCallback(manager, { ctx, _, _, device in
-            guard let ctx else { return }
-            let mgr = Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
-            mgr.deviceConnected(device)
-        }, ctx)
+        IOHIDManagerRegisterDeviceMatchingCallback(
+            manager,
+            { ctx, _, _, device in
+                guard let ctx else { return }
+                let mgr = Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
+                mgr.deviceConnected(device)
+            }, ctx)
 
-        IOHIDManagerRegisterDeviceRemovalCallback(manager, { ctx, _, _, device in
-            guard let ctx else { return }
-            let mgr = Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
-            mgr.deviceDisconnected(device)
-        }, ctx)
+        IOHIDManagerRegisterDeviceRemovalCallback(
+            manager,
+            { ctx, _, _, device in
+                guard let ctx else { return }
+                let mgr = Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
+                mgr.deviceDisconnected(device)
+            }, ctx)
 
-        IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
+        IOHIDManagerScheduleWithRunLoop(
+            manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
         let ret = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         hidManagerOpen = (ret == kIOReturnSuccess)
         if !hidManagerOpen {
-            print("TabletManager: failed to open HID manager (\(ret)). " +
-                  "Check Input Monitoring permission or uninstall any existing tablet driver.")
+            print(
+                "TabletManager: failed to open HID manager (\(ret)). "
+                    + "Check Input Monitoring permission or uninstall any existing tablet driver.")
         }
     }
 
     func stop() {
-        IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
+        IOHIDManagerUnscheduleFromRunLoop(
+            manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         for (_, ctx) in hidDeviceMap {
             ctx.tabletDevice?.close()
@@ -153,9 +164,9 @@ final class TabletManager: ObservableObject {
             guard let self, let context else { return }
             context.activeToolSerial = identity.serial
             DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
-            let toolID   = DeviceRegistry.toolID(for: identity)
+            let toolID = DeviceRegistry.toolID(for: identity)
             let toolSets = context.settings.toolSettings(forID: toolID)
-            context.activeTool             = toolSets
+            context.activeTool = toolSets
             context.injector.activeToolSettings = toolSets
             self.activeToolID = toolID
         }
@@ -166,10 +177,13 @@ final class TabletManager: ObservableObject {
 
             // Record tool type for devices that don't fire onToolEnter from their driver.
             // PTH-660/860 (IntuosV2) and PTZ-631W fire onToolEnter with a real serial.
-            if point.inProximity && productID != 0x0357 && productID != 0x0358 && productID != 0x00B5 {
-                let identity = ToolIdentity(serial: 0,
-                                            toolCode: point.eraser ? 0x080A : 0x0802,
-                                            isEraser: point.eraser)
+            if point.inProximity && productID != 0x0357 && productID != 0x0358
+                && productID != 0x00B5
+            {
+                let identity = ToolIdentity(
+                    serial: 0,
+                    toolCode: point.eraser ? 0x080A : 0x0802,
+                    isEraser: point.eraser)
                 DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
                 self.activeToolID = DeviceRegistry.toolID(for: identity)
             }
@@ -201,13 +215,15 @@ final class TabletManager: ObservableObject {
             guard self.activeContext === context else { return }
             if !point.inProximity {
                 self.activeToolID = nil
-                self.liveButtons  = LiveButtonState()   // clear all indicators
+                self.liveButtons = LiveButtonState()  // clear all indicators
+                self.livePoint = nil
             } else {
                 let tipDown = point.normalizedPressure > 0.004
-                self.liveButtons.tipDown     = tipDown && !point.eraser
-                self.liveButtons.eraserDown  = tipDown &&  point.eraser
+                self.liveButtons.tipDown = tipDown && !point.eraser
+                self.liveButtons.eraserDown = tipDown && point.eraser
                 self.liveButtons.button1Down = point.penButton1
                 self.liveButtons.button2Down = point.penButton2
+                self.livePoint = point
             }
             context.injector.inject(point: point, settings: context.settings)
         }
@@ -227,13 +243,16 @@ final class TabletManager: ObservableObject {
             wacomDevice = PTH851Device(device: device, onTablet: onTablet, onAux: onAux)
         case 0x0357:
             print("TabletManager: PTH-660 connected")
-            wacomDevice = PTH660Device(device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+            wacomDevice = PTH660Device(
+                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
         case 0x0358:
             print("TabletManager: PTH-860 connected")
-            wacomDevice = PTH860Device(device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+            wacomDevice = PTH860Device(
+                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
         case 0x00B5:
             print("TabletManager: PTZ-631W connected")
-            wacomDevice = PTZ631WDevice(device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+            wacomDevice = PTZ631WDevice(
+                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
         case 0x00F4:
             print("TabletManager: DTK-2400 (Cintiq 24HD) connected")
             wacomDevice = DTK2400Device(device: device, onTablet: onTablet, onAux: onAux)
@@ -241,10 +260,14 @@ final class TabletManager: ObservableObject {
             let pid = String(productID, radix: 16, uppercase: true)
             let reportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
             if reportSize == 10 {
-                print("TabletManager: unknown Wacom 0x\(pid) with 10-byte reports — attaching WacomProbeDevice")
+                print(
+                    "TabletManager: unknown Wacom 0x\(pid) with 10-byte reports — attaching WacomProbeDevice"
+                )
                 wacomDevice = WacomProbeDevice(device: device)
             } else {
-                print("TabletManager: unsupported Wacom 0x\(pid) (reportSize=\(reportSize)) — add a device class to support it")
+                print(
+                    "TabletManager: unsupported Wacom 0x\(pid) (reportSize=\(reportSize)) — add a device class to support it"
+                )
                 return
             }
         }
@@ -269,7 +292,8 @@ final class TabletManager: ObservableObject {
                 activeContext = context
             }
 
-            let usbSerial = IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
+            let usbSerial =
+                IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
             DeviceRegistry.shared.recordTablet(productID: productID, usbSerial: usbSerial)
         }
     }
@@ -307,19 +331,22 @@ final class TabletManager: ObservableObject {
         }) {
             let info = Self.connectionInfo(for: primary)
             connectedTransport = info.transport
-            connectedUSBSpeed  = info.speed
+            connectedUSBSpeed = info.speed
         } else {
             connectedTransport = "—"
-            connectedUSBSpeed  = "—"
+            connectedUSBSpeed = "—"
         }
     }
 
     /// Reads the HID transport type and USB bus speed from IOKit for a device.
     /// Falls back gracefully if the speed property is absent (e.g. Bluetooth).
-    private static func connectionInfo(for device: IOHIDDevice
+    private static func connectionInfo(
+        for device: IOHIDDevice
     ) -> (transport: String, speed: String) {
-        let transport = IOHIDDeviceGetProperty(device,
-            kIOHIDTransportKey as CFString) as? String ?? "Unknown"
+        let transport =
+            IOHIDDeviceGetProperty(
+                device,
+                kIOHIDTransportKey as CFString) as? String ?? "Unknown"
         guard transport.caseInsensitiveCompare("USB") == .orderedSame else {
             return (transport, "—")
         }

@@ -22,11 +22,12 @@ final class PTH660Device: TabletDevice {
     private var lastY = 0
     private var lastSerial: UInt32 = 0
 
-    init(device: IOHIDDevice,
-         onTablet: @escaping (TabletPoint) -> Void,
-         onAux: ((AuxButtons) -> Void)? = nil,
-         onToolEnter: ((ToolIdentity) -> Void)? = nil)
-    {
+    init(
+        device: IOHIDDevice,
+        onTablet: @escaping (TabletPoint) -> Void,
+        onAux: ((AuxButtons) -> Void)? = nil,
+        onToolEnter: ((ToolIdentity) -> Void)? = nil
+    ) {
         self.device = device
         self.onTablet = onTablet
         self.onAux = onAux
@@ -41,13 +42,16 @@ final class PTH660Device: TabletDevice {
         }
         // PTH-660 needs no feature init report (same as PTH-860).
         let ctx = Unmanaged.passRetained(self).toOpaque()
-        IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count,
-                                              PTH660Device.reportCallback, ctx)
-        IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+        IOHIDDeviceRegisterInputReportCallback(
+            device, &reportBuffer, reportBuffer.count,
+            PTH660Device.reportCallback, ctx)
+        IOHIDDeviceScheduleWithRunLoop(
+            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
     }
 
     func close() {
-        IOHIDDeviceUnscheduleFromRunLoop(device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+        IOHIDDeviceUnscheduleFromRunLoop(
+            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
     }
@@ -68,7 +72,7 @@ final class PTH660Device: TabletDevice {
             handlePenReport(report: report, length: length)
         case 0x1E: handleOffsetPenReport(report: report)
         case 0x11: handleAuxReport(report: report, length: length)
-        case 0x13: break   // touch-ring mode / position — not yet handled
+        case 0x13: break  // touch-ring mode / position — not yet handled
         default: break
         }
     }
@@ -78,84 +82,98 @@ final class PTH660Device: TabletDevice {
         let status = report[1]
         let highConfidence = (status & 0x20) != 0
 
-        let allZero = report[2] == 0 && report[3] == 0 && report[4] == 0
-                   && report[5] == 0 && report[6] == 0 && report[7] == 0
+        let allZero =
+            report[2] == 0 && report[3] == 0 && report[4] == 0
+            && report[5] == 0 && report[6] == 0 && report[7] == 0
         if allZero && !highConfidence {
-            onTablet(TabletPoint(x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
-                                 pressure: 0, maxPressure: spec.maxPressure,
-                                 tiltX: 0, tiltY: 0,
-                                 penButton1: false, penButton2: false,
-                                 eraser: false, inProximity: false, hoverDistance: 0))
+            onTablet(
+                TabletPoint(
+                    x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: false, penButton2: false,
+                    eraser: false, inProximity: false, hoverDistance: 0))
             return
         }
 
         // NOTE: keep barrel-button and eraser bits from status — highConfidence is a
         // position-quality flag independent of which physical buttons are held.
         guard highConfidence else {
-            onTablet(TabletPoint(x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
-                                 pressure: 0, maxPressure: spec.maxPressure,
-                                 tiltX: 0, tiltY: 0,
-                                 penButton1: (status & 0x02) != 0,
-                                 penButton2: (status & 0x04) != 0,
-                                 eraser:     (status & 0x10) != 0,
-                                 inProximity: true, hoverDistance: 0))
+            onTablet(
+                TabletPoint(
+                    x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: (status & 0x02) != 0,
+                    penButton2: (status & 0x04) != 0,
+                    eraser: (status & 0x10) != 0,
+                    inProximity: true, hoverDistance: 0))
             return
         }
 
         // Extract pen serial (bytes 17–20 LE) and tool code (bytes 21–22 LE).
         // Present in every 27-byte report; fire onToolEnter whenever the active pen changes.
         if length >= 27 {
-            let serial   = UInt32(report[17])
-                         | UInt32(report[18]) << 8
-                         | UInt32(report[19]) << 16
-                         | UInt32(report[20]) << 24
+            let serial =
+                UInt32(report[17])
+                | UInt32(report[18]) << 8
+                | UInt32(report[19]) << 16
+                | UInt32(report[20]) << 24
             let toolCode = UInt16(report[21]) | UInt16(report[22]) << 8
             if serial != 0 && serial != lastSerial {
                 lastSerial = serial
-                onToolEnter?(ToolIdentity(serial: serial,
-                                          toolCode: toolCode,
-                                          isEraser: (toolCode & 0x0008) != 0))
+                onToolEnter?(
+                    ToolIdentity(
+                        serial: serial,
+                        toolCode: toolCode,
+                        isEraser: (toolCode & 0x0008) != 0))
             }
         }
 
-        let x        = Int(UInt16(report[2]) | UInt16(report[3]) << 8) | (Int(report[4]) << 16)
-        let y        = Int(UInt16(report[5]) | UInt16(report[6]) << 8) | (Int(report[7]) << 16)
+        let x = Int(UInt16(report[2]) | UInt16(report[3]) << 8) | (Int(report[4]) << 16)
+        let y = Int(UInt16(report[5]) | UInt16(report[6]) << 8) | (Int(report[7]) << 16)
         let pressure = Int(UInt16(report[8]) | UInt16(report[9]) << 8)
-        let tiltX    = Double(Int8(bitPattern: report[10])) / 127.0
-        let tiltY    = Double(Int8(bitPattern: report[11])) / 127.0
-        lastX = x; lastY = y
+        let tiltX = Double(Int8(bitPattern: report[10])) / 127.0
+        let tiltY = Double(Int8(bitPattern: report[11])) / 127.0
+        let rotation = Double(UInt16(report[12]) | UInt16(report[13]) << 8) / 10.0
 
-        onTablet(TabletPoint(
-            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-            pressure: pressure, maxPressure: spec.maxPressure,
-            tiltX: tiltX, tiltY: tiltY,
-            penButton1: (status & 0x02) != 0,
-            penButton2: (status & 0x04) != 0,
-            eraser:     (status & 0x10) != 0,
-            inProximity: true,
-            hoverDistance: Int(report[16])
-        ))
+        lastX = x
+        lastY = y
+
+        onTablet(
+            TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: pressure, maxPressure: spec.maxPressure,
+                tiltX: tiltX, tiltY: tiltY,
+                rotation: rotation,
+                penButton1: (status & 0x02) != 0,
+                penButton2: (status & 0x04) != 0,
+                eraser: (status & 0x10) != 0,
+                inProximity: true,
+                hoverDistance: Int(report[16])
+            ))
     }
 
     /// Offset pen report (Report ID 0x1E) — produced in driver-compatibility mode.
     private func handleOffsetPenReport(report: UnsafePointer<UInt8>) {
         let status = report[2]
-        let x        = Int(UInt16(report[3]) | UInt16(report[4]) << 8) | (Int(report[5]) << 16)
-        let y        = Int(UInt16(report[6]) | UInt16(report[7]) << 8) | (Int(report[8]) << 16)
+        let x = Int(UInt16(report[3]) | UInt16(report[4]) << 8) | (Int(report[5]) << 16)
+        let y = Int(UInt16(report[6]) | UInt16(report[7]) << 8) | (Int(report[8]) << 16)
         let pressure = Int(UInt16(report[9]) | UInt16(report[10]) << 8)
-        let tiltX    = Double(Int8(bitPattern: report[11])) / 127.0
-        let tiltY    = Double(Int8(bitPattern: report[12])) / 127.0
+        let tiltX = Double(Int8(bitPattern: report[11])) / 127.0
+        let tiltY = Double(Int8(bitPattern: report[12])) / 127.0
 
-        onTablet(TabletPoint(
-            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-            pressure: pressure, maxPressure: spec.maxPressure,
-            tiltX: tiltX, tiltY: tiltY,
-            penButton1: (status & 0x02) != 0,
-            penButton2: (status & 0x04) != 0,
-            eraser:     (status & 0x10) != 0,
-            inProximity: (status & 0x20) != 0,
-            hoverDistance: 0
-        ))
+        onTablet(
+            TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: pressure, maxPressure: spec.maxPressure,
+                tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
+                penButton1: (status & 0x02) != 0,
+                penButton2: (status & 0x04) != 0,
+                eraser: (status & 0x10) != 0,
+                inProximity: (status & 0x20) != 0,
+                hoverDistance: 0
+            ))
     }
 
     /// Auxiliary (express key) report (Report ID 0x11).

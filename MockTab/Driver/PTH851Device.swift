@@ -16,10 +16,11 @@ final class PTH851Device: TabletDevice {
     private var lastY = 0
     private var prevInProximity = false
 
-    init(device: IOHIDDevice,
-         onTablet: @escaping (TabletPoint) -> Void,
-         onAux: ((AuxButtons) -> Void)? = nil)
-    {
+    init(
+        device: IOHIDDevice,
+        onTablet: @escaping (TabletPoint) -> Void,
+        onAux: ((AuxButtons) -> Void)? = nil
+    ) {
         self.device = device
         self.onTablet = onTablet
         self.onAux = onAux
@@ -37,20 +38,24 @@ final class PTH851Device: TabletDevice {
         IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &initBytes, initBytes.count)
 
         let ctx = Unmanaged.passRetained(self).toOpaque()
-        IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count,
-                                              PTH851Device.reportCallback, ctx)
-        IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+        IOHIDDeviceRegisterInputReportCallback(
+            device, &reportBuffer, reportBuffer.count,
+            PTH851Device.reportCallback, ctx)
+        IOHIDDeviceScheduleWithRunLoop(
+            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
     }
 
     func close() {
-        IOHIDDeviceUnscheduleFromRunLoop(device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+        IOHIDDeviceUnscheduleFromRunLoop(
+            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
     }
 
     // MARK: - C callback (must be @convention(c), non-capturing)
 
-    private static let reportCallback: IOHIDReportCallback = { ctx, result, sender, type, reportID, report, length in
+    private static let reportCallback: IOHIDReportCallback = {
+        ctx, result, sender, type, reportID, report, length in
         guard let ctx = ctx else { return }
         let self_ = Unmanaged<PTH851Device>.fromOpaque(ctx).takeUnretainedValue()
         self_.handleReport(report: report, length: length)
@@ -88,11 +93,12 @@ final class PTH851Device: TabletDevice {
         // Proximity-out packet — report lift but no coordinates.
         if !inProximity {
             prevInProximity = false
-            let pt = TabletPoint(x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
-                                 pressure: 0, maxPressure: spec.maxPressure,
-                                 tiltX: 0, tiltY: 0,
-                                 penButton1: false, penButton2: false,
-                                 eraser: false, inProximity: false, hoverDistance: 0)
+            let pt = TabletPoint(
+                x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: 0, maxPressure: spec.maxPressure,
+                tiltX: 0, tiltY: 0, rotation: 0.0,
+                penButton1: false, penButton2: false,
+                eraser: false, inProximity: false, hoverDistance: 0)
             onTablet(pt)
             return
         }
@@ -101,12 +107,13 @@ final class PTH851Device: TabletDevice {
         // NOTE: keep actual barrel-button bits from status — highConfidence is a position-quality
         // flag, independent of whether a barrel button is physically held.
         guard highConfidence else {
-            let pt = TabletPoint(x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
-                                 pressure: 0, maxPressure: spec.maxPressure,
-                                 tiltX: 0, tiltY: 0,
-                                 penButton1: (status & 0x02) != 0,
-                                 penButton2: (status & 0x04) != 0,
-                                 eraser: false, inProximity: true, hoverDistance: 0)
+            let pt = TabletPoint(
+                x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: 0, maxPressure: spec.maxPressure,
+                tiltX: 0, tiltY: 0, rotation: 0.0,
+                penButton1: (status & 0x02) != 0,
+                penButton2: (status & 0x04) != 0,
+                eraser: false, inProximity: true, hoverDistance: 0)
             onTablet(pt)
             return
         }
@@ -138,6 +145,7 @@ final class PTH851Device: TabletDevice {
             maxPressure: spec.maxPressure,
             tiltX: Double(tiltXRaw) / 63.0,
             tiltY: Double(tiltYRaw) / 63.0,
+            rotation: 0.0,
             penButton1: (status & 0x02) != 0,
             penButton2: (status & 0x04) != 0,
             eraser: false,  // IntuosV1 doesn't expose eraser in this report type
