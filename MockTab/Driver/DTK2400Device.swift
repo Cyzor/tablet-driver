@@ -335,9 +335,10 @@ final class DTK2400Device: TabletDevice {
 
         // All-frame hover timeout: if pressure is latched but no contact-zone pressure
         // EA has arrived for hoverFrameThreshold frames, the pen has lifted.
-        // For Grip Pen: EA RELEASE usually handles lift first; this is a safety net.
-        // For Art Pen: this IS the primary release (pressure frames stop on lift).
-        if lastEAPressure > 0 && framesSinceLastContactEA >= Self.hoverFrameThreshold {
+        // For Grip Pen (pen:E2/E3): EA RELEASE (hover-zone) is the primary release; skip timeout.
+        // For Art Pen (pen:EA/EB): pressure frames stop on lift, so timeout IS the primary release.
+        let isArtPen = penLabel.contains("EA") || penLabel.contains("EB")
+        if isArtPen && lastEAPressure > 0 && framesSinceLastContactEA >= Self.hoverFrameThreshold {
             print(String(format: "DTK-2400 [\(penLabel)] HOVER  frames=%d → pressure cleared (timeout)",
                          framesSinceLastContactEA))
             lastEAPressure = 0
