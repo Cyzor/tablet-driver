@@ -59,17 +59,18 @@ final class PTH860Device: TabletDevice {
     }
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
-        guard length >= 12 else { return }
+        guard length >= 2 else { return }
 
         switch report[0] {
         case 0x10:
+            guard length >= 12 else { return }
             handlePenReport(report: report, length: length)
         case 0x1E:
             handleOffsetPenReport(report: report)
         case 0x11:
             handleAuxReport(report: report, length: length)
-        default:
-            break
+        case 0x13: break   // touch-ring mode / position — not yet handled
+        default: break
         }
     }
 
@@ -93,12 +94,16 @@ final class PTH860Device: TabletDevice {
 
         // Low confidence with a valid position — pen lifting off surface. Emit zero pressure
         // so InputInjector fires mouseUp rather than keeping the button stuck.
+        // NOTE: keep barrel-button and eraser bits from status — highConfidence is a
+        // position-quality flag independent of which physical buttons are held.
         guard highConfidence else {
             let pt = TabletPoint(x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
                                  pressure: 0, maxPressure: spec.maxPressure,
                                  tiltX: 0, tiltY: 0,
-                                 penButton1: false, penButton2: false,
-                                 eraser: false, inProximity: true, hoverDistance: 0)
+                                 penButton1: (status & 0x02) != 0,
+                                 penButton2: (status & 0x04) != 0,
+                                 eraser:     (status & 0x10) != 0,
+                                 inProximity: true, hoverDistance: 0)
             onTablet(pt)
             return
         }
@@ -177,9 +182,18 @@ final class PTH860Device: TabletDevice {
     }
 
     /// Auxiliary (express key) report (Report ID 0x11).
+    ///
+    /// Report layout (9 bytes, same as PTH-660 — confirmed by capture):
+    ///   [0]     0x11  report ID
+    ///   [1]     latch — momentarily equals [2] during a held key; unreliable for edge detection
+    ///   [2]     current button state — set for the full duration the key is held  ← use this
+    ///   [3]     touch-ring touch flag
+    ///   [4]     touch-ring position (0x7F = idle/center)
+    ///   [5-8]   reserved / zero
     private func handleAuxReport(report: UnsafePointer<UInt8>, length: CFIndex) {
-        guard length >= 2, let onAux = onAux else { return }
-        let auxByte = report[1]
+        guard length >= 3, let onAux = onAux else { return }
+        // report[2] is the live "key currently held" bitmask (bits 0–7 = keys 1–8).
+        let auxByte = report[2]
         let buttons = (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }
         onAux(AuxButtons(buttons: buttons))
     }

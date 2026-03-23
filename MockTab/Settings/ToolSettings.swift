@@ -33,6 +33,24 @@ final class ToolSettings: ObservableObject {
         didSet { persist("smoothingStrength", smoothingStrength) }
     }
 
+    @Published private var tipRaw: String = "" {
+        didSet { persist("tipBinding", tipRaw) }
+    }
+
+    @Published private var eraserRaw: String = "" {
+        didSet { persist("eraserBinding", eraserRaw) }
+    }
+
+    var tipBinding: ButtonBinding {
+        get { ButtonBinding.decode(freshString("tipBinding") ?? "") ?? .leftClick }
+        set { tipRaw = newValue.encoded }
+    }
+
+    var eraserBinding: ButtonBinding {
+        get { ButtonBinding.decode(freshString("eraserBinding") ?? "") ?? .rightClick }
+        set { eraserRaw = newValue.encoded }
+    }
+
     @Published private var pen1Raw: String = "" {
         didSet { persist("penButton1Binding", pen1Raw) }
     }
@@ -42,12 +60,12 @@ final class ToolSettings: ObservableObject {
     }
 
     var penButton1Binding: ButtonBinding {
-        get { ButtonBinding.decode(pen1Raw) ?? .rightClick }
+        get { ButtonBinding.decode(freshString("penButton1Binding") ?? "") ?? .rightClick }
         set { pen1Raw = newValue.encoded }
     }
 
     var penButton2Binding: ButtonBinding {
-        get { ButtonBinding.decode(pen2Raw) ?? .middleClick }
+        get { ButtonBinding.decode(freshString("penButton2Binding") ?? "") ?? .middleClick }
         set { pen2Raw = newValue.encoded }
     }
 
@@ -66,6 +84,8 @@ final class ToolSettings: ObservableObject {
     func reload() {
         isLoading = true
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
+        tipRaw            = loadString("tipBinding",        default: "")
+        eraserRaw         = loadString("eraserBinding",     default: "")
         pen1Raw           = loadString("penButton1Binding", default: "")
         pen2Raw           = loadString("penButton2Binding", default: "")
         loadPressureCurve()
@@ -73,6 +93,16 @@ final class ToolSettings: ObservableObject {
     }
 
     // MARK: - Persistence
+
+    /// Reads `key` directly from UserDefaults, respecting the two-level fallback chain,
+    /// without relying on the in-memory `@Published` cache.  Used by button-binding
+    /// getters so that per-serial ToolSettings instances pick up device-default changes
+    /// made in the UI without requiring an explicit `reload()`.
+    private func freshString(_ key: String) -> String? {
+        if let v = ud.string(forKey: prefix + key) { return v }
+        if let fb = fallbackPrefix, let v = ud.string(forKey: fb + key) { return v }
+        return nil
+    }
 
     private func persist(_ key: String, _ value: Any) {
         guard !isLoading else { return }

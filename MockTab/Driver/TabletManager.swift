@@ -33,6 +33,10 @@ final class TabletManager: ObservableObject {
     /// can highlight the row without additional lookups.
     @Published var activeToolID: String? = nil
 
+    /// Real-time hardware button state for the active device.
+    /// Consumed by ButtonMappingView to highlight rows when pressed.
+    @Published var liveButtons = LiveButtonState()
+
     /// Internal lookup from raw IOHIDDevice to context — needed for
     /// deviceDisconnected which receives the IOHIDDevice handle.
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
@@ -160,9 +164,9 @@ final class TabletManager: ObservableObject {
         let onTablet: (TabletPoint) -> Void = { [weak self, weak context] point in
             guard let self, let context else { return }
 
-            // Record tool type for IntuosV1 devices (no onToolEnter callback).
-            // IntuosV2 devices (PTH-660/860) use onToolEnter for serial-keyed recording.
-            if point.inProximity && productID != 0x0357 && productID != 0x0358 {
+            // Record tool type for devices that don't fire onToolEnter from their driver.
+            // PTH-660/860 (IntuosV2) and PTZ-631W fire onToolEnter with a real serial.
+            if point.inProximity && productID != 0x0357 && productID != 0x0358 && productID != 0x00B5 {
                 let identity = ToolIdentity(serial: 0,
                                             toolCode: point.eraser ? 0x080A : 0x0802,
                                             isEraser: point.eraser)
@@ -195,13 +199,23 @@ final class TabletManager: ObservableObject {
 
             // Only the active context posts normal events.
             guard self.activeContext === context else { return }
-            if !point.inProximity { self.activeToolID = nil }
+            if !point.inProximity {
+                self.activeToolID = nil
+                self.liveButtons  = LiveButtonState()   // clear all indicators
+            } else {
+                let tipDown = point.normalizedPressure > 0.004
+                self.liveButtons.tipDown     = tipDown && !point.eraser
+                self.liveButtons.eraserDown  = tipDown &&  point.eraser
+                self.liveButtons.button1Down = point.penButton1
+                self.liveButtons.button2Down = point.penButton2
+            }
             context.injector.inject(point: point, settings: context.settings)
         }
 
         // ── Express key closure ──────────────────────────────────────────
-        let onAux: (AuxButtons) -> Void = { [weak context] aux in
-            guard let context else { return }
+        let onAux: (AuxButtons) -> Void = { [weak self, weak context] aux in
+            guard let self, let context else { return }
+            self.liveButtons.expressKeys = (0..<8).map { aux[$0] }
             context.injector.injectAux(buttons: aux, settings: context.settings)
         }
 
@@ -210,7 +224,7 @@ final class TabletManager: ObservableObject {
         switch productID {
         case 0x0317:
             print("TabletManager: PTH-851 connected")
-            wacomDevice = PTH851Device(device: device, onTablet: onTablet)
+            wacomDevice = PTH851Device(device: device, onTablet: onTablet, onAux: onAux)
         case 0x0357:
             print("TabletManager: PTH-660 connected")
             wacomDevice = PTH660Device(device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
@@ -219,7 +233,7 @@ final class TabletManager: ObservableObject {
             wacomDevice = PTH860Device(device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
         case 0x00B5:
             print("TabletManager: PTZ-631W connected")
-            wacomDevice = PTZ631WDevice(device: device, onTablet: onTablet, onAux: onAux)
+            wacomDevice = PTZ631WDevice(device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
         case 0x00F4:
             print("TabletManager: DTK-2400 (Cintiq 24HD) connected")
             wacomDevice = DTK2400Device(device: device, onTablet: onTablet, onAux: onAux)
@@ -241,12 +255,22 @@ final class TabletManager: ObservableObject {
             wacomDevice.open()
             refreshConnectedIDs(mostRecent: productID)
 
+            // Apply pen-display first-connection defaults for Cintiq-class devices.
+            // Skipped when the user already has stored settings (key present in UserDefaults).
+            if productID == 0x00F4 {
+                let prefix = "device-0x\(String(productID, radix: 16, uppercase: true))."
+                if UserDefaults.standard.object(forKey: prefix + "proportionalMapping") == nil {
+                    context.settings.applyPenDisplayDefaults(width: 1920, height: 1200)
+                }
+            }
+
             // If this is the only device, auto-activate it.
             if activeContext == nil {
                 activeContext = context
             }
 
-            DeviceRegistry.shared.recordTablet(productID: productID)
+            let usbSerial = IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
+            DeviceRegistry.shared.recordTablet(productID: productID, usbSerial: usbSerial)
         }
     }
 

@@ -16,6 +16,14 @@ final class DeviceRegistry: ObservableObject {
         let id:        Int     // productID — immutable unique key
         var nickname:  String  // user-editable; defaults to modelName
         let modelName: String  // set at first-seen time (e.g. "PTH-860")
+        var usbSerial: String? // USB serial number from device firmware; nil if absent
+
+        /// Best available identifier string for display.
+        /// Prefers the firmware USB serial number; falls back to product ID hex.
+        var displayID: String {
+            if let s = usbSerial, !s.isEmpty { return s }
+            return "0x\(String(format: "%04X", id))"
+        }
     }
 
     struct KnownTool: Identifiable, Codable, Equatable {
@@ -26,10 +34,22 @@ final class DeviceRegistry: ObservableObject {
         var kind:     String  // human-readable name, refreshed on load
         var serial:   UInt32? // nil for old persisted entries without serial support
         var toolCode: UInt16? // nil for old persisted entries
+
+        /// Best available identifier string for display.
+        /// Prefers the HID-reported pen serial; falls back to tool code hex; then "—".
+        var displayID: String {
+            if let s = serial, s != 0 { return "0x\(String(format: "%08X", s))" }
+            if let tc = toolCode      { return "0x\(String(format: "%04X", tc))" }
+            return "—"
+        }
     }
 
     @Published var knownTablets: [KnownTablet] = []
     @Published var knownTools:   [KnownTool]   = []
+    /// All tools seen across every known tablet, deduplicated by tool ID.
+    /// A pen used on multiple tablets appears once (first tablet wins for
+    /// nickname if the user has renamed it differently per device).
+    @Published var allKnownTools: [KnownTool]  = []
 
     private let ud = UserDefaults.standard
 
@@ -75,12 +95,20 @@ final class DeviceRegistry: ObservableObject {
 
     /// Called when a tablet connects.  Adds it to the global tablet list if
     /// it has not been seen before, then loads the per-device tool list.
-    func recordTablet(productID: Int) {
+    /// `usbSerial` is the firmware-reported USB serial number (may be nil).
+    func recordTablet(productID: Int, usbSerial: String?) {
         let modelName = TabletManager.deviceName(forProductID: productID)
-        if !knownTablets.contains(where: { $0.id == productID }) {
+        if let idx = knownTablets.firstIndex(where: { $0.id == productID }) {
+            // Backfill serial if we now have it and didn't before.
+            if knownTablets[idx].usbSerial == nil, let s = usbSerial, !s.isEmpty {
+                knownTablets[idx].usbSerial = s
+                saveTablets()
+            }
+        } else {
             knownTablets.append(KnownTablet(id: productID,
                                             nickname: modelName,
-                                            modelName: modelName))
+                                            modelName: modelName,
+                                            usbSerial: usbSerial))
             saveTablets()
         }
         loadTools(forDevice: productID)
@@ -121,6 +149,7 @@ final class DeviceRegistry: ObservableObject {
                                     serial: identity.serial,
                                     toolCode: identity.toolCode))
         saveTools(forDevice: deviceID)
+        rebuildAllTools()
     }
 
     // MARK: - Renaming
@@ -135,6 +164,30 @@ final class DeviceRegistry: ObservableObject {
         guard let idx = knownTools.firstIndex(where: { $0.id == id }) else { return }
         knownTools[idx].nickname = name
         saveTools(forDevice: deviceID)
+    }
+
+    /// Removes a tool from one tablet's persisted list.
+    func forgetTool(id: String, forDevice deviceID: Int) {
+        knownTools.removeAll { $0.id == id }
+        saveTools(forDevice: deviceID)
+        rebuildAllTools()
+    }
+
+    /// Removes a tool from every tablet's persisted list.
+    func forgetToolEverywhere(id: String) {
+        for tablet in knownTablets {
+            guard let data  = ud.data(forKey: toolsKey(tablet.id)),
+                  var list  = try? JSONDecoder().decode([KnownTool].self, from: data)
+            else { continue }
+            let before = list.count
+            list.removeAll { $0.id == id }
+            guard list.count != before,
+                  let saved = try? JSONEncoder().encode(list)
+            else { continue }
+            ud.set(saved, forKey: toolsKey(tablet.id))
+        }
+        knownTools.removeAll { $0.id == id }
+        rebuildAllTools()
     }
 
     // MARK: - Device switch
@@ -161,9 +214,26 @@ final class DeviceRegistry: ObservableObject {
         }
         knownTools = list
         if changed { saveTools(forDevice: deviceID) }
+        rebuildAllTools()
     }
 
     // MARK: - Helpers
+
+    /// Rebuilds `allKnownTools` by reading every per-tablet tool list from
+    /// UserDefaults and merging them in tablet order, skipping duplicate IDs.
+    private func rebuildAllTools() {
+        var seen   = Set<String>()
+        var merged = [KnownTool]()
+        for tablet in knownTablets {
+            guard let data = ud.data(forKey: toolsKey(tablet.id)),
+                  let list = try? JSONDecoder().decode([KnownTool].self, from: data)
+            else { continue }
+            for tool in list where seen.insert(tool.id).inserted {
+                merged.append(tool)
+            }
+        }
+        allKnownTools = merged
+    }
 
     /// Canonical tool ID string for a ToolIdentity.
     static func toolID(for identity: ToolIdentity) -> String {
@@ -183,6 +253,7 @@ final class DeviceRegistry: ObservableObject {
               let list = try? JSONDecoder().decode([KnownTablet].self, from: data)
         else { return }
         knownTablets = list
+        rebuildAllTools()
     }
 
     private func saveTablets() {

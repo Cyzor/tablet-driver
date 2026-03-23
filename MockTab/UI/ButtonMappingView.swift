@@ -15,24 +15,15 @@ struct ButtonMappingView: View {
                     // ── Pen buttons ──────────────────────────────────────────────
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Pen Buttons").font(.headline)
-                        DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+                        ToolNameLabel(tabletManager: tabletManager, registry: registry)
                     }
 
-                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
-                        GridRow {
-                            Text("Side button 1").frame(width: 110, alignment: .leading)
-                            ButtonBindingControl(binding: Binding(
-                                get: { tool.penButton1Binding },
-                                set: { tool.penButton1Binding = $0 }
-                            ))
-                        }
-                        GridRow {
-                            Text("Side button 2").frame(width: 110, alignment: .leading)
-                            ButtonBindingControl(binding: Binding(
-                                get: { tool.penButton2Binding },
-                                set: { tool.penButton2Binding = $0 }
-                            ))
-                        }
+                    let lb = tabletManager.liveButtons
+                    VStack(spacing: 2) {
+                        buttonRow("Tip",          isActive: lb.tipDown,     binding: Binding(get: { tool.tipBinding },        set: { tool.tipBinding = $0 }))
+                        buttonRow("Eraser",        isActive: lb.eraserDown,  binding: Binding(get: { tool.eraserBinding },     set: { tool.eraserBinding = $0 }))
+                        buttonRow("Side button 1", isActive: lb.button1Down, binding: Binding(get: { tool.penButton1Binding }, set: { tool.penButton1Binding = $0 }))
+                        buttonRow("Side button 2", isActive: lb.button2Down, binding: Binding(get: { tool.penButton2Binding }, set: { tool.penButton2Binding = $0 }))
                     }
 
                     Divider()
@@ -47,26 +38,48 @@ struct ButtonMappingView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
-                    ForEach(0..<8, id: \.self) { i in
-                        GridRow {
-                            Text("Key \(i + 1)").frame(width: 110, alignment: .leading)
-                            ButtonBindingControl(binding: Binding(
-                                get: { settings.expressKeyBindings[i] },
-                                set: {
-                                    var updated = settings.expressKeyBindings
-                                    updated[i] = $0
-                                    settings.expressKeyBindings = updated
-                                }
-                            ))
+                    VStack(spacing: 2) {
+                        ForEach(0..<8, id: \.self) { i in
+                            buttonRow("Key \(i + 1)",
+                                      isActive: lb.expressKeys[i],
+                                      binding: Binding(
+                                          get: { settings.expressKeyBindings[i] },
+                                          set: {
+                                              var updated = settings.expressKeyBindings
+                                              updated[i] = $0
+                                              settings.expressKeyBindings = updated
+                                          }
+                                      ))
                         }
                     }
-                }
                 }
                 .padding()
             }
             PresetStatusBar(settings: settings)
         }
+    }
+
+    // MARK: - Row helper
+
+    @ViewBuilder
+    private func buttonRow(_ label: String, isActive: Bool,
+                           binding: Binding<ButtonBinding>) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isActive ? Color.green : Color.clear)
+                .imageScale(.small)
+            Text(label)
+                .frame(width: 110, alignment: .leading)
+            ButtonBindingControl(binding: binding)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(isActive ? Color.accentColor.opacity(0.12) : Color.clear)
+        )
+        .animation(.easeOut(duration: 0.07), value: isActive)
     }
 }
 

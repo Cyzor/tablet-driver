@@ -485,6 +485,27 @@ final class TabletSettings: ObservableObject {
         doubleClickDistance = 10.0
         pen1Raw = ""; pen2Raw = ""; expressKeyRaw = ""
     }
+
+    /// Applies pen-display defaults for the first connection of a Cintiq-class device.
+    ///
+    /// Locates the display matching `width × height` in the active display list
+    /// (CGGetActiveDisplayList order, 1-based index) and sets `targetDisplayIndex`
+    /// to it.  Disables `proportionalMapping` because the digitizer covers the
+    /// exact screen surface — proportional correction would introduce edge dead zones.
+    ///
+    /// Call only when the device has no stored settings yet (first-ever connection).
+    func applyPenDisplayDefaults(width: Int, height: Int) {
+        proportionalMapping = false
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
+        for (i, id) in ids.enumerated()
+            where CGDisplayPixelsWide(id) == width && CGDisplayPixelsHigh(id) == height {
+            targetDisplayIndex = i + 1
+            return
+        }
+    }
 }
 
 // MARK: - ButtonBinding
@@ -504,6 +525,7 @@ struct ButtonBinding: Codable, Equatable {
     // MARK: Presets
 
     static let none        = ButtonBinding()
+    static let leftClick   = ButtonBinding(kind: .leftClick)
     static let rightClick  = ButtonBinding(kind: .rightClick)
     static let middleClick = ButtonBinding(kind: .middleClick)
 
@@ -553,6 +575,19 @@ struct ButtonBinding: Codable, Equatable {
         // Pass the full modifier flags so UCKeyTranslate applies any layout-switching
         // modifier behaviour (e.g. Dvorak Qwerty-Command shows QWERTY char with ⌘).
         keyLabel = ButtonBinding.charLabel(keyCode: event.keyCode, modifiers: ns)
+    }
+
+    // MARK: Mouse button helper
+
+    /// The CGMouseButton this binding maps to, if it's a click action.
+    /// Returns nil for keystroke or .none bindings.
+    var mouseButton: CGMouseButton? {
+        switch kind {
+        case .leftClick:   return .left
+        case .rightClick:  return .right
+        case .middleClick: return .center
+        default:           return nil
+        }
     }
 
     // MARK: Display

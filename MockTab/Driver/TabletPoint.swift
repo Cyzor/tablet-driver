@@ -45,3 +45,19 @@ struct AuxButtons {
         return buttons[index]
     }
 }
+
+/// Snapshot of which hardware buttons are currently held down.
+/// Published by TabletManager so the Buttons pane can light up rows
+/// in real time, like a keyboard viewer for the tablet.
+struct LiveButtonState {
+    /// Pen tip pressed (non-eraser end).
+    var tipDown:     Bool = false
+    /// Eraser tip pressed.
+    var eraserDown:  Bool = false
+    /// Side button 1 held.
+    var button1Down: Bool = false
+    /// Side button 2 held.
+    var button2Down: Bool = false
+    /// Express key states (up to 8).
+    var expressKeys: [Bool] = Array(repeating: false, count: 8)
+}

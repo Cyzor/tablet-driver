@@ -57,9 +57,20 @@ final class PTH851Device: TabletDevice {
     }
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
-        guard length >= 10 else { return }
+        guard length >= 2 else { return }
 
         let id = report[0]
+
+        // Express key report.
+        if id == 0x11 {
+            guard let onAux = onAux else { return }
+            // PTH-851 report layout not yet captured; assuming same as PTH-660/860:
+            // [1] = latch, [2] = current key state.  Use [2] if present, else [1].
+            let auxByte: UInt8 = length >= 3 ? report[2] : report[1]
+            onAux(AuxButtons(buttons: (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }))
+            return
+        }
+
         guard id == 0x02 || id == 0x10 else {
             // Phase 1 serial probe: log any report ID we don't recognise.
             let hex = (0..<Swift.min(Int(length), 20))
@@ -67,6 +78,8 @@ final class PTH851Device: TabletDevice {
             print("PTH-851 UNKNOWN REPORT id=\(String(format:"0x%02X", id)) len=\(length): \(hex)")
             return
         }
+
+        guard length >= 10 else { return }
 
         let status = report[1]
         let inProximity = (status & 0x20) != 0  // bit 5
@@ -85,11 +98,14 @@ final class PTH851Device: TabletDevice {
         }
         // When confidence is low the position data is unreliable, but we still need to emit a
         // zero-pressure report so InputInjector can fire mouseUp and release any held button.
+        // NOTE: keep actual barrel-button bits from status — highConfidence is a position-quality
+        // flag, independent of whether a barrel button is physically held.
         guard highConfidence else {
             let pt = TabletPoint(x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
                                  pressure: 0, maxPressure: spec.maxPressure,
                                  tiltX: 0, tiltY: 0,
-                                 penButton1: false, penButton2: false,
+                                 penButton1: (status & 0x02) != 0,
+                                 penButton2: (status & 0x04) != 0,
                                  eraser: false, inProximity: true, hoverDistance: 0)
             onTablet(pt)
             return

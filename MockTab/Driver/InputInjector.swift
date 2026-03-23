@@ -148,7 +148,8 @@ final class InputInjector {
 
         // ── Tip press transitions ──────────────────────────────────────────────
         if tipDown && !lastTipDown {
-            activeButton = point.eraser ? .right : .left
+            let tipAction    = point.eraser ? tool.eraserBinding : tool.tipBinding
+            activeButton = tipAction.mouseButton ?? (point.eraser ? .right : .left)
             let (clickPt, count) = resolveClick(screenPoint, settings: settings)
             activeClickCount = count
             postMouseDown(button: activeButton, at: clickPt,

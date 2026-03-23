@@ -10,16 +10,20 @@ final class PTZ631WDevice: TabletDevice {
     private let device: IOHIDDevice
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((AuxButtons) -> Void)?
+    private let onToolEnter: ((ToolIdentity) -> Void)?
     private var reportBuffer = [UInt8](repeating: 0, count: 10)
     private var prevInProximity = false
+    private var lastSerial: UInt32 = 0
 
     init(device: IOHIDDevice,
          onTablet: @escaping (TabletPoint) -> Void,
-         onAux: ((AuxButtons) -> Void)? = nil)
+         onAux: ((AuxButtons) -> Void)? = nil,
+         onToolEnter: ((ToolIdentity) -> Void)? = nil)
     {
         self.device = device
         self.onTablet = onTablet
         self.onAux = onAux
+        self.onToolEnter = onToolEnter
     }
 
     func open() {
@@ -84,24 +88,32 @@ final class PTZ631WDevice: TabletDevice {
         }
 
         // Pen reports: direct tablet report (0x10) or dispatch wrapper (0x02).
-        guard id == 0x02 || id == 0x10 else {
-            // Phase 1 serial probe: log any report ID we don't recognise.
-            let hex = (0..<Swift.min(Int(length), 20))
-                .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-            print("PTZ-631W UNKNOWN REPORT id=\(String(format:"0x%02X", id)) len=\(length): \(hex)")
-            return
-        }
+        guard id == 0x02 || id == 0x10 else { return }
 
         // For 0x02 reports, skip tool-change (0xC2) and mouse (0xF0/0xB0) sub-types.
         let status = report[1]
         if id == 0x02 {
             let hi = status & 0xF0
-            // Phase 1 serial probe: the 0xC2 sub-type is the IntuosV1 tool-change/proximity
-            // report — it likely carries the pen serial number in bytes 2–5.
+            // IntuosV1 tool-change / proximity report (0xC2 status byte).
+            // Bit-packed layout (same as Linux wacom driver, wacom_intuos_inout):
+            //   tool type (12 bits): (data[2] << 4) | (data[3] >> 4)
+            //   serial    (32 bits): ((data[3] & 0x0F) << 28) | (data[4] << 20) | ...
             if status == 0xC2 {
-                let hex = (0..<Swift.min(Int(length), 20))
-                    .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-                print("PTZ-631W TOOL-CHANGE 0xC2: \(hex)")
+                guard length >= 8 else { return }
+                let toolCode = UInt16(report[2]) << 4 | UInt16(report[3]) >> 4
+                let serial   = (UInt32(report[3] & 0x0F) << 28)
+                             | (UInt32(report[4]) << 20)
+                             | (UInt32(report[5]) << 12)
+                             | (UInt32(report[6]) << 4)
+                             | (UInt32(report[7]) >> 4)
+                if serial != 0 && serial != lastSerial {
+                    lastSerial = serial
+                    // IntuosV1 eraser type codes have bit 4 set in the lower byte (e.g. 0x096).
+                    let isEraser = (toolCode & 0x006) == 0x006
+                    onToolEnter?(ToolIdentity(serial: serial,
+                                              toolCode: toolCode,
+                                              isEraser: isEraser))
+                }
                 return
             }
             if hi == 0xF0 || hi == 0xB0 { return }
@@ -120,11 +132,6 @@ final class PTZ631WDevice: TabletDevice {
             return
         }
 
-        // Phase 1 serial probe: log all 10 bytes on proximity-enter transition.
-        if !prevInProximity {
-            let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-            print("PTZ-631W PROXIMITY-ENTER: \(hex)")
-        }
         prevInProximity = true
 
         // IntuosV1TabletReport field decoding (matches OpenTabletDriver IntuosV1TabletReport).

@@ -28,6 +28,36 @@ struct DeviceNameLabel: View {
     }
 }
 
+// MARK: - ToolNameLabel
+
+/// A compact caption line showing the active tool's user-assigned nickname
+/// plus a green/grey proximity dot.  Used as a subtitle under the Pen Buttons
+/// section heading, where settings are per-tool (not per-device).
+struct ToolNameLabel: View {
+    @ObservedObject var tabletManager: TabletManager
+    @ObservedObject var registry:      DeviceRegistry
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(tabletManager.activeToolID != nil ? Color.green : Color.secondary.opacity(0.5))
+                .frame(width: 6, height: 6)
+            Text(displayName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var displayName: String {
+        guard let toolID = tabletManager.activeToolID else {
+            // Fall back to last-seen tool if registry has one
+            return registry.knownTools.first?.nickname ?? "No tool in proximity"
+        }
+        if let t = registry.knownTools.first(where: { $0.id == toolID }) { return t.nickname }
+        return toolID
+    }
+}
+
 // MARK: - PresetStatusBar
 
 /// Slim sticky footer that appears at the bottom of every settings pane.

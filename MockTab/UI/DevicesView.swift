@@ -16,6 +16,9 @@ struct DevicesView: View {
     @State private var editingToolID:   String? = nil
     @State private var editingName = ""
 
+    @State private var pendingForgetTool:     DeviceRegistry.KnownTool? = nil
+    @State private var pendingForgetDeviceID: Int?                       = nil
+
     /// Tablet explicitly selected by the user to view its tools.
     /// Nil = auto-follow the currently active device.
     @State private var selectedTabletID: Int? = nil
@@ -32,12 +35,36 @@ struct DevicesView: View {
                 tabletsSection
                 Divider()
                 toolsSection
+                Divider()
+                allToolsSection
             }
             .padding()
         }
         .onAppear { syncTools() }
         .onChange(of: tabletManager.connectedProductID) { _ in
             if selectedTabletID == nil { syncTools() }
+        }
+        .alert(
+            "Remove \"\(pendingForgetTool?.nickname ?? "")\"?",
+            isPresented: Binding(
+                get: { pendingForgetTool != nil },
+                set: { if !$0 { pendingForgetTool = nil } }
+            )
+        ) {
+            // No .destructive role so "Remove" is the default (blue) button — Enter confirms.
+            Button("Remove") {
+                guard let tool = pendingForgetTool else { return }
+                if let did = pendingForgetDeviceID {
+                    registry.forgetTool(id: tool.id, forDevice: did)
+                } else {
+                    registry.forgetToolEverywhere(id: tool.id)
+                }
+                pendingForgetTool = nil
+                editingToolID     = nil
+            }
+            Button("Cancel", role: .cancel) { pendingForgetTool = nil }
+        } message: {
+            Text("This tool will reappear with its default name next time the tablet detects it..")
         }
     }
 
@@ -46,7 +73,7 @@ struct DevicesView: View {
     private var tabletsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Tablets").font(.headline)
-            columnHeader("Name", "Kind")
+            columnHeader("Name", "Kind", "Serial / ID")
             if registry.knownTablets.isEmpty {
                 emptyState("No tablets have been connected yet.")
             } else {
@@ -89,6 +116,12 @@ struct DevicesView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 100, alignment: .leading)
 
+            // Serial / ID column
+            Text(tablet.displayID)
+                .foregroundStyle(.secondary)
+                .font(.system(.caption, design: .monospaced))
+                .frame(width: 110, alignment: .leading)
+
             // Actions
             if editingTabletID == tablet.id {
                 Button("Save")   { commitTabletRename() }
@@ -128,13 +161,13 @@ struct DevicesView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            columnHeader("Name", "Kind")
+            columnHeader("Name", "Kind", "Serial / ID")
             if registry.knownTools.isEmpty {
                 emptyState("No tools detected yet.\nMove the pen over the tablet to register it.")
             } else {
                 card {
                     ForEach(registry.knownTools) { tool in
-                        toolRow(tool)
+                        toolRow(tool, forDevice: effectiveTabletID)
                         if tool.id != registry.knownTools.last?.id {
                             Divider().padding(.leading, 40)
                         }
@@ -145,7 +178,7 @@ struct DevicesView: View {
     }
 
     @ViewBuilder
-    private func toolRow(_ tool: DeviceRegistry.KnownTool) -> some View {
+    private func toolRow(_ tool: DeviceRegistry.KnownTool, forDevice deviceID: Int?) -> some View {
         let isInProximity = tool.id == tabletManager.activeToolID
         HStack(spacing: 8) {
             Image(systemName: isInProximity ? "checkmark.circle.fill" : "circle")
@@ -165,9 +198,20 @@ struct DevicesView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 100, alignment: .leading)
 
+            Text(tool.displayID)
+                .foregroundStyle(.secondary)
+                .font(.system(.caption, design: .monospaced))
+                .frame(width: 110, alignment: .leading)
+
             if editingToolID == tool.id {
-                Button("Save")   { commitToolRename() }
+                Button("Rename") { commitToolRename() }
                     .buttonStyle(.borderedProminent).controlSize(.small)
+                Button("Forget…") {
+                    pendingForgetTool     = tool
+                    pendingForgetDeviceID = deviceID
+                }
+                .buttonStyle(.bordered).controlSize(.small)
+                .foregroundStyle(.red)
                 Button("Cancel") { editingToolID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
             } else {
@@ -183,14 +227,37 @@ struct DevicesView: View {
         .background(isInProximity ? Color.accentColor.opacity(0.08) : Color.clear)
     }
 
+    // MARK: - All Tools
+
+    private var allToolsSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Tools (All Tablets)").font(.headline)
+            columnHeader("Name", "Kind", "Serial / ID")
+            if registry.allKnownTools.isEmpty {
+                emptyState("No tools detected yet.\nMove the pen over a tablet to register it.")
+            } else {
+                card {
+                    ForEach(registry.allKnownTools) { tool in
+                        toolRow(tool, forDevice: nil)
+                        if tool.id != registry.allKnownTools.last?.id {
+                            Divider().padding(.leading, 40)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Shared layout helpers
 
-    private func columnHeader(_ nameCol: String, _ kindCol: String) -> some View {
+    private func columnHeader(_ nameCol: String, _ kindCol: String, _ idCol: String) -> some View {
         HStack {
             Text(nameCol)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(kindCol)
                 .frame(width: 100, alignment: .leading)
+            Text(idCol)
+                .frame(width: 110, alignment: .leading)
             Spacer(minLength: 60) // room for the action buttons
         }
         .font(.caption)
