@@ -152,9 +152,13 @@ final class InputInjector {
             activeButton = tipAction.mouseButton ?? (point.eraser ? .right : .left)
             let (clickPt, count) = resolveClick(screenPoint, settings: settings)
             activeClickCount = count
+            print(String(format: "Inject: mouseDown at (%.0f, %.0f) pressure=%.3f click=%d",
+                         clickPt.x, clickPt.y, pressure, count))
             postMouseDown(button: activeButton, at: clickPt,
                           pressure: pressure, clickCount: count)
         } else if !tipDown && lastTipDown {
+            print(String(format: "Inject: mouseUp   at (%.0f, %.0f) click=%d",
+                         screenPoint.x, screenPoint.y, activeClickCount))
             postMouseUp(button: activeButton, at: screenPoint,
                         clickCount: activeClickCount)
         } else if tipDown {

@@ -42,6 +42,16 @@ import IOKit.hid
 ///   interleave zero-pressure 0xE2 EA sub-frames while actively pressing, causing
 ///   rapid mouseDown/mouseUp oscillation if we cleared pressure there.
 ///
+/// Grip Pen bare-tap HARDWARE LIMITATION:
+///   The Grip Pen (pen:E2/E3) does NOT activate its pressure sensor during bare tip
+///   contact (no barrel button held).  All EA frames during a bare tap carry
+///   rawPressure=0, indistinguishable from hover.  report[9] also stays constant.
+///   This is a firmware constraint confirmed by EA ZERO diagnostic logging (2026-03-23).
+///   Linux input-wacom has the same behaviour: BTN_TOUCH is gated on pressure > 0.
+///   **The barrel button IS the click mechanism for Grip Pen on this digitizer.**
+///   User workaround: set barrel button 1 = Left Click in MockTab's Buttons tab.
+///   Art Pen (pen:EA) works correctly for bare-tap clicking.
+///
 /// Status byte bit assignments (confirmed unless noted):
 ///   Bit 1 (0x02): EA/E0 discriminator
 ///   Bit 2 (0x04): barrel button 1  ← confirmed via live capture
@@ -287,11 +297,23 @@ final class DTK2400Device: TabletDevice {
                     // Do NOT clear lastEAPressure — some pens alternate contact EA frames
                     // with rawPressure=0 inert sub-frames while pressing.
                     // Do NOT reset hover counter — let it accumulate so genuine lift is detected.
+                    // Diagnostic: log the first few zero-pressure EA frames after FIRST-EA so
+                    // we can see what bytes look like during a bare tap attempt.
+                    if pressureFrameCount <= 5 {
+                        let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+                        print(String(format: "DTK-2400 [\(penLabel)] EA ZERO    status=%02X rawPressure=0 report9=%02X bytes=[%@]",
+                                     status, report[9], hex))
+                    }
                 } else {
                     // rawPressure in hover zone (1..tipContactThreshold-1): pen near but not touching.
                     if lastEAPressure > 0 {
                         print(String(format: "DTK-2400 [\(penLabel)] EA RELEASE rawPressure=%d (hover zone) → pressure cleared",
                                      rawPressure))
+                    } else {
+                        // No prior contact — near-miss tap or hover approach.
+                        let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+                        print(String(format: "DTK-2400 [\(penLabel)] EA NEAR-MISS rawPressure=%d report9=%02X bytes=[%@]",
+                                     rawPressure, report[9], hex))
                     }
                     lastEAPressure = 0
                 }
@@ -335,10 +357,13 @@ final class DTK2400Device: TabletDevice {
 
         // All-frame hover timeout: if pressure is latched but no contact-zone pressure
         // EA has arrived for hoverFrameThreshold frames, the pen has lifted.
-        // For Grip Pen (pen:E2/E3): EA RELEASE (hover-zone) is the primary release; skip timeout.
         // For Art Pen (pen:EA/EB): pressure frames stop on lift, so timeout IS the primary release.
+        // For Grip Pen (pen:E2/E3): EA RELEASE (hover-zone) is the primary release, but a long
+        //   safety-net timeout (150 frames ≈ 1.1 s) prevents the "stuck" state that occurs if
+        //   EA RELEASE is never received (e.g. pen re-contacts and lifts without crossing hover zone).
         let isArtPen = penLabel.contains("EA") || penLabel.contains("EB")
-        if isArtPen && lastEAPressure > 0 && framesSinceLastContactEA >= Self.hoverFrameThreshold {
+        let timeoutFrames = isArtPen ? Self.hoverFrameThreshold : 150
+        if lastEAPressure > 0 && framesSinceLastContactEA >= timeoutFrames {
             print(String(format: "DTK-2400 [\(penLabel)] HOVER  frames=%d → pressure cleared (timeout)",
                          framesSinceLastContactEA))
             lastEAPressure = 0
