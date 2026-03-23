@@ -59,32 +59,31 @@ final class DTK2400Device: TabletDevice {
     private var lastX = 0
     private var lastY = 0
 
-    // Pressure state carried forward from most recent EA frame.
-    // Set when EA frame has hoverDist==0 (contact confirmed) AND rawPressure >= threshold.
-    // Cleared when hover detected or E0 counter expires.
+    // Pressure state carried forward from most recent contact-zone EA frame.
+    // Set when a non-rotation EA frame has rawPressure >= tipContactThreshold.
+    // Cleared by EA RELEASE (hover-zone), hover timeout, or proximity-out.
     private var lastEAPressure = 0
 
-    // E0 frame counter: incremented on each E0, reset when contact-zone EA arrives.
-    // When counter >= hoverE0Threshold (no contact EA for N frames), force pressure release.
-    private var e0FramesSinceLastContact = 0
-
-    // E0 release threshold: if this many E0 frames pass without a contact-confirming EA,
-    // the pen has lifted.
+    // ALL-frame hover counter: counts every frame (EA + E0) since the last
+    // contact-zone pressure EA.  Previous approach (counting only E0 frames)
+    // was fundamentally broken: the DTK-2400 has ≥30 E0 frames between
+    // consecutive EA frames, so any E0-only threshold either false-fired during
+    // normal pressing (≤30) or was too slow for Art Pen release (>>30).
     //
-    // The DTK-2400 has ≥12 E0 frames between consecutive EA frames during normal
-    // pressing — threshold must be well above 12 to avoid false HOVER mid-stroke.
+    // By counting ALL frames, the threshold is independent of the EA:E0 ratio:
+    //   - Grip Pen: 1 EA per ~31 total frames → counter reaches ~31 between resets
+    //   - Art Pen:  1 pressure EA per ~17 total frames → counter reaches ~17
+    //   - Threshold 35 (~263 ms at 133 Hz) is above both natural cycles
     //
-    // For Grip Pen (pen:E2): EA RELEASE (rawPressure drops to hover zone 1..80) handles
-    //   normal pen lift.  The E0 counter is only a safety net for edge cases where no
-    //   hover-zone EA frame arrives before proximity-out.
+    // 263 ms click duration (vs 450 ms at 60) reduces cursor drift during taps,
+    // making the OS more likely to classify the gesture as a click rather than a drag.
     //
-    // For Art Pen (pen:EA): E0 HOVER IS the primary release mechanism — when the pen
-    //   lifts, pressure frames stop and only rotation + E0 continue.  The counter fires
-    //   after the pen stops sending contact-zone pressure EA frames.
-    //
-    // At ~130 Hz E0 rate, 30 frames ≈ 230 ms — fast enough release for Art Pen,
-    // well above the ~12 natural E0 gap for Grip Pen.
-    private static let hoverE0Threshold = 30
+    // For Grip Pen: EA RELEASE (hover-zone rawPressure) is the primary release;
+    //   this counter is a safety net.
+    // For Art Pen: this counter IS the primary release — pressure frames stop
+    //   on pen lift while rotation + E0 continue.
+    private var framesSinceLastContactEA = 0
+    private static let hoverFrameThreshold = 35
 
     // Minimum rawPressure for a valid tip-contact event.  Values below this are
     // in the hover / proximity zone — the pen is near the surface but not touching.
@@ -111,11 +110,11 @@ final class DTK2400Device: TabletDevice {
     private var lastButton2: Bool = false
     private var btn1ClearCount = 0
     private var btn2ClearCount = 0
-    // Within the E0 stream, the device's E4/E0 sub-pattern places exactly 3
+    // Within the E0 stream, the device's E4/E0 sub-pattern places exactly 5
     // consecutive clear (E0) frames between each button-set (E4) frame.
-    // Threshold must exceed 3 to avoid releasing during normal holds.
-    // 5 gives margin and still releases in ~38 ms at 130 Hz.
-    private static let buttonClearThreshold = 5
+    // Threshold must exceed 5 to avoid releasing during normal holds.
+    // 7 gives margin and still releases in ~54 ms at 130 Hz.
+    private static let buttonClearThreshold = 7
 
     // Per-proximity diagnostic flag: did we receive any EA frame this session?
     // Printed once so we can detect pens that generate no EA frames at all.
@@ -202,7 +201,7 @@ final class DTK2400Device: TabletDevice {
 
         if !inProximity {
             lastEAPressure = 0
-            e0FramesSinceLastContact = 0
+            framesSinceLastContactEA = 0
             lastButton1 = false
             lastButton2 = false
             btn1ClearCount = 0
@@ -239,34 +238,17 @@ final class DTK2400Device: TabletDevice {
         let x        = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
         let y        = ((Int(report[5]) | Int(report[4]) << 8) << 1) | (Int(report[9]) & 1)
 
-        // EA/E0 alternating report pattern unique to the Cintiq 24HD:
-        //   EA frames (bit 1 set):  pressure channel.
-        //   E0 frames (bit 1 clear): button-state channel.  report[6] always 0.
-        //
-        // Hover detection: the e0 counter is reset ONLY by EA frames whose rawPressure
-        // is in the contact zone (≥ tipContactThreshold).  When the pen lifts, EA frames
-        // drop into the hover zone (< tipContactThreshold) and stop resetting the counter.
-        // After hoverE0Threshold E0 frames the counter fires HOVER and clears pressure.
-        //
-        // We do NOT rely on the report[9] hover-distance field for this decision: E0
-        // frames appear to be lightweight button-state packets that do not carry a valid
-        // hover-distance reading (the field reads 0 regardless of pen position), so
-        // testing it in E0 frames would permanently suppress HOVER and cause sticky release.
-        //
-        // We do NOT clear lastEAPressure on zero-pressure EA sub-frames (e.g. 0xE2):
-        // some pen models interleave zero-pressure 0xE2 sub-frames while actively
-        // pressing, and clearing pressure there would cause rapid mouseDown/mouseUp chatter.
+        // All-frame hover counter: counts EVERY frame (EA + E0) since the last
+        // contact-zone pressure EA.  Reset only when rawPressure >= tipContactThreshold
+        // in a non-rotation EA frame.  When it reaches hoverFrameThreshold, force release.
+        framesSinceLastContactEA += 1
+
         let isEA = (status & 0x02) != 0
 
         if isEA {
             // Art Pen rotation detection (from OTD IntuosV1ReportParser + linux input-wacom):
             // When bits 1 AND 3 are both set (e.g. 0xEA, 0xEB), the EA frame carries
-            // barrel rotation angle in report[6..7], NOT tip pressure.  Decoding report[6..7]
-            // as pressure produces the pen's neutral rotation offset (~80–86 on the DTK-2400),
-            // which straddles tipContactThreshold and causes phantom contact events.
-            //
-            // Standard pens (Grip Pen) set bit 1 but NOT bit 3 (e.g. 0xE2, 0xE3) — these
-            // carry real tip pressure in report[6..7] and are decoded normally.
+            // barrel rotation angle in report[6..7], NOT tip pressure.
             let isRotation = (status & 0x0A) == 0x0A  // bits 1+3 both set
 
             // One-shot per-proximity diagnostic.
@@ -280,11 +262,10 @@ final class DTK2400Device: TabletDevice {
 
             if isRotation {
                 // Art Pen rotation frame — report[6..7] is rotation angle, not pressure.
-                // Do NOT decode rawPressure.  Do NOT update lastEAPressure.
-                // Do NOT reset e0FramesSinceLastContact — rotation frames are transparent
-                // to the pressure/hover state machine.  If lastEAPressure is latched from
-                // a previous contact-zone pressure frame, the E0 counter will still fire
-                // HOVER when the pen lifts (rotation frames don't suppress it).
+                // Transparent to pressure state machine: don't touch lastEAPressure or
+                // framesSinceLastContactEA.  The all-frame counter incremented above
+                // will accumulate through rotation frames, enabling hover detection when
+                // pressure frames stop on Art Pen lift.
                 rotationFrameCount += 1
 
             } else {
@@ -292,7 +273,6 @@ final class DTK2400Device: TabletDevice {
                 pressureFrameCount += 1
                 let rawPressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | (Int(report[1]) & 1)
 
-                // State machine: rawPressure as contact signal; E0 counter detects lift.
                 if rawPressure >= Self.tipContactThreshold {
                     // Pen tip pressing with real contact force.
                     if lastEAPressure == 0 {
@@ -301,21 +281,14 @@ final class DTK2400Device: TabletDevice {
                                      status, rawPressure, Double(rawPressure) / 20.47, hex))
                     }
                     lastEAPressure = rawPressure
-                    e0FramesSinceLastContact = 0  // reset E0 hover counter on confirmed contact
+                    framesSinceLastContactEA = 0  // reset hover counter on confirmed contact
                 } else if rawPressure == 0 {
-                    // rawPressure==0 exactly: zero-pressure interleave sub-frame (e.g. 0xE2 sub-type).
-                    // Do NOT clear lastEAPressure — some pens (e.g. SlenderRattle 0x21801D4E)
-                    // alternate contact EA frames with rawPressure=0 inert sub-frames while pressing.
-                    // Clearing here would cause rapid PRESS/RELEASE oscillation on every EA pair.
-                    //
-                    // DO reset the E0 counter — this EA frame proves the pen is still actively
-                    // reporting, even though this particular sub-frame carries no pressure data.
-                    // Without this reset, the counter accumulates across two consecutive E0 batches
-                    // (6 E0s before the interleave + 6 after = 12) and fires E0 HOVER mid-tap.
-                    e0FramesSinceLastContact = 0
+                    // rawPressure==0 exactly: zero-pressure interleave sub-frame.
+                    // Do NOT clear lastEAPressure — some pens alternate contact EA frames
+                    // with rawPressure=0 inert sub-frames while pressing.
+                    // Do NOT reset hover counter — let it accumulate so genuine lift is detected.
                 } else {
-                    // rawPressure in hover zone (1..tipContactThreshold-1): pen is near but not touching.
-                    // Clear pressure so mouseUp fires on genuine lift.
+                    // rawPressure in hover zone (1..tipContactThreshold-1): pen near but not touching.
                     if lastEAPressure > 0 {
                         print(String(format: "DTK-2400 [\(penLabel)] EA RELEASE rawPressure=%d (hover zone) → pressure cleared",
                                      rawPressure))
@@ -326,9 +299,6 @@ final class DTK2400Device: TabletDevice {
 
         } else {
             // E0 frame: update button state with clear-counter debouncing.
-            // The device ping-pongs E4/E0 at ~30 Hz even while a button is held.
-            // Button latches true on any E4 frame; requires buttonClearThreshold
-            // consecutive E0-no-button frames to release (~45 ms at 66 Hz).
             let curButton1 = (status & 0x04) != 0
             let curButton2 = (status & 0x10) != 0
 
@@ -361,19 +331,17 @@ final class DTK2400Device: TabletDevice {
                     lastButton2 = false
                 }
             }
+        }
 
-            // E0 hover counter: safety net for sparse-EA pens.
-            // If lastEAPressure is still latched but we haven't seen a confirming EA frame
-            // for too long, force release. This handles pens that send 1 EA then go E0-only.
-            if lastEAPressure > 0 {
-                e0FramesSinceLastContact += 1
-                if e0FramesSinceLastContact >= Self.hoverE0Threshold {
-                    print(String(format: "DTK-2400 [\(penLabel)] E0 HOVER  e0streak=%d → pressure cleared (timeout)",
-                                 e0FramesSinceLastContact))
-                    lastEAPressure = 0
-                    e0FramesSinceLastContact = 0
-                }
-            }
+        // All-frame hover timeout: if pressure is latched but no contact-zone pressure
+        // EA has arrived for hoverFrameThreshold frames, the pen has lifted.
+        // For Grip Pen: EA RELEASE usually handles lift first; this is a safety net.
+        // For Art Pen: this IS the primary release (pressure frames stop on lift).
+        if lastEAPressure > 0 && framesSinceLastContactEA >= Self.hoverFrameThreshold {
+            print(String(format: "DTK-2400 [\(penLabel)] HOVER  frames=%d → pressure cleared (timeout)",
+                         framesSinceLastContactEA))
+            lastEAPressure = 0
+            framesSinceLastContactEA = 0
         }
 
         let pressure = lastEAPressure
