@@ -21,6 +21,7 @@ final class PTH660Device: TabletDevice {
     private var lastX = 0
     private var lastY = 0
     private var lastSerial: UInt32 = 0
+    private var currentToolCode: UInt16 = 0
 
     init(
         device: IOHIDDevice,
@@ -120,6 +121,8 @@ final class PTH660Device: TabletDevice {
                 | UInt32(report[19]) << 16
                 | UInt32(report[20]) << 24
             let toolCode = UInt16(report[21]) | UInt16(report[22]) << 8
+            currentToolCode = toolCode
+
             if serial != 0 && serial != lastSerial {
                 lastSerial = serial
                 onToolEnter?(
@@ -135,7 +138,14 @@ final class PTH660Device: TabletDevice {
         let pressure = Int(UInt16(report[8]) | UInt16(report[9]) << 8)
         let tiltX = Double(Int8(bitPattern: report[10])) / 127.0
         let tiltY = Double(Int8(bitPattern: report[11])) / 127.0
-        let rotation = Double(UInt16(report[12]) | UInt16(report[13]) << 8) / 10.0
+
+        // Rotation (Twist): Bytes 12-13, signed 16-bit, scaled by 10 (e.g. 1800 = 180.0°).
+        // Only valid for Art Pen (0x0804); other pens (Grip 0x0802, Pro 0x0832) report garbage/defaults.
+        let isArtPen = (currentToolCode & 0x0FF6) == 0x0804
+        let rawRot = Int16(bitPattern: UInt16(report[12]) | UInt16(report[13]) << 8)
+        var rotation = isArtPen ? Double(rawRot) / 10.0 : 0.0
+        // Normalize to 0..360 range (handling negative signed values).
+        if rotation < 0 { rotation += 360.0 }
 
         lastX = x
         lastY = y

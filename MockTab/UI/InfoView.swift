@@ -148,7 +148,7 @@ struct InfoView: View {
 
             Group {
                 if let point = tabletManager.livePoint {
-                    Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
+                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
 
                         // ── Stylus Info ──────────────────────────────────────────
                         if let toolID = tabletManager.activeToolID,
@@ -159,22 +159,38 @@ struct InfoView: View {
                             GridRow {
                                 Text("Stylus Name")
                                     .foregroundStyle(.secondary)
-                                    .gridColumnAlignment(.leading)
+                                    .frame(minWidth: 80, alignment: .trailing)
+                                    .gridColumnAlignment(.trailing)
                                 Text(tool.nickname)
+                                    .gridCellColumns(2)
                             }
                             GridRow {
                                 Text("Stylus Type")
                                     .foregroundStyle(.secondary)
                                 Text(tool.kind)
+                                    .gridCellColumns(2)
+                            }
+                            GridRow {
+                                Text("Tool Code")
+                                    .foregroundStyle(.secondary)
+                                if let tc = tool.toolCode {
+                                    Text("0x\(String(format: "%04X", tc))")
+                                        .monospacedDigit()
+                                        .gridCellColumns(2)
+                                } else {
+                                    Text("—")
+                                        .gridCellColumns(2)
+                                }
                             }
                             GridRow {
                                 Text("Serial / ID")
                                     .foregroundStyle(.secondary)
                                 Text(tool.displayID)
                                     .monospacedDigit()
+                                    .gridCellColumns(2)
                             }
                             Divider()
-                                .gridCellColumns(2)
+                                .gridCellColumns(3)
                                 .padding(.vertical, 4)
                         }
 
@@ -182,8 +198,11 @@ struct InfoView: View {
                         GridRow {
                             Text("Coordinate")
                                 .foregroundStyle(.secondary)
+                                .frame(minWidth: 80, alignment: .trailing)
+                                .gridColumnAlignment(.trailing)
                             Text("X: \(point.x)   Y: \(point.y)")
                                 .monospacedDigit()
+                                .gridCellColumns(2)
                         }
                         GridRow {
                             Text("Pressure")
@@ -212,12 +231,14 @@ struct InfoView: View {
                                 "X: \(String(format: "%+.2f", point.tiltX))   Y: \(String(format: "%+.2f", point.tiltY))"
                             )
                             .monospacedDigit()
+                            .gridCellColumns(2)
                         }
                         GridRow {
                             Text("Rotation")
                                 .foregroundStyle(.secondary)
                             Text("\(String(format: "%.1f°", point.rotation))")
                                 .monospacedDigit()
+                                .gridCellColumns(2)
                         }
                         GridRow {
                             Text("Buttons")
@@ -249,6 +270,7 @@ struct InfoView: View {
                                     Text("None").foregroundStyle(.tertiary).font(.caption2)
                                 }
                             }
+                            .gridCellColumns(2)
                         }
                         GridRow {
                             Text("Hover")
@@ -257,6 +279,7 @@ struct InfoView: View {
                                 "\(point.hoverDistance)   \(point.inProximity ? "(In Range)" : "(Out)")"
                             )
                             .monospacedDigit()
+                            .gridCellColumns(2)
                         }
                     }
                 } else {
