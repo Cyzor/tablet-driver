@@ -51,7 +51,7 @@ struct AuxButtons {
 /// Snapshot of which hardware buttons are currently held down.
 /// Published by TabletManager so the Buttons pane can light up rows
 /// in real time, like a keyboard viewer for the tablet.
-struct LiveButtonState {
+struct LiveButtonState: Equatable {
     /// Pen tip pressed (non-eraser end).
     var tipDown: Bool = false
     /// Eraser tip pressed.

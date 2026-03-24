@@ -7,13 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053AB9A52F723B910084C0E2 /* TabletManager.swift */; };
+		053AB9A82F723BA50084C0E2 /* PTH850Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053AB9A72F723BA50084C0E2 /* PTH850Device.swift */; };
 		AA000001 /* MockTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MockTabApp.swift */; };
 		AA000002 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* MenuBarView.swift */; };
 		AA000003 /* TabletPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* TabletPoint.swift */; };
 		AA000004 /* TabletDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000004 /* TabletDevice.swift */; };
 		AA000005 /* PTH851Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000005 /* PTH851Device.swift */; };
 		AA000006 /* PTH860Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000006 /* PTH860Device.swift */; };
-		AA000007 /* TabletManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000007 /* TabletManager.swift */; };
 		AA000008 /* InputInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000008 /* InputInjector.swift */; };
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
 		AA000010 /* BezierCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* BezierCurve.swift */; };
@@ -33,21 +34,22 @@
 		AA000037 /* WacomProbeDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* WacomProbeDevice.swift */; };
 		AA000038 /* DTK2400Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* DTK2400Device.swift */; };
 		AA000039 /* DeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000039 /* DeviceRegistry.swift */; };
-		AA000042 /* DeviceContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* DeviceContext.swift */; };
 		AA000040 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* DevicesView.swift */; };
 		AA000041 /* TabStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000041 /* TabStatusBar.swift */; };
+		AA000042 /* DeviceContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* DeviceContext.swift */; };
 		AA000043 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* SettingsWindowController.swift */; };
 		AA000044 /* ToolSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* ToolSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		053AB9A52F723B910084C0E2 /* TabletManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletManager.swift; sourceTree = "<group>"; };
+		053AB9A72F723BA50084C0E2 /* PTH850Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH850Device.swift; sourceTree = "<group>"; };
 		AB000001 /* MockTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTabApp.swift; sourceTree = "<group>"; };
 		AB000002 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		AB000003 /* TabletPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletPoint.swift; sourceTree = "<group>"; };
 		AB000004 /* TabletDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletDevice.swift; sourceTree = "<group>"; };
 		AB000005 /* PTH851Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH851Device.swift; sourceTree = "<group>"; };
 		AB000006 /* PTH860Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH860Device.swift; sourceTree = "<group>"; };
-		AB000007 /* TabletManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletManager.swift; sourceTree = "<group>"; };
 		AB000008 /* InputInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputInjector.swift; sourceTree = "<group>"; };
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
 		AB000010 /* BezierCurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BezierCurve.swift; sourceTree = "<group>"; };
@@ -69,9 +71,9 @@
 		AB000037 /* WacomProbeDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomProbeDevice.swift; sourceTree = "<group>"; };
 		AB000038 /* DTK2400Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTK2400Device.swift; sourceTree = "<group>"; };
 		AB000039 /* DeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRegistry.swift; sourceTree = "<group>"; };
-		AB000042 /* DeviceContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceContext.swift; sourceTree = "<group>"; };
 		AB000040 /* DevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesView.swift; sourceTree = "<group>"; };
 		AB000041 /* TabStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabStatusBar.swift; sourceTree = "<group>"; };
+		AB000042 /* DeviceContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceContext.swift; sourceTree = "<group>"; };
 		AB000043 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		AB000044 /* ToolSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolSettings.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -127,9 +129,10 @@
 				AB000038 /* DTK2400Device.swift */,
 				AB000039 /* DeviceRegistry.swift */,
 				AB000042 /* DeviceContext.swift */,
-				AB000007 /* TabletManager.swift */,
 				AB000035 /* AppWatcher.swift */,
 				AB000008 /* InputInjector.swift */,
+				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
+				053AB9A72F723BA50084C0E2 /* PTH850Device.swift */,
 			);
 			path = Driver;
 			sourceTree = "<group>";
@@ -259,8 +262,8 @@
 				AA000037 /* WacomProbeDevice.swift in Sources */,
 				AA000038 /* DTK2400Device.swift in Sources */,
 				AA000039 /* DeviceRegistry.swift in Sources */,
+				053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */,
 				AA000042 /* DeviceContext.swift in Sources */,
-				AA000007 /* TabletManager.swift in Sources */,
 				AA000035 /* AppWatcher.swift in Sources */,
 				AA000008 /* InputInjector.swift in Sources */,
 				AA000009 /* TabletSettings.swift in Sources */,
@@ -271,6 +274,7 @@
 				AA000014 /* ButtonMappingView.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,
 				AA000016 /* ScratchpadView.swift in Sources */,
+				053AB9A82F723BA50084C0E2 /* PTH850Device.swift in Sources */,
 				AA000033 /* InfoView.swift in Sources */,
 				AA000034 /* PresetsView.swift in Sources */,
 				AA000040 /* DevicesView.swift in Sources */,

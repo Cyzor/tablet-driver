@@ -19,33 +19,15 @@ final class TabletManager: ObservableObject {
 
     // MARK: - Per-device state
 
-    /// All device contexts, keyed by product ID.  Contexts survive
-    /// disconnect so settings and injector state are preserved for
-    /// reconnection.
     @Published var contexts: [Int: DeviceContext] = [:]
-
-    /// The context currently posting CGEvents.  Switches automatically
-    /// when a pen enters proximity on a different tablet.
     @Published var activeContext: DeviceContext? = nil
-
-    /// The tool ID of the pen currently in proximity, or nil when no pen
-    /// is detected.  Matches DeviceRegistry.KnownTool.id so DevicesView
-    /// can highlight the row without additional lookups.
     @Published var activeToolID: String? = nil
-
-    /// Real-time hardware button state for the active device.
-    /// Consumed by ButtonMappingView to highlight rows when pressed.
     @Published var liveButtons = LiveButtonState()
-
-    /// Real-time raw tablet point data for the active device.
-    /// Consumed by InfoView for live diagnostics.
     @Published var livePoint: TabletPoint? = nil
 
-    /// Internal lookup from raw IOHIDDevice to context — needed for
-    /// deviceDisconnected which receives the IOHIDDevice handle.
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
 
-    // MARK: - Legacy published state (consumed by views)
+    // MARK: - Legacy published state
 
     @Published var isConnected = false
     @Published var connectedProductID: Int = 0
@@ -54,7 +36,29 @@ final class TabletManager: ObservableObject {
     @Published var connectedUSBSpeed: String = "—"
     @Published var hidManagerOpen: Bool = false
 
-    /// Human-readable name for a product ID, including a hex fallback for unknowns.
+    // MARK: - UI throttle
+    //
+    // @Published mutations fire objectWillChange.send() on every write, which
+    // triggers SwiftUI diffing on the main thread.  At 133 Hz that's hundreds
+    // of invalidations per second even when no values changed.
+    //
+    // Two-level gate:
+    //   1. infoViewVisible — set by SettingsWindowController when the Info tab
+    //      is frontmost.  When false, livePoint / liveButtons are never written
+    //      at all, so @Published fires zero times during normal use.
+    //   2. uiUpdateCounter — when the Info tab IS visible, further throttle to
+    //      ~16 Hz so SwiftUI layout work stays negligible.
+
+    /// Set true by SettingsWindowController when the Info tab is frontmost.
+    /// When false, livePoint and liveButtons are never written, eliminating
+    /// all SwiftUI rendering overhead while other tabs or no window is open.
+    var infoViewVisible: Bool = false
+
+    private var uiUpdateCounter = 0
+    private static let uiUpdateInterval = 8   // every 8th report ≈ 16 Hz at 133 Hz
+
+    // MARK: - Device name helpers
+
     static func deviceName(forProductID pid: Int) -> String {
         switch pid {
         case 0x0317: return "PTH-851"
@@ -76,20 +80,13 @@ final class TabletManager: ObservableObject {
         }
     }
 
-    // MARK: - Legacy single-device accessors (transitional)
-    //
-    // These forward to the active context so that existing code that
-    // reads `tabletManager.settings` / `tabletManager.injector`
-    // continues to work during the migration to per-device windows.
+    // MARK: - Legacy single-device accessors
 
-    /// The active context's settings, or a fallback.
-    /// UI code should migrate to reading `activeContext?.settings` directly.
     var settings: TabletSettings? {
         get { activeContext?.settings }
-        set { /* no-op: settings are now per-context */  }
+        set { /* no-op: settings are now per-context */ }
     }
 
-    /// The active context's injector.
     var injector: InputInjector? {
         activeContext?.injector
     }
@@ -114,16 +111,16 @@ final class TabletManager: ObservableObject {
             manager,
             { ctx, _, _, device in
                 guard let ctx else { return }
-                let mgr = Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
-                mgr.deviceConnected(device)
+                Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
+                    .deviceConnected(device)
             }, ctx)
 
         IOHIDManagerRegisterDeviceRemovalCallback(
             manager,
             { ctx, _, _, device in
                 guard let ctx else { return }
-                let mgr = Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
-                mgr.deviceDisconnected(device)
+                Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
+                    .deviceDisconnected(device)
             }, ctx)
 
         IOHIDManagerScheduleWithRunLoop(
@@ -141,9 +138,7 @@ final class TabletManager: ObservableObject {
         IOHIDManagerUnscheduleFromRunLoop(
             manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-        for (_, ctx) in hidDeviceMap {
-            ctx.tabletDevice?.close()
-        }
+        for (_, ctx) in hidDeviceMap { ctx.tabletDevice?.close() }
         hidDeviceMap.removeAll()
         contexts.removeAll()
         activeContext = nil
@@ -154,30 +149,30 @@ final class TabletManager: ObservableObject {
     private func deviceConnected(_ device: IOHIDDevice) {
         let productID = hidIntProperty(device, kIOHIDProductIDKey)
 
-        // Reuse or create a DeviceContext for this product ID.
         let context = contexts[productID] ?? DeviceContext(productID: productID)
         contexts[productID] = context
         context.hidDevice = device
 
-        // ── Tool-enter closure (IntuosV2 only — fires on serial change) ─
+        // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
             guard let self, let context else { return }
             context.activeToolSerial = identity.serial
             DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
-            let toolID = DeviceRegistry.toolID(for: identity)
+            let toolID   = DeviceRegistry.toolID(for: identity)
             let toolSets = context.settings.toolSettings(forID: toolID)
-            context.activeTool = toolSets
+            context.activeTool               = toolSets
             context.injector.activeToolSettings = toolSets
             self.activeToolID = toolID
         }
 
-        // ── Tablet point closure with proximity-based activation ─────────
+        // ── Tablet point closure ─────────────────────────────────────────────
         let onTablet: (TabletPoint) -> Void = { [weak self, weak context] point in
             guard let self, let context else { return }
 
-            // Record tool type for devices that don't fire onToolEnter from their driver.
-            // PTH-660/860 (IntuosV2) and PTZ-631W fire onToolEnter with a real serial.
-            if point.inProximity && productID != 0x0357 && productID != 0x0358
+            // Record tool type for devices that don't fire onToolEnter.
+            if point.inProximity
+                && productID != 0x0357
+                && productID != 0x0358
                 && productID != 0x00B5
             {
                 let identity = ToolIdentity(
@@ -190,8 +185,6 @@ final class TabletManager: ObservableObject {
 
             // Proximity-enter activates this device's context.
             if point.inProximity && self.activeContext !== context {
-                // Post proximity-exit for the outgoing device so apps
-                // (Photoshop, Krita, etc.) clean up their tablet state.
                 if let old = self.activeContext, old.injector.lastProximity {
                     let exitPoint = TabletPoint(
                         x: 0, y: 0, maxX: 1, maxY: 1,
@@ -204,8 +197,8 @@ final class TabletManager: ObservableObject {
                 self.activeContext = context
             }
 
-            // Proximity-exit from a non-active device: still post it so
-            // apps don't get stuck with a dangling proximity state.
+            // Proximity-exit from a non-active device: still post so apps
+            // don't get stuck with a dangling proximity state.
             if !point.inProximity && context.injector.lastProximity {
                 context.injector.inject(point: point, settings: context.settings)
                 return
@@ -213,61 +206,99 @@ final class TabletManager: ObservableObject {
 
             // Only the active context posts normal events.
             guard self.activeContext === context else { return }
+
+            // ── CGEvent injection — never throttled ──────────────────────────
+            context.injector.inject(point: point, settings: context.settings)
+
+            // ── UI state — gated + throttled ─────────────────────────────────
+            // Skip entirely when the Info tab isn't visible.  This eliminates
+            // every @Published write — and therefore every SwiftUI invalidation —
+            // during normal drawing use.
+            guard infoViewVisible else { return }
+
             if !point.inProximity {
-                self.activeToolID = nil
-                self.liveButtons = LiveButtonState()  // clear all indicators
-                self.livePoint = nil
+                // Proximity exit always publishes immediately so UI clears.
+                self.uiUpdateCounter = 0
+                self.activeToolID    = nil
+                self.liveButtons     = LiveButtonState()
+                self.livePoint       = nil
             } else {
-                let tipDown = point.normalizedPressure > 0.004
-                self.liveButtons.tipDown = tipDown && !point.eraser
-                self.liveButtons.eraserDown = tipDown && point.eraser
-                self.liveButtons.button1Down = point.penButton1
-                self.liveButtons.button2Down = point.penButton2
+                // Throttle continuous updates to ~16 Hz.
+                self.uiUpdateCounter += 1
+                guard self.uiUpdateCounter >= Self.uiUpdateInterval else { return }
+                self.uiUpdateCounter = 0
+
+                let tipDown    = point.normalizedPressure > 0.004
+                let newButtons = LiveButtonState(
+                    tipDown:     tipDown && !point.eraser,
+                    eraserDown:  tipDown && point.eraser,
+                    button1Down: point.penButton1,
+                    button2Down: point.penButton2,
+                    expressKeys: self.liveButtons.expressKeys
+                )
+                // Only assign when values changed — avoids spurious objectWillChange.
+                if newButtons != self.liveButtons { self.liveButtons = newButtons }
                 self.livePoint = point
             }
-            context.injector.inject(point: point, settings: context.settings)
         }
 
-        // ── Express key closure ──────────────────────────────────────────
+        // ── Express key closure ──────────────────────────────────────────────
         let onAux: (AuxButtons) -> Void = { [weak self, weak context] aux in
             guard let self, let context else { return }
-            self.liveButtons.expressKeys = (0..<8).map { aux[$0] }
+            // Inject immediately — no throttle on actual key events.
             context.injector.injectAux(buttons: aux, settings: context.settings)
+            // Update UI only when state changed and Info tab is visible.
+            guard infoViewVisible else { return }
+            let keys = (0..<8).map { aux[$0] }
+            if keys != self.liveButtons.expressKeys {
+                self.liveButtons.expressKeys = keys
+            }
         }
 
-        // ── Create the device driver ─────────────────────────────────────
+        // ── Create the device driver ─────────────────────────────────────────
         let wacomDevice: (any TabletDevice)?
+
         switch productID {
         case 0x0317:
             print("TabletManager: PTH-851 connected")
             wacomDevice = PTH851Device(device: device, onTablet: onTablet, onAux: onAux)
+
+        case 0x0028:
+            print("TabletManager: PTH-850 (Intuos Pro Medium) connected")
+            wacomDevice = PTH850Device(
+                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: nil)
+
         case 0x0357:
             print("TabletManager: PTH-660 connected")
             wacomDevice = PTH660Device(
                 device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+
         case 0x0358:
             print("TabletManager: PTH-860 connected")
             wacomDevice = PTH860Device(
                 device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+
         case 0x00B5:
             print("TabletManager: PTZ-631W connected")
             wacomDevice = PTZ631WDevice(
                 device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+
         case 0x00F4:
             print("TabletManager: DTK-2400 (Cintiq 24HD) connected")
             wacomDevice = DTK2400Device(device: device, onTablet: onTablet, onAux: onAux)
+
         default:
-            let pid = String(productID, radix: 16, uppercase: true)
+            let pid        = String(productID, radix: 16, uppercase: true)
             let reportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
             if reportSize == 10 {
                 print(
-                    "TabletManager: unknown Wacom 0x\(pid) with 10-byte reports — attaching WacomProbeDevice"
-                )
+                    "TabletManager: unknown Wacom 0x\(pid) with 10-byte reports "
+                        + "— attaching WacomProbeDevice")
                 wacomDevice = WacomProbeDevice(device: device)
             } else {
                 print(
-                    "TabletManager: unsupported Wacom 0x\(pid) (reportSize=\(reportSize)) — add a device class to support it"
-                )
+                    "TabletManager: unsupported Wacom 0x\(pid) (reportSize=\(reportSize)) "
+                        + "— add a device class to support it")
                 return
             }
         }
@@ -278,8 +309,6 @@ final class TabletManager: ObservableObject {
             wacomDevice.open()
             refreshConnectedIDs(mostRecent: productID)
 
-            // Apply pen-display first-connection defaults for Cintiq-class devices.
-            // Skipped when the user already has stored settings (key present in UserDefaults).
             if productID == 0x00F4 {
                 let prefix = "device-0x\(String(productID, radix: 16, uppercase: true))."
                 if UserDefaults.standard.object(forKey: prefix + "proportionalMapping") == nil {
@@ -287,10 +316,7 @@ final class TabletManager: ObservableObject {
                 }
             }
 
-            // If this is the only device, auto-activate it.
-            if activeContext == nil {
-                activeContext = context
-            }
+            if activeContext == nil { activeContext = context }
 
             let usbSerial =
                 IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
@@ -302,57 +328,45 @@ final class TabletManager: ObservableObject {
         guard let context = hidDeviceMap.removeValue(forKey: device) else { return }
         context.tabletDevice?.close()
         context.tabletDevice = nil
-        context.hidDevice = nil
+        context.hidDevice    = nil
         print("TabletManager: \(Self.deviceName(forProductID: context.productID)) disconnected")
         refreshConnectedIDs(mostRecent: nil)
-
-        // If the active context disconnected, fall back to another.
         if activeContext === context {
             activeContext = hidDeviceMap.values.first
         }
     }
 
-    /// Recomputes `connectedProductIDs` / `isConnected` / `connectedProductID` from the live
-    /// `hidDeviceMap` dict.  `mostRecent` pins `connectedProductID` to the just-connected product so
-    /// the UI auto-selects it even when multiple tablets are present.
     private func refreshConnectedIDs(mostRecent: Int?) {
-        connectedProductIDs = hidDeviceMap.values
-            .map { $0.productID }
-            .sorted()
-        isConnected = !connectedProductIDs.isEmpty
+        connectedProductIDs = hidDeviceMap.values.map { $0.productID }.sorted()
+        isConnected         = !connectedProductIDs.isEmpty
         if let pid = mostRecent, connectedProductIDs.contains(pid) {
             connectedProductID = pid
         } else {
             connectedProductID = connectedProductIDs.last ?? 0
         }
-        // Update transport / speed for the primary device.
         if let primary = hidDeviceMap.keys.first(where: {
             hidIntProperty($0, kIOHIDProductIDKey) == connectedProductID
         }) {
-            let info = Self.connectionInfo(for: primary)
+            let info           = Self.connectionInfo(for: primary)
             connectedTransport = info.transport
-            connectedUSBSpeed = info.speed
+            connectedUSBSpeed  = info.speed
         } else {
             connectedTransport = "—"
-            connectedUSBSpeed = "—"
+            connectedUSBSpeed  = "—"
         }
     }
 
-    /// Reads the HID transport type and USB bus speed from IOKit for a device.
-    /// Falls back gracefully if the speed property is absent (e.g. Bluetooth).
     private static func connectionInfo(
         for device: IOHIDDevice
     ) -> (transport: String, speed: String) {
         let transport =
             IOHIDDeviceGetProperty(
-                device,
-                kIOHIDTransportKey as CFString) as? String ?? "Unknown"
+                device, kIOHIDTransportKey as CFString) as? String ?? "Unknown"
         guard transport.caseInsensitiveCompare("USB") == .orderedSame else {
             return (transport, "—")
         }
         let service = IOHIDDeviceGetService(device)
         guard service != IO_OBJECT_NULL else { return ("USB", "USB") }
-        // Both key names appear in different macOS / driver versions.
         for key in ["USB Device Speed", "Device Speed"] as [CFString] {
             if let prop = IORegistryEntrySearchCFProperty(
                 service, kIOServicePlane, key, kCFAllocatorDefault,
