@@ -49,6 +49,9 @@ final class ResizableTabViewController: NSTabViewController {
     /// whether the Info tab is currently visible.
     var onTabSelected: ((String?) -> Void)?
 
+    // Debounce timer — coalesces rapid resize drag events into a single write.
+    private var saveDebounceTimer: Timer?
+
     func register(defaultSize: NSSize, forTabLabeled label: String) {
         defaultTabSizes[label] = defaultSize
     }
@@ -69,16 +72,38 @@ final class ResizableTabViewController: NSTabViewController {
         UserDefaults.standard.set(dict, forKey: "MockTab_PerTabUserSizes")
     }
 
+    /// Schedules a save 0.5 s after the last resize event.
+    /// Cancels and reschedules on every intermediate event so only one
+    /// write reaches UserDefaults per drag gesture.
+    private func scheduleSave() {
+        saveDebounceTimer?.invalidate()
+        saveDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.5,
+                                                repeats: false) { [weak self] _ in
+            self?.saveUserSizesToDefaults()
+        }
+    }
+
     override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         super.tabView(tabView, didSelect: tabViewItem)
         applySize(for: tabViewItem)
         onTabSelected?(tabViewItem?.label)
+        updateWindowTitle(for: tabViewItem)
     }
 
     override func viewDidAppear() {
         super.viewDidAppear()
         applySize(for: tabViewItems[safe: selectedTabViewItemIndex])
         onTabSelected?(tabViewItems[safe: selectedTabViewItemIndex]?.label)
+        updateWindowTitle(for: tabViewItems[safe: selectedTabViewItemIndex])
+    }
+
+    private func updateWindowTitle(for item: NSTabViewItem?) {
+        guard let window = view.window else { return }
+        // hosting.title was set to "Label — DeviceName" for device-specific tabs
+        // and plain "Label" for shared tabs in SettingsWindowController.addTab.
+        if let title = item?.viewController?.title, !title.isEmpty {
+            window.title = title
+        }
     }
 
     private func applySize(for item: NSTabViewItem?) {
@@ -99,6 +124,13 @@ final class ResizableTabViewController: NSTabViewController {
             selector: #selector(windowDidResize(_:)),
             name: NSWindow.didResizeNotification,
             object: nil)
+        // Save immediately on close — catches the case where the user
+        // resizes and then closes the window within the debounce window.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowWillClose(_:)),
+            name: NSWindow.willCloseNotification,
+            object: nil)
     }
 
     @objc private func windowDidResize(_ notification: Notification) {
@@ -107,11 +139,24 @@ final class ResizableTabViewController: NSTabViewController {
               let currentLabel = tabViewItems[safe: selectedTabViewItemIndex]?.label
         else { return }
         lastUserSizes[currentLabel] = resizedWindow.frame.size
+        scheduleSave()
     }
 
-    deinit {
+    @objc private func windowWillClose(_ notification: Notification) {
+        guard let closingWindow = notification.object as? NSWindow,
+              closingWindow === view.window
+        else { return }
+        // Cancel any pending debounce and write synchronously on close.
+        saveDebounceTimer?.invalidate()
+        saveDebounceTimer = nil
         saveUserSizesToDefaults()
     }
+
+    // deinit save intentionally removed.
+    // isReleasedWhenClosed = false means this object lives for the entire
+    // app session — deinit only fires at process exit, when UserDefaults
+    // plist flushing is unreliable.  windowWillClose and the debounced
+    // windowDidResize handle all persistence needs instead.
 }
 
 // MARK: - SettingsWindowController
@@ -173,29 +218,29 @@ final class SettingsWindowController: NSWindowController {
             PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
         }
 
-        addTab(label: "Tablet Area", symbol: "rectangle.dashed",        height: 420) {
+        addTab(label: "Tablet Area", symbol: "rectangle.dashed",       height: 420) {
             TabletAreaView(settings: s, tabletManager: tm, registry: dr,
                            onDeviceSelected: onDevice, boundProductID: productID)
         }
-        addTab(label: "Pressure",    symbol: "scribble.variable",       height: 480) {
+        addTab(label: "Pressure",   symbol: "scribble.variable",       height: 480) {
             PressureCurveView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr)
         }
-        addTab(label: "Buttons",     symbol: "hand.point.up.left",      height: 575) {
+        addTab(label: "Buttons",    symbol: "hand.point.up.left",      height: 575) {
             ButtonMappingView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr)
         }
-        addTab(label: "Display",     symbol: "display",                 height: 370) {
+        addTab(label: "Display",    symbol: "display",                 height: 370) {
             DisplayMappingView(settings: s, tabletManager: tm, registry: dr)
         }
-        addTab(label: "Devices",     symbol: "rectangle.on.rectangle",  height: 480, width: 620) {
+        addTab(label: "Devices",    symbol: "rectangle.on.rectangle",  height: 480, width: 620) {
             DevicesView(tabletManager: tm, registry: dr)
         }
-        addTab(label: "Presets",     symbol: "star.circle",             height: 450) {
+        addTab(label: "Presets",    symbol: "star.circle",             height: 450) {
             PresetsView(settings: s)
         }
-        addTab(label: "Scratchpad",  symbol: "pencil.and.outline",      height: 360) {
+        addTab(label: "Scratchpad", symbol: "pencil.and.outline",      height: 360) {
             ScratchpadView(settings: s)
         }
-        addTab(label: "Info",        symbol: "info.circle",             height: 430) {
+        addTab(label: "Info",       symbol: "info.circle",             height: 430) {
             InfoView(tabletManager: tm, settings: s)
         }
     }
@@ -208,7 +253,7 @@ final class SettingsWindowController: NSWindowController {
         tabVC.loadSavedUserSizes()
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
-        // Sync the visibility flag for whichever tab is already selected.
+        // Sync the Info-tab visibility flag for whichever tab is already selected.
         let label = tabVC.tabViewItems[safe: tabVC.selectedTabViewItemIndex]?.label
         TabletManager.shared.infoViewVisible = (label == "Info")
     }
@@ -255,7 +300,7 @@ final class SettingsWindowController: NSWindowController {
         tabVC.register(defaultSize: NSSize(width: width, height: height),
                        forTabLabeled: label)
 
-        let item  = NSTabViewItem(viewController: hosting)
+        let item   = NSTabViewItem(viewController: hosting)
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
         tabVC.addTabViewItem(item)

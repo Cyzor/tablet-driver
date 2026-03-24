@@ -55,9 +55,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             TabletManager.shared.start()
         }
 
-        // Show preferences window on first launch.
+        // Only open a fresh window on first launch — subsequent launches
+        // restore their windows via PreferencesWindowController.restoreWindows().
         DispatchQueue.main.async {
-            PreferencesWindowController.shared.show()
+            PreferencesWindowController.shared.showIfNoSavedSession()
         }
     }
 
