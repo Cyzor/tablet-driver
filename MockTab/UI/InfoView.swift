@@ -140,165 +140,144 @@ struct InfoView: View {
     }
 
     // MARK: - Live Input section
-
-    private var liveInputSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Live Input")
-                .font(.headline)
-
-            Group {
-                if let point = tabletManager.livePoint {
-                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
-
-                        // ── Stylus Info ──────────────────────────────────────────
-                        if let toolID = tabletManager.activeToolID,
-                            let tool = DeviceRegistry.shared.knownTools.first(where: {
-                                $0.id == toolID
-                            })
-                        {
-                            GridRow {
-                                Text("Stylus Name")
-                                    .foregroundStyle(.secondary)
-                                    .frame(minWidth: 80, alignment: .trailing)
-                                    .gridColumnAlignment(.trailing)
-                                Text(tool.nickname)
-                                    .gridCellColumns(2)
-                            }
-                            GridRow {
-                                Text("Stylus Type")
-                                    .foregroundStyle(.secondary)
-                                Text(tool.kind)
-                                    .gridCellColumns(2)
-                            }
-                            GridRow {
-                                Text("Tool Code")
-                                    .foregroundStyle(.secondary)
-                                if let tc = tool.toolCode {
-                                    Text("0x\(String(format: "%04X", tc))")
-                                        .monospacedDigit()
-                                        .gridCellColumns(2)
-                                } else {
-                                    Text("—")
-                                        .gridCellColumns(2)
-                                }
-                            }
-                            GridRow {
-                                Text("Serial / ID")
-                                    .foregroundStyle(.secondary)
-                                Text(tool.displayID)
-                                    .monospacedDigit()
-                                    .gridCellColumns(2)
-                            }
-                            Divider()
-                                .gridCellColumns(3)
-                                .padding(.vertical, 4)
-                        }
-
-                        // ── Live Data ────────────────────────────────────────────
-                        GridRow {
-                            Text("Coordinate")
-                                .foregroundStyle(.secondary)
-                                .frame(minWidth: 80, alignment: .trailing)
-                                .gridColumnAlignment(.trailing)
-                            Text("X: \(point.x)   Y: \(point.y)")
-                                .monospacedDigit()
-                                .gridCellColumns(2)
-                        }
-                        GridRow {
-                            Text("Pressure")
-                                .foregroundStyle(.secondary)
-                            HStack {
-                                Text("\(point.pressure)")
-                                    .monospacedDigit()
-                                    .frame(width: 40, alignment: .leading)
-
-                                GeometryReader { geo in
-                                    ZStack(alignment: .leading) {
-                                        Capsule().fill(Color.secondary.opacity(0.2))
-                                        Capsule().fill(Color.accentColor)
-                                            .frame(
-                                                width: geo.size.width
-                                                    * CGFloat(point.normalizedPressure))
-                                    }
-                                }
-                                .frame(width: 60, height: 6)
-                            }
-                        }
-                        GridRow {
-                            Text("Tilt")
-                                .foregroundStyle(.secondary)
-                            Text(
-                                "X: \(String(format: "%+.2f", point.tiltX))   Y: \(String(format: "%+.2f", point.tiltY))"
-                            )
-                            .monospacedDigit()
-                            .gridCellColumns(2)
-                        }
-                        GridRow {
-                            Text("Rotation")
-                                .foregroundStyle(.secondary)
-                            Text("\(String(format: "%.1f°", point.rotation))")
-                                .monospacedDigit()
-                                .gridCellColumns(2)
-                        }
-                        GridRow {
-                            Text("Buttons")
-                                .foregroundStyle(.secondary)
-                            HStack(spacing: 4) {
-                                let lb = tabletManager.liveButtons
-                                if lb.tipDown {
-                                    Text("Tip").font(.caption2).padding(.horizontal, 4).background(
-                                        Color.accentColor.opacity(0.2)
-                                    ).cornerRadius(3)
-                                }
-                                if lb.eraserDown {
-                                    Text("Eraser").font(.caption2).padding(.horizontal, 4)
-                                        .background(Color.accentColor.opacity(0.2)).cornerRadius(3)
-                                }
-                                if lb.button1Down {
-                                    Text("B1").font(.caption2).padding(.horizontal, 4).background(
-                                        Color.accentColor.opacity(0.2)
-                                    ).cornerRadius(3)
-                                }
-                                if lb.button2Down {
-                                    Text("B2").font(.caption2).padding(.horizontal, 4).background(
-                                        Color.accentColor.opacity(0.2)
-                                    ).cornerRadius(3)
-                                }
-                                if !lb.tipDown && !lb.eraserDown && !lb.button1Down
-                                    && !lb.button2Down
-                                {
-                                    Text("None").foregroundStyle(.tertiary).font(.caption2)
-                                }
-                            }
-                            .gridCellColumns(2)
-                        }
-                        GridRow {
-                            Text("Hover")
-                                .foregroundStyle(.secondary)
-                            Text(
-                                "\(point.hoverDistance)   \(point.inProximity ? "(In Range)" : "(Out)")"
-                            )
-                            .monospacedDigit()
-                            .gridCellColumns(2)
-                        }
-                    }
-                } else {
-                    Text("No input detected. Move pen into range.")
-                        .foregroundStyle(.secondary)
-                        .padding(.vertical, 8)
-                }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(NSColor.controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
-            )
-        }
-    }
-
+	
+	// MARK: - Live Input section
+	
+	private var liveInputSection: some View {
+		VStack(alignment: .leading, spacing: 8) {
+			Text("Live Input")
+				.font(.headline)
+	
+			Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
+				// ── Stylus Info ──────────────────────────────────────────
+				let tool: DeviceRegistry.KnownTool? = {
+					guard let id = tabletManager.activeToolID else { return nil }
+					return DeviceRegistry.shared.knownTools.first(where: { $0.id == id })
+				}()
+	
+				stylusRow(label: "Stylus Name", value: tool?.nickname ?? "—")
+				stylusRow(label: "Stylus Type", value: tool?.kind ?? "—")
+				stylusRow(label: "Tool Code", value: tool?.toolCode.map { "0x\(String(format: "%04X", $0))" } ?? "—")
+				stylusRow(label: "Serial", value: tool?.displayID ?? "—")
+	
+				Divider()
+					.gridCellColumns(3)
+					.padding(.vertical, 4)
+	
+				// ── Live Data ────────────────────────────────────────────
+				let point = tabletManager.livePoint
+				let lb = tabletManager.liveButtons
+	
+				liveRow(label: "Buttons") {
+					HStack(spacing: 4) {
+						if lb.tipDown { tag("Tip") }
+						if lb.eraserDown { tag("Eraser") }
+						if lb.button1Down { tag("B1") }
+						if lb.button2Down { tag("B2") }
+						if !lb.tipDown && !lb.eraserDown && !lb.button1Down && !lb.button2Down {
+							Text("None").foregroundStyle(.tertiary).font(.caption2)
+						}
+					}
+				}
+	
+				liveRow(label: "Pressure") {
+					HStack {
+						Text(point != nil ? "\(point!.pressure)" : "0")
+							.monospacedDigit()
+							.frame(width: 48, alignment: .trailing)   // fixed width for pressure value
+	
+						GeometryReader { geo in
+							ZStack(alignment: .leading) {
+								Capsule().fill(Color.secondary.opacity(0.2))
+								Capsule().fill(Color.accentColor)
+									.frame(width: geo.size.width * CGFloat(point?.normalizedPressure ?? 0))
+							}
+						}
+						.frame(width: 80, height: 6)   // slightly wider bar for better look
+					}
+				}
+	
+				liveRow(label: "Rotation") {
+					Text(point != nil ? String(format: "%.1f°", point!.rotation) : "—")
+						.monospacedDigit()
+				}
+	
+				liveRow(label: "Coordinate") {
+					// FIXED WIDTH + MONOSPACED → no more jumping!
+					Text(point != nil 
+						 ? "X: \(point!.x)   Y: \(point!.y)" 
+						 : "X: 0   Y: 0")
+						.monospacedDigit()
+						.frame(maxWidth: .infinity, alignment: .leading)
+				}
+	
+				liveRow(label: "Tilt") {
+					Text(point != nil 
+						 ? "X: \(String(format: "%+.2f", point!.tiltX))   Y: \(String(format: "%+.2f", point!.tiltY))" 
+						 : "X: +0.00   Y: +0.00")
+						.monospacedDigit()
+				}
+	
+				liveRow(label: "Hover") {
+					if let p = point {
+						Text("\(p.hoverDistance)   \(p.inProximity ? "(In Range)" : "(Out)")")
+							.monospacedDigit()
+					} else {
+						Text("—")
+							.monospacedDigit()
+					}
+				}
+			}
+			.padding(12)
+			.frame(maxWidth: .infinity, alignment: .leading)
+			.frame(minWidth: 380)                    // ← prevents overall shrinking
+			.background(Color(NSColor.controlBackgroundColor))
+			.clipShape(RoundedRectangle(cornerRadius: 6))
+			.overlay(
+				RoundedRectangle(cornerRadius: 6)
+					.strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
+			)
+		}
+	}
+	
+	// MARK: - Reusable row helpers (prevents duplication and ensures consistent alignment)
+	
+	@ViewBuilder
+	private func stylusRow(label: String, value: String) -> some View {
+		GridRow {
+			Text(label)
+				.foregroundStyle(.secondary)
+				.frame(minWidth: 90, alignment: .trailing)
+				.gridColumnAlignment(.trailing)
+			Text(value)
+				.monospacedDigit()
+				.gridCellColumns(2)
+		}
+	}
+	
+	@ViewBuilder
+	private func liveRow(label: String, @ViewBuilder value: () -> some View) -> some View {
+		GridRow {
+			Text(label)
+				.foregroundStyle(.secondary)
+				.frame(minWidth: 90, alignment: .trailing)
+				.gridColumnAlignment(.trailing)
+			
+			value()
+				.monospacedDigit()
+				.gridCellColumns(2)
+				.frame(maxWidth: .infinity, alignment: .leading)
+		}
+	}
+	
+	// Small helper for button tags
+	private func tag(_ text: String) -> some View {
+		Text(text)
+			.font(.caption2)
+			.padding(.horizontal, 4)
+			.background(Color.accentColor.opacity(0.2))
+			.cornerRadius(3)
+	}
     // MARK: - Diagnostic section
 
     private var diagnosticSection: some View {

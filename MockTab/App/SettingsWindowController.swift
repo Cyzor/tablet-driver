@@ -7,17 +7,8 @@ private extension Array {
     }
 }
 
-/// NSWindow subclass that enforces resizability and correct zoom behaviour.
-///
-/// Key problems prevented here:
-///   • NSTabViewController strips .resizable from styleMask during setup.
-///   • NSTabViewController adds a required-priority height constraint via
-///     NSHostingController.preferredContentSize — overriding maxSize alone
-///     is insufficient because Auto Layout re-applies the constraint every
-///     layout pass.  The height problem is solved separately by
-///     ResizableTabViewController (see below).
-///   • The green zoom button calls toggleFullScreen: by default on macOS 13+
-///     regardless of collectionBehavior; we suppress it here.
+// MARK: - ResizableWindow
+
 final class ResizableWindow: NSWindow {
 
     @objc dynamic override var styleMask: NSWindow.StyleMask {
@@ -30,11 +21,8 @@ final class ResizableWindow: NSWindow {
         set { super.maxSize = NSSize(width: newValue.width, height: .greatestFiniteMagnitude) }
     }
 
-    /// Redirect fullscreen button to zoom instead of entering fullscreen.
     override func toggleFullScreen(_ sender: Any?) { zoom(sender) }
 
-    /// Green-button zoom: maximise to the screen's full visible height,
-    /// or restore the previous frame if already maximised.
     override func zoom(_ sender: Any?) {
         guard let screen = screen ?? NSScreen.main else { super.zoom(sender); return }
         let visible = screen.visibleFrame
@@ -50,30 +38,36 @@ final class ResizableWindow: NSWindow {
     }
 }
 
-/// NSTabViewController subclass that owns all window sizing.
-///
-/// NSHostingController.preferredContentSize creates a required-priority
-/// Auto Layout height constraint that makes windows non-resizable.  We
-/// avoid this entirely by passing height = 0 to NSHostingController
-/// (so NSTabViewController never sees a height to constrain), storing
-/// the desired sizes ourselves, and calling window.setContentSize directly
-/// on tab selection.
+// MARK: - ResizableTabViewController
+
 final class ResizableTabViewController: NSTabViewController {
 
-    private var tabSizes: [String: NSSize] = [:]
+    private var defaultTabSizes: [String: NSSize] = [:]
+    private var lastUserSizes: [String: NSSize] = [:]
 
-    func register(size: NSSize, forTabLabeled label: String) {
-        tabSizes[label] = size
+    func register(defaultSize: NSSize, forTabLabeled label: String) {
+        defaultTabSizes[label] = defaultSize
     }
 
-    // Called on every tab switch — directly set the window content size
-    // instead of letting Auto Layout enforce preferredContentSize.
+    func loadSavedUserSizes() {
+        guard let dict = UserDefaults.standard.dictionary(forKey: "MockTab_PerTabUserSizes") as? [String: [String: CGFloat]] else { return }
+        for (label, sizeDict) in dict {
+            if let w = sizeDict["w"], let h = sizeDict["h"] {
+                lastUserSizes[label] = NSSize(width: w, height: h)
+            }
+        }
+    }
+
+    private func saveUserSizesToDefaults() {
+        let dict = lastUserSizes.mapValues { ["w": $0.width, "h": $0.height] }
+        UserDefaults.standard.set(dict, forKey: "MockTab_PerTabUserSizes")
+    }
+
     override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         super.tabView(tabView, didSelect: tabViewItem)
         applySize(for: tabViewItem)
     }
 
-    // Called on first appearance — size the window for the initially selected tab.
     override func viewDidAppear() {
         super.viewDidAppear()
         applySize(for: tabViewItems[safe: selectedTabViewItemIndex])
@@ -81,45 +75,55 @@ final class ResizableTabViewController: NSTabViewController {
 
     private func applySize(for item: NSTabViewItem?) {
         guard let label = item?.label,
-              let size  = tabSizes[label],
-              let w     = view.window else { return }
-        w.setContentSize(size)
+              let window = view.window else { return }
+
+        let sizeToUse = lastUserSizes[label] ?? defaultTabSizes[label]
+        guard let size = sizeToUse else { return }
+
+        if abs(window.frame.width - size.width) > 2 || abs(window.frame.height - size.height) > 2 {
+            window.setContentSize(size)
+        }
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowDidResize(_:)),
+            name: NSWindow.didResizeNotification,
+            object: nil
+        )
+    }
+
+    @objc private func windowDidResize(_ notification: Notification) {
+        guard let resizedWindow = notification.object as? NSWindow,
+              resizedWindow === view.window,
+              let currentLabel = tabViewItems[safe: selectedTabViewItemIndex]?.label else {
+            return
+        }
+        lastUserSizes[currentLabel] = resizedWindow.frame.size
+    }
+
+    deinit {
+        saveUserSizesToDefaults()
     }
 }
 
-/// A single settings window bound to one TabletSettings instance.
-///
-/// Each window has its own NSTabViewController with the full 8-tab layout.
-/// The `deviceLabel` is baked into the window title of device-specific tabs
-/// (Tablet Area, Pressure, Buttons, Display) at creation time, so
-/// NSTabViewController's built-in title management does the right thing
-/// automatically.  Global tabs (Devices, Presets, Scratchpad, Info) show
-/// only the tab name.
-///
-/// When the user selects a different tablet from the Tablet Area picker,
-/// the window asks `PreferencesWindowController` to replace it with a new
-/// window bound to the selected device.
+// MARK: - SettingsWindowController
+
 @MainActor
 final class SettingsWindowController: NSWindowController {
 
     let settings: TabletSettings
     let deviceLabel: String
-
-    /// The product ID this window is configured for, or `nil` for
-    /// a generic / default window.
     let productID: Int?
 
-    /// The tab view controller — stored so `showTab` can switch tabs.
     private let tabVC = ResizableTabViewController()
 
-    /// Ordered tab labels, parallel to the tabs added in init.
     static let tabLabels = [
         "Tablet Area", "Pressure", "Buttons", "Display", "Devices", "Presets", "Scratchpad", "Info"
     ]
 
-    /// Tabs at these indices describe per-device properties and get the
-    /// device label appended to the window title.  Indices 4+ (Devices,
-    /// Presets, Scratchpad, Info) are global and show only the tab name.
     private static let deviceSpecificTabIndices: Set<Int> = [0, 1, 2, 3]
 
     init(settings: TabletSettings, deviceLabel: String, productID: Int?) {
@@ -129,9 +133,6 @@ final class SettingsWindowController: NSWindowController {
 
         tabVC.tabStyle = .toolbar
 
-        // Use the designated initialiser — the ObjC convenience
-        // init(contentViewController:) allocates NSWindow directly, bypassing
-        // our ResizableWindow subclass.
         let window = ResizableWindow(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 400),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -141,9 +142,9 @@ final class SettingsWindowController: NSWindowController {
         window.contentViewController = tabVC
         window.title = "MockTab"
         window.isReleasedWhenClosed = false
-        // Prevent fullscreen — green button calls zoom(_:) instead.
         window.collectionBehavior = [.managed]
-        window.center()
+        window.setFrameAutosaveName("MockTabSettingsWindow")
+
         super.init(window: window)
 
         let s = settings
@@ -153,6 +154,7 @@ final class SettingsWindowController: NSWindowController {
             guard let self else { return }
             PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
         }
+
         addTab(label: "Tablet Area", symbol: "rectangle.dashed", height: 420) {
             TabletAreaView(settings: s, tabletManager: tm, registry: dr,
                            onDeviceSelected: onDevice, boundProductID: productID)
@@ -171,29 +173,28 @@ final class SettingsWindowController: NSWindowController {
     // MARK: - Public
 
     func show() {
+        tabVC.loadSavedUserSizes()
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// Shows the window and switches to the tab at `index` (0-based).
     func showTab(at index: Int) {
+        tabVC.loadSavedUserSizes()
         show()
         guard index >= 0, index < tabVC.tabViewItems.count else { return }
         tabVC.selectedTabViewItemIndex = index
     }
 
-    /// Shows the window and switches to the first tab whose label matches `name`.
     func showTab(named name: String) {
+        tabVC.loadSavedUserSizes()
         let idx = tabVC.tabViewItems.firstIndex(where: { $0.label == name })
         showTab(at: idx ?? 0)
     }
 
-    /// The currently selected tab index.
     var selectedTabIndex: Int { tabVC.selectedTabViewItemIndex }
 
     // MARK: - Private
 
-    /// The index of the tab currently being added — incremented by `addTab`.
     private var nextTabIndex = 0
 
     private func addTab<Content: View>(
@@ -208,27 +209,22 @@ final class SettingsWindowController: NSWindowController {
 
         let hosting = NSHostingController(rootView: aligned)
 
-        // NSTabViewController uses `viewController.title` for `window.title`
-        // and `item.label` for the toolbar button text.  By setting the
-        // hosting controller's title to include the device label on
-        // device-specific tabs, the window title updates automatically and
-        // correctly on every tab switch — no delegate override needed.
         let isDeviceTab = Self.deviceSpecificTabIndices.contains(nextTabIndex)
         if isDeviceTab {
             hosting.title = "\(label) — \(deviceLabel)"
         } else {
             hosting.title = label
         }
-        // Pass height=0 so NSTabViewController never sees a height to constrain.
-        // ResizableTabViewController calls window.setContentSize directly instead.
+
         hosting.preferredContentSize = NSSize(width: width, height: 0)
         if #available(macOS 13.0, *) {
             hosting.sizingOptions = []
         }
-        tabVC.register(size: NSSize(width: width, height: height), forTabLabeled: label)
+
+        tabVC.register(defaultSize: NSSize(width: width, height: height), forTabLabeled: label)
 
         let item = NSTabViewItem(viewController: hosting)
-        item.label = label   // toolbar button text stays short
+        item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
         tabVC.addTabViewItem(item)
 
