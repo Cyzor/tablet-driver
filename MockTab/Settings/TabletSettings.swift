@@ -37,17 +37,20 @@ final class TabletSettings: ObservableObject {
     private var toolCache: [String: ToolSettings] = [:]
 
     /// Returns (creating if needed) the ToolSettings for the given KnownTool.id.
-    /// The device-default (id "stylus") shares the devicePrefix namespace so that
-    /// existing stored values are read without migration.
-    func toolSettings(forID id: String) -> ToolSettings {
+    /// The device-default (id "stylus"/"eraser"/"mouse") shares the devicePrefix namespace so
+    /// that existing stored values are read without migration.
+    func toolSettings(forID id: String, isMouse: Bool = false) -> ToolSettings {
         if let cached = toolCache[id] { return cached }
         let ts: ToolSettings
-        if id == "stylus" || id == "eraser" {
+        if id == "stylus" || id == "eraser" || id == "mouse" {
             // Device-default tool: reads/writes to the same devicePrefix as TabletSettings.
-            ts = ToolSettings(prefix: devicePrefix)
+            ts = ToolSettings(prefix: devicePrefix, isMouse: isMouse)
         } else {
             // Per-serial tool: reads from its own namespace, falls back to device defaults.
-            ts = ToolSettings(prefix: "\(devicePrefix)tool-\(id).", fallbackPrefix: devicePrefix)
+            ts = ToolSettings(
+                prefix: "\(devicePrefix)tool-\(id).",
+                fallbackPrefix: devicePrefix,
+                isMouse: isMouse)
         }
         toolCache[id] = ts
         return ts

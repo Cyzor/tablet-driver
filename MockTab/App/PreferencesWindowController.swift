@@ -121,10 +121,10 @@ final class PreferencesWindowController {
                                 as? [[String: Any]],
               !entries.isEmpty
         else {
-            print("MockTab restoreWindows: no saved state found")
+//            print("MockTab restoreWindows: no saved state found")
             return
         }
-        print("MockTab restoreWindows: found \(entries.count) entries → \(entries)")
+//        print("MockTab restoreWindows: found \(entries.count) entries → \(entries)")
 
         for (index, entry) in entries.enumerated() {
             let productID = entry["productID"] as? Int

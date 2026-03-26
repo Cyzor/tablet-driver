@@ -10,20 +10,26 @@ final class PTH851Device: TabletDevice {
     private let device: IOHIDDevice
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((AuxButtons) -> Void)?
+    private let onToolEnter: ((ToolIdentity) -> Void)?
     // Report buffer — IOKit writes into this on each report callback.
     private var reportBuffer = [UInt8](repeating: 0, count: 10)
     private var lastX = 0
     private var lastY = 0
     private var prevInProximity = false
+    /// Last-seen IntuosV1 packet subtype ((status >> 1) & 0x0F).
+    /// 0xFF = not yet observed (reset on proximity-out).
+    private var lastSubtype: UInt8 = 0xFF
 
     init(
         device: IOHIDDevice,
         onTablet: @escaping (TabletPoint) -> Void,
-        onAux: ((AuxButtons) -> Void)? = nil
+        onAux: ((AuxButtons) -> Void)? = nil,
+        onToolEnter: ((ToolIdentity) -> Void)? = nil
     ) {
         self.device = device
         self.onTablet = onTablet
         self.onAux = onAux
+        self.onToolEnter = onToolEnter
     }
 
     func open() {
@@ -77,7 +83,6 @@ final class PTH851Device: TabletDevice {
         }
 
         guard id == 0x02 || id == 0x10 else {
-            // Phase 1 serial probe: log any report ID we don't recognise.
             let hex = (0..<Swift.min(Int(length), 20))
                 .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
             print("PTH-851 UNKNOWN REPORT id=\(String(format:"0x%02X", id)) len=\(length): \(hex)")
@@ -86,57 +91,108 @@ final class PTH851Device: TabletDevice {
 
         guard length >= 10 else { return }
 
-        let status = report[1]
-        let inProximity = (status & 0x20) != 0  // bit 5
+        let status        = report[1]
+        let inProximity   = (status & 0x20) != 0   // bit 5
         let highConfidence = (status & 0x40) != 0  // bit 6
+
+        // IntuosV1 packet subtype occupies status bits 1–4.
+        // 0x06 = Intuos4 mouse / KC-100, 0x08 = 2D mouse (Intuos 1–3 vintage).
+        // 0x00 = pen.  Mask out status bits 0 (pressure LSB) and 5–7.
+        let subtype     = (status >> 1) & 0x0F
+        let toolIsMouse = subtype == 0x06 || subtype == 0x08
 
         // Proximity-out packet — report lift but no coordinates.
         if !inProximity {
+            lastSubtype     = 0xFF
             prevInProximity = false
-            let pt = TabletPoint(
+            onTablet(TabletPoint(
                 x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
                 pressure: 0, maxPressure: spec.maxPressure,
                 tiltX: 0, tiltY: 0, rotation: 0.0,
                 penButton1: false, penButton2: false,
-                eraser: false, inProximity: false, hoverDistance: 0)
-            onTablet(pt)
+                eraser: false, inProximity: false, hoverDistance: 0))
             return
         }
+
         // When confidence is low the position data is unreliable, but we still need to emit a
-        // zero-pressure report so InputInjector can fire mouseUp and release any held button.
-        // NOTE: keep actual barrel-button bits from status — highConfidence is a position-quality
-        // flag, independent of whether a barrel button is physically held.
+        // zero-pressure / zero-button report so InputInjector can fire mouseUp.
+        // NOTE: for mouse subtypes the status bits 1–4 encode the subtype, not buttons,
+        // so we must not forward them as button state.
         guard highConfidence else {
-            let pt = TabletPoint(
+            onTablet(TabletPoint(
                 x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
                 pressure: 0, maxPressure: spec.maxPressure,
                 tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (status & 0x02) != 0,
-                penButton2: (status & 0x04) != 0,
-                eraser: false, inProximity: true, hoverDistance: 0)
-            onTablet(pt)
+                penButton1: !toolIsMouse && (status & 0x02) != 0,
+                penButton2: !toolIsMouse && (status & 0x04) != 0,
+                eraser: false, inProximity: true, hoverDistance: 0))
             return
         }
 
-        // Phase 1 serial probe: log all 10 bytes on proximity-enter transition.
-        // IntuosV1 may carry tool type/serial in the first in-proximity report.
+        // Announce tool type on proximity entry (once per session).
         if !prevInProximity {
+            onToolEnter?(ToolIdentity(
+                serial: 0,
+                toolCode: subtype == 0x06 ? 0x0806 : (subtype == 0x08 ? 0x0016 : 0x0802),
+                isEraser: false,
+                isMouse: toolIsMouse))
             let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-            print("PTH-851 PROXIMITY-ENTER: \(hex)")
+            print("PTH-851 PROXIMITY-ENTER: subtype=0x\(String(format:"%01X", subtype)) \(hex)")
         }
         prevInProximity = true
 
-        // IntuosV1TabletReport field decoding (see OpenTabletDriver IntuosV1TabletReport.cs)
+        // IntuosV1 coordinate decode — identical for pen and mouse.
+        // OpenTabletDriver IntuosV1TabletReport.cs field layout.
         let x = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
         let y = ((Int(report[5]) | Int(report[4]) << 8) << 1) | (Int(report[9]) & 1)
+        lastX = x
+        lastY = y
+
+        // ── Intuos4 mouse / KC-100 (subtype 0x06) ──────────────────────────────
+        // Protocol source: Linux kernel wacom_wac.c wacom_intuos_general() case 0x06.
+        //   report[6] = button mask: L=0x01  M=0x02  R=0x04  Side=0x08  Extra=0x10
+        //   report[7] = wheel:       0x80=up 0x40=down  →  delta +1/0/−1
+        if subtype == 0x06 {
+            let buttons    = report[6]
+            let whlByte    = report[7]
+            let wheelDelta = Int((whlByte & 0x80) >> 7) - Int((whlByte & 0x40) >> 6)
+            onTablet(TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: 0, maxPressure: spec.maxPressure,
+                tiltX: 0, tiltY: 0, rotation: 0.0,
+                penButton1: (buttons & 0x01) != 0,   // L
+                penButton2: (buttons & 0x04) != 0,   // R
+                eraser: false, inProximity: true, hoverDistance: 0,
+                mouseMiddleButton: (buttons & 0x02) != 0,
+                mouseWheelDelta: wheelDelta))
+            return
+        }
+
+        // ── 2D mouse / Intuos 1–3 vintage (subtype 0x08) ───────────────────────
+        // Protocol source: Linux kernel wacom_wac.c wacom_intuos_general() case 0x08.
+        //   report[8] = R=0x10  M=0x08  L=0x04  Side=0x20  Extra=0x40
+        //               WheelUp=0x01  WheelDown=0x02
+        if subtype == 0x08 {
+            let btnByte    = report[8]
+            let wheelDelta = Int(btnByte & 0x01) - Int((btnByte & 0x02) >> 1)
+            onTablet(TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: 0, maxPressure: spec.maxPressure,
+                tiltX: 0, tiltY: 0, rotation: 0.0,
+                penButton1: (btnByte & 0x04) != 0,   // L
+                penButton2: (btnByte & 0x10) != 0,   // R
+                eraser: false, inProximity: true, hoverDistance: 0,
+                mouseMiddleButton: (btnByte & 0x08) != 0,
+                mouseWheelDelta: wheelDelta))
+            return
+        }
+
+        // ── Pen path ────────────────────────────────────────────────────────────
         let pressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | (Int(report[1]) & 1)
         let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64
         let tiltYRaw = (Int(report[8]) & 0x7F) - 64
 
-        lastX = x
-        lastY = y
-
-        let pt = TabletPoint(
+        onTablet(TabletPoint(
             x: x,
             y: y,
             maxX: spec.maxX,
@@ -151,7 +207,6 @@ final class PTH851Device: TabletDevice {
             eraser: false,  // IntuosV1 doesn't expose eraser in this report type
             inProximity: true,
             hoverDistance: Int(report[9])
-        )
-        onTablet(pt)
+        ))
     }
 }

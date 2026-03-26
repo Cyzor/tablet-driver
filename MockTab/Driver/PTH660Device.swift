@@ -21,24 +21,38 @@ final class PTH660Device: TabletDevice {
     private var lastX = 0
     private var lastY = 0
     private var lastSerial: UInt32 = 0
+    private var lastToolCode: UInt16 = 0
     private var currentToolCode: UInt16 = 0
+    private var prevInProximity = false
+    // Change-detection for diagnostic logging — 27 bytes covering the full 0x10 report.
+    private var loggedBytes = [UInt8](repeating: 0xFF, count: 27)
+    private var loggedAuxByte: UInt8 = 0xFF
+    private var loggedStatus: UInt8 = 0xFF
+    private var loggedPressure: Int = -1
+
+    /// When true, open with kIOHIDOptionsTypeSeizeDevice so the kernel's standard
+    /// mouse driver doesn't consume button/wheel reports before we see them.
+    private let seize: Bool
 
     init(
         device: IOHIDDevice,
+        seize: Bool = false,
         onTablet: @escaping (TabletPoint) -> Void,
         onAux: ((AuxButtons) -> Void)? = nil,
         onToolEnter: ((ToolIdentity) -> Void)? = nil
     ) {
         self.device = device
+        self.seize = seize
         self.onTablet = onTablet
         self.onAux = onAux
         self.onToolEnter = onToolEnter
     }
 
     func open() {
-        let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        let options = seize ? IOOptionBits(kIOHIDOptionsTypeSeizeDevice) : IOOptionBits(kIOHIDOptionsTypeNone)
+        let ret = IOHIDDeviceOpen(device, options)
         guard ret == kIOReturnSuccess else {
-            print("PTH-660: failed to open — \(ret). Is another tablet driver running?")
+            print("PTH-660: failed to open (seize=\(seize)) — \(ret). Is another tablet driver running?")
             return
         }
         // PTH-660 needs no feature init report (same as PTH-860).
@@ -74,7 +88,10 @@ final class PTH660Device: TabletDevice {
         case 0x1E: handleOffsetPenReport(report: report)
         case 0x11: handleAuxReport(report: report, length: length)
         case 0x13: break  // touch-ring mode / position — not yet handled
-        default: break
+        default:
+            let n   = Swift.min(Int(length), 20)
+            let hex = (0..<n).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+            print("PTH-660 UNKNOWN REPORT id=0x\(String(format:"%02X", report[0])) len=\(length): \(hex)")
         }
     }
 
@@ -87,6 +104,9 @@ final class PTH660Device: TabletDevice {
             report[2] == 0 && report[3] == 0 && report[4] == 0
             && report[5] == 0 && report[6] == 0 && report[7] == 0
         if allZero && !highConfidence {
+            prevInProximity = false
+            loggedStatus    = 0xFF
+            loggedPressure  = -1
             onTablet(
                 TabletPoint(
                     x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
@@ -97,9 +117,23 @@ final class PTH660Device: TabletDevice {
             return
         }
 
+        // Log ALL reports (including low-confidence) when non-position bytes change.
+        // Low-confidence reports may carry button state that high-confidence ones don't.
+        if length >= 27 {
+            let interestingIndices = [1, 8, 9, 10, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26]
+            let changed = interestingIndices.contains(where: { loggedBytes[$0] != report[$0] })
+            if changed {
+                let conf = highConfidence ? "HI" : "LO"
+                let hex = interestingIndices.map { String(format: "%d:%02X", $0, report[$0]) }.joined(separator: " ")
+                print("PTH-660 NONPOS[\(conf)]: \(hex)")
+                for i in interestingIndices { loggedBytes[i] = report[i] }
+            }
+        }
+
         // NOTE: keep barrel-button and eraser bits from status — highConfidence is a
         // position-quality flag independent of which physical buttons are held.
         guard highConfidence else {
+            prevInProximity = false
             onTablet(
                 TabletPoint(
                     x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
@@ -112,8 +146,18 @@ final class PTH660Device: TabletDevice {
             return
         }
 
+        // Log proximity-enter with full bytes once per proximity session.
+        if !prevInProximity {
+            let n   = Swift.min(Int(length), 32)
+            let hex = (0..<n).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+            print("PTH-660 PROXIMITY-ENTER: len=\(length) bytes: \(hex)")
+            loggedBytes = [UInt8](repeating: 0xFF, count: 27)  // force change-log on next report
+        }
+        prevInProximity = true
+
         // Extract pen serial (bytes 17–20 LE) and tool code (bytes 21–22 LE).
-        // Present in every 27-byte report; fire onToolEnter whenever the active pen changes.
+        // Fire onToolEnter whenever the active tool changes — either by serial (pens)
+        // or by toolCode alone when serial = 0 (some mouse accessories).
         if length >= 27 {
             let serial =
                 UInt32(report[17])
@@ -123,18 +167,58 @@ final class PTH660Device: TabletDevice {
             let toolCode = UInt16(report[21]) | UInt16(report[22]) << 8
             currentToolCode = toolCode
 
-            if serial != 0 && serial != lastSerial {
-                lastSerial = serial
+            let toolChanged = serial != 0 ? serial != lastSerial : (toolCode != 0 && toolCode != lastToolCode)
+            if toolChanged {
+                lastSerial    = serial
+                lastToolCode  = toolCode
+                loggedStatus  = 0xFF   // reset change-log on tool switch
+                loggedPressure = -1
+
+                // Mouse/cursor tools: bits 1+2 set in the low nibble (0x_6 pattern).
+                // e.g. 0x0806 = KC-100-00 Intuos Mouse, 0x0006 = 4D Mouse.
+                let isMouse = (toolCode & 0x000F) == 0x0006
+                let hexDump = (0..<27).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+                print("PTH-660 TOOL-ENTER: toolCode=0x\(String(format:"%04X", toolCode)) serial=0x\(String(format:"%08X", serial)) isMouse=\(isMouse)")
+                print("PTH-660 TOOL-ENTER bytes: \(hexDump)")
+
                 onToolEnter?(
                     ToolIdentity(
                         serial: serial,
                         toolCode: toolCode,
-                        isEraser: (toolCode & 0x0008) != 0))
+                        isEraser: (toolCode & 0x0008) != 0,
+                        isMouse: isMouse))
             }
+
         }
 
+        // IntuosV2 coordinate decode — identical for pen and mouse.
         let x = Int(UInt16(report[2]) | UInt16(report[3]) << 8) | (Int(report[4]) << 16)
         let y = Int(UInt16(report[5]) | UInt16(report[6]) << 8) | (Int(report[7]) << 16)
+        lastX = x
+        lastY = y
+
+        // ── Mouse path ─────────────────────────────────────────────────────────
+        // See PTH860Device for byte-position rationale and speculative notes.
+        if (currentToolCode & 0x000F) == 0x0006 && currentToolCode != 0 {
+            let whlByte: UInt8 = report[8]
+            let btnByte: UInt8 = report[9]
+            let wheelDelta = Int((whlByte & 0x80) >> 7) - Int((whlByte & 0x40) >> 6)
+
+            onTablet(TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: 0, maxPressure: spec.maxPressure,
+                tiltX: 0, tiltY: 0, rotation: 0.0,
+                penButton1: (status & 0x02) != 0,   // L — assumed
+                penButton2: (status & 0x04) != 0,   // R — assumed
+                eraser: false,
+                inProximity: true,
+                hoverDistance: Int(report[16]),
+                mouseMiddleButton: (btnByte & 0x02) != 0,  // M — speculative
+                mouseWheelDelta: wheelDelta))
+            return
+        }
+
+        // ── Pen path ───────────────────────────────────────────────────────────
         let pressure = Int(UInt16(report[8]) | UInt16(report[9]) << 8)
         let tiltX = Double(Int8(bitPattern: report[10])) / 127.0
         let tiltY = Double(Int8(bitPattern: report[11])) / 127.0
@@ -146,9 +230,6 @@ final class PTH660Device: TabletDevice {
         var rotation = isArtPen ? Double(rawRot) / 10.0 : 0.0
         // Normalize to 0..360 range (handling negative signed values).
         if rotation < 0 { rotation += 360.0 }
-
-        lastX = x
-        lastY = y
 
         onTablet(
             TabletPoint(
@@ -196,6 +277,9 @@ final class PTH660Device: TabletDevice {
     ///   [4]     touch-ring position (0x7F = idle/center)
     ///   [5-8]   reserved / zero
     private func handleAuxReport(report: UnsafePointer<UInt8>, length: CFIndex) {
+        let n = Swift.min(Int(length), 16)
+        let hex = (0..<n).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+        print("PTH-660 AUX: len=\(length) \(hex)")
         guard length >= 3, let onAux = onAux else { return }
         // report[2] is the live "key currently held" bitmask (bits 0–7 = keys 1–8).
         let auxByte = report[2]

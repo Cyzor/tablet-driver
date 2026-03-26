@@ -19,7 +19,10 @@ final class PTH860Device: TabletDevice {
     private var lastX = 0
     private var lastY = 0
     private var lastSerial: UInt32 = 0
+    private var lastToolCode: UInt16 = 0
     private var currentToolCode: UInt16 = 0
+    private var loggedStatus: UInt8 = 0xFF
+    private var loggedPressure: Int = -1
 
     init(
         device: IOHIDDevice,
@@ -128,19 +131,68 @@ final class PTH860Device: TabletDevice {
             let toolCode = UInt16(report[21]) | UInt16(report[22]) << 8
             currentToolCode = toolCode
 
-            if serial != 0 && serial != lastSerial {
-                lastSerial = serial
+            let toolChanged = serial != 0 ? serial != lastSerial : (toolCode != 0 && toolCode != lastToolCode)
+            if toolChanged {
+                lastSerial     = serial
+                lastToolCode   = toolCode
+                loggedStatus   = 0xFF
+                loggedPressure = -1
+
+                // Mouse/cursor tools: bits 1+2 set in the low nibble (0x_6 pattern).
+                let isMouse = (toolCode & 0x000F) == 0x0006
+                let hexDump = (0..<27).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
+                print("PTH-860 TOOL-ENTER: toolCode=0x\(String(format:"%04X", toolCode)) serial=0x\(String(format:"%08X", serial)) isMouse=\(isMouse)")
+                print("PTH-860 TOOL-ENTER bytes: \(hexDump)")
+
                 onToolEnter?(
                     ToolIdentity(
                         serial: serial,
                         toolCode: toolCode,
-                        isEraser: (toolCode & 0x0008) != 0))
+                        isEraser: (toolCode & 0x0008) != 0,
+                        isMouse: isMouse))
             }
+
         }
 
-        // IntuosV2Report field decoding (see OpenTabletDriver IntuosV2Report.cs)
+        // IntuosV2 coordinate decode — identical for pen and mouse.
         let x = Int(UInt16(report[2]) | UInt16(report[3]) << 8) | (Int(report[4]) << 16)
         let y = Int(UInt16(report[5]) | UInt16(report[6]) << 8) | (Int(report[7]) << 16)
+        lastX = x
+        lastY = y
+
+        // ── Mouse path ─────────────────────────────────────────────────────────
+        // Button/wheel byte positions for IntuosV2 192-byte reports are inferred from
+        // Wacom protocol analysis; empirical capture via the probe log below is recommended.
+        //
+        // High-confidence assumptions (matching pen bit positions in status):
+        //   status bit 0x02 = L button
+        //   status bit 0x04 = R button
+        //
+        // Speculative (from IntuosV1 case 0x06 analogy; verify with probe log):
+        //   report[8] bit 0x80 / 0x40 = wheel up / down (same encoding as IntuosV1 byte 7)
+        //   report[9] bit 0x02        = M button
+        //
+        // To verify: connect mouse, hover/click/scroll, read the "PTH-860 MOUSE:" log lines.
+        if (currentToolCode & 0x000F) == 0x0006 && currentToolCode != 0 {
+            let whlByte: UInt8 = report[8]
+            let btnByte: UInt8 = report[9]
+            let wheelDelta = Int((whlByte & 0x80) >> 7) - Int((whlByte & 0x40) >> 6)
+
+            onTablet(TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: 0, maxPressure: spec.maxPressure,
+                tiltX: 0, tiltY: 0, rotation: 0.0,
+                penButton1: (status & 0x02) != 0,   // L — assumed same as pen btn1 bit
+                penButton2: (status & 0x04) != 0,   // R — assumed same as pen btn2 bit
+                eraser: false,
+                inProximity: true,
+                hoverDistance: Int(report[16]),
+                mouseMiddleButton: (btnByte & 0x02) != 0,  // M — speculative; verify via log
+                mouseWheelDelta: wheelDelta))
+            return
+        }
+
+        // ── Pen path ───────────────────────────────────────────────────────────
         let pressure = Int(UInt16(report[8]) | UInt16(report[9]) << 8)
         let tiltX = Double(Int8(bitPattern: report[10])) / 127.0
         let tiltY = Double(Int8(bitPattern: report[11])) / 127.0
@@ -151,9 +203,6 @@ final class PTH860Device: TabletDevice {
         let rawRot = Int16(bitPattern: UInt16(report[12]) | UInt16(report[13]) << 8)
         var rotation = isArtPen ? Double(rawRot) / 10.0 : 0.0
         if rotation < 0 { rotation += 360.0 }
-
-        lastX = x
-        lastY = y
 
         let pt = TabletPoint(
             x: x,

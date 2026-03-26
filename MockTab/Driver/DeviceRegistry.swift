@@ -59,6 +59,9 @@ final class DeviceRegistry: ObservableObject {
 
     /// Human-readable base name for a Wacom tool code (eraser suffix not included).
     static func penBaseName(forToolCode toolCode: UInt16) -> String {
+        // Cordless mouse/cursor accessories: bits 1+2 set in the low nibble (0x_6 pattern).
+        // e.g. 0x0806 = KC-100-00 Intuos Mouse, 0x0006 = 4D Mouse.
+        if toolCode != 0 && (toolCode & 0x000F) == 0x0006 { return "Intuos Mouse" }
         // Mask off the eraser bit (bit 3) to get the tip variant code.
         switch toolCode & ~UInt16(0x0008) {
         case 0x0802: return "Grip Pen"
@@ -74,7 +77,8 @@ final class DeviceRegistry: ObservableObject {
     /// Full name including "(Eraser)" suffix when appropriate.
     static func penName(forToolCode toolCode: UInt16) -> String {
         let base = penBaseName(forToolCode: toolCode)
-        let isEraser = (toolCode & 0x0008) != 0
+        // Mouse tools are never erasers regardless of toolCode bit state.
+        let isEraser = (toolCode & 0x0800) != 0 && (toolCode & 0x0008) != 0
         return isEraser ? "\(base) (Eraser)" : base
     }
 
@@ -238,6 +242,7 @@ final class DeviceRegistry: ObservableObject {
     /// Canonical tool ID string for a ToolIdentity.
     static func toolID(for identity: ToolIdentity) -> String {
         if identity.serial == 0 {
+            if identity.isMouse  { return "mouse" }
             return identity.isEraser ? "eraser" : "stylus"
         }
         let hex = String(format: "%08X", identity.serial)

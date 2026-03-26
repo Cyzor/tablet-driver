@@ -1,12 +1,4 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
-
-# Good.  We also want to know how to read and interpret all the data a connected device spews.  Develop a series of tables for each tablet model that includes details about what each of the input devices it supports says while in use.  That includes codes for proximity, coordinates, tilt, rotation, bearing, each pen tap and button press.  Remember that many tablets have their own buttons with state information to collect.
-
-Limit your scope to devices from the last 20 years or so, which would mostly use USB or Bluetooth as the communication method to investigate.
-
-Now I have everything needed from the kernel source and Wacom developer documentation. This will be a comprehensive, byte-accurate decode reference built from `wacom_graphire_irq()`, `wacom_intuos_irq()`, the `wacom_wac.c` family parse functions, and the Linux input event code definitions.[^1][^2][^3]
-
-***
+2026-03-25
 
 # Wacom Tablet Input Data Decode Reference
 

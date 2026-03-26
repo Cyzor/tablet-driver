@@ -26,6 +26,10 @@ struct TabletPoint {
     var eraser: Bool
     var inProximity: Bool
     var hoverDistance: Int
+    /// For mouse tools only: middle-button state.
+    var mouseMiddleButton: Bool = false
+    /// For mouse tools only: scroll-wheel step this report (+1 up / -1 down / 0 none).
+    var mouseWheelDelta: Int = 0
 }
 
 /// Identity of a physical pen as reported by the tablet firmware.
@@ -37,6 +41,9 @@ struct ToolIdentity {
     let toolCode: UInt16
     /// True for the eraser end.  Derived from toolCode: bit 3 of the low byte is set.
     let isEraser: Bool
+    /// True for cordless mouse / cursor accessories (Intuos Mouse).
+    /// On IntuosV2 devices: detected by the absence of the pen bit (0x0800) in toolCode.
+    let isMouse: Bool
 }
 
 struct AuxButtons {

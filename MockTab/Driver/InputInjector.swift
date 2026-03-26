@@ -25,6 +25,10 @@ final class InputInjector {
     var deviceVendorID:     Int
     var deviceProductID:    Int
     var activeToolSettings: ToolSettings? = nil
+    /// When true the active tool is a cordless mouse.
+    /// tipDown is driven by penButton1 instead of pressure, and button1 is
+    /// not dispatched as a separate button action (it already fires the primary click).
+    var activeToolIsMouse:  Bool = false
 
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID  = vendorID
@@ -45,6 +49,7 @@ final class InputInjector {
     private var lastTipDown         = false
     private var lastButton1Down     = false
     private var lastButton2Down     = false
+    private var lastMiddleDown      = false
     private var activeButton: CGMouseButton = .left
 
     // MARK: - Jitter tracking
@@ -131,7 +136,8 @@ final class InputInjector {
         let tool     = activeToolSettings ?? settings.activeTool
         let rawPoint = mapToScreen(point, settings: settings)
         let pressure = tool.pressureCurve.evaluate(point.normalizedPressure)
-        let tipDown  = pressure > 0.004
+        // Mouse tools have no tip pressure — button1 is the primary click trigger.
+        let tipDown  = activeToolIsMouse ? point.penButton1 : pressure > 0.004
 
         let enteringProximity = point.inProximity && !lastProximity
 
@@ -147,6 +153,12 @@ final class InputInjector {
                     postMouseUp(button: activeButton, at: smoothedPoint,
                                 clickCount: activeClickCount)
                     lastTipDown = false
+                }
+                if lastMiddleDown {
+                    CGEvent(mouseEventSource: nil, mouseType: .otherMouseUp,
+                            mouseCursorPosition: smoothedPoint, mouseButton: .center)?
+                        .post(tap: .cghidEventTap)
+                    lastMiddleDown = false
                 }
                 hasSmoothedPoint   = false
                 hasLastRawPoint    = false
@@ -185,7 +197,9 @@ final class InputInjector {
 
         // ── Tip press transitions (always immediate) ───────────────────────────
         if tipDown != lastTipDown {
-            postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)
+            if !activeToolIsMouse {
+                postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)
+            }
             if tipDown {
                 let tipAction = point.eraser ? tool.eraserBinding : tool.tipBinding
                 activeButton  = tipAction.mouseButton ?? (point.eraser ? .right : .left)
@@ -209,7 +223,9 @@ final class InputInjector {
                      || (tipDown && abs(pressure - lastPostedPressure) > Self.pressureEpsilon)
 
             if moved {
-                postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)
+                if !activeToolIsMouse {
+                    postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)
+                }
                 if tipDown {
                     postMouseDrag(button: activeButton, at: screenPoint, pressure: pressure)
                 } else {
@@ -227,12 +243,28 @@ final class InputInjector {
         let btn2 = tool.penButton2Binding
 
         if point.penButton1 != lastButton1Down {
-            fireButtonAction(btn1, down: point.penButton1, at: screenPoint)
+            // For mouse tools button1 drives the primary click (tipDown above);
+            // dispatching it again as a button action would double-fire.
+            if !activeToolIsMouse { fireButtonAction(btn1, down: point.penButton1, at: screenPoint) }
             lastButton1Down = point.penButton1
         }
         if point.penButton2 != lastButton2Down {
             fireButtonAction(btn2, down: point.penButton2, at: screenPoint)
             lastButton2Down = point.penButton2
+        }
+
+        // ── Middle button (mouse tool only, always immediate) ──────────────────
+        if point.mouseMiddleButton != lastMiddleDown {
+            let type: CGEventType = point.mouseMiddleButton ? .otherMouseDown : .otherMouseUp
+            CGEvent(mouseEventSource: nil, mouseType: type,
+                    mouseCursorPosition: screenPoint, mouseButton: .center)?
+                .post(tap: .cghidEventTap)
+            lastMiddleDown = point.mouseMiddleButton
+        }
+
+        // ── Scroll wheel (mouse tool only, always immediate) ───────────────────
+        if point.mouseWheelDelta != 0 {
+            postScrollWheelEvent(delta: point.mouseWheelDelta, at: screenPoint)
         }
     }
 
@@ -355,10 +387,11 @@ final class InputInjector {
         e.setIntegerValueField(.tabletProximityEventDeviceID,          value: 1)
         e.setIntegerValueField(.tabletProximityEventSystemTabletID,    value: 0)
 
-        let ptrType: Int64 = entering ? (eraser ? 3 : 1) : 0
+        // pointerType: 0 = leaving, 1 = pen, 2 = cursor/mouse, 3 = eraser
+        let ptrType: Int64 = entering ? (eraser ? 3 : (activeToolIsMouse ? 2 : 1)) : 0
         e.setIntegerValueField(.tabletProximityEventPointerType,       value: ptrType)
 
-        let vendorPtr: Int64 = eraser ? 0x080A : 0x0802
+        let vendorPtr: Int64 = eraser ? 0x080A : (activeToolIsMouse ? 0x0006 : 0x0802)
         e.setIntegerValueField(.tabletProximityEventVendorPointerType, value: vendorPtr)
         e.setIntegerValueField(.tabletProximityEventCapabilityMask,    value: 0x04C3)
         e.setIntegerValueField(.tabletProximityEventEnterProximity,    value: entering ? 1 : 0)
@@ -404,6 +437,17 @@ final class InputInjector {
                 e.post(tap: .cghidEventTap)
             }
         }
+    }
+
+    // MARK: - Scroll wheel
+
+    private func postScrollWheelEvent(delta: Int, at location: CGPoint) {
+        // .line units: one detent = one scroll line, consistent with trackpad / Magic Mouse.
+        guard let e = CGEvent(scrollWheelEvent2Source: nil, units: .line,
+                              wheelCount: 1, wheel1: Int32(delta * 3), wheel2: 0, wheel3: 0)
+        else { return }
+        e.location = location
+        e.post(tap: .cghidEventTap)
     }
 
     // MARK: - Screen mapping

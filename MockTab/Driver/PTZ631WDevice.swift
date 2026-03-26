@@ -117,11 +117,13 @@ final class PTZ631WDevice: TabletDevice {
                     lastSerial = serial
                     // IntuosV1 eraser type codes have bit 4 set in the lower byte (e.g. 0x096).
                     let isEraser = (toolCode & 0x006) == 0x006
+                    // TODO: detect IntuosV1 cursor/mouse tools from their toolCode bit pattern.
                     onToolEnter?(
                         ToolIdentity(
                             serial: serial,
                             toolCode: toolCode,
-                            isEraser: isEraser))
+                            isEraser: isEraser,
+                            isMouse: false))
                 }
                 return
             }

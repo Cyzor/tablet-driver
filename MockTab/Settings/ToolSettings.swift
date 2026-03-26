@@ -23,6 +23,10 @@ final class ToolSettings: ObservableObject {
     /// Nil for the device-default ToolSettings (it IS the fallback).
     let fallbackPrefix: String?
 
+    /// True when this tool is a cordless mouse rather than a stylus.
+    /// Changes penButton2's factory default from middleClick to rightClick.
+    let isMouse: Bool
+
     // MARK: - Settings
 
     @Published var pressureCurve: BezierCurve = .linear {
@@ -65,7 +69,10 @@ final class ToolSettings: ObservableObject {
     }
 
     var penButton2Binding: ButtonBinding {
-        get { ButtonBinding.decode(freshString("penButton2Binding") ?? "") ?? .middleClick }
+        get {
+            let defaultBinding: ButtonBinding = isMouse ? .rightClick : .middleClick
+            return ButtonBinding.decode(freshString("penButton2Binding") ?? "") ?? defaultBinding
+        }
         set { pen2Raw = newValue.encoded }
     }
 
@@ -74,9 +81,10 @@ final class ToolSettings: ObservableObject {
     private let ud = UserDefaults.standard
     private var isLoading = false
 
-    init(prefix: String, fallbackPrefix: String? = nil) {
+    init(prefix: String, fallbackPrefix: String? = nil, isMouse: Bool = false) {
         self.prefix = prefix
         self.fallbackPrefix = fallbackPrefix
+        self.isMouse = isMouse
         reload()
     }
 

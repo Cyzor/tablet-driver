@@ -270,7 +270,7 @@ final class SettingsWindowController: NSWindowController {
         let idx = tabVC.tabViewItems.firstIndex(where: { $0.label == name })
         showTab(at: idx ?? 0)
     }
-
+//
     var selectedTabIndex: Int { tabVC.selectedTabViewItemIndex }
 
     // MARK: - Private

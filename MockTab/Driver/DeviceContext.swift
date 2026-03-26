@@ -27,6 +27,9 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// 0 = unknown (IntuosV1) or no pen in proximity.
     @Published var activeToolSerial: UInt32 = 0
 
+    /// True when the tool currently in proximity is a cordless mouse accessory.
+    @Published var activeToolIsMouse: Bool = false
+
     /// The ToolSettings for the pen currently in proximity.
     /// Points to the device-default ToolSettings until the first tool-enter fires.
     @Published var activeTool: ToolSettings

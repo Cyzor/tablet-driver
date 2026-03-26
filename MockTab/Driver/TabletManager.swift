@@ -147,7 +147,11 @@ final class TabletManager: ObservableObject {
     // MARK: - Device lifecycle
 
     private func deviceConnected(_ device: IOHIDDevice) {
-        let productID = hidIntProperty(device, kIOHIDProductIDKey)
+        let productID    = hidIntProperty(device, kIOHIDProductIDKey)
+        let usagePage    = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
+        let usage        = hidIntProperty(device, kIOHIDPrimaryUsageKey)
+        let maxRptSize   = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
+        print("TabletManager: device pid=0x\(String(productID, radix:16)) usagePage=0x\(String(usagePage, radix:16)) usage=0x\(String(usage, radix:16)) maxRptSize=\(maxRptSize)")
 
         let context = contexts[productID] ?? DeviceContext(productID: productID)
         contexts[productID] = context
@@ -156,12 +160,14 @@ final class TabletManager: ObservableObject {
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
             guard let self, let context else { return }
-            context.activeToolSerial = identity.serial
+            context.activeToolSerial           = identity.serial
+            context.activeToolIsMouse          = identity.isMouse
             DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
             let toolID   = DeviceRegistry.toolID(for: identity)
-            let toolSets = context.settings.toolSettings(forID: toolID)
-            context.activeTool               = toolSets
+            let toolSets = context.settings.toolSettings(forID: toolID, isMouse: identity.isMouse)
+            context.activeTool                  = toolSets
             context.injector.activeToolSettings = toolSets
+            context.injector.activeToolIsMouse  = identity.isMouse
             self.activeToolID = toolID
         }
 
@@ -171,6 +177,7 @@ final class TabletManager: ObservableObject {
 
             // Record tool type for devices that don't fire onToolEnter.
             if point.inProximity
+                && productID != 0x0317  // PTH-851: now fires onToolEnter itself
                 && productID != 0x0357
                 && productID != 0x0358
                 && productID != 0x00B5
@@ -178,7 +185,8 @@ final class TabletManager: ObservableObject {
                 let identity = ToolIdentity(
                     serial: 0,
                     toolCode: point.eraser ? 0x080A : 0x0802,
-                    isEraser: point.eraser)
+                    isEraser: point.eraser,
+                    isMouse: false)
                 DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
                 self.activeToolID = DeviceRegistry.toolID(for: identity)
             }
@@ -228,7 +236,8 @@ final class TabletManager: ObservableObject {
                 guard self.uiUpdateCounter >= Self.uiUpdateInterval else { return }
                 self.uiUpdateCounter = 0
 
-                let tipDown    = point.normalizedPressure > 0.004
+                let toolIsMouse = context.activeToolIsMouse
+                let tipDown     = toolIsMouse ? point.penButton1 : point.normalizedPressure > 0.004
                 let newButtons = LiveButtonState(
                     tipDown:     tipDown && !point.eraser,
                     eraserDown:  tipDown && point.eraser,
@@ -261,7 +270,8 @@ final class TabletManager: ObservableObject {
         switch productID {
         case 0x0317:
             print("TabletManager: PTH-851 connected")
-            wacomDevice = PTH851Device(device: device, onTablet: onTablet, onAux: onAux)
+            wacomDevice = PTH851Device(
+                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
 
         case 0x0028:
             print("TabletManager: PTH-850 (Intuos Pro Medium) connected")
@@ -270,8 +280,13 @@ final class TabletManager: ObservableObject {
 
         case 0x0357:
             print("TabletManager: PTH-660 connected")
+            // Seize the standard-mouse interface (usagePage=0x01) so the kernel's HID
+            // mouse driver doesn't consume button/wheel reports before we see them.
+            // The vendor-specific interface (0xFF00) is opened non-exclusively.
+            let shouldSeize = (usagePage == 0x01)
             wacomDevice = PTH660Device(
-                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+                device: device, seize: shouldSeize,
+                onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
 
         case 0x0358:
             print("TabletManager: PTH-860 connected")
