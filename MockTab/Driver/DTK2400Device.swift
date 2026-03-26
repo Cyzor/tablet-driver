@@ -4,60 +4,26 @@ import IOKit.hid
 /// Wacom Cintiq 24HD (DTK-2400) — IntuosV1 HID report format.
 /// VendorID: 0x056A  ProductID: 0x00F4  InputReportLength: 10 bytes
 ///
-/// Coordinate space confirmed by live probe (WacomProbeDevice):
-///   maxX = 104480  (pen reached 104253 at right bezel; Linux input-wacom: 104480)
-///   maxY =  65600  (clean firmware plateau)
-///   maxPressure = 2047  (11-bit field, same formula as PTH-851)
+/// Coordinate space: maxX=104480, maxY=65600, maxPressure=2047 (11-bit).
+/// Active area covers the full 1920×1200 display surface.
 ///
-/// The Cintiq 24HD is a pen display: its active area covers the full 1920×1200 screen
-/// surface.  On first connection `proportionalMapping` is disabled and `targetDisplayIndex`
-/// is set to the matching display automatically.
-///
-/// EA/E0 alternating report pattern (unique to Cintiq 24HD):
+/// **EA/E0 alternating report pattern:**
 ///   Status bit 1 (0x02) is the EA/E0 discriminator — NOT barrel button 1.
-///   EA reports (bit 1 set): carry real pressure in report[6].
-///   E0 reports (bit 1 clear): carry barrel-button bits in status; report[6]=0.
+///   EA frames (bit 1 set): carry pressure or rotation data in report[6..7].
+///   E0 frames (bit 1 clear): carry barrel-button bits; report[6]=0 always.
 ///
-/// Within the EA family, two sub-types exist (per OTD IntuosV1ReportParser and
-/// linux input-wacom):
-///   0xEA sub-type (bits 1+3 set):  Art Pen ROTATION frame — report[6..7] carries
-///     barrel rotation angle, NOT tip pressure.  Decoding as pressure yields the
-///     pen's neutral rotation offset (~80–86), straddling tipContactThreshold.
-///   0xE2/0xE3 sub-type (bit 1 set, bit 3 clear): Normal PRESSURE frame —
-///     report[6..7] carries real 11-bit tip pressure.  Some pens interleave
-///     zero-pressure 0xE2 sub-frames while actively pressing (do not clear
-///     lastEAPressure on rawPressure==0).
+///   EA sub-types (bits 1+3):
+///     0xEA/0xEB (bits 1+3 set): Art Pen rotation frame — report[6..7] = rotation angle.
+///     0xE2/0xE3 (bit 1 set, bit 3 clear): pressure frame — report[6..7] = 11-bit pressure.
 ///
-/// Hover detection:
-///   E0-frame counter: counts E0 frames since the last contact-zone pressure EA.
-///   After hoverE0Threshold frames without a confirming pressure EA, force pressure
-///   release.  Rotation frames (0xEA) are transparent to this counter — they do NOT
-///   reset it, so an Art Pen that lifts mid-stroke still triggers HOVER.
+/// **Tool-change packets:** status 0xC0 (bits 7,6 set, 5 clear) on proximity enter.
+///   Bytes 2–7 carry packed serial number and tool code per IntuosV1 protocol.
 ///
-///   report[9] hover-distance field is unreliable on tested pens (constant 20–45,
-///   never reaching 0 on contact).  It is still passed through as hoverDistance for
-///   possible future use but is NOT used for contact/hover decisions.
+/// **Barrel button debounce:** E0 frames alternate 1:5 (set:clear) while a button
+///   is held.  Clear-counter threshold of 7 survives the gap without false release.
 ///
-///   Do NOT rely on rawPressure==0 in an EA frame to signal pen lift — some pens
-///   interleave zero-pressure 0xE2 EA sub-frames while actively pressing, causing
-///   rapid mouseDown/mouseUp oscillation if we cleared pressure there.
-///
-/// Grip Pen bare-tap HARDWARE LIMITATION:
-///   The Grip Pen (pen:E2/E3) does NOT activate its pressure sensor during bare tip
-///   contact (no barrel button held).  All EA frames during a bare tap carry
-///   rawPressure=0, indistinguishable from hover.  report[9] also stays constant.
-///   This is a firmware constraint confirmed by EA ZERO diagnostic logging (2026-03-23).
-///   Linux input-wacom has the same behaviour: BTN_TOUCH is gated on pressure > 0.
-///   **The barrel button IS the click mechanism for Grip Pen on this digitizer.**
-///   User workaround: set barrel button 1 = Left Click in MockTab's Buttons tab.
-///   Art Pen (pen:EA) works correctly for bare-tap clicking.
-///
-/// Status byte bit assignments (confirmed unless noted):
-///   Bit 1 (0x02): EA/E0 discriminator
-///   Bit 2 (0x04): barrel button 1  ← confirmed via live capture
-///   Bit 4 (0x10): barrel button 2  ← unverified; remove this note once confirmed
-///   Bit 5 (0x20): in-proximity
-///   Bit 6 (0x40): high-confidence (position quality)
+/// **Grip Pen bare-tap:** hardware limitation — pressure sensor not activated without
+///   barrel button.  Report ID 0x01 tip-switch provides ground-truth contact signal.
 final class DTK2400Device: TabletDevice {
 
     let spec = DigitizerSpec(maxX: 104480, maxY: 65600, maxPressure: 2047)
@@ -65,122 +31,70 @@ final class DTK2400Device: TabletDevice {
     private let device: IOHIDDevice
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((AuxButtons) -> Void)?
+    private let onToolEnter: ((ToolIdentity) -> Void)?
     private var reportBuffer = [UInt8](repeating: 0, count: 10)
     private var lastX = 0
     private var lastY = 0
 
-    // Pressure state carried forward from most recent contact-zone EA frame.
-    // Set when a non-rotation EA frame has rawPressure >= tipContactThreshold.
-    // Cleared by EA RELEASE (hover-zone), hover timeout, or proximity-out.
+    // ── Pressure state ──────────────────────────────────────────────────────
     private var lastEAPressure = 0
 
-    // Rotation state carried forward.
+    // ── Rotation ────────────────────────────────────────────────────────────
     private var lastRotation: Double = 0.0
 
-    // ALL-frame hover counter: counts every frame (EA + E0) since the last
-    // contact-zone pressure EA.  Previous approach (counting only E0 frames)
-    // was fundamentally broken: the DTK-2400 has ≥30 E0 frames between
-    // consecutive EA frames, so any E0-only threshold either false-fired during
-    // normal pressing (≤30) or was too slow for Art Pen release (>>30).
-    //
-    // By counting ALL frames, the threshold is independent of the EA:E0 ratio:
-    //   - Grip Pen: 1 EA per ~31 total frames → counter reaches ~31 between resets
-    //   - Art Pen:  1 pressure EA per ~17 total frames → counter reaches ~17
-    //   - Threshold 35 (~263 ms at 133 Hz) is above both natural cycles
-    //
-    // 263 ms click duration (vs 450 ms at 60) reduces cursor drift during taps,
-    // making the OS more likely to classify the gesture as a click rather than a drag.
-    //
-    // For Grip Pen: EA RELEASE (hover-zone rawPressure) is the primary release;
-    //   this counter is a safety net.
-    // For Art Pen: this counter IS the primary release — pressure frames stop
-    //   on pen lift while rotation + E0 continue.
+    // ── All-frame hover counter ─────────────────────────────────────────────
+    // Counts EVERY frame (EA + E0 + rotation) since the last contact-zone
+    // pressure EA.  Reset only by rawPressure >= tipContactThreshold in a
+    // non-rotation EA frame.  When it reaches the threshold → force release.
     private var framesSinceLastContactEA = 0
-    private static let hoverFrameThreshold = 35
+    private static let artPenHoverThreshold  = 35   // ~263 ms at 133 Hz
+    private static let gripPenHoverThreshold = 50   // ~375 ms safety net
 
-    // Minimum rawPressure for a valid tip-contact event.  Values below this are
-    // in the hover / proximity zone — the pen is near the surface but not touching.
-    // Source: Wacom driver prefs (com.wacom.wacomtablet.prefs) for the DTK-2400:
-    //   PressureCurveControlPoint = "81 0 1023 1023 2047 2047"
-    //   UpperPressureThreshold    = 81
-    // The curve output is 0 at rawPressure=81 and rises from there; below 81 is
-    // hover/proximity with no real contact force registered.  Both working pens
-    // (PlumpBarrel 0x24809081, SlenderRattle 0x21801d4e) use this same threshold.
     private static let tipContactThreshold = 81
 
-    // Button state for injection, with clear-counter debouncing.
-    //
-    // The DTK-2400 ping-pongs between two E0 sub-types even while a button is physically
-    // held: one sub-type carries the button bit set (e.g. 0xE4) and the next has it clear
-    // (0xE0).  A direct assignment causes rapid true/false oscillation → dozens of
-    // button-down/up events per second.
-    //
-    // Debounce: on any E0 frame with the bit set, latch true immediately and reset the
-    // clear counter to 0.  On a frame with the bit clear, increment the counter; only
-    // release after `buttonClearThreshold` consecutive clear frames (~45 ms at 66 Hz).
-    // This survives up to (threshold−1) consecutive clear frames without false release.
-    // Tip-switch state from report ID 0x01 (mouse-compatible HID collection).
-    // The Cintiq 24HD descriptor includes a mouse-compatible collection that fires
-    // its left-button bit (byte 1, bit 0) as a physical tip-contact signal.
-    // This is the ground-truth contact flag that the official Wacom driver uses:
-    // it fires on physical pen-screen contact regardless of whether the pressure
-    // sensor in report 0x02 activates.  The OS is prevented from processing it
-    // via kIOHIDOptionsTypeSeizeDevice; we read it ourselves and use it to set a
-    // synthetic minimum pressure when the EA pressure frames carry rawPressure=0.
+    // ── Tip-switch (Report ID 0x01) ─────────────────────────────────────────
     private var lastTipSwitch: Bool = false
 
+    // ── Button debounce ─────────────────────────────────────────────────────
     private var lastButton1: Bool = false
     private var lastButton2: Bool = false
     private var btn1ClearCount = 0
     private var btn2ClearCount = 0
-    // Within the E0 stream, the device's E4/E0 sub-pattern places exactly 5
-    // consecutive clear (E0) frames between each button-set (E4) frame.
-    // Threshold must exceed 5 to avoid releasing during normal holds.
-    // 7 gives margin and still releases in ~54 ms at 130 Hz.
     private static let buttonClearThreshold = 7
 
-    // Per-proximity diagnostic flag: did we receive any EA frame this session?
-    // Printed once so we can detect pens that generate no EA frames at all.
-    private var seenEAThisProximity = false
-
-    // Per-proximity pen label, derived from the first EA status byte seen.
-    // E.g. "pen:E2" for SlenderRattle (sub-type), "pen:EA" for standard EA pens.
-    // Prefixed on all diagnostic prints so different pens are distinguishable in the console.
-    private var penLabel = "pen:??"
-
-    // Rotation frame sub-counter: tracks how many 0xEA / 0xEB rotation frames
-    // arrive vs normal 0xE2 / 0xE3 pressure frames per proximity session.
-    // Printed once at proximity-exit so we can confirm whether a pen is an Art Pen
-    // (mostly rotation) or a standard Grip Pen (no rotation frames).
-    private var rotationFrameCount = 0
-    private var pressureFrameCount = 0
+    // ── Tool identity ───────────────────────────────────────────────────────
+    private var currentSerial: UInt32 = 0
+    private var currentToolCode: UInt16 = 0
+    private var isEraser: Bool = false
+    /// True when the current tool produces rotation EA frames (Art Pen).
+    /// Detected from the first EA frame's status bits in each proximity session.
+    private var isArtPen: Bool = false
+    /// Whether the first EA frame has been seen in the current proximity session.
+    private var seenFirstEA: Bool = false
 
     init(
         device: IOHIDDevice,
         onTablet: @escaping (TabletPoint) -> Void,
-        onAux: ((AuxButtons) -> Void)? = nil
+        onAux: ((AuxButtons) -> Void)? = nil,
+        onToolEnter: ((ToolIdentity) -> Void)? = nil
     ) {
         self.device = device
         self.onTablet = onTablet
         self.onAux = onAux
+        self.onToolEnter = onToolEnter
     }
 
     func open() {
-        // Seize the device so macOS's built-in IOHIDEventDriver stops processing it.
-        // The Cintiq 24HD descriptor includes a mouse-compatible collection (Report ID 1,
-        // tip-switch → left button).  Without seizure the system fires spurious left-click
-        // CGEvents from the pen's tip-switch independently of our pressure logic, causing
-        // rapid phantom clicks whenever the pen is near the surface.
-        // kIOHIDOptionsTypeSeizeDevice also prevents a second DTK2400Device from being
-        // created if the OS exposes two IOHIDDevice entries for the same interface.
+        // Seize to prevent macOS from processing Report ID 0x01 (tip-switch →
+        // left click) as native mouse events.  Without seizure, the system fires
+        // phantom left-clicks independently of our pressure logic.
         let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeSeizeDevice))
         guard ret == kIOReturnSuccess else {
             print("DTK-2400: failed to seize device (\(ret)). Is another tablet driver running?")
             return
         }
 
-        // Feature init: [0x02, 0x02] — activates the digitiser endpoint.
-        // Identical to PTH-851; confirmed working by probe session.
+        // Feature init [0x02, 0x02]: activates the digitiser endpoint (same as PTH-851).
         var initBytes: [UInt8] = [0x02, 0x02]
         IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &initBytes, initBytes.count)
 
@@ -214,176 +128,138 @@ final class DTK2400Device: TabletDevice {
 
         let id = report[0]
 
-        // ── Report 0x01: mouse-compatible collection — physical tip-switch ─────────
-        // The Cintiq 24HD exposes a standard mouse HID collection alongside the
-        // digitizer.  kIOHIDOptionsTypeSeizeDevice prevents the OS from turning this
-        // into CGEvents; we read it here instead to get ground-truth contact state.
-        // Byte 1, bit 0 = left button = tip-switch = pen physically touching screen.
-        // This fires on real contact regardless of whether the pressure sensor in the
-        // 0x02 EA frames activates — which fixes Grip Pen bare-tap clicks.
+        // ── Report 0x01: mouse-compatible collection — physical tip-switch ──
         if id == 0x01 {
-            let tipDown = (report[1] & 0x01) != 0
-            if tipDown != lastTipSwitch {
-                lastTipSwitch = tipDown
-                print(
-                    String(
-                        format: "DTK-2400 [\(penLabel)] TIP-SWITCH %@ bytes=[%@]",
-                        tipDown ? "DOWN" : "UP  ",
-                        (0..<Swift.min(Int(length), 6)).map { String(format: "%02X", report[$0]) }
-                            .joined(separator: " ")))
-                if tipDown {
-                    // Physical contact confirmed: set minimum pressure if not already set.
-                    if lastEAPressure == 0 {
-                        lastEAPressure = Self.tipContactThreshold
-                        framesSinceLastContactEA = 0
-                    }
-                } else {
-                    // Physical release: clear pressure immediately regardless of EA state.
-                    lastEAPressure = 0
-                    framesSinceLastContactEA = 0
-                }
-            }
+            handleTipSwitch(report: report, length: length)
             return
         }
 
-        guard length >= 10 else { return }
-
-        // Report IDs seen on this device: 0x02 (pen), 0x0C (touch/ring — ignored here).
-        guard id == 0x02 || id == 0x10 else {
-            // Phase 1 serial probe: log any report ID we don't recognise.
-            let hex = (0..<Swift.min(Int(length), 20))
-                .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-            print("DTK-2400 UNKNOWN REPORT id=\(String(format:"0x%02X", id)) len=\(length): \(hex)")
+        // ── Report 0x0C: express keys (8 keys + touch strips) ───────────────
+        if id == 0x0C {
+            handleExpressKeys(report: report, length: length)
             return
         }
+
+        guard length >= 10, id == 0x02 || id == 0x10 else { return }
 
         let status = report[1]
-        let inProximity = (status & 0x20) != 0  // bit 5
-        let highConf = (status & 0x40) != 0  // bit 6
 
+        // ── Tool-change packet: status bits 7:2 == 0b110000 (enter prox) ────
+        if (status & 0xFC) == 0xC0 {
+            handleToolChange(report: report)
+            return
+        }
+
+        let inProximity = (status & 0x20) != 0  // bit 5
+        let highConf    = (status & 0x40) != 0   // bit 6
+
+        // ── Proximity-out ────────────────────────────────────────────────────
         if !inProximity {
-            lastEAPressure = 0
-            lastTipSwitch = false
-            framesSinceLastContactEA = 0
-            lastButton1 = false
-            lastButton2 = false
-            lastRotation = 0.0
-            btn1ClearCount = 0
-            btn2ClearCount = 0
-            if seenEAThisProximity {
-                print(
-                    String(
-                        format:
-                            "DTK-2400 [\(penLabel)] PROX-OUT  pressureFrames=%d rotationFrames=%d",
-                        pressureFrameCount, rotationFrameCount))
-            }
-            seenEAThisProximity = false
-            penLabel = "pen:??"
-            rotationFrameCount = 0
-            pressureFrameCount = 0
+            resetProximityState()
             onTablet(
                 TabletPoint(
                     x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
                     pressure: 0, maxPressure: spec.maxPressure,
                     tiltX: 0, tiltY: 0, rotation: 0.0,
                     penButton1: false, penButton2: false,
-                    eraser: false, inProximity: false, hoverDistance: 0))
+                    eraser: isEraser, inProximity: false, hoverDistance: 0))
             return
         }
-        // Low-confidence: position unreliable — emit zero-pressure so mouseUp fires.
-        // Use latched button state; highConf is a position-quality flag independent
-        // of which physical buttons are held.
+
+        // ── Low confidence: position unreliable ─────────────────────────────
         guard highConf else {
             onTablet(
                 TabletPoint(
                     x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
                     pressure: 0, maxPressure: spec.maxPressure,
                     tiltX: 0, tiltY: 0, rotation: lastRotation,
-                    penButton1: lastButton1,
-                    penButton2: lastButton2,
-                    eraser: false, inProximity: true, hoverDistance: 0))
+                    penButton1: lastButton1, penButton2: lastButton2,
+                    eraser: isEraser, inProximity: true, hoverDistance: 0))
             return
         }
 
-        // IntuosV1 coordinate / pressure / tilt decode — identical to PTH851Device.
+        // ── Coordinate decode (IntuosV1 17-bit) ─────────────────────────────
         let x = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
         let y = ((Int(report[5]) | Int(report[4]) << 8) << 1) | (Int(report[9]) & 1)
 
-        // All-frame hover counter: counts EVERY frame (EA + E0) since the last
-        // contact-zone pressure EA.  Reset only when rawPressure >= tipContactThreshold
-        // in a non-rotation EA frame.  When it reaches hoverFrameThreshold, force release.
+        // All-frame hover counter — incremented every frame; reset only by
+        // contact-zone pressure EA frames.
         framesSinceLastContactEA += 1
 
         let isEA = (status & 0x02) != 0
 
         if isEA {
-            // Art Pen rotation detection (from OTD IntuosV1ReportParser + linux input-wacom):
-            // When bits 1 AND 3 are both set (e.g. 0xEA, 0xEB), the EA frame carries
-            // barrel rotation angle in report[6..7], NOT tip pressure.
             let isRotation = (status & 0x0A) == 0x0A  // bits 1+3 both set
 
-            // One-shot per-proximity diagnostic.
-            if !seenEAThisProximity {
-                seenEAThisProximity = true
-                penLabel = String(format: "pen:%02X", status)
-                let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-                print(
-                    String(
-                        format:
-                            "DTK-2400 [\(penLabel)] FIRST-EA  status=%02X rotation=%d bytes=[%@]",
-                        status, isRotation ? 1 : 0, hex))
+            // Detect Art Pen from first EA frame's status bits.
+            if !seenFirstEA {
+                seenFirstEA = true
+                isArtPen = isRotation
             }
 
             if isRotation {
-                // Art Pen rotation frame — report[6..7] is rotation angle, not pressure.
-                // 10-bit rotation value: (report[6] << 3) | (report[7] >> 5)
-                // Range 0..1023 (approx) -> 0..360 degrees.
-                // Linux wacom_wac.c: wacom_intuos_general()
-                //   if (data[0] == WACOM_REPORT_INTUOS_PEN) ...
-                //   if ((data[1] & 0x0a) == 0x0a) { ...
-                //     rotation = (data[6] << 3) | ((data[7] & 0xC0) >> 5);
-                //     rotation = 1800 - rotation * 3600 / 1024; ...
-                // We'll just map raw 0..1023 to 0..360 for display.
-                let rawRotation = (Int(report[6]) << 3) | ((Int(report[7]) & 0xC0) >> 5)
-                // Normalize to 0..360.
-                // Note: The Wacom Art Pen rotation is often 0..179 in one direction and 180..359 in the other,
-                // or signed. OTD treats it as 0..1023 raw.
-                lastRotation = Double(rawRotation) * 360.0 / 1024.0
-                rotationFrameCount += 1
+                // ── Art Pen rotation frame ───────────────────────────────────
+                let rawRot = (Int(report[6]) << 3) | ((Int(report[7]) >> 5) & 7)
+                let signedRot = (report[7] & 0x20) != 0 ? rawRot - 1024 : rawRot
+                var degrees = Double(signedRot) * 360.0 / 1024.0
+                if degrees < 0 { degrees += 360.0 }
+                lastRotation = degrees
 
             } else {
-                // Normal pressure frame (e.g. 0xE2, 0xE3).
-                pressureFrameCount += 1
+                // ── Normal pressure frame (0xE2/0xE3) ───────────────────────
                 let rawPressure =
-                    (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | (Int(report[1]) & 1)
-                // ... rest of method ...
+                    (Int(report[6]) << 3)
+                    | ((Int(report[7] & 0xC0)) >> 5)
+                    | (Int(status) & 1)
+
                 if rawPressure >= Self.tipContactThreshold {
-                    // ...
+                    lastEAPressure = rawPressure
+                    framesSinceLastContactEA = 0
                 } else if rawPressure == 0 {
-                    // ...
+                    // Zero-pressure interleave: preserve lastEAPressure.
                 } else {
-                    // ...
+                    // Hover zone (1–80): pen lifting off surface.
+                    if lastEAPressure > 0 {
+                        lastEAPressure = 0
+                        framesSinceLastContactEA = 0
+                    }
                 }
             }
 
         } else {
-            // ...
+            // ── E0 frame: barrel-button channel ─────────────────────────────
+            let curBtn1 = (status & 0x04) != 0
+            let curBtn2 = (status & 0x10) != 0
+
+            if curBtn1 {
+                btn1ClearCount = 0
+                lastButton1 = true
+            } else {
+                btn1ClearCount += 1
+                if btn1ClearCount >= Self.buttonClearThreshold {
+                    lastButton1 = false
+                }
+            }
+
+            if curBtn2 {
+                btn2ClearCount = 0
+                lastButton2 = true
+            } else {
+                btn2ClearCount += 1
+                if btn2ClearCount >= Self.buttonClearThreshold {
+                    lastButton2 = false
+                }
+            }
         }
 
-        // All-frame hover timeout...
-        let isArtPen = penLabel.contains("EA") || penLabel.contains("EB")
-        let timeoutFrames = isArtPen ? Self.hoverFrameThreshold : 150
-        if lastEAPressure > 0 && framesSinceLastContactEA >= timeoutFrames {
-            print(
-                String(
-                    format: "DTK-2400 [\(penLabel)] HOVER  frames=%d → pressure cleared (timeout)",
-                    framesSinceLastContactEA))
+        // ── All-frame hover timeout ─────────────────────────────────────────
+        let timeout = isArtPen ? Self.artPenHoverThreshold : Self.gripPenHoverThreshold
+        if lastEAPressure > 0 && framesSinceLastContactEA >= timeout {
             lastEAPressure = 0
             framesSinceLastContactEA = 0
         }
 
-        let pressure = lastEAPressure
-
+        // ── Tilt decode ─────────────────────────────────────────────────────
         let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64
         let tiltYRaw = (Int(report[8]) & 0x7F) - 64
 
@@ -393,15 +269,82 @@ final class DTK2400Device: TabletDevice {
         onTablet(
             TabletPoint(
                 x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: pressure, maxPressure: spec.maxPressure,
+                pressure: lastEAPressure, maxPressure: spec.maxPressure,
                 tiltX: Double(tiltXRaw) / 63.0,
                 tiltY: Double(tiltYRaw) / 63.0,
                 rotation: lastRotation,
                 penButton1: lastButton1,
                 penButton2: lastButton2,
-                eraser: false,
+                eraser: isEraser,
                 inProximity: true,
                 hoverDistance: Int(report[9])
             ))
+    }
+
+    // MARK: - Report 0x01: physical tip-switch
+
+    private func handleTipSwitch(report: UnsafePointer<UInt8>, length: CFIndex) {
+        let tipDown = (report[1] & 0x01) != 0
+        guard tipDown != lastTipSwitch else { return }
+        lastTipSwitch = tipDown
+
+        if tipDown {
+            if lastEAPressure == 0 {
+                lastEAPressure = Self.tipContactThreshold
+                framesSinceLastContactEA = 0
+            }
+        } else {
+            lastEAPressure = 0
+            framesSinceLastContactEA = 0
+        }
+    }
+
+    // MARK: - Report 0x0C: express keys
+
+    private func handleExpressKeys(report: UnsafePointer<UInt8>, length: CFIndex) {
+        guard length >= 2, let onAux = onAux else { return }
+        let keyByte = report[1]
+        onAux(AuxButtons(buttons: (0..<8).map { bit in (keyByte & (1 << bit)) != 0 }))
+    }
+
+    // MARK: - Tool-change packet (status bits 7:2 == 0xC0)
+
+    private func handleToolChange(report: UnsafePointer<UInt8>) {
+        let serial = UInt32(report[3] & 0x0F) << 28
+                   | UInt32(report[4]) << 20
+                   | UInt32(report[5]) << 12
+                   | UInt32(report[6]) << 4
+                   | UInt32(report[7]) >> 4
+        let toolCode = UInt16(report[2]) << 4
+                     | UInt16(report[3]) >> 4
+                     | UInt16(report[7] & 0x0F) << 12
+                     | UInt16(report[8] & 0xF0) << 4
+
+        currentSerial   = serial
+        currentToolCode = toolCode
+        isEraser = (toolCode & 0x000F) == 0x000A
+            || (toolCode & 0x0FFF) == 0x0804
+
+        onToolEnter?(
+            ToolIdentity(
+                serial: serial,
+                toolCode: toolCode,
+                isEraser: isEraser,
+                isMouse: false))
+    }
+
+    // MARK: - State reset
+
+    private func resetProximityState() {
+        lastEAPressure = 0
+        lastTipSwitch = false
+        framesSinceLastContactEA = 0
+        lastButton1 = false
+        lastButton2 = false
+        lastRotation = 0.0
+        btn1ClearCount = 0
+        btn2ClearCount = 0
+        seenFirstEA = false
+        isArtPen = false
     }
 }

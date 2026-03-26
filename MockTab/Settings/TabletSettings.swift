@@ -489,6 +489,44 @@ final class TabletSettings: ObservableObject {
         pen1Raw = ""; pen2Raw = ""; expressKeyRaw = ""
     }
 
+    // MARK: - First-run defaults
+
+    /// Writes sensible express key defaults for this device if the user has never
+    /// configured them (i.e. no stored value exists in UserDefaults).
+    ///
+    /// Physical key order for PTH-660/860 (8-key Intuos Pro layout, bits 0–7):
+    ///   The bitmask assignment vs. physical position is confirmed by live
+    ///   capture.  Defaults chosen for cross-app utility in digital art:
+    ///     0  ⌘Z    Undo          (universal)
+    ///     1  ⌘⇧Z   Redo          (universal)
+    ///     2  Space  Pan/scroll    (Photoshop, Krita, Illustrator, Affinity)
+    ///     3  ⌥      Eyedropper   (all major painting apps; hold for sample)
+    ///     4  ⌃      Control      (brush-size modifier in Krita / Blender)
+    ///     5–7  —    None          (leave open for user assignment)
+    func applyExpressKeyDefaults() {
+        guard ud.string(forKey: devicePrefix + "expressKeyBindings") == nil else { return }
+        let cmdZ  = ButtonBinding(kind: .keyCombo,
+                                  keyCode: UInt16(kVK_ANSI_Z),
+                                  modifierFlags: CGEventFlags.maskCommand.rawValue,
+                                  keyLabel: "Z")
+        let redoZ = ButtonBinding(kind: .keyCombo,
+                                  keyCode: UInt16(kVK_ANSI_Z),
+                                  modifierFlags: CGEventFlags([.maskCommand, .maskShift]).rawValue,
+                                  keyLabel: "Z")
+        let space = ButtonBinding(kind: .keyCombo,
+                                  keyCode: UInt16(kVK_Space),
+                                  modifierFlags: 0,
+                                  keyLabel: "Space")
+        expressKeyBindings = [
+            cmdZ,
+            redoZ,
+            space,
+            ButtonBinding(modifierOnly: .option),
+            ButtonBinding(modifierOnly: .control),
+            .none, .none, .none
+        ]
+    }
+
     /// Applies pen-display defaults for the first connection of a Cintiq-class device.
     ///
     /// Locates the display matching `width × height` in the active display list

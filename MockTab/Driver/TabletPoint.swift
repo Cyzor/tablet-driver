@@ -48,6 +48,10 @@ struct ToolIdentity {
 
 struct AuxButtons {
     var buttons: [Bool]  // up to 8 express key buttons
+    /// True while a finger is resting on the touch ring.
+    var touchRingActive: Bool = false
+    /// Absolute touch ring position, 0–71 (5° resolution).  0x7F = idle/no contact.
+    var touchRingPosition: UInt8 = 0x7F
 
     subscript(index: Int) -> Bool {
         guard index < buttons.count else { return false }

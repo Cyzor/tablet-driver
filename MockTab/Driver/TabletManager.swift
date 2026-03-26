@@ -66,6 +66,7 @@ final class TabletManager: ObservableObject {
         case 0x0358: return "PTH-860"
         case 0x00B5: return "PTZ-631W"
         case 0x00F4: return "DTK-2400"
+        case 0x0084: return "Wireless Dongle"
         default: return "Wacom 0x\(String(pid, radix: 16, uppercase: true))"
         }
     }
@@ -176,12 +177,8 @@ final class TabletManager: ObservableObject {
             guard let self, let context else { return }
 
             // Record tool type for devices that don't fire onToolEnter.
-            if point.inProximity
-                && productID != 0x0317  // PTH-851: now fires onToolEnter itself
-                && productID != 0x0357
-                && productID != 0x0358
-                && productID != 0x00B5
-            {
+            // All current drivers fire onToolEnter except PTH-850 (legacy, no onToolEnter closure).
+            if point.inProximity && productID == 0x0028 {
                 let identity = ToolIdentity(
                     serial: 0,
                     toolCode: point.eraser ? 0x080A : 0x0802,
@@ -300,28 +297,29 @@ final class TabletManager: ObservableObject {
 
         case 0x00F4:
             print("TabletManager: DTK-2400 (Cintiq 24HD) connected")
-            wacomDevice = DTK2400Device(device: device, onTablet: onTablet, onAux: onAux)
+            wacomDevice = DTK2400Device(
+                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+
+        case 0x0084:
+            // ACK-40401 RF wireless dongle — presents same HID interfaces as the
+            // paired tablet.  WacomGenericDevice auto-detects IntuosV1 format and
+            // handles the wireless status report (0x80).
+            print("TabletManager: ACK-40401 wireless dongle connected")
+            wacomDevice = WacomGenericDevice(
+                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
 
         default:
-            let pid        = String(productID, radix: 16, uppercase: true)
-            let reportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
-            if reportSize == 10 {
-                print(
-                    "TabletManager: unknown Wacom 0x\(pid) with 10-byte reports "
-                        + "— attaching WacomProbeDevice")
-                wacomDevice = WacomProbeDevice(device: device)
-            } else {
-                print(
-                    "TabletManager: unsupported Wacom 0x\(pid) (reportSize=\(reportSize)) "
-                        + "— add a device class to support it")
-                return
-            }
+            let pid = String(productID, radix: 16, uppercase: true)
+            print("TabletManager: unknown Wacom 0x\(pid) — attaching generic driver")
+            wacomDevice = WacomGenericDevice(
+                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
         }
 
         if let wacomDevice {
             context.tabletDevice = wacomDevice
             hidDeviceMap[device] = context
             wacomDevice.open()
+            context.settings.applyExpressKeyDefaults()
             refreshConnectedIDs(mostRecent: productID)
 
             if productID == 0x00F4 {

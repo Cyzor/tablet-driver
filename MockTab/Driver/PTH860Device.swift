@@ -21,8 +21,8 @@ final class PTH860Device: TabletDevice {
     private var lastSerial: UInt32 = 0
     private var lastToolCode: UInt16 = 0
     private var currentToolCode: UInt16 = 0
-    private var loggedStatus: UInt8 = 0xFF
-    private var loggedPressure: Int = -1
+    /// Absolute scroll-position counter from byte [16] of mouse-tool reports.
+    private var lastScrollPos: UInt8 = 0
 
     init(
         device: IOHIDDevice,
@@ -42,7 +42,7 @@ final class PTH860Device: TabletDevice {
             print("PTH-860: failed to open — \(ret). Is another tablet driver running?")
             return
         }
-        // PTH-860 needs no feature init report.
+        sendWacomInputModeInit(device, tag: "PTH-860")
         let ctx = Unmanaged.passRetained(self).toOpaque()
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count,
@@ -71,6 +71,14 @@ final class PTH860Device: TabletDevice {
         guard length >= 2 else { return }
 
         switch report[0] {
+        case 0x01:
+            // BLE HOGP pen report (23 bytes) — Intuos Pro over Bluetooth LE.
+            handleBLEPen(report: report, length: length)
+        case 0x03:
+            // BLE HOGP pad report (9 bytes).
+            if let aux = decodeBLEPadReport(report: report, length: length) {
+                onAux?(aux)
+            }
         case 0x10:
             guard length >= 12 else { return }
             handlePenReport(report: report, length: length)
@@ -94,7 +102,7 @@ final class PTH860Device: TabletDevice {
             && report[5] == 0 && report[6] == 0 && report[7] == 0
         if allZero && !highConfidence {
             let liftPt = TabletPoint(
-                x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
+                x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
                 pressure: 0, maxPressure: spec.maxPressure,
                 tiltX: 0, tiltY: 0, rotation: 0.0,
                 penButton1: false, penButton2: false,
@@ -135,14 +143,11 @@ final class PTH860Device: TabletDevice {
             if toolChanged {
                 lastSerial     = serial
                 lastToolCode   = toolCode
-                loggedStatus   = 0xFF
-                loggedPressure = -1
 
                 // Mouse/cursor tools: bits 1+2 set in the low nibble (0x_6 pattern).
                 let isMouse = (toolCode & 0x000F) == 0x0006
-                let hexDump = (0..<27).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-                print("PTH-860 TOOL-ENTER: toolCode=0x\(String(format:"%04X", toolCode)) serial=0x\(String(format:"%08X", serial)) isMouse=\(isMouse)")
-                print("PTH-860 TOOL-ENTER bytes: \(hexDump)")
+                // Seed scroll counter to avoid a large spurious delta on first mouse report.
+                if isMouse { lastScrollPos = report[16] }
 
                 onToolEnter?(
                     ToolIdentity(
@@ -161,22 +166,17 @@ final class PTH860Device: TabletDevice {
         lastY = y
 
         // ── Mouse path ─────────────────────────────────────────────────────────
-        // Button/wheel byte positions for IntuosV2 192-byte reports are inferred from
-        // Wacom protocol analysis; empirical capture via the probe log below is recommended.
+        // Byte [16] is an absolute 8-bit counter that wraps at 255.  Signed delta
+        // via Int8(bitPattern:) handles wrap-around correctly (255→0 = +1 step).
+        // Pressure bytes [8–9] are always 0x0000 for cursor/mouse tools.
         //
-        // High-confidence assumptions (matching pen bit positions in status):
-        //   status bit 0x02 = L button
-        //   status bit 0x04 = R button
-        //
-        // Speculative (from IntuosV1 case 0x06 analogy; verify with probe log):
-        //   report[8] bit 0x80 / 0x40 = wheel up / down (same encoding as IntuosV1 byte 7)
-        //   report[9] bit 0x02        = M button
-        //
-        // To verify: connect mouse, hover/click/scroll, read the "PTH-860 MOUSE:" log lines.
+        // Status bit assumptions (matching pen bit positions):
+        //   bit 0x02 = L button,  bit 0x04 = R button
+        // Middle button: report[9] bit 0x02 — speculative; verify via log.
         if (currentToolCode & 0x000F) == 0x0006 && currentToolCode != 0 {
-            let whlByte: UInt8 = report[8]
-            let btnByte: UInt8 = report[9]
-            let wheelDelta = Int((whlByte & 0x80) >> 7) - Int((whlByte & 0x40) >> 6)
+            let scrollPos = report[16]
+            let wheelDelta = Int(Int8(bitPattern: scrollPos &- lastScrollPos))
+            lastScrollPos = scrollPos
 
             onTablet(TabletPoint(
                 x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
@@ -186,8 +186,8 @@ final class PTH860Device: TabletDevice {
                 penButton2: (status & 0x04) != 0,   // R — assumed same as pen btn2 bit
                 eraser: false,
                 inProximity: true,
-                hoverDistance: Int(report[16]),
-                mouseMiddleButton: (btnByte & 0x02) != 0,  // M — speculative; verify via log
+                hoverDistance: 0,
+                mouseMiddleButton: (report[9] & 0x02) != 0,  // M — speculative; verify via log
                 mouseWheelDelta: wheelDelta))
             return
         }
@@ -223,6 +223,27 @@ final class PTH860Device: TabletDevice {
         onTablet(pt)
     }
 
+    /// BLE HOGP pen report (Report ID 0x01, 23 bytes) — Intuos Pro over BLE.
+    private func handleBLEPen(report: UnsafePointer<UInt8>, length: CFIndex) {
+        guard let result = decodeBLEPenReport(
+            report: report, length: length, spec: spec,
+            lastX: &lastX, lastY: &lastY
+        ) else { return }
+
+        if result.toolCode != 0 && (result.serial != lastSerial || result.toolCode != lastToolCode) {
+            lastSerial   = result.serial
+            lastToolCode = result.toolCode
+            currentToolCode = result.toolCode
+            onToolEnter?(ToolIdentity(
+                serial: result.serial,
+                toolCode: result.toolCode,
+                isEraser: result.point.eraser,
+                isMouse: result.isMouse))
+        }
+
+        onTablet(result.point)
+    }
+
     /// Offset pen report (Report ID 0x1E) — produced when using driver compatibility mode.
     /// All byte offsets shifted by +1 compared to standard report.
     private func handleOffsetPenReport(report: UnsafePointer<UInt8>) {
@@ -251,16 +272,23 @@ final class PTH860Device: TabletDevice {
     ///
     /// Report layout (9 bytes, same as PTH-660 — confirmed by capture):
     ///   [0]     0x11  report ID
-    ///   [1]     latch — momentarily equals [2] during a held key; unreliable for edge detection
-    ///   [2]     current button state — set for the full duration the key is held  ← use this
-    ///   [3]     touch-ring touch flag
-    ///   [4]     touch-ring position (0x7F = idle/center)
+    ///   [1]     mechanical click state — set only when key is pressed hard enough to actuate
+    ///   [2]     capacitive touch state — set on lightest finger contact (too sensitive for buttons)
+    ///   [3]     touch-ring touch flag (non-zero while finger is on ring)
+    ///   [4]     touch-ring position, 0–71 (5° resolution); 0x7F = idle/no contact
     ///   [5-8]   reserved / zero
+    ///
+    /// Intuos Pro express keys are capacitive-touch with a mechanical click underneath.
+    /// Use [1] (click) not [2] (touch) — Wacom's native driver requires a physical click.
     private func handleAuxReport(report: UnsafePointer<UInt8>, length: CFIndex) {
         guard length >= 3, let onAux = onAux else { return }
-        // report[2] is the live "key currently held" bitmask (bits 0–7 = keys 1–8).
-        let auxByte = report[2]
-        let buttons = (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }
-        onAux(AuxButtons(buttons: buttons))
+        // report[1]: bits 0–7 = express keys 1–8 (mechanical click state)
+        let auxByte   = report[1]
+        let ringByte: UInt8 = length >= 5 ? report[3] : 0
+        let posByte:  UInt8 = length >= 5 ? report[4] : 0x7F
+        let ringActive = ringByte != 0
+        onAux(AuxButtons(buttons: (0..<8).map { bit in (auxByte & (1 << bit)) != 0 },
+                         touchRingActive: ringActive,
+                         touchRingPosition: ringActive ? posByte : 0x7F))
     }
 }

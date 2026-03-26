@@ -1,24 +1,50 @@
 import Foundation
 import IOKit.hid
 
-/// Wacom Intuos 5 Large (PTH-851) — IntuosV1 HID report format.
-/// VendorID: 0x056A  ProductID: 0x0317  InputReportLength: 10 bytes
+/// Wacom Intuos 5 Large / Intuos Pro L (PTH-851) — dual-transport driver.
+/// VendorID: 0x056A  ProductID: 0x0317
+///
+/// **USB / RF dongle:** IntuosV1 HID report format, 10-byte reports.
+///   Coordinate space: maxX=44704, maxY=27940, maxPressure=1023 (10-bit).
+///
+/// **Bluetooth Low Energy (HOGP):** 23-byte pen report (ID 0x01), 9-byte
+///   pad report (ID 0x03).  13-bit pressure (8191), tilt as sin(angle)/127.
+///   macOS pairs via System Settings → Bluetooth; IOHIDManager sees the
+///   device with the same PID but transport "BluetoothLowEnergy".
+///
+/// Transport is auto-detected from which report IDs arrive.
+///
+/// **Tool-change packets (USB):** status `(& 0xFC) == 0xC0` on proximity enter.
+/// **Mouse tools (USB):** subtype 0x06 (KC-100) and 0x08 (2D mouse).
 final class PTH851Device: TabletDevice {
 
+    // USB spec — used for IntuosV1 reports.
+    // BLE reports carry their own maxPressure (8191) and coordinates that
+    // fit within the same maxX/maxY range.
     let spec = DigitizerSpec(maxX: 44704, maxY: 27940, maxPressure: 1023)
+
+    /// BLE pen reports use 13-bit pressure; scale accordingly.
+    private static let bleMaxPressure = 8191
 
     private let device: IOHIDDevice
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((AuxButtons) -> Void)?
     private let onToolEnter: ((ToolIdentity) -> Void)?
-    // Report buffer — IOKit writes into this on each report callback.
-    private var reportBuffer = [UInt8](repeating: 0, count: 10)
+    // Buffer large enough for BLE pen report (23 bytes).
+    private var reportBuffer = [UInt8](repeating: 0, count: 64)
     private var lastX = 0
     private var lastY = 0
     private var prevInProximity = false
-    /// Last-seen IntuosV1 packet subtype ((status >> 1) & 0x0F).
-    /// 0xFF = not yet observed (reset on proximity-out).
-    private var lastSubtype: UInt8 = 0xFF
+
+    // ── Tool identity ─────────────────────────────────────────────────────
+    private var currentToolCode: UInt16 = 0
+    private var currentSerial: UInt32 = 0
+    private var isEraser: Bool = false
+    private var toolIsMouse: Bool = false
+
+    /// Tracks whether we've seen BLE-format reports (0x01/0x03).
+    /// Once set, USB-format init is skipped and BLE maxPressure is used.
+    private var isBLE = false
 
     init(
         device: IOHIDDevice,
@@ -39,9 +65,16 @@ final class PTH851Device: TabletDevice {
             return
         }
 
-        // Feature init: [0x02, 0x02] — activates the digitizer endpoint.
-        var initBytes: [UInt8] = [0x02, 0x02]
-        IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &initBytes, initBytes.count)
+        // Detect transport.  BLE devices report "BluetoothLowEnergy" or "Bluetooth".
+        let transport = IOHIDDeviceGetProperty(
+            device, kIOHIDTransportKey as CFString) as? String ?? ""
+        isBLE = transport.localizedCaseInsensitiveContains("bluetooth")
+
+        if !isBLE {
+            // USB / RF dongle: feature init activates the digitizer endpoint.
+            var initBytes: [UInt8] = [0x02, 0x02]
+            IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &initBytes, initBytes.count)
+        }
 
         let ctx = Unmanaged.passRetained(self).toOpaque()
         IOHIDDeviceRegisterInputReportCallback(
@@ -49,6 +82,10 @@ final class PTH851Device: TabletDevice {
             PTH851Device.reportCallback, ctx)
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+
+        if isBLE {
+            print("PTH-851: connected via Bluetooth LE")
+        }
     }
 
     func close() {
@@ -72,52 +109,93 @@ final class PTH851Device: TabletDevice {
 
         let id = report[0]
 
-        // Express key report.
+        // ── BLE HOGP pen report (Report ID 0x01, 23 bytes) ────────────────
+        if id == 0x01 && length >= 11 {
+            handleBLEPen(report: report, length: length)
+            return
+        }
+
+        // ── BLE HOGP pad report (Report ID 0x03, 9 bytes) ────────────────
+        if id == 0x03 && length >= 3 {
+            if let aux = decodeBLEPadReport(report: report, length: length) {
+                onAux?(aux)
+            }
+            return
+        }
+
+        // ── USB express key report (Report ID 0x11) ──────────────────────
         if id == 0x11 {
             guard let onAux = onAux else { return }
-            // PTH-851 report layout not yet captured; assuming same as PTH-660/860:
-            // [1] = latch, [2] = current key state.  Use [2] if present, else [1].
+            // PTH-851 (Intuos 5) has purely mechanical express keys.
             let auxByte: UInt8 = length >= 3 ? report[2] : report[1]
             onAux(AuxButtons(buttons: (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }))
             return
         }
 
-        guard id == 0x02 || id == 0x10 else {
-            let hex = (0..<Swift.min(Int(length), 20))
-                .map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-            print("PTH-851 UNKNOWN REPORT id=\(String(format:"0x%02X", id)) len=\(length): \(hex)")
+        // ── USB pen reports (Report ID 0x02 / 0x10, 10 bytes) ────────────
+        guard id == 0x02 || id == 0x10 else { return }
+        guard length >= 10 else { return }
+        handleUSBPen(report: report, length: length)
+    }
+
+    // MARK: - BLE pen report
+
+    private func handleBLEPen(report: UnsafePointer<UInt8>, length: CFIndex) {
+        isBLE = true
+        let bleSpec = DigitizerSpec(
+            maxX: spec.maxX, maxY: spec.maxY, maxPressure: Self.bleMaxPressure)
+        guard let result = decodeBLEPenReport(
+            report: report, length: length, spec: bleSpec,
+            lastX: &lastX, lastY: &lastY
+        ) else { return }
+
+        // Fire onToolEnter when tool identity changes.
+        if result.serial != currentSerial || result.toolCode != currentToolCode {
+            if result.toolCode != 0 {
+                currentSerial   = result.serial
+                currentToolCode = result.toolCode
+                isEraser        = result.point.eraser
+                toolIsMouse     = result.isMouse
+                onToolEnter?(ToolIdentity(
+                    serial: result.serial,
+                    toolCode: result.toolCode,
+                    isEraser: result.point.eraser,
+                    isMouse: result.isMouse))
+            }
+        }
+
+        onTablet(result.point)
+    }
+
+    // MARK: - USB pen report (IntuosV1, 10-byte)
+
+    private func handleUSBPen(report: UnsafePointer<UInt8>, length: CFIndex) {
+        let status = report[1]
+
+        // Tool-change packet.
+        if (status & 0xFC) == 0xC0 {
+            handleToolChange(report: report)
             return
         }
 
-        guard length >= 10 else { return }
+        let inProximity    = (status & 0x20) != 0
+        let highConfidence = (status & 0x40) != 0
+        let subtype        = (status >> 1) & 0x0F
 
-        let status        = report[1]
-        let inProximity   = (status & 0x20) != 0   // bit 5
-        let highConfidence = (status & 0x40) != 0  // bit 6
-
-        // IntuosV1 packet subtype occupies status bits 1–4.
-        // 0x06 = Intuos4 mouse / KC-100, 0x08 = 2D mouse (Intuos 1–3 vintage).
-        // 0x00 = pen.  Mask out status bits 0 (pressure LSB) and 5–7.
-        let subtype     = (status >> 1) & 0x0F
-        let toolIsMouse = subtype == 0x06 || subtype == 0x08
-
-        // Proximity-out packet — report lift but no coordinates.
+        // Proximity-out.
         if !inProximity {
-            lastSubtype     = 0xFF
             prevInProximity = false
+            toolIsMouse = false
             onTablet(TabletPoint(
-                x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
+                x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
                 pressure: 0, maxPressure: spec.maxPressure,
                 tiltX: 0, tiltY: 0, rotation: 0.0,
                 penButton1: false, penButton2: false,
-                eraser: false, inProximity: false, hoverDistance: 0))
+                eraser: isEraser, inProximity: false, hoverDistance: 0))
             return
         }
 
-        // When confidence is low the position data is unreliable, but we still need to emit a
-        // zero-pressure / zero-button report so InputInjector can fire mouseUp.
-        // NOTE: for mouse subtypes the status bits 1–4 encode the subtype, not buttons,
-        // so we must not forward them as button state.
+        // Low confidence.
         guard highConfidence else {
             onTablet(TabletPoint(
                 x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
@@ -125,33 +203,32 @@ final class PTH851Device: TabletDevice {
                 tiltX: 0, tiltY: 0, rotation: 0.0,
                 penButton1: !toolIsMouse && (status & 0x02) != 0,
                 penButton2: !toolIsMouse && (status & 0x04) != 0,
-                eraser: false, inProximity: true, hoverDistance: 0))
+                eraser: isEraser, inProximity: true, hoverDistance: 0))
             return
         }
 
-        // Announce tool type on proximity entry (once per session).
+        // Announce tool type on proximity entry (fallback).
         if !prevInProximity {
-            onToolEnter?(ToolIdentity(
-                serial: 0,
-                toolCode: subtype == 0x06 ? 0x0806 : (subtype == 0x08 ? 0x0016 : 0x0802),
-                isEraser: false,
-                isMouse: toolIsMouse))
-            let hex = (0..<10).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-            print("PTH-851 PROXIMITY-ENTER: subtype=0x\(String(format:"%01X", subtype)) \(hex)")
+            let isMouse = subtype == 0x06 || subtype == 0x08
+            toolIsMouse = isMouse
+            if currentToolCode == 0 {
+                let fallbackCode: UInt16 = isMouse
+                    ? (subtype == 0x06 ? 0x0806 : 0x0016)
+                    : (isEraser ? 0x080A : 0x0802)
+                onToolEnter?(ToolIdentity(
+                    serial: 0, toolCode: fallbackCode,
+                    isEraser: isEraser, isMouse: isMouse))
+            }
         }
         prevInProximity = true
 
-        // IntuosV1 coordinate decode — identical for pen and mouse.
-        // OpenTabletDriver IntuosV1TabletReport.cs field layout.
+        // Coordinate decode.
         let x = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
         let y = ((Int(report[5]) | Int(report[4]) << 8) << 1) | (Int(report[9]) & 1)
         lastX = x
         lastY = y
 
-        // ── Intuos4 mouse / KC-100 (subtype 0x06) ──────────────────────────────
-        // Protocol source: Linux kernel wacom_wac.c wacom_intuos_general() case 0x06.
-        //   report[6] = button mask: L=0x01  M=0x02  R=0x04  Side=0x08  Extra=0x10
-        //   report[7] = wheel:       0x80=up 0x40=down  →  delta +1/0/−1
+        // Mouse subtype 0x06 (KC-100).
         if subtype == 0x06 {
             let buttons    = report[6]
             let whlByte    = report[7]
@@ -160,18 +237,15 @@ final class PTH851Device: TabletDevice {
                 x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
                 pressure: 0, maxPressure: spec.maxPressure,
                 tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (buttons & 0x01) != 0,   // L
-                penButton2: (buttons & 0x04) != 0,   // R
+                penButton1: (buttons & 0x01) != 0,
+                penButton2: (buttons & 0x04) != 0,
                 eraser: false, inProximity: true, hoverDistance: 0,
                 mouseMiddleButton: (buttons & 0x02) != 0,
                 mouseWheelDelta: wheelDelta))
             return
         }
 
-        // ── 2D mouse / Intuos 1–3 vintage (subtype 0x08) ───────────────────────
-        // Protocol source: Linux kernel wacom_wac.c wacom_intuos_general() case 0x08.
-        //   report[8] = R=0x10  M=0x08  L=0x04  Side=0x20  Extra=0x40
-        //               WheelUp=0x01  WheelDown=0x02
+        // Mouse subtype 0x08 (2D mouse).
         if subtype == 0x08 {
             let btnByte    = report[8]
             let wheelDelta = Int(btnByte & 0x01) - Int((btnByte & 0x02) >> 1)
@@ -179,34 +253,52 @@ final class PTH851Device: TabletDevice {
                 x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
                 pressure: 0, maxPressure: spec.maxPressure,
                 tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (btnByte & 0x04) != 0,   // L
-                penButton2: (btnByte & 0x10) != 0,   // R
+                penButton1: (btnByte & 0x04) != 0,
+                penButton2: (btnByte & 0x10) != 0,
                 eraser: false, inProximity: true, hoverDistance: 0,
                 mouseMiddleButton: (btnByte & 0x08) != 0,
                 mouseWheelDelta: wheelDelta))
             return
         }
 
-        // ── Pen path ────────────────────────────────────────────────────────────
+        // Pen path.
         let pressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | (Int(report[1]) & 1)
         let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64
         let tiltYRaw = (Int(report[8]) & 0x7F) - 64
 
         onTablet(TabletPoint(
-            x: x,
-            y: y,
-            maxX: spec.maxX,
-            maxY: spec.maxY,
-            pressure: pressure,
-            maxPressure: spec.maxPressure,
+            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+            pressure: pressure, maxPressure: spec.maxPressure,
             tiltX: Double(tiltXRaw) / 63.0,
             tiltY: Double(tiltYRaw) / 63.0,
             rotation: 0.0,
             penButton1: (status & 0x02) != 0,
             penButton2: (status & 0x04) != 0,
-            eraser: false,  // IntuosV1 doesn't expose eraser in this report type
+            eraser: isEraser,
             inProximity: true,
-            hoverDistance: Int(report[9])
-        ))
+            hoverDistance: Int(report[9])))
+    }
+
+    // MARK: - Tool-change packet (IntuosV1, status bits 7:2 == 0xC0)
+
+    private func handleToolChange(report: UnsafePointer<UInt8>) {
+        let serial = UInt32(report[3] & 0x0F) << 28
+                   | UInt32(report[4]) << 20
+                   | UInt32(report[5]) << 12
+                   | UInt32(report[6]) << 4
+                   | UInt32(report[7]) >> 4
+        let toolCode = UInt16(report[2]) << 4
+                     | UInt16(report[3]) >> 4
+                     | UInt16(report[7] & 0x0F) << 12
+                     | UInt16(report[8] & 0xF0) << 4
+
+        currentSerial   = serial
+        currentToolCode = toolCode
+        isEraser    = (toolCode & 0x000F) == 0x000A
+        toolIsMouse = (toolCode & 0x000F) == 0x0006
+
+        onToolEnter?(ToolIdentity(
+            serial: serial, toolCode: toolCode,
+            isEraser: isEraser, isMouse: toolIsMouse))
     }
 }

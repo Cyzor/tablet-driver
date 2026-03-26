@@ -24,11 +24,9 @@ final class PTH660Device: TabletDevice {
     private var lastToolCode: UInt16 = 0
     private var currentToolCode: UInt16 = 0
     private var prevInProximity = false
-    // Change-detection for diagnostic logging — 27 bytes covering the full 0x10 report.
-    private var loggedBytes = [UInt8](repeating: 0xFF, count: 27)
-    private var loggedAuxByte: UInt8 = 0xFF
-    private var loggedStatus: UInt8 = 0xFF
-    private var loggedPressure: Int = -1
+    /// Absolute scroll-position counter from byte [16] of mouse-tool reports.
+    /// Stored to compute signed delta via Int8(bitPattern:) wrapping subtract.
+    private var lastScrollPos: UInt8 = 0
 
     /// When true, open with kIOHIDOptionsTypeSeizeDevice so the kernel's standard
     /// mouse driver doesn't consume button/wheel reports before we see them.
@@ -55,7 +53,7 @@ final class PTH660Device: TabletDevice {
             print("PTH-660: failed to open (seize=\(seize)) — \(ret). Is another tablet driver running?")
             return
         }
-        // PTH-660 needs no feature init report (same as PTH-860).
+        sendWacomInputModeInit(device, tag: "PTH-660")
         let ctx = Unmanaged.passRetained(self).toOpaque()
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count,
@@ -82,16 +80,21 @@ final class PTH660Device: TabletDevice {
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
         guard length >= 2 else { return }
         switch report[0] {
+        case 0x01:
+            // BLE HOGP pen report (23 bytes) — Intuos Pro over Bluetooth LE.
+            handleBLEPen(report: report, length: length)
+        case 0x03:
+            // BLE HOGP pad report (9 bytes).
+            if let aux = decodeBLEPadReport(report: report, length: length) {
+                onAux?(aux)
+            }
         case 0x10:
             guard length >= 12 else { return }
             handlePenReport(report: report, length: length)
         case 0x1E: handleOffsetPenReport(report: report)
         case 0x11: handleAuxReport(report: report, length: length)
         case 0x13: break  // touch-ring mode / position — not yet handled
-        default:
-            let n   = Swift.min(Int(length), 20)
-            let hex = (0..<n).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-            print("PTH-660 UNKNOWN REPORT id=0x\(String(format:"%02X", report[0])) len=\(length): \(hex)")
+        default: break
         }
     }
 
@@ -105,29 +108,14 @@ final class PTH660Device: TabletDevice {
             && report[5] == 0 && report[6] == 0 && report[7] == 0
         if allZero && !highConfidence {
             prevInProximity = false
-            loggedStatus    = 0xFF
-            loggedPressure  = -1
             onTablet(
                 TabletPoint(
-                    x: 0, y: 0, maxX: spec.maxX, maxY: spec.maxY,
+                    x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
                     pressure: 0, maxPressure: spec.maxPressure,
                     tiltX: 0, tiltY: 0, rotation: 0.0,
                     penButton1: false, penButton2: false,
                     eraser: false, inProximity: false, hoverDistance: 0))
             return
-        }
-
-        // Log ALL reports (including low-confidence) when non-position bytes change.
-        // Low-confidence reports may carry button state that high-confidence ones don't.
-        if length >= 27 {
-            let interestingIndices = [1, 8, 9, 10, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26]
-            let changed = interestingIndices.contains(where: { loggedBytes[$0] != report[$0] })
-            if changed {
-                let conf = highConfidence ? "HI" : "LO"
-                let hex = interestingIndices.map { String(format: "%d:%02X", $0, report[$0]) }.joined(separator: " ")
-                print("PTH-660 NONPOS[\(conf)]: \(hex)")
-                for i in interestingIndices { loggedBytes[i] = report[i] }
-            }
         }
 
         // NOTE: keep barrel-button and eraser bits from status — highConfidence is a
@@ -146,13 +134,6 @@ final class PTH660Device: TabletDevice {
             return
         }
 
-        // Log proximity-enter with full bytes once per proximity session.
-        if !prevInProximity {
-            let n   = Swift.min(Int(length), 32)
-            let hex = (0..<n).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-            print("PTH-660 PROXIMITY-ENTER: len=\(length) bytes: \(hex)")
-            loggedBytes = [UInt8](repeating: 0xFF, count: 27)  // force change-log on next report
-        }
         prevInProximity = true
 
         // Extract pen serial (bytes 17–20 LE) and tool code (bytes 21–22 LE).
@@ -171,15 +152,11 @@ final class PTH660Device: TabletDevice {
             if toolChanged {
                 lastSerial    = serial
                 lastToolCode  = toolCode
-                loggedStatus  = 0xFF   // reset change-log on tool switch
-                loggedPressure = -1
 
                 // Mouse/cursor tools: bits 1+2 set in the low nibble (0x_6 pattern).
-                // e.g. 0x0806 = KC-100-00 Intuos Mouse, 0x0006 = 4D Mouse.
                 let isMouse = (toolCode & 0x000F) == 0x0006
-                let hexDump = (0..<27).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-                print("PTH-660 TOOL-ENTER: toolCode=0x\(String(format:"%04X", toolCode)) serial=0x\(String(format:"%08X", serial)) isMouse=\(isMouse)")
-                print("PTH-660 TOOL-ENTER bytes: \(hexDump)")
+                // Seed scroll counter to avoid a large spurious delta on first mouse report.
+                if isMouse { lastScrollPos = report[16] }
 
                 onToolEnter?(
                     ToolIdentity(
@@ -198,22 +175,24 @@ final class PTH660Device: TabletDevice {
         lastY = y
 
         // ── Mouse path ─────────────────────────────────────────────────────────
-        // See PTH860Device for byte-position rationale and speculative notes.
+        // Byte [16] is an absolute 8-bit counter that wraps at 255.  Signed delta
+        // via Int8(bitPattern:) handles wrap-around correctly (255→0 = +1 step).
+        // Pressure bytes [8–9] are always 0x0000 for cursor/mouse tools.
         if (currentToolCode & 0x000F) == 0x0006 && currentToolCode != 0 {
-            let whlByte: UInt8 = report[8]
-            let btnByte: UInt8 = report[9]
-            let wheelDelta = Int((whlByte & 0x80) >> 7) - Int((whlByte & 0x40) >> 6)
+            let scrollPos = report[16]
+            let wheelDelta = Int(Int8(bitPattern: scrollPos &- lastScrollPos))
+            lastScrollPos = scrollPos
 
             onTablet(TabletPoint(
                 x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
                 pressure: 0, maxPressure: spec.maxPressure,
                 tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (status & 0x02) != 0,   // L — assumed
-                penButton2: (status & 0x04) != 0,   // R — assumed
+                penButton1: (status & 0x02) != 0,   // L — assumed same as pen btn1 bit
+                penButton2: (status & 0x04) != 0,   // R — assumed same as pen btn2 bit
                 eraser: false,
                 inProximity: true,
-                hoverDistance: Int(report[16]),
-                mouseMiddleButton: (btnByte & 0x02) != 0,  // M — speculative
+                hoverDistance: 0,
+                mouseMiddleButton: (report[9] & 0x02) != 0,  // M — speculative; verify via log
                 mouseWheelDelta: wheelDelta))
             return
         }
@@ -245,6 +224,29 @@ final class PTH660Device: TabletDevice {
             ))
     }
 
+    /// BLE HOGP pen report (Report ID 0x01, 23 bytes) — Intuos Pro over BLE.
+    /// Uses the shared BLE decode helper; fires onToolEnter when tool changes.
+    private func handleBLEPen(report: UnsafePointer<UInt8>, length: CFIndex) {
+        guard let result = decodeBLEPenReport(
+            report: report, length: length, spec: spec,
+            lastX: &lastX, lastY: &lastY
+        ) else { return }
+
+        // Fire onToolEnter on tool identity change.
+        if result.toolCode != 0 && (result.serial != lastSerial || result.toolCode != lastToolCode) {
+            lastSerial   = result.serial
+            lastToolCode = result.toolCode
+            currentToolCode = result.toolCode
+            onToolEnter?(ToolIdentity(
+                serial: result.serial,
+                toolCode: result.toolCode,
+                isEraser: result.point.eraser,
+                isMouse: result.isMouse))
+        }
+
+        onTablet(result.point)
+    }
+
     /// Offset pen report (Report ID 0x1E) — produced in driver-compatibility mode.
     private func handleOffsetPenReport(report: UnsafePointer<UInt8>) {
         let status = report[2]
@@ -271,18 +273,24 @@ final class PTH660Device: TabletDevice {
     ///
     /// Report layout (9 bytes, confirmed by capture):
     ///   [0]     0x11  report ID
-    ///   [1]     latch — momentarily equals [2] during a held key; unreliable for edge detection
-    ///   [2]     current button state — set for the full duration the key is held  ← use this
-    ///   [3]     touch-ring touch flag
-    ///   [4]     touch-ring position (0x7F = idle/center)
+    ///   [1]     mechanical click state — set only when key is pressed hard enough to actuate
+    ///   [2]     capacitive touch state — set on lightest finger contact (too sensitive for buttons)
+    ///   [3]     touch-ring touch flag (non-zero while finger is on ring)
+    ///   [4]     touch-ring position, 0–71 (5° resolution); 0x7F = idle/no contact
     ///   [5-8]   reserved / zero
+    ///
+    /// Intuos Pro express keys are capacitive-touch with a mechanical click underneath.
+    /// Use [1] (click) not [2] (touch) — Wacom's native driver requires a physical click.
     private func handleAuxReport(report: UnsafePointer<UInt8>, length: CFIndex) {
-        let n = Swift.min(Int(length), 16)
-        let hex = (0..<n).map { String(format: "%02X", report[$0]) }.joined(separator: " ")
-        print("PTH-660 AUX: len=\(length) \(hex)")
         guard length >= 3, let onAux = onAux else { return }
-        // report[2] is the live "key currently held" bitmask (bits 0–7 = keys 1–8).
-        let auxByte = report[2]
-        onAux(AuxButtons(buttons: (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }))
+        let auxByte = report[1]
+        let ringByte: UInt8 = length >= 5 ? report[3] : 0
+        let posByte:  UInt8 = length >= 5 ? report[4] : 0x7F
+        // report[2]: bits 0–7 = express keys 1–8
+        let buttons = (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }
+        let ringActive = ringByte != 0
+        onAux(AuxButtons(buttons: buttons,
+                         touchRingActive: ringActive,
+                         touchRingPosition: ringActive ? posByte : 0x7F))
     }
 }
