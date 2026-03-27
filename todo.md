@@ -1,6 +1,6 @@
 # MockTab — Open Tasks
 
-_Last updated: 2026-03-26 (OTD import complete; window sizing revised)_
+_Last updated: 2026-03-26_
 
 ---
 
@@ -45,14 +45,22 @@ Lowest priority — hardware is very old.
 ## Deferred / Future
 
 ### ButtonMappingView redesign
-Current UI is minimal. Planned: tip/eraser separate bindings, ToolNameLabel, generalized
-side buttons, scroll ring/strip. Design in `project_button_mapping_redesign.md`.
+Current UI is functional but minimal. Planned improvements:
+- **Tip/eraser bindings** in ToolSettings + InputInjector (let user choose which mouse button)
+- **ToolNameLabel** — show active pen name instead of device name in pen section
+- **Generalized side buttons** — dynamic count instead of fixed "Side button 1/2"
+Design notes in `project_button_mapping_redesign.md` (memory).
 
 ### Per-pen serial number support
 `ToolIdentity` struct exists; `DeviceRegistry.recordTool` tracks serials.
 Planned: per-pen settings split (`ToolSettings`), full `DeviceRegistry` evolution.
 Six-phase plan in `project_pen_serial_strategy.md`. Phase 1 (hardware instrumentation)
 not yet started.
+
+### Touch ring: additional modes
+Currently supports `.scroll` and `.off`. Future modes could include zoom, brush size,
+layer opacity, or arbitrary key-per-direction bindings. The center button can now be
+mapped to any key/action — it could also toggle between ring modes.
 
 ### Cintiq Pro (DTH-xxx)
 Newer Cintiq Pro models use USB-C and a different HID report format.
@@ -66,22 +74,25 @@ confirmed). ACK-40401 dongle (0x0084) routes to WacomGenericDevice — untested 
 
 ## Done (recent sessions)
 
+- [x] Touch ring: fixed decoder bug (report[3] = center button, not ring flag; ring contact
+      = report[4] != 0x7F); ring now scrolls without requiring center button held
+- [x] Touch ring: center button independently mappable via `touchRingButtonBinding`
+- [x] Touch ring: live indicator for center button in ButtonMappingView + Info tab ring row
+- [x] ButtonMappingView live indicators: fixed by extending `infoViewVisible` gate to
+      include Buttons tab (was Info-only, causing all indicators to stay dark)
+- [x] InfoView: added Touch Ring row to Live Input panel
+- [x] WacomDeviceRegistry: fixed 0x0360 (PTH-660 alt PID) hasTouchRing false→true
+- [x] Touch ring wired: scroll by default, mode picker in Buttons tab, InfoView indicator
 - [x] Window sizing: remove per-tab size persistence; tabs use default height until user
       manually resizes, then window stays at user's chosen size across all tab switches
 - [x] OTD import script: full rewrite for current DigitizerIdentifiers schema;
       multi-stage FeatureInitReport; Attributes-as-dict; new parser class names;
       EXISTING_PIDS updated to ~95 entries
 - [x] WacomDeviceRegistry: expanded ~50 → ~95 entries via OTD import
-      (CTL/CTH-xxx, PTK-450/650, PTH alt PIDs, Cintiq 16/22HD/Pro 27, Movink 13, etc.)
 - [x] TabletAreaView: replaced hardcoded TabletModel picker with dynamic DeviceRegistry list
-      (connected devices shown first with green dot; previously-seen devices also listed)
-- [x] PTZ-631W retired: `Intuos3Decoder` (bit 6 proximity, aux 0x03/0x0C), `.intuos3` parser,
-      `featureInit2` in `WacomDeviceSpec`; all 7 Intuos3 entries updated
-- [x] Phase 5: `tools/import_otd_configs.py` — OTD JSON → Swift WacomDeviceSpec entries
-- [x] PTH-851: Dual USB/BLE transport; tool-change packets; eraser detection; lastX/Y proximity-out
-- [x] PTH-660/860: Express keys switched to `report[1]` (mechanical); BLE support added
+- [x] PTZ-631W retired: Intuos3Decoder + .intuos3 parser + featureInit2 support
+- [x] Phase 5: tools/import_otd_configs.py — OTD JSON → Swift WacomDeviceSpec entries
+- [x] PTH-851: Dual USB/BLE transport; tool-change packets; eraser detection
+- [x] PTH-660/860: Express keys switched to report[1] (mechanical); BLE support
 - [x] WacomGenericDevice: Full replacement for WacomProbeDevice
-- [x] WacomDeviceRegistry: Phase 1 data-driven device table
-- [x] Phase 2 decoders: WacomDecoder protocol + DecoderState + IntuosV1/V2/Intuos3Decoder
-- [x] WacomUniversalDevice: decoder-backed driver; open/close; report dispatch
-- [x] Phase 4: PTH851/PTH660/PTH860/PTZ631W retired to WacomUniversalDevice
+- [x] Phase 1–4: data-driven registry, decoders, WacomUniversalDevice, device migration

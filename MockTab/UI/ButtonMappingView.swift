@@ -65,6 +65,10 @@ struct ButtonMappingView: View {
 
                         Text("Touch Ring").font(.headline)
 
+                        buttonRow("Center Button", isActive: lb.touchRingButtonDown,
+                                  binding: Binding(
+                                      get: { settings.touchRingButtonBinding },
+                                      set: { settings.touchRingButtonBinding = $0 }))
                         touchRingRow(isActive: lb.touchRingActive)
                     }
                 }

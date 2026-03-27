@@ -48,8 +48,10 @@ struct ToolIdentity {
 
 struct AuxButtons {
     var buttons: [Bool]  // up to 8 express key buttons
-    /// True while a finger is resting on the touch ring.
+    /// True while a finger is resting on the touch ring (position is valid).
     var touchRingActive: Bool = false
+    /// True while the center click button of the touch ring is physically pressed.
+    var touchRingButtonDown: Bool = false
     /// Absolute touch ring position, 0–71 (5° resolution).  0x7F = idle/no contact.
     var touchRingPosition: UInt8 = 0x7F
 
@@ -75,4 +77,6 @@ struct LiveButtonState: Equatable {
     var expressKeys: [Bool] = Array(repeating: false, count: 8)
     /// True while a finger is actively touching the touch ring.
     var touchRingActive: Bool = false
+    /// True while the touch ring center button is physically pressed.
+    var touchRingButtonDown: Bool = false
 }

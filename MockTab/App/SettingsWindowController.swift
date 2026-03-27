@@ -141,10 +141,12 @@ final class SettingsWindowController: NSWindowController {
 
         super.init(window: window)
 
-        // Wire up the Info-tab visibility flag so TabletManager can skip
-        // @Published UI writes when nobody is looking at the live data panel.
+        // Wire up the live-state visibility flag so TabletManager can skip
+        // @Published UI writes when nobody is looking at live data.
+        // Both "Info" (pen coordinates/pressure) and "Buttons" (live indicators)
+        // consume livePoint/liveButtons, so either tab enables the updates.
         tabVC.onTabSelected = { label in
-            TabletManager.shared.infoViewVisible = (label == "Info")
+            TabletManager.shared.infoViewVisible = (label == "Info" || label == "Buttons")
         }
 
         // Clear the flag when the window closes.
@@ -198,7 +200,7 @@ final class SettingsWindowController: NSWindowController {
         NSApp.activate(ignoringOtherApps: true)
         // Sync the Info-tab visibility flag for whichever tab is already selected.
         let label = tabVC.tabViewItems[safe: tabVC.selectedTabViewItemIndex]?.label
-        TabletManager.shared.infoViewVisible = (label == "Info")
+        TabletManager.shared.infoViewVisible = (label == "Info" || label == "Buttons")
     }
 
     func showTab(at index: Int) {

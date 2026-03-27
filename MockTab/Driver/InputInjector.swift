@@ -121,7 +121,8 @@ final class InputInjector {
 
     // MARK: - Express key / touch ring state
 
-    private var lastAuxButtons  = [Bool](repeating: false, count: 8)
+    private var lastAuxButtons    = [Bool](repeating: false, count: 8)
+    private var lastRingButtonDown = false
     /// Last observed touch ring position (0–71). 0x7F = no contact.
     private var lastRingPos: UInt8 = 0x7F
 
@@ -286,12 +287,19 @@ final class InputInjector {
             }
         }
 
+        // ── Touch ring center button ───────────────────────────────────────────
+        let ringButtonDown = buttons.touchRingButtonDown
+        if ringButtonDown != lastRingButtonDown {
+            fireButtonAction(s.touchRingButtonBinding, down: ringButtonDown, at: cursorPos)
+            lastRingButtonDown = ringButtonDown
+        }
+
         // ── Touch ring ─────────────────────────────────────────────────────────
         // Position 0x7F means no contact.  Compute a wrap-aware delta when a
         // finger is actively moving (both current and previous positions valid).
         // The ring has 72 steps (0–71, ~5° each); wrap threshold is 36.
         let ringPos = buttons.touchRingPosition
-        if buttons.touchRingActive, ringPos != 0x7F, lastRingPos != 0x7F {
+        if buttons.touchRingActive, lastRingPos != 0x7F {
             var delta = Int(ringPos) - Int(lastRingPos)
             if delta >  36 { delta -= 72 }
             if delta < -36 { delta += 72 }

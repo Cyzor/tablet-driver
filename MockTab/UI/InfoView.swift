@@ -437,6 +437,17 @@ private struct LiveInputView: View {
                         Text("—").monospacedDigit()
                     }
                 }
+
+                liveRow(label: "Touch Ring") {
+                    HStack(spacing: 6) {
+                        Image(systemName: lb.touchRingActive
+                              ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(lb.touchRingActive ? Color.green : Color.secondary)
+                            .imageScale(.small)
+                        Text(lb.touchRingActive ? "Active" : "Idle")
+                            .foregroundStyle(lb.touchRingActive ? .primary : .tertiary)
+                    }
+                }
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -225,9 +225,12 @@ struct IntuosV2Decoder: WacomDecoder {
     ///   [0]  0x11  report ID
     ///   [1]  mechanical click state (use this — physical press required)
     ///   [2]  capacitive touch state (too sensitive; fires on lightest contact)
-    ///   [3]  touch-ring touch flag (non-zero while finger is on ring)
-    ///   [4]  touch-ring position, 0–71 (5° resolution); 0x7F = idle
+    ///   [3]  touch-ring center button (non-zero while center button is pressed)
+    ///   [4]  touch-ring position, 0–71 (5° resolution); 0x7F = no contact
     ///   [5–8] reserved
+    ///
+    /// Note: ring contact is indicated by posByte != 0x7F, NOT by ringByte.
+    /// ringByte is the center button click, which is independent of ring touch.
     private func decodeAuxReport(
         report: UnsafePointer<UInt8>,
         length: CFIndex
@@ -236,11 +239,13 @@ struct IntuosV2Decoder: WacomDecoder {
         let auxByte  = report[1]
         let ringByte: UInt8 = length >= 5 ? report[3] : 0
         let posByte:  UInt8 = length >= 5 ? report[4] : 0x7F
-        let buttons = (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }
-        let ringActive = ringByte != 0
+        let buttons        = (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }
+        let ringActive     = posByte != 0x7F   // finger on ring (position valid)
+        let ringButtonDown = ringByte != 0     // center button pressed
         return [.aux(AuxButtons(
             buttons: buttons,
             touchRingActive: ringActive,
+            touchRingButtonDown: ringButtonDown,
             touchRingPosition: ringActive ? posByte : 0x7F))]
     }
 

@@ -242,6 +242,9 @@ final class TabletManager: ObservableObject {
             if aux.touchRingActive != self.liveButtons.touchRingActive {
                 self.liveButtons.touchRingActive = aux.touchRingActive
             }
+            if aux.touchRingButtonDown != self.liveButtons.touchRingButtonDown {
+                self.liveButtons.touchRingButtonDown = aux.touchRingButtonDown
+            }
         }
 
         // ── Create the device driver ─────────────────────────────────────────

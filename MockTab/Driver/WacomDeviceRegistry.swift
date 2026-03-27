@@ -416,7 +416,7 @@ enum WacomDeviceRegistry {
         // ── Intuos Pro second-gen additional variants (PTH-460/660 alt PIDs) ─
         .init(productID: 0x0360, name: "Wacom PTH-660",              // ⚠ from OTD
               parser: .intuosV2, maxX: 44800, maxY: 29600, maxPressure: 8191,
-              buttonCount: 8, hasTouchRing: false, hasEraser: true,
+              buttonCount: 8, hasTouchRing: true, hasEraser: true,
               featureInit: nil, seizeUSB: false),
         .init(productID: 0x0392, name: "Wacom PTH-460",              // ⚠ from OTD
               parser: .intuosV2, maxX: 31920, maxY: 19950, maxPressure: 8191,
