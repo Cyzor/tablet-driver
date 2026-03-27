@@ -1,6 +1,6 @@
 # MockTab — Open Tasks
 
-_Last updated: 2026-03-26_
+_Last updated: 2026-03-26 (Phase 5 complete)_
 
 ---
 
@@ -31,12 +31,6 @@ not decoded correctly from report bytes. Three approaches tried; deferred by use
 Many entries marked ⚠ estimated. Verify via OTD JSON configs and Linux input-wacom.
 Bamboo decoder requires new implementation (no existing MockTab code to lift from).
 
-### OTD config import script (Phase 5)
-Python script: parse `Configurations/Wacom/*.json` → emit Swift `WacomDeviceSpec` entries.
-Key OTD fields: `ProductID`, `Name`, `InputReportLength` (→ parser), `ReportParser`
-(class name override), `MaxX`, `MaxY`, `MaxPressure`, `ButtonCount`,
-`FeatureInitializationReport` (base64 → featureInit bytes), `Interface` (→ seizeUSB).
-Expands table from ~50 → ~150 entries in one automated pass.
 
 ---
 
@@ -72,6 +66,8 @@ confirmed). ACK-40401 dongle (0x0084) routes to WacomGenericDevice — untested 
 ---
 
 ## Done (recent sessions)
+
+- [x] Phase 5: `tools/import_otd_configs.py` — OTD JSON → Swift WacomDeviceSpec entries; handles both flat and Specifications-nested OTD schemas; base64 featureInit; Interface=0 seize detection
 
 - [x] PTH-851: Dual USB/BLE transport; tool-change packets; eraser detection; lastX/Y proximity-out
 - [x] PTH-660/860: Express keys switched to `report[1]` (mechanical); debug logging removed; BLE support added
