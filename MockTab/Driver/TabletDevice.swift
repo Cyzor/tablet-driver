@@ -167,6 +167,10 @@ struct DecoderState {
     var prevInProximity: Bool = false
     var isEraser: Bool = false
     var toolIsMouse: Bool = false
+    /// BT 0x80 container pad state — emit aux only on change.
+    var lastBTPadKeys: UInt8 = 0
+    var lastBTPadRing: UInt8 = 0x7F
+    var lastBTPadBtn:  UInt8 = 0
 }
 
 enum DecodeResult {

@@ -305,6 +305,35 @@ struct IntuosV2Decoder: WacomDecoder {
             eraser: isEraser,
             inProximity: inProximity,
             hoverDistance: distance)))
+
+        // Pad sub-report is embedded at a fixed offset in the 361-byte 0x80 container.
+        // Confirmed from live capture (2026-03-27):
+        //   byte[281] = center button (0x40 when pressed, 0x00 otherwise)
+        //   byte[282] = key first-frame only (transition; prefer byte[283] for state)
+        //   byte[283] = express key bitmask (bit0=key1 ... bit7=key8; direct, no shift)
+        //   byte[284] = 0x58 (constant pad-type marker)
+        //   byte[285] = ring byte: bit7=ring active, bits0-6=position (0–71); 0x7F=no touch
+        if length >= 286 {
+            let keyByte = report[283]
+            let ringByte = report[285]
+            let btnByte  = report[281]
+            if keyByte != state.lastBTPadKeys
+                || ringByte != state.lastBTPadRing
+                || btnByte  != state.lastBTPadBtn
+            {
+                state.lastBTPadKeys = keyByte
+                state.lastBTPadRing = ringByte
+                state.lastBTPadBtn  = btnByte
+                let buttons    = (0..<8).map { (keyByte & (1 << $0)) != 0 }
+                let ringActive = ringByte != 0x7F
+                results.append(.aux(AuxButtons(
+                    buttons: buttons,
+                    touchRingActive: ringActive,
+                    touchRingButtonDown: btnByte != 0,
+                    touchRingPosition: ringActive ? (ringByte & 0x7F) : 0x7F)))
+            }
+        }
+
         return results
     }
 

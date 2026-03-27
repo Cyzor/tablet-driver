@@ -148,10 +148,9 @@ final class TabletManager: ObservableObject {
         let isBLE        = transport.lowercased().contains("bluetooth")
         print("TabletManager: device pid=0x\(String(productID, radix:16)) usagePage=0x\(String(usagePage, radix:16)) usage=0x\(String(usage, radix:16)) maxRptSize=\(maxRptSize) transport=\(transport)")
 
-        // BLE tablets expose a ghost HID-mouse interface alongside the pen digitizer.
-        // Skip it: it carries no pen data and must never be seized.
+        // BLE tablets expose multiple interfaces. Log all of them; skip ghost mouse only.
         if isBLE && usagePage == 0x01 {
-            print("TabletManager: skipping BLE mouse interface (pid=0x\(String(productID, radix:16)))")
+            print("TabletManager: BLE usagePage=0x01 interface — maxRptSize=\(maxRptSize) usage=0x\(String(usage, radix:16)) — skipping ghost mouse")
             return
         }
 

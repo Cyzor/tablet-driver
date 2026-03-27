@@ -66,18 +66,18 @@ mapped to any key/action — it could also toggle between ring modes.
 Newer Cintiq Pro models use USB-C and a different HID report format.
 DTH-271 is now in the registry (from OTD, IntuosV2 parser) but unverified.
 
-### Wireless: BT aux/pad reports
-Express keys and touch ring over BT not yet tested. They may arrive as a separate
-sub-section of the 361-byte container report (0x80), or as a distinct report ID.
-**Needs:** capture with express key pressed over BT to identify structure.
+### ~~Wireless: BT aux/pad reports~~ ✅ DONE
+Express keys, touch ring, and center button confirmed working over BT (2026-03-27).
+Pad sub-report is embedded at fixed offset 281 in the 0x80 container.
+Decoded in `IntuosV2Decoder.decodeBTPen` alongside pen data.
 
 ---
 
 ## Done (recent sessions)
 
-- [x] Bluetooth wireless: PTH-660 fully working over BT — pen, pressure, tilt, barrel buttons
-      (report ID 0x80, 361-byte container; barrel1=bit1/0x02, barrel2=bit2/0x04 in flags byte,
-      identical to USB; confirmed via live capture); three fixes: skip InputMode init for BT,
+- [x] Bluetooth wireless: PTH-660 fully working over BT — pen, pressure, tilt, barrel buttons,
+      express keys, touch ring, center button all confirmed; report ID 0x80, 361-byte container;
+      pad sub-report at fixed offset 281; three fixes: skip InputMode init for BT,
       skip ghost usagePage=0x01 interface, route 0x80 to BT pen decoder
 - [x] Touch ring: fixed decoder bug (report[3] = center button, not ring flag; ring contact
       = report[4] != 0x7F); ring now scrolls without requiring center button held
