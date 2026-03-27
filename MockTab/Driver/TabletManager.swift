@@ -257,32 +257,15 @@ final class TabletManager: ObservableObject {
         let wacomDevice: (any TabletDevice)?
 
         switch productID {
-        case 0x0317:
-            print("TabletManager: PTH-851 connected")
-            wacomDevice = PTH851Device(
-                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
-
         case 0x0028:
             print("TabletManager: PTH-850 (Intuos Pro Medium) connected")
             wacomDevice = PTH850Device(
                 device: device, onTablet: onTablet, onAux: onAux, onToolEnter: nil)
 
-        case 0x0357:
-            print("TabletManager: PTH-660 connected")
-            // Seize the standard-mouse interface (usagePage=0x01) so the kernel's HID
-            // mouse driver doesn't consume button/wheel reports before we see them.
-            // The vendor-specific interface (0xFF00) is opened non-exclusively.
-            let shouldSeize = (usagePage == 0x01)
-            wacomDevice = PTH660Device(
-                device: device, seize: shouldSeize,
-                onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
-
-        case 0x0358:
-            print("TabletManager: PTH-860 connected")
-            wacomDevice = PTH860Device(
-                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
-
         case 0x00B5:
+            // PTZ-631W uses status & 0x40 (bit 6) for proximity — Intuos3 bit layout.
+            // IntuosV1Decoder uses status & 0x20 (bit 5) — PTH-851/Intuos5 layout.
+            // Keeping dedicated class until IntuosV1Decoder is extended for Intuos3.
             print("TabletManager: PTZ-631W connected")
             wacomDevice = PTZ631WDevice(
                 device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)

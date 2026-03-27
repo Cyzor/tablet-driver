@@ -26,12 +26,6 @@ not decoded correctly from report bytes. Three approaches tried; deferred by use
 
 ## Near-term
 
-### Broader support — Phase 4: Migration order
-1. Wire IntuosV2 (PTH-460/660/860) first — replace PTH660Device + PTH860Device
-2. Wire IntuosV1 (PTH-851, PTZ-631W, + all registry entries)
-3. Retire PTH660Device, PTH860Device, PTH851Device, PTZ631WDevice
-4. Keep DTK2400Device until EA/E0 pressure merge bug is fixed
-5. Graphire + Bamboo after community verification
 
 ### WacomDeviceRegistry: fill in Bamboo/Graphire specs
 Many entries marked ⚠ estimated. Verify via OTD JSON configs and Linux input-wacom.
@@ -92,3 +86,4 @@ confirmed). ACK-40401 dongle (0x0084) routes to WacomGenericDevice — untested 
 - [x] IntuosV1Decoder.swift: reports 0x01/0x03/0x11/0x02/0x10/0x80 — lifted from PTH851Device
 - [x] WacomUniversalDevice.swift: decoder-backed driver; open/close; report dispatch
 - [x] TabletManager: default routing to WacomUniversalDevice for known PIDs with live decoders
+- [x] Phase 4: PTH851/PTH660/PTH860 retired; PTZ-631W kept (Intuos3 proximity bit differs)
