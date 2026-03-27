@@ -142,6 +142,54 @@ func decodeBLEPenReport(
     return BLEPenResult(point: point, serial: serial, toolCode: toolCode, isMouse: isMouse)
 }
 
+// MARK: - WacomDecoder protocol
+
+enum WirelessStatus {
+    case active
+    case lost
+    case lowBattery
+    case unknown(UInt8)
+}
+
+/// All mutable state shared between reports for a single decoder session.
+/// Passed `inout` through every `decode` call so decoders can be pure structs.
+struct DecoderState {
+    var lastX: Int = 0
+    var lastY: Int = 0
+    /// Serial number at the last tool-identity change.
+    var lastSerial: UInt32 = 0
+    /// Tool code at the last tool-identity change (V2 change detection).
+    var lastToolCode: UInt16 = 0
+    /// Currently active tool code.
+    var currentToolCode: UInt16 = 0
+    /// Absolute scroll-position counter for mouse-tool reports (V2).
+    var lastScrollPos: UInt8 = 0
+    var prevInProximity: Bool = false
+    var isEraser: Bool = false
+    var toolIsMouse: Bool = false
+}
+
+enum DecodeResult {
+    case none
+    case pen(TabletPoint)
+    case toolEnter(ToolIdentity)
+    case aux(AuxButtons)
+    case wireless(WirelessStatus)
+}
+
+protocol WacomDecoder {
+    /// Decode one raw HID report into zero or more results.
+    /// Mutating to allow decoder structs with their own cached state if needed.
+    mutating func decode(
+        report: UnsafePointer<UInt8>,
+        length: CFIndex,
+        spec: DigitizerSpec,
+        state: inout DecoderState
+    ) -> [DecodeResult]
+}
+
+// MARK: - BLE HOGP Report Decoders
+
 /// Decode a BLE HOGP pad report (Report ID 0x03, 9 bytes) common to
 /// Intuos Pro models when connected via BLE.
 ///

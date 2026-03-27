@@ -40,6 +40,9 @@
 		AA000043 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* SettingsWindowController.swift */; };
 		AA000044 /* ToolSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* ToolSettings.swift */; };
 		AA000045 /* WacomGenericDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000045 /* WacomGenericDevice.swift */; };
+		AA000046 /* WacomDeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000046 /* WacomDeviceRegistry.swift */; };
+		AA000047 /* IntuosV2Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000047 /* IntuosV2Decoder.swift */; };
+		AA000048 /* IntuosV1Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000048 /* IntuosV1Decoder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -78,6 +81,9 @@
 		AB000043 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		AB000044 /* ToolSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolSettings.swift; sourceTree = "<group>"; };
 		AB000045 /* WacomGenericDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomGenericDevice.swift; sourceTree = "<group>"; };
+		AB000046 /* WacomDeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomDeviceRegistry.swift; sourceTree = "<group>"; };
+		AB000047 /* IntuosV2Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV2Decoder.swift; sourceTree = "<group>"; };
+		AB000048 /* IntuosV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV1Decoder.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -130,6 +136,8 @@
 				AB000037 /* WacomProbeDevice.swift */,
 				AB000038 /* DTK2400Device.swift */,
 				AB000045 /* WacomGenericDevice.swift */,
+				AB000046 /* WacomDeviceRegistry.swift */,
+				AC000005 /* Decoders */,
 				AB000039 /* DeviceRegistry.swift */,
 				AB000042 /* DeviceContext.swift */,
 				AB000035 /* AppWatcher.swift */,
@@ -138,6 +146,15 @@
 				053AB9A72F723BA50084C0E2 /* PTH850Device.swift */,
 			);
 			path = Driver;
+			sourceTree = "<group>";
+		};
+		AC000005 /* Decoders */ = {
+			isa = PBXGroup;
+			children = (
+				AB000047 /* IntuosV2Decoder.swift */,
+				AB000048 /* IntuosV1Decoder.swift */,
+			);
+			path = Decoders;
 			sourceTree = "<group>";
 		};
 		AC000003 /* Settings */ = {
@@ -265,6 +282,9 @@
 				AA000037 /* WacomProbeDevice.swift in Sources */,
 				AA000038 /* DTK2400Device.swift in Sources */,
 				AA000045 /* WacomGenericDevice.swift in Sources */,
+				AA000046 /* WacomDeviceRegistry.swift in Sources */,
+				AA000047 /* IntuosV2Decoder.swift in Sources */,
+				AA000048 /* IntuosV1Decoder.swift in Sources */,
 				AA000039 /* DeviceRegistry.swift in Sources */,
 				053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */,
 				AA000042 /* DeviceContext.swift in Sources */,

@@ -60,15 +60,7 @@ final class TabletManager: ObservableObject {
     // MARK: - Device name helpers
 
     static func deviceName(forProductID pid: Int) -> String {
-        switch pid {
-        case 0x0317: return "PTH-851"
-        case 0x0357: return "PTH-660"
-        case 0x0358: return "PTH-860"
-        case 0x00B5: return "PTZ-631W"
-        case 0x00F4: return "DTK-2400"
-        case 0x0084: return "Wireless Dongle"
-        default: return "Wacom 0x\(String(pid, radix: 16, uppercase: true))"
-        }
+        WacomDeviceRegistry.deviceName(forProductID: pid)
     }
 
     var connectedDeviceName: String {
