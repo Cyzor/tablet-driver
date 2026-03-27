@@ -255,6 +255,15 @@ final class TabletManager: ObservableObject {
             }
         }
 
+        // ── USB HID mouse button closure (KC-100 cordless mouse) ────────────────
+        // Called when a 4-byte Report ID 0x01 arrives from the mouse interface
+        // (usagePage=0x01, seized).  Routes directly to the injector so buttons
+        // fire at the current screen cursor position without a position remap.
+        let onMouseButton: (UInt8) -> Void = { [weak context] mask in
+            guard let context else { return }
+            context.injector.injectMouseButtons(mask: mask, settings: context.settings)
+        }
+
         // ── Create the device driver ─────────────────────────────────────────
         let wacomDevice: (any TabletDevice)?
 
@@ -282,10 +291,12 @@ final class TabletManager: ObservableObject {
                deviceSpec.maxX > 0
             {
                 let shouldSeize = !isBLE && deviceSpec.seizeUSB && usagePage == 0x01
-                print("TabletManager: \(deviceSpec.name) connected via universal driver")
+                print("TabletManager: \(deviceSpec.name) connected via universal driver"
+                      + (shouldSeize ? " (mouse interface, seized)" : ""))
                 wacomDevice = WacomUniversalDevice(
                     device: device, deviceSpec: deviceSpec, seize: shouldSeize,
-                    onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+                    onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
+                    onMouseButton: shouldSeize ? onMouseButton : nil)
             } else {
                 let pid = String(productID, radix: 16, uppercase: true)
                 print("TabletManager: unknown Wacom 0x\(pid) — attaching generic driver")

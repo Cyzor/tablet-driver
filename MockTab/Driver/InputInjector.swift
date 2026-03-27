@@ -52,6 +52,15 @@ final class InputInjector {
     private var lastMiddleDown      = false
     private var activeButton: CGMouseButton = .left
 
+    // MARK: - USB mouse button state
+    //
+    // For KC-100 cordless mouse over USB: buttons arrive on a separate standard
+    // HID mouse interface (Report ID 0x01) rather than in the digitizer 0x10 stream.
+    // injectMouseButtons() is called from that interface's device driver; inject()
+    // reads usbMouseLeftHeld to decide drag vs hover when emitting movement events.
+    private var lastUSBMouseMask: UInt8 = 0
+    private var usbMouseLeftHeld: Bool  = false
+
     // MARK: - Jitter tracking
     //
     // Fixed ring buffer + running sum.
@@ -140,7 +149,12 @@ final class InputInjector {
         let rawPoint = mapToScreen(point, settings: settings)
         let pressure = tool.pressureCurve.evaluate(point.normalizedPressure)
         // Mouse tools have no tip pressure — button1 is the primary click trigger.
-        let tipDown  = activeToolIsMouse ? point.penButton1 : pressure > 0.004
+        // For KC-100 over USB, the left button arrives via the separate 0x01 mouse interface
+        // and injectMouseButtons() has already fired leftMouseDown/Up.  Keep tipDown false
+        // so inject() doesn't re-fire the click; usbMouseLeftHeld drives drag vs hover below.
+        let tipDown  = activeToolIsMouse
+            ? (usbMouseLeftHeld ? false : point.penButton1)
+            : pressure > 0.004
 
         let enteringProximity = point.inProximity && !lastProximity
 
@@ -156,6 +170,24 @@ final class InputInjector {
                     postMouseUp(button: activeButton, at: smoothedPoint,
                                 clickCount: activeClickCount)
                     lastTipDown = false
+                }
+                // Release any USB HID mouse buttons that were held when the tool left
+                // the tablet (e.g. user yanked the KC-100 off the surface mid-drag).
+                if lastUSBMouseMask != 0 {
+                    if usbMouseLeftHeld {
+                        postMouseUp(button: .left, at: smoothedPoint,
+                                    clickCount: activeClickCount)
+                        usbMouseLeftHeld = false
+                    }
+                    if (lastUSBMouseMask & 0x02) != 0 {
+                        postMouseUp(button: .right, at: smoothedPoint, clickCount: 1)
+                    }
+                    if (lastUSBMouseMask & 0x04) != 0 {
+                        CGEvent(mouseEventSource: nil, mouseType: .otherMouseUp,
+                                mouseCursorPosition: smoothedPoint, mouseButton: .center)?
+                            .post(tap: .cghidEventTap)
+                    }
+                    lastUSBMouseMask = 0
                 }
                 if lastMiddleDown {
                     CGEvent(mouseEventSource: nil, mouseType: .otherMouseUp,
@@ -229,7 +261,10 @@ final class InputInjector {
                 if !activeToolIsMouse {
                     postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)
                 }
-                if tipDown {
+                // USB mouse left button held (KC-100): injectMouseButtons() already sent
+                // leftMouseDown; use leftMouseDragged so apps receive proper drag events.
+                let dragging = tipDown || (activeToolIsMouse && usbMouseLeftHeld)
+                if dragging {
                     postMouseDrag(button: activeButton, at: screenPoint, pressure: pressure)
                 } else {
                     postMouseMoved(at: screenPoint)
@@ -268,6 +303,55 @@ final class InputInjector {
         // ── Scroll wheel (mouse tool only, always immediate) ───────────────────
         if point.mouseWheelDelta != 0 {
             postScrollWheelEvent(delta: point.mouseWheelDelta, at: screenPoint)
+        }
+    }
+
+    // MARK: - USB HID mouse button injection (KC-100 cordless mouse)
+    //
+    // Called by WacomUniversalDevice when a 4-byte Report ID 0x01 arrives from the
+    // standard mouse interface (usagePage=0x01).  Fires left/right/middle down/up
+    // CGEvents at the current cursor location; sets usbMouseLeftHeld so inject()
+    // promotes subsequent mouseMoved events to leftMouseDragged while left is held.
+
+    func injectMouseButtons(mask: UInt8, settings: TabletSettings?) {
+        guard mask != lastUSBMouseMask else { return }
+        let s       = settings ?? TabletSettings()
+        let loc     = currentCursorPosition()
+        let oldMask = lastUSBMouseMask
+        lastUSBMouseMask = mask
+
+        let leftNow  = (mask    & 0x01) != 0
+        let leftWas  = (oldMask & 0x01) != 0
+        let rightNow = (mask    & 0x02) != 0
+        let rightWas = (oldMask & 0x02) != 0
+        let midNow   = (mask    & 0x04) != 0
+        let midWas   = (oldMask & 0x04) != 0
+
+        if leftNow != leftWas {
+            usbMouseLeftHeld = leftNow
+            activeButton     = .left
+            if leftNow {
+                let (clickPt, count) = resolveClick(loc, settings: s)
+                activeClickCount = count
+                postMouseDown(button: .left, at: clickPt, pressure: 1.0, clickCount: count)
+            } else {
+                postMouseUp(button: .left, at: loc, clickCount: activeClickCount)
+            }
+            lastPostedPoint = loc
+            hasPostedPoint  = true
+        }
+        if rightNow != rightWas {
+            if rightNow {
+                postMouseDown(button: .right, at: loc, pressure: 1.0, clickCount: 1)
+            } else {
+                postMouseUp(button: .right, at: loc, clickCount: 1)
+            }
+        }
+        if midNow != midWas {
+            let type: CGEventType = midNow ? .otherMouseDown : .otherMouseUp
+            CGEvent(mouseEventSource: nil, mouseType: type,
+                    mouseCursorPosition: loc, mouseButton: .center)?
+                .post(tap: .cghidEventTap)
         }
     }
 

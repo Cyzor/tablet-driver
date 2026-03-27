@@ -204,6 +204,7 @@ final class WacomGenericDevice: TabletDevice {
     // MARK: - Report dispatch
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
+        HIDCapture.shared.record(tag: tag, report: report, length: length)
         guard length >= 2 else { return }
         let id = report[0]
 

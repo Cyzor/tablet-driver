@@ -23,6 +23,14 @@ struct IntuosV2Decoder: WacomDecoder {
         guard length >= 2 else { return [] }
         switch report[0] {
         case 0x01:
+            // The PTH-660/860 expose a standard USB HID mouse interface (usagePage=0x01)
+            // that carries 4-byte button reports for cordless mouse accessories (KC-100).
+            // BLE HOGP pen reports share Report ID 0x01 but are ≥ 23 bytes.
+            // Distinguish by length: ≤ 8 bytes → USB mouse buttons; otherwise → BLE pen.
+            if length <= 8 {
+                // [0]=0x01  [1]=buttons(bit0=L,bit1=R,bit2=M)  [2]=relX  [3]=relY
+                return [.mouseButton(report[1])]
+            }
             return decodeBLEPen(report: report, length: length, spec: spec, state: &state)
         case 0x03:
             guard let aux = decodeBLEPadReport(report: report, length: length) else { return [] }

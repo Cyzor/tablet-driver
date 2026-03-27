@@ -124,6 +124,7 @@ final class DTK2400Device: TabletDevice {
     }
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
+        HIDCapture.shared.record(tag: "DTK-2400", report: report, length: length)
         guard length >= 2 else { return }
 
         let id = report[0]

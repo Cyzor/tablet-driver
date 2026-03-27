@@ -19,6 +19,10 @@ final class WacomUniversalDevice: TabletDevice {
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((AuxButtons) -> Void)?
     private let onToolEnter: ((ToolIdentity) -> Void)?
+    /// Called when a USB HID mouse button report (0x01, 4 bytes) arrives from the
+    /// standard mouse interface (usagePage=0x01).  Carries button bitmask only;
+    /// absolute position is routed separately through the digitizer interface.
+    private let onMouseButton: ((UInt8) -> Void)?
 
     private var decoder: any WacomDecoder
     private var state = DecoderState()
@@ -31,14 +35,16 @@ final class WacomUniversalDevice: TabletDevice {
         seize: Bool = false,
         onTablet: @escaping (TabletPoint) -> Void,
         onAux: ((AuxButtons) -> Void)? = nil,
-        onToolEnter: ((ToolIdentity) -> Void)? = nil
+        onToolEnter: ((ToolIdentity) -> Void)? = nil,
+        onMouseButton: ((UInt8) -> Void)? = nil
     ) {
-        self.device      = device
-        self.deviceSpec  = deviceSpec
-        self.seize       = seize
-        self.onTablet    = onTablet
-        self.onAux       = onAux
-        self.onToolEnter = onToolEnter
+        self.device        = device
+        self.deviceSpec    = deviceSpec
+        self.seize         = seize
+        self.onTablet      = onTablet
+        self.onAux         = onAux
+        self.onToolEnter   = onToolEnter
+        self.onMouseButton = onMouseButton
 
         self.spec = DigitizerSpec(
             maxX: deviceSpec.maxX,
@@ -132,6 +138,7 @@ final class WacomUniversalDevice: TabletDevice {
     // MARK: - Report dispatch
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
+        HIDCapture.shared.record(tag: deviceSpec.name, report: report, length: length)
         let results = decoder.decode(report: report, length: length, spec: spec, state: &state)
         for result in results {
             switch result {
@@ -150,6 +157,8 @@ final class WacomUniversalDevice: TabletDevice {
                 case .lowBattery:       print("\(deviceSpec.name): battery critically low")
                 case .unknown:          break
                 }
+            case .mouseButton(let mask):
+                onMouseButton?(mask)
             }
         }
     }

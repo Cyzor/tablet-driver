@@ -179,6 +179,11 @@ enum DecodeResult {
     case toolEnter(ToolIdentity)
     case aux(AuxButtons)
     case wireless(WirelessStatus)
+    /// Standard USB HID mouse report (Report ID 0x01, 4 bytes) from the mouse
+    /// interface (usagePage=0x01) of an Intuos Pro tablet.  Carries button state only;
+    /// absolute position is delivered separately via the digitizer 0x10 stream.
+    /// bit0 = left, bit1 = right, bit2 = middle.
+    case mouseButton(UInt8)
 }
 
 protocol WacomDecoder {

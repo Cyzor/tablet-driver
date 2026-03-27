@@ -13,6 +13,11 @@ struct InfoView: View {
     @State private var diagnosticsExpanded = false
     @State private var conflicts: [String] = []
 
+    // HID capture
+    @State private var captureActive = false
+    @State private var captureCount = 0
+    @State private var captureLastSaved: String? = nil
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -28,6 +33,8 @@ struct InfoView: View {
                         activeToolID: tabletManager.activeToolID,
                         registry:     DeviceRegistry.shared
                     )
+                    Divider()
+                    captureSection
                     Divider()
                     diagnosticSection
                 }
@@ -136,6 +143,74 @@ struct InfoView: View {
             Image(systemName: "xmark.circle.fill").foregroundStyle(.primary)
         } else {
             Image(systemName: "minus.circle.fill").foregroundStyle(.tertiary)
+        }
+    }
+
+    // MARK: - HID capture section
+
+    private var captureSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("HID Capture")
+                .font(.headline)
+
+            HStack(spacing: 12) {
+                Button(captureActive ? "Stop Capture" : "Start Capture") {
+                    if captureActive {
+                        HIDCapture.shared.stop()
+                        captureCount = HIDCapture.shared.reportCount
+                        captureActive = false
+                    } else {
+                        HIDCapture.shared.start()
+                        captureCount = 0
+                        captureLastSaved = nil
+                        captureActive = true
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(captureActive ? .red : .accentColor)
+                .controlSize(.small)
+
+                if captureActive {
+                    Text("\(captureCount) reports")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+
+                Spacer()
+
+                Button("Save to Desktop") {
+                    if captureActive {
+                        HIDCapture.shared.stop()
+                        captureActive = false
+                    }
+                    captureCount = HIDCapture.shared.reportCount
+                    if let url = HIDCapture.shared.save() {
+                        captureLastSaved = url.lastPathComponent
+                        HIDCapture.shared.clear()
+                        captureCount = 0
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(captureCount == 0 && !captureActive)
+            }
+
+            if let saved = captureLastSaved {
+                Text("Saved: \(saved)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text("Records every raw HID report before the decoder. Use to identify unknown byte positions (DTK-2400 barrel bits, KC-100 buttons, BT container layout).")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .onReceive(
+            Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
+        ) { _ in
+            if captureActive {
+                captureCount = HIDCapture.shared.reportCount
+            }
         }
     }
 

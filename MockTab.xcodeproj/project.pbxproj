@@ -37,6 +37,7 @@
 		AA000044 /* ToolSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* ToolSettings.swift */; };
 		AA000045 /* WacomGenericDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000045 /* WacomGenericDevice.swift */; };
 		AA000046 /* WacomDeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000046 /* WacomDeviceRegistry.swift */; };
+		AA000070 /* HIDCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000070 /* HIDCapture.swift */; };
 		AA000049 /* WacomUniversalDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomUniversalDevice.swift */; };
 		AA000047 /* IntuosV2Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000047 /* IntuosV2Decoder.swift */; };
 		AA000048 /* IntuosV1Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000048 /* IntuosV1Decoder.swift */; };
@@ -76,6 +77,7 @@
 		AB000044 /* ToolSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolSettings.swift; sourceTree = "<group>"; };
 		AB000045 /* WacomGenericDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomGenericDevice.swift; sourceTree = "<group>"; };
 		AB000046 /* WacomDeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomDeviceRegistry.swift; sourceTree = "<group>"; };
+		AB000070 /* HIDCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDCapture.swift; sourceTree = "<group>"; };
 		AB000049 /* WacomUniversalDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomUniversalDevice.swift; sourceTree = "<group>"; };
 		AB000047 /* IntuosV2Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV2Decoder.swift; sourceTree = "<group>"; };
 		AB000048 /* IntuosV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV1Decoder.swift; sourceTree = "<group>"; };
@@ -128,6 +130,7 @@
 				AB000038 /* DTK2400Device.swift */,
 				AB000045 /* WacomGenericDevice.swift */,
 				AB000046 /* WacomDeviceRegistry.swift */,
+				AB000070 /* HIDCapture.swift */,
 				AB000049 /* WacomUniversalDevice.swift */,
 				AC000005 /* Decoders */,
 				AB000039 /* DeviceRegistry.swift */,
@@ -271,6 +274,7 @@
 				AA000038 /* DTK2400Device.swift in Sources */,
 				AA000045 /* WacomGenericDevice.swift in Sources */,
 				AA000046 /* WacomDeviceRegistry.swift in Sources */,
+				AA000070 /* HIDCapture.swift in Sources */,
 				AA000049 /* WacomUniversalDevice.swift in Sources */,
 				AA000047 /* IntuosV2Decoder.swift in Sources */,
 				AA000048 /* IntuosV1Decoder.swift in Sources */,
