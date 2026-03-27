@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053AB9A52F723B910084C0E2 /* TabletManager.swift */; };
-		053AB9A82F723BA50084C0E2 /* PTH850Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053AB9A72F723BA50084C0E2 /* PTH850Device.swift */; };
 		AA000001 /* MockTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MockTabApp.swift */; };
 		AA000002 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* MenuBarView.swift */; };
 		AA000003 /* TabletPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* TabletPoint.swift */; };
@@ -46,7 +45,6 @@
 
 /* Begin PBXFileReference section */
 		053AB9A52F723B910084C0E2 /* TabletManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletManager.swift; sourceTree = "<group>"; };
-		053AB9A72F723BA50084C0E2 /* PTH850Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTH850Device.swift; sourceTree = "<group>"; };
 		AB000001 /* MockTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTabApp.swift; sourceTree = "<group>"; };
 		AB000002 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		AB000003 /* TabletPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletPoint.swift; sourceTree = "<group>"; };
@@ -137,7 +135,6 @@
 				AB000035 /* AppWatcher.swift */,
 				AB000008 /* InputInjector.swift */,
 				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
-				053AB9A72F723BA50084C0E2 /* PTH850Device.swift */,
 			);
 			path = Driver;
 			sourceTree = "<group>";
@@ -291,8 +288,7 @@
 				AA000014 /* ButtonMappingView.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,
 				AA000016 /* ScratchpadView.swift in Sources */,
-				053AB9A82F723BA50084C0E2 /* PTH850Device.swift in Sources */,
-				AA000033 /* InfoView.swift in Sources */,
+					AA000033 /* InfoView.swift in Sources */,
 				AA000034 /* PresetsView.swift in Sources */,
 				AA000040 /* DevicesView.swift in Sources */,
 				AA000041 /* TabStatusBar.swift in Sources */,

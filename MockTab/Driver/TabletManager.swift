@@ -168,18 +168,6 @@ final class TabletManager: ObservableObject {
         let onTablet: (TabletPoint) -> Void = { [weak self, weak context] point in
             guard let self, let context else { return }
 
-            // Record tool type for devices that don't fire onToolEnter.
-            // All current drivers fire onToolEnter except PTH-850 (legacy, no onToolEnter closure).
-            if point.inProximity && productID == 0x0028 {
-                let identity = ToolIdentity(
-                    serial: 0,
-                    toolCode: point.eraser ? 0x080A : 0x0802,
-                    isEraser: point.eraser,
-                    isMouse: false)
-                DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
-                self.activeToolID = DeviceRegistry.toolID(for: identity)
-            }
-
             // Proximity-enter activates this device's context.
             if point.inProximity && self.activeContext !== context {
                 if let old = self.activeContext, old.injector.lastProximity {
@@ -257,11 +245,6 @@ final class TabletManager: ObservableObject {
         let wacomDevice: (any TabletDevice)?
 
         switch productID {
-        case 0x0028:
-            print("TabletManager: PTH-850 (Intuos Pro Medium) connected")
-            wacomDevice = PTH850Device(
-                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: nil)
-
         case 0x00F4:
             print("TabletManager: DTK-2400 (Cintiq 24HD) connected")
             wacomDevice = DTK2400Device(
