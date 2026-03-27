@@ -4,14 +4,8 @@ import IOKit.hid
 /// Data-driven tablet driver backed by a `WacomDecoder` selected at init time.
 ///
 /// Replaces per-device Swift classes for any product in `WacomDeviceRegistry`
-/// whose parser family has a live decoder (IntuosV1, IntuosV2).
-///
-/// **Phase 3 routing** (in `TabletManager.deviceConnected`):
-///   - Devices with an explicit legacy class (PTH-851/860/660, PTZ-631W,
-///     DTK-2400) still use those classes until Phase 4 retirement.
-///   - Unrecognised PIDs, stub families (Graphire, Bamboo), and the ACK-40401
-///     dongle (zero-spec) fall through to `WacomGenericDevice`.
-///   - All other recognised Wacom PIDs with a live decoder route here.
+/// whose parser family has a live decoder (IntuosV1, IntuosV2, Intuos3).
+/// Supports both USB and Bluetooth transports; BLE/BT skips USB feature inits.
 final class WacomUniversalDevice: TabletDevice {
 
     let spec: DigitizerSpec
@@ -29,6 +23,7 @@ final class WacomUniversalDevice: TabletDevice {
     private var decoder: any WacomDecoder
     private var state = DecoderState()
     private var reportBuffer: [UInt8]
+    private var isBluetooth = false
 
     init(
         device: IOHIDDevice,
@@ -69,8 +64,8 @@ final class WacomUniversalDevice: TabletDevice {
     // MARK: - Open / Close
 
     func open() {
-        let transport   = IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
-        let isBluetooth = transport.lowercased().contains("bluetooth")
+        let transport = IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        isBluetooth   = transport.lowercased().contains("bluetooth")
 
         let options = seize
             ? IOOptionBits(kIOHIDOptionsTypeSeizeDevice)

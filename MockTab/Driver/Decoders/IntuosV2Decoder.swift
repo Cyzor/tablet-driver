@@ -248,11 +248,15 @@ struct IntuosV2Decoder: WacomDecoder {
 
         let flags       = report[1]
         let inProximity = (flags & 0x80) != 0
-        // bit7 = inProximity; bit6 = frame-valid (always 1 during proximity);
-        // bit5 = high-confidence / signal-stable (0 on first frame, 1 thereafter).
-        // Actual barrel button bits are in bits 0–4; TBD from live capture.
-        let barrel1     = (flags & 0x04) != 0   // TBD
-        let barrel2     = (flags & 0x02) != 0   // TBD
+        // Confirmed bit layout from live capture:
+        //   bit7 (0x80) = inProximity
+        //   bit6 (0x40) = frame-valid (always 1 during proximity, not a button)
+        //   bit5 (0x20) = high-confidence / signal-stable (0 on first frame, 1 after)
+        //   bit2 (0x04) = barrel2 / upper button (BTN_STYLUS2) — same mask as USB 0x10
+        //   bit1 (0x02) = barrel1 / lower button (BTN_STYLUS)  — same mask as USB 0x10
+        //   bit0 (0x01) = tip touching surface (redundant with pressure > 0)
+        let barrel1     = (flags & 0x02) != 0
+        let barrel2     = (flags & 0x04) != 0
 
         let x        = Int(UInt16(report[2]) | UInt16(report[3]) << 8)
         let y        = Int(UInt16(report[4]) | UInt16(report[5]) << 8)
@@ -261,16 +265,16 @@ struct IntuosV2Decoder: WacomDecoder {
         let tiltX: Double = length >= 10 ? Double(Int8(bitPattern: report[9]))  / 127.0 : 0
         let tiltY: Double = length >= 11 ? Double(Int8(bitPattern: report[10])) / 127.0 : 0
 
-        let serial: UInt32 = length >= 15
-            ? UInt32(report[11]) | UInt32(report[12]) << 8
-              | UInt32(report[13]) << 16 | UInt32(report[14]) << 24
-            : 0
-        let toolCode: UInt16 = length >= 17
-            ? UInt16(report[15]) | UInt16(report[16]) << 8
-            : 0
+        // Serial and toolCode byte positions are unconfirmed for the BT 0x80 container.
+        // Bytes [11–14] appear to encode hover distance (counts down as pen moves), not serial.
+        // Bytes [15–16] appear to be flags/X of an embedded second sub-report, not toolCode.
+        // Setting both to 0 suppresses spurious toolEnter events on every frame until
+        // we confirm the correct offsets from a live capture.
+        let serial: UInt32   = 0
+        let toolCode: UInt16 = 0
 
-        let isEraser = (toolCode & 0x0008) != 0
-        let isMouse  = (toolCode & 0x000F) == 0x0006
+        let isEraser = false
+        let isMouse  = false
 
         if inProximity {
             state.lastX = x

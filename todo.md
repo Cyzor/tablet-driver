@@ -66,12 +66,6 @@ mapped to any key/action — it could also toggle between ring modes.
 Newer Cintiq Pro models use USB-C and a different HID report format.
 DTH-271 is now in the registry (from OTD, IntuosV2 parser) but unverified.
 
-### 🟡 Bluetooth barrel button bits
-PTH-660 BT pen tracking works (report ID 0x80, flags byte, LE uint16 coords confirmed).
-Barrel button state is NOT in bytes 0–17 of the 361-byte container; must be at byte 18+.
-**Needs:** extended probe capture with buttons held to identify the correct byte/bit positions.
-Currently: `barrel1 = barrel2 = false` over BT (buttons silently unmapped, no spurious events).
-
 ### Wireless: BT aux/pad reports
 Express keys and touch ring over BT not yet tested. They may arrive as a separate
 sub-section of the 361-byte container report (0x80), or as a distinct report ID.
@@ -81,8 +75,9 @@ sub-section of the 361-byte container report (0x80), or as a distinct report ID.
 
 ## Done (recent sessions)
 
-- [x] Bluetooth wireless: PTH-660 pen tracking confirmed over BT (transport="Bluetooth",
-      report ID 0x80, 361-byte container); three fixes: skip InputMode init for BT,
+- [x] Bluetooth wireless: PTH-660 fully working over BT — pen, pressure, tilt, barrel buttons
+      (report ID 0x80, 361-byte container; barrel1=bit1/0x02, barrel2=bit2/0x04 in flags byte,
+      identical to USB; confirmed via live capture); three fixes: skip InputMode init for BT,
       skip ghost usagePage=0x01 interface, route 0x80 to BT pen decoder
 - [x] Touch ring: fixed decoder bug (report[3] = center button, not ring flag; ring contact
       = report[4] != 0x7F); ring now scrolls without requiring center button held
