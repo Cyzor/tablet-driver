@@ -6,6 +6,12 @@ struct ButtonMappingView: View {
     @ObservedObject var tool:          ToolSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
+    var productID: Int?
+
+    private var hasTouchRing: Bool {
+        guard let pid = productID else { return false }
+        return WacomDeviceRegistry.spec(for: pid)?.hasTouchRing == true
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,11 +58,49 @@ struct ButtonMappingView: View {
                                       ))
                         }
                     }
+
+                    // ── Touch ring ───────────────────────────────────────────────
+                    if hasTouchRing {
+                        Divider()
+
+                        Text("Touch Ring").font(.headline)
+
+                        touchRingRow(isActive: lb.touchRingActive)
+                    }
                 }
                 .padding()
             }
             PresetStatusBar(settings: settings)
         }
+    }
+
+    // MARK: - Touch ring row
+
+    @ViewBuilder
+    private func touchRingRow(isActive: Bool) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isActive ? Color.green : Color.clear)
+                .imageScale(.small)
+            Text("Touch Ring")
+                .frame(width: 110, alignment: .leading)
+            Picker("", selection: $settings.touchRingMode) {
+                ForEach(TouchRingMode.allCases, id: \.self) { mode in
+                    Text(mode.displayLabel).tag(mode)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(maxWidth: 160, alignment: .leading)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(isActive ? Color.accentColor.opacity(0.12) : Color.clear)
+        )
+        .animation(.easeOut(duration: 0.07), value: isActive)
     }
 
     // MARK: - Row helper

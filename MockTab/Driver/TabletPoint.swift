@@ -73,4 +73,6 @@ struct LiveButtonState: Equatable {
     var button2Down: Bool = false
     /// Express key states (up to 8).
     var expressKeys: [Bool] = Array(repeating: false, count: 8)
+    /// True while a finger is actively touching the touch ring.
+    var touchRingActive: Bool = false
 }

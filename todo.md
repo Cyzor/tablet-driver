@@ -1,6 +1,6 @@
 # MockTab — Open Tasks
 
-_Last updated: 2026-03-26 (PTZ-631W retired)_
+_Last updated: 2026-03-26 (OTD import complete; window sizing revised)_
 
 ---
 
@@ -26,11 +26,19 @@ not decoded correctly from report bytes. Three approaches tried; deferred by use
 
 ## Near-term
 
+### WacomDeviceRegistry: verify OTD-sourced entries
+~45 entries added from OTD import are tagged `// ⚠ from OTD`.
+Verify MaxX/MaxY/MaxPressure against Linux input-wacom or live capture before shipping.
+Priority: CTL/CTH-4100/6100 (IntuosV2 parser — these will actually route to WacomUniversalDevice).
 
-### WacomDeviceRegistry: fill in Bamboo/Graphire specs
-Many entries marked ⚠ estimated. Verify via OTD JSON configs and Linux input-wacom.
-Bamboo decoder requires new implementation (no existing MockTab code to lift from).
+### Graphire decoder
+`.graphire` parser family has registry entries but no decoder.
+8-byte Report ID 0x01 format; ~511 pressure levels; no tool-change packets.
+Lowest priority — hardware is very old.
 
+### Bamboo decoder
+`.bamboo` parser family has registry entries but no decoder.
+20-byte Report ID 0x10, BE16 coordinates. No existing MockTab code to lift from.
 
 ---
 
@@ -46,18 +54,9 @@ Planned: per-pen settings split (`ToolSettings`), full `DeviceRegistry` evolutio
 Six-phase plan in `project_pen_serial_strategy.md`. Phase 1 (hardware instrumentation)
 not yet started.
 
-### Graphire decoder
-`.graphire` parser family has registry entries but no decoder.
-8-byte Report ID 0x01 format; ~511 pressure levels; no tool-change packets.
-Lowest priority — hardware is very old.
-
-### Bamboo decoder
-`.bamboo` parser family has registry entries but no decoder.
-20-byte Report ID 0x10, BE16 coordinates. No existing MockTab code to lift from.
-
 ### Cintiq Pro (DTH-xxx)
 Newer Cintiq Pro models use USB-C and a different HID report format.
-Not in the current registry; would need separate research.
+DTH-271 is now in the registry (from OTD, IntuosV2 parser) but unverified.
 
 ### Wireless: full dongle + BLE testing
 BLE HOGP code is written for PTH-851/660/860 but untested (no BLE hardware connection
@@ -67,20 +66,22 @@ confirmed). ACK-40401 dongle (0x0084) routes to WacomGenericDevice — untested 
 
 ## Done (recent sessions)
 
-- [x] PTZ-631W retired: `Intuos3Decoder` (bit 6 proximity, aux 0x03/0x0C), `.intuos3` parser case, `featureInit2` in `WacomDeviceSpec`; all 7 Intuos3 entries updated
-- [x] Phase 5: `tools/import_otd_configs.py` — OTD JSON → Swift WacomDeviceSpec entries; handles both flat and Specifications-nested OTD schemas; base64 featureInit; Interface=0 seize detection
-
+- [x] Window sizing: remove per-tab size persistence; tabs use default height until user
+      manually resizes, then window stays at user's chosen size across all tab switches
+- [x] OTD import script: full rewrite for current DigitizerIdentifiers schema;
+      multi-stage FeatureInitReport; Attributes-as-dict; new parser class names;
+      EXISTING_PIDS updated to ~95 entries
+- [x] WacomDeviceRegistry: expanded ~50 → ~95 entries via OTD import
+      (CTL/CTH-xxx, PTK-450/650, PTH alt PIDs, Cintiq 16/22HD/Pro 27, Movink 13, etc.)
+- [x] TabletAreaView: replaced hardcoded TabletModel picker with dynamic DeviceRegistry list
+      (connected devices shown first with green dot; previously-seen devices also listed)
+- [x] PTZ-631W retired: `Intuos3Decoder` (bit 6 proximity, aux 0x03/0x0C), `.intuos3` parser,
+      `featureInit2` in `WacomDeviceSpec`; all 7 Intuos3 entries updated
+- [x] Phase 5: `tools/import_otd_configs.py` — OTD JSON → Swift WacomDeviceSpec entries
 - [x] PTH-851: Dual USB/BLE transport; tool-change packets; eraser detection; lastX/Y proximity-out
-- [x] PTH-660/860: Express keys switched to `report[1]` (mechanical); debug logging removed; BLE support added
-- [x] PTZ-631W: Eraser detection fixed (nibble 0x0A); tool-change generalized; lastX/Y proximity-out
-- [x] DTK-2400: `isArtPen` bool replaces penLabel string check; debug logging removed
-- [x] WacomGenericDevice: Full replacement for WacomProbeDevice — cursor, click, pressure, BLE, wireless
-- [x] WacomDeviceRegistry: Phase 1 data-driven device table (~50 entries, 4 parser families)
-- [x] TabletManager.deviceName: Delegates to WacomDeviceRegistry
-- [x] BLE shared helpers: `decodeBLEPenReport` / `decodeBLEPadReport` in TabletDevice.swift
-- [x] Phase 2 decoders: WacomDecoder protocol + DecoderState + DecodeResult in TabletDevice.swift
-- [x] IntuosV2Decoder.swift: reports 0x01/0x03/0x10/0x1E/0x11/0x80 — lifted from PTH660Device
-- [x] IntuosV1Decoder.swift: reports 0x01/0x03/0x11/0x02/0x10/0x80 — lifted from PTH851Device
-- [x] WacomUniversalDevice.swift: decoder-backed driver; open/close; report dispatch
-- [x] TabletManager: default routing to WacomUniversalDevice for known PIDs with live decoders
-- [x] Phase 4: PTH851/PTH660/PTH860 retired; PTZ-631W kept (Intuos3 proximity bit differs)
+- [x] PTH-660/860: Express keys switched to `report[1]` (mechanical); BLE support added
+- [x] WacomGenericDevice: Full replacement for WacomProbeDevice
+- [x] WacomDeviceRegistry: Phase 1 data-driven device table
+- [x] Phase 2 decoders: WacomDecoder protocol + DecoderState + IntuosV1/V2/Intuos3Decoder
+- [x] WacomUniversalDevice: decoder-backed driver; open/close; report dispatch
+- [x] Phase 4: PTH851/PTH660/PTH860/PTZ631W retired to WacomUniversalDevice

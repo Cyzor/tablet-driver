@@ -119,9 +119,11 @@ final class InputInjector {
     private var clickCount:        Int = 0
     private var activeClickCount:  Int = 1
 
-    // MARK: - Express key state
+    // MARK: - Express key / touch ring state
 
-    private var lastAuxButtons = [Bool](repeating: false, count: 8)
+    private var lastAuxButtons  = [Bool](repeating: false, count: 8)
+    /// Last observed touch ring position (0–71). 0x7F = no contact.
+    private var lastRingPos: UInt8 = 0x7F
 
     // MARK: - Display bounds cache
 
@@ -274,6 +276,8 @@ final class InputInjector {
         let s         = settings ?? TabletSettings()
         let bindings  = s.expressKeyBindings
         let cursorPos = currentCursorPosition()
+
+        // ── Express keys ───────────────────────────────────────────────────────
         for i in 0..<8 {
             let down = buttons[i]
             if down != lastAuxButtons[i] {
@@ -281,6 +285,26 @@ final class InputInjector {
                 lastAuxButtons[i] = down
             }
         }
+
+        // ── Touch ring ─────────────────────────────────────────────────────────
+        // Position 0x7F means no contact.  Compute a wrap-aware delta when a
+        // finger is actively moving (both current and previous positions valid).
+        // The ring has 72 steps (0–71, ~5° each); wrap threshold is 36.
+        let ringPos = buttons.touchRingPosition
+        if buttons.touchRingActive, ringPos != 0x7F, lastRingPos != 0x7F {
+            var delta = Int(ringPos) - Int(lastRingPos)
+            if delta >  36 { delta -= 72 }
+            if delta < -36 { delta += 72 }
+            if delta != 0 {
+                switch s.touchRingMode {
+                case .scroll:
+                    postScrollWheelEvent(delta: delta, at: cursorPos)
+                case .off:
+                    break
+                }
+            }
+        }
+        lastRingPos = buttons.touchRingActive ? ringPos : 0x7F
     }
 
     private func currentCursorPosition() -> CGPoint {

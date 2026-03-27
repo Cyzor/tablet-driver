@@ -239,6 +239,9 @@ final class TabletManager: ObservableObject {
             if keys != self.liveButtons.expressKeys {
                 self.liveButtons.expressKeys = keys
             }
+            if aux.touchRingActive != self.liveButtons.touchRingActive {
+                self.liveButtons.touchRingActive = aux.touchRingActive
+            }
         }
 
         // ── Create the device driver ─────────────────────────────────────────

@@ -169,7 +169,8 @@ final class SettingsWindowController: NSWindowController {
             PressureCurveView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr)
         }
         addTab(label: "Buttons",    symbol: "hand.point.up.left",      height: 575) {
-            ButtonMappingView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr)
+            ButtonMappingView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr,
+                              productID: productID)
         }
         addTab(label: "Display",    symbol: "display",                 height: 370) {
             DisplayMappingView(settings: s, tabletManager: tm, registry: dr)
