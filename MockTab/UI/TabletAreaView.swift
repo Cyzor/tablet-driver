@@ -7,74 +7,71 @@ import SwiftUI
 struct TabletAreaView: View {
     @ObservedObject var settings: TabletSettings
 
-    // Aspect ratios and digitizer resolutions for supported tablets.
-    enum TabletModel: String, CaseIterable, Identifiable {
-        case pth851  = "Intuos 5 Large (PTH-851)"
-        case pth660  = "Intuos Pro M (PTH-660)"
-        case pth860  = "Intuos Pro Large (PTH-860)"
-        case ptz631w = "Intuos3 Widescreen (PTZ-631W)"
-        case dtk2400 = "Cintiq 24HD (DTK-2400)"
-        var id: String { rawValue }
-
-        /// Digitizer resolution in hardware line-units.
-        var maxX: Int {
-            switch self {
-            case .pth851:  return 44704
-            case .pth660:  return 44800
-            case .pth860:  return 62200
-            case .ptz631w: return 54204
-            case .dtk2400: return 104480
-            }
-        }
-        var maxY: Int {
-            switch self {
-            case .pth851:  return 27940
-            case .pth660:  return 29600
-            case .pth860:  return 43200
-            case .ptz631w: return 31750
-            case .dtk2400: return 65600
-            }
-        }
-
-        var aspectRatio: Double { Double(maxX) / Double(maxY) }
-
-        var productID: Int {
-            switch self {
-            case .pth851:  return 0x0317
-            case .pth660:  return 0x0357
-            case .pth860:  return 0x0358
-            case .ptz631w: return 0x00B5
-            case .dtk2400: return 0x00F4
-            }
-        }
-        init?(productID: Int) {
-            switch productID {
-            case 0x0317: self = .pth851
-            case 0x0357: self = .pth660
-            case 0x0358: self = .pth860
-            case 0x00B5: self = .ptz631w
-            case 0x00F4: self = .dtk2400
-            default: return nil
-            }
-        }
-        static func displayName(forProductID pid: Int) -> String {
-            TabletModel(productID: pid).map(\.rawValue)
-                ?? "Unknown (0x\(String(pid, radix: 16, uppercase: true)))"
-        }
-    }
-
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
 
-    /// Called when the user selects a different tablet model from the picker.
+    /// Called when the user selects a different tablet from the picker.
     var onDeviceSelected: ((Int) -> Void)?
 
     /// The product ID this view is currently showing.
     var boundProductID: Int?
 
-    private var selectedModel: TabletModel {
-        if let pid = boundProductID, let m = TabletModel(productID: pid) { return m }
-        return .pth860
+    // MARK: - Device list
+
+    private struct DeviceEntry: Identifiable, Hashable {
+        let id: Int           // productID
+        let label: String     // nickname or model name
+        let isConnected: Bool
+    }
+
+    /// Merged list of all ever-seen and currently-connected tablets, connected first.
+    private var deviceEntries: [DeviceEntry] {
+        var seenPIDs = Set<Int>()
+        var entries: [DeviceEntry] = []
+        for tablet in registry.knownTablets {
+            seenPIDs.insert(tablet.id)
+            entries.append(DeviceEntry(
+                id: tablet.id,
+                label: tablet.nickname,
+                isConnected: tabletManager.connectedProductIDs.contains(tablet.id)))
+        }
+        // Connected devices not yet in the registry (first connect before first recordTablet).
+        for pid in tabletManager.connectedProductIDs where !seenPIDs.contains(pid) {
+            entries.append(DeviceEntry(
+                id: pid,
+                label: TabletManager.deviceName(forProductID: pid),
+                isConnected: true))
+        }
+        return entries.sorted {
+            if $0.isConnected != $1.isConnected { return $0.isConnected }
+            return $0.label.localizedStandardCompare($1.label) == .orderedAscending
+        }
+    }
+
+    // MARK: - Digitizer dimensions
+
+    /// Digitizer width for the currently-shown device, in hardware line-units.
+    private var activeDeviceMaxX: Int {
+        if let pid = boundProductID {
+            if let s = tabletManager.contexts[pid]?.tabletDevice?.spec { return s.maxX }
+            if let s = WacomDeviceRegistry.spec(for: pid) { return s.maxX }
+        }
+        return 44800
+    }
+
+    /// Digitizer height for the currently-shown device, in hardware line-units.
+    private var activeDeviceMaxY: Int {
+        if let pid = boundProductID {
+            if let s = tabletManager.contexts[pid]?.tabletDevice?.spec { return s.maxY }
+            if let s = WacomDeviceRegistry.spec(for: pid) { return s.maxY }
+        }
+        return 29600
+    }
+
+    private var activeAspectRatio: Double {
+        let y = activeDeviceMaxY
+        guard y > 0 else { return 44800.0 / 29600.0 }
+        return Double(activeDeviceMaxX) / Double(y)
     }
 
     var body: some View {
@@ -87,19 +84,26 @@ struct TabletAreaView: View {
 
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Picker("Tablet model", selection: pickerBinding) {
-                    ForEach(TabletModel.allCases) { model in
-                        Text(model.rawValue).tag(model.productID)
+            if deviceEntries.isEmpty {
+                Text("No tablets detected yet")
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker("Tablet", selection: pickerBinding) {
+                    ForEach(deviceEntries) { entry in
+                        Label {
+                            Text(entry.label)
+                        } icon: {
+                            Image(systemName: "circle.fill")
+                                .foregroundStyle(
+                                    entry.isConnected
+                                        ? AnyShapeStyle(Color.green)
+                                        : AnyShapeStyle(Color.secondary.opacity(0.3)))
+                                .font(.caption2)
+                        }
+                        .tag(entry.id)
                     }
                 }
                 .pickerStyle(.menu)
-
-                Button("Detect Tablet") {
-                    AppMenuController.activateBestDevice()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
 
             GeometryReader { geo in
@@ -139,12 +143,17 @@ struct TabletAreaView: View {
         .padding()
     }
 
-    /// Binding that fires `onDeviceSelected` when the user picks a different model.
+    /// Binding that fires `onDeviceSelected` when the user picks a different tablet.
     private var pickerBinding: Binding<Int> {
         Binding(
-            get: { boundProductID ?? selectedModel.productID },
+            get: {
+                boundProductID
+                    ?? tabletManager.activeContext?.productID
+                    ?? deviceEntries.first?.id
+                    ?? 0
+            },
             set: { newPID in
-                if newPID != boundProductID {
+                if newPID != boundProductID, newPID != 0 {
                     onDeviceSelected?(newPID)
                 }
             }
@@ -167,13 +176,13 @@ struct TabletAreaView: View {
                 Text("Width").foregroundStyle(.secondary)
                     .frame(width: 60, alignment: .trailing)
                 pixelField(fraction: $settings.activeAreaWidth,
-                           maxValue: selectedModel.maxX,
+                           maxValue: activeDeviceMaxX,
                            minFraction: Self.minFraction,
                            maxFraction: 1 - settings.activeAreaX)
                 Text("Height").foregroundStyle(.secondary)
                     .frame(width: 60, alignment: .trailing)
                 pixelField(fraction: $settings.activeAreaHeight,
-                           maxValue: selectedModel.maxY,
+                           maxValue: activeDeviceMaxY,
                            minFraction: Self.minFraction,
                            maxFraction: 1 - settings.activeAreaY)
             }
@@ -483,9 +492,12 @@ struct TabletAreaView: View {
 
     private func badgeLines() -> (String, String?) {
         guard let pid = boundProductID else {
-            return (selectedModel.rawValue, nil)
+            if let activePID = tabletManager.activeContext?.productID {
+                return (TabletManager.deviceName(forProductID: activePID), nil)
+            }
+            return ("No device", nil)
         }
-        let modelName = TabletModel.displayName(forProductID: pid)
+        let modelName = TabletManager.deviceName(forProductID: pid)
         if let tablet = registry.knownTablets.first(where: { $0.id == pid }),
            tablet.nickname != tablet.modelName {
             return (tablet.nickname, modelName)
@@ -496,7 +508,7 @@ struct TabletAreaView: View {
     // MARK: - Helpers
 
     private func canvasSize(in available: CGSize) -> CGSize {
-        let ratio = selectedModel.aspectRatio
+        let ratio = activeAspectRatio
         let maxW = available.width - 8
         let maxH = available.height - 8
         if maxW / ratio <= maxH {
