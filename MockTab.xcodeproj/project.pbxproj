@@ -41,6 +41,7 @@
 		AA000049 /* WacomUniversalDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomUniversalDevice.swift */; };
 		AA000047 /* IntuosV2Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000047 /* IntuosV2Decoder.swift */; };
 		AA000048 /* IntuosV1Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000048 /* IntuosV1Decoder.swift */; };
+		AA000050 /* Intuos3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* Intuos3Decoder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -62,7 +63,7 @@
 		AB000020 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AB000021 /* MockTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MockTab.entitlements; sourceTree = "<group>"; };
 		AB000030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AB000031 /* PTZ631WDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTZ631WDevice.swift; sourceTree = "<group>"; };
+		AB000050 /* Intuos3Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intuos3Decoder.swift; sourceTree = "<group>"; };
 		AB000033 /* InfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoView.swift; sourceTree = "<group>"; };
 		AB000034 /* PresetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetsView.swift; sourceTree = "<group>"; };
 		AB000035 /* AppWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWatcher.swift; sourceTree = "<group>"; };
@@ -125,7 +126,6 @@
 			children = (
 				AB000003 /* TabletPoint.swift */,
 				AB000004 /* TabletDevice.swift */,
-				AB000031 /* PTZ631WDevice.swift */,
 				AB000037 /* WacomProbeDevice.swift */,
 				AB000038 /* DTK2400Device.swift */,
 				AB000045 /* WacomGenericDevice.swift */,
@@ -147,6 +147,7 @@
 			children = (
 				AB000047 /* IntuosV2Decoder.swift */,
 				AB000048 /* IntuosV1Decoder.swift */,
+				AB000050 /* Intuos3Decoder.swift */,
 			);
 			path = Decoders;
 			sourceTree = "<group>";
@@ -269,7 +270,6 @@
 				AA000036 /* AppMenuController.swift in Sources */,
 				AA000003 /* TabletPoint.swift in Sources */,
 				AA000004 /* TabletDevice.swift in Sources */,
-				AA000031 /* PTZ631WDevice.swift in Sources */,
 				AA000037 /* WacomProbeDevice.swift in Sources */,
 				AA000038 /* DTK2400Device.swift in Sources */,
 				AA000045 /* WacomGenericDevice.swift in Sources */,
@@ -277,6 +277,7 @@
 				AA000049 /* WacomUniversalDevice.swift in Sources */,
 				AA000047 /* IntuosV2Decoder.swift in Sources */,
 				AA000048 /* IntuosV1Decoder.swift in Sources */,
+				AA000050 /* Intuos3Decoder.swift in Sources */,
 				AA000039 /* DeviceRegistry.swift in Sources */,
 				053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */,
 				AA000042 /* DeviceContext.swift in Sources */,

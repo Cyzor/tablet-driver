@@ -53,6 +53,8 @@ final class WacomUniversalDevice: TabletDevice {
         switch deviceSpec.parser {
         case .intuosV2:
             self.decoder = IntuosV2Decoder()
+        case .intuos3:
+            self.decoder = Intuos3Decoder()
         case .intuosV1, .graphire, .bamboo:
             // graphire/bamboo should not reach here — caller checks hasLiveDecoder.
             self.decoder = IntuosV1Decoder()
@@ -83,11 +85,21 @@ final class WacomUniversalDevice: TabletDevice {
             sendWacomInputModeInit(device, tag: deviceSpec.name)
         }
 
-        // IntuosV1: feature init activates the digitizer endpoint.
+        // IntuosV1 / Intuos3: feature init activates the digitizer endpoint.
         // First byte of featureInit is the report ID.
         if var bytes = deviceSpec.featureInit {
             let reportID = CFIndex(bytes[0])
             IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
+        }
+
+        // Intuos3 two-stage init: send second feature report after a brief delay.
+        if var bytes2 = deviceSpec.featureInit2 {
+            let reportID2 = CFIndex(bytes2[0])
+            let delay     = deviceSpec.featureInit2Delay
+            let dev       = device
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                IOHIDDeviceSetReport(dev, kIOHIDReportTypeFeature, reportID2, &bytes2, bytes2.count)
+            }
         }
 
         let ctx = Unmanaged.passRetained(self).toOpaque()

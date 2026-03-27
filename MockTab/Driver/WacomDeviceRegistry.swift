@@ -29,6 +29,12 @@ enum ReportParser: String {
     /// Covers Bamboo Pen & Touch, Bamboo Craft/Comic/Fun series (CTL/CTH-xxx).
     /// Decoder not yet implemented; entries present for routing completeness.
     case bamboo
+
+    /// Intuos3 (PTZ-xxx, 2003–2006) — same 10-byte IntuosV1 payload but with
+    /// a different status-byte layout: bit 6 (0x40) is the proximity indicator
+    /// (vs. bit 5 in IntuosV1).  Aux reports use IDs 0x03/0x0C, not 0x11.
+    /// No BLE support.  Two-stage feature init (see `WacomDeviceSpec.featureInit2`).
+    case intuos3
 }
 
 // MARK: - Per-device spec
@@ -58,14 +64,42 @@ struct WacomDeviceSpec {
     let hasTouchRing: Bool
     /// True if the pen family includes an eraser tool type.
     let hasEraser:    Bool
-    /// Feature report bytes to send once on open.
+    /// Feature report bytes to send once on open (first stage).
     /// nil = no feature init required.
-    /// Note: PTZ-631W requires a two-stage init ([0x02,0x02] then [0x04,0x00]
-    /// after 150 ms) — the second stage is handled in PTZ631WDevice.swift.
-    let featureInit:  [UInt8]?
+    /// First byte is the HID report ID; remaining bytes are the payload.
+    let featureInit:       [UInt8]?
+    /// Optional second-stage feature report, sent after `featureInit2Delay` seconds.
+    /// Used by Intuos3 devices (PTZ-xxx) which require [0x02,0x02] then [0x04,0x00].
+    /// nil = single-stage init only.
+    let featureInit2:      [UInt8]?
+    /// Delay in seconds before sending `featureInit2`. Default 0.15.
+    let featureInit2Delay: Double
     /// True if this interface must be seized (kIOHIDOptionsTypeSeizeDevice)
     /// to prevent macOS's built-in HID mouse driver from consuming reports.
-    let seizeUSB:     Bool
+    let seizeUSB:          Bool
+
+    init(
+        productID: Int, name: String, parser: ReportParser,
+        maxX: Int, maxY: Int, maxPressure: Int,
+        buttonCount: Int, hasTouchRing: Bool, hasEraser: Bool,
+        featureInit: [UInt8]?, seizeUSB: Bool,
+        featureInit2: [UInt8]? = nil,
+        featureInit2Delay: Double = 0.15
+    ) {
+        self.productID         = productID
+        self.name              = name
+        self.parser            = parser
+        self.maxX              = maxX
+        self.maxY              = maxY
+        self.maxPressure       = maxPressure
+        self.buttonCount       = buttonCount
+        self.hasTouchRing      = hasTouchRing
+        self.hasEraser         = hasEraser
+        self.featureInit       = featureInit
+        self.seizeUSB          = seizeUSB
+        self.featureInit2      = featureInit2
+        self.featureInit2Delay = featureInit2Delay
+    }
 }
 
 // MARK: - Registry
@@ -184,37 +218,47 @@ enum WacomDeviceRegistry {
               buttonCount: 0, hasTouchRing: false, hasEraser: true,
               featureInit: [0x02, 0x02], seizeUSB: false),
 
-        // ── Intuos3 (PTZ-xxx, 2003–2006) — intuosV1 parser ───────────────────
-        // Express keys: 4+4 split on medium/large models.
-        // Note: PTZ-631W (0x00B5) confirmed live with two-stage feature init.
+        // ── Intuos3 (PTZ-xxx, 2003–2006) — intuos3 parser ───────────────────
+        // Status byte layout differs from Intuos5: bit 6 (0x40) is proximity.
+        // Aux reports: 0x03 (8 keys in byte 4) and 0x0C (4+4 split).
+        // Two-stage feature init: [0x02,0x02] immediately, [0x04,0x00] after 150 ms.
+        // PTZ-631W (0x00B5) confirmed live; remaining entries ⚠ estimated but
+        // the two-stage init and proximity bit are common to the whole PTZ family.
         .init(productID: 0x00B0, name: "Intuos3 4×5 (PTZ-431)",    // ⚠ estimated
-              parser: .intuosV1, maxX: 25400, maxY: 20320, maxPressure: 1023,
+              parser: .intuos3, maxX: 25400, maxY: 20320, maxPressure: 1023,
               buttonCount: 4, hasTouchRing: false, hasEraser: true,
-              featureInit: [0x02, 0x02], seizeUSB: false),
+              featureInit: [0x02, 0x02], seizeUSB: false,
+              featureInit2: [0x04, 0x00]),
         .init(productID: 0x00B1, name: "Intuos3 6×8 (PTZ-631)",    // ⚠ estimated
-              parser: .intuosV1, maxX: 40640, maxY: 30480, maxPressure: 1023,
+              parser: .intuos3, maxX: 40640, maxY: 30480, maxPressure: 1023,
               buttonCount: 8, hasTouchRing: false, hasEraser: true,
-              featureInit: [0x02, 0x02], seizeUSB: false),
+              featureInit: [0x02, 0x02], seizeUSB: false,
+              featureInit2: [0x04, 0x00]),
         .init(productID: 0x00B2, name: "Intuos3 9×12 (PTZ-930)",   // ⚠ estimated
-              parser: .intuosV1, maxX: 60960, maxY: 45720, maxPressure: 1023,
+              parser: .intuos3, maxX: 60960, maxY: 45720, maxPressure: 1023,
               buttonCount: 8, hasTouchRing: false, hasEraser: true,
-              featureInit: [0x02, 0x02], seizeUSB: false),
+              featureInit: [0x02, 0x02], seizeUSB: false,
+              featureInit2: [0x04, 0x00]),
         .init(productID: 0x00B3, name: "Intuos3 12×12 (PTZ-1231)", // ⚠ estimated
-              parser: .intuosV1, maxX: 60960, maxY: 60960, maxPressure: 1023,
+              parser: .intuos3, maxX: 60960, maxY: 60960, maxPressure: 1023,
               buttonCount: 8, hasTouchRing: false, hasEraser: true,
-              featureInit: [0x02, 0x02], seizeUSB: false),
+              featureInit: [0x02, 0x02], seizeUSB: false,
+              featureInit2: [0x04, 0x00]),
         .init(productID: 0x00B4, name: "Intuos3 12×19 (PTZ-1231W)",// ⚠ estimated
-              parser: .intuosV1, maxX: 97536, maxY: 60960, maxPressure: 1023,
+              parser: .intuos3, maxX: 97536, maxY: 60960, maxPressure: 1023,
               buttonCount: 8, hasTouchRing: false, hasEraser: true,
-              featureInit: [0x02, 0x02], seizeUSB: false),
+              featureInit: [0x02, 0x02], seizeUSB: false,
+              featureInit2: [0x04, 0x00]),
         .init(productID: 0x00B5, name: "Intuos3 WS (PTZ-631W)",    // ✓ confirmed live
-              parser: .intuosV1, maxX: 54204, maxY: 31750, maxPressure: 2046,
+              parser: .intuos3, maxX: 54204, maxY: 31750, maxPressure: 2046,
               buttonCount: 8, hasTouchRing: false, hasEraser: true,
-              featureInit: [0x02, 0x02], seizeUSB: false),
+              featureInit: [0x02, 0x02], seizeUSB: false,
+              featureInit2: [0x04, 0x00]),
         .init(productID: 0x00B7, name: "Intuos3 4×6 (PTZ-431W)",   // ⚠ estimated
-              parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 1023,
+              parser: .intuos3, maxX: 31496, maxY: 19685, maxPressure: 1023,
               buttonCount: 4, hasTouchRing: false, hasEraser: true,
-              featureInit: [0x02, 0x02], seizeUSB: false),
+              featureInit: [0x02, 0x02], seizeUSB: false,
+              featureInit2: [0x04, 0x00]),
 
         // ── Intuos4 (PTK-xxx, 2009–2012) — intuosV1 parser ───────────────────
         // OLED display on each express key; 2048-level pressure (11-bit).
@@ -384,6 +428,6 @@ enum WacomDeviceRegistry {
     /// future Phase 2 decoder work.
     static func hasLiveDecoder(for productID: Int) -> Bool {
         guard let s = spec(for: productID) else { return false }
-        return s.parser == .intuosV1 || s.parser == .intuosV2
+        return s.parser == .intuosV1 || s.parser == .intuosV2 || s.parser == .intuos3
     }
 }

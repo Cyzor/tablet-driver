@@ -262,14 +262,6 @@ final class TabletManager: ObservableObject {
             wacomDevice = PTH850Device(
                 device: device, onTablet: onTablet, onAux: onAux, onToolEnter: nil)
 
-        case 0x00B5:
-            // PTZ-631W uses status & 0x40 (bit 6) for proximity — Intuos3 bit layout.
-            // IntuosV1Decoder uses status & 0x20 (bit 5) — PTH-851/Intuos5 layout.
-            // Keeping dedicated class until IntuosV1Decoder is extended for Intuos3.
-            print("TabletManager: PTZ-631W connected")
-            wacomDevice = PTZ631WDevice(
-                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
-
         case 0x00F4:
             print("TabletManager: DTK-2400 (Cintiq 24HD) connected")
             wacomDevice = DTK2400Device(

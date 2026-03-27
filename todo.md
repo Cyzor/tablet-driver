@@ -1,6 +1,6 @@
 # MockTab — Open Tasks
 
-_Last updated: 2026-03-26 (Phase 5 complete)_
+_Last updated: 2026-03-26 (PTZ-631W retired)_
 
 ---
 
@@ -67,6 +67,7 @@ confirmed). ACK-40401 dongle (0x0084) routes to WacomGenericDevice — untested 
 
 ## Done (recent sessions)
 
+- [x] PTZ-631W retired: `Intuos3Decoder` (bit 6 proximity, aux 0x03/0x0C), `.intuos3` parser case, `featureInit2` in `WacomDeviceSpec`; all 7 Intuos3 entries updated
 - [x] Phase 5: `tools/import_otd_configs.py` — OTD JSON → Swift WacomDeviceSpec entries; handles both flat and Specifications-nested OTD schemas; base64 featureInit; Interface=0 seize detection
 
 - [x] PTH-851: Dual USB/BLE transport; tool-change packets; eraser detection; lastX/Y proximity-out
