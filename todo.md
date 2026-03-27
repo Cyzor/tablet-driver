@@ -26,15 +26,6 @@ not decoded correctly from report bytes. Three approaches tried; deferred by use
 
 ## Near-term
 
-### Broader support — Phase 3: WacomUniversalDevice
-Create `WacomUniversalDevice.swift`. Key responsibilities:
-- `init(device:spec:onTablet:onAux:onToolEnter:)` — selects decoder via `spec.parser`
-- `open()`: seize if `deviceSpec.seizeUSB`; call `sendWacomInputModeInit` for IntuosV2;
-  send `deviceSpec.featureInit` bytes for IntuosV1
-- Report callback: calls `decoder.decode(report:length:spec:state:&state)`,
-  dispatches result to appropriate closure
-- `TabletManager.deviceConnected` routes to it when `hasLiveDecoder(for: pid)` is true
-
 ### Broader support — Phase 4: Migration order
 1. Wire IntuosV2 (PTH-460/660/860) first — replace PTH660Device + PTH860Device
 2. Wire IntuosV1 (PTH-851, PTZ-631W, + all registry entries)
@@ -99,3 +90,5 @@ confirmed). ACK-40401 dongle (0x0084) routes to WacomGenericDevice — untested 
 - [x] Phase 2 decoders: WacomDecoder protocol + DecoderState + DecodeResult in TabletDevice.swift
 - [x] IntuosV2Decoder.swift: reports 0x01/0x03/0x10/0x1E/0x11/0x80 — lifted from PTH660Device
 - [x] IntuosV1Decoder.swift: reports 0x01/0x03/0x11/0x02/0x10/0x80 — lifted from PTH851Device
+- [x] WacomUniversalDevice.swift: decoder-backed driver; open/close; report dispatch
+- [x] TabletManager: default routing to WacomUniversalDevice for known PIDs with live decoders

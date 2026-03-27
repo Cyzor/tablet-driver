@@ -295,16 +295,31 @@ final class TabletManager: ObservableObject {
         case 0x0084:
             // ACK-40401 RF wireless dongle — presents same HID interfaces as the
             // paired tablet.  WacomGenericDevice auto-detects IntuosV1 format and
-            // handles the wireless status report (0x80).
+            // handles the wireless status report (0x80).  maxX/maxY are 0 in the
+            // registry so WacomGenericDevice queries the HID descriptor instead.
             print("TabletManager: ACK-40401 wireless dongle connected")
             wacomDevice = WacomGenericDevice(
                 device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
 
         default:
-            let pid = String(productID, radix: 16, uppercase: true)
-            print("TabletManager: unknown Wacom 0x\(pid) — attaching generic driver")
-            wacomDevice = WacomGenericDevice(
-                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+            // For any recognised PID with a live decoder and a valid spec, use
+            // WacomUniversalDevice.  Stub families (Graphire, Bamboo) and truly
+            // unrecognised PIDs fall through to WacomGenericDevice.
+            if let deviceSpec = WacomDeviceRegistry.spec(for: productID),
+               WacomDeviceRegistry.hasLiveDecoder(for: productID),
+               deviceSpec.maxX > 0
+            {
+                let shouldSeize = deviceSpec.seizeUSB && usagePage == 0x01
+                print("TabletManager: \(deviceSpec.name) connected via universal driver")
+                wacomDevice = WacomUniversalDevice(
+                    device: device, deviceSpec: deviceSpec, seize: shouldSeize,
+                    onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+            } else {
+                let pid = String(productID, radix: 16, uppercase: true)
+                print("TabletManager: unknown Wacom 0x\(pid) — attaching generic driver")
+                wacomDevice = WacomGenericDevice(
+                    device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+            }
         }
 
         if let wacomDevice {
