@@ -397,6 +397,201 @@ enum WacomDeviceRegistry {
               buttonCount: 8, hasTouchRing: false, hasEraser: true,
               featureInit: [0x02, 0x02], seizeUSB: true),
 
+        // ── Intuos4 (PTK) additional variants ────────────────────────────────
+        .init(productID: 0x0029, name: "Wacom PTK-450",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 2047,
+              buttonCount: 6, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x002A, name: "Wacom PTK-650",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
+              buttonCount: 8, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+
+        // ── Intuos Pro first-gen additional variant ───────────────────────────
+        .init(productID: 0x0315, name: "Wacom PTH-651",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
+              buttonCount: 8, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+
+        // ── Intuos Pro second-gen additional variants (PTH-460/660 alt PIDs) ─
+        .init(productID: 0x0360, name: "Wacom PTH-660",              // ⚠ from OTD
+              parser: .intuosV2, maxX: 44800, maxY: 29600, maxPressure: 8191,
+              buttonCount: 8, hasTouchRing: false, hasEraser: true,
+              featureInit: nil, seizeUSB: false),
+        .init(productID: 0x0392, name: "Wacom PTH-460",              // ⚠ from OTD
+              parser: .intuosV2, maxX: 31920, maxY: 19950, maxPressure: 8191,
+              buttonCount: 6, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x03DC, name: "Wacom PTH-460",              // ⚠ from OTD
+              parser: .intuosV2, maxX: 31920, maxY: 19950, maxPressure: 8191,
+              buttonCount: 6, hasTouchRing: false, hasEraser: true,
+              featureInit: nil, seizeUSB: false),
+
+        // ── Bamboo / Graphire-era CTE / CTF consumer line ─────────────────────
+        // Graphire-era: intuosV1 8-byte format.
+        .init(productID: 0x006A, name: "Wacom CTE-460",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 15200, maxY:  9500, maxPressure:  511,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x006B, name: "Wacom CTE-660",              // ⚠ from OTD
+              parser: .bamboo,   maxX: 21648, maxY: 13500, maxPressure:  511,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0018, name: "Wacom CTE-650",              // ⚠ from OTD
+              parser: .bamboo,   maxX: 21648, maxY: 13530, maxPressure:  511,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0069, name: "Wacom CTF-430",              // ⚠ from OTD
+              parser: .bamboo,   maxX:  5104, maxY:  3712, maxPressure:  511,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+
+        // ── Bamboo CTH (pen + touch) ──────────────────────────────────────────
+        .init(productID: 0x0319, name: "Wacom CTH-300",              // ⚠ from OTD
+              parser: .bamboo,   maxX: 10690, maxY:  6680, maxPressure:  511,
+              buttonCount: 2, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0318, name: "Wacom CTH-301",              // ⚠ from OTD
+              parser: .bamboo,   maxX: 10690, maxY:  6680, maxPressure:  511,
+              buttonCount: 2, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x00D2, name: "Wacom CTH-461",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 14720, maxY:  9200, maxPressure: 1023,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x00DE, name: "Wacom CTH-470",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 14720, maxY:  9200, maxPressure: 1023,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0302, name: "Wacom CTH-480",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 15200, maxY:  9500, maxPressure: 1023,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x033C, name: "Wacom CTH-490",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 15200, maxY:  9500, maxPressure: 2047,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x00D3, name: "Wacom CTH-661",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 21648, maxY: 13700, maxPressure: 1023,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x00D8, name: "Wacom CTH-661",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 21648, maxY: 13700, maxPressure: 1023,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x00DF, name: "Wacom CTH-670",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 21648, maxY: 13700, maxPressure: 1023,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0303, name: "Wacom CTH-680",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 1023,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x033E, name: "Wacom CTH-690",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 2047,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+
+        // ── Wacom One / Intuos (CTL) pen-only line ────────────────────────────
+        .init(productID: 0x00DD, name: "Wacom CTL-470",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 14720, maxY:  9200, maxPressure: 1023,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0300, name: "Wacom CTL-471",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 15200, maxY:  9500, maxPressure: 1023,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x037A, name: "Wacom CTL-472",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 15200, maxY:  9500, maxPressure: 2047,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x030E, name: "Wacom CTL-480",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 15200, maxY:  9500, maxPressure: 1023,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x033B, name: "Wacom CTL-490",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 15200, maxY:  9500, maxPressure: 2047,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0301, name: "Wacom CTL-671",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 1023,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x037B, name: "Wacom CTL-672",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 2047,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0323, name: "Wacom CTL-680",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 1023,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x033D, name: "Wacom CTL-690",              // ⚠ from OTD
+              parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 2047,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0374, name: "Wacom CTL-4100",             // ⚠ from OTD
+              parser: .intuosV2, maxX: 15200, maxY:  9500, maxPressure: 4095,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: nil, seizeUSB: false),
+        .init(productID: 0x0376, name: "Wacom CTL-4100WL",           // ⚠ from OTD
+              parser: .intuosV2, maxX: 15200, maxY:  9500, maxPressure: 4095,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0377, name: "Wacom CTL-4100WL",           // ⚠ from OTD
+              parser: .intuosV2, maxX: 15200, maxY:  9500, maxPressure: 4095,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: nil, seizeUSB: false),
+        .init(productID: 0x03C5, name: "Wacom CTL-4100WL",           // ⚠ from OTD
+              parser: .intuosV2, maxX: 15200, maxY:  9500, maxPressure: 4095,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0375, name: "Wacom CTL-6100",             // ⚠ from OTD
+              parser: .intuosV2, maxX: 21600, maxY: 13500, maxPressure: 4095,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0378, name: "Wacom CTL-6100WL",           // ⚠ from OTD
+              parser: .intuosV2, maxX: 21600, maxY: 13500, maxPressure: 4095,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x03C7, name: "Wacom CTL-6100WL",           // ⚠ from OTD
+              parser: .intuosV2, maxX: 21600, maxY: 13500, maxPressure: 4095,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+
+        // ── Cintiq pen-display additional models ──────────────────────────────
+        .init(productID: 0x0304, name: "Wacom Cintiq 13HD (DTK-1300)",  // ⚠ from OTD
+              parser: .intuosV1, maxX:  59800, maxY: 34200, maxPressure: 2048,
+              buttonCount: 8, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x00F9, name: "Wacom Cintiq 22HD (DTK-2200)", // ⚠ from OTD
+              parser: .intuosV1, maxX:  95040, maxY: 54260, maxPressure: 2048,
+              buttonCount: 20, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x034F, name: "Wacom DTH-1320",              // ⚠ from OTD
+              parser: .intuosV2, maxX:  59552, maxY: 33848, maxPressure: 8191,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x0390, name: "Wacom Cintiq 16 (DTK-1660)",  // ⚠ from OTD
+              parser: .intuosV2, maxX:  69632, maxY: 39518, maxPressure: 8191,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x03AE, name: "Wacom Cintiq 16 (DTK-1660)",  // ⚠ from OTD
+              parser: .intuosV2, maxX:  69632, maxY: 39518, maxPressure: 8191,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x03A6, name: "Wacom DTC-133",               // ⚠ from OTD
+              parser: .intuosV2, maxX:  29434, maxY: 16556, maxPressure: 4095,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x03C0, name: "Wacom Cintiq Pro 27 (DTH-271)", // ⚠ from OTD
+              parser: .intuosV2, maxX: 120032, maxY: 67868, maxPressure: 8191,
+              buttonCount: 4, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(productID: 0x03F0, name: "Wacom Movink 13 (DTH-135)",   // ⚠ from OTD
+              parser: .intuosV2, maxX:  59552, maxY: 33848, maxPressure: 8191,
+              buttonCount: 0, hasTouchRing: false, hasEraser: true,
+              featureInit: [0x02, 0x02], seizeUSB: false),
+
         // ── Wireless dongle ───────────────────────────────────────────────────
         // ACK-40401 RF dongle (PID 0x0084) presents the same HID interfaces as
         // the paired tablet.  WacomGenericDevice auto-detects the report family.
