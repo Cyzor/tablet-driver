@@ -69,6 +69,9 @@ final class WacomUniversalDevice: TabletDevice {
     // MARK: - Open / Close
 
     func open() {
+        let transport   = IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        let isBluetooth = transport.lowercased().contains("bluetooth")
+
         let options = seize
             ? IOOptionBits(kIOHIDOptionsTypeSeizeDevice)
             : IOOptionBits(kIOHIDOptionsTypeNone)
@@ -80,25 +83,30 @@ final class WacomUniversalDevice: TabletDevice {
             return
         }
 
-        // IntuosV2: switch to full tablet mode; unlocks cursor/mouse button state.
-        if deviceSpec.parser == .intuosV2 {
+        print("\(deviceSpec.name): opened (transport=\(transport))")
+
+        // IntuosV2 USB: mode-switch activates full tablet mode.
+        // BLE: GATT is always active; writing InputMode suppresses pen data — skip.
+        if deviceSpec.parser == .intuosV2 && !isBluetooth {
             sendWacomInputModeInit(device, tag: deviceSpec.name)
         }
 
-        // IntuosV1 / Intuos3: feature init activates the digitizer endpoint.
-        // First byte of featureInit is the report ID.
-        if var bytes = deviceSpec.featureInit {
-            let reportID = CFIndex(bytes[0])
-            IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
-        }
+        // Feature inits activate the digitizer endpoint over USB.  Not needed for BLE.
+        if !isBluetooth {
+            // IntuosV1 / Intuos3: feature init. First byte is the report ID.
+            if var bytes = deviceSpec.featureInit {
+                let reportID = CFIndex(bytes[0])
+                IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
+            }
 
-        // Intuos3 two-stage init: send second feature report after a brief delay.
-        if var bytes2 = deviceSpec.featureInit2 {
-            let reportID2 = CFIndex(bytes2[0])
-            let delay     = deviceSpec.featureInit2Delay
-            let dev       = device
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                IOHIDDeviceSetReport(dev, kIOHIDReportTypeFeature, reportID2, &bytes2, bytes2.count)
+            // Intuos3 two-stage init: second feature report after a brief delay.
+            if var bytes2 = deviceSpec.featureInit2 {
+                let reportID2 = CFIndex(bytes2[0])
+                let delay     = deviceSpec.featureInit2Delay
+                let dev       = device
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    IOHIDDeviceSetReport(dev, kIOHIDReportTypeFeature, reportID2, &bytes2, bytes2.count)
+                }
             }
         }
 

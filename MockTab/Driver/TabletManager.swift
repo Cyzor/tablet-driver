@@ -144,7 +144,16 @@ final class TabletManager: ObservableObject {
         let usagePage    = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
         let usage        = hidIntProperty(device, kIOHIDPrimaryUsageKey)
         let maxRptSize   = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
-        print("TabletManager: device pid=0x\(String(productID, radix:16)) usagePage=0x\(String(usagePage, radix:16)) usage=0x\(String(usage, radix:16)) maxRptSize=\(maxRptSize)")
+        let transport    = IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        let isBLE        = transport.lowercased().contains("bluetooth")
+        print("TabletManager: device pid=0x\(String(productID, radix:16)) usagePage=0x\(String(usagePage, radix:16)) usage=0x\(String(usage, radix:16)) maxRptSize=\(maxRptSize) transport=\(transport)")
+
+        // BLE tablets expose a ghost HID-mouse interface alongside the pen digitizer.
+        // Skip it: it carries no pen data and must never be seized.
+        if isBLE && usagePage == 0x01 {
+            print("TabletManager: skipping BLE mouse interface (pid=0x\(String(productID, radix:16)))")
+            return
+        }
 
         let context = contexts[productID] ?? DeviceContext(productID: productID)
         contexts[productID] = context
@@ -273,7 +282,7 @@ final class TabletManager: ObservableObject {
                WacomDeviceRegistry.hasLiveDecoder(for: productID),
                deviceSpec.maxX > 0
             {
-                let shouldSeize = deviceSpec.seizeUSB && usagePage == 0x01
+                let shouldSeize = !isBLE && deviceSpec.seizeUSB && usagePage == 0x01
                 print("TabletManager: \(deviceSpec.name) connected via universal driver")
                 wacomDevice = WacomUniversalDevice(
                     device: device, deviceSpec: deviceSpec, seize: shouldSeize,

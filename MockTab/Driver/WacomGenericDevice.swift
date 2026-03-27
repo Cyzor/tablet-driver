@@ -147,20 +147,26 @@ final class WacomGenericDevice: TabletDevice {
     // MARK: - Open / Close
 
     func open() {
+        let transport   = IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        let isBluetooth = transport.lowercased().contains("bluetooth")
+
         let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
         guard ret == kIOReturnSuccess else {
             print("\(tag): failed to open — \(ret). Is another tablet driver running?")
             return
         }
 
-        // Try both common init sequences.
-        // [0x02, 0x02]: feature init for IntuosV1-era digitiser endpoint.
-        var init1: [UInt8] = [0x02, 0x02]
-        IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
+        // Feature and mode inits are USB-only.  Over BLE the GATT digitizer is
+        // always active; writing the InputMode characteristic suppresses pen data.
+        if !isBluetooth {
+            // [0x02, 0x02]: feature init for IntuosV1-era digitiser endpoint.
+            var init1: [UInt8] = [0x02, 0x02]
+            IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
 
-        // IntuosV2 InputMode init (no-op if element not present).
-        if family == .intuosV2 {
-            sendWacomInputModeInit(device, tag: tag)
+            // IntuosV2 InputMode init (no-op if element not present).
+            if family == .intuosV2 {
+                sendWacomInputModeInit(device, tag: tag)
+            }
         }
 
         probeDeadline = CFAbsoluteTimeGetCurrent() + 30.0

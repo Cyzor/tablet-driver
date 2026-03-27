@@ -35,7 +35,14 @@ struct IntuosV2Decoder: WacomDecoder {
         case 0x11:
             return decodeAuxReport(report: report, length: length)
         case 0x80:
-            return decodeWireless(report: report, length: length)
+            // Bluetooth-transport pen reports share report ID 0x80 with the RF-dongle
+            // wireless status byte.  Distinguish by report[1]:
+            //   0x02/0x05/0x06 → RF wireless status (active / lost / low-battery)
+            //   anything else  → BT HID pen data (BLE-layout coordinates, different flag bits)
+            if length >= 2 && (report[1] == 0x02 || report[1] == 0x05 || report[1] == 0x06) {
+                return decodeWireless(report: report, length: length)
+            }
+            return decodeBTPen(report: report, length: length, spec: spec, state: &state)
         default:
             return []
         }
@@ -216,6 +223,84 @@ struct IntuosV2Decoder: WacomDecoder {
                 isMouse: result.isMouse)))
         }
         results.append(.pen(result.point))
+        return results
+    }
+
+    // MARK: - BT Wireless pen (0x80, Bluetooth Classic/LE transport variant)
+    //
+    // Coordinates and pressure use the same LE uint16 layout as the BLE HOGP 0x01 report.
+    // report[1] flag byte differs from the HOGP spec:
+    //   bit7 (0x80) = inProximity  (confirmed: 0x00 = no pen, 0xC0 = hovering)
+    //   bit6 (0x40) = frame-valid / "digitizer active" — always set during proximity,
+    //                 NOT a button. Masking it out fixes spurious middle-click on hover.
+    //   bit5 (0x20) = button assignment TBD — tentatively barrel1
+    //   bit4 (0x10) = button assignment TBD — tentatively barrel2
+    //   bit3 (0x08) = TBD (eraser?)
+    // TODO: confirm bit4–5 assignments from live capture with buttons pressed.
+
+    private func decodeBTPen(
+        report: UnsafePointer<UInt8>,
+        length: CFIndex,
+        spec: DigitizerSpec,
+        state: inout DecoderState
+    ) -> [DecodeResult] {
+        guard length >= 6 else { return [] }
+
+        let flags       = report[1]
+        let inProximity = (flags & 0x80) != 0
+        // bit7 = inProximity; bit6 = frame-valid (always 1 during proximity);
+        // bit5 = high-confidence / signal-stable (0 on first frame, 1 thereafter).
+        // Actual barrel button bits are in bits 0–4; TBD from live capture.
+        let barrel1     = (flags & 0x04) != 0   // TBD
+        let barrel2     = (flags & 0x02) != 0   // TBD
+
+        let x        = Int(UInt16(report[2]) | UInt16(report[3]) << 8)
+        let y        = Int(UInt16(report[4]) | UInt16(report[5]) << 8)
+        let pressure: Int = length >= 8 ? Int(UInt16(report[6]) | UInt16(report[7]) << 8) : 0
+        let distance: Int = length >= 9  ? Int(report[8])                              : 0
+        let tiltX: Double = length >= 10 ? Double(Int8(bitPattern: report[9]))  / 127.0 : 0
+        let tiltY: Double = length >= 11 ? Double(Int8(bitPattern: report[10])) / 127.0 : 0
+
+        let serial: UInt32 = length >= 15
+            ? UInt32(report[11]) | UInt32(report[12]) << 8
+              | UInt32(report[13]) << 16 | UInt32(report[14]) << 24
+            : 0
+        let toolCode: UInt16 = length >= 17
+            ? UInt16(report[15]) | UInt16(report[16]) << 8
+            : 0
+
+        let isEraser = (toolCode & 0x0008) != 0
+        let isMouse  = (toolCode & 0x000F) == 0x0006
+
+        if inProximity {
+            state.lastX = x
+            state.lastY = y
+        }
+
+        var results: [DecodeResult] = []
+
+        if toolCode != 0 && (serial != state.lastSerial || toolCode != state.lastToolCode) {
+            state.lastSerial      = serial
+            state.lastToolCode    = toolCode
+            state.currentToolCode = toolCode
+            state.toolIsMouse     = isMouse
+            results.append(.toolEnter(ToolIdentity(
+                serial: serial, toolCode: toolCode,
+                isEraser: isEraser, isMouse: isMouse)))
+        }
+
+        results.append(.pen(TabletPoint(
+            x: inProximity ? x : state.lastX,
+            y: inProximity ? y : state.lastY,
+            maxX: spec.maxX, maxY: spec.maxY,
+            pressure: inProximity ? pressure : 0,
+            maxPressure: spec.maxPressure,
+            tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
+            penButton1: barrel1,
+            penButton2: barrel2,
+            eraser: isEraser,
+            inProximity: inProximity,
+            hoverDistance: distance)))
         return results
     }
 
