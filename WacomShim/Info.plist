@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleIdentifier</key>
 	<string>com.wacom.TabletDriver</string>
+	<key>CFBundleSignature</key>
+	<string>WaCM</string>
 	<key>CFBundleName</key>
 	<string>WacomShim</string>
 	<key>CFBundleExecutable</key>

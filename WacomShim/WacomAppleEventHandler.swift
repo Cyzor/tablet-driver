@@ -8,24 +8,40 @@ private func aeFourCC(_ s: StaticString) -> UInt32 {
     return UInt32(b[0]) << 24 | UInt32(b[1]) << 16 | UInt32(b[2]) << 8 | UInt32(b[3])
 }
 
-// MARK: - Wacom Apple Events constants
+// MARK: - Apple Events constants (verified against Wacom ICBT SDK docs)
 //
-// These mirror the Wacom ICBT (WacomTabletDriver) Apple Events suite.
-//
-// ⚠ kAEWacomSuite, kAESendTabletEvent, kAETabletCountProp,
-//   kAEEventTypeProp, kAEEventTypeProx have NOT been confirmed against the
-//   closed Wacom SDK.  Update after sniffing real traffic if Adobe still fails.
+// Bugs fixed from initial implementation:
+//   1. kAEWacomSuite: 'WaCm' → 'Wacm'  (case error, bytes 3-4 differ)
+//   2. kAESendTabletEvent: 'snte' → 'WSnd'  (invented code vs SDK-defined)
+//   3. getd/crel/delo registered under kAECoreSuite, NOT kAEWacomSuite
+//   4. eEventProximity: 'ePrx' → 'WePx'; added eEventPointer = 'WePt'
+//   5. eSendTabletEvent event-type parameter uses keyAEData ('data'), not custom 'eTyp'
+//   6. CFBundleSignature in Info.plist: 'WaCM' (uppercase C and M)
+//   8. handleCreateElement gates on cContext = 'CTxt'
 
-private let kAEWacomSuite:      AEEventClass = aeFourCC("WaCm")   // ⚠ needs verification
-private let kAEGetDataID:       AEEventID    = aeFourCC("getd")
-private let kAECreateElementID: AEEventID    = aeFourCC("crel")
-private let kAEDeleteElementID: AEEventID    = aeFourCC("delo")
-private let kAESendTabletEvent: AEEventID    = aeFourCC("snte")   // ⚠ needs verification
+// Wacom suite — only eSendTabletEvent lives here.
+private let kAEWacomSuite:      AEEventClass = aeFourCC("Wacm")
 
-private let kAETabletCountProp: AEKeyword    = aeFourCC("pTbC")   // ⚠ needs verification
-private let kAEEventTypeProp:   AEKeyword    = aeFourCC("eTyp")   // ⚠ needs verification
-private let kAEEventTypeProx:   OSType       = aeFourCC("ePrx")   // ⚠ needs verification
-// Any event-type value other than kAEEventTypeProx triggers a pointer replay.
+// eSendTabletEvent — Adobe sends this to request a replay of the last HID event.
+private let kAESendTabletEvent: AEEventID    = aeFourCC("WSnd")
+
+// Core suite — getd/crel/delo are registered here, not under kAEWacomSuite.
+// Use aeFourCC rather than kAECoreSuite to avoid Int↔UInt32 cast issues.
+private let kCoreSuite:         AEEventClass = aeFourCC("core")
+
+// Core suite event IDs (system values, redeclared to avoid import-type casting).
+private let kGetData:           AEEventID    = aeFourCC("getd")
+private let kCreateElement:     AEEventID    = aeFourCC("crel")
+private let kDeleteElement:     AEEventID    = aeFourCC("delo")
+
+// Wacom property / class / event-type codes.
+private let kAETabletCountProp: AEKeyword    = aeFourCC("pTbC")   // pTabletCount property
+private let cContext:           DescType     = aeFourCC("CTxt")   // cContext class (crel gate)
+private let eEventProximity:    OSType       = aeFourCC("WePx")   // proximity event type
+private let eEventPointer:      OSType       = aeFourCC("WePt")   // pointer event type
+
+// keyAEObjectClass ('kocl') — identifies the class in a crel event.
+private let kKeyObjectClass:    AEKeyword    = aeFourCC("kocl")
 
 // Distributed notification names posted to MockTab to trigger event replay.
 private let kReplayPointer   = "com.cyzor.mocktab.shim.replayPointer"
@@ -40,10 +56,10 @@ private let kReplayProximity = "com.cyzor.mocktab.shim.replayProximity"
 /// to verify a Wacom driver is running (bundle ID `com.wacom.TabletDriver`).
 /// If the reply count is non-zero, Adobe enables its native tablet code path.
 ///
-/// Subsequently, Adobe sends `crel cCtx` to create a context, then periodically
-/// sends `snte` (eSendTabletEvent) requesting a replay of the last tablet event.
-/// Those requests are forwarded to MockTab via NSDistributedNotificationCenter
-/// so MockTab can re-inject the cached HID event.
+/// Subsequently Adobe sends `crel cCtx` to open a drawing context, then
+/// periodically sends `WSnd` (eSendTabletEvent) requesting a replay of the
+/// last tablet event.  Those requests are forwarded to MockTab via
+/// NSDistributedNotificationCenter so MockTab re-injects the cached HID event.
 final class WacomAppleEventHandler: NSObject {
 
     private var contexts: [pid_t: Int] = [:]
@@ -54,27 +70,29 @@ final class WacomAppleEventHandler: NSObject {
     func install() {
         let mgr = NSAppleEventManager.shared()
 
+        // getd, crel, delo belong to kAECoreSuite ('core'), not kAEWacomSuite.
         mgr.setEventHandler(self,
             andSelector: #selector(handleGetData(_:withReplyEvent:)),
-            forEventClass: kAEWacomSuite,
-            andEventID: kAEGetDataID)
+            forEventClass: kCoreSuite,
+            andEventID: kGetData)
 
         mgr.setEventHandler(self,
             andSelector: #selector(handleCreateElement(_:withReplyEvent:)),
-            forEventClass: kAEWacomSuite,
-            andEventID: kAECreateElementID)
+            forEventClass: kCoreSuite,
+            andEventID: kCreateElement)
 
         mgr.setEventHandler(self,
             andSelector: #selector(handleDeleteElement(_:withReplyEvent:)),
-            forEventClass: kAEWacomSuite,
-            andEventID: kAEDeleteElementID)
+            forEventClass: kCoreSuite,
+            andEventID: kDeleteElement)
 
+        // eSendTabletEvent is the only Wacom-suite event.
         mgr.setEventHandler(self,
             andSelector: #selector(handleSendTabletEvent(_:withReplyEvent:)),
             forEventClass: kAEWacomSuite,
             andEventID: kAESendTabletEvent)
 
-        print("WacomShim: Apple Events handlers installed (suite='WaCm')")
+        print("WacomShim: Apple Events handlers installed (suite='Wacm', WSnd)")
     }
 
     // MARK: - Context cleanup (called from ShimApp on app termination)
@@ -83,7 +101,7 @@ final class WacomAppleEventHandler: NSObject {
         contexts.removeValue(forKey: pid)
     }
 
-    // MARK: - Handler: getd (tablet count / context property queries)
+    // MARK: - Handler: getd — tablet count and property queries
 
     @objc private func handleGetData(
         _ event: NSAppleEventDescriptor,
@@ -91,31 +109,30 @@ final class WacomAppleEventHandler: NSObject {
     ) {
         guard let direct = event.paramDescriptor(forKeyword: keyDirectObject) else { return }
 
-        // Property code: either the descriptor itself is a typeType, or it is an
-        // object specifier whose property keyword is in keyAEKeyData.
         let propCode: AEKeyword
         if direct.descriptorType == typeType {
             propCode = direct.typeCodeValue
         } else {
-            propCode = direct.paramDescriptor(forKeyword: AEKeyword(keyAEKeyData))?.typeCodeValue ?? AEKeyword(0)
+            propCode = direct.paramDescriptor(forKeyword: AEKeyword(keyAEKeyData))?.typeCodeValue
+                       ?? AEKeyword(0)
         }
 
-        switch propCode {
-        case kAETabletCountProp:
-            // Signal that one tablet is connected.
+        if propCode == kAETabletCountProp {
             reply.setDescriptor(NSAppleEventDescriptor(int32: 1),
                                 forKeyword: keyDirectObject)
-        default:
-            break
         }
     }
 
-    // MARK: - Handler: crel (create drawing context)
+    // MARK: - Handler: crel — create drawing context
 
     @objc private func handleCreateElement(
         _ event: NSAppleEventDescriptor,
         withReplyEvent reply: NSAppleEventDescriptor
     ) {
+        // Ignore crel for any class other than cContext ('CTxt').
+        let objectClass = event.paramDescriptor(forKeyword: kKeyObjectClass)?.typeCodeValue
+        guard objectClass == cContext else { return }
+
         let pid   = senderPID(of: event)
         let ctxID = nextContextID
         nextContextID += 1
@@ -125,7 +142,7 @@ final class WacomAppleEventHandler: NSObject {
                             forKeyword: keyDirectObject)
     }
 
-    // MARK: - Handler: delo (delete drawing context)
+    // MARK: - Handler: delo — delete drawing context
 
     @objc private func handleDeleteElement(
         _ event: NSAppleEventDescriptor,
@@ -135,21 +152,23 @@ final class WacomAppleEventHandler: NSObject {
         if pid != 0 { contexts.removeValue(forKey: pid) }
     }
 
-    // MARK: - Handler: snte (eSendTabletEvent — event replay request)
+    // MARK: - Handler: WSnd — eSendTabletEvent replay request
 
     @objc private func handleSendTabletEvent(
         _ event: NSAppleEventDescriptor,
         withReplyEvent reply: NSAppleEventDescriptor
     ) {
-        let eventType = event.paramDescriptor(forKeyword: kAEEventTypeProp)?.typeCodeValue ?? 0
+        // Event type is stored under keyAEData ('data'), not a custom keyword.
+        let eventType = event.paramDescriptor(forKeyword: AEKeyword(keyAEData))?.typeCodeValue ?? 0
 
         let dn = DistributedNotificationCenter.default()
-        if eventType == kAEEventTypeProx {
+        if eventType == eEventProximity {
             dn.postNotificationName(
                 NSNotification.Name(kReplayProximity),
                 object: nil, userInfo: nil,
                 deliverImmediately: true)
         } else {
+            // Covers eEventPointer and any unknown value.
             dn.postNotificationName(
                 NSNotification.Name(kReplayPointer),
                 object: nil, userInfo: nil,
