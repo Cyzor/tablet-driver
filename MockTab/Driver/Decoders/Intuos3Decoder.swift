@@ -171,7 +171,9 @@ struct Intuos3Decoder: WacomDecoder {
         }
 
         // Pen path — same pressure/tilt encoding as IntuosV1.
-        let pressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | (Int(status) & 1)
+        // Devices with maxPressure <= 1023 (10-bit hardware) right-shift by 1.
+        let rawPressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | (Int(status) & 1)
+        let pressure = spec.maxPressure <= 1023 ? rawPressure >> 1 : rawPressure
         let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64
         let tiltYRaw = (Int(report[8]) & 0x7F) - 64
 
@@ -185,7 +187,7 @@ struct Intuos3Decoder: WacomDecoder {
             penButton2: (status & 0x04) != 0,
             eraser: state.isEraser,
             inProximity: true,
-            hoverDistance: Int(report[9]))))
+            hoverDistance: (Int(report[9]) >> 2))))
         return results
     }
 
@@ -207,7 +209,7 @@ struct Intuos3Decoder: WacomDecoder {
 
         state.lastSerial      = serial
         state.currentToolCode = toolCode
-        state.isEraser    = (toolCode & 0x000F) == 0x000A
+        state.isEraser    = (toolCode & 0x0008) != 0
         state.toolIsMouse = (toolCode & 0x000F) == 0x0006
 
         return [.toolEnter(ToolIdentity(

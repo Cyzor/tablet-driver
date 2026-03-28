@@ -38,6 +38,20 @@ overhauled (2026-03-28):
 - **Art Pen rotation**: kernel two-branch formula (`absZ` ±900 half-degree steps).
 All changes require live hardware testing to confirm correct behavior.
 
+### 🟡 IntuosV1/Intuos3/IntuosV2 decoder fixes — needs hardware verification
+Applied from `Wacom-HID-Family-Reference.md` (2026-03-28):
+- **Eraser detection** (IntuosV1 + Intuos3): changed `(toolCode & 0x000F) == 0x000A`
+  to `(toolCode & 0x0008) != 0` — kernel uses bit 3 only; old test required bits 1+3.
+- **Hover distance** (IntuosV1 + Intuos3): changed `Int(report[9])` to
+  `(Int(report[9]) >> 2)` — bottom 2 bits of report[9] are X/Y LSBs, not distance.
+- **Pressure right-shift** (IntuosV1 + Intuos3): added `>> 1` when `spec.maxPressure <= 1023`
+  — 10-bit devices encode pressure in the same 11-bit field; no effect on PTH-851 (2047)
+  or PTZ-631W (2046).
+- **Eraser status bit** (IntuosV2): changed `(status & 0x10) != 0` to `(status & 0x08) != 0`
+  — eraser hover=0x28 and eraser touching=0x68 both have bit 3 set, not bit 4.
+PTH-851 (IntuosV1), PTZ-631W (Intuos3), PTH-660/860 (IntuosV2) need hardware
+re-verification for eraser, hover distance, and pressure feel after these changes.
+
 ---
 
 ## Active Feature: CLI + JSON Profile Export (Option 2)
