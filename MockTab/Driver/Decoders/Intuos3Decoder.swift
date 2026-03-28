@@ -38,15 +38,41 @@ struct Intuos3Decoder: WacomDecoder {
             return [.aux(AuxButtons(buttons: (0..<8).map { (byte & (1 << $0)) != 0 }))]
         }
 
-        // Intuos3 express key — 4 keys in byte 5, 4 keys in byte 6 (4+4 split).
+        // Intuos3 pad report (report ID 0x0C, up to 10 bytes).
+        //
+        // Two layouts share this ID:
+        //   PTZ-631W (WS, 10-byte): touch strip positions in bytes 1–4; bytes 5–6 unused.
+        //   Other Intuos3 (7-byte): express keys only; 4 keys per nibble in bytes 5–6.
+        //
+        // Touch strip encoding (PTZ-631W, bytes 1–4):
+        //   left  strip = (bytes[1] << 8) | bytes[2] — 16-bit big-endian one-hot bitmask.
+        //   right strip = (bytes[3] << 8) | bytes[4] — same encoding.
+        //   Bit N set → finger is in zone N (0 = bottom, higher = farther up the strip).
+        //   All-zero → no contact.
         if id == 0x0C {
-            guard length >= 7 else { return [] }
-            let lo = report[5]
-            let hi = report[6]
-            let buttons =
-                (0..<4).map { (lo & (1 << $0)) != 0 }
-                + (0..<4).map { (hi & (1 << $0)) != 0 }
-            return [.aux(AuxButtons(buttons: buttons))]
+            guard length >= 5 else { return [] }
+
+            // Touch strips — bytes 1–4.
+            let leftRaw  = (UInt16(report[1]) << 8) | UInt16(report[2])
+            let rightRaw = (UInt16(report[3]) << 8) | UInt16(report[4])
+            let leftActive  = leftRaw  != 0
+            let rightActive = rightRaw != 0
+
+            // Express keys (4+4 split variant) — bytes 5–6.  Zero on PTZ-631W.
+            var buttons = [Bool](repeating: false, count: 8)
+            if length >= 7 {
+                let lo = report[5]
+                let hi = report[6]
+                buttons = (0..<4).map { (lo & (1 << $0)) != 0 }
+                        + (0..<4).map { (hi & (1 << $0)) != 0 }
+            }
+
+            return [.aux(AuxButtons(
+                buttons: buttons,
+                touchStrip1Active:    leftActive,
+                touchStrip1Position:  leftActive  ? UInt8(leftRaw.trailingZeroBitCount)  : 0xFF,
+                touchStrip2Active:    rightActive,
+                touchStrip2Position:  rightActive ? UInt8(rightRaw.trailingZeroBitCount) : 0xFF))]
         }
 
         if id == 0x80 {

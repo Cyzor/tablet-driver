@@ -253,6 +253,12 @@ final class TabletManager: ObservableObject {
             if aux.touchRingButtonDown != self.liveButtons.touchRingButtonDown {
                 self.liveButtons.touchRingButtonDown = aux.touchRingButtonDown
             }
+            if aux.touchStrip1Active != self.liveButtons.touchStrip1Active {
+                self.liveButtons.touchStrip1Active = aux.touchStrip1Active
+            }
+            if aux.touchStrip2Active != self.liveButtons.touchStrip2Active {
+                self.liveButtons.touchStrip2Active = aux.touchStrip2Active
+            }
         }
 
         // ── USB HID mouse button closure (KC-100 cordless mouse) ────────────────

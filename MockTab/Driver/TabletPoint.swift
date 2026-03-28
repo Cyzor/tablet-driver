@@ -54,6 +54,12 @@ struct AuxButtons {
     var touchRingButtonDown: Bool = false
     /// Absolute touch ring position, 0–71 (5° resolution).  0x7F = idle/no contact.
     var touchRingPosition: UInt8 = 0x7F
+    /// Intuos3 WS left touch strip.  0xFF = no contact; 0 = bottom zone, higher = up.
+    var touchStrip1Active: Bool = false
+    var touchStrip1Position: UInt8 = 0xFF
+    /// Intuos3 WS right touch strip.  Same encoding as strip 1.
+    var touchStrip2Active: Bool = false
+    var touchStrip2Position: UInt8 = 0xFF
 
     subscript(index: Int) -> Bool {
         guard index < buttons.count else { return false }
@@ -79,4 +85,7 @@ struct LiveButtonState: Equatable {
     var touchRingActive: Bool = false
     /// True while the touch ring center button is physically pressed.
     var touchRingButtonDown: Bool = false
+    /// Intuos3 WS touch strip states (0xFF = no contact, otherwise 0–12 zone).
+    var touchStrip1Active: Bool = false
+    var touchStrip2Active: Bool = false
 }

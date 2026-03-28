@@ -134,6 +134,9 @@ final class InputInjector {
     private var lastRingButtonDown = false
     /// Last observed touch ring position (0–71). 0x7F = no contact.
     private var lastRingPos: UInt8 = 0x7F
+    /// Last observed Intuos3 WS touch strip positions. 0xFF = no contact.
+    private var lastStrip1Pos: UInt8 = 0xFF
+    private var lastStrip2Pos: UInt8 = 0xFF
 
     // MARK: - Display bounds cache
 
@@ -397,6 +400,26 @@ final class InputInjector {
             }
         }
         lastRingPos = buttons.touchRingActive ? ringPos : 0x7F
+
+        // ── Touch strips (Intuos3 WS) ──────────────────────────────────────────
+        // Strips are linear (no wrap); each zone step maps 1:1 to a scroll event.
+        // Reuse touchRingMode — PTZ-631W has strips but no ring, so no conflict.
+        for (active, pos, lastPos) in [
+            (buttons.touchStrip1Active, buttons.touchStrip1Position, lastStrip1Pos),
+            (buttons.touchStrip2Active, buttons.touchStrip2Position, lastStrip2Pos),
+        ] {
+            if active, lastPos != 0xFF {
+                let delta = Int(pos) - Int(lastPos)
+                if delta != 0 {
+                    switch s.touchRingMode {
+                    case .scroll: postScrollWheelEvent(delta: delta, at: cursorPos)
+                    case .off:    break
+                    }
+                }
+            }
+        }
+        lastStrip1Pos = buttons.touchStrip1Active ? buttons.touchStrip1Position : 0xFF
+        lastStrip2Pos = buttons.touchStrip2Active ? buttons.touchStrip2Position : 0xFF
     }
 
     private func currentCursorPosition() -> CGPoint {

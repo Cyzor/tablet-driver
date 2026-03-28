@@ -1,6 +1,6 @@
 Wacom-PTH-850-Pen-Wireless-Pen-Works-2026-03-27
 
-Note:  Mostly works, but USB dongle or the tablet module may go to sleep when inactive.  Re-establishing a connection could require a unplugging and reconnecting both.  Pen is a slightly jittery but usable.
+Note:  Mostly works, but USB dongle or the tablet module may go to sleep when inactive.  Re-establishing a connection could require a unplugging and reconnecting both.  Pen is a slightly jittery, like using two mice at once.  Driver can be misleading if it successfully sees the dongle that's not actually communicating with a tablet.  Tablet's wireless module appears to draw power exclusively from onboard battery, which may be long dead by now.
 
 
 MockTab HID Capture

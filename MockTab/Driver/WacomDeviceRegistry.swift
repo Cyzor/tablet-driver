@@ -60,8 +60,10 @@ struct WacomDeviceSpec {
     let maxPressure:  Int
     /// Number of programmable express/side keys (0 if none).
     let buttonCount:  Int
-    /// True if this model has a capacitive touch ring or touch strip.
+    /// True if this model has a capacitive touch ring (Intuos Pro).
     let hasTouchRing: Bool
+    /// True if this model has dual capacitive touch strips (Intuos3 WS).
+    let hasTouchStrips: Bool
     /// True if the pen family includes an eraser tool type.
     let hasEraser:    Bool
     /// Feature report bytes to send once on open (first stage).
@@ -81,7 +83,7 @@ struct WacomDeviceSpec {
     init(
         productID: Int, name: String, parser: ReportParser,
         maxX: Int, maxY: Int, maxPressure: Int,
-        buttonCount: Int, hasTouchRing: Bool, hasEraser: Bool,
+        buttonCount: Int, hasTouchRing: Bool, hasTouchStrips: Bool = false, hasEraser: Bool,
         featureInit: [UInt8]?, seizeUSB: Bool,
         featureInit2: [UInt8]? = nil,
         featureInit2Delay: Double = 0.15
@@ -94,6 +96,7 @@ struct WacomDeviceSpec {
         self.maxPressure       = maxPressure
         self.buttonCount       = buttonCount
         self.hasTouchRing      = hasTouchRing
+        self.hasTouchStrips    = hasTouchStrips
         self.hasEraser         = hasEraser
         self.featureInit       = featureInit
         self.seizeUSB          = seizeUSB
@@ -251,7 +254,7 @@ enum WacomDeviceRegistry {
               featureInit2: [0x04, 0x00]),
         .init(productID: 0x00B5, name: "Intuos3 WS (PTZ-631W)",    // ✓ confirmed live
               parser: .intuos3, maxX: 54204, maxY: 31750, maxPressure: 2046,
-              buttonCount: 8, hasTouchRing: false, hasEraser: true,
+              buttonCount: 8, hasTouchRing: false, hasTouchStrips: true, hasEraser: true,
               featureInit: [0x02, 0x02], seizeUSB: false,
               featureInit2: [0x04, 0x00]),
         .init(productID: 0x00B7, name: "Intuos3 4×6 (PTZ-431W)",   // ⚠ estimated

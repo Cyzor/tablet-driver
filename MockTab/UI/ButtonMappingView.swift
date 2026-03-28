@@ -13,6 +13,11 @@ struct ButtonMappingView: View {
         return WacomDeviceRegistry.spec(for: pid)?.hasTouchRing == true
     }
 
+    private var hasTouchStrips: Bool {
+        guard let pid = productID else { return false }
+        return WacomDeviceRegistry.spec(for: pid)?.hasTouchStrips == true
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -71,6 +76,14 @@ struct ButtonMappingView: View {
                                       set: { settings.touchRingButtonBinding = $0 }))
                         touchRingRow(isActive: lb.touchRingActive)
                     }
+
+                    // ── Touch strips (Intuos3 WS) ────────────────────────────────
+                    if hasTouchStrips {
+                        Divider()
+                        Text("Touch Strips").font(.headline)
+                        touchStripRow("Left",  isActive: lb.touchStrip1Active)
+                        touchStripRow("Right", isActive: lb.touchStrip2Active)
+                    }
                 }
                 .padding()
             }
@@ -96,6 +109,30 @@ struct ButtonMappingView: View {
             .pickerStyle(.menu)
             .labelsHidden()
             .frame(maxWidth: 160, alignment: .leading)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(isActive ? Color.accentColor.opacity(0.12) : Color.clear)
+        )
+        .animation(.easeOut(duration: 0.07), value: isActive)
+    }
+
+    // MARK: - Touch strip row
+
+    @ViewBuilder
+    private func touchStripRow(_ label: String, isActive: Bool) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isActive ? Color.green : Color.clear)
+                .imageScale(.small)
+            Text(label)
+                .frame(width: 110, alignment: .leading)
+            Text("Scroll")
+                .foregroundStyle(.secondary)
+                .font(.system(.body, design: .monospaced))
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 8)
