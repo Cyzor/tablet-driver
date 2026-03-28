@@ -403,23 +403,32 @@ final class InputInjector {
 
         // ── Touch strips (Intuos3 WS) ──────────────────────────────────────────
         // Strips are linear (no wrap); each zone step maps 1:1 to a scroll event.
-        // Reuse touchRingMode — PTZ-631W has strips but no ring, so no conflict.
-        for (active, pos, lastPos) in [
-            (buttons.touchStrip1Active, buttons.touchStrip1Position, lastStrip1Pos),
-            (buttons.touchStrip2Active, buttons.touchStrip2Position, lastStrip2Pos),
-        ] {
-            if active, lastPos != 0xFF {
-                let delta = Int(pos) - Int(lastPos)
-                if delta != 0 {
-                    switch s.touchRingMode {
-                    case .scroll: postScrollWheelEvent(delta: delta, at: cursorPos)
-                    case .off:    break
-                    }
+
+        // Strip 1 (left).
+        let s1pos = buttons.touchStrip1Position
+        if buttons.touchStrip1Active, lastStrip1Pos != 0xFF {
+            let delta = Int(s1pos) - Int(lastStrip1Pos)
+            if delta != 0 {
+                switch s.touchStrip1Mode {
+                case .scroll: postScrollWheelEvent(delta: delta, at: cursorPos)
+                case .off:    break
                 }
             }
         }
-        lastStrip1Pos = buttons.touchStrip1Active ? buttons.touchStrip1Position : 0xFF
-        lastStrip2Pos = buttons.touchStrip2Active ? buttons.touchStrip2Position : 0xFF
+        lastStrip1Pos = buttons.touchStrip1Active ? s1pos : 0xFF
+
+        // Strip 2 (right).
+        let s2pos = buttons.touchStrip2Position
+        if buttons.touchStrip2Active, lastStrip2Pos != 0xFF {
+            let delta = Int(s2pos) - Int(lastStrip2Pos)
+            if delta != 0 {
+                switch s.touchStrip2Mode {
+                case .scroll: postScrollWheelEvent(delta: delta, at: cursorPos)
+                case .off:    break
+                }
+            }
+        }
+        lastStrip2Pos = buttons.touchStrip2Active ? s2pos : 0xFF
     }
 
     private func currentCursorPosition() -> CGPoint {

@@ -81,8 +81,14 @@ struct ButtonMappingView: View {
                     if hasTouchStrips {
                         Divider()
                         Text("Touch Strips").font(.headline)
-                        touchStripRow("Left",  isActive: lb.touchStrip1Active)
-                        touchStripRow("Right", isActive: lb.touchStrip2Active)
+                        touchStripRow("Left",  isActive: lb.touchStrip1Active,
+                                      binding: Binding(
+                                          get: { settings.touchStrip1Mode },
+                                          set: { settings.touchStrip1Mode = $0 }))
+                        touchStripRow("Right", isActive: lb.touchStrip2Active,
+                                      binding: Binding(
+                                          get: { settings.touchStrip2Mode },
+                                          set: { settings.touchStrip2Mode = $0 }))
                     }
                 }
                 .padding()
@@ -123,16 +129,22 @@ struct ButtonMappingView: View {
     // MARK: - Touch strip row
 
     @ViewBuilder
-    private func touchStripRow(_ label: String, isActive: Bool) -> some View {
+    private func touchStripRow(_ label: String, isActive: Bool,
+                              binding: Binding<TouchRingMode>) -> some View {
         HStack(spacing: 10) {
             Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(isActive ? Color.green : Color.clear)
                 .imageScale(.small)
             Text(label)
                 .frame(width: 110, alignment: .leading)
-            Text("Scroll")
-                .foregroundStyle(.secondary)
-                .font(.system(.body, design: .monospaced))
+            Picker("", selection: binding) {
+                ForEach(TouchRingMode.allCases, id: \.self) { mode in
+                    Text(mode.displayLabel).tag(mode)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .frame(maxWidth: 160, alignment: .leading)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 8)

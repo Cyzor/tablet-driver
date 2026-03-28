@@ -83,10 +83,16 @@ final class TabletSettings: ObservableObject {
     @Published var smoothingStrength:  Double = 0.0  { didSet { persist("smoothingStrength", smoothingStrength) } }
     @Published var doubleClickDistance: Double = 10.0 { didSet { persist("doubleClickDistance", doubleClickDistance) } }
 
-    // MARK: - Touch ring
+    // MARK: - Touch ring & strips
 
     @Published var touchRingMode: TouchRingMode = .scroll {
         didSet { persist("touchRingMode", touchRingMode.rawValue) }
+    }
+    @Published var touchStrip1Mode: TouchRingMode = .scroll {
+        didSet { persist("touchStrip1Mode", touchStrip1Mode.rawValue) }
+    }
+    @Published var touchStrip2Mode: TouchRingMode = .scroll {
+        didSet { persist("touchStrip2Mode", touchStrip2Mode.rawValue) }
     }
 
     // MARK: - Button bindings (JSON-encoded ButtonBinding)
@@ -233,6 +239,8 @@ final class TabletSettings: ObservableObject {
         ud.set(expressKeyRaw,          forKey: prefix + "expressKeyBindings")
         ud.set(touchRingButtonRaw,     forKey: prefix + "touchRingButtonBinding")
         ud.set(touchRingMode.rawValue, forKey: prefix + "touchRingMode")
+        ud.set(touchStrip1Mode.rawValue, forKey: prefix + "touchStrip1Mode")
+        ud.set(touchStrip2Mode.rawValue, forKey: prefix + "touchStrip2Mode")
         if let data = try? JSONEncoder().encode(pressureCurve) {
             ud.set(data, forKey: prefix + "pressureCurve")
         }
@@ -241,7 +249,8 @@ final class TabletSettings: ObservableObject {
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
             "proportionalMapping", "targetDisplayIndex", "smoothingStrength",
             "doubleClickDistance", "penButton1Binding", "penButton2Binding",
-            "expressKeyBindings", "touchRingButtonBinding", "touchRingMode", "pressureCurve"
+            "expressKeyBindings", "touchRingButtonBinding", "touchRingMode",
+            "touchStrip1Mode", "touchStrip2Mode", "pressureCurve"
         ]
 
         presets.append(preset)
@@ -265,7 +274,8 @@ final class TabletSettings: ObservableObject {
         let allKeys = ["activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
                        "proportionalMapping", "targetDisplayIndex", "smoothingStrength",
                        "doubleClickDistance", "penButton1Binding", "penButton2Binding",
-                       "expressKeyBindings", "touchRingButtonBinding", "touchRingMode", "pressureCurve"]
+                       "expressKeyBindings", "touchRingButtonBinding", "touchRingMode",
+                       "touchStrip1Mode", "touchStrip2Mode", "pressureCurve"]
         for key in allKeys { ud.removeObject(forKey: prefix + key) }
         presets.removeAll { $0.id == preset.id }
         // Remove app bindings that referenced this preset.
@@ -387,6 +397,8 @@ final class TabletSettings: ObservableObject {
         expressKeyRaw        = loadString("expressKeyBindings",     default: "")
         touchRingButtonRaw   = loadString("touchRingButtonBinding", default: "")
         touchRingMode        = TouchRingMode(rawValue: loadString("touchRingMode", default: TouchRingMode.scroll.rawValue)) ?? .scroll
+        touchStrip1Mode      = TouchRingMode(rawValue: loadString("touchStrip1Mode", default: TouchRingMode.scroll.rawValue)) ?? .scroll
+        touchStrip2Mode      = TouchRingMode(rawValue: loadString("touchStrip2Mode", default: TouchRingMode.scroll.rawValue)) ?? .scroll
         autoSwitchEnabled    = loadBool("autoSwitchEnabled",    default: false)
         loadPressureCurve()
         isLoading = false
