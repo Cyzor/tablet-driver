@@ -414,14 +414,70 @@ ring1   = d [codebrowser](https://codebrowser.dev/linux/linux/drivers/hid/wacom_
 
 ***
 
-## Parser Family 5 — `bamboo`
+## `bamboo` Parser — Full HID Decode
 
-**Devices:** CTT-460, CTH-460/461/470, CTL-460/660, and related consumer series
+**Kernel function:** `wacom_bpt_irq()` dispatching to `wacom_bpt_pen()` · **Report ID:** `0x10` · **Length:** 10 bytes
 
-**Report ID:** `0x10` · **Length:** 20 bytes · **Coordinates:** BE16
+The Bamboo line uses Report ID `0x10` (same as intuosV2) but with a **completely different, shorter** layout and no tool-serial negotiation. [codebrowser](https://codebrowser.dev/linux/linux/drivers/hid/wacom_wac.c.html)
 
-This parser is a **stub** in the registry — the decoder is not yet implemented. Entries exist solely for name resolution and future routing. The 20-byte BE16 format shares report ID `0x10` with `intuosV2` but is a completely different layout (Bamboo uses a much shorter report). Pen-only models in this line (CTL-460/660, CTL-470, CTL-471/472) that the registry reclassifies as `intuosV1` likely use the same 10-byte format as Intuos and can be decoded identically. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/16788129/3db156af-7cbe-421d-99b9-2d57494eaaa1/WacomDeviceRegistry.txt?AWSAccessKeyId=ASIA2F3EMEYE6EZH5TXL&Signature=UrFd389MAo4Sl3xCIAioOJsQXmI%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEC4aCXVzLWVhc3QtMSJHMEUCIQDbRwPAEaWPhqYK7EjZh9yEwE7gmBjWdyAH77M%2Bl21AQQIgBwmNya5VGp1Uamr%2BsACbuAF7N748kR9mUzYwjHI2YiAq%2FAQI9%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw2OTk3NTMzMDk3MDUiDPSzYah%2BXYdpB51A4CrQBKiK%2FhH8%2Fy3IJ38G1jfxEFcAyl35mLUtP6Uu8s69eVi5%2FU0R6FIz1qkQxQDWNhUSfNSVw16Y2ldGTC9DHm205EV1lXliUP1exPQim90O82FPyHKQUEMr4y62tggmCX%2BPOeFpfu4et6NIgrLRc%2BjLkSCNwfw18ZouMeWJCBbduZLMxeQADEiZ747y6G%2FnvlUVHjHUZex4V9CUpiR8BOe0rXwQ%2BtqM1Aj2fm9RH%2F5O6j4Ptazpp3rfe7pc7ECT9DK%2Boo7XdjoOPMHhDhMLzMplIjzILBOhgkJEIgFiUwcmk9fC6%2Fh0MfLaWbKtzYdDyp8OHHY4qeNclf6lkMOx89DbtH5B1wKv5DAyVOEalZ70PXn9mVEF%2FKCtiwOoYx%2BsE8MmynVIt7M6ErRw8hinrCEeV8DQaCgw8wTR0WmIlKQoCDoZPRbzXKGkIPEkc%2Bw1ypaoWXyk2BZQEQbjeYPv3KPF74Vvxqai1JXPuCGaiFwocUBg1ZzlSzCF%2BcNPhSCFgmiJcszQxlng%2BcF%2BjugFH2dBFV32zqula7yc1CkFDRZrT4YzTKWhG6N0zrtjZ9cAGBrCHJG1Q9MO22rFRCxW9H4KhZUqoLSf%2BaCwbtT%2B3y4DMzqegeJ2adO1OColS0pE%2FcBYE7a3eORo%2BVNm5%2FbsylSJbopmLnforgsyhyKK01qzPE2ARO2WgXqI5i3d%2FyCUHulDeDQ6ez6DfbjAxdCUiaZ0Xexl8saynbmBfGCOIelVKlExBxTzebgV0YJq6fDHf2F4yzZUFQuKynFI1ELSg9kgeWww77efzgY6mAF0Uir2dnH1om%2Bh17ON3yTmJfdDCk%2BuR8b2xXkitskwO3Au4tYQfqmcjJo6CW5lHbahfHKEu24c9sCDSapZoRGGGoXUwpXtPimvOSjOAKlfZ8rAoTTMsQerm%2BfhWwGywShk5XY4mbTUaqWkdJEAML2u9nEz34icU55%2B%2BVL0VRM58Ul%2BvFQ26zP6Z7ftWHW3JhoLCf7JkNxJBw%3D%3D&Expires=1774706384)
+### Pen / Eraser Report — `wacom_bpt2_pen()`
 
+```
+10  d1  d2  d3  d4  d5  d6  d7  d8  d9
+```
+
+| Byte(s) | Field | Formula |
+|---|---|---|
+| `d [github](https://github.com/OpenTabletDriver/OpenTabletDriver/issues/3204)` | Status byte | see table |
+| `d [opentabletdriver](https://opentabletdriver.net/Wiki/Documentation/ConfigurationGuide):d [codebrowser](https://codebrowser.dev/linux/linux/drivers/hid/wacom_wac.c.html)` | **X position** | `BE16(d [opentabletdriver](https://opentabletdriver.net/Wiki/Documentation/ConfigurationGuide):d [codebrowser](https://codebrowser.dev/linux/linux/drivers/hid/wacom_wac.c.html))` |
+| `d [reddit](https://www.reddit.com/r/wacom/comments/1pf2gah/guide_how_to_make_legacy_wacom_tablets_work_on/):d [reddit](https://www.reddit.com/r/wacom/comments/l2kffs/wacom_bamboo_pen_doesnt_move_the_cursor_but_my/)` | **Y position** | `BE16(d [reddit](https://www.reddit.com/r/wacom/comments/1pf2gah/guide_how_to_make_legacy_wacom_tablets_work_on/):d [reddit](https://www.reddit.com/r/wacom/comments/l2kffs/wacom_bamboo_pen_doesnt_move_the_cursor_but_my/))` |
+| `d [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/16788129/3db156af-7cbe-421d-99b9-2d57494eaaa1/WacomDeviceRegistry.txt):d [github](https://github.com/linuxwacom/wacom-hid-descriptors)` | **Pressure** | `(d [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/16788129/3db156af-7cbe-421d-99b9-2d57494eaaa1/WacomDeviceRegistry.txt) << 3) \| (d [github](https://github.com/linuxwacom/wacom-hid-descriptors) >> 5)` — 11-bit for 2047-max devices; `>> 1` if maxPressure ≤ 1023 |
+| `d [github](https://github.com/linuxwacom/wacom-hid-descriptors)` | **Tilt X** | `(d [github](https://github.com/linuxwacom/wacom-hid-descriptors) & 0x0F) - 8` — 4-bit signed (CTH-480/490 only) |
+| `d [reddit](https://www.reddit.com/r/AskElectronics/comments/1qke9d/need_usb_hid_report_descriptor_and_report_format/)` | **Tilt Y** | `(d [reddit](https://www.reddit.com/r/AskElectronics/comments/1qke9d/need_usb_hid_report_descriptor_and_report_format/) >> 4) - 8` — 4-bit signed (CTH-480/490 only) |
+
+### Status Byte `d [github](https://github.com/OpenTabletDriver/OpenTabletDriver/issues/3204)`
+
+| Bit | Field |
+|---|---|
+| `d [github](https://github.com/OpenTabletDriver/OpenTabletDriver/issues/3204) & 0x80` | **Proximity** (in range) |
+| `d [github](https://github.com/OpenTabletDriver/OpenTabletDriver/issues/3204) & 0x20` | **Proximity confirm** (alternate bit on some models) |
+| `(d [github](https://github.com/OpenTabletDriver/OpenTabletDriver/issues/3204) >> 3) & 0x03` | **Tool type**: `0`=Pen, `1`=Eraser, `2`=Mouse |
+| `d [github](https://github.com/OpenTabletDriver/OpenTabletDriver/issues/3204) & 0x02` | **BTN_STYLUS** (barrel button 1) |
+| `d [github](https://github.com/OpenTabletDriver/OpenTabletDriver/issues/3204) & 0x04` | **BTN_STYLUS2** (barrel button 2) |
+| `d [github](https://github.com/OpenTabletDriver/OpenTabletDriver/issues/3204) & 0x01` | **BTN_TOUCH** (tip contact) |
+
+No tool-serial or tool-ID mechanism — eraser is identified via the type bits in `d [github](https://github.com/OpenTabletDriver/OpenTabletDriver/issues/3204)` alone, not from a prior enter-prox packet. This means **no `ABS_MISC` tool-ID reporting** on Bamboo.
+
+### Tilt Availability
+
+Tilt (`ABS_TILT_X`, `ABS_TILT_Y`) only appears on CTH-480 and CTH-490 (the later "Intuos Pen & Touch" rebrand). All earlier CTH-460/470 and all CTL pen-only models report tilt as 0. [codebrowser](https://codebrowser.dev/linux/linux/drivers/hid/wacom_wac.c.html)
+
+### Pad Report — `wacom_bpt_pad()`
+
+The Bamboo pad is inline with the pen report (no separate pad Report ID):
+
+```
+10  d1  ...  d7  d8  d9
+```
+
+| Field | Formula | Models |
+|---|---|---|
+| **BTN_0** | `d [github](https://github.com/linuxwacom/wacom-hid-descriptors) & 0x08` | CTH-460/470/480/490 |
+| **BTN_1** | `d [github](https://github.com/linuxwacom/wacom-hid-descriptors) & 0x20` | CTH-460/470/480/490 |
+| **BTN_2** | `d [github](https://github.com/linuxwacom/wacom-hid-descriptors) & 0x10` | CTH-460/470/480/490 |
+| **BTN_3** | `d [github](https://github.com/linuxwacom/wacom-hid-descriptors) & 0x40` | CTH-460/470/480/490 |
+| **BTN_0** | `d [github](https://github.com/linuxwacom/wacom-hid-descriptors) & 0x01` | CTL-460/470 (pen-only, 2 keys) |
+| **BTN_1** | `d [github](https://github.com/linuxwacom/wacom-hid-descriptors) & 0x02` | CTL-460/470 (pen-only, 2 keys) |
+
+Pad proximity (the `ABS_MISC = PAD_DEVICE_ID` signal) fires when any button bit in `d [github](https://github.com/linuxwacom/wacom-hid-descriptors)` is non-zero; it clears on all-zero.
+
+### Touch — `wacom_bpt3_touch()`
+
+CTH models with touch (CTH-460/470/480/490) generate a **separate 20-byte multitouch report** on a second USB interface (Report ID `0x02`). This is not a pen-tablet HID report — it uses HID multitouch descriptors with up to 16 contact points. It is entirely separate from the pen interface and requires a distinct decoder. The pen interface report length stays 10 bytes regardless. [codebrowser](https://codebrowser.dev/linux/linux/drivers/hid/wacom_wac.c.html)
+
+### CTT-460 (Touch-Only)
+
+PID `0x00D0` has **no pen interface at all** — only the 20-byte multitouch touch interface. `maxPressure = 0` in your registry correctly signals this. There is nothing to decode on the pen path. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/16788129/3db156af-7cbe-421d-99b9-2d57494eaaa1/WacomDeviceRegistry.txt)
 ***
 
 ## Feature Init Summary

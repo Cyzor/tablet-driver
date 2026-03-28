@@ -49,15 +49,18 @@ final class WacomUniversalDevice: TabletDevice {
         self.spec = DigitizerSpec(
             maxX: deviceSpec.maxX,
             maxY: deviceSpec.maxY,
-            maxPressure: deviceSpec.maxPressure)
+            maxPressure: deviceSpec.maxPressure,
+            buttonCount: deviceSpec.buttonCount)
 
         switch deviceSpec.parser {
         case .intuosV2:
             self.decoder = IntuosV2Decoder()
         case .intuos3:
             self.decoder = Intuos3Decoder()
-        case .intuosV1, .graphire, .bamboo:
-            // graphire/bamboo should not reach here — caller checks hasLiveDecoder.
+        case .bamboo:
+            self.decoder = BambooDecoder()
+        case .intuosV1, .graphire:
+            // graphire should not reach here — caller checks hasLiveDecoder.
             self.decoder = IntuosV1Decoder()
         }
 

@@ -6,6 +6,9 @@ struct DigitizerSpec {
     var maxX: Int
     var maxY: Int
     var maxPressure: Int
+    /// Number of programmable express-key buttons on this device.
+    /// Used by BambooDecoder to select the correct pad-byte bit layout.
+    var buttonCount: Int = 0
 }
 
 protocol TabletDevice: AnyObject {

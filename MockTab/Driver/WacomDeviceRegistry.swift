@@ -627,10 +627,9 @@ enum WacomDeviceRegistry {
     }
 
     /// True when a fully-tested decoder exists for this device.
-    /// IntuosV1 and IntuosV2 are live; graphire and bamboo are stubs for
-    /// future Phase 2 decoder work.
+    /// graphire is the only remaining stub.
     static func hasLiveDecoder(for productID: Int) -> Bool {
         guard let s = spec(for: productID) else { return false }
-        return s.parser == .intuosV1 || s.parser == .intuosV2 || s.parser == .intuos3
+        return s.parser != .graphire
     }
 }
