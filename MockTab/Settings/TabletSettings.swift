@@ -122,10 +122,10 @@ final class TabletSettings: ObservableObject {
             guard !expressKeyRaw.isEmpty,
                   let data = expressKeyRaw.data(using: .utf8),
                   let arr = try? JSONDecoder().decode([ButtonBinding].self, from: data)
-            else { return Array(repeating: .none, count: 8) }
+            else { return Array(repeating: .none, count: 16) }
             var res = arr
-            while res.count < 8 { res.append(.none) }
-            return Array(res.prefix(8))
+            while res.count < 16 { res.append(.none) }
+            return Array(res.prefix(16))
         }
         set {
             guard let data = try? JSONEncoder().encode(newValue),
@@ -546,13 +546,23 @@ final class TabletSettings: ObservableObject {
                                   keyCode: UInt16(kVK_Space),
                                   modifierFlags: 0,
                                   keyLabel: "Space")
+        // 16-entry layout for dual-ring Cintiq devices (indices 0–15).
+        // Indices 0–2  = left  toggle buttons (near ring), 3–7  = left  express keys.
+        // Indices 8–10 = right toggle buttons (near ring), 11–15 = right express keys.
+        // Devices with only 8 buttons use indices 0–7; the upper 8 entries are ignored.
         expressKeyBindings = [
-            cmdZ,
-            redoZ,
-            space,
-            ButtonBinding(modifierOnly: .option),
-            ButtonBinding(modifierOnly: .control),
-            .none, .none, .none
+            cmdZ,                              // 0  left toggle 1
+            redoZ,                             // 1  left toggle 2
+            space,                             // 2  left toggle 3
+            ButtonBinding(modifierOnly: .option),   // 3  left key 4
+            ButtonBinding(modifierOnly: .control),  // 4  left key 5
+            .none, .none, .none,               // 5–7 left keys 6–8
+            cmdZ,                              // 8  right toggle 9  (mirror)
+            redoZ,                             // 9  right toggle 10 (mirror)
+            space,                             // 10 right toggle 11 (mirror)
+            ButtonBinding(modifierOnly: .option),   // 11 right key 12 (mirror)
+            ButtonBinding(modifierOnly: .control),  // 12 right key 13 (mirror)
+            .none, .none, .none,               // 13–15 right keys 14–16
         ]
     }
 

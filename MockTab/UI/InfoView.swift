@@ -31,7 +31,9 @@ struct InfoView: View {
                         livePoint:    tabletManager.livePoint,
                         liveButtons:  tabletManager.liveButtons,
                         activeToolID: tabletManager.activeToolID,
-                        registry:     DeviceRegistry.shared
+                        registry:     DeviceRegistry.shared,
+                        hasDualRings: tabletManager.connectedProductIDs
+                            .contains { WacomDeviceRegistry.spec(for: $0)?.hasDualRings == true }
                     )
                     Divider()
                     captureSection
@@ -425,6 +427,7 @@ private struct LiveInputView: View {
     let liveButtons:  LiveButtonState
     let activeToolID: String?
     let registry:     DeviceRegistry
+    var hasDualRings: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -454,12 +457,17 @@ private struct LiveInputView: View {
                 let lb    = liveButtons
 
                 liveRow(label: "Buttons") {
+                    let anyExpress = lb.expressKeys.contains(true)
                     HStack(spacing: 4) {
-                        if lb.tipDown    { tag("Tip") }
-                        if lb.eraserDown { tag("Eraser") }
+                        if lb.tipDown     { tag("Tip") }
+                        if lb.eraserDown  { tag("Eraser") }
                         if lb.button1Down { tag("B1") }
                         if lb.button2Down { tag("B2") }
-                        if !lb.tipDown && !lb.eraserDown && !lb.button1Down && !lb.button2Down {
+                        ForEach(0..<lb.expressKeys.count, id: \.self) { i in
+                            if lb.expressKeys[i] { tag("K\(i + 1)") }
+                        }
+                        if !lb.tipDown && !lb.eraserDown && !lb.button1Down
+                            && !lb.button2Down && !anyExpress {
                             Text("None").foregroundStyle(.tertiary).font(.caption2)
                         }
                     }
@@ -513,7 +521,7 @@ private struct LiveInputView: View {
                     }
                 }
 
-                liveRow(label: "Touch Ring") {
+                liveRow(label: hasDualRings ? "Ring — Left" : "Touch Ring") {
                     HStack(spacing: 6) {
                         Image(systemName: lb.touchRingActive
                               ? "checkmark.circle.fill" : "circle")
@@ -521,6 +529,19 @@ private struct LiveInputView: View {
                             .imageScale(.small)
                         Text(lb.touchRingActive ? "Active" : "Idle")
                             .foregroundStyle(lb.touchRingActive ? .primary : .tertiary)
+                    }
+                }
+
+                if hasDualRings {
+                    liveRow(label: "Ring — Right") {
+                        HStack(spacing: 6) {
+                            Image(systemName: lb.touchRing2Active
+                                  ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(lb.touchRing2Active ? Color.green : Color.secondary)
+                                .imageScale(.small)
+                            Text(lb.touchRing2Active ? "Active" : "Idle")
+                                .foregroundStyle(lb.touchRing2Active ? .primary : .tertiary)
+                        }
                     }
                 }
             }

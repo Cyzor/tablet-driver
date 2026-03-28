@@ -62,6 +62,9 @@ struct WacomDeviceSpec {
     let buttonCount:  Int
     /// True if this model has a capacitive touch ring (Intuos Pro).
     let hasTouchRing: Bool
+    /// True if this model has two touch rings (one per bezel), e.g. Cintiq 24HD.
+    /// Implies hasTouchRing.  The two rings share the same mode setting.
+    let hasDualRings: Bool
     /// True if this model has dual capacitive touch strips (Intuos3 WS).
     let hasTouchStrips: Bool
     /// True if the pen family includes an eraser tool type.
@@ -83,7 +86,8 @@ struct WacomDeviceSpec {
     init(
         productID: Int, name: String, parser: ReportParser,
         maxX: Int, maxY: Int, maxPressure: Int,
-        buttonCount: Int, hasTouchRing: Bool, hasTouchStrips: Bool = false, hasEraser: Bool,
+        buttonCount: Int, hasTouchRing: Bool, hasDualRings: Bool = false,
+        hasTouchStrips: Bool = false, hasEraser: Bool,
         featureInit: [UInt8]?, seizeUSB: Bool,
         featureInit2: [UInt8]? = nil,
         featureInit2Delay: Double = 0.15
@@ -96,6 +100,7 @@ struct WacomDeviceSpec {
         self.maxPressure       = maxPressure
         self.buttonCount       = buttonCount
         self.hasTouchRing      = hasTouchRing
+        self.hasDualRings      = hasDualRings
         self.hasTouchStrips    = hasTouchStrips
         self.hasEraser         = hasEraser
         self.featureInit       = featureInit
@@ -385,11 +390,11 @@ enum WacomDeviceRegistry {
               featureInit: [0x02, 0x02], seizeUSB: true),
         .init(productID: 0x00F4, name: "Cintiq 24HD (DTK-2400)",   // ✓ confirmed live
               parser: .intuosV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
-              buttonCount: 8, hasTouchRing: true, hasEraser: true,
+              buttonCount: 8, hasTouchRing: true, hasDualRings: true, hasEraser: true,
               featureInit: [0x02, 0x02], seizeUSB: true),
         .init(productID: 0x00F8, name: "Cintiq 24HD Touch (DTH-2400)", // ⚠ estimated
               parser: .intuosV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
-              buttonCount: 8, hasTouchRing: true, hasEraser: true,
+              buttonCount: 8, hasTouchRing: true, hasDualRings: true, hasEraser: true,
               featureInit: [0x02, 0x02], seizeUSB: true),
         .init(productID: 0x00FA, name: "Cintiq 22HD (DTK-2200)",   // ⚠ estimated
               parser: .intuosV1, maxX:  95840, maxY: 54090, maxPressure: 2047,

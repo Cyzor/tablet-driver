@@ -243,12 +243,15 @@ final class TabletManager: ObservableObject {
             context.injector.injectAux(buttons: aux, settings: context.settings)
             // Update UI only when state changed and Info tab is visible.
             guard infoViewVisible else { return }
-            let keys = (0..<8).map { aux[$0] }
+            let keys = (0..<16).map { aux[$0] }
             if keys != self.liveButtons.expressKeys {
                 self.liveButtons.expressKeys = keys
             }
             if aux.touchRingActive != self.liveButtons.touchRingActive {
                 self.liveButtons.touchRingActive = aux.touchRingActive
+            }
+            if aux.touchRing2Active != self.liveButtons.touchRing2Active {
+                self.liveButtons.touchRing2Active = aux.touchRing2Active
             }
             if aux.touchRingButtonDown != self.liveButtons.touchRingButtonDown {
                 self.liveButtons.touchRingButtonDown = aux.touchRingButtonDown

@@ -54,6 +54,9 @@ struct AuxButtons {
     var touchRingButtonDown: Bool = false
     /// Absolute touch ring position, 0–71 (5° resolution).  0x7F = idle/no contact.
     var touchRingPosition: UInt8 = 0x7F
+    /// Second touch ring (DTK-2400 right bezel).  Same encoding as touchRingPosition.
+    var touchRing2Active: Bool = false
+    var touchRing2Position: UInt8 = 0x7F
     /// Intuos3 WS left touch strip.  0xFF = no contact; 0 = bottom zone, higher = up.
     var touchStrip1Active: Bool = false
     var touchStrip1Position: UInt8 = 0xFF
@@ -80,11 +83,13 @@ struct LiveButtonState: Equatable {
     /// Side button 2 held.
     var button2Down: Bool = false
     /// Express key states (up to 8).
-    var expressKeys: [Bool] = Array(repeating: false, count: 8)
+    var expressKeys: [Bool] = Array(repeating: false, count: 16)
     /// True while a finger is actively touching the touch ring.
     var touchRingActive: Bool = false
     /// True while the touch ring center button is physically pressed.
     var touchRingButtonDown: Bool = false
+    /// Second touch ring (DTK-2400 right bezel).
+    var touchRing2Active: Bool = false
     /// Intuos3 WS touch strip states (0xFF = no contact, otherwise 0–12 zone).
     var touchStrip1Active: Bool = false
     var touchStrip2Active: Bool = false

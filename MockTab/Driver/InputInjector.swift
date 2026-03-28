@@ -130,10 +130,12 @@ final class InputInjector {
 
     // MARK: - Express key / touch ring state
 
-    private var lastAuxButtons    = [Bool](repeating: false, count: 8)
+    private var lastAuxButtons    = [Bool](repeating: false, count: 16)
     private var lastRingButtonDown = false
     /// Last observed touch ring position (0–71). 0x7F = no contact.
     private var lastRingPos: UInt8 = 0x7F
+    /// Last observed right touch ring position (DTK-2400). 0x7F = no contact.
+    private var lastRing2Pos: UInt8 = 0x7F
     /// Last observed Intuos3 WS touch strip positions. 0xFF = no contact.
     private var lastStrip1Pos: UInt8 = 0xFF
     private var lastStrip2Pos: UInt8 = 0xFF
@@ -366,7 +368,7 @@ final class InputInjector {
         let cursorPos = currentCursorPosition()
 
         // ── Express keys ───────────────────────────────────────────────────────
-        for i in 0..<8 {
+        for i in 0..<16 {
             let down = buttons[i]
             if down != lastAuxButtons[i] {
                 fireButtonAction(bindings[i], down: down, at: cursorPos)
@@ -400,6 +402,21 @@ final class InputInjector {
             }
         }
         lastRingPos = buttons.touchRingActive ? ringPos : 0x7F
+
+        // ── Touch ring 2 (DTK-2400 right bezel) — shares touchRingMode setting ──
+        let ring2Pos = buttons.touchRing2Position
+        if buttons.touchRing2Active, lastRing2Pos != 0x7F {
+            var delta = Int(ring2Pos) - Int(lastRing2Pos)
+            if delta >  36 { delta -= 72 }
+            if delta < -36 { delta += 72 }
+            if delta != 0 {
+                switch s.touchRingMode {
+                case .scroll: postScrollWheelEvent(delta: delta, at: cursorPos)
+                case .off:    break
+                }
+            }
+        }
+        lastRing2Pos = buttons.touchRing2Active ? ring2Pos : 0x7F
 
         // ── Touch strips (Intuos3 WS) ──────────────────────────────────────────
         // Strips are linear (no wrap); each zone step maps 1:1 to a scroll event.

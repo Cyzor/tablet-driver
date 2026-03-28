@@ -300,12 +300,42 @@ final class DTK2400Device: TabletDevice {
         }
     }
 
-    // MARK: - Report 0x0C: express keys
+    // MARK: - Report 0x0C: touch rings + express keys
+    //
+    // Confirmed layout (live capture + Linux kernel wacom_wac.c wacom_intuos_pad):
+    //   byte[1] — left  touch ring: raw absolute position, 0 = no contact, 1–255 = position
+    //   byte[2] — right touch ring: same encoding as byte[1]
+    //   byte[6] — express keys: bits 0–3 = left keys 0–3, bits 4–7 = right keys 4–7
+    //   byte[8] — right-side buttons 8–15 (bits 0–7); 0 if only 8 buttons present
+    //   bytes[3–5], [7], [9] — unused
+    //
+    // Ring positions are normalized from 0–255 to 0–71 to match the injector's
+    // 72-step wrap-aware delta logic.
 
     private func handleExpressKeys(report: UnsafePointer<UInt8>, length: CFIndex) {
-        guard length >= 2, let onAux = onAux else { return }
-        let keyByte = report[1]
-        onAux(AuxButtons(buttons: (0..<8).map { bit in (keyByte & (1 << bit)) != 0 }))
+        guard length >= 7, let onAux = onAux else { return }
+
+        let leftRingRaw   = report[1]
+        let leftRingActive = leftRingRaw != 0
+        let leftRingPos   = leftRingActive ? UInt8(Int(leftRingRaw) * 72 / 256) : UInt8(0x7F)
+
+        let rightRingRaw   = report[2]
+        let rightRingActive = rightRingRaw != 0
+        let rightRingPos   = rightRingActive ? UInt8(Int(rightRingRaw) * 72 / 256) : UInt8(0x7F)
+
+        // Left  buttons 0–7:  byte[6] bits 0–7
+        // Right buttons 8–15: byte[8] bits 0–7  (kernel formula: (data[8]<<8)|data[6])
+        let leftByte  = report[6]
+        let rightByte = length >= 9 ? report[8] : 0
+        let buttons   = (0..<8).map { bit in (leftByte  & (1 << bit)) != 0 }
+                      + (0..<8).map { bit in (rightByte & (1 << bit)) != 0 }
+
+        onAux(AuxButtons(
+            buttons: buttons,
+            touchRingActive: leftRingActive,
+            touchRingPosition: leftRingPos,
+            touchRing2Active: rightRingActive,
+            touchRing2Position: rightRingPos))
     }
 
     // MARK: - Tool-change packet (status bits 7:2 == 0xC0)

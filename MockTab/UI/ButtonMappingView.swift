@@ -8,15 +8,12 @@ struct ButtonMappingView: View {
     @ObservedObject var registry:      DeviceRegistry
     var productID: Int?
 
-    private var hasTouchRing: Bool {
-        guard let pid = productID else { return false }
-        return WacomDeviceRegistry.spec(for: pid)?.hasTouchRing == true
+    private var spec: WacomDeviceSpec? {
+        productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
-
-    private var hasTouchStrips: Bool {
-        guard let pid = productID else { return false }
-        return WacomDeviceRegistry.spec(for: pid)?.hasTouchStrips == true
-    }
+    private var hasTouchRing:   Bool { spec?.hasTouchRing   == true }
+    private var hasDualRings:   Bool { spec?.hasDualRings   == true }
+    private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,57 +35,12 @@ struct ButtonMappingView: View {
                     }
 
                     Divider()
+                    DeviceNameLabel(tabletManager: tabletManager, registry: registry)
 
-                    // ── Express keys ─────────────────────────────────────────────
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Express Keys").font(.headline)
-                        DeviceNameLabel(tabletManager: tabletManager, registry: registry)
-                    }
-
-                    Text("Up to 8 configurable express keys.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    VStack(spacing: 2) {
-                        ForEach(0..<8, id: \.self) { i in
-                            buttonRow("Key \(i + 1)",
-                                      isActive: lb.expressKeys[i],
-                                      binding: Binding(
-                                          get: { settings.expressKeyBindings[i] },
-                                          set: {
-                                              var updated = settings.expressKeyBindings
-                                              updated[i] = $0
-                                              settings.expressKeyBindings = updated
-                                          }
-                                      ))
-                        }
-                    }
-
-                    // ── Touch ring ───────────────────────────────────────────────
-                    if hasTouchRing {
-                        Divider()
-
-                        Text("Touch Ring").font(.headline)
-
-                        buttonRow("Center Button", isActive: lb.touchRingButtonDown,
-                                  binding: Binding(
-                                      get: { settings.touchRingButtonBinding },
-                                      set: { settings.touchRingButtonBinding = $0 }))
-                        touchRingRow(isActive: lb.touchRingActive)
-                    }
-
-                    // ── Touch strips (Intuos3 WS) ────────────────────────────────
-                    if hasTouchStrips {
-                        Divider()
-                        Text("Touch Strips").font(.headline)
-                        touchStripRow("Left",  isActive: lb.touchStrip1Active,
-                                      binding: Binding(
-                                          get: { settings.touchStrip1Mode },
-                                          set: { settings.touchStrip1Mode = $0 }))
-                        touchStripRow("Right", isActive: lb.touchStrip2Active,
-                                      binding: Binding(
-                                          get: { settings.touchStrip2Mode },
-                                          set: { settings.touchStrip2Mode = $0 }))
+                    if hasDualRings {
+                        dualSidedSection(lb: lb)
+                    } else {
+                        singleSidedSection(lb: lb)
                     }
                 }
                 .padding()
@@ -97,49 +49,126 @@ struct ButtonMappingView: View {
         }
     }
 
-    // MARK: - Touch ring row
+    // MARK: - Single-sided layout (most tablets)
 
     @ViewBuilder
-    private func touchRingRow(isActive: Bool) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(isActive ? Color.green : Color.clear)
-                .imageScale(.small)
-            Text("Touch Ring")
-                .frame(width: 110, alignment: .leading)
-            Picker("", selection: $settings.touchRingMode) {
-                ForEach(TouchRingMode.allCases, id: \.self) { mode in
-                    Text(mode.displayLabel).tag(mode)
-                }
+    private func singleSidedSection(lb: LiveButtonState) -> some View {
+        // ── Express keys ─────────────────────────────────────────────
+        Text("Express Keys").font(.headline)
+
+        VStack(spacing: 2) {
+            ForEach(0..<8, id: \.self) { i in
+                expressKeyRow(index: i, label: "Key \(i + 1)", lb: lb)
             }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .frame(maxWidth: 160, alignment: .leading)
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(isActive ? Color.accentColor.opacity(0.12) : Color.clear)
-        )
-        .animation(.easeOut(duration: 0.07), value: isActive)
+
+        // ── Touch ring ───────────────────────────────────────────────
+        if hasTouchRing {
+            Divider()
+            Text("Touch Ring").font(.headline)
+            buttonRow("Center Button", isActive: lb.touchRingButtonDown,
+                      binding: Binding(get: { settings.touchRingButtonBinding },
+                                       set: { settings.touchRingButtonBinding = $0 }))
+            touchRingRow("Touch Ring", isActive: lb.touchRingActive,
+                         mode: Binding(get: { settings.touchRingMode },
+                                       set: { settings.touchRingMode = $0 }))
+        }
+
+        // ── Touch strips (Intuos3 WS) ────────────────────────────────
+        if hasTouchStrips {
+            Divider()
+            Text("Touch Strips").font(.headline)
+            touchRingRow("Left",  isActive: lb.touchStrip1Active,
+                         mode: Binding(get: { settings.touchStrip1Mode },
+                                       set: { settings.touchStrip1Mode = $0 }))
+            touchRingRow("Right", isActive: lb.touchStrip2Active,
+                         mode: Binding(get: { settings.touchStrip2Mode },
+                                       set: { settings.touchStrip2Mode = $0 }))
+        }
     }
 
-    // MARK: - Touch strip row
+    // MARK: - Dual-sided layout (Cintiq 24HD and similar)
+    // Indices 0–2  = left  toggle buttons (near ring)
+    // Indices 3–7  = left  express keys
+    // Indices 8–10 = right toggle buttons (near ring, mirror)
+    // Indices 11–15 = right express keys (mirror)
+    // Both rings share the same mode setting (mirrored behaviour).
 
     @ViewBuilder
-    private func touchStripRow(_ label: String, isActive: Bool,
-                              binding: Binding<TouchRingMode>) -> some View {
+    private func dualSidedSection(lb: LiveButtonState) -> some View {
+        // ── Left side ────────────────────────────────────────────────
+        Text("Toggle Buttons — Left").font(.headline)
+        VStack(spacing: 2) {
+            ForEach(0..<3, id: \.self) { i in
+                expressKeyRow(index: i, label: "Button \(i + 1)", lb: lb)
+            }
+        }
+
+        Text("Express Keys — Left").font(.headline)
+        VStack(spacing: 2) {
+            ForEach(3..<8, id: \.self) { i in
+                expressKeyRow(index: i, label: "Key \(i - 2)", lb: lb)
+            }
+        }
+
+        Text("Touch Ring — Left").font(.headline)
+        touchRingRow("Touch Ring", isActive: lb.touchRingActive,
+                     mode: Binding(get: { settings.touchRingMode },
+                                   set: { settings.touchRingMode = $0 }))
+
+        Divider()
+
+        // ── Right side ───────────────────────────────────────────────
+        Text("Toggle Buttons — Right").font(.headline)
+        VStack(spacing: 2) {
+            ForEach(8..<11, id: \.self) { i in
+                expressKeyRow(index: i, label: "Button \(i - 7)", lb: lb)
+            }
+        }
+
+        Text("Express Keys — Right").font(.headline)
+        VStack(spacing: 2) {
+            ForEach(11..<16, id: \.self) { i in
+                expressKeyRow(index: i, label: "Key \(i - 10)", lb: lb)
+            }
+        }
+
+        Text("Touch Ring — Right").font(.headline)
+        touchRingRow("Touch Ring", isActive: lb.touchRing2Active,
+                     mode: Binding(get: { settings.touchRingMode },
+                                   set: { settings.touchRingMode = $0 }))
+    }
+
+    // MARK: - Express key row helper
+
+    @ViewBuilder
+    private func expressKeyRow(index: Int, label: String, lb: LiveButtonState) -> some View {
+        buttonRow(label,
+                  isActive: lb.expressKeys[index],
+                  binding: Binding(
+                      get: { settings.expressKeyBindings[index] },
+                      set: {
+                          var updated = settings.expressKeyBindings
+                          updated[index] = $0
+                          settings.expressKeyBindings = updated
+                      }
+                  ))
+    }
+
+    // MARK: - Touch ring / strip row
+
+    @ViewBuilder
+    private func touchRingRow(_ label: String, isActive: Bool,
+                               mode: Binding<TouchRingMode>) -> some View {
         HStack(spacing: 10) {
             Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(isActive ? Color.green : Color.clear)
                 .imageScale(.small)
             Text(label)
                 .frame(width: 110, alignment: .leading)
-            Picker("", selection: binding) {
-                ForEach(TouchRingMode.allCases, id: \.self) { mode in
-                    Text(mode.displayLabel).tag(mode)
+            Picker("", selection: mode) {
+                ForEach(TouchRingMode.allCases, id: \.self) { m in
+                    Text(m.displayLabel).tag(m)
                 }
             }
             .pickerStyle(.menu)
