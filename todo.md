@@ -1,10 +1,30 @@
 # MockTab — Open Tasks
 
-_Last updated: 2026-03-27 (session 3)_
+_Last updated: 2026-03-27 (session 4 research)_
 
 ---
 
 ## Blockers / Active Bugs
+
+### 🔴 PTH-860 Bluetooth broken
+macOS `AppleBluetoothMultitouch` kext claims the PTH-860 BLE device before MockTab can
+seize it, treating it as a Magic Trackpad.  MockTab receives 686 reports but cannot
+inject input.
+**Fix:** Call `kIOHIDOptionsTypeSeizeDevice` on the BLE HID handle.  If seize already
+happens but targets a different interface (BLE can present multiple logical HID
+interfaces), identify and seize the correct one.
+
+Three additional decoder changes needed once seize works:
+1. **Device signature** — byte 99 in 0x80 container: accept `CE 00` (pen absent) and
+   `B7 A5` (pen present) as valid PTH-860 identifiers (PTH-660 uses `6A 35`).
+   Secondary signature at byte 284: `64 7F 38 01` (PTH-860) vs `63 7F 38 01` (PTH-660).
+2. **Bytes[9:10]** — PTH-860 shows `0xFF F9` (barrel rotation, signed int16 LE = -7);
+   PTH-660 shows `0x00 0x00`.  Accept any value — do not validate zero.
+3. **Byte[13]** — PTH-860 shows altitude countdown (0x3F → 0x1D range); PTH-660 = 0x00.
+   Accept any value — do not validate zero.
+
+**Needs hardware + new BT capture with tip presses** to verify pressure decoder path
+after decoder fixes (current capture is hover-only).
 
 ### 🔴 DTK-2400 barrel button bits wrong
 EA/E0 alternating report frames: bit 1 is a frame discriminator, not the barrel button.
@@ -17,35 +37,12 @@ Current code uses a single-frame decode; rotation+pressure are only available wh
 the EA frame arrives, but position from that same frame is stale.
 **Needs:** Interleave EA/E0: cache EA pressure/rotation, apply on next E0 position frame.
 
-### 🔴 KC-100 USB mouse buttons: routing fix incomplete / unverified
-Structural fix in place (DecodeResult.mouseButton, IntuosV2Decoder, WacomUniversalDevice,
-InputInjector, TabletManager) but tested and still not working.  Two unresolved questions:
-
-**Q1 — Is the callback even firing?**
-HIDCapture log shows zero ID=0x01 reports.  If `IOHIDDeviceOpen(seize)` fails on the
-mouse interface, `WacomUniversalDevice.open()` returns early before registering the
-input report callback.  Add explicit open-result logging for the mouse interface to
-confirm seizure succeeds.
-
-**Q2 — Byte offset: is the report ID stripped or included?**
-`IOHIDDeviceRegisterInputReportCallback` behavior is disputed.  Existing 0x10 pen
-reports show `report[0]=0x10` in the capture log (ID included), which would make
-`report[1]` the button byte and our fix correct.  But if the mouse interface strips
-the report ID (so `report[0]`=buttons), then:
-  - `switch report[0]` only hits `case 0x01` when LEFT is the sole button pressed
-  - Our `.mouseButton(report[1])` reads relX instead of buttons — wrong
-  Fix for stripped-ID case: intercept at callback before `decode()`, using the
-  separate `reportID` parameter.
-
-**Needs:** Add mouse-interface-specific log entry to confirm (a) open succeeds,
-(b) callback fires on click, (c) raw bytes on click to determine offset.
-
-### 🟡 PTH-660 BT mouse: buttons almost certainly not in 0x80 container
-Exhaustive analysis of all 361 bytes across 1,337 BT reports found zero byte
-positions with press/release patterns.  Slot-4 flag byte (byte[43]) only ever shows
-0x00 or 0xE0 — bits 0–4 always zero.  BT mouse buttons may not be forwarded by
-tablet firmware over the BT transport at all.
-**Treat as unimplemented until proven otherwise.**
+### 🟡 DTK-2400 eraser detection not implemented
+Tool type (pen vs eraser) is encoded in byte[1] of the 0xC2 tool-announcement report:
+`0x22` = pen, `0xA2` = eraser.  Motion reports (0xE0/0xE1) are identical for both.
+Fix: on `status == 0xC2`, cache `byte[1] & 0x80` as current tool type; apply to all
+subsequent motion reports until the next 0xC2.
+Currently `eraser: false` hardcoded.  Serial number also available in bytes[4:8] of 0xC2.
 
 ---
 
@@ -69,6 +66,14 @@ Lowest priority — hardware is very old.
 
 ## Deferred / Future
 
+### KC-100 cordless mouse — DEPRIORITIZED
+KC-100-00 was designed for the Intuos 4 (PTK-xxx) line; never officially supported on PTH-660/860/850.
+Structural routing fix exists in code (DecodeResult.mouseButton, IntuosV2Decoder case 0x01,
+InputInjector.injectMouseButtons) but has a known byte-offset bug: `IOHIDDeviceRegisterInputReportCallback`
+strips the report ID, so the callback buffer starts with the button mask at `report[0]`, not `report[1]`.
+Cursor and scroll work; buttons don't.  BT buttons unimplemented in firmware.
+Leave as-is unless Intuos 4 hardware is added.
+
 ### ButtonMappingView redesign
 Current UI is functional but minimal. Planned improvements:
 - **Tip/eraser bindings** in ToolSettings + InputInjector (let user choose which mouse button)
@@ -84,33 +89,18 @@ not yet started.
 
 ### Touch ring: additional modes
 Currently supports `.scroll` and `.off`. Future modes could include zoom, brush size,
-layer opacity, or arbitrary key-per-direction bindings. The center button can now be
-mapped to any key/action — it could also toggle between ring modes.
+layer opacity, or arbitrary key-per-direction bindings.
 
 ### Cintiq Pro (DTH-xxx)
 Newer Cintiq Pro models use USB-C and a different HID report format.
 DTH-271 is now in the registry (from OTD, IntuosV2 parser) but unverified.
 
-### ~~Wireless: BT aux/pad reports~~ ✅ DONE
-Express keys, touch ring, and center button confirmed working over BT (2026-03-27).
-Pad sub-report is embedded at fixed offset 281 in the 0x80 container.
-Decoded in `IntuosV2Decoder.decodeBTPen` alongside pen data.
-
 ---
 
 ## Done (recent sessions)
 
-- [x] KC-100 USB mouse buttons + drag fully implemented (2026-03-27, session 2):
-      Root cause: buttons come via standard HID mouse interface (usagePage=0x01,
-      Report ID 0x01, 4 bytes) — separate from the 0x10 digitizer stream.
-      That interface was already seized and receiving reports; they silently dropped
-      in `decodeBLEPenReport` (guard length >= 11 failed for 4-byte reports).
-      Fix: 5 files — `TabletDevice.swift` (new `DecodeResult.mouseButton`),
-      `IntuosV2Decoder` (case 0x01 length <= 8 → `.mouseButton`),
-      `WacomUniversalDevice` (`onMouseButton` closure),
-      `InputInjector` (`injectMouseButtons`, `usbMouseLeftHeld` for drag events,
-      proximity-exit flush), `TabletManager` (wire closure to seized interface).
-      Result: L/R/Middle click + left-drag all work.  Double-click reuses resolveClick.
+- [x] KC-100 USB mouse cursor + scroll work (2026-03-27): buttons remain broken due to
+      byte-offset bug (see Deferred) and KC-100 being deprioritized.
 - [x] HID capture tool built-in: `HIDCapture.shared` singleton logs raw hex reports
       to `~/Desktop/mocktab_capture.txt`; toggle in InfoView.
 - [x] USB / BT capture analysis: KC-100 0x10 byte map fully confirmed (see memory);
