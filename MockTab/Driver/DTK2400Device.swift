@@ -7,23 +7,24 @@ import IOKit.hid
 /// Coordinate space: maxX=104480, maxY=65600, maxPressure=2047 (11-bit).
 /// Active area covers the full 1920×1200 display surface.
 ///
-/// **EA/E0 alternating report pattern:**
-///   Status bit 1 (0x02) is the EA/E0 discriminator — NOT barrel button 1.
-///   EA frames (bit 1 set): carry pressure or rotation data in report[6..7].
-///   E0 frames (bit 1 clear): carry barrel-button bits; report[6]=0 always.
+/// **Status byte (report[1]) encoding — per Linux kernel wacom_wac.c WACOM_24HD:**
+///   bit 0: tip switch (BTN_TOUCH); also the pressure LSB in the 11-bit formula
+///   bit 1: barrel button 1 (BTN_STYLUS)
+///   bit 2: barrel button 2 (BTN_STYLUS2)
+///   bits 7:5: 111 when in proximity (base value 0xE0)
 ///
-///   EA sub-types (bits 1+3):
-///     0xEA/0xEB (bits 1+3 set): Art Pen rotation frame — report[6..7] = rotation angle.
-///     0xE2/0xE3 (bit 1 set, bit 3 clear): pressure frame — report[6..7] = 11-bit pressure.
+/// **Packet type nibble:** `(status >> 1) & 0x0F`  — from `wacom_intuos_general()`
+///   0x00–0x03: general pen packet (position, pressure, tilt, all buttons)
+///   0x05:      Art Pen / Marker Pen rotation packet  (no fresh position)
+///   0x0A:      Airbrush second packet (wheel + tilt)
 ///
-/// **Tool-change packets:** status 0xC0 (bits 7,6 set, 5 clear) on proximity enter.
+/// **Tool-change packets:** status 0xC0–0xC3 (bits 7:2 == 0b110000) on enter prox.
 ///   Bytes 2–7 carry packed serial number and tool code per IntuosV1 protocol.
+///   Eraser detected via tool_id bit 3: `toolCode & 0x0008 != 0`.
 ///
-/// **Barrel button debounce:** E0 frames alternate 1:5 (set:clear) while a button
-///   is held.  Clear-counter threshold of 7 survives the gap without false release.
-///
-/// **Grip Pen bare-tap:** hardware limitation — pressure sensor not activated without
-///   barrel button.  Report ID 0x01 tip-switch provides ground-truth contact signal.
+/// **Barrel button debounce:** the device pulses the barrel button bit approximately
+///   1:5 (set:clear) while a button is held.  Clear-counter threshold of 7 survives
+///   the gap without false release.
 final class DTK2400Device: TabletDevice {
 
     let spec = DigitizerSpec(maxX: 104480, maxY: 65600, maxPressure: 2047)
@@ -33,27 +34,21 @@ final class DTK2400Device: TabletDevice {
     private let onAux: ((AuxButtons) -> Void)?
     private let onToolEnter: ((ToolIdentity) -> Void)?
     private var reportBuffer = [UInt8](repeating: 0, count: 10)
+
+    // ── Position and pen state ───────────────────────────────────────────────
     private var lastX = 0
     private var lastY = 0
-
-    // ── Pressure state ──────────────────────────────────────────────────────
-    private var lastEAPressure = 0
-
-    // ── Rotation ────────────────────────────────────────────────────────────
+    private var lastPressure = 0
+    private var lastTiltX = 0
+    private var lastTiltY = 0
     private var lastRotation: Double = 0.0
-
-    // ── All-frame hover counter ─────────────────────────────────────────────
-    // Counts EVERY frame (EA + E0 + rotation) since the last contact-zone
-    // pressure EA.  Reset only by rawPressure >= tipContactThreshold in a
-    // non-rotation EA frame.  When it reaches the threshold → force release.
-    private var framesSinceLastContactEA = 0
-    private static let artPenHoverThreshold  = 35   // ~263 ms at 133 Hz
-    private static let gripPenHoverThreshold = 50   // ~375 ms safety net
-
-    private static let tipContactThreshold = 81
+    private var lastHoverDistance = 0
 
     // ── Tip-switch (Report ID 0x01) ─────────────────────────────────────────
     private var lastTipSwitch: Bool = false
+    // Minimum synthetic pressure injected when tip-switch fires but 0x02 pressure
+    // reads zero (grip-pen bare-tap; hardware limitation).
+    private static let tipContactThreshold = 81
 
     // ── Button debounce ─────────────────────────────────────────────────────
     private var lastButton1: Bool = false
@@ -62,15 +57,10 @@ final class DTK2400Device: TabletDevice {
     private var btn2ClearCount = 0
     private static let buttonClearThreshold = 7
 
-    // ── Tool identity ───────────────────────────────────────────────────────
+    // ── Tool identity ────────────────────────────────────────────────────────
     private var currentSerial: UInt32 = 0
     private var currentToolCode: UInt16 = 0
     private var isEraser: Bool = false
-    /// True when the current tool produces rotation EA frames (Art Pen).
-    /// Detected from the first EA frame's status bits in each proximity session.
-    private var isArtPen: Bool = false
-    /// Whether the first EA frame has been seen in the current proximity session.
-    private var seenFirstEA: Bool = false
 
     init(
         device: IOHIDDevice,
@@ -135,13 +125,14 @@ final class DTK2400Device: TabletDevice {
             return
         }
 
-        // ── Report 0x0C: express keys (8 keys + touch strips) ───────────────
+        // ── Report 0x0C: express keys + touch rings ──────────────────────────
         if id == 0x0C {
             handleExpressKeys(report: report, length: length)
             return
         }
 
-        guard length >= 10, id == 0x02 || id == 0x10 else { return }
+        // WACOM_24HD pen reports use only Report ID 0x02.
+        guard length >= 10, id == 0x02 else { return }
 
         let status = report[1]
 
@@ -152,7 +143,6 @@ final class DTK2400Device: TabletDevice {
         }
 
         let inProximity = (status & 0x20) != 0  // bit 5
-        let highConf    = (status & 0x40) != 0   // bit 6
 
         // ── Proximity-out ────────────────────────────────────────────────────
         if !inProximity {
@@ -167,119 +157,91 @@ final class DTK2400Device: TabletDevice {
             return
         }
 
-        // ── Low confidence: position unreliable ─────────────────────────────
-        guard highConf else {
-            onTablet(
-                TabletPoint(
-                    x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
-                    pressure: 0, maxPressure: spec.maxPressure,
-                    tiltX: 0, tiltY: 0, rotation: lastRotation,
-                    penButton1: lastButton1, penButton2: lastButton2,
-                    eraser: isEraser, inProximity: true, hoverDistance: 0))
-            return
-        }
+        // ── Barrel buttons from every in-proximity frame ─────────────────────
+        // Kernel: BTN_STYLUS = d[1] & 0x02, BTN_STYLUS2 = d[1] & 0x04.
+        // The device pulses the bit ~1:5 while held; debounce with clear-counter.
+        let curBtn1 = (status & 0x02) != 0
+        let curBtn2 = (status & 0x04) != 0
 
-        // ── Coordinate decode (IntuosV1 17-bit) ─────────────────────────────
-        let x = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
-        let y = ((Int(report[5]) | Int(report[4]) << 8) << 1) | (Int(report[9]) & 1)
-
-        // All-frame hover counter — incremented every frame; reset only by
-        // contact-zone pressure EA frames.
-        framesSinceLastContactEA += 1
-
-        let isEA = (status & 0x02) != 0
-
-        if isEA {
-            let isRotation = (status & 0x0A) == 0x0A  // bits 1+3 both set
-
-            // Detect Art Pen from first EA frame's status bits.
-            if !seenFirstEA {
-                seenFirstEA = true
-                isArtPen = isRotation
-            }
-
-            if isRotation {
-                // ── Art Pen rotation frame ───────────────────────────────────
-                let rawRot = (Int(report[6]) << 3) | ((Int(report[7]) >> 5) & 7)
-                let signedRot = (report[7] & 0x20) != 0 ? rawRot - 1024 : rawRot
-                var degrees = Double(signedRot) * 360.0 / 1024.0
-                if degrees < 0 { degrees += 360.0 }
-                lastRotation = degrees
-
-            } else {
-                // ── Normal pressure frame (0xE2/0xE3) ───────────────────────
-                let rawPressure =
-                    (Int(report[6]) << 3)
-                    | ((Int(report[7] & 0xC0)) >> 5)
-                    | (Int(status) & 1)
-
-                if rawPressure >= Self.tipContactThreshold {
-                    lastEAPressure = rawPressure
-                    framesSinceLastContactEA = 0
-                } else if rawPressure == 0 {
-                    // Zero-pressure interleave: preserve lastEAPressure.
-                } else {
-                    // Hover zone (1–80): pen lifting off surface.
-                    if lastEAPressure > 0 {
-                        lastEAPressure = 0
-                        framesSinceLastContactEA = 0
-                    }
-                }
-            }
-
+        if curBtn1 {
+            btn1ClearCount = 0
+            lastButton1 = true
         } else {
-            // ── E0 frame: barrel-button channel ─────────────────────────────
-            let curBtn1 = (status & 0x04) != 0
-            let curBtn2 = (status & 0x10) != 0
-
-            if curBtn1 {
-                btn1ClearCount = 0
-                lastButton1 = true
-            } else {
-                btn1ClearCount += 1
-                if btn1ClearCount >= Self.buttonClearThreshold {
-                    lastButton1 = false
-                }
-            }
-
-            if curBtn2 {
-                btn2ClearCount = 0
-                lastButton2 = true
-            } else {
-                btn2ClearCount += 1
-                if btn2ClearCount >= Self.buttonClearThreshold {
-                    lastButton2 = false
-                }
-            }
+            btn1ClearCount += 1
+            if btn1ClearCount >= Self.buttonClearThreshold { lastButton1 = false }
+        }
+        if curBtn2 {
+            btn2ClearCount = 0
+            lastButton2 = true
+        } else {
+            btn2ClearCount += 1
+            if btn2ClearCount >= Self.buttonClearThreshold { lastButton2 = false }
         }
 
-        // ── All-frame hover timeout ─────────────────────────────────────────
-        let timeout = isArtPen ? Self.artPenHoverThreshold : Self.gripPenHoverThreshold
-        if lastEAPressure > 0 && framesSinceLastContactEA >= timeout {
-            lastEAPressure = 0
-            framesSinceLastContactEA = 0
+        // ── Packet type nibble: (status >> 1) & 0x0F ─────────────────────────
+        let typeNibble = (Int(status) >> 1) & 0x0F
+
+        if typeNibble == 0x05 {
+            // ── Art Pen / Marker Pen rotation packet ─────────────────────────
+            // Kernel formula (wacom_intuos_general, type 0x05):
+            //   t = (d[6]<<3) | ((d[7]>>5) & 7)
+            //   ABS_Z = (d[7]&0x20) ? ((t>900) ? (t-1)/2-1350 : (t-1)/2+450) : 450-t/2
+            // ABS_Z range: -900..+899 in 0.5° steps; map to 0–360°.
+            let t = (Int(report[6]) << 3) | ((Int(report[7]) >> 5) & 7)
+            let absZ: Int
+            if (report[7] & 0x20) != 0 {
+                absZ = (t > 900) ? ((t - 1) / 2 - 1350) : ((t - 1) / 2 + 450)
+            } else {
+                absZ = 450 - t / 2
+            }
+            // absZ is in [-900, +899]; shift to [0, 1799], scale to 0–360°.
+            var degrees = Double(absZ + 900) / 1800.0 * 360.0
+            if degrees < 0   { degrees += 360.0 }
+            if degrees >= 360 { degrees -= 360.0 }
+            lastRotation = degrees
+
+        } else if typeNibble <= 0x03 {
+            // ── General pen packet: position, pressure, tilt ──────────────────
+            // Kernel: X = (BE16(d2:d3)<<1) | ((d9>>1)&1) — 17-bit
+            let x = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
+            let y = ((Int(report[5]) | Int(report[4]) << 8) << 1) | (Int(report[9]) & 1)
+
+            // Kernel: pressure = (d6<<3) | ((d7&0xC0)>>5) | (d1&1) — 11-bit, max 2047
+            let rawPressure =
+                (Int(report[6]) << 3)
+                | ((Int(report[7]) & 0xC0) >> 5)
+                | (Int(status) & 1)
+
+            // Hover distance: top 6 bits of report[9]; bottom 2 bits are X/Y LSBs.
+            let hoverDist = Int(report[9]) >> 2
+
+            // Kernel tilt formula (signed, ±63):
+            //   tiltX = (((d7<<1) & 0x7E) | (d8>>7)) - 64
+            //   tiltY = (d8 & 0x7F) - 64
+            let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64
+            let tiltYRaw = (Int(report[8]) & 0x7F) - 64
+
+            lastX = x
+            lastY = y
+            lastPressure = rawPressure
+            lastHoverDistance = hoverDist
+            lastTiltX = tiltXRaw
+            lastTiltY = tiltYRaw
         }
-
-        // ── Tilt decode ─────────────────────────────────────────────────────
-        let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64
-        let tiltYRaw = (Int(report[8]) & 0x7F) - 64
-
-        lastX = x
-        lastY = y
+        // type 0x0A (airbrush wheel) — not yet decoded; falls through using cached state.
 
         onTablet(
             TabletPoint(
-                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: lastEAPressure, maxPressure: spec.maxPressure,
-                tiltX: Double(tiltXRaw) / 63.0,
-                tiltY: Double(tiltYRaw) / 63.0,
+                x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: lastPressure, maxPressure: spec.maxPressure,
+                tiltX: Double(lastTiltX) / 63.0,
+                tiltY: Double(lastTiltY) / 63.0,
                 rotation: lastRotation,
                 penButton1: lastButton1,
                 penButton2: lastButton2,
                 eraser: isEraser,
                 inProximity: true,
-                hoverDistance: Int(report[9])
-            ))
+                hoverDistance: lastHoverDistance))
     }
 
     // MARK: - Report 0x01: physical tip-switch
@@ -290,13 +252,13 @@ final class DTK2400Device: TabletDevice {
         lastTipSwitch = tipDown
 
         if tipDown {
-            if lastEAPressure == 0 {
-                lastEAPressure = Self.tipContactThreshold
-                framesSinceLastContactEA = 0
+            // Safety net: if pressure formula hasn't crossed the contact threshold yet
+            // (grip-pen bare-tap hardware limitation), inject minimum contact pressure.
+            if lastPressure == 0 {
+                lastPressure = Self.tipContactThreshold
             }
         } else {
-            lastEAPressure = 0
-            framesSinceLastContactEA = 0
+            lastPressure = 0
         }
     }
 
@@ -353,8 +315,8 @@ final class DTK2400Device: TabletDevice {
 
         currentSerial   = serial
         currentToolCode = toolCode
-        isEraser = (toolCode & 0x000F) == 0x000A
-            || (toolCode & 0x0FFF) == 0x0804
+        // Kernel (wacom_intuos_get_tool_type): eraser detected by tool_id bit 3.
+        isEraser = (toolCode & 0x0008) != 0
 
         onToolEnter?(
             ToolIdentity(
@@ -367,15 +329,15 @@ final class DTK2400Device: TabletDevice {
     // MARK: - State reset
 
     private func resetProximityState() {
-        lastEAPressure = 0
+        lastPressure = 0
         lastTipSwitch = false
-        framesSinceLastContactEA = 0
         lastButton1 = false
         lastButton2 = false
         lastRotation = 0.0
+        lastTiltX = 0
+        lastTiltY = 0
+        lastHoverDistance = 0
         btn1ClearCount = 0
         btn2ClearCount = 0
-        seenFirstEA = false
-        isArtPen = false
     }
 }

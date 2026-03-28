@@ -26,23 +26,17 @@ Three additional decoder changes needed once seize works:
 **Needs hardware + new BT capture with tip presses** to verify pressure decoder path
 after decoder fixes (current capture is hover-only).
 
-### 🔴 DTK-2400 barrel button bits wrong
-EA/E0 alternating report frames: bit 1 is a frame discriminator, not the barrel button.
-Barrel button is at a different bit position — not yet determined from live capture.
-**Needs:** DTK-2400 hardware connected + console logging to identify correct byte/bit.
-
-### 🔴 DTK-2400 EA/E0 pressure merging not implemented
-DTK-2400 sends pressure in EA frames and X/Y in E0 frames alternately.
-Current code uses a single-frame decode; rotation+pressure are only available when
-the EA frame arrives, but position from that same frame is stale.
-**Needs:** Interleave EA/E0: cache EA pressure/rotation, apply on next E0 position frame.
-
-### 🟡 DTK-2400 eraser detection not implemented
-Tool type (pen vs eraser) is encoded in byte[1] of the 0xC2 tool-announcement report:
-`0x22` = pen, `0xA2` = eraser.  Motion reports (0xE0/0xE1) are identical for both.
-Fix: on `status == 0xC2`, cache `byte[1] & 0x80` as current tool type; apply to all
-subsequent motion reports until the next 0xC2.
-Currently `eraser: false` hardcoded.  Serial number also available in bytes[4:8] of 0xC2.
+### 🟡 DTK-2400 pen decoder — needs hardware verification
+Per Linux kernel `wacom_intuos_general()` / `WACOM_24HD`, the 0x02 pen report was
+overhauled (2026-03-28):
+- **Barrel buttons**: now read from every frame via `d1 & 0x02` / `d1 & 0x04` per kernel.
+  The old EA/E0 alternating-frame interpretation was incorrect.
+- **Pressure**: kernel formula `(d6<<3)|((d7&0xC0)>>5)|(d1&1)` — 11-bit, unchanged.
+- **Eraser detection**: now `toolCode & 0x0008 != 0` (kernel tool_id bit 3) instead of
+  the old heuristic `& 0x000F == 0x000A`.
+- **Hover distance**: now `report[9] >> 2` (top 6 bits); bottom 2 bits are X/Y LSBs.
+- **Art Pen rotation**: kernel two-branch formula (`absZ` ±900 half-degree steps).
+All changes require live hardware testing to confirm correct behavior.
 
 ---
 
