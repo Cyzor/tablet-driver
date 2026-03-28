@@ -26,6 +26,7 @@ final class TabletManager: ObservableObject {
     @Published var livePoint: TabletPoint? = nil
 
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
+    private var shimObservers: [NSObjectProtocol] = []
 
     // MARK: - Legacy published state
 
@@ -116,6 +117,7 @@ final class TabletManager: ObservableObject {
                     .deviceDisconnected(device)
             }, ctx)
 
+        setupShimBridge()
         IOHIDManagerScheduleWithRunLoop(
             manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
         let ret = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -127,7 +129,31 @@ final class TabletManager: ObservableObject {
         }
     }
 
+    // MARK: - Adobe shim bridge
+
+    /// Subscribe to distributed notifications posted by WacomShim when Adobe apps
+    /// send eSendTabletEvent Apple Events requesting a replay of the last tablet event.
+    private func setupShimBridge() {
+        let dn = DistributedNotificationCenter.default()
+        let pointer = dn.addObserver(
+            forName: NSNotification.Name("com.cyzor.mocktab.shim.replayPointer"),
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.activeContext?.injector.replayPointerEvent()
+        }
+        let proximity = dn.addObserver(
+            forName: NSNotification.Name("com.cyzor.mocktab.shim.replayProximity"),
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.activeContext?.injector.replayProximityEvent()
+        }
+        shimObservers = [pointer, proximity]
+    }
+
     func stop() {
+        let dn = DistributedNotificationCenter.default()
+        for obs in shimObservers { dn.removeObserver(obs) }
+        shimObservers.removeAll()
         IOHIDManagerUnscheduleFromRunLoop(
             manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))

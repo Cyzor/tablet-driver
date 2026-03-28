@@ -140,6 +140,15 @@ final class InputInjector {
     private var lastStrip1Pos: UInt8 = 0xFF
     private var lastStrip2Pos: UInt8 = 0xFF
 
+    // MARK: - Adobe shim replay cache
+    //
+    // Populated on every inject() call so WacomShim can re-emit the last
+    // tablet event in response to an Apple Events eSendTabletEvent request.
+
+    private(set) var shimLastPoint:    TabletPoint? = nil
+    private(set) var shimLastScreen:   CGPoint      = .zero
+    private(set) var shimLastPressure: Double        = 0.0
+
     // MARK: - Display bounds cache
 
     private var cachedDisplayBounds: CGRect = .zero
@@ -221,6 +230,9 @@ final class InputInjector {
             )
         }
         let screenPoint = smoothedPoint
+        shimLastPoint    = point
+        shimLastScreen   = screenPoint
+        shimLastPressure = pressure
 
         // ── Jitter tracking (hover only, every report) ─────────────────────────
         if !tipDown {
@@ -309,6 +321,30 @@ final class InputInjector {
         if point.mouseWheelDelta != 0 {
             postScrollWheelEvent(delta: point.mouseWheelDelta, at: screenPoint)
         }
+    }
+
+    // MARK: - Adobe shim replay
+
+    /// Re-emits the last tablet pointer event.
+    /// Called by TabletManager when WacomShim receives an eSendTabletEvent(eEventPointer)
+    /// Apple Event from Adobe Photoshop / Illustrator.
+    func replayPointerEvent() {
+        guard let point = shimLastPoint else { return }
+        postTabletPointerEvent(at: shimLastScreen, pressure: shimLastPressure, point: point)
+        let dragging = lastTipDown || (activeToolIsMouse && usbMouseLeftHeld)
+        if dragging {
+            postMouseDrag(button: activeButton, at: shimLastScreen, pressure: shimLastPressure)
+        } else {
+            postMouseMoved(at: shimLastScreen)
+        }
+    }
+
+    /// Re-emits the last proximity event.
+    /// Called when WacomShim receives eSendTabletEvent(eEventProximity) from Adobe.
+    func replayProximityEvent() {
+        guard shimLastPoint != nil else { return }
+        postProximityEvent(entering: lastProximity, at: shimLastScreen,
+                           eraser: shimLastPoint?.eraser ?? false)
     }
 
     // MARK: - USB HID mouse button injection (KC-100 cordless mouse)

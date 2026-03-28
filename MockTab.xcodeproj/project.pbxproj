@@ -43,6 +43,10 @@
 		AA000048 /* IntuosV1Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000048 /* IntuosV1Decoder.swift */; };
 		AA000050 /* Intuos3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* Intuos3Decoder.swift */; };
 		AA000051 /* BambooDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000051 /* BambooDecoder.swift */; };
+		AA000060 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000060 /* main.swift */; };
+		AA000061 /* ShimApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000061 /* ShimApp.swift */; };
+		AA000062 /* WacomAppleEventHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000062 /* WacomAppleEventHandler.swift */; };
+		AA000063 /* WacomShim.app in CopyFiles */ = {isa = PBXBuildFile; fileRef = AB000065 /* WacomShim.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -84,10 +88,37 @@
 		AB000047 /* IntuosV2Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV2Decoder.swift; sourceTree = "<group>"; };
 		AB000048 /* IntuosV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV1Decoder.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB000060 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		AB000061 /* ShimApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShimApp.swift; sourceTree = "<group>"; };
+		AB000062 /* WacomAppleEventHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomAppleEventHandler.swift; sourceTree = "<group>"; };
+		AB000063 /* WacomShim/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AB000064 /* WacomShim.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WacomShim.entitlements; sourceTree = "<group>"; };
+		AB000065 /* WacomShim.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WacomShim.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AD000013 /* Embed Helpers */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Helpers";
+			dstSubfolderSpec = 16;
+			files = (
+				AA000063 /* WacomShim.app in CopyFiles */,
+			);
+			name = "Embed Helpers";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AD000011 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AD000022 /* Frameworks (WacomShim) */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -185,19 +216,51 @@
 			isa = PBXGroup;
 			children = (
 				AB000099 /* MockTab.app */,
+				AB000065 /* WacomShim.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		AC000020 /* WacomShim */ = {
+			isa = PBXGroup;
+			children = (
+				AB000060 /* main.swift */,
+				AB000061 /* ShimApp.swift */,
+				AB000062 /* WacomAppleEventHandler.swift */,
+				AB000063 /* WacomShim/Info.plist */,
+				AB000064 /* WacomShim.entitlements */,
+			);
+			path = WacomShim;
 			sourceTree = "<group>";
 		};
 		AC000099 = {
 			isa = PBXGroup;
 			children = (
 				AC000000 /* MockTab */,
+				AC000020 /* WacomShim */,
 				AC000010 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
+/* Begin PBXContainerItemProxy section */
+		AD000031 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AF000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AD000020;
+			remoteInfo = WacomShim;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		AD000030 /* WacomShim dependency */ = {
+			isa = PBXTargetDependency;
+			target = AD000020 /* WacomShim */;
+			targetProxy = AD000031 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXNativeTarget section */
 		AD000001 /* MockTab */ = {
@@ -207,14 +270,32 @@
 				AD000010 /* Sources */,
 				AD000011 /* Frameworks */,
 				AD000012 /* Resources */,
+				AD000013 /* Embed Helpers */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AD000030 /* WacomShim dependency */,
+			);
+			name = MockTab;
+			productName = MockTab;
+			productReference = AB000099 /* MockTab.app */;
+			productType = "com.apple.product-type.application";
+		};
+		AD000020 /* WacomShim */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AE000020 /* Build configuration list for PBXNativeTarget "WacomShim" */;
+			buildPhases = (
+				AD000021 /* Sources */,
+				AD000022 /* Frameworks (WacomShim) */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = MockTab;
-			productName = MockTab;
-			productReference = AB000099 /* MockTab.app */;
+			name = WacomShim;
+			productName = WacomShim;
+			productReference = AB000065 /* WacomShim.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -228,6 +309,9 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					AD000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					AD000020 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -246,6 +330,7 @@
 			projectRoot = "";
 			targets = (
 				AD000001 /* MockTab */,
+				AD000020 /* WacomShim */,
 			);
 		};
 /* End PBXProject section */
@@ -300,6 +385,16 @@
 				AA000034 /* PresetsView.swift in Sources */,
 				AA000040 /* DevicesView.swift in Sources */,
 				AA000041 /* TabStatusBar.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AD000021 /* Sources (WacomShim) */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000060 /* main.swift in Sources */,
+				AA000061 /* ShimApp.swift in Sources */,
+				AA000062 /* WacomAppleEventHandler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -479,6 +574,52 @@
 			};
 			name = Release;
 		};
+		AE000022 /* Debug (WacomShim) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				CODE_SIGN_ENTITLEMENTS = WacomShim/WacomShim.entitlements;
+				CODE_SIGN_IDENTITY = "MockTab Dev";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WacomShim/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.wacom.TabletDriver";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AE000023 /* Release (WacomShim) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				CODE_SIGN_ENTITLEMENTS = WacomShim/WacomShim.entitlements;
+				CODE_SIGN_IDENTITY = "MockTab Dev";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WacomShim/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.wacom.TabletDriver";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -496,6 +637,15 @@
 			buildConfigurations = (
 				AE000012 /* Debug */,
 				AE000013 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AE000020 /* Build configuration list for PBXNativeTarget "WacomShim" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AE000022 /* Debug */,
+				AE000023 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

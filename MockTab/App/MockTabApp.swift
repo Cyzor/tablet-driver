@@ -42,6 +42,8 @@ struct MockTabApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
+    private var shimProcess: Process?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         if !AXIsProcessTrusted() {
             let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true]
@@ -55,10 +57,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             TabletManager.shared.start()
         }
 
+        spawnShim()
+
         // Only open a fresh window on first launch — subsequent launches
         // restore their windows via PreferencesWindowController.restoreWindows().
         DispatchQueue.main.async {
             PreferencesWindowController.shared.showIfNoSavedSession()
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        shimProcess?.terminate()
+        shimProcess = nil
+    }
+
+    private func spawnShim() {
+        // WacomShim.app is embedded at MockTab.app/Contents/Helpers/WacomShim.app
+        // via the "Embed Helpers" CopyFiles build phase.
+        let shimURL = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Helpers/WacomShim.app/Contents/MacOS/WacomShim")
+        guard FileManager.default.isExecutableFile(atPath: shimURL.path) else {
+            print("AppDelegate: WacomShim not found in bundle — Adobe pressure fix inactive")
+            return
+        }
+        let proc = Process()
+        proc.executableURL = shimURL
+        proc.terminationHandler = { [weak self] _ in
+            DispatchQueue.main.async { self?.shimProcess = nil }
+        }
+        do {
+            try proc.run()
+            shimProcess = proc
+            print("AppDelegate: WacomShim launched (pid \(proc.processIdentifier))")
+        } catch {
+            print("AppDelegate: failed to launch WacomShim — \(error)")
         }
     }
 
