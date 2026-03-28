@@ -1,0 +1,195 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║              SESSION 5: CLI + JSON PROFILES — RESUMPTION START HERE          ║
+║                                                                              ║
+║  Last updated: 2026-03-28                                                   ║
+║  Status: Architecture planned, Phase 1 ready to implement                   ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+WHAT HAPPENED IN SESSION 5
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+User asked: "Could we add a CLI for older OS versions + JSON profile export?"
+
+Answer: ✅ HIGHLY FEASIBLE — Very low effort, clean architecture supports it.
+
+Decision: Two-phase implementation:
+  • Phase 1 (1–2 hours NOW)    — Lock schema, validate architecture
+  • Phase 2 (4–8 hours LATER)   — Full CLI when GUI is stable (~6–8 weeks)
+
+
+WHAT YOU NEED TO KNOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Architecture is already split cleanly:
+
+  SwiftUI GUI (menu bar app)
+       ↓ (depends on)
+  Settings Layer (TabletSettings, Presets) ← ALREADY CODABLE ✓
+       ↓ (depends on)
+  Driver Layer (TabletManager, IOKit) ← PURE SWIFT, NO UI DEPS ✓
+       ↓ (depends on)
+  Foundation + IOKit
+
+CLI reuses Settings + Driver layers. Only loses UI layer.
+
+
+WHAT NEEDS DOING (NEXT SESSION)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Phase 1 Light Setup (1–2 hours)
+
+Create 4 files:
+  1. MockTab/Settings/Profile.swift           (new Codable struct)
+  2. MockTab/Settings/TabletSettings.swift    (add export/import methods)
+  3. MockTab/example-profile.json             (schema documentation)
+  4. MockTabTests/ProfileCodingTests.swift    (round-trip JSON test)
+
+All code is ready to copy-paste. See:
+  → Notes/Session-5-Code-Snippets-Ready-To-Use.md
+
+
+WHERE TO START
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Choose your path:
+
+┌─ Need 2-minute overview?
+│  → Read: CLAUDE.md (Quick Resumption Guide section)
+│
+├─ Need 5-minute summary?
+│  → Read: Notes/Session-5-Quick-Reference.md
+│
+├─ Ready to implement Phase 1?
+│  → Use: Notes/Session-5-Code-Snippets-Ready-To-Use.md
+│  → Time: 1–2 hours (copy 4 code blocks, build & test)
+│
+├─ Want full design details?
+│  → Read: Notes/Session-5-CLI-JSON-Profiles-Plan.md
+│
+├─ Want technical deep dive?
+│  → Read: Notes/Architectural-Assessment-CLI-Feasibility.md
+│
+└─ Want to navigate all docs?
+   → Read: Notes/Session-5-INDEX.md
+
+
+KEY FACTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Feasibility:        ✅ Highly feasible
+Risk (Phase 1):     🟢 Very low (no GUI changes)
+Risk (Phase 2):     🟡 Low-medium (depends on Settings stability)
+Effort (Phase 1):   1–2 hours
+Effort (Phase 2):   4–8 hours
+Timeline (Phase 2): 6–8 weeks (wait for GUI feature-complete)
+Total effort:       5–10 hours across 2–3 months
+
+Approach chosen:    JSON file profiles (not UserDefaults sharing)
+Why JSON?           More portable, human-editable, future-proof
+
+
+CODE IS READY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+All code snippets are in:
+  Notes/Session-5-Code-Snippets-Ready-To-Use.md
+
+You can literally copy-paste:
+  • 37-line Profile.swift struct
+  • 28-line export/import methods
+  • 50-line example JSON
+  • 25-line unit test
+
+Build & test:
+  $ xcodebuild test -project MockTab.xcodeproj
+
+
+DOCUMENTATION CREATED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Notes/Session-5-CLI-JSON-Profiles-Plan.md
+  → 387 lines, full implementation guide
+
+✓ Notes/Architectural-Assessment-CLI-Feasibility.md
+  → 430 lines, technical assessment
+
+✓ Notes/Session-5-Quick-Reference.md
+  → 230 lines, one-page summary
+
+✓ Notes/Session-5-Code-Snippets-Ready-To-Use.md
+  → 427 lines, copy-paste code + tests
+
+✓ Notes/Session-5-INDEX.md
+  → 214 lines, documentation map
+
+✓ CLAUDE.md (Quick Resumption Guide section)
+  → 50 lines, 2-minute context for next session
+
+✓ todo.md (Phase 1 & 2 specs)
+  → 240 new lines
+
+✓ progress.md (Session 5 summary)
+  → 118 new lines
+
+
+NEXT STEPS (RECOMMENDED)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Session 6 (next week):
+
+1. Open Notes/Session-5-Code-Snippets-Ready-To-Use.md
+2. Create MockTab/Settings/Profile.swift (copy File 1)
+3. Add methods to TabletSettings.swift (copy File 2)
+4. Create MockTab/example-profile.json (copy File 3)
+5. Create MockTabTests/ProfileCodingTests.swift (copy File 4)
+6. Build & test: xcodebuild test -project MockTab.xcodeproj
+7. Update todo.md + progress.md to mark Phase 1 complete
+
+Expected time: 1–2 hours
+Expected result: Profile struct + export/import + passing unit test
+
+
+WHY THIS TIMING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Phase 1 (now):
+  • Forces schema clarity before Settings design changes further
+  • Validates all types are Codable
+  • Takes 1–2 hours (minimal commitment)
+  • Zero risk (no shipped code)
+
+Phase 2 (later):
+  • Waits for Settings design to stabilize
+  • Full CLI becomes trivial once schema is locked
+  • Users get value when they actually need it
+  • Can be built without disrupting GUI work
+
+
+QUESTIONS?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Architecture?   → Notes/Architectural-Assessment-CLI-Feasibility.md
+Code?           → Notes/Session-5-Code-Snippets-Ready-To-Use.md
+Timeline?       → Notes/Session-5-CLI-JSON-Profiles-Plan.md
+Quick ref?      → Notes/Session-5-Quick-Reference.md
+All docs?       → Notes/Session-5-INDEX.md
+
+
+GOOD LUCK!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This is a straightforward implementation with zero risk.
+All code is prepared. You've got this!
+
+Estimated completion (Phase 1): 1–2 hours
+Estimated value unlock (Phase 2): 6–8 weeks
+
+Happy coding! 🎉
+
+
+_Session 5 complete. Documentation ready for seamless resumption._
+_Any Claude client can pick this up and proceed._
+

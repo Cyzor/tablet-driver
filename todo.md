@@ -1,6 +1,6 @@
 # MockTab — Open Tasks
 
-_Last updated: 2026-03-27 (session 4 research)_
+_Last updated: 2026-03-28 (session 5 — CLI/JSON profiles planned)_
 
 ---
 
@@ -43,6 +43,240 @@ Tool type (pen vs eraser) is encoded in byte[1] of the 0xC2 tool-announcement re
 Fix: on `status == 0xC2`, cache `byte[1] & 0x80` as current tool type; apply to all
 subsequent motion reports until the next 0xC2.
 Currently `eraser: false` hardcoded.  Serial number also available in bytes[4:8] of 0xC2.
+
+---
+
+## Active Feature: CLI + JSON Profile Export (Option 2)
+
+_Status: Planning phase — Light implementation scheduled before feature-complete GUI_
+
+### Design decision (2026-03-28)
+Implement **light setup now** (1–2 hours), full CLI later when GUI stabilizes.
+
+**Why early?**
+- Forces architectural clarity on what's exportable *before* locking in settings schema
+- Codable conformance check catches serialization issues early
+- JSON format becomes a "contract" that keeps settings stable across refactors
+- When GUI is feature-complete, full CLI implementation is straightforward
+
+**Why not wait?**
+- Settings models are still volatile; locking JSON format early might constrain design
+- Full CLI isn't needed until GUI is stable anyway
+
+### Phase 1: Light Setup (1–2 hours, THIS SESSION)
+
+#### 1.1 Create `Profile.swift` (new file)
+**Location:** `MockTab/Settings/Profile.swift`
+
+Portable snapshot of device + tool settings, Codable for JSON export/import:
+
+```swift
+import Foundation
+
+/// A portable profile that can be exported to/imported from JSON.
+/// Contains a snapshot of device and tool settings (no per-tool serials yet).
+struct Profile: Codable, Equatable {
+    var name: String
+    var deviceModel: String  // e.g. "Wacom Intuos Pro M"
+    
+    // Core mappings
+    var tabletAreaX: Double
+    var tabletAreaY: Double
+    var tabletAreaWidth: Double
+    var tabletAreaHeight: Double
+    var proportionalMapping: Bool
+    var targetDisplayIndex: Int
+    
+    // Pressure & smoothing
+    var pressureCurve: BezierCurve
+    var smoothingStrength: Double
+    
+    // Button mappings (all ButtonBinding, already Codable)
+    var penButton1: ButtonBinding
+    var penButton2: ButtonBinding
+    var tipBinding: ButtonBinding
+    var eraserBinding: ButtonBinding
+    
+    // Aux
+    var touchRingMode: String  // raw value: "scroll", "off"
+    var touchRingButtonBinding: ButtonBinding
+    
+    // Future: per-tool settings by serial (Phase 2)
+    var toolSettingsPerSerial: [String: ToolSnapshot]? = nil
+}
+
+/// Snapshot of per-tool (per-pen-serial) settings.
+/// Planned for Phase 2 (per-serial tool support).
+struct ToolSnapshot: Codable, Equatable {
+    var serial: String
+    var pressureCurve: BezierCurve
+    var smoothingStrength: Double
+    var penButton1: ButtonBinding
+    var penButton2: ButtonBinding
+}
+```
+
+#### 1.2 Add export/import methods to TabletSettings
+**File:** `MockTab/Settings/TabletSettings.swift`
+
+Add two methods:
+
+```swift
+/// Export current device settings as a portable JSON profile.
+func exportCurrentAsProfile(name: String, deviceName: String) -> Profile {
+    Profile(
+        name: name,
+        deviceModel: deviceName,
+        tabletAreaX: activeAreaX,
+        tabletAreaY: activeAreaY,
+        tabletAreaWidth: activeAreaWidth,
+        tabletAreaHeight: activeAreaHeight,
+        proportionalMapping: proportionalMapping,
+        targetDisplayIndex: targetDisplayIndex,
+        pressureCurve: pressureCurve,
+        smoothingStrength: smoothingStrength,
+        penButton1: activeTool.penButton1Binding,
+        penButton2: activeTool.penButton2Binding,
+        tipBinding: activeTool.tipBinding,
+        eraserBinding: activeTool.eraserBinding,
+        touchRingMode: touchRingMode.rawValue,
+        touchRingButtonBinding: activeTool.tipBinding  // TODO: add dedicated UI field
+    )
+}
+
+/// Import a profile, applying all settings to the current device.
+func importProfile(_ profile: Profile) {
+    activeAreaX = profile.tabletAreaX
+    activeAreaY = profile.tabletAreaY
+    activeAreaWidth = profile.tabletAreaWidth
+    activeAreaHeight = profile.tabletAreaHeight
+    proportionalMapping = profile.proportionalMapping
+    targetDisplayIndex = profile.targetDisplayIndex
+    pressureCurve = profile.pressureCurve
+    smoothingStrength = profile.smoothingStrength
+    activeTool.penButton1Binding = profile.penButton1
+    activeTool.penButton2Binding = profile.penButton2
+    activeTool.tipBinding = profile.tipBinding
+    activeTool.eraserBinding = profile.eraserBinding
+    if let mode = TouchRingMode(rawValue: profile.touchRingMode) {
+        touchRingMode = mode
+    }
+    // TODO: activeTool.touchRingButtonBinding = profile.touchRingButtonBinding
+}
+```
+
+#### 1.3 Create example JSON profile
+**Location:** `MockTab/example-profile.json` (or in Notes/)
+
+Document the JSON format users will work with:
+
+```json
+{
+  "name": "Creative Work",
+  "deviceModel": "Wacom Intuos Pro M",
+  "tabletAreaX": 0.0,
+  "tabletAreaY": 0.0,
+  "tabletAreaWidth": 216.0,
+  "tabletAreaHeight": 135.0,
+  "proportionalMapping": true,
+  "targetDisplayIndex": 0,
+  "pressureCurve": {
+    "p1": { "x": 0.25, "y": 0.25 },
+    "p2": { "x": 0.75, "y": 0.75 }
+  },
+  "smoothingStrength": 0.5,
+  "penButton1": {
+    "kind": "rightClick",
+    "keyCode": 0,
+    "modifierFlags": 0,
+    "keyLabel": ""
+  },
+  "penButton2": {
+    "kind": "middleClick",
+    "keyCode": 0,
+    "modifierFlags": 0,
+    "keyLabel": ""
+  },
+  "tipBinding": {
+    "kind": "leftClick",
+    "keyCode": 0,
+    "modifierFlags": 0,
+    "keyLabel": ""
+  },
+  "eraserBinding": {
+    "kind": "rightClick",
+    "keyCode": 0,
+    "modifierFlags": 0,
+    "keyLabel": ""
+  },
+  "touchRingMode": "scroll",
+  "touchRingButtonBinding": {
+    "kind": "none",
+    "keyCode": 0,
+    "modifierFlags": 0,
+    "keyLabel": ""
+  }
+}
+```
+
+#### 1.4 Unit test: round-trip JSON
+**File:** Create `MockTabTests/ProfileCodingTests.swift`
+
+```swift
+import XCTest
+@testable import MockTab
+
+final class ProfileCodingTests: XCTestCase {
+    
+    func testProfileRoundTrip() throws {
+        let original = Profile(
+            name: "Test Profile",
+            deviceModel: "Wacom Intuos Pro M",
+            tabletAreaX: 10, tabletAreaY: 20,
+            tabletAreaWidth: 100, tabletAreaHeight: 60,
+            proportionalMapping: true,
+            targetDisplayIndex: 1,
+            pressureCurve: .linear,
+            smoothingStrength: 0.5,
+            penButton1: .rightClick,
+            penButton2: .middleClick,
+            tipBinding: .leftClick,
+            eraserBinding: .rightClick,
+            touchRingMode: "scroll",
+            touchRingButtonBinding: .none
+        )
+        
+        let encoded = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Profile.self, from: encoded)
+        
+        XCTAssertEqual(original, decoded)
+    }
+}
+```
+
+### Phase 2: Full CLI Implementation (4–8 hours, WHEN GUI STABLE)
+
+Once `TabletSettings` design is locked (~1–2 months):
+
+1. **Create CLI target** — new macOS command-line executable in Xcode
+2. **Share settings code** — move `Profile.swift`, `TabletSettings`, `ToolSettings`, 
+   `BezierCurve`, `ButtonBinding` to shared framework or copy to CLI target
+3. **Implement commands:**
+   ```
+   mocktab-cli profile export <name> --out profile.json
+   mocktab-cli profile import <path.json>
+   mocktab-cli profile list
+   mocktab-cli devices list
+   mocktab-cli status
+   ```
+
+### Why this works
+
+✅ **Architecture:** Settings are already UI-agnostic (use UserDefaults directly)
+✅ **Models:** Preset, ButtonBinding, BezierCurve, ToolSettings already Codable
+✅ **Format:** JSON is human-editable; profiles portable across machines
+✅ **Stable contract:** Profile.swift is the schema; GUI respects it during refactors
+✅ **Timeline:** Light now (1–2h), heavy later (~8h), zero pressure to ship CLI immediately
 
 ---
 
@@ -94,6 +328,15 @@ layer opacity, or arbitrary key-per-direction bindings.
 ### Cintiq Pro (DTH-xxx)
 Newer Cintiq Pro models use USB-C and a different HID report format.
 DTH-271 is now in the registry (from OTD, IntuosV2 parser) but unverified.
+
+---
+
+## Deferred decisions
+
+### CLI/JSON target OS versions
+The CLI *could* target macOS 10.14+ by avoiding SwiftUI + MenuBarExtra.
+Driver code is 100% compatible (IOKit is ancient).
+Deferred: implement GUI-only first, measure user demand, then backport CLI if needed.
 
 ---
 
