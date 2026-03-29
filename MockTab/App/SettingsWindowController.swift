@@ -171,8 +171,38 @@ final class SettingsWindowController: NSWindowController {
         // @Published UI writes when nobody is looking at live data.
         // Both "Info" (pen coordinates/pressure) and "Buttons" (live indicators)
         // consume livePoint/liveButtons, so either tab enables the updates.
-        tabVC.onTabSelected = { label in
-            TabletManager.shared.infoViewVisible = (label == "Info" || label == "Buttons")
+        // Also check window focus: only update when this window is key (active).
+        let updateVisibility = { [weak self, weak window] in
+            guard let self else { return }
+            let label = self.tabVC.tabViewItems[safe: self.tabVC.selectedTabViewItemIndex]?.label ?? ""
+            let isInfoTab = (label == "Info" || label == "Buttons")
+            let isKeyWindow = window?.isKeyWindow ?? false
+            Task { @MainActor in
+                TabletManager.shared.infoViewVisible = isInfoTab && isKeyWindow
+            }
+        }
+
+        tabVC.onTabSelected = { [weak self] _ in
+            guard self != nil else { return }
+            updateVisibility()
+        }
+
+        // Update when window gains/loses focus.
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: window, queue: .main
+        ) { [weak self] _ in
+            guard self != nil else { return }
+            updateVisibility()
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification,
+            object: window, queue: .main
+        ) { _ in
+            Task { @MainActor in
+                TabletManager.shared.infoViewVisible = false
+            }
         }
 
         // Clear the flag when the window closes.
@@ -227,8 +257,10 @@ final class SettingsWindowController: NSWindowController {
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         // Sync the Info-tab visibility flag for whichever tab is already selected.
+        // Only set true if the window is key (in focus) and tab is Info or Buttons.
         let label = tabVC.tabViewItems[safe: tabVC.selectedTabViewItemIndex]?.label
-        TabletManager.shared.infoViewVisible = (label == "Info" || label == "Buttons")
+        TabletManager.shared.infoViewVisible =
+            (label == "Info" || label == "Buttons") && window?.isKeyWindow == true
     }
 
     func showTab(at index: Int) {

@@ -82,6 +82,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.async {
             PreferencesWindowController.shared.showIfNoSavedSession()
         }
+
+        // Track app focus to gate live state updates.  When MockTab is backgrounded,
+        // stop publishing livePoint/liveButtons to save CPU and battery.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidResignActive),
+            name: NSApplication.willResignActiveNotification,
+            object: nil)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -110,6 +123,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             print("AppDelegate: failed to launch WacomShim — \(error)")
         }
+    }
+
+    @objc
+    private func appDidBecomeActive() {
+        TabletManager.shared.appIsFrontmost = true
+    }
+
+    @objc
+    private func appDidResignActive() {
+        TabletManager.shared.appIsFrontmost = false
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

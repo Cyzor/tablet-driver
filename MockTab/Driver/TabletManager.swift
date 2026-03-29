@@ -68,9 +68,14 @@ final class TabletManager: ObservableObject {
     //   2. uiUpdateCounter — when the Info tab IS visible, further throttle to
     //      ~16 Hz so SwiftUI layout work stays negligible.
 
-    /// Set true by SettingsWindowController when the Info tab is frontmost.
-    /// When false, livePoint and liveButtons are never written, eliminating
-    /// all SwiftUI rendering overhead while other tabs or no window is open.
+    /// True when MockTab is the frontmost application. Set by AppDelegate on
+    /// didBecomeActive/willResignActive. Combined with infoViewVisible to gate updates.
+    @Published var appIsFrontmost: Bool = false
+
+    /// Set true by SettingsWindowController when the Info or Buttons tab is frontmost
+    /// in the active window. Combined with appIsFrontmost: both must be true to update
+    /// livePoint/liveButtons, eliminating all SwiftUI overhead when MockTab is in the
+    /// background or a different tab is active.
     var infoViewVisible: Bool = false
 
     private var uiUpdateCounter = 0
@@ -253,10 +258,10 @@ final class TabletManager: ObservableObject {
             context.injector.inject(point: point, settings: context.settings)
 
             // ── UI state — gated + throttled ─────────────────────────────────
-            // Skip entirely when the Info tab isn't visible.  This eliminates
-            // every @Published write — and therefore every SwiftUI invalidation —
-            // during normal drawing use.
-            guard infoViewVisible else { return }
+            // Skip entirely when MockTab is in the background OR the Info/Buttons
+            // tab isn't visible. This eliminates every @Published write during
+            // normal drawing use, including when MockTab is backgrounded.
+            guard appIsFrontmost && infoViewVisible else { return }
 
             if !point.inProximity {
                 // Proximity exit always publishes immediately so UI clears.
@@ -290,8 +295,8 @@ final class TabletManager: ObservableObject {
             guard let self, let context else { return }
             // Inject immediately — no throttle on actual key events.
             context.injector.injectAux(buttons: aux, settings: context.settings)
-            // Update UI only when state changed and Info tab is visible.
-            guard infoViewVisible else { return }
+            // Update UI only when app is frontmost, state changed, and Info/Buttons tab is visible.
+            guard appIsFrontmost && infoViewVisible else { return }
             let keys = (0..<16).map { aux[$0] }
             if keys != self.liveButtons.expressKeys {
                 self.liveButtons.expressKeys = keys
