@@ -1,5 +1,23 @@
-import SwiftUI
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import AppKit
+import SwiftUI
 
 @main
 struct MockTabApp: App {
@@ -18,21 +36,21 @@ struct MockTabApp: App {
             // Declared here so SwiftUI owns the menu lifecycle and it is never
             // overwritten by SwiftUI's own menu-rebuild passes.
             CommandMenu("View") {
-                Button("Tablet Area")  { PreferencesWindowController.shared.showTab(at: 0) }
+                Button("Tablet Area") { PreferencesWindowController.shared.showTab(at: 0) }
                     .keyboardShortcut("1", modifiers: .command)
-                Button("Pressure")     { PreferencesWindowController.shared.showTab(at: 1) }
+                Button("Pressure") { PreferencesWindowController.shared.showTab(at: 1) }
                     .keyboardShortcut("2", modifiers: .command)
-                Button("Buttons")      { PreferencesWindowController.shared.showTab(at: 2) }
+                Button("Buttons") { PreferencesWindowController.shared.showTab(at: 2) }
                     .keyboardShortcut("3", modifiers: .command)
-                Button("Display")      { PreferencesWindowController.shared.showTab(at: 3) }
+                Button("Display") { PreferencesWindowController.shared.showTab(at: 3) }
                     .keyboardShortcut("4", modifiers: .command)
-                Button("Devices")      { PreferencesWindowController.shared.showTab(at: 4) }
+                Button("Devices") { PreferencesWindowController.shared.showTab(at: 4) }
                     .keyboardShortcut("5", modifiers: .command)
-                Button("Presets")      { PreferencesWindowController.shared.showTab(at: 5) }
+                Button("Presets") { PreferencesWindowController.shared.showTab(at: 5) }
                     .keyboardShortcut("6", modifiers: .command)
-                Button("Scratchpad")   { PreferencesWindowController.shared.showTab(at: 6) }
+                Button("Scratchpad") { PreferencesWindowController.shared.showTab(at: 6) }
                     .keyboardShortcut("7", modifiers: .command)
-                Button("Info")         { PreferencesWindowController.shared.showTab(at: 7) }
+                Button("Info") { PreferencesWindowController.shared.showTab(at: 7) }
                     .keyboardShortcut("8", modifiers: .command)
             }
         }

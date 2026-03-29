@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 import IOKit.hid
 
@@ -107,7 +125,7 @@ final class WacomGenericDevice: TabletDevice {
         for i in 0..<count {
             guard let rawPtr = CFArrayGetValueAtIndex(elements, i) else { continue }
             let elem = Unmanaged<IOHIDElement>.fromOpaque(rawPtr).takeUnretainedValue()
-            let page  = IOHIDElementGetUsagePage(elem)
+            let page = IOHIDElementGetUsagePage(elem)
             let usage = IOHIDElementGetUsage(elem)
             let logMax = IOHIDElementGetLogicalMax(elem)
 
@@ -147,7 +165,8 @@ final class WacomGenericDevice: TabletDevice {
     // MARK: - Open / Close
 
     func open() {
-        let transport   = IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        let transport =
+            IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
         let isBluetooth = transport.lowercased().contains("bluetooth")
 
         let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -178,8 +197,9 @@ final class WacomGenericDevice: TabletDevice {
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
 
-        print("\(tag): generic driver attached (\(family == .intuosV1 ? "IntuosV1" : "IntuosV2"), "
-              + "maxX=\(spec.maxX) maxY=\(spec.maxY) maxP=\(spec.maxPressure))")
+        print(
+            "\(tag): generic driver attached (\(family == .intuosV1 ? "IntuosV1" : "IntuosV2"), "
+                + "maxX=\(spec.maxX) maxY=\(spec.maxY) maxP=\(spec.maxPressure))")
     }
 
     func close() {
@@ -189,7 +209,9 @@ final class WacomGenericDevice: TabletDevice {
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
 
         if sampleCount > 0 {
-            print("\(tag): disconnected — observed peaks X=\(peakX) Y=\(peakY) P=\(peakP) (\(sampleCount) samples)")
+            print(
+                "\(tag): disconnected — observed peaks X=\(peakX) Y=\(peakY) P=\(peakP) (\(sampleCount) samples)"
+            )
         }
     }
 
@@ -224,7 +246,7 @@ final class WacomGenericDevice: TabletDevice {
                 case 0x02: break  // RF link active — normal operation
                 case 0x05: print("\(tag): wireless link lost (tablet out of range or off)")
                 case 0x06: print("\(tag): battery critically low")
-                default:   break
+                default: break
                 }
             }
             return
@@ -277,32 +299,34 @@ final class WacomGenericDevice: TabletDevice {
             return
         }
 
-        let inProximity    = (status & 0x20) != 0
+        let inProximity = (status & 0x20) != 0
         let highConfidence = (status & 0x40) != 0
-        let subtype        = (status >> 1) & 0x0F
+        let subtype = (status >> 1) & 0x0F
 
         // Proximity-out.
         if !inProximity {
             prevInProximity = false
             toolIsMouse = false
-            onTablet(TabletPoint(
-                x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: false, penButton2: false,
-                eraser: isEraser, inProximity: false, hoverDistance: 0))
+            onTablet(
+                TabletPoint(
+                    x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: false, penButton2: false,
+                    eraser: isEraser, inProximity: false, hoverDistance: 0))
             return
         }
 
         // Low confidence — keep last position, zero pressure.
         guard highConfidence else {
-            onTablet(TabletPoint(
-                x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: !toolIsMouse && (status & 0x02) != 0,
-                penButton2: !toolIsMouse && (status & 0x04) != 0,
-                eraser: isEraser, inProximity: true, hoverDistance: 0))
+            onTablet(
+                TabletPoint(
+                    x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: !toolIsMouse && (status & 0x02) != 0,
+                    penButton2: !toolIsMouse && (status & 0x04) != 0,
+                    eraser: isEraser, inProximity: true, hoverDistance: 0))
             return
         }
 
@@ -311,12 +335,14 @@ final class WacomGenericDevice: TabletDevice {
             let isMouse = subtype == 0x06 || subtype == 0x08
             toolIsMouse = isMouse
             if currentToolCode == 0 {
-                let code: UInt16 = isMouse
+                let code: UInt16 =
+                    isMouse
                     ? (subtype == 0x06 ? 0x0806 : 0x0016)
                     : (isEraser ? 0x080A : 0x0802)
-                onToolEnter?(ToolIdentity(
-                    serial: 0, toolCode: code,
-                    isEraser: isEraser, isMouse: isMouse))
+                onToolEnter?(
+                    ToolIdentity(
+                        serial: 0, toolCode: code,
+                        isEraser: isEraser, isMouse: isMouse))
             }
         }
         prevInProximity = true
@@ -329,35 +355,37 @@ final class WacomGenericDevice: TabletDevice {
 
         // Mouse subtype 0x06 (Intuos4 mouse / KC-100).
         if subtype == 0x06 {
-            let buttons    = report[6]
-            let whlByte    = report[7]
+            let buttons = report[6]
+            let whlByte = report[7]
             let wheelDelta = Int((whlByte & 0x80) >> 7) - Int((whlByte & 0x40) >> 6)
-            onTablet(TabletPoint(
-                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (buttons & 0x01) != 0,
-                penButton2: (buttons & 0x04) != 0,
-                eraser: false, inProximity: true, hoverDistance: 0,
-                mouseMiddleButton: (buttons & 0x02) != 0,
-                mouseWheelDelta: wheelDelta))
+            onTablet(
+                TabletPoint(
+                    x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: (buttons & 0x01) != 0,
+                    penButton2: (buttons & 0x04) != 0,
+                    eraser: false, inProximity: true, hoverDistance: 0,
+                    mouseMiddleButton: (buttons & 0x02) != 0,
+                    mouseWheelDelta: wheelDelta))
             probePeak(x: x, y: y, p: 0)
             return
         }
 
         // Mouse subtype 0x08 (2D mouse / Intuos 1–3).
         if subtype == 0x08 {
-            let btnByte    = report[8]
+            let btnByte = report[8]
             let wheelDelta = Int(btnByte & 0x01) - Int((btnByte & 0x02) >> 1)
-            onTablet(TabletPoint(
-                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (btnByte & 0x04) != 0,
-                penButton2: (btnByte & 0x10) != 0,
-                eraser: false, inProximity: true, hoverDistance: 0,
-                mouseMiddleButton: (btnByte & 0x08) != 0,
-                mouseWheelDelta: wheelDelta))
+            onTablet(
+                TabletPoint(
+                    x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: (btnByte & 0x04) != 0,
+                    penButton2: (btnByte & 0x10) != 0,
+                    eraser: false, inProximity: true, hoverDistance: 0,
+                    mouseMiddleButton: (btnByte & 0x08) != 0,
+                    mouseWheelDelta: wheelDelta))
             probePeak(x: x, y: y, p: 0)
             return
         }
@@ -369,17 +397,18 @@ final class WacomGenericDevice: TabletDevice {
 
         probePeak(x: x, y: y, p: pressure)
 
-        onTablet(TabletPoint(
-            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-            pressure: pressure, maxPressure: spec.maxPressure,
-            tiltX: Double(tiltXRaw) / 63.0,
-            tiltY: Double(tiltYRaw) / 63.0,
-            rotation: 0.0,
-            penButton1: (status & 0x02) != 0,
-            penButton2: (status & 0x04) != 0,
-            eraser: isEraser,
-            inProximity: true,
-            hoverDistance: Int(report[9])))
+        onTablet(
+            TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: pressure, maxPressure: spec.maxPressure,
+                tiltX: Double(tiltXRaw) / 63.0,
+                tiltY: Double(tiltYRaw) / 63.0,
+                rotation: 0.0,
+                penButton1: (status & 0x02) != 0,
+                penButton2: (status & 0x04) != 0,
+                eraser: isEraser,
+                inProximity: true,
+                hoverDistance: Int(report[9])))
     }
 
     // MARK: - IntuosV2 decode (27+ byte reports)
@@ -394,25 +423,27 @@ final class WacomGenericDevice: TabletDevice {
             && report[5] == 0 && report[6] == 0 && report[7] == 0
         if allZero && !highConfidence {
             prevInProximity = false
-            onTablet(TabletPoint(
-                x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: false, penButton2: false,
-                eraser: false, inProximity: false, hoverDistance: 0))
+            onTablet(
+                TabletPoint(
+                    x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: false, penButton2: false,
+                    eraser: false, inProximity: false, hoverDistance: 0))
             return
         }
 
         // Low confidence — zero pressure, keep buttons/eraser.
         guard highConfidence else {
-            onTablet(TabletPoint(
-                x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (status & 0x02) != 0,
-                penButton2: (status & 0x04) != 0,
-                eraser: (status & 0x10) != 0,
-                inProximity: true, hoverDistance: 0))
+            onTablet(
+                TabletPoint(
+                    x: lastX, y: lastY, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: (status & 0x02) != 0,
+                    penButton2: (status & 0x04) != 0,
+                    eraser: (status & 0x10) != 0,
+                    inProximity: true, hoverDistance: 0))
             return
         }
 
@@ -426,19 +457,21 @@ final class WacomGenericDevice: TabletDevice {
             let toolCode = UInt16(report[21]) | UInt16(report[22]) << 8
             currentToolCode = toolCode
 
-            let toolChanged = serial != 0
+            let toolChanged =
+                serial != 0
                 ? serial != lastSerial
                 : (toolCode != 0 && toolCode != lastToolCode)
             if toolChanged {
-                lastSerial   = serial
+                lastSerial = serial
                 lastToolCode = toolCode
                 let isMouse = (toolCode & 0x000F) == 0x0006
                 toolIsMouse = isMouse
                 if isMouse { lastScrollPos = report[16] }
-                onToolEnter?(ToolIdentity(
-                    serial: serial, toolCode: toolCode,
-                    isEraser: (toolCode & 0x0008) != 0,
-                    isMouse: isMouse))
+                onToolEnter?(
+                    ToolIdentity(
+                        serial: serial, toolCode: toolCode,
+                        isEraser: (toolCode & 0x0008) != 0,
+                        isMouse: isMouse))
             }
         }
 
@@ -453,15 +486,16 @@ final class WacomGenericDevice: TabletDevice {
             let scrollPos = report[16]
             let wheelDelta = Int(Int8(bitPattern: scrollPos &- lastScrollPos))
             lastScrollPos = scrollPos
-            onTablet(TabletPoint(
-                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (status & 0x02) != 0,
-                penButton2: (status & 0x04) != 0,
-                eraser: false, inProximity: true, hoverDistance: 0,
-                mouseMiddleButton: (report[9] & 0x02) != 0,
-                mouseWheelDelta: wheelDelta))
+            onTablet(
+                TabletPoint(
+                    x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: 0, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: (status & 0x02) != 0,
+                    penButton2: (status & 0x04) != 0,
+                    eraser: false, inProximity: true, hoverDistance: 0,
+                    mouseMiddleButton: (report[9] & 0x02) != 0,
+                    mouseWheelDelta: wheelDelta))
             probePeak(x: x, y: y, p: 0)
             return
         }
@@ -473,38 +507,42 @@ final class WacomGenericDevice: TabletDevice {
 
         probePeak(x: x, y: y, p: pressure)
 
-        onTablet(TabletPoint(
-            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-            pressure: pressure, maxPressure: spec.maxPressure,
-            tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
-            penButton1: (status & 0x02) != 0,
-            penButton2: (status & 0x04) != 0,
-            eraser: (status & 0x10) != 0,
-            inProximity: true,
-            hoverDistance: Int(report[16])))
+        onTablet(
+            TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: pressure, maxPressure: spec.maxPressure,
+                tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
+                penButton1: (status & 0x02) != 0,
+                penButton2: (status & 0x04) != 0,
+                eraser: (status & 0x10) != 0,
+                inProximity: true,
+                hoverDistance: Int(report[16])))
     }
 
     // MARK: - BLE HOGP pen decode
 
     /// BLE pen report (Report ID 0x01, 23 bytes).
     private func handleBLEPen(report: UnsafePointer<UInt8>, length: CFIndex) {
-        guard let result = decodeBLEPenReport(
-            report: report, length: length, spec: spec,
-            lastX: &lastX, lastY: &lastY
-        ) else { return }
+        guard
+            let result = decodeBLEPenReport(
+                report: report, length: length, spec: spec,
+                lastX: &lastX, lastY: &lastY
+            )
+        else { return }
 
         if result.toolCode != 0
             && (result.serial != currentSerial || result.toolCode != currentToolCode)
         {
-            currentSerial   = result.serial
+            currentSerial = result.serial
             currentToolCode = result.toolCode
-            isEraser        = result.point.eraser
-            toolIsMouse     = result.isMouse
-            onToolEnter?(ToolIdentity(
-                serial: result.serial,
-                toolCode: result.toolCode,
-                isEraser: result.point.eraser,
-                isMouse: result.isMouse))
+            isEraser = result.point.eraser
+            toolIsMouse = result.isMouse
+            onToolEnter?(
+                ToolIdentity(
+                    serial: result.serial,
+                    toolCode: result.toolCode,
+                    isEraser: result.point.eraser,
+                    isMouse: result.isMouse))
         }
 
         probePeak(x: result.point.x, y: result.point.y, p: result.point.pressure)
@@ -521,38 +559,42 @@ final class WacomGenericDevice: TabletDevice {
         let tiltX = Double(Int8(bitPattern: report[11])) / 127.0
         let tiltY = Double(Int8(bitPattern: report[12])) / 127.0
 
-        onTablet(TabletPoint(
-            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-            pressure: pressure, maxPressure: spec.maxPressure,
-            tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
-            penButton1: (status & 0x02) != 0,
-            penButton2: (status & 0x04) != 0,
-            eraser: (status & 0x10) != 0,
-            inProximity: (status & 0x20) != 0,
-            hoverDistance: 0))
+        onTablet(
+            TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: pressure, maxPressure: spec.maxPressure,
+                tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
+                penButton1: (status & 0x02) != 0,
+                penButton2: (status & 0x04) != 0,
+                eraser: (status & 0x10) != 0,
+                inProximity: (status & 0x20) != 0,
+                hoverDistance: 0))
     }
 
     // MARK: - IntuosV1 tool-change
 
     private func handleToolChangeV1(report: UnsafePointer<UInt8>) {
-        let serial = UInt32(report[3] & 0x0F) << 28
-                   | UInt32(report[4]) << 20
-                   | UInt32(report[5]) << 12
-                   | UInt32(report[6]) << 4
-                   | UInt32(report[7]) >> 4
-        let toolCode = UInt16(report[2]) << 4
-                     | UInt16(report[3]) >> 4
-                     | UInt16(report[7] & 0x0F) << 12
-                     | UInt16(report[8] & 0xF0) << 4
+        let serial =
+            UInt32(report[3] & 0x0F) << 28
+            | UInt32(report[4]) << 20
+            | UInt32(report[5]) << 12
+            | UInt32(report[6]) << 4
+            | UInt32(report[7]) >> 4
+        let toolCode =
+            UInt16(report[2]) << 4
+            | UInt16(report[3]) >> 4
+            | UInt16(report[7] & 0x0F) << 12
+            | UInt16(report[8] & 0xF0) << 4
 
-        currentSerial   = serial
+        currentSerial = serial
         currentToolCode = toolCode
         isEraser = (toolCode & 0x000F) == 0x000A
         toolIsMouse = (toolCode & 0x000F) == 0x0006
 
-        onToolEnter?(ToolIdentity(
-            serial: serial, toolCode: toolCode,
-            isEraser: isEraser, isMouse: toolIsMouse))
+        onToolEnter?(
+            ToolIdentity(
+                serial: serial, toolCode: toolCode,
+                isEraser: isEraser, isMouse: toolIsMouse))
     }
 
     // MARK: - Express keys (multiple report formats)
@@ -568,12 +610,13 @@ final class WacomGenericDevice: TabletDevice {
             guard length >= 3 else { return }
             let auxByte = report[1]
             let ringByte: UInt8 = length >= 5 ? report[3] : 0
-            let posByte:  UInt8 = length >= 5 ? report[4] : 0x7F
+            let posByte: UInt8 = length >= 5 ? report[4] : 0x7F
             let ringActive = ringByte != 0
-            onAux(AuxButtons(
-                buttons: (0..<8).map { (auxByte & (1 << $0)) != 0 },
-                touchRingActive: ringActive,
-                touchRingPosition: ringActive ? posByte : 0x7F))
+            onAux(
+                AuxButtons(
+                    buttons: (0..<8).map { (auxByte & (1 << $0)) != 0 },
+                    touchRingActive: ringActive,
+                    touchRingPosition: ringActive ? posByte : 0x7F))
 
         case 0x0C:
             // Intuos3/4 style: byte 1 = keys 1–8, OR bytes 5–6 = 4+4.
@@ -581,9 +624,10 @@ final class WacomGenericDevice: TabletDevice {
             if length >= 7 && (report[5] != 0 || report[6] != 0) {
                 let lo = report[5]
                 let hi = report[6]
-                onAux(AuxButtons(buttons:
-                    (0..<4).map { (lo & (1 << $0)) != 0 }
-                    + (0..<4).map { (hi & (1 << $0)) != 0 }))
+                onAux(
+                    AuxButtons(
+                        buttons: (0..<4).map { (lo & (1 << $0)) != 0 }
+                            + (0..<4).map { (hi & (1 << $0)) != 0 }))
             } else if length >= 2 {
                 let keyByte = report[1]
                 onAux(AuxButtons(buttons: (0..<8).map { (keyByte & (1 << $0)) != 0 }))
@@ -609,13 +653,24 @@ final class WacomGenericDevice: TabletDevice {
         guard CFAbsoluteTimeGetCurrent() < probeDeadline else { return }
 
         var updated = false
-        if x > peakX { peakX = x; updated = true }
-        if y > peakY { peakY = y; updated = true }
-        if p > peakP { peakP = p; updated = true }
+        if x > peakX {
+            peakX = x
+            updated = true
+        }
+        if y > peakY {
+            peakY = y
+            updated = true
+        }
+        if p > peakP {
+            peakP = p
+            updated = true
+        }
 
         if updated {
-            print(String(format: "%@: peak  X=%-6d  Y=%-6d  P=%-5d  (spec: %d × %d × %d)",
-                         tag, peakX, peakY, peakP, spec.maxX, spec.maxY, spec.maxPressure))
+            print(
+                String(
+                    format: "%@: peak  X=%-6d  Y=%-6d  P=%-5d  (spec: %d × %d × %d)",
+                    tag, peakX, peakY, peakP, spec.maxX, spec.maxY, spec.maxPressure))
         }
     }
 }

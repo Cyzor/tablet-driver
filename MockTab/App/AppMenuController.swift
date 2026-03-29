@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import AppKit
 
 /// Builds and maintains the application-menu contributions that cannot be
@@ -41,7 +59,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         for item in mainMenu.items where item.title == "View" {
             if item.submenu?.items.isEmpty ?? true {
                 mainMenu.removeItem(item)
-                return   // only one stub expected
+                return  // only one stub expected
             }
         }
     }
@@ -69,17 +87,19 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         menu.removeAllItems()
 
         // "New Settings Window" — opens a generic window.
-        let newItem = NSMenuItem(title: "New Settings Window",
-                                  action: #selector(newSettingsWindow),
-                                  keyEquivalent: "n")
+        let newItem = NSMenuItem(
+            title: "New Settings Window",
+            action: #selector(newSettingsWindow),
+            keyEquivalent: "n")
         newItem.keyEquivalentModifierMask = [.command, .shift]
         newItem.target = self
         menu.addItem(newItem)
 
         // "Detect Tablet" — re-evaluates the active device and focuses its window.
-        let detectItem = NSMenuItem(title: "Detect Tablet",
-                                     action: #selector(detectTablet),
-                                     keyEquivalent: "r")
+        let detectItem = NSMenuItem(
+            title: "Detect Tablet",
+            action: #selector(detectTablet),
+            keyEquivalent: "r")
         detectItem.keyEquivalentModifierMask = [.command]
         detectItem.target = self
         menu.addItem(detectItem)
@@ -92,15 +112,17 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
             for tablet in registry.knownTablets {
                 let label = PreferencesWindowController.shared.menuLabel(forProductID: tablet.id)
-                let item = NSMenuItem(title: label,
-                                       action: #selector(openDeviceWindow(_:)),
-                                       keyEquivalent: "")
+                let item = NSMenuItem(
+                    title: label,
+                    action: #selector(openDeviceWindow(_:)),
+                    keyEquivalent: "")
                 item.target = self
                 item.tag = tablet.id
                 // Show a dot for currently connected tablets.
                 if tm.connectedProductIDs.contains(tablet.id) {
-                    item.image = NSImage(systemSymbolName: "circle.fill",
-                                         accessibilityDescription: "Connected")
+                    item.image = NSImage(
+                        systemSymbolName: "circle.fill",
+                        accessibilityDescription: "Connected")
                     item.image?.size = NSSize(width: 6, height: 6)
                 }
                 menu.addItem(item)
@@ -128,7 +150,8 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         let tm = TabletManager.shared
         // Prefer the pen-in-proximity context; fall back to first connected,
         // then first ever-seen device.
-        let pid = tm.activeContext?.productID
+        let pid =
+            tm.activeContext?.productID
             ?? tm.connectedProductIDs.first
             ?? DeviceRegistry.shared.knownTablets.first?.id
         guard let pid else { return }
@@ -151,9 +174,10 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         menuItem.submenu = menu
 
         // Insert after Tablet menu.
-        let insertAfter = mainMenu.items.firstIndex(where: { $0.title == "Tablet" })
-                        ?? mainMenu.items.firstIndex(where: { $0.title == "Edit" })
-                        ?? 1
+        let insertAfter =
+            mainMenu.items.firstIndex(where: { $0.title == "Tablet" })
+            ?? mainMenu.items.firstIndex(where: { $0.title == "Edit" })
+            ?? 1
         mainMenu.insertItem(menuItem, at: insertAfter + 1)
     }
 
@@ -163,29 +187,32 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         menu.removeAllItems()
 
         if !settings.presets.isEmpty {
-            let defsItem = NSMenuItem(title: "Device Defaults",
-                                      action: #selector(activateDeviceDefaults),
-                                      keyEquivalent: "")
+            let defsItem = NSMenuItem(
+                title: "Device Defaults",
+                action: #selector(activateDeviceDefaults),
+                keyEquivalent: "")
             defsItem.target = self
-            defsItem.state  = settings.activePreset == nil ? .on : .off
+            defsItem.state = settings.activePreset == nil ? .on : .off
             menu.addItem(defsItem)
             menu.addItem(.separator())
 
             for preset in settings.presets {
-                let item = NSMenuItem(title: preset.name,
-                                      action: #selector(activatePreset(_:)),
-                                      keyEquivalent: "")
-                item.target            = self
+                let item = NSMenuItem(
+                    title: preset.name,
+                    action: #selector(activatePreset(_:)),
+                    keyEquivalent: "")
+                item.target = self
                 item.representedObject = preset.id
-                item.state             = settings.activePreset?.id == preset.id ? .on : .off
+                item.state = settings.activePreset?.id == preset.id ? .on : .off
                 menu.addItem(item)
             }
             menu.addItem(.separator())
         }
 
-        let showItem = NSMenuItem(title: "Show Presets",
-                                  action: #selector(showPresetsTab),
-                                  keyEquivalent: "")
+        let showItem = NSMenuItem(
+            title: "Show Presets",
+            action: #selector(showPresetsTab),
+            keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
     }
@@ -207,8 +234,8 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func activatePreset(_ sender: NSMenuItem) {
-        guard let uuid   = sender.representedObject as? UUID,
-              let preset = settings?.presets.first(where: { $0.id == uuid })
+        guard let uuid = sender.representedObject as? UUID,
+            let preset = settings?.presets.first(where: { $0.id == uuid })
         else { return }
         settings?.activate(preset)
     }

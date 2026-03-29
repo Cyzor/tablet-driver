@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 import IOKit.hid
 import OSLog
@@ -37,7 +55,8 @@ final class WacomProbeDevice: TabletDevice {
     func open() {
         let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
         guard ret == kIOReturnSuccess else {
-            probeLog.error("WacomProbe: cannot open device (err \(ret)). Is another driver running?")
+            probeLog.error(
+                "WacomProbe: cannot open device (err \(ret)). Is another driver running?")
             return
         }
 
@@ -46,22 +65,31 @@ final class WacomProbeDevice: TabletDevice {
         IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
 
         let ctx = Unmanaged.passRetained(self).toOpaque()
-        IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count,
-                                              WacomProbeDevice.reportCB, ctx)
-        IOHIDDeviceScheduleWithRunLoop(device, CFRunLoopGetCurrent(),
-                                       RunLoop.Mode.common.rawValue as CFString)
+        IOHIDDeviceRegisterInputReportCallback(
+            device, &reportBuffer, reportBuffer.count,
+            WacomProbeDevice.reportCB, ctx)
+        IOHIDDeviceScheduleWithRunLoop(
+            device, CFRunLoopGetCurrent(),
+            RunLoop.Mode.common.rawValue as CFString)
 
         probeLog.notice("WacomProbe: listening — move pen to all four corners and press hard")
-        print("WacomProbe: listening on \(IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "unknown") — move pen to all four corners and press hard")
+        print(
+            "WacomProbe: listening on \(IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "unknown") — move pen to all four corners and press hard"
+        )
     }
 
     func close() {
-        IOHIDDeviceUnscheduleFromRunLoop(device, CFRunLoopGetCurrent(),
-                                         RunLoop.Mode.common.rawValue as CFString)
+        IOHIDDeviceUnscheduleFromRunLoop(
+            device, CFRunLoopGetCurrent(),
+            RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
-        probeLog.notice("WacomProbe: final maxima — X=\(self.maxX) Y=\(self.maxY) P=\(self.maxP) (from \(self.sampleCount) samples)")
-        print("WacomProbe: FINAL maxima — X=\(maxX)  Y=\(maxY)  P=\(maxP)  (from \(sampleCount) samples)")
+        probeLog.notice(
+            "WacomProbe: final maxima — X=\(self.maxX) Y=\(self.maxY) P=\(self.maxP) (from \(self.sampleCount) samples)"
+        )
+        print(
+            "WacomProbe: FINAL maxima — X=\(maxX)  Y=\(maxY)  P=\(maxP)  (from \(sampleCount) samples)"
+        )
     }
 
     // MARK: - C callback
@@ -87,9 +115,18 @@ final class WacomProbeDevice: TabletDevice {
         sampleCount += 1
         var updated = false
 
-        if x > maxX { maxX = x; updated = true }
-        if y > maxY { maxY = y; updated = true }
-        if p > maxP { maxP = p; updated = true }
+        if x > maxX {
+            maxX = x
+            updated = true
+        }
+        if y > maxY {
+            maxY = y
+            updated = true
+        }
+        if p > maxP {
+            maxP = p
+            updated = true
+        }
 
         if updated {
             probeLog.notice("WacomProbe: new peak — X=\(self.maxX) Y=\(self.maxY) P=\(self.maxP)")

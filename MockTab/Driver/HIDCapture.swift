@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 
 /// Lightweight raw-HID capture buffer.
@@ -50,18 +68,19 @@ final class HIDCapture {
         guard isCapturing, length > 0 else { return }
 
         let elapsed = Date().timeIntervalSince(startTime)
-        let mins  = Int(elapsed) / 60
-        let secs  = Int(elapsed) % 60
-        let ms    = Int((elapsed - Double(Int(elapsed))) * 1000)
-        let ts    = String(format: "%02d:%02d.%03d", mins, secs, ms)
+        let mins = Int(elapsed) / 60
+        let secs = Int(elapsed) % 60
+        let ms = Int((elapsed - Double(Int(elapsed))) * 1000)
+        let ts = String(format: "%02d:%02d.%03d", mins, secs, ms)
 
-        let id  = String(format: "%02X", report[0])
+        let id = String(format: "%02X", report[0])
         let hex = (0..<length)
             .map { String(format: "%02X", report[$0]) }
             .joined(separator: " ")
 
         // Pad tag to 20 chars for column alignment across devices.
-        let padded = tag.count <= 20
+        let padded =
+            tag.count <= 20
             ? tag + String(repeating: " ", count: 20 - tag.count)
             : String(tag.prefix(20))
 

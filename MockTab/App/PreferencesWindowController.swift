@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import AppKit
 import Combine
 import SwiftUI
@@ -23,9 +41,10 @@ final class PreferencesWindowController {
             .receive(on: RunLoop.main)
             .sink { [weak self] ids in
                 guard let self,
-                      let dw = self.defaultWindow,
-                      dw.productID == nil,
-                      let pid = ids.first else { return }
+                    let dw = self.defaultWindow,
+                    dw.productID == nil,
+                    let pid = ids.first
+                else { return }
                 self.replaceWindow(dw, withDeviceID: pid)
             }
 
@@ -78,15 +97,15 @@ final class PreferencesWindowController {
     @discardableResult
     func openNewWindow() -> SettingsWindowController {
         let pid = activeDeviceProductID()
-        let wc  = makeWindow(productID: pid, tabIndex: 0, frame: nil)
+        let wc = makeWindow(productID: pid, tabIndex: 0, frame: nil)
         wc.show()
         saveWindowState()
         return wc
     }
 
     func replaceWindow(_ old: SettingsWindowController, withDeviceID pid: Int) {
-        let frame      = old.window?.frame
-        let tabIndex   = old.selectedTabIndex
+        let frame = old.window?.frame
+        let tabIndex = old.selectedTabIndex
         let wasDefault = defaultWindow === old
 
         old.window?.close()
@@ -112,29 +131,30 @@ final class PreferencesWindowController {
             if let pid = wc.productID { entry["productID"] = pid }
             return entry
         }
-//        print("MockTab saveWindowState: \(entries.count) windows → \(entries)")
+        //        print("MockTab saveWindowState: \(entries.count) windows → \(entries)")
         UserDefaults.standard.set(entries, forKey: Self.restorationKey)
     }
 
     private func restoreWindows() {
-        guard let entries = UserDefaults.standard.array(forKey: Self.restorationKey)
-                                as? [[String: Any]],
-              !entries.isEmpty
+        guard
+            let entries = UserDefaults.standard.array(forKey: Self.restorationKey)
+                as? [[String: Any]],
+            !entries.isEmpty
         else {
-//            print("MockTab restoreWindows: no saved state found")
+            //            print("MockTab restoreWindows: no saved state found")
             return
         }
-//        print("MockTab restoreWindows: found \(entries.count) entries → \(entries)")
+        //        print("MockTab restoreWindows: found \(entries.count) entries → \(entries)")
 
         for (index, entry) in entries.enumerated() {
             let productID = entry["productID"] as? Int
-            let tabIndex  = entry["tabIndex"]  as? Int ?? 0
+            let tabIndex = entry["tabIndex"] as? Int ?? 0
 
             let frame: NSRect? = {
                 guard let x = entry["x"] as? CGFloat,
-                      let y = entry["y"] as? CGFloat,
-                      let w = entry["w"] as? CGFloat,
-                      let h = entry["h"] as? CGFloat
+                    let y = entry["y"] as? CGFloat,
+                    let w = entry["w"] as? CGFloat,
+                    let h = entry["h"] as? CGFloat
                 else { return nil }
                 return NSRect(x: x, y: y, width: w, height: h)
             }()
@@ -183,16 +203,18 @@ final class PreferencesWindowController {
             return dw
         }
         let pid = activeDeviceProductID()
-        let wc  = makeWindow(productID: pid, tabIndex: 0, frame: nil)
+        let wc = makeWindow(productID: pid, tabIndex: 0, frame: nil)
         wc.window?.setFrameAutosaveName("PreferencesWindow")
         defaultWindow = wc
         return wc
     }
 
     @discardableResult
-    private func makeWindow(productID: Int?,
-                            tabIndex: Int,
-                            frame: NSRect?) -> SettingsWindowController {
+    private func makeWindow(
+        productID: Int?,
+        tabIndex: Int,
+        frame: NSRect?
+    ) -> SettingsWindowController {
         let (s, label) = settingsAndLabel(forProductID: productID)
         let wc = SettingsWindowController(
             settings: s, deviceLabel: label, productID: productID)
@@ -200,8 +222,10 @@ final class PreferencesWindowController {
         if let frame {
             wc.window?.setFrame(frame, display: false)
         } else if let lastFrame = windows.last?.window?.frame {
-            wc.window?.setFrameOrigin(NSPoint(x: lastFrame.minX + 20,
-                                              y: lastFrame.minY - 20))
+            wc.window?.setFrameOrigin(
+                NSPoint(
+                    x: lastFrame.minX + 20,
+                    y: lastFrame.minY - 20))
         }
 
         windows.append(wc)
@@ -212,7 +236,7 @@ final class PreferencesWindowController {
     private func settingsAndLabel(forProductID productID: Int?) -> (TabletSettings, String) {
         if let pid = productID {
             let tm = TabletManager.shared
-            let s  = tm.contexts[pid]?.settings ?? TabletSettings(productID: pid)
+            let s = tm.contexts[pid]?.settings ?? TabletSettings(productID: pid)
             return (s, displayLabel(forProductID: pid))
         }
         return (settings, "MockTab")

@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 
 /// A cubic Bezier curve mapping input pressure (0..1) to output pressure (0..1).
@@ -9,12 +27,15 @@ struct BezierCurve: Codable, Equatable {
     /// Intermediate control point 2 (x and y in 0..1).
     var p2: CGPoint
 
-    static let linear = BezierCurve(p1: CGPoint(x: 0.25, y: 0.25),
-                                    p2: CGPoint(x: 0.75, y: 0.75))
-    static let soft   = BezierCurve(p1: CGPoint(x: 0.05, y: 0.5),
-                                    p2: CGPoint(x: 0.5,  y: 1.0))
-    static let firm   = BezierCurve(p1: CGPoint(x: 0.5,  y: 0.0),
-                                    p2: CGPoint(x: 0.95, y: 0.5))
+    static let linear = BezierCurve(
+        p1: CGPoint(x: 0.25, y: 0.25),
+        p2: CGPoint(x: 0.75, y: 0.75))
+    static let soft = BezierCurve(
+        p1: CGPoint(x: 0.05, y: 0.5),
+        p2: CGPoint(x: 0.5, y: 1.0))
+    static let firm = BezierCurve(
+        p1: CGPoint(x: 0.5, y: 0.0),
+        p2: CGPoint(x: 0.95, y: 0.5))
 
     // MARK: - Evaluation
 
@@ -38,7 +59,8 @@ struct BezierCurve: Codable, Equatable {
 
     /// Find parametric t such that bezierX(t) ≈ x, using bisection.
     private func findT(for x: Double) -> Double {
-        var lo: Double = 0, hi: Double = 1
+        var lo: Double = 0
+        var hi: Double = 1
         for _ in 0..<32 {
             let mid = (lo + hi) / 2
             let bx = bezierX(t: mid)
@@ -58,8 +80,6 @@ struct BezierCurve: Codable, Equatable {
 
     private func cubic(t: Double, p0: Double, p1: Double, p2: Double, p3: Double) -> Double {
         let u = 1 - t
-        return u*u*u*p0 + 3*u*u*t*p1 + 3*u*t*t*p2 + t*t*t*p3
+        return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3
     }
 }
-
-

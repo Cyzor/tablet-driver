@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 import IOKit.hid
 
@@ -196,7 +214,7 @@ final class DTK2400Device: TabletDevice {
             }
             // absZ is in [-900, +899]; shift to [0, 1799], scale to 0–360°.
             var degrees = Double(absZ + 900) / 1800.0 * 360.0
-            if degrees < 0   { degrees += 360.0 }
+            if degrees < 0 { degrees += 360.0 }
             if degrees >= 360 { degrees -= 360.0 }
             lastRotation = degrees
 
@@ -277,43 +295,47 @@ final class DTK2400Device: TabletDevice {
     private func handleExpressKeys(report: UnsafePointer<UInt8>, length: CFIndex) {
         guard length >= 7, let onAux = onAux else { return }
 
-        let leftRingRaw   = report[1]
+        let leftRingRaw = report[1]
         let leftRingActive = leftRingRaw != 0
-        let leftRingPos   = leftRingActive ? UInt8(Int(leftRingRaw) * 72 / 256) : UInt8(0x7F)
+        let leftRingPos = leftRingActive ? UInt8(Int(leftRingRaw) * 72 / 256) : UInt8(0x7F)
 
-        let rightRingRaw   = report[2]
+        let rightRingRaw = report[2]
         let rightRingActive = rightRingRaw != 0
-        let rightRingPos   = rightRingActive ? UInt8(Int(rightRingRaw) * 72 / 256) : UInt8(0x7F)
+        let rightRingPos = rightRingActive ? UInt8(Int(rightRingRaw) * 72 / 256) : UInt8(0x7F)
 
         // Left  buttons 0–7:  byte[6] bits 0–7
         // Right buttons 8–15: byte[8] bits 0–7  (kernel formula: (data[8]<<8)|data[6])
-        let leftByte  = report[6]
+        let leftByte = report[6]
         let rightByte = length >= 9 ? report[8] : 0
-        let buttons   = (0..<8).map { bit in (leftByte  & (1 << bit)) != 0 }
-                      + (0..<8).map { bit in (rightByte & (1 << bit)) != 0 }
+        let buttons =
+            (0..<8).map { bit in (leftByte & (1 << bit)) != 0 }
+            + (0..<8).map { bit in (rightByte & (1 << bit)) != 0 }
 
-        onAux(AuxButtons(
-            buttons: buttons,
-            touchRingActive: leftRingActive,
-            touchRingPosition: leftRingPos,
-            touchRing2Active: rightRingActive,
-            touchRing2Position: rightRingPos))
+        onAux(
+            AuxButtons(
+                buttons: buttons,
+                touchRingActive: leftRingActive,
+                touchRingPosition: leftRingPos,
+                touchRing2Active: rightRingActive,
+                touchRing2Position: rightRingPos))
     }
 
     // MARK: - Tool-change packet (status bits 7:2 == 0xC0)
 
     private func handleToolChange(report: UnsafePointer<UInt8>) {
-        let serial = UInt32(report[3] & 0x0F) << 28
-                   | UInt32(report[4]) << 20
-                   | UInt32(report[5]) << 12
-                   | UInt32(report[6]) << 4
-                   | UInt32(report[7]) >> 4
-        let toolCode = UInt16(report[2]) << 4
-                     | UInt16(report[3]) >> 4
-                     | UInt16(report[7] & 0x0F) << 12
-                     | UInt16(report[8] & 0xF0) << 4
+        let serial =
+            UInt32(report[3] & 0x0F) << 28
+            | UInt32(report[4]) << 20
+            | UInt32(report[5]) << 12
+            | UInt32(report[6]) << 4
+            | UInt32(report[7]) >> 4
+        let toolCode =
+            UInt16(report[2]) << 4
+            | UInt16(report[3]) >> 4
+            | UInt16(report[7] & 0x0F) << 12
+            | UInt16(report[8] & 0xF0) << 4
 
-        currentSerial   = serial
+        currentSerial = serial
         currentToolCode = toolCode
         // Kernel (wacom_intuos_get_tool_type): eraser detected by tool_id bit 3.
         isEraser = (toolCode & 0x0008) != 0
