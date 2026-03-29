@@ -247,6 +247,18 @@ final class SettingsWindowController: NSWindowController {
         addTab(label: "Info", symbol: "info.circle", height: 430) {
             InfoView(tabletManager: tm, settings: s)
         }
+
+        // Set minimum window size to accommodate all tabs without truncation.
+        // Use 1:1 aspect ratio (minWidth = minHeight) for compact square window.
+        let tabLabels = Self.tabLabels
+        let font = NSFont.systemFont(ofSize: 13)
+        let tabWidths = tabLabels.map { label -> CGFloat in
+            let textSize = (label as NSString).size(withAttributes: [.font: font])
+            // Icon (~18) + label + padding (~20) + tab spacing
+            return textSize.width + 65
+        }
+        let minWidth = tabWidths.reduce(0, +) + 60  // sum + window margins/borders
+        window.minSize = NSSize(width: minWidth, height: minWidth)
     }
 
     required init?(coder: NSCoder) { fatalError() }
