@@ -6,25 +6,26 @@ _Last updated: 2026-03-29 (session 10 — Phase 1 CLI/JSON complete)_
 
 ## Blockers / Active Bugs
 
-### 🔴 PTH-860 Bluetooth broken
-macOS `AppleBluetoothMultitouch` kext claims the PTH-860 BLE device before MockTab can
-seize it, treating it as a Magic Trackpad.  MockTab receives 686 reports but cannot
-inject input.
-**Fix:** Call `kIOHIDOptionsTypeSeizeDevice` on the BLE HID handle.  If seize already
-happens but targets a different interface (BLE can present multiple logical HID
-interfaces), identify and seize the correct one.
+### 🟡 PTH-860 Bluetooth Classic — decoder implemented, needs hardware verification
+The previous analysis was based on the wrong BT interface.  The PTH-860 advertises two
+separate BT personalities:
+- `LE IntuosPro L` — BLE/HOGP, Paper Mode only (Tuhi app).  Claimed by macOS as a Magic
+  Trackpad.  This is NOT the digitizer path.  The old 686-report capture came from here.
+- `BT IntuosPro L` — **Bluetooth Classic**, full digitizer.  This is the correct interface.
 
-Three additional decoder changes needed once seize works:
-1. **Device signature** — byte 99 in 0x80 container: accept `CE 00` (pen absent) and
-   `B7 A5` (pen present) as valid PTH-860 identifiers (PTH-660 uses `6A 35`).
-   Secondary signature at byte 284: `64 7F 38 01` (PTH-860) vs `63 7F 38 01` (PTH-660).
-2. **Bytes[9:10]** — PTH-860 shows `0xFF F9` (barrel rotation, signed int16 LE = -7);
-   PTH-660 shows `0x00 0x00`.  Accept any value — do not validate zero.
-3. **Byte[13]** — PTH-860 shows altitude countdown (0x3F → 0x1D range); PTH-660 = 0x00.
-   Accept any value — do not validate zero.
+**To pair BT Classic:** power on without holding the ring center button, USB disconnected.
+Look for a blink near the USB-C port (not the ring LED).
 
-**Needs hardware + new BT capture with tip presses** to verify pressure decoder path
-after decoder fixes (current capture is hover-only).
+**Decoder implemented (2026-03-29):** `decodeBTClassicFrames` in `IntuosV2Decoder`
+handles the `INTUOSP2_BT` kernel format — 99-byte reports, 7 × 14-byte frames.  Dispatched
+from the 0x80 handler by length (99 = PTH-860 BT, 361 = PTH-660 BT).
+
+**Still unknown — needs hardware capture:**
+- PTH-860 BT Classic PID (PTH-660 USB=0x0357 → BT=0x0360; PTH-860 USB=0x0358 → BT=?).
+  Until confirmed, device falls through to WacomGenericDevice (auto-detects IntuosV2 from
+  maxRptSize=99 > 64, queries HID descriptor for spec — correct behaviour).
+- Pad reports over BT Classic (reference says layout unverified at offset in container).
+- Pressure path (no tip-press capture exists yet).
 
 ### 🟡 DTK-2400 pen decoder — needs hardware verification
 Per Linux kernel `wacom_intuos_general()` / `WACOM_24HD`, the 0x02 pen report was
@@ -195,6 +196,13 @@ Standard feature in most tablets that many users disable because implementation 
 
 ## Done (recent sessions)
 
+- [x] PTH-860 BT Classic decoder (2026-03-29): implemented `decodeBTClassicFrames` for
+      99-byte/7-frame INTUOSP2_BT format; dispatched by length in 0x80 handler.  Awaiting
+      hardware verification (BT Classic PID unknown; pad reports deferred).
+- [x] ACK-40401 wireless init race (2026-03-29): `WacomGenericDevice` now re-sends
+      `[0x02, 0x02]` feature init when 0x02 wireless status arrives, fixing the case where
+      the dongle was already paired when MockTab started (init was sent to an empty dongle
+      and dropped; tablet module insertion triggered 0x02 with no subsequent init).
 - [x] Photoshop pressure sensitivity (2026-03-28): populate tabletEventPointPressure +
       tabletEventDeviceID + tabletEventPointButtons in mouse events (Photoshop reads tablet
       union, not mouseEventPressure). Also fix capabilityMask 0x04C3→0x05C7. WacomShim
