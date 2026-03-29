@@ -1,6 +1,6 @@
 # MockTab — Open Tasks
 
-_Last updated: 2026-03-28 (session 9 — Photoshop pressure fixed)_
+_Last updated: 2026-03-29 (session 10 — Phase 1 CLI/JSON complete)_
 
 ---
 
@@ -71,196 +71,31 @@ Implement **light setup now** (1–2 hours), full CLI later when GUI stabilizes.
 - Settings models are still volatile; locking JSON format early might constrain design
 - Full CLI isn't needed until GUI is stable anyway
 
-### Phase 1: Light Setup (1–2 hours, THIS SESSION)
+### Phase 1: Light Setup ✅ COMPLETE (2026-03-29)
 
-#### 1.1 Create `Profile.swift` (new file)
-**Location:** `MockTab/Settings/Profile.swift`
+#### ✅ 1.1 Create `Profile.swift` (new file)
+**Location:** `MockTab/Settings/Profile.swift` — DONE
 
-Portable snapshot of device + tool settings, Codable for JSON export/import:
+Portable `Codable` struct with all device + tool settings. Also `ToolSnapshot` for Phase 2.
 
-```swift
-import Foundation
+#### ✅ 1.2 Add export/import methods to TabletSettings
+**File:** `MockTab/Settings/TabletSettings.swift` — DONE
 
-/// A portable profile that can be exported to/imported from JSON.
-/// Contains a snapshot of device and tool settings (no per-tool serials yet).
-struct Profile: Codable, Equatable {
-    var name: String
-    var deviceModel: String  // e.g. "Wacom Intuos Pro M"
-    
-    // Core mappings
-    var tabletAreaX: Double
-    var tabletAreaY: Double
-    var tabletAreaWidth: Double
-    var tabletAreaHeight: Double
-    var proportionalMapping: Bool
-    var targetDisplayIndex: Int
-    
-    // Pressure & smoothing
-    var pressureCurve: BezierCurve
-    var smoothingStrength: Double
-    
-    // Button mappings (all ButtonBinding, already Codable)
-    var penButton1: ButtonBinding
-    var penButton2: ButtonBinding
-    var tipBinding: ButtonBinding
-    var eraserBinding: ButtonBinding
-    
-    // Aux
-    var touchRingMode: String  // raw value: "scroll", "off"
-    var touchRingButtonBinding: ButtonBinding
-    
-    // Future: per-tool settings by serial (Phase 2)
-    var toolSettingsPerSerial: [String: ToolSnapshot]? = nil
-}
+- `exportCurrentAsProfile(name:deviceName:) -> Profile`
+- `importProfile(_:) -> Void`
 
-/// Snapshot of per-tool (per-pen-serial) settings.
-/// Planned for Phase 2 (per-serial tool support).
-struct ToolSnapshot: Codable, Equatable {
-    var serial: String
-    var pressureCurve: BezierCurve
-    var smoothingStrength: Double
-    var penButton1: ButtonBinding
-    var penButton2: ButtonBinding
-}
-```
+Both use `activeTool` for pressure/smoothing/button bindings.
 
-#### 1.2 Add export/import methods to TabletSettings
-**File:** `MockTab/Settings/TabletSettings.swift`
+#### ✅ 1.3 Create example JSON profile
+**Location:** `MockTab/example-profile.json` — DONE
 
-Add two methods:
+Complete schema documentation with real-world defaults.
 
-```swift
-/// Export current device settings as a portable JSON profile.
-func exportCurrentAsProfile(name: String, deviceName: String) -> Profile {
-    Profile(
-        name: name,
-        deviceModel: deviceName,
-        tabletAreaX: activeAreaX,
-        tabletAreaY: activeAreaY,
-        tabletAreaWidth: activeAreaWidth,
-        tabletAreaHeight: activeAreaHeight,
-        proportionalMapping: proportionalMapping,
-        targetDisplayIndex: targetDisplayIndex,
-        pressureCurve: pressureCurve,
-        smoothingStrength: smoothingStrength,
-        penButton1: activeTool.penButton1Binding,
-        penButton2: activeTool.penButton2Binding,
-        tipBinding: activeTool.tipBinding,
-        eraserBinding: activeTool.eraserBinding,
-        touchRingMode: touchRingMode.rawValue,
-        touchRingButtonBinding: activeTool.tipBinding  // TODO: add dedicated UI field
-    )
-}
+#### ⏳ 1.4 Unit test: round-trip JSON
+**File:** `MockTabTests/ProfileCodingTests.swift` — DEFERRED
 
-/// Import a profile, applying all settings to the current device.
-func importProfile(_ profile: Profile) {
-    activeAreaX = profile.tabletAreaX
-    activeAreaY = profile.tabletAreaY
-    activeAreaWidth = profile.tabletAreaWidth
-    activeAreaHeight = profile.tabletAreaHeight
-    proportionalMapping = profile.proportionalMapping
-    targetDisplayIndex = profile.targetDisplayIndex
-    pressureCurve = profile.pressureCurve
-    smoothingStrength = profile.smoothingStrength
-    activeTool.penButton1Binding = profile.penButton1
-    activeTool.penButton2Binding = profile.penButton2
-    activeTool.tipBinding = profile.tipBinding
-    activeTool.eraserBinding = profile.eraserBinding
-    if let mode = TouchRingMode(rawValue: profile.touchRingMode) {
-        touchRingMode = mode
-    }
-    // TODO: activeTool.touchRingButtonBinding = profile.touchRingButtonBinding
-}
-```
-
-#### 1.3 Create example JSON profile
-**Location:** `MockTab/example-profile.json` (or in Notes/)
-
-Document the JSON format users will work with:
-
-```json
-{
-  "name": "Creative Work",
-  "deviceModel": "Wacom Intuos Pro M",
-  "tabletAreaX": 0.0,
-  "tabletAreaY": 0.0,
-  "tabletAreaWidth": 216.0,
-  "tabletAreaHeight": 135.0,
-  "proportionalMapping": true,
-  "targetDisplayIndex": 0,
-  "pressureCurve": {
-    "p1": { "x": 0.25, "y": 0.25 },
-    "p2": { "x": 0.75, "y": 0.75 }
-  },
-  "smoothingStrength": 0.5,
-  "penButton1": {
-    "kind": "rightClick",
-    "keyCode": 0,
-    "modifierFlags": 0,
-    "keyLabel": ""
-  },
-  "penButton2": {
-    "kind": "middleClick",
-    "keyCode": 0,
-    "modifierFlags": 0,
-    "keyLabel": ""
-  },
-  "tipBinding": {
-    "kind": "leftClick",
-    "keyCode": 0,
-    "modifierFlags": 0,
-    "keyLabel": ""
-  },
-  "eraserBinding": {
-    "kind": "rightClick",
-    "keyCode": 0,
-    "modifierFlags": 0,
-    "keyLabel": ""
-  },
-  "touchRingMode": "scroll",
-  "touchRingButtonBinding": {
-    "kind": "none",
-    "keyCode": 0,
-    "modifierFlags": 0,
-    "keyLabel": ""
-  }
-}
-```
-
-#### 1.4 Unit test: round-trip JSON
-**File:** Create `MockTabTests/ProfileCodingTests.swift`
-
-```swift
-import XCTest
-@testable import MockTab
-
-final class ProfileCodingTests: XCTestCase {
-    
-    func testProfileRoundTrip() throws {
-        let original = Profile(
-            name: "Test Profile",
-            deviceModel: "Wacom Intuos Pro M",
-            tabletAreaX: 10, tabletAreaY: 20,
-            tabletAreaWidth: 100, tabletAreaHeight: 60,
-            proportionalMapping: true,
-            targetDisplayIndex: 1,
-            pressureCurve: .linear,
-            smoothingStrength: 0.5,
-            penButton1: .rightClick,
-            penButton2: .middleClick,
-            tipBinding: .leftClick,
-            eraserBinding: .rightClick,
-            touchRingMode: "scroll",
-            touchRingButtonBinding: .none
-        )
-        
-        let encoded = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(Profile.self, from: encoded)
-        
-        XCTAssertEqual(original, decoded)
-    }
-}
-```
+No test target exists in Xcode project; test creation requires target setup.
+Optional for next session.
 
 ### Phase 2: Full CLI Implementation (4–8 hours, WHEN GUI STABLE)
 
@@ -329,6 +164,13 @@ Planned: per-pen settings split (`ToolSettings`), full `DeviceRegistry` evolutio
 Six-phase plan in `project_pen_serial_strategy.md`. Phase 1 (hardware instrumentation)
 not yet started.
 
+### Cintiq
+Tablet with built-in monitor needs additional 
+Cintiq DTK-2400 has two independent touch rings that individual configuration.
+Change keys 1-3 on left and right side of display to be state toggles instead of single-fire buttons
+
+
+
 ### Touch ring: additional modes
 Currently supports `.scroll` and `.off`. Future modes could include zoom, brush size,
 layer opacity, or arbitrary key-per-direction bindings.
@@ -345,6 +187,9 @@ DTH-271 is now in the registry (from OTD, IntuosV2 parser) but unverified.
 The CLI *could* target macOS 10.14+ by avoiding SwiftUI + MenuBarExtra.
 Driver code is 100% compatible (IOKit is ancient).
 Deferred: implement GUI-only first, measure user demand, then backport CLI if needed.
+
+# Touch support
+Standard feature in most tablets that many users disable because implementation is far worse than a phone, iPad, or trackpad
 
 ---
 
