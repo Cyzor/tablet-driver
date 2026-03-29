@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 import AppKit
 
@@ -92,7 +110,7 @@ final class WacomAppleEventHandler: NSObject {
             forEventClass: kAEWacomSuite,
             andEventID: kAESendTabletEvent)
 
-        print("WacomShim: Apple Events handlers installed (suite='Wacm', WSnd)")
+        NSLog("WacomShim: Apple Events handlers installed (suite='Wacm', WSnd)")
     }
 
     // MARK: - Context cleanup (called from ShimApp on app termination)
@@ -107,7 +125,13 @@ final class WacomAppleEventHandler: NSObject {
         _ event: NSAppleEventDescriptor,
         withReplyEvent reply: NSAppleEventDescriptor
     ) {
-        guard let direct = event.paramDescriptor(forKeyword: keyDirectObject) else { return }
+        let pid = senderPID(of: event)
+        NSLog("WacomShim: getd from pid \(pid)")
+
+        guard let direct = event.paramDescriptor(forKeyword: keyDirectObject) else {
+            NSLog("WacomShim: getd — no direct object")
+            return
+        }
 
         let propCode: AEKeyword
         if direct.descriptorType == typeType {
@@ -117,9 +141,31 @@ final class WacomAppleEventHandler: NSObject {
                        ?? AEKeyword(0)
         }
 
-        if propCode == kAETabletCountProp {
+        let tag = String(UnicodeScalar((propCode >> 24) & 0xFF)!)
+                + String(UnicodeScalar((propCode >> 16) & 0xFF)!)
+                + String(UnicodeScalar((propCode >>  8) & 0xFF)!)
+                + String(UnicodeScalar( propCode        & 0xFF)!)
+        NSLog("WacomShim: getd prop='\(tag)'")
+
+        switch propCode {
+        case aeFourCC("vers"):
+            // Adobe checks driver version before pTabletCount; return a plausible 6.3.45 BCD.
+            NSLog("WacomShim: replying pVersion=6.3.45")
+            var version = UInt32(0x06034500).bigEndian
+            if let desc = NSAppleEventDescriptor(
+                descriptorType: DescType(typeVersion),
+                bytes: &version, length: 4)
+            {
+                reply.setDescriptor(desc, forKeyword: keyDirectObject)
+            }
+
+        case kAETabletCountProp:
+            NSLog("WacomShim: replying pTabletCount=1")
             reply.setDescriptor(NSAppleEventDescriptor(int32: 1),
                                 forKeyword: keyDirectObject)
+
+        default:
+            NSLog("WacomShim: getd — unhandled prop '\(tag)', no reply")
         }
     }
 
@@ -129,11 +175,21 @@ final class WacomAppleEventHandler: NSObject {
         _ event: NSAppleEventDescriptor,
         withReplyEvent reply: NSAppleEventDescriptor
     ) {
-        // Ignore crel for any class other than cContext ('CTxt').
-        let objectClass = event.paramDescriptor(forKeyword: kKeyObjectClass)?.typeCodeValue
-        guard objectClass == cContext else { return }
+        let pid = senderPID(of: event)
+        let rawClass = event.paramDescriptor(forKeyword: kKeyObjectClass)?.typeCodeValue ?? 0
+        let classTag = String(UnicodeScalar((rawClass >> 24) & 0xFF)!)
+                     + String(UnicodeScalar((rawClass >> 16) & 0xFF)!)
+                     + String(UnicodeScalar((rawClass >>  8) & 0xFF)!)
+                     + String(UnicodeScalar( rawClass        & 0xFF)!)
+        NSLog("WacomShim: crel from pid \(pid) objectClass='\(classTag)'")
 
-        let pid   = senderPID(of: event)
+        // Log if the class code doesn't match our 'CTxt' constant — but create the
+        // context anyway so the handshake completes while we verify the constant.
+        let objectClass = event.paramDescriptor(forKeyword: kKeyObjectClass)?.typeCodeValue
+        if objectClass != cContext {
+            NSLog("WacomShim: crel — unexpected class '\(classTag)' (expected 'CTxt'); proceeding anyway")
+        }
+
         let ctxID = nextContextID
         nextContextID += 1
         if pid != 0 { contexts[pid] = ctxID }
@@ -149,6 +205,7 @@ final class WacomAppleEventHandler: NSObject {
         withReplyEvent reply: NSAppleEventDescriptor
     ) {
         let pid = senderPID(of: event)
+        NSLog("WacomShim: delo from pid \(pid)")
         if pid != 0 { contexts.removeValue(forKey: pid) }
     }
 
@@ -160,6 +217,11 @@ final class WacomAppleEventHandler: NSObject {
     ) {
         // Event type is stored under keyAEData ('data'), not a custom keyword.
         let eventType = event.paramDescriptor(forKeyword: AEKeyword(keyAEData))?.typeCodeValue ?? 0
+        let tag = String(UnicodeScalar((eventType >> 24) & 0xFF)!)
+                + String(UnicodeScalar((eventType >> 16) & 0xFF)!)
+                + String(UnicodeScalar((eventType >>  8) & 0xFF)!)
+                + String(UnicodeScalar( eventType        & 0xFF)!)
+        NSLog("WacomShim: WSnd eventType='\(tag)'")
 
         let dn = DistributedNotificationCenter.default()
         if eventType == eEventProximity {
