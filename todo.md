@@ -1,6 +1,6 @@
 # MockTab — Open Tasks
 
-_Last updated: 2026-03-28 (session 5 — CLI/JSON profiles planned)_
+_Last updated: 2026-03-28 (session 9 — Photoshop pressure fixed)_
 
 ---
 
@@ -350,6 +350,10 @@ Deferred: implement GUI-only first, measure user demand, then backport CLI if ne
 
 ## Done (recent sessions)
 
+- [x] Photoshop pressure sensitivity (2026-03-28): populate tabletEventPointPressure +
+      tabletEventDeviceID + tabletEventPointButtons in mouse events (Photoshop reads tablet
+      union, not mouseEventPressure). Also fix capabilityMask 0x04C3→0x05C7. WacomShim
+      Apple Events approach abandoned — CGEvent fix is sufficient.
 - [x] KC-100 USB mouse cursor + scroll work (2026-03-27): buttons remain broken due to
       byte-offset bug (see Deferred) and KC-100 being deprioritized.
 - [x] HID capture tool built-in: `HIDCapture.shared` singleton logs raw hex reports

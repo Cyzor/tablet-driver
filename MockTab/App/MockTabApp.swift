@@ -57,7 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             TabletManager.shared.start()
         }
 
-        spawnShim()
+        // spawnShim() — disabled; Adobe pressure is fixed via capability mask 0x05C7, no Apple Events needed.
 
         // Only open a fresh window on first launch — subsequent launches
         // restore their windows via PreferencesWindowController.restoreWindows().
