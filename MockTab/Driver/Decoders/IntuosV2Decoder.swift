@@ -61,12 +61,16 @@ struct IntuosV2Decoder: WacomDecoder {
         case 0x11:
             return decodeAuxReport(report: report, length: length)
         case 0x80:
-            // Bluetooth-transport pen reports share report ID 0x80 with the RF-dongle
-            // wireless status byte.  Distinguish by report[1]:
-            //   0x02/0x05/0x06 → RF wireless status (active / lost / low-battery)
-            //   anything else  → BT HID pen data (BLE-layout coordinates, different flag bits)
+            // Report ID 0x80 is shared by three distinct payloads:
+            //   • RF wireless status (report[1] = 0x02/0x05/0x06)
+            //   • PTH-860 BT Classic: 99 bytes — 1 header + 7 × 14-byte pen frames
+            //     (wacom_intuos_pro2_bt_irq / INTUOSP2_BT kernel type)
+            //   • PTH-660 BT Classic: 361 bytes — single pen sub-report + pad at offset 281
             if length >= 2 && (report[1] == 0x02 || report[1] == 0x05 || report[1] == 0x06) {
                 return decodeWireless(report: report, length: length)
+            }
+            if length == 99 {
+                return decodeBTClassicFrames(report: report, length: length, spec: spec, state: &state)
             }
             return decodeBTPen(report: report, length: length, spec: spec, state: &state)
         default:
@@ -358,6 +362,86 @@ struct IntuosV2Decoder: WacomDecoder {
                     touchRingButtonDown: btnByte != 0,
                     touchRingPosition: ringActive ? (ringByte & 0x7F) : 0x7F)))
             }
+        }
+
+        return results
+    }
+
+    // MARK: - BT Classic pen (0x80, length == 99, PTH-860)
+    //
+    // The PTH-860 uses Bluetooth Classic (advertised as "BT IntuosPro L").
+    // The kernel handler wacom_intuos_pro2_bt_irq (INTUOSP2_BT) packs 7 pen frames
+    // per packet to compensate for lower BT bandwidth vs USB.
+    //
+    // Packet layout: [0]=header, [1..14]=frame0, [15..28]=frame1, ..., [85..98]=frame6
+    //
+    // Per-frame flag byte (f[0]):
+    //   0x80 = frame valid   — skip entire frame if clear
+    //   0x40 = pen in prox   — set on proximity entry
+    //   0x20 = pen in range  — set while hovering or touching
+    //   0x08 = eraser tool
+    //   0x04 = BTN_STYLUS2 (barrel 2)
+    //   0x02 = BTN_STYLUS  (barrel 1)
+    //   0x01 = BTN_TOUCH
+    //
+    // Note: tilt bytes are signed two's-complement; a kernel bug (reading unsigned)
+    // was patched — we always cast via Int8(bitPattern:).
+    // Pad reports over BT Classic use a separate sub-report embedded in the container
+    // at an unverified offset; pad decoding is deferred until hardware is available.
+
+    private func decodeBTClassicFrames(
+        report: UnsafePointer<UInt8>,
+        length: CFIndex,
+        spec: DigitizerSpec,
+        state: inout DecoderState
+    ) -> [DecodeResult] {
+        guard length >= 99 else { return [] }
+
+        var results: [DecodeResult] = []
+
+        for i in 0..<7 {
+            let f = report.advanced(by: 1 + i * 14)
+
+            guard (f[0] & 0x80) != 0 else { continue }  // frame not valid — skip
+
+            let inProx  = (f[0] & 0x40) != 0
+            let inRange = (f[0] & 0x20) != 0
+            let eraser  = (f[0] & 0x08) != 0
+            let barrel2 = (f[0] & 0x04) != 0
+            let barrel1 = (f[0] & 0x02) != 0
+
+            // Pen left detection range — emit a final proximity-out event once.
+            if !inProx && !inRange {
+                if state.prevInProximity {
+                    state.prevInProximity = false
+                    results.append(.pen(TabletPoint(
+                        x: state.lastX, y: state.lastY,
+                        maxX: spec.maxX, maxY: spec.maxY,
+                        pressure: 0, maxPressure: spec.maxPressure,
+                        tiltX: 0, tiltY: 0, rotation: 0.0,
+                        penButton1: false, penButton2: false,
+                        eraser: false, inProximity: false, hoverDistance: 0)))
+                }
+                continue
+            }
+
+            state.prevInProximity = true
+
+            let x        = Int(UInt16(f[1]) | UInt16(f[2]) << 8)
+            let y        = Int(UInt16(f[3]) | UInt16(f[4]) << 8)
+            let pressure = Int(UInt16(f[5]) | UInt16(f[6]) << 8) & 0x1FFF
+            let tiltX    = Double(Int8(bitPattern: f[7])) / 127.0
+            let tiltY    = Double(Int8(bitPattern: f[8])) / 127.0
+
+            state.lastX = x
+            state.lastY = y
+
+            results.append(.pen(TabletPoint(
+                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                pressure: pressure, maxPressure: spec.maxPressure,
+                tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
+                penButton1: barrel1, penButton2: barrel2,
+                eraser: eraser, inProximity: true, hoverDistance: 0)))
         }
 
         return results
