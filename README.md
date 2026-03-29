@@ -1,10 +1,10 @@
 # MockTab
 
-Native tablet driver for modern Macs that brings forgotten drawing tablets back to life.
+Native tablet driver for modern Macs to bring discontinued Wacom drawing tablets back to life.
 
-MockTab is a minimal, high-performance driver for Wacom tablets on Apple Silicon and Intel Macs running macOS 13+. It revives decades of discontinued hardware with full pressure and tilt support — no kernel extensions, no Apple Developer account, no Rosetta emulation needed.
+MockTab is a minimal, high-performance driver for Wacom tablets on Apple Silicon and Intel Macs running macOS 13+. It has the potential to power older tablets with full pressure and tilt support.
 
-**Why you might care:** If you own an older Wacom tablet (Intuos, Intuos Pro, Cintiq) and switched to Apple Silicon, it probably stopped working. Official Wacom drivers were never ported. MockTab fixes that in a single lightweight app.
+**Why you might care:** Wacom makes excellent hardware, but like any venture, can't support old, discontinued products indefinitely.  Reliable and perfectly healthy equipment becomes increasingly incompatible with the newer computing and operating system demands.
 
 ---
 
@@ -12,23 +12,27 @@ MockTab is a minimal, high-performance driver for Wacom tablets on Apple Silicon
 
 **Tablets**
 - Intuos 5 / Intuos Pro (all sizes)
-- Intuos3 / Intuos4
+- Intuos 3 / Intuos 4
 - Cintiq 24HD
 - Bamboo (some models)
 - ~95 other Wacom models via auto-detection
 
 **Features**
-- Full pressure and tilt support
-- Multi-tablet switching (pressure-based activation)
-- Configurable tablet area, pressure curve, button mapping, display mapping
-- Touch ring support (where available)
+- Run different generations of abandoned Wacom tablets simultaneously
+- Full pressure, tilt, and rotation support, depending on input device
 - Wireless via USB dongle or Bluetooth
-- App-specific settings (future)
+- Configurable tablet area, pressure curve, button mapping, display mapping
+- Touch ring support
+- App-specific settings
+- Native application built upon Apple frameworks for ease of use and staying out of the way
 
 **What's *not* supported**
-- Pressure on Intuos tablets over Bluetooth (hardware limitation on some models)
-- Touch input (disabled by default; patches welcome)
-- Tablets from other vendors (Huion, XP-Pen, etc.)
+- Tablets from other vendors (Xencelab, Huion, XP-Pen, etc.)
+- Contemporary Wacom Tablets made after 2020
+- System software older than macOS 13 (for now)
+- Linux, BSD, Apple iOS / iPadOS, Android, Google ChromeOS, Microsoft Windows, Haiku, ReactOS, KolibriOS, Solaris, AmigaOS, MorphOS, AROS, SerenityOS, Redox
+- Touch/gesture input (detected but disabled disabled for now)
+- Old tablets with a serial or ADB connection type
 
 ---
 
@@ -45,7 +49,6 @@ open ~/Library/Developer/Xcode/DerivedData/MockTab-*/Build/Products/Debug/MockTa
 **First launch**
 1. Grant Accessibility permission when prompted (needed for pressure injection)
 2. Open Settings (⌘, or menu bar icon → Settings)
-3. Select your tablet model from the picker
 4. Test pressure in the Scratchpad tab
 5. Configure tablet area, buttons, and display mapping to suit your workflow
 
@@ -71,7 +74,7 @@ Works with Photoshop, Affinity, Illustrator, Krita, GIMP, Blender, and any app t
 
 ## Why this exists
 
-[OpenTabletDriver](https://opentabletdriver.net) inspired this project but only runs x64 on macOS — broken on Apple Silicon without Rosetta. MockTab is fully native, small, and dependency-free. It started as a fix for two specific tablets and has grown to support ~95 Wacom models through a data-driven registry and auto-detection.
+The open-source project [OpenTabletDriver](https://opentabletdriver.net) has expansive device compatibility and cross-platform support.  MockTab has more modest aims and focuses instead on macOS and Wacom hardware.
 
 ---
 
@@ -95,4 +98,4 @@ Free to run, study, modify, and share — with modifications available under the
 
 - [Supported hardware list](HARDWARE.md)
 - [Build & development](DEVELOPMENT.md)
-- [Troubleshooting](TROUBLESHOOTING.md) (coming soon)
+- [Troubleshooting](TROUBLESHOOTING.md)

@@ -93,9 +93,33 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Display mapping
 
-    /// 0 = primary display, 1..N = specific display by CGGetActiveDisplayList index.
+    /// Sentinel value for targetDisplayIndex: tablet area spans all displays.
+    static let displayModeAll    = -1
+    /// Sentinel value for targetDisplayIndex: tablet cycles through selected displays.
+    static let displayModeToggle = -2
+
+    /// 0 = primary display, 1..N = specific display (1-indexed CGGetActiveDisplayList order).
+    /// -1 = all displays (span union rect), -2 = toggle rotation.
     @Published var targetDisplayIndex: Int = 0 {
         didSet { persist("targetDisplayIndex", targetDisplayIndex) }
+    }
+
+    /// CGDirectDisplayID values (comma-separated) included in the toggle rotation.
+    /// Empty string means all connected displays are included.
+    @Published var toggleDisplayIDs: String = "" {
+        didSet { persist("toggleDisplayIDs", toggleDisplayIDs) }
+    }
+
+    /// Typed get/set for the toggle display ID set.
+    var toggleDisplayIDSet: Set<CGDirectDisplayID> {
+        get {
+            Set(toggleDisplayIDs.split(separator: ",")
+                .compactMap { CGDirectDisplayID($0.trimmingCharacters(in: .whitespaces)) })
+        }
+        set {
+            let s = newValue.sorted().map { String($0) }.joined(separator: ",")
+            toggleDisplayIDs = s
+        }
     }
 
     // MARK: - Pressure curve
@@ -269,7 +293,8 @@ final class TabletSettings: ObservableObject {
         ud.set(activeAreaHeight, forKey: prefix + "activeAreaHeight")
         ud.set(proportionalMapping, forKey: prefix + "proportionalMapping")
         ud.set(targetDisplayIndex, forKey: prefix + "targetDisplayIndex")
-        ud.set(smoothingStrength, forKey: prefix + "smoothingStrength")
+        ud.set(toggleDisplayIDs,   forKey: prefix + "toggleDisplayIDs")
+        ud.set(smoothingStrength,  forKey: prefix + "smoothingStrength")
         ud.set(doubleClickDistance, forKey: prefix + "doubleClickDistance")
         ud.set(pen1Raw, forKey: prefix + "penButton1Binding")
         ud.set(pen2Raw, forKey: prefix + "penButton2Binding")
@@ -284,8 +309,8 @@ final class TabletSettings: ObservableObject {
 
         preset.overriddenKeys = [
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
-            "proportionalMapping", "targetDisplayIndex", "smoothingStrength",
-            "doubleClickDistance", "penButton1Binding", "penButton2Binding",
+            "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
+            "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
             "expressKeyBindings", "touchRingButtonBinding", "touchRingMode",
             "touchStrip1Mode", "touchStrip2Mode", "pressureCurve",
         ]
@@ -310,8 +335,8 @@ final class TabletSettings: ObservableObject {
         let prefix = presetKeyPrefix(preset)
         let allKeys = [
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
-            "proportionalMapping", "targetDisplayIndex", "smoothingStrength",
-            "doubleClickDistance", "penButton1Binding", "penButton2Binding",
+            "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
+            "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
             "expressKeyBindings", "touchRingButtonBinding", "touchRingMode",
             "touchStrip1Mode", "touchStrip2Mode", "pressureCurve",
         ]
@@ -440,6 +465,7 @@ final class TabletSettings: ObservableObject {
         activeAreaHeight = loadDouble("activeAreaHeight", default: 1.0)
         proportionalMapping = loadBool("proportionalMapping", default: true)
         targetDisplayIndex = loadInt("targetDisplayIndex", default: 0)
+        toggleDisplayIDs   = loadString("toggleDisplayIDs", default: "")
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
         doubleClickDistance = loadDouble("doubleClickDistance", default: 10.0)
         pen1Raw = loadString("penButton1Binding", default: "")
@@ -583,6 +609,7 @@ final class TabletSettings: ObservableObject {
         activeAreaHeight = 1
         proportionalMapping = true
         targetDisplayIndex = 0
+        toggleDisplayIDs   = ""
         pressureCurve = .linear
         smoothingStrength = 0.0
         doubleClickDistance = 10.0

@@ -1,20 +1,18 @@
 ---
-name: Wacom tablet driver Swift project
-description: New standalone Swift macOS app being built as an alternative to OpenTabletDriver for Wacom-only use
+name: MockTab — Wacom tablet driver for modern macOS
+description: Native Swift/SwiftUI driver for ~95 Wacom tablet models, supporting USB and Bluetooth
 type: project
 ---
 
-A new Swift/SwiftUI macOS tablet driver was started at `OpenTabletDriver/wacom-tablet-driver/`. It's a separate project from OpenTabletDriver.
+A Swift/SwiftUI native macOS application that brings discontinued Wacom drawing tablets back to life with modern macOS support.
 
-**Target devices:** PTH-851 (Intuos 5 Large) and PTH-860 (Intuos Pro Large)
+**Target hardware:** ~95 Wacom tablet models from the early 2000s onward, including Intuos (all generations), Cintiq 24HD, Bamboo, and more.
 
 **Architecture:** Menu bar app (LSUIElement), IOHIDManager for HID, CGEvent injection for cursor + pressure
 
-**Why:** OpenTabletDriver's C#/Eto.Forms stack can't run natively on ARM64 due to HID entitlement issues and Eto.Platform.Mac64's Xamarin.Mac x64 dependency. The Swift app bypasses all of that.
+**Why:** Wacom discontinued official driver support for older tablets. This project restores them with full pressure, tilt, and button support on modern Macs (13.0+). Works alongside or instead of OpenTabletDriver, with lighter resource footprint and native SwiftUI settings.
 
-**Known constraint:** Requires Wacom's official system extension to be absent — IOHIDManager returns kIOReturnExclusiveAccess otherwise.
-
-**How to apply:** When working in this project, context is the `wacom-tablet-driver/` subdirectory, not the OpenTabletDriver C# codebase.
+**Notable constraint:** Requires Wacom's official system extension to be absent — IOHIDManager returns `kIOReturnExclusiveAccess` otherwise.
 
 ---
 
@@ -22,54 +20,77 @@ A new Swift/SwiftUI macOS tablet driver was started at `OpenTabletDriver/wacom-t
 
 ```
 IOHIDManager (main run loop, kCFRunLoopCommonModes)
-    └── PTH851Device / PTH860Device   (HID report parsers → TabletPoint)
-            └── TabletManager.onTablet closure
-                    └── InputInjector.inject()   (CGEvent posting)
+    └── WacomGenericDevice / DeviceFamily-specific parsers
+            → TabletPoint → TabletManager
+                    ├── contexts: [Int: DeviceContext]  (per-device settings+injector)
+                    ├── activeContext (proximity-based switching)
+                    └── DeviceContext.injector → CGEvent tap
 
 SwiftUI Settings scene (LSUIElement app, no Dock icon)
-    └── PreferencesView (TabView)
-        ├── TabletAreaView     — active area rectangle editor
-        ├── PressureCurveView  — bezier curve + stabilization + double-click sliders
-        ├── ButtonMappingView  — pen button actions
-        ├── DisplayMappingView — target display picker
-        └── ScratchpadView     — live pressure test canvas (NSViewRepresentable)
+    PreferencesWindowController — window manager
+        └── SettingsWindowController (NSTabViewController, .toolbar style, 8 tabs)
+             TabletAreaView | PressureCurveView | ButtonMappingView | DisplayMappingView
+             DevicesView | PresetsView | ScratchpadView | InfoView
 
-TabletSettings (@MainActor ObservableObject, @AppStorage + UserDefaults)
-TabletManager  (@MainActor, singleton, owns IOHIDManager + InputInjector)
+DeviceContext: owns TabletSettings + InputInjector + TabletDevice per product ID
+DeviceRegistry: singleton tracking all connected tablets and tools
+TabletSettings: @MainActor ObservableObject, @AppStorage + UserDefaults per-device namespace
 ```
+
+All code is `@MainActor`. IOHIDManager callbacks are scheduled on `CFRunLoopGetMain()` so they land on the main thread natively.
+
+### Multi-device support
+Each connected tablet gets its own `DeviceContext` (settings, injector, device driver).
+Only the *active* context posts CGEvents — activation switches automatically when a pen
+enters proximity on a different tablet. Legacy `TabletManager.settings`/`.injector` computed
+properties forward to `activeContext` for backwards compatibility.
+
+### Settings export/import (Phase 1)
+Profile-based JSON export/import is implemented for portability. Full CLI implementation
+deferred until `TabletSettings` API stabilizes (~1–2 months).
 
 ---
 
-## Device IDs
+## Supported Devices (Examples)
 
-| Device | VendorID | ProductID |
-|--------|----------|-----------|
-| Wacom (all) | 0x056A (1386) | — |
-| PTH-851 Intuos 5 Large | 0x056A | 0x0317 (791) |
-| PTH-860 Intuos Pro Large | 0x056A | 0x0358 (856) |
+| Family | Examples | Report Format | Decoders |
+|--------|----------|---------------|----------|
+| IntuosV1 (PTH-851, etc.) | Intuos 5 Large, Intuos Pro Medium | 10-byte 0x02 | IntuosV1Decoder |
+| IntuosV2 (PTH-660, PTH-860, etc.) | Intuos Pro 2015+, Cintiq 22HD | 192-byte USB, 361-byte BT | IntuosV2Decoder |
+| Intuos3 (PTZ-631W, etc.) | Intuos 3 / 4 | 10-byte multi-report | Intuos3Decoder |
+| Cintiq 24HD (DTK-2400) | 24" display tablet | 192-byte, touch ring, buttons | DTK2400Decoder |
+| BambooDecoder | Bamboo line | 20-byte | BambooDecoder |
+| WacomGenericDevice | ~45 OTD-imported models | Auto-detection from HID spec | Auto-dispatch |
+
+Total: ~95 models registered; auto-detection handles unregistered models via HID descriptor.
 
 ---
 
 ## HID Report Formats
 
-### PTH-851 (IntuosV1) — 10-byte reports
+### IntuosV1 (PTH-851) — 10-byte reports
 - Feature init on open: `[0x02, 0x02]`
 - Report ID: 0x02 (pen)
 - Proximity: `report[1] & 0x20`
-- High confidence: `report[1] & 0x40` — **do NOT filter out reports when this drops; pen lift emits low-confidence reports and that's how pressure reaches zero**
-- X: `(report[3] | report[2]<<8) << 1 | ((report[9]>>1) & 1)`
-- Y: `(report[5] | report[4]<<8) << 1 | (report[9] & 1)`
-- Pressure: `(report[6]<<3) | ((report[7]&0xC0)>>5) | (report[1]&1)`  (max 1023)
-- TiltX: `report[7] & 0x3F` (signed, center=0), TiltY: `report[8]` (signed)
-- PenButton1: `report[1] & 0x02`, PenButton2: `report[1] & 0x04`, Eraser: `report[1] & 0x08`
-- Digitizer: maxX=44704, maxY=27940, maxPressure=1023
+- High confidence: `report[1] & 0x40` — do NOT filter when this drops; pen lift emits low-confidence reports
+- X/Y: 11-bit (left-padded in 16-bit fields with LSBs from report[9])
+- Pressure: 11-bit (max 2047 for PTH-851)
+- TiltX/Y: signed 6-bit
+- Digitizer: maxX=44704, maxY=27940, maxPressure=2047
 
-### PTH-860 (IntuosV2) — 192-byte reports
-- Report IDs: 0x10 (pen), 0x1E (offset pen), 0x11 (aux/express keys), 0x21 (touch)
-- X: `UInt32(report[2]) | UInt32(report[3])<<8 | UInt32(report[4])<<16`
-- Y: `UInt32(report[5]) | UInt32(report[6])<<8 | UInt32(report[7])<<16`
-- Pressure: `UInt16(report[8]) | UInt16(report[9])<<8`  (max 8191)
+### IntuosV2 (PTH-660/860) — 192-byte USB / 361-byte BT reports
+- Report IDs: 0x10 (pen), 0x11 (express keys), 0x21 (touch)
+- X/Y: 24-bit LE
+- Pressure: 13-bit (max 8191)
+- Tilt/rotation: signed bytes
+- Touch ring: 0x11 report, one-hot buttons + contact detection
 - Digitizer: maxX=62200, maxY=43200, maxPressure=8191
+
+### IntuosV2 Bluetooth Classic (PTH-860) — 99-byte reports
+- Same 13-bit pressure as USB variant
+- 7 frames × 14 bytes packed in 99-byte report
+- 0x80 report ID with frame-based decoding
+- Digitizer specs same as USB variant
 
 ---
 
@@ -97,10 +118,15 @@ IOHIDManagerScheduleWithRunLoop(manager, CFRunLoopGetMain(), mode)
 e.setDoubleValueField(.mouseEventPressure, value: pressure)  // NOT .tabletEventPointPressure
 e.setIntegerValueField(.mouseEventSubtype, value: 1)          // NSEventSubtype.tabletPoint
 e.setIntegerValueField(.mouseEventClickState, value: count)   // 1=single, 2=double, 3=triple
+// Also for Photoshop (reads tablet union in mouse events):
+e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
+e.setIntegerValueField(.tabletEventPointButtons, value: buttons)
 ```
 - `.mouseEventPressure` (field 6) → `NSEvent.pressure` — wrong field = pressure always 0
 - `.mouseEventSubtype = 1` — without this, AppKit/Qt/GTK ignore the pressure field entirely
-- `.mouseEventClickState` — **without this, every click is click #1; double-click is impossible**
+- `.mouseEventClickState` — without this, every click is click #1; double-click is impossible
+- Tablet union fields — required for Photoshop/Affinity/Illustrator
 
 ### tabletPointer event (post BEFORE each mouse event)
 Required for Qt (Krita) and GTK (GIMP) which process `NSEventTypeTabletPoint` separately.
@@ -126,10 +152,9 @@ e.setIntegerValueField(.tabletProximityEventDeviceID,          value: 1)  // non
 e.setIntegerValueField(.tabletProximityEventSystemTabletID,    value: 0)
 e.setIntegerValueField(.tabletProximityEventPointerType,       value: 1)  // 1=pen, 3=eraser
 e.setIntegerValueField(.tabletProximityEventVendorPointerType, value: 0x0802) // 0x080A=eraser
-e.setIntegerValueField(.tabletProximityEventCapabilityMask,    value: 0x04C3)
-// 0x04C3 = bit0(buttons)|bit1(pressure)|bit6(tiltX)|bit7(tiltY)|bit10(hoverZ)
+e.setIntegerValueField(.tabletProximityEventCapabilityMask,    value: 0x05C7)
+// 0x05C7 = bit0(buttons)|bit1(pressure)|bit2(proximity)|bit6(tiltX)|bit7(tiltY)|bit10(hoverZ)
 e.setIntegerValueField(.tabletProximityEventEnterProximity,    value: entering ? 1 : 0)
-// NOTE: tabletProximityEventPointerSerialNumber does NOT exist in Swift's CGEventField enum
 ```
 
 Post target: always `.cghidEventTap`.
@@ -138,15 +163,13 @@ Post target: always `.cghidEventTap`.
 
 ## App Compatibility
 
-| App | Pressure | Middle-click | Notes |
-|-----|----------|--------------|-------|
-| Acorn, Nomad, Blender | ✅ | ✅ | Simple `NSEvent.pressure` on mouse drag |
-| Houdini | ✅ | ✅ | |
-| Smooze Pro | ✅ | ✅ | |
-| Photoshop, Affinity, Illustrator | ✅ | ✅ | Need full proximity device registration |
-| Krita (Qt) | ✅ | ✅ | Needs tabletPointer events + proximity deviceID |
-| GIMP (GTK) | ✅ | ✅ | Same as Krita |
-| Marc Moini Smart Scroll | — | ❌ | Also failed with official Wacom drivers; likely intercepts input below `otherMouseDown/Up` or filters by device type. Not a MockTab bug. |
+| App | Pressure | Notes |
+|-----|----------|-------|
+| Acorn, Nomad, Blender, Houdini, Smooze Pro | ✅ | Standard `NSEvent.pressure` on mouse drag |
+| Photoshop, Affinity, Illustrator | ✅ | Require full proximity registration + tablet union fields |
+| Krita (Qt) | ✅ | Needs tabletPointer events + proximity deviceID |
+| GIMP (GTK) | ✅ | Same as Krita |
+| Marc Moini Smart Scroll | ❌ | Also failed with official Wacom drivers; likely intercepts below `otherMouseDown/Up` |
 
 ---
 
@@ -156,7 +179,7 @@ Post target: always `.cghidEventTap`.
 
 **Two-part fix in `InputInjector.resolveClick()`:**
 1. **Click counting** — within `NSEvent.doubleClickInterval` AND ≤N pt: `clickCount++`. Set on mouseDown + matching mouseUp via `activeClickCount`.
-2. **Position snapping** — if within user's `doubleClickDistance` setting, snap second tap's position to first tap's coordinates. Chains for triple-click (update `lastClickPosition = snapped`).
+2. **Position snapping** — if within user's `doubleClickDistance` setting, snap second tap's position to first tap's coordinates. Chains for triple-click.
 
 Fallback count threshold when snap disabled: 8 pt (matches macOS default click distance).
 
@@ -169,21 +192,23 @@ let α = 1.0 - settings.smoothingStrength * 0.85   // 0→α=1.0 (raw), 1→α=0
 smoothedPoint.x += α * (rawPoint.x - smoothedPoint.x)
 // Snap to rawPoint on proximity entry to prevent cursor sliding in from old position
 ```
-Default: 0.0 (hardware filtering on PTH-851/860 is already good).
+Default: 0.0 (hardware filtering on modern tablets is already good).
 
 ---
 
 ## Settings (@AppStorage defaults)
 
+Per-device namespace: `"device-0x{ProductID_HEX}.{key}"`
+
 | Key | Default |
 |-----|---------|
-| activeAreaX/Y/Width/Height | 0, 0, 1, 1 |
+| activeAreaX/Y/Width/Height | 0, 0, 1, 1 (full area) |
 | targetDisplayIndex | 0 (primary) |
 | penButton1Action | 2 (rightClick) |
 | penButton2Action | 3 (middleClick) |
 | smoothingStrength | 0.0 |
 | doubleClickDistance | 10.0 pt |
-| pressureCurve | .linear (JSON → UserDefaults) |
+| pressureCurve | .linear (JSON) |
 
 ---
 
@@ -198,19 +223,19 @@ Use `Swift.min(Swift.max(...))` — never define `clamped(to:)` extension; Swift
 
 `ScratchpadNSView: NSView` receives injected CGEvents. `event.pressure` in mouseDown/mouseDragged reflects real pen pressure once `.mouseEventPressure` is set correctly.
 
-**Never** use `event.allTouches().first!` in mouseDragged — empty set on mouse events, force-unwrap crashes silently → strokes only appear on mouseUp.
+**Never** use `event.allTouches().first!` in mouseDragged — empty set on mouse events, force-unwrap crashes silently.
 
 ---
 
 ## Build Config
 
-- `CODE_SIGN_IDENTITY = "-"` (ad-hoc, no Developer account)
-- `ARCHS = "$(ARCHS_STANDARD)"` — native ARM64
+- `CODE_SIGN_IDENTITY = "MockTab Dev"` (self-signed, stable across rebuilds)
+- Bundle ID: `com.cyzor.mocktab`
+- `ARCHS = "$(ARCHS_STANDARD)"` — native ARM64 + Intel
 - Deployment target: macOS 13.0
-- `LSUIElement = YES` — menu bar only
+- `LSUIElement = YES` — menu bar only, no Dock icon
 - `app-sandbox = false` — required for IOHIDManager + CGEvent
 - `NSInputMonitoringUsageDescription` + `NSAccessibilityUsageDescription` in Info.plist
-- macOS 14+: `@Environment(\.openSettings)`; macOS 13: `showSettingsWindow:` selector + 50ms asyncAfter
 
 ---
 
@@ -222,10 +247,10 @@ Use `Swift.min(Swift.max(...))` — never define `clamped(to:)` extension; Swift
 | Pressure always 0 | `.mouseEventPressure` not `.tabletEventPointPressure` on mouse events |
 | Apps ignore pressure | `.mouseEventSubtype = 1` required on all mouse events |
 | Krita/GIMP ignore pressure | tabletPointer events were removed; must be sent before each mouse event |
-| Photoshop/Affinity ignore pressure | Proximity event missing vendorID/deviceID/pointerType fields |
+| Photoshop/Affinity ignore pressure | Proximity event missing vendorID/deviceID/pointerType fields, tablet union fields missing in mouse events |
 | Double-click impossible | `.mouseEventClickState` never set; added full click counting + position snap |
 | Scratchpad strokes on mouseUp only | `event.allTouches().first!` crashed drag handler silently |
 | `tabletProximityEventPointerSerialNumber` compile error | Field doesn't exist in Swift CGEventField; removed |
 | Duplicate `clamped(to:)` | Removed all custom extensions; use `Swift.min(Swift.max(...))` |
 | `IOHIDManager callback device non-optional` | `guard let ctx` only, not `guard let ctx, let device` |
-| Thread not in scope | Missing `import Foundation` in TabletManager/TabletDevice |
+| CPU churn during backgrounding | Three-level gating: app foreground + window focus + tab visibility |
