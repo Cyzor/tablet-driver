@@ -171,6 +171,7 @@ final class InputInjector {
 
     private var cachedDisplayBounds: CGRect = .zero
     private var cachedDisplayIndex: Int = Int.min
+    private var currentToggleIndex: Int = 0
     private var displayObserver: NSObjectProtocol?
 
     // MARK: - Pen injection
@@ -810,7 +811,38 @@ final class InputInjector {
             return fallback
         }
         let idx = settings.targetDisplayIndex
+        if idx == TabletSettings.displayModeAll {
+            // Union bounding rect spanning every active display.
+            return ids.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }
+        }
+        if idx == TabletSettings.displayModeToggle {
+            let rotation = toggleRotation(settings: settings, allIDs: ids)
+            guard !rotation.isEmpty else { return CGDisplayBounds(CGMainDisplayID()) }
+            return CGDisplayBounds(rotation[currentToggleIndex % rotation.count])
+        }
         if idx > 0, idx <= ids.count { return CGDisplayBounds(ids[idx - 1]) }
         return CGDisplayBounds(CGMainDisplayID())
+    }
+
+    /// Returns the ordered list of display IDs in the toggle rotation,
+    /// filtered by the IDs stored in settings (empty = all included).
+    private func toggleRotation(settings: TabletSettings,
+                                allIDs: [CGDirectDisplayID]) -> [CGDirectDisplayID] {
+        let stored = settings.toggleDisplayIDSet
+        if stored.isEmpty { return allIDs }
+        return allIDs.filter { stored.contains($0) }
+    }
+
+    /// Advances the toggle rotation to the next display in the sequence.
+    /// No-op when fewer than two displays are in the rotation.
+    func cycleToggleDisplay(settings: TabletSettings) {
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
+        let rotation = toggleRotation(settings: settings, allIDs: ids)
+        guard rotation.count > 1 else { return }
+        currentToggleIndex = (currentToggleIndex + 1) % rotation.count
+        cachedDisplayIndex = Int.min   // force cache miss on next inject
     }
 }
