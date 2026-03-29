@@ -644,6 +644,58 @@ final class TabletSettings: ObservableObject {
         ]
     }
 
+    // MARK: - Profile import / export
+
+    /// Captures the current device and active-tool settings as a portable `Profile`.
+    ///
+    /// The snapshot reflects what is actually in use at call time: area, display,
+    /// active-tool pressure curve and button bindings, touch ring mode.
+    /// It does not include express-key bindings (Phase 2) or per-serial overrides.
+    func exportCurrentAsProfile(name: String, deviceName: String) -> Profile {
+        Profile(
+            name: name,
+            deviceModel: deviceName,
+            tabletAreaX: activeAreaX,
+            tabletAreaY: activeAreaY,
+            tabletAreaWidth: activeAreaWidth,
+            tabletAreaHeight: activeAreaHeight,
+            proportionalMapping: proportionalMapping,
+            targetDisplayIndex: targetDisplayIndex,
+            pressureCurve: activeTool.pressureCurve,
+            smoothingStrength: activeTool.smoothingStrength,
+            penButton1: activeTool.penButton1Binding,
+            penButton2: activeTool.penButton2Binding,
+            tipBinding: activeTool.tipBinding,
+            eraserBinding: activeTool.eraserBinding,
+            touchRingMode: touchRingMode.rawValue,
+            touchRingButtonBinding: touchRingButtonBinding
+        )
+    }
+
+    /// Applies a `Profile` to the current device, replacing all covered settings.
+    ///
+    /// Settings not represented in `Profile` (express keys, double-click distance,
+    /// strip modes) are left unchanged.  An unrecognised `touchRingMode` string
+    /// is silently ignored so future format additions don't break older builds.
+    func importProfile(_ profile: Profile) {
+        activeAreaX = profile.tabletAreaX
+        activeAreaY = profile.tabletAreaY
+        activeAreaWidth = profile.tabletAreaWidth
+        activeAreaHeight = profile.tabletAreaHeight
+        proportionalMapping = profile.proportionalMapping
+        targetDisplayIndex = profile.targetDisplayIndex
+        activeTool.pressureCurve = profile.pressureCurve
+        activeTool.smoothingStrength = profile.smoothingStrength
+        activeTool.penButton1Binding = profile.penButton1
+        activeTool.penButton2Binding = profile.penButton2
+        activeTool.tipBinding = profile.tipBinding
+        activeTool.eraserBinding = profile.eraserBinding
+        if let mode = TouchRingMode(rawValue: profile.touchRingMode) {
+            touchRingMode = mode
+        }
+        touchRingButtonBinding = profile.touchRingButtonBinding
+    }
+
     /// Applies pen-display defaults for the first connection of a Cintiq-class device.
     ///
     /// Locates the display matching `width × height` in the active display list

@@ -1,0 +1,52 @@
+{
+  "_comment": "MockTab profile — all fields required unless marked optional.",
+
+  "name": "Creative Work",
+  "deviceModel": "Wacom Intuos Pro M",
+
+  "tabletAreaX": 0.0,
+  "tabletAreaY": 0.0,
+  "tabletAreaWidth": 1.0,
+  "tabletAreaHeight": 1.0,
+  "proportionalMapping": true,
+  "targetDisplayIndex": 0,
+
+  "pressureCurve": {
+    "p1": { "x": 0.25, "y": 0.25 },
+    "p2": { "x": 0.75, "y": 0.75 }
+  },
+  "smoothingStrength": 0.0,
+
+  "penButton1": {
+    "kind": "rightClick",
+    "keyCode": 0,
+    "modifierFlags": 0,
+    "keyLabel": ""
+  },
+  "penButton2": {
+    "kind": "middleClick",
+    "keyCode": 0,
+    "modifierFlags": 0,
+    "keyLabel": ""
+  },
+  "tipBinding": {
+    "kind": "leftClick",
+    "keyCode": 0,
+    "modifierFlags": 0,
+    "keyLabel": ""
+  },
+  "eraserBinding": {
+    "kind": "rightClick",
+    "keyCode": 0,
+    "modifierFlags": 0,
+    "keyLabel": ""
+  },
+
+  "touchRingMode": "scroll",
+  "touchRingButtonBinding": {
+    "kind": "none",
+    "keyCode": 0,
+    "modifierFlags": 0,
+    "keyLabel": ""
+  }
+}
