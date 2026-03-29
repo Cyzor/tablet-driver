@@ -173,12 +173,10 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         let menuItem = NSMenuItem(title: "Presets", action: nil, keyEquivalent: "")
         menuItem.submenu = menu
 
-        // Insert after Tablet menu.
-        let insertAfter =
-            mainMenu.items.firstIndex(where: { $0.title == "Tablet" })
-            ?? mainMenu.items.firstIndex(where: { $0.title == "Edit" })
-            ?? 1
-        mainMenu.insertItem(menuItem, at: insertAfter + 1)
+        // Insert after Edit menu (which SwiftUI generates).
+        if let editIndex = mainMenu.items.firstIndex(where: { $0.title == "Edit" }) {
+            mainMenu.insertItem(menuItem, at: editIndex + 1)
+        }
     }
 
     /// Rebuild the Presets menu every time it is about to open.
