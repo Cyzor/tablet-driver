@@ -607,6 +607,14 @@ final class InputInjector {
         e.setIntegerValueField(.tabletEventPointButtons, value: pressure > 0.004 ? 1 : 0)
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
         e.setDoubleValueField(.mouseEventPressure, value: pressure)
+        // Synthetic CGEvents default to zero deltas, breaking AppKit controls (e.g.
+        // Xcode's minimap) that read event.deltaX/Y rather than diffing absolute
+        // positions themselves. CG Y=0 is top; NSEvent deltaY is positive-upward,
+        // so negate the Y component.
+        e.setIntegerValueField(
+            .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
+        e.setIntegerValueField(
+            .mouseEventDeltaY, value: Int64((location.y - lastPostedPoint.y).rounded()))
         e.post(tap: .cghidEventTap)
     }
 
@@ -616,6 +624,10 @@ final class InputInjector {
                 mouseEventSource: nil, mouseType: .mouseMoved,
                 mouseCursorPosition: location, mouseButton: .left)
         else { return }
+        e.setIntegerValueField(
+            .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
+        e.setIntegerValueField(
+            .mouseEventDeltaY, value: Int64((location.y - lastPostedPoint.y).rounded()))
         e.post(tap: .cghidEventTap)
     }
 
