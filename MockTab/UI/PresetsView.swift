@@ -1,3 +1,75 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import SwiftUI
 
 /// Presets tab — lets the user create, activate, rename, and delete named
@@ -9,10 +81,10 @@ import SwiftUI
 struct PresetsView: View {
     @ObservedObject var settings: TabletSettings
 
-    @State private var isCreating    = false
-    @State private var newName       = ""
+    @State private var isCreating = false
+    @State private var newName = ""
     @State private var editingPreset: TabletSettings.Preset? = nil
-    @State private var editingName   = ""
+    @State private var editingName = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -60,8 +132,9 @@ struct PresetsView: View {
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6)
-            .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1))
     }
 
     // MARK: - Preset list
@@ -69,12 +142,14 @@ struct PresetsView: View {
     @ViewBuilder
     private var presetList: some View {
         if settings.presets.isEmpty {
-            Text("No presets yet.\nUse the button below to save the current settings as a named snapshot.")
-                .foregroundStyle(.secondary)
-                .font(.callout)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+            Text(
+                "No presets yet.\nUse the button below to save the current settings as a named snapshot."
+            )
+            .foregroundStyle(.secondary)
+            .font(.callout)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
         } else {
             VStack(spacing: 0) {
                 ForEach(settings.presets) { preset in
@@ -86,8 +161,9 @@ struct PresetsView: View {
             }
             .background(Color(NSColor.controlBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1))
         }
     }
 
@@ -115,28 +191,35 @@ struct PresetsView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(preset.name)
-                        Text("\(preset.overriddenKeys.count) override\(preset.overriddenKeys.count == 1 ? "" : "s")")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                        Text(
+                            "\(preset.overriddenKeys.count) override\(preset.overriddenKeys.count == 1 ? "" : "s")"
+                        )
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 // Row action buttons
                 if editingPreset?.id == preset.id {
-                    Button("Save")   { commitRename() }
+                    Button("Save") { commitRename() }
                         .buttonStyle(.borderedProminent).controlSize(.small)
                     Button("Cancel") { editingPreset = nil }
                         .buttonStyle(.bordered).controlSize(.small)
                 } else {
                     Button {
                         editingPreset = preset
-                        editingName   = preset.name
-                    } label: { Image(systemName: "pencil") }
+                        editingName = preset.name
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
                     .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
 
-                    Button(role: .destructive) { settings.deletePreset(preset) }
-                        label: { Image(systemName: "trash") }
+                    Button(role: .destructive) {
+                        settings.deletePreset(preset)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
                     .buttonStyle(.plain).foregroundStyle(.secondary).help("Delete")
                 }
             }
@@ -196,8 +279,9 @@ struct PresetsView: View {
 
     @ViewBuilder
     private func appIcon(bundleID: String) -> some View {
-        if let path  = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)?.path,
-           let icon  = NSWorkspace.shared.icon(forFile: path) as NSImage? {
+        if let path = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)?.path,
+            let icon = NSWorkspace.shared.icon(forFile: path) as NSImage?
+        {
             Image(nsImage: icon)
                 .resizable().scaledToFit()
                 .frame(width: 14, height: 14)
@@ -221,8 +305,11 @@ struct PresetsView: View {
                 Button("Save") { commitCreate() }
                     .buttonStyle(.borderedProminent)
                     .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
-                Button("Cancel") { isCreating = false; newName = "" }
-                    .buttonStyle(.bordered)
+                Button("Cancel") {
+                    isCreating = false
+                    newName = ""
+                }
+                .buttonStyle(.bordered)
             }
         } else {
             Button {
@@ -244,9 +331,11 @@ struct PresetsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Auto-switch preset by app")
                         .fontWeight(.medium)
-                    Text("When enabled, switching to a bound app automatically activates its preset.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text(
+                        "When enabled, switching to a bound app automatically activates its preset."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
             }
             .toggleStyle(.switch)
@@ -266,7 +355,7 @@ struct PresetsView: View {
         guard !trimmed.isEmpty else { return }
         settings.saveAsPreset(name: trimmed)
         isCreating = false
-        newName    = ""
+        newName = ""
     }
 
     private func commitRename() {

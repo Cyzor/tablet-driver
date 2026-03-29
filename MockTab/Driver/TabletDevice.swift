@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 import IOKit.hid
 
@@ -45,9 +63,11 @@ func sendWacomInputModeInit(_ device: IOHIDDevice, tag: String) {
     }
     // CFArrayGetValueAtIndex returns an unretained IOHIDElement reference.
     let elem = Unmanaged<IOHIDElement>.fromOpaque(rawPtr).takeUnretainedValue()
-    let reportID   = IOHIDElementGetReportID(elem)
+    let reportID = IOHIDElementGetReportID(elem)
     let reportBits = IOHIDElementGetReportSize(elem) * IOHIDElementGetReportCount(elem)
-    print("\(tag): InputMode element found — reportID=\(reportID) size=\(reportBits) bits (\((reportBits + 7) / 8) bytes payload)")
+    print(
+        "\(tag): InputMode element found — reportID=\(reportID) size=\(reportBits) bits (\((reportBits + 7) / 8) bytes payload)"
+    )
 
     // Use IOHIDDeviceSetValue rather than IOHIDDeviceSetReport with a raw byte array.
     // IOHIDDeviceSetReport([reportID, 2]) only sends 2 bytes; if the feature report is
@@ -100,29 +120,31 @@ func decodeBLEPenReport(
 ) -> BLEPenResult? {
     guard length >= 11 else { return nil }
 
-    let flags       = report[1]
-    _               = (flags & 0x10) != 0   // tip switch — implicit in pressure > 0
-    let barrel1     = (flags & 0x20) != 0
-    let barrel2     = (flags & 0x40) != 0
+    let flags = report[1]
+    _ = (flags & 0x10) != 0  // tip switch — implicit in pressure > 0
+    let barrel1 = (flags & 0x20) != 0
+    let barrel2 = (flags & 0x40) != 0
     let inProximity = (flags & 0x80) != 0
 
-    let x        = Int(UInt16(report[2]) | UInt16(report[3]) << 8)
-    let y        = Int(UInt16(report[4]) | UInt16(report[5]) << 8)
+    let x = Int(UInt16(report[2]) | UInt16(report[3]) << 8)
+    let y = Int(UInt16(report[4]) | UInt16(report[5]) << 8)
     let pressure = Int(UInt16(report[6]) | UInt16(report[7]) << 8)
     let distance = Int(report[8])
-    let tiltX    = Double(Int8(bitPattern: report[9])) / 127.0
-    let tiltY    = Double(Int8(bitPattern: report[10])) / 127.0
+    let tiltX = Double(Int8(bitPattern: report[9])) / 127.0
+    let tiltY = Double(Int8(bitPattern: report[10])) / 127.0
 
-    let serial: UInt32 = length >= 15
+    let serial: UInt32 =
+        length >= 15
         ? UInt32(report[11]) | UInt32(report[12]) << 8
-          | UInt32(report[13]) << 16 | UInt32(report[14]) << 24
+            | UInt32(report[13]) << 16 | UInt32(report[14]) << 24
         : 0
-    let toolCode: UInt16 = length >= 17
+    let toolCode: UInt16 =
+        length >= 17
         ? UInt16(report[15]) | UInt16(report[16]) << 8
         : 0
 
     let isEraser = (toolCode & 0x0008) != 0
-    let isMouse  = (toolCode & 0x000F) == 0x0006
+    let isMouse = (toolCode & 0x000F) == 0x0006
 
     if inProximity {
         lastX = x
@@ -173,7 +195,7 @@ struct DecoderState {
     /// BT 0x80 container pad state — emit aux only on change.
     var lastBTPadKeys: UInt8 = 0
     var lastBTPadRing: UInt8 = 0x7F
-    var lastBTPadBtn:  UInt8 = 0
+    var lastBTPadBtn: UInt8 = 0
 }
 
 enum DecodeResult {
@@ -216,10 +238,10 @@ func decodeBLEPadReport(
     length: CFIndex
 ) -> AuxButtons? {
     guard length >= 3 else { return nil }
-    let keys       = report[1]
-    let ringByte   = report[2]
+    let keys = report[1]
+    let ringByte = report[2]
     let ringActive = (ringByte & 0x80) != 0
-    let ringPos    = ringByte & 0x7F
+    let ringPos = ringByte & 0x7F
 
     return AuxButtons(
         buttons: (0..<8).map { (keys & (1 << $0)) != 0 },

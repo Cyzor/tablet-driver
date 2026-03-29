@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 import SwiftUI
 
@@ -92,10 +110,10 @@ final class ToolSettings: ObservableObject {
     func reload() {
         isLoading = true
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
-        tipRaw            = loadString("tipBinding",        default: "")
-        eraserRaw         = loadString("eraserBinding",     default: "")
-        pen1Raw           = loadString("penButton1Binding", default: "")
-        pen2Raw           = loadString("penButton2Binding", default: "")
+        tipRaw = loadString("tipBinding", default: "")
+        eraserRaw = loadString("eraserBinding", default: "")
+        pen1Raw = loadString("penButton1Binding", default: "")
+        pen2Raw = loadString("penButton2Binding", default: "")
         loadPressureCurve()
         isLoading = false
     }
@@ -118,16 +136,22 @@ final class ToolSettings: ObservableObject {
     }
 
     private func loadDouble(_ key: String, default d: Double) -> Double {
-        if ud.object(forKey: prefix + key) != nil     { return ud.double(forKey: prefix + key) }
+        if ud.object(forKey: prefix + key) != nil { return ud.double(forKey: prefix + key) }
         if let fb = fallbackPrefix,
-           ud.object(forKey: fb + key) != nil         { return ud.double(forKey: fb + key) }
+            ud.object(forKey: fb + key) != nil
+        {
+            return ud.double(forKey: fb + key)
+        }
         return d
     }
 
     private func loadString(_ key: String, default d: String) -> String {
-        if let v = ud.string(forKey: prefix + key)    { return v }
+        if let v = ud.string(forKey: prefix + key) { return v }
         if let fb = fallbackPrefix,
-           let v  = ud.string(forKey: fb + key)       { return v }
+            let v = ud.string(forKey: fb + key)
+        {
+            return v
+        }
         return d
     }
 
@@ -138,11 +162,12 @@ final class ToolSettings: ObservableObject {
     }
 
     private func loadPressureCurve() {
-        let data = ud.data(forKey: prefix + "pressureCurve")
+        let data =
+            ud.data(forKey: prefix + "pressureCurve")
             ?? fallbackPrefix.flatMap { ud.data(forKey: $0 + "pressureCurve") }
             ?? ud.data(forKey: "pressureCurve")  // legacy unprefixed key
         guard let data,
-              let curve = try? JSONDecoder().decode(BezierCurve.self, from: data)
+            let curve = try? JSONDecoder().decode(BezierCurve.self, from: data)
         else { return }
         pressureCurve = curve
     }

@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 import IOKit.hid
 
@@ -56,7 +74,7 @@ final class TabletManager: ObservableObject {
     var infoViewVisible: Bool = false
 
     private var uiUpdateCounter = 0
-    private static let uiUpdateInterval = 8   // every 8th report ≈ 16 Hz at 133 Hz
+    private static let uiUpdateInterval = 8  // every 8th report ≈ 16 Hz at 133 Hz
 
     // MARK: - Device name helpers
 
@@ -78,7 +96,7 @@ final class TabletManager: ObservableObject {
 
     var settings: TabletSettings? {
         get { activeContext?.settings }
-        set { /* no-op: settings are now per-context */ }
+        set { /* no-op: settings are now per-context */  }
     }
 
     var injector: InputInjector? {
@@ -166,17 +184,22 @@ final class TabletManager: ObservableObject {
     // MARK: - Device lifecycle
 
     private func deviceConnected(_ device: IOHIDDevice) {
-        let productID    = hidIntProperty(device, kIOHIDProductIDKey)
-        let usagePage    = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
-        let usage        = hidIntProperty(device, kIOHIDPrimaryUsageKey)
-        let maxRptSize   = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
-        let transport    = IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
-        let isBLE        = transport.lowercased().contains("bluetooth")
-        print("TabletManager: device pid=0x\(String(productID, radix:16)) usagePage=0x\(String(usagePage, radix:16)) usage=0x\(String(usage, radix:16)) maxRptSize=\(maxRptSize) transport=\(transport)")
+        let productID = hidIntProperty(device, kIOHIDProductIDKey)
+        let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
+        let usage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
+        let maxRptSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
+        let transport =
+            IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        let isBLE = transport.lowercased().contains("bluetooth")
+        print(
+            "TabletManager: device pid=0x\(String(productID, radix:16)) usagePage=0x\(String(usagePage, radix:16)) usage=0x\(String(usage, radix:16)) maxRptSize=\(maxRptSize) transport=\(transport)"
+        )
 
         // BLE tablets expose multiple interfaces. Log all of them; skip ghost mouse only.
         if isBLE && usagePage == 0x01 {
-            print("TabletManager: BLE usagePage=0x01 interface — maxRptSize=\(maxRptSize) usage=0x\(String(usage, radix:16)) — skipping ghost mouse")
+            print(
+                "TabletManager: BLE usagePage=0x01 interface — maxRptSize=\(maxRptSize) usage=0x\(String(usage, radix:16)) — skipping ghost mouse"
+            )
             return
         }
 
@@ -187,14 +210,14 @@ final class TabletManager: ObservableObject {
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
             guard let self, let context else { return }
-            context.activeToolSerial           = identity.serial
-            context.activeToolIsMouse          = identity.isMouse
+            context.activeToolSerial = identity.serial
+            context.activeToolIsMouse = identity.isMouse
             DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
-            let toolID   = DeviceRegistry.toolID(for: identity)
+            let toolID = DeviceRegistry.toolID(for: identity)
             let toolSets = context.settings.toolSettings(forID: toolID, isMouse: identity.isMouse)
-            context.activeTool                  = toolSets
+            context.activeTool = toolSets
             context.injector.activeToolSettings = toolSets
-            context.injector.activeToolIsMouse  = identity.isMouse
+            context.injector.activeToolIsMouse = identity.isMouse
             self.activeToolID = toolID
         }
 
@@ -238,9 +261,9 @@ final class TabletManager: ObservableObject {
             if !point.inProximity {
                 // Proximity exit always publishes immediately so UI clears.
                 self.uiUpdateCounter = 0
-                self.activeToolID    = nil
-                self.liveButtons     = LiveButtonState()
-                self.livePoint       = nil
+                self.activeToolID = nil
+                self.liveButtons = LiveButtonState()
+                self.livePoint = nil
             } else {
                 // Throttle continuous updates to ~16 Hz.
                 self.uiUpdateCounter += 1
@@ -248,10 +271,10 @@ final class TabletManager: ObservableObject {
                 self.uiUpdateCounter = 0
 
                 let toolIsMouse = context.activeToolIsMouse
-                let tipDown     = toolIsMouse ? point.penButton1 : point.normalizedPressure > 0.004
+                let tipDown = toolIsMouse ? point.penButton1 : point.normalizedPressure > 0.004
                 let newButtons = LiveButtonState(
-                    tipDown:     tipDown && !point.eraser,
-                    eraserDown:  tipDown && point.eraser,
+                    tipDown: tipDown && !point.eraser,
+                    eraserDown: tipDown && point.eraser,
                     button1Down: point.penButton1,
                     button2Down: point.penButton2,
                     expressKeys: self.liveButtons.expressKeys
@@ -322,12 +345,13 @@ final class TabletManager: ObservableObject {
             // WacomUniversalDevice.  Stub families (Graphire, Bamboo) and truly
             // unrecognised PIDs fall through to WacomGenericDevice.
             if let deviceSpec = WacomDeviceRegistry.spec(for: productID),
-               WacomDeviceRegistry.hasLiveDecoder(for: productID),
-               deviceSpec.maxX > 0
+                WacomDeviceRegistry.hasLiveDecoder(for: productID),
+                deviceSpec.maxX > 0
             {
                 let shouldSeize = !isBLE && deviceSpec.seizeUSB && usagePage == 0x01
-                print("TabletManager: \(deviceSpec.name) connected via universal driver"
-                      + (shouldSeize ? " (mouse interface, seized)" : ""))
+                print(
+                    "TabletManager: \(deviceSpec.name) connected via universal driver"
+                        + (shouldSeize ? " (mouse interface, seized)" : ""))
                 wacomDevice = WacomUniversalDevice(
                     device: device, deviceSpec: deviceSpec, seize: shouldSeize,
                     onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
@@ -366,7 +390,7 @@ final class TabletManager: ObservableObject {
         guard let context = hidDeviceMap.removeValue(forKey: device) else { return }
         context.tabletDevice?.close()
         context.tabletDevice = nil
-        context.hidDevice    = nil
+        context.hidDevice = nil
         print("TabletManager: \(Self.deviceName(forProductID: context.productID)) disconnected")
         refreshConnectedIDs(mostRecent: nil)
         if activeContext === context {
@@ -376,7 +400,7 @@ final class TabletManager: ObservableObject {
 
     private func refreshConnectedIDs(mostRecent: Int?) {
         connectedProductIDs = hidDeviceMap.values.map { $0.productID }.sorted()
-        isConnected         = !connectedProductIDs.isEmpty
+        isConnected = !connectedProductIDs.isEmpty
         if let pid = mostRecent, connectedProductIDs.contains(pid) {
             connectedProductID = pid
         } else {
@@ -385,12 +409,12 @@ final class TabletManager: ObservableObject {
         if let primary = hidDeviceMap.keys.first(where: {
             hidIntProperty($0, kIOHIDProductIDKey) == connectedProductID
         }) {
-            let info           = Self.connectionInfo(for: primary)
+            let info = Self.connectionInfo(for: primary)
             connectedTransport = info.transport
-            connectedUSBSpeed  = info.speed
+            connectedUSBSpeed = info.speed
         } else {
             connectedTransport = "—"
-            connectedUSBSpeed  = "—"
+            connectedUSBSpeed = "—"
         }
     }
 

@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 
 /// Decoder for the Wacom Bamboo consumer HID report format.
@@ -67,12 +85,14 @@ struct BambooDecoder: WacomDecoder {
             // Emit pen-out on proximity falling edge.
             if state.prevInProximity {
                 state.prevInProximity = false
-                results.append(.pen(TabletPoint(
-                    x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
-                    pressure: 0, maxPressure: spec.maxPressure,
-                    tiltX: 0, tiltY: 0, rotation: 0.0,
-                    penButton1: false, penButton2: false,
-                    eraser: state.isEraser, inProximity: false, hoverDistance: 0)))
+                results.append(
+                    .pen(
+                        TabletPoint(
+                            x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
+                            pressure: 0, maxPressure: spec.maxPressure,
+                            tiltX: 0, tiltY: 0, rotation: 0.0,
+                            penButton1: false, penButton2: false,
+                            eraser: state.isEraser, inProximity: false, hoverDistance: 0)))
             }
             // Decode pad buttons (only when device has express keys).
             if spec.buttonCount > 0 {
@@ -91,11 +111,13 @@ struct BambooDecoder: WacomDecoder {
         if !state.prevInProximity {
             state.isEraser = isEraser
             state.prevInProximity = true
-            results.append(.toolEnter(ToolIdentity(
-                serial: 0,
-                toolCode: isEraser ? 0x080A : 0x0802,
-                isEraser: isEraser,
-                isMouse: false)))
+            results.append(
+                .toolEnter(
+                    ToolIdentity(
+                        serial: 0,
+                        toolCode: isEraser ? 0x080A : 0x0802,
+                        isEraser: isEraser,
+                        isMouse: false)))
         }
 
         let x = Int(UInt16(report[3]) | UInt16(report[2]) << 8)
@@ -111,15 +133,17 @@ struct BambooDecoder: WacomDecoder {
         // Suppressed until a hasTilt flag is added to DigitizerSpec to avoid
         // garbage readings on non-tilt models (zero byte → (0 & 0x0F) - 8 = -8).
 
-        results.append(.pen(TabletPoint(
-            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-            pressure: pressure, maxPressure: spec.maxPressure,
-            tiltX: 0, tiltY: 0, rotation: 0.0,
-            penButton1: (status & 0x02) != 0,
-            penButton2: (status & 0x04) != 0,
-            eraser: isEraser,
-            inProximity: true,
-            hoverDistance: 0)))
+        results.append(
+            .pen(
+                TabletPoint(
+                    x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: pressure, maxPressure: spec.maxPressure,
+                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    penButton1: (status & 0x02) != 0,
+                    penButton2: (status & 0x04) != 0,
+                    eraser: isEraser,
+                    inProximity: true,
+                    hoverDistance: 0)))
 
         return results
     }

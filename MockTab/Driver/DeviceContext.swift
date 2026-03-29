@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 import IOKit.hid
 
@@ -10,7 +28,7 @@ import IOKit.hid
 @MainActor
 final class DeviceContext: ObservableObject, Identifiable {
 
-    let id: Int                     // productID — also serves as Identifiable key
+    let id: Int  // productID — also serves as Identifiable key
     let productID: Int
     let settings: TabletSettings
     let injector: InputInjector
@@ -35,11 +53,11 @@ final class DeviceContext: ObservableObject, Identifiable {
     @Published var activeTool: ToolSettings
 
     init(productID: Int) {
-        self.id        = productID
+        self.id = productID
         self.productID = productID
         let s = TabletSettings(productID: productID)
-        self.settings  = s
-        self.injector  = InputInjector(vendorID: 0x056A, productID: productID)
+        self.settings = s
+        self.injector = InputInjector(vendorID: 0x056A, productID: productID)
         self.activeTool = s.activeTool
     }
 }

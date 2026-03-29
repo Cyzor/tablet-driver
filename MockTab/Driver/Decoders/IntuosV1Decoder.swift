@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 
 /// Decoder for the Wacom IntuosV1 HID report format.
@@ -60,31 +78,37 @@ struct IntuosV1Decoder: WacomDecoder {
             return decodeToolChange(report: report, state: &state)
         }
 
-        let inProximity    = (status & 0x20) != 0
+        let inProximity = (status & 0x20) != 0
         let highConfidence = (status & 0x40) != 0
-        let subtype        = (status >> 1) & 0x0F
+        let subtype = (status >> 1) & 0x0F
 
         // Proximity-out.
         if !inProximity {
             state.prevInProximity = false
             state.toolIsMouse = false
-            return [.pen(TabletPoint(
-                x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: false, penButton2: false,
-                eraser: state.isEraser, inProximity: false, hoverDistance: 0))]
+            return [
+                .pen(
+                    TabletPoint(
+                        x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
+                        pressure: 0, maxPressure: spec.maxPressure,
+                        tiltX: 0, tiltY: 0, rotation: 0.0,
+                        penButton1: false, penButton2: false,
+                        eraser: state.isEraser, inProximity: false, hoverDistance: 0))
+            ]
         }
 
         // Low confidence — keep last position, zero pressure, preserve buttons.
         guard highConfidence else {
-            return [.pen(TabletPoint(
-                x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: !state.toolIsMouse && (status & 0x02) != 0,
-                penButton2: !state.toolIsMouse && (status & 0x04) != 0,
-                eraser: state.isEraser, inProximity: true, hoverDistance: 0))]
+            return [
+                .pen(
+                    TabletPoint(
+                        x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
+                        pressure: 0, maxPressure: spec.maxPressure,
+                        tiltX: 0, tiltY: 0, rotation: 0.0,
+                        penButton1: !state.toolIsMouse && (status & 0x02) != 0,
+                        penButton2: !state.toolIsMouse && (status & 0x04) != 0,
+                        eraser: state.isEraser, inProximity: true, hoverDistance: 0))
+            ]
         }
 
         var results: [DecodeResult] = []
@@ -94,12 +118,15 @@ struct IntuosV1Decoder: WacomDecoder {
             let isMouse = subtype == 0x06 || subtype == 0x08
             state.toolIsMouse = isMouse
             if state.currentToolCode == 0 {
-                let fallbackCode: UInt16 = isMouse
+                let fallbackCode: UInt16 =
+                    isMouse
                     ? (subtype == 0x06 ? 0x0806 : 0x0016)
                     : (state.isEraser ? 0x080A : 0x0802)
-                results.append(.toolEnter(ToolIdentity(
-                    serial: 0, toolCode: fallbackCode,
-                    isEraser: state.isEraser, isMouse: isMouse)))
+                results.append(
+                    .toolEnter(
+                        ToolIdentity(
+                            serial: 0, toolCode: fallbackCode,
+                            isEraser: state.isEraser, isMouse: isMouse)))
             }
         }
         state.prevInProximity = true
@@ -112,34 +139,38 @@ struct IntuosV1Decoder: WacomDecoder {
 
         // Mouse subtype 0x06 (KC-100 cordless mouse).
         if subtype == 0x06 {
-            let buttons    = report[6]
-            let whlByte    = report[7]
+            let buttons = report[6]
+            let whlByte = report[7]
             let wheelDelta = Int((whlByte & 0x80) >> 7) - Int((whlByte & 0x40) >> 6)
-            results.append(.pen(TabletPoint(
-                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (buttons & 0x01) != 0,
-                penButton2: (buttons & 0x04) != 0,
-                eraser: false, inProximity: true, hoverDistance: 0,
-                mouseMiddleButton: (buttons & 0x02) != 0,
-                mouseWheelDelta: wheelDelta)))
+            results.append(
+                .pen(
+                    TabletPoint(
+                        x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                        pressure: 0, maxPressure: spec.maxPressure,
+                        tiltX: 0, tiltY: 0, rotation: 0.0,
+                        penButton1: (buttons & 0x01) != 0,
+                        penButton2: (buttons & 0x04) != 0,
+                        eraser: false, inProximity: true, hoverDistance: 0,
+                        mouseMiddleButton: (buttons & 0x02) != 0,
+                        mouseWheelDelta: wheelDelta)))
             return results
         }
 
         // Mouse subtype 0x08 (2D mouse / Intuos 1–3 cursor).
         if subtype == 0x08 {
-            let btnByte    = report[8]
+            let btnByte = report[8]
             let wheelDelta = Int(btnByte & 0x01) - Int((btnByte & 0x02) >> 1)
-            results.append(.pen(TabletPoint(
-                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (btnByte & 0x04) != 0,
-                penButton2: (btnByte & 0x10) != 0,
-                eraser: false, inProximity: true, hoverDistance: 0,
-                mouseMiddleButton: (btnByte & 0x08) != 0,
-                mouseWheelDelta: wheelDelta)))
+            results.append(
+                .pen(
+                    TabletPoint(
+                        x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                        pressure: 0, maxPressure: spec.maxPressure,
+                        tiltX: 0, tiltY: 0, rotation: 0.0,
+                        penButton1: (btnByte & 0x04) != 0,
+                        penButton2: (btnByte & 0x10) != 0,
+                        eraser: false, inProximity: true, hoverDistance: 0,
+                        mouseMiddleButton: (btnByte & 0x08) != 0,
+                        mouseWheelDelta: wheelDelta)))
             return results
         }
 
@@ -154,17 +185,19 @@ struct IntuosV1Decoder: WacomDecoder {
         // Tilt Y: bits [6:0] of byte 8; biased by 64.
         let tiltYRaw = (Int(report[8]) & 0x7F) - 64
 
-        results.append(.pen(TabletPoint(
-            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-            pressure: pressure, maxPressure: spec.maxPressure,
-            tiltX: Double(tiltXRaw) / 63.0,
-            tiltY: Double(tiltYRaw) / 63.0,
-            rotation: 0.0,
-            penButton1: (status & 0x02) != 0,
-            penButton2: (status & 0x04) != 0,
-            eraser: state.isEraser,
-            inProximity: true,
-            hoverDistance: (Int(report[9]) >> 2))))
+        results.append(
+            .pen(
+                TabletPoint(
+                    x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: pressure, maxPressure: spec.maxPressure,
+                    tiltX: Double(tiltXRaw) / 63.0,
+                    tiltY: Double(tiltYRaw) / 63.0,
+                    rotation: 0.0,
+                    penButton1: (status & 0x02) != 0,
+                    penButton2: (status & 0x04) != 0,
+                    eraser: state.isEraser,
+                    inProximity: true,
+                    hoverDistance: (Int(report[9]) >> 2))))
         return results
     }
 
@@ -174,24 +207,29 @@ struct IntuosV1Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         state: inout DecoderState
     ) -> [DecodeResult] {
-        let serial = UInt32(report[3] & 0x0F) << 28
-                   | UInt32(report[4]) << 20
-                   | UInt32(report[5]) << 12
-                   | UInt32(report[6]) << 4
-                   | UInt32(report[7]) >> 4
-        let toolCode = UInt16(report[2]) << 4
-                     | UInt16(report[3]) >> 4
-                     | UInt16(report[7] & 0x0F) << 12
-                     | UInt16(report[8] & 0xF0) << 4
+        let serial =
+            UInt32(report[3] & 0x0F) << 28
+            | UInt32(report[4]) << 20
+            | UInt32(report[5]) << 12
+            | UInt32(report[6]) << 4
+            | UInt32(report[7]) >> 4
+        let toolCode =
+            UInt16(report[2]) << 4
+            | UInt16(report[3]) >> 4
+            | UInt16(report[7] & 0x0F) << 12
+            | UInt16(report[8] & 0xF0) << 4
 
-        state.lastSerial      = serial
+        state.lastSerial = serial
         state.currentToolCode = toolCode
-        state.isEraser    = (toolCode & 0x0008) != 0
+        state.isEraser = (toolCode & 0x0008) != 0
         state.toolIsMouse = (toolCode & 0x000F) == 0x0006
 
-        return [.toolEnter(ToolIdentity(
-            serial: serial, toolCode: toolCode,
-            isEraser: state.isEraser, isMouse: state.toolIsMouse))]
+        return [
+            .toolEnter(
+                ToolIdentity(
+                    serial: serial, toolCode: toolCode,
+                    isEraser: state.isEraser, isMouse: state.toolIsMouse))
+        ]
     }
 
     // MARK: - BLE HOGP pen (0x01)
@@ -204,24 +242,28 @@ struct IntuosV1Decoder: WacomDecoder {
     ) -> [DecodeResult] {
         // BLE uses 13-bit pressure regardless of the device's USB maxPressure.
         let bleSpec = DigitizerSpec(maxX: spec.maxX, maxY: spec.maxY, maxPressure: 8191)
-        guard let result = decodeBLEPenReport(
-            report: report, length: length, spec: bleSpec,
-            lastX: &state.lastX, lastY: &state.lastY
-        ) else { return [] }
+        guard
+            let result = decodeBLEPenReport(
+                report: report, length: length, spec: bleSpec,
+                lastX: &state.lastX, lastY: &state.lastY
+            )
+        else { return [] }
 
         var results: [DecodeResult] = []
         if result.toolCode != 0
             && (result.serial != state.lastSerial || result.toolCode != state.currentToolCode)
         {
-            state.lastSerial      = result.serial
+            state.lastSerial = result.serial
             state.currentToolCode = result.toolCode
-            state.isEraser        = result.point.eraser
-            state.toolIsMouse     = result.isMouse
-            results.append(.toolEnter(ToolIdentity(
-                serial: result.serial,
-                toolCode: result.toolCode,
-                isEraser: result.point.eraser,
-                isMouse: result.isMouse)))
+            state.isEraser = result.point.eraser
+            state.toolIsMouse = result.isMouse
+            results.append(
+                .toolEnter(
+                    ToolIdentity(
+                        serial: result.serial,
+                        toolCode: result.toolCode,
+                        isEraser: result.point.eraser,
+                        isMouse: result.isMouse)))
         }
         results.append(.pen(result.point))
         return results
@@ -252,7 +294,7 @@ struct IntuosV1Decoder: WacomDecoder {
         case 0x02: return [.wireless(.active)]
         case 0x05: return [.wireless(.lost)]
         case 0x06: return [.wireless(.lowBattery)]
-        default:   return [.wireless(.unknown(report[1]))]
+        default: return [.wireless(.unknown(report[1]))]
         }
     }
 }

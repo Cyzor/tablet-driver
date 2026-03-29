@@ -1,8 +1,26 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import AppKit
 import SwiftUI
 
-private extension Array {
-    subscript(safe index: Int) -> Element? {
+extension Array {
+    fileprivate subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
     }
 }
@@ -24,16 +42,22 @@ final class ResizableWindow: NSWindow {
     override func toggleFullScreen(_ sender: Any?) { zoom(sender) }
 
     override func zoom(_ sender: Any?) {
-        guard let screen = screen ?? NSScreen.main else { super.zoom(sender); return }
+        guard let screen = screen ?? NSScreen.main else {
+            super.zoom(sender)
+            return
+        }
         let visible = screen.visibleFrame
-        let alreadyMaximised = abs(frame.height - visible.height) < 2
-                            && abs(frame.minY   - visible.minY)   < 2
+        let alreadyMaximised =
+            abs(frame.height - visible.height) < 2
+            && abs(frame.minY - visible.minY) < 2
         if alreadyMaximised {
             super.zoom(sender)
         } else {
-            setFrame(NSRect(x: frame.minX, y: visible.minY,
-                            width: frame.width, height: visible.height),
-                     display: true, animate: true)
+            setFrame(
+                NSRect(
+                    x: frame.minX, y: visible.minY,
+                    width: frame.width, height: visible.height),
+                display: true, animate: true)
         }
     }
 }
@@ -83,11 +107,13 @@ final class ResizableTabViewController: NSTabViewController {
 
     private func applyDefaultSize(for item: NSTabViewItem?) {
         guard !userHasResized,
-              let label = item?.label,
-              let size  = defaultTabSizes[label],
-              let window = view.window else { return }
-        if abs(window.frame.width  - size.width)  > 2
-        || abs(window.frame.height - size.height) > 2 {
+            let label = item?.label,
+            let size = defaultTabSizes[label],
+            let window = view.window
+        else { return }
+        if abs(window.frame.width - size.width) > 2
+            || abs(window.frame.height - size.height) > 2
+        {
             window.setContentSize(size)
         }
     }
@@ -107,23 +133,23 @@ final class ResizableTabViewController: NSTabViewController {
 @MainActor
 final class SettingsWindowController: NSWindowController {
 
-    let settings:    TabletSettings
+    let settings: TabletSettings
     let deviceLabel: String
-    let productID:   Int?
+    let productID: Int?
 
     private let tabVC = ResizableTabViewController()
 
     static let tabLabels = [
         "Tablet Area", "Pressure", "Buttons", "Display",
-        "Devices", "Presets", "Scratchpad", "Info"
+        "Devices", "Presets", "Scratchpad", "Info",
     ]
 
     private static let deviceSpecificTabIndices: Set<Int> = [0, 1, 2, 3]
 
     init(settings: TabletSettings, deviceLabel: String, productID: Int?) {
-        self.settings    = settings
+        self.settings = settings
         self.deviceLabel = deviceLabel
-        self.productID   = productID
+        self.productID = productID
 
         tabVC.tabStyle = .toolbar
 
@@ -155,7 +181,7 @@ final class SettingsWindowController: NSWindowController {
             object: window, queue: .main
         ) { _ in TabletManager.shared.infoViewVisible = false }
 
-        let s  = settings
+        let s = settings
         let tm = TabletManager.shared
         let dr = DeviceRegistry.shared
         let onDevice: (Int) -> Void = { [weak self] pid in
@@ -163,30 +189,32 @@ final class SettingsWindowController: NSWindowController {
             PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
         }
 
-        addTab(label: "Tablet Area", symbol: "rectangle.dashed",       height: 420) {
-            TabletAreaView(settings: s, tabletManager: tm, registry: dr,
-                           onDeviceSelected: onDevice, boundProductID: productID)
+        addTab(label: "Tablet Area", symbol: "rectangle.dashed", height: 420) {
+            TabletAreaView(
+                settings: s, tabletManager: tm, registry: dr,
+                onDeviceSelected: onDevice, boundProductID: productID)
         }
-        addTab(label: "Pressure",   symbol: "scribble.variable",       height: 480) {
+        addTab(label: "Pressure", symbol: "scribble.variable", height: 480) {
             PressureCurveView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr)
         }
-        addTab(label: "Buttons",    symbol: "hand.point.up.left",      height: 575) {
-            ButtonMappingView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr,
-                              productID: productID)
+        addTab(label: "Buttons", symbol: "hand.point.up.left", height: 575) {
+            ButtonMappingView(
+                settings: s, tool: s.activeTool, tabletManager: tm, registry: dr,
+                productID: productID)
         }
-        addTab(label: "Display",    symbol: "display",                 height: 370) {
+        addTab(label: "Display", symbol: "display", height: 370) {
             DisplayMappingView(settings: s, tabletManager: tm, registry: dr)
         }
-        addTab(label: "Devices",    symbol: "rectangle.on.rectangle",  height: 480, width: 620) {
+        addTab(label: "Devices", symbol: "rectangle.on.rectangle", height: 480, width: 620) {
             DevicesView(tabletManager: tm, registry: dr)
         }
-        addTab(label: "Presets",    symbol: "star.circle",             height: 450) {
+        addTab(label: "Presets", symbol: "star.circle", height: 450) {
             PresetsView(settings: s)
         }
-        addTab(label: "Scratchpad", symbol: "pencil.and.outline",      height: 360) {
+        addTab(label: "Scratchpad", symbol: "pencil.and.outline", height: 360) {
             ScratchpadView(settings: s)
         }
-        addTab(label: "Info",       symbol: "info.circle",             height: 430) {
+        addTab(label: "Info", symbol: "info.circle", height: 430) {
             InfoView(tabletManager: tm, settings: s)
         }
     }
@@ -213,7 +241,7 @@ final class SettingsWindowController: NSWindowController {
         let idx = tabVC.tabViewItems.firstIndex(where: { $0.label == name })
         showTab(at: idx ?? 0)
     }
-//
+    //
     var selectedTabIndex: Int { tabVC.selectedTabViewItemIndex }
 
     // MARK: - Private
@@ -240,10 +268,11 @@ final class SettingsWindowController: NSWindowController {
             hosting.sizingOptions = []
         }
 
-        tabVC.register(defaultSize: NSSize(width: width, height: height),
-                       forTabLabeled: label)
+        tabVC.register(
+            defaultSize: NSSize(width: width, height: height),
+            forTabLabeled: label)
 
-        let item   = NSTabViewItem(viewController: hosting)
+        let item = NSTabViewItem(viewController: hosting)
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
         tabVC.addTabViewItem(item)

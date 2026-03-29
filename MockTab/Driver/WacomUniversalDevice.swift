@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
 import Foundation
 import IOKit.hid
 
@@ -38,12 +56,12 @@ final class WacomUniversalDevice: TabletDevice {
         onToolEnter: ((ToolIdentity) -> Void)? = nil,
         onMouseButton: ((UInt8) -> Void)? = nil
     ) {
-        self.device        = device
-        self.deviceSpec    = deviceSpec
-        self.seize         = seize
-        self.onTablet      = onTablet
-        self.onAux         = onAux
-        self.onToolEnter   = onToolEnter
+        self.device = device
+        self.deviceSpec = deviceSpec
+        self.seize = seize
+        self.onTablet = onTablet
+        self.onAux = onAux
+        self.onToolEnter = onToolEnter
         self.onMouseButton = onMouseButton
 
         self.spec = DigitizerSpec(
@@ -73,17 +91,20 @@ final class WacomUniversalDevice: TabletDevice {
     // MARK: - Open / Close
 
     func open() {
-        let transport = IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
-        isBluetooth   = transport.lowercased().contains("bluetooth")
+        let transport =
+            IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        isBluetooth = transport.lowercased().contains("bluetooth")
 
-        let options = seize
+        let options =
+            seize
             ? IOOptionBits(kIOHIDOptionsTypeSeizeDevice)
             : IOOptionBits(kIOHIDOptionsTypeNone)
         let ret = IOHIDDeviceOpen(device, options)
         guard ret == kIOReturnSuccess else {
             let pid = String(deviceSpec.productID, radix: 16, uppercase: true)
-            print("\(deviceSpec.name) (0x\(pid)): failed to open (seize=\(seize)) — \(ret). "
-                  + "Is another tablet driver running?")
+            print(
+                "\(deviceSpec.name) (0x\(pid)): failed to open (seize=\(seize)) — \(ret). "
+                    + "Is another tablet driver running?")
             return
         }
 
@@ -106,10 +127,11 @@ final class WacomUniversalDevice: TabletDevice {
             // Intuos3 two-stage init: second feature report after a brief delay.
             if var bytes2 = deviceSpec.featureInit2 {
                 let reportID2 = CFIndex(bytes2[0])
-                let delay     = deviceSpec.featureInit2Delay
-                let dev       = device
+                let delay = deviceSpec.featureInit2Delay
+                let dev = device
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    IOHIDDeviceSetReport(dev, kIOHIDReportTypeFeature, reportID2, &bytes2, bytes2.count)
+                    IOHIDDeviceSetReport(
+                        dev, kIOHIDReportTypeFeature, reportID2, &bytes2, bytes2.count)
                 }
             }
         }
@@ -155,10 +177,10 @@ final class WacomUniversalDevice: TabletDevice {
                 onAux?(buttons)
             case .wireless(let ws):
                 switch ws {
-                case .active:           break
-                case .lost:             print("\(deviceSpec.name): wireless link lost")
-                case .lowBattery:       print("\(deviceSpec.name): battery critically low")
-                case .unknown:          break
+                case .active: break
+                case .lost: print("\(deviceSpec.name): wireless link lost")
+                case .lowBattery: print("\(deviceSpec.name): battery critically low")
+                case .unknown: break
                 }
             case .mouseButton(let mask):
                 onMouseButton?(mask)
