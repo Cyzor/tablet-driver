@@ -408,6 +408,3 @@ struct IntuosV2Decoder: WacomDecoder {
         }
     }
 }
-```
-
-Now let me continue with the other decoder files and remaining files. I'll use the edit_file tool to add headers to the remaining files that need them.
