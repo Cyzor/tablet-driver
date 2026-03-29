@@ -57,7 +57,10 @@ struct IntuosV1Decoder: WacomDecoder {
         if id == 0x80 {
             return decodeWireless(report: report, length: length)
         }
-        guard (id == 0x02 || id == 0x10) && length >= 10 else { return [] }
+        // USB pen reports are exactly 10 bytes. PTH-850/Intuos5 exposes Interface 1 as
+        // vendor-specific (Report ID 0x02, 63-byte touch payload) — reject longer reports
+        // to prevent touch data from being decoded as garbage pen coordinates/pressure.
+        guard (id == 0x02 || id == 0x10) && length == 10 else { return [] }
         return decodeUSBPen(report: report, length: length, spec: spec, state: &state)
     }
 
@@ -79,7 +82,6 @@ struct IntuosV1Decoder: WacomDecoder {
         }
 
         let inProximity = (status & 0x20) != 0
-        let highConfidence = (status & 0x40) != 0
         let subtype = (status >> 1) & 0x0F
 
         // Proximity-out.
@@ -97,19 +99,11 @@ struct IntuosV1Decoder: WacomDecoder {
             ]
         }
 
-        // Low confidence — keep last position, zero pressure, preserve buttons.
-        guard highConfidence else {
-            return [
-                .pen(
-                    TabletPoint(
-                        x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
-                        pressure: 0, maxPressure: spec.maxPressure,
-                        tiltX: 0, tiltY: 0, rotation: 0.0,
-                        penButton1: !state.toolIsMouse && (status & 0x02) != 0,
-                        penButton2: !state.toolIsMouse && (status & 0x04) != 0,
-                        eraser: state.isEraser, inProximity: true, hoverDistance: 0))
-            ]
-        }
+        // Note: high-confidence bit (status & 0x40) is intentionally NOT filtered here.
+        // PTH-851 lift reports are already low-pressure in the raw bytes; decoding normally
+        // lets pressure fall to zero naturally. Tablets with touch (PTH-850 Intuos5) emit
+        // low-confidence reports during palm contact mid-stroke — special-casing them would
+        // zero pressure and freeze position, breaking continuous dragging.
 
         var results: [DecodeResult] = []
 
