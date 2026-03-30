@@ -34,6 +34,18 @@ final class PreferencesWindowController {
 
     private static let restorationKey = "MockTab_OpenWindows"
 
+    /// Returns the undo manager from the default window's SettingsWindowController.
+    /// Used by the Edit menu to wire Cmd+Z / Cmd+Shift+Z.
+    func getUndoManager() -> UndoManager? {
+        if let dw = self.defaultWindow {
+            return dw.settingsUndoManager
+        }
+        if let first = self.windows.first {
+            return first.settingsUndoManager
+        }
+        return nil
+    }
+
     private init() {
         deviceObserver = TabletManager.shared.$connectedProductIDs
             .dropFirst()

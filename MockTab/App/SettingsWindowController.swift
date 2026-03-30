@@ -138,6 +138,10 @@ final class SettingsWindowController: NSWindowController {
     let productID: Int?
     let docUndoManager = UndoManager()
 
+    /// Expose undoManager for PreferencesWindowController access
+    /// Named settingsUndoManager to avoid conflict with NSResponder.undoManager
+    var settingsUndoManager: UndoManager? { docUndoManager }
+
     private let tabVC = ResizableTabViewController()
 
     static let tabLabels = [
@@ -168,9 +172,11 @@ final class SettingsWindowController: NSWindowController {
 
         super.init(window: window)
 
-        // Set up undo manager for this window
-        settings.undoManager = undoManager
-        settings.activeTool.undoManager = undoManager
+        // Set up undo manager for settings layer
+        // Note: NSWindow.undoManager is read-only, so we can't wire Cmd+Z through the window
+        // Instead, we rely on the Edit menu items being enabled via canUndo/canRedo
+        settings.undoManager = docUndoManager
+        settings.activeTool.undoManager = docUndoManager
 
         // Wire up the live-state visibility flag so TabletManager can skip
         // @Published UI writes when nobody is looking at live data.
@@ -179,7 +185,8 @@ final class SettingsWindowController: NSWindowController {
         // Also check window focus: only update when this window is key (active).
         let updateVisibility = { [weak self, weak window] in
             guard let self else { return }
-            let label = self.tabVC.tabViewItems[safe: self.tabVC.selectedTabViewItemIndex]?.label ?? ""
+            let label =
+                self.tabVC.tabViewItems[safe: self.tabVC.selectedTabViewItemIndex]?.label ?? ""
             let isInfoTab = (label == "Info" || label == "Buttons")
             let isKeyWindow = window?.isKeyWindow ?? false
             Task { @MainActor in
@@ -219,7 +226,7 @@ final class SettingsWindowController: NSWindowController {
         let s = settings
         let tm = TabletManager.shared
         let dr = DeviceRegistry.shared
-        let um = undoManager
+        let um = docUndoManager
         let onDevice: (Int) -> Void = { [weak self] pid in
             guard let self else { return }
             PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
@@ -264,7 +271,7 @@ final class SettingsWindowController: NSWindowController {
             return textSize.width + 65
         }
         let minWidth = tabWidths.reduce(0, +) + 60  // sum + window margins/borders
-//        window.minSize = NSSize(width: minWidth, height: minWidth)
+        //        window.minSize = NSSize(width: minWidth, height: minWidth)
     }
 
     required init?(coder: NSCoder) { fatalError() }

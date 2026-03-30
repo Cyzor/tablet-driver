@@ -16,22 +16,47 @@
 // You should have received a copy of the GNU General Public License
 // along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
 
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct ButtonMappingView: View {
-    @ObservedObject var settings:      TabletSettings
-    @ObservedObject var tool:          ToolSettings
+    @ObservedObject var settings: TabletSettings
+    @ObservedObject var tool: ToolSettings
     @ObservedObject var tabletManager: TabletManager
-    @ObservedObject var registry:      DeviceRegistry
+    @ObservedObject var registry: DeviceRegistry
     var productID: Int?
 
     private var spec: WacomDeviceSpec? {
         productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
-    private var hasTouchRing:   Bool { spec?.hasTouchRing   == true }
-    private var hasDualRings:   Bool { spec?.hasDualRings   == true }
+    private var hasTouchRing: Bool { spec?.hasTouchRing == true }
+    private var hasDualRings: Bool { spec?.hasDualRings == true }
     private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
+
+    // MARK: - Recording Binding Helper
+
+    /// Creates a binding that automatically registers undo for any change.
+    /// The `owner` should be the object that has the undoManager (tool or settings).
+    private func recordingBinding<T: Equatable>(
+        _ name: String,
+        owner: AnyObject,
+        get: @escaping () -> T,
+        set: @escaping (T) -> Void
+    ) -> Binding<T> {
+        Binding(
+            get: get,
+            set: { newValue in
+                let oldValue = get()
+                set(newValue)
+                // Register undo on the owner (tool or settings)
+                if let settingsOwner = owner as? TabletSettings {
+                    settingsOwner.record(name) { set(oldValue) }
+                } else if let toolOwner = owner as? ToolSettings {
+                    toolOwner.record(name) { set(oldValue) }
+                }
+            }
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,10 +71,26 @@ struct ButtonMappingView: View {
 
                     let lb = tabletManager.liveButtons
                     VStack(spacing: 2) {
-                        buttonRow("Tip",          isActive: lb.tipDown,     binding: Binding(get: { tool.tipBinding },        set: { tool.tipBinding = $0 }))
-                        buttonRow("Eraser",        isActive: lb.eraserDown,  binding: Binding(get: { tool.eraserBinding },     set: { tool.eraserBinding = $0 }))
-                        buttonRow("Side button 1", isActive: lb.button1Down, binding: Binding(get: { tool.penButton1Binding }, set: { tool.penButton1Binding = $0 }))
-                        buttonRow("Side button 2", isActive: lb.button2Down, binding: Binding(get: { tool.penButton2Binding }, set: { tool.penButton2Binding = $0 }))
+                        buttonRow(
+                            "Tip", isActive: lb.tipDown,
+                            binding: recordingBinding(
+                                "Tip Button", owner: tool, get: { tool.tipBinding },
+                                set: { tool.tipBinding = $0 }))
+                        buttonRow(
+                            "Eraser", isActive: lb.eraserDown,
+                            binding: recordingBinding(
+                                "Eraser Button", owner: tool, get: { tool.eraserBinding },
+                                set: { tool.eraserBinding = $0 }))
+                        buttonRow(
+                            "Side button 1", isActive: lb.button1Down,
+                            binding: recordingBinding(
+                                "Pen Button 1", owner: tool, get: { tool.penButton1Binding },
+                                set: { tool.penButton1Binding = $0 }))
+                        buttonRow(
+                            "Side button 2", isActive: lb.button2Down,
+                            binding: recordingBinding(
+                                "Pen Button 2", owner: tool, get: { tool.penButton2Binding },
+                                set: { tool.penButton2Binding = $0 }))
                     }
 
                     Divider()
@@ -84,24 +125,32 @@ struct ButtonMappingView: View {
         if hasTouchRing {
             Divider()
             Text("Touch Ring").font(.headline)
-            buttonRow("Center Button", isActive: lb.touchRingButtonDown,
-                      binding: Binding(get: { settings.touchRingButtonBinding },
-                                       set: { settings.touchRingButtonBinding = $0 }))
-            touchRingRow("Touch Ring", isActive: lb.touchRingActive,
-                         mode: Binding(get: { settings.touchRingMode },
-                                       set: { settings.touchRingMode = $0 }))
+            buttonRow(
+                "Center Button", isActive: lb.touchRingButtonDown,
+                binding: recordingBinding(
+                    "Touch Ring Button", owner: settings, get: { settings.touchRingButtonBinding },
+                    set: { settings.touchRingButtonBinding = $0 }))
+            touchRingRow(
+                "Touch Ring", isActive: lb.touchRingActive,
+                mode: recordingBinding(
+                    "Touch Ring Mode", owner: settings, get: { settings.touchRingMode },
+                    set: { settings.touchRingMode = $0 }))
         }
 
         // ── Touch strips (Intuos3 WS) ────────────────────────────────
         if hasTouchStrips {
             Divider()
             Text("Touch Strips").font(.headline)
-            touchRingRow("Left",  isActive: lb.touchStrip1Active,
-                         mode: Binding(get: { settings.touchStrip1Mode },
-                                       set: { settings.touchStrip1Mode = $0 }))
-            touchRingRow("Right", isActive: lb.touchStrip2Active,
-                         mode: Binding(get: { settings.touchStrip2Mode },
-                                       set: { settings.touchStrip2Mode = $0 }))
+            touchRingRow(
+                "Left", isActive: lb.touchStrip1Active,
+                mode: recordingBinding(
+                    "Touch Strip 1 Mode", owner: settings, get: { settings.touchStrip1Mode },
+                    set: { settings.touchStrip1Mode = $0 }))
+            touchRingRow(
+                "Right", isActive: lb.touchStrip2Active,
+                mode: recordingBinding(
+                    "Touch Strip 2 Mode", owner: settings, get: { settings.touchStrip2Mode },
+                    set: { settings.touchStrip2Mode = $0 }))
         }
     }
 
@@ -130,9 +179,11 @@ struct ButtonMappingView: View {
         }
 
         Text("Touch Ring — Left").font(.headline)
-        touchRingRow("Touch Ring", isActive: lb.touchRingActive,
-                     mode: Binding(get: { settings.touchRingMode },
-                                   set: { settings.touchRingMode = $0 }))
+        touchRingRow(
+            "Touch Ring", isActive: lb.touchRingActive,
+            mode: recordingBinding(
+                "Touch Ring Mode", owner: settings, get: { settings.touchRingMode },
+                set: { settings.touchRingMode = $0 }))
 
         Divider()
 
@@ -152,32 +203,38 @@ struct ButtonMappingView: View {
         }
 
         Text("Touch Ring — Right").font(.headline)
-        touchRingRow("Touch Ring", isActive: lb.touchRing2Active,
-                     mode: Binding(get: { settings.touchRingMode },
-                                   set: { settings.touchRingMode = $0 }))
+        touchRingRow(
+            "Touch Ring", isActive: lb.touchRing2Active,
+            mode: recordingBinding(
+                "Touch Ring Mode", owner: settings, get: { settings.touchRingMode },
+                set: { settings.touchRingMode = $0 }))
     }
 
     // MARK: - Express key row helper
 
     @ViewBuilder
     private func expressKeyRow(index: Int, label: String, lb: LiveButtonState) -> some View {
-        buttonRow(label,
-                  isActive: lb.expressKeys[index],
-                  binding: Binding(
-                      get: { settings.expressKeyBindings[index] },
-                      set: {
-                          var updated = settings.expressKeyBindings
-                          updated[index] = $0
-                          settings.expressKeyBindings = updated
-                      }
-                  ))
+        buttonRow(
+            label,
+            isActive: lb.expressKeys[index],
+            binding: recordingBinding(
+                "Express Key \(index + 1)", owner: settings,
+                get: { settings.expressKeyBindings[index] },
+                set: { newValue in
+                    var updated = settings.expressKeyBindings
+                    updated[index] = newValue
+                    settings.expressKeyBindings = updated
+                }
+            ))
     }
 
     // MARK: - Touch ring / strip row
 
     @ViewBuilder
-    private func touchRingRow(_ label: String, isActive: Bool,
-                               mode: Binding<TouchRingMode>) -> some View {
+    private func touchRingRow(
+        _ label: String, isActive: Bool,
+        mode: Binding<TouchRingMode>
+    ) -> some View {
         HStack(spacing: 10) {
             Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(isActive ? Color.green : Color.clear)
@@ -206,8 +263,10 @@ struct ButtonMappingView: View {
     // MARK: - Row helper
 
     @ViewBuilder
-    private func buttonRow(_ label: String, isActive: Bool,
-                           binding: Binding<ButtonBinding>) -> some View {
+    private func buttonRow(
+        _ label: String, isActive: Bool,
+        binding: Binding<ButtonBinding>
+    ) -> some View {
         HStack(spacing: 10) {
             Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(isActive ? Color.green : Color.clear)
@@ -272,16 +331,16 @@ struct ButtonBindingControl: View {
 
             // Click-action picker
             Menu {
-                Button("Left Click")   { set(.leftClick)   }
-                Button("Right Click")  { set(.rightClick)  }
+                Button("Left Click") { set(.leftClick) }
+                Button("Right Click") { set(.rightClick) }
                 Button("Middle Click") { set(.middleClick) }
                 Divider()
-                Button("⌘ Command")  { binding = ButtonBinding(modifierOnly: .command) }
-                Button("⌥ Option")   { binding = ButtonBinding(modifierOnly: .option)  }
-                Button("⇧ Shift")    { binding = ButtonBinding(modifierOnly: .shift)   }
-                Button("⌃ Control")  { binding = ButtonBinding(modifierOnly: .control) }
+                Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
+                Button("⌥ Option") { binding = ButtonBinding(modifierOnly: .option) }
+                Button("⇧ Shift") { binding = ButtonBinding(modifierOnly: .shift) }
+                Button("⌃ Control") { binding = ButtonBinding(modifierOnly: .control) }
                 Divider()
-                Button("None")         { set(.none)        }
+                Button("None") { set(.none) }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.caption2)
@@ -311,23 +370,25 @@ struct ButtonBindingControl: View {
     private func modifierGlyphs(_ flags: NSEvent.ModifierFlags) -> String {
         var s = ""
         if flags.contains(.control) { s += "⌃" }
-        if flags.contains(.option)  { s += "⌥" }
-        if flags.contains(.shift)   { s += "⇧" }
+        if flags.contains(.option) { s += "⌥" }
+        if flags.contains(.shift) { s += "⇧" }
         if flags.contains(.command) { s += "⌘" }
         return s
     }
 
     private var fieldTextColor: Color {
-        if isRecording           { return .accentColor }
+        if isRecording { return .accentColor }
         if binding.kind == .none { return .secondary }
         return .primary
     }
 
     @ViewBuilder private var fieldBackground: some View {
         RoundedRectangle(cornerRadius: 5, style: .continuous)
-            .fill(isRecording
-                  ? Color.accentColor.opacity(0.07)
-                  : Color(NSColor.controlBackgroundColor))
+            .fill(
+                isRecording
+                    ? Color.accentColor.opacity(0.07)
+                    : Color(NSColor.controlBackgroundColor)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
                     .strokeBorder(
@@ -355,14 +416,17 @@ struct ButtonBindingControl: View {
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
             switch event.type {
             case .flagsChanged: self.handleFlagsChanged(event)
-            default:            self.handleKey(event)
+            default: self.handleKey(event)
             }
             return nil  // consume — prevents the key from reaching any other responder
         }
     }
 
     private func stopRecording() {
-        if let m = monitor { NSEvent.removeMonitor(m); monitor = nil }
+        if let m = monitor {
+            NSEvent.removeMonitor(m)
+            monitor = nil
+        }
         isRecording = false
         pendingModifiers = []
     }

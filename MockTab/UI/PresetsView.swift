@@ -86,6 +86,25 @@ struct PresetsView: View {
     @State private var editingPreset: TabletSettings.Preset? = nil
     @State private var editingName = ""
 
+    // MARK: - Recording Binding Helper
+
+    /// Creates a binding that automatically registers undo when the value changes.
+    private func recordingBinding<T: Equatable>(
+        _ name: String,
+        get: @escaping () -> T,
+        set: @escaping (T) -> Void
+    ) -> Binding<T> {
+        Binding(
+            get: get,
+            set: { newValue in
+                let oldValue = get()
+                guard newValue != oldValue else { return }
+                set(newValue)
+                settings.record(name) { set(oldValue) }
+            }
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -124,9 +143,14 @@ struct PresetsView: View {
             }
             Spacer()
             if settings.activePreset != nil {
-                Button("Deactivate") { settings.activate(nil) }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                Button("Deactivate") {
+                    // Capture snapshot before deactivating so we can undo
+                    let snap = settings.snapshot()
+                    settings.activate(nil)
+                    settings.restoreSnapshot(snap, actionName: "Deactivate Preset")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
         }
         .padding(10)
@@ -174,7 +198,10 @@ struct PresetsView: View {
             HStack(spacing: 10) {
                 // Activation toggle
                 Button {
+                    // Capture snapshot before activating so we can undo
+                    let snap = settings.snapshot()
                     settings.activate(isActive ? nil : preset)
+                    settings.restoreSnapshot(snap, actionName: "Activate Preset")
                 } label: {
                     Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
                         .imageScale(.large)
@@ -216,7 +243,11 @@ struct PresetsView: View {
                     .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
 
                     Button(role: .destructive) {
+                        // Capture snapshot before deleting so we can undo
+                        let snap = settings.snapshot()
                         settings.deletePreset(preset)
+                        // Register undo that restores the deleted preset
+                        settings.restoreSnapshot(snap, actionName: "Delete Preset")
                     } label: {
                         Image(systemName: "trash")
                     }
@@ -254,7 +285,13 @@ struct PresetsView: View {
                             .font(.caption)
                         Spacer()
                         Button {
+                            // Capture current bindings before unbinding
+                            let oldBindings = settings.appBindings
                             settings.unbindApp(bundleID: binding.bundleID)
+                            // Register undo for unbind
+                            settings.record("Unbind App") {
+                                self.settings.appBindings = oldBindings
+                            }
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.caption2)
@@ -266,7 +303,13 @@ struct PresetsView: View {
                 }
             }
             Button {
+                // Capture current bindings before binding
+                let oldBindings = settings.appBindings
                 settings.bindFrontmostApp(to: preset)
+                // Register undo for bind
+                settings.record("Bind App") {
+                    self.settings.appBindings = oldBindings
+                }
             } label: {
                 Label("Bind current app", systemImage: "plus")
                     .font(.caption)
@@ -327,7 +370,13 @@ struct PresetsView: View {
 
     private var autoSwitchSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: $settings.autoSwitchEnabled) {
+            Toggle(
+                isOn: recordingBinding(
+                    "Auto-Switch",
+                    get: { settings.autoSwitchEnabled },
+                    set: { settings.autoSwitchEnabled = $0 }
+                )
+            ) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Auto-switch preset by app")
                         .fontWeight(.medium)
@@ -353,7 +402,18 @@ struct PresetsView: View {
     private func commitCreate() {
         let trimmed = newName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
+        // Capture snapshot before creating preset so we can undo
+        let snap = settings.snapshot()
         settings.saveAsPreset(name: trimmed)
+        // Register undo that deletes the new preset
+        if let newPreset = settings.presets.last(where: { $0.name == trimmed }) {
+            let presetToDelete = newPreset
+            let snapshotForUndo = snap
+            settings.record("Save Preset") {
+                settings.deletePreset(presetToDelete)
+                settings.restoreSnapshot(snapshotForUndo, actionName: "Undo Save Preset")
+            }
+        }
         isCreating = false
         newName = ""
     }
@@ -361,7 +421,16 @@ struct PresetsView: View {
     private func commitRename() {
         guard let preset = editingPreset else { return }
         let trimmed = editingName.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty { settings.renamePreset(preset, to: trimmed) }
+        if !trimmed.isEmpty {
+            let oldName = preset.name
+            settings.renamePreset(preset, to: trimmed)
+            // Register undo for rename
+            let presetForUndo = preset
+            let nameForUndo = oldName
+            settings.record("Rename Preset") {
+                settings.renamePreset(presetForUndo, to: nameForUndo)
+            }
+        }
         editingPreset = nil
     }
 }
