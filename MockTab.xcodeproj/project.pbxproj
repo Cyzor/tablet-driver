@@ -43,23 +43,10 @@
 		AA000049 /* WacomUniversalDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomUniversalDevice.swift */; };
 		AA000050 /* Intuos3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* Intuos3Decoder.swift */; };
 		AA000051 /* BambooDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000051 /* BambooDecoder.swift */; };
-		AA000060 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000060 /* main.swift */; };
-		AA000061 /* ShimApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000061 /* ShimApp.swift */; };
-		AA000062 /* WacomAppleEventHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000062 /* WacomAppleEventHandler.swift */; };
 		AA000063 /* WacomShim.app in Embed Helpers */ = {isa = PBXBuildFile; fileRef = AB000065 /* WacomShim.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AA000070 /* HIDCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000070 /* HIDCapture.swift */; };
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXContainerItemProxy section */
-		AD000031 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = AF000001 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AD000020;
-			remoteInfo = WacomShim;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		AD000013 /* Embed Helpers */ = {
@@ -114,11 +101,6 @@
 		AB000049 /* WacomUniversalDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomUniversalDevice.swift; sourceTree = "<group>"; };
 		AB000050 /* Intuos3Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intuos3Decoder.swift; sourceTree = "<group>"; };
 		AB000051 /* BambooDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BambooDecoder.swift; sourceTree = "<group>"; };
-		AB000060 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		AB000061 /* ShimApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShimApp.swift; sourceTree = "<group>"; };
-		AB000062 /* WacomAppleEventHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomAppleEventHandler.swift; sourceTree = "<group>"; };
-		AB000063 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AB000064 /* WacomShim.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WacomShim.entitlements; sourceTree = "<group>"; };
 		AB000065 /* WacomShim.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WacomShim.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB000070 /* HIDCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDCapture.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -239,23 +221,10 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		AC000020 /* WacomShim */ = {
-			isa = PBXGroup;
-			children = (
-				AB000060 /* main.swift */,
-				AB000061 /* ShimApp.swift */,
-				AB000062 /* WacomAppleEventHandler.swift */,
-				AB000063 /* Info.plist */,
-				AB000064 /* WacomShim.entitlements */,
-			);
-			path = WacomShim;
-			sourceTree = "<group>";
-		};
 		AC000099 = {
 			isa = PBXGroup;
 			children = (
 				AC000000 /* MockTab */,
-				AC000020 /* WacomShim */,
 				AC000010 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -275,7 +244,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				AD000030 /* PBXTargetDependency */,
 			);
 			name = MockTab;
 			productName = MockTab;
@@ -395,21 +363,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA000060 /* main.swift in Sources */,
-				AA000061 /* ShimApp.swift in Sources */,
-				AA000062 /* WacomAppleEventHandler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		AD000030 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = AD000020 /* WacomShim */;
-			targetProxy = AD000031 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		AE000002 /* Debug */ = {
