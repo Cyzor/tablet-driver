@@ -170,9 +170,9 @@ struct IntuosV1Decoder: WacomDecoder {
 
         // Pen path.
         // Pressure: 11-bit formula per kernel wacom_intuos_general().
-        // Devices with maxPressure <= 1023 (10-bit hardware) report in the same
-        // 11-bit field; right-shift by 1 to map into the native range.
-        let rawPressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | (Int(status) & 1)
+        // data[6]<<3 provides high 8 bits; data[7]>>5 provides low 2 bits of the 11-bit field.
+        // For 10-bit devices (maxPressure <= 1023), right-shift by 1 to normalize.
+        let rawPressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5)
         let pressure = spec.maxPressure <= 1023 ? rawPressure >> 1 : rawPressure
         // Tilt X: bits [6:1] of byte 7 (shifted left 1) OR bit 7 of byte 8; biased by 64.
         let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64

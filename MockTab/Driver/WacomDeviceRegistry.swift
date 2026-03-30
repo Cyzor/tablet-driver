@@ -149,12 +149,17 @@ enum WacomDeviceRegistry {
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
             featureInit: nil, seizeUSB: false),
         .init(
-            productID: 0x0010, name: "Graphire 2 (4×5)",  // ⚠ estimated
+            productID: 0x0010, name: "Graphire",  // ⚠ estimated; kernel 0x10 = original Graphire
             parser: .graphire, maxX: 10206, maxY: 7422, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
             featureInit: nil, seizeUSB: false),
         .init(
-            productID: 0x0011, name: "Graphire 2 (5×7)",  // ⚠ estimated
+            productID: 0x0011, name: "Graphire 2 (4×5)",  // ⚠ estimated; kernel 0x11 = Graphire2 4×5
+            parser: .graphire, maxX: 10206, maxY: 7422, maxPressure: 511,
+            buttonCount: 2, hasTouchRing: false, hasEraser: true,
+            featureInit: nil, seizeUSB: false),
+        .init(
+            productID: 0x0012, name: "Graphire 2 (5×7)",  // ⚠ estimated; kernel 0x12 = Graphire2 5×7
             parser: .graphire, maxX: 13918, maxY: 10206, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
             featureInit: nil, seizeUSB: false),
@@ -231,13 +236,13 @@ enum WacomDeviceRegistry {
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
-            productID: 0x0023, name: "Intuos 12×12",  // ⚠ estimated
-            parser: .intuosV1, maxX: 30480, maxY: 30480, maxPressure: 1023,
+            productID: 0x0023, name: "Intuos 12×12",  // ⚠ estimated; kernel maxY 31680
+            parser: .intuosV1, maxX: 30480, maxY: 31680, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
-            productID: 0x0024, name: "Intuos 12×18",  // ⚠ estimated
-            parser: .intuosV1, maxX: 45720, maxY: 30480, maxPressure: 1023,
+            productID: 0x0024, name: "Intuos 12×18",  // ⚠ estimated; kernel maxY 31680
+            parser: .intuosV1, maxX: 45720, maxY: 31680, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
@@ -258,13 +263,13 @@ enum WacomDeviceRegistry {
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
-            productID: 0x0044, name: "Intuos 2 (12×12)",  // ⚠ estimated
-            parser: .intuosV1, maxX: 30480, maxY: 30480, maxPressure: 1023,
+            productID: 0x0044, name: "Intuos 2 (12×12)",  // ⚠ estimated; kernel maxY 31680
+            parser: .intuosV1, maxX: 30480, maxY: 31680, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
-            productID: 0x0045, name: "Intuos 2 (12×18)",  // ⚠ estimated
-            parser: .intuosV1, maxX: 45720, maxY: 30480, maxPressure: 1023,
+            productID: 0x0045, name: "Intuos 2 (12×18)",  // ⚠ estimated; kernel maxY 31680
+            parser: .intuosV1, maxX: 45720, maxY: 31680, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
