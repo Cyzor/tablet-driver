@@ -1,6 +1,6 @@
 # MockTab — Open Tasks
 
-_Last updated: 2026-03-29 (session 11 — Photoshop/BT/wireless fixes shipped, Phase 1 CLI/JSON complete)_
+_Last updated: 2026-03-29 (session 11 — Undo/Redo implementation complete)_
 
 ---
 
@@ -25,6 +25,30 @@ Barrel buttons, eraser detection, hover distance, and Art Pen rotation now match
 
 ### 🟡 IntuosV1/Intuos3/IntuosV2 decoder fixes — revised per kernel spec (2026-03-28)
 Eraser detection, hover distance, and pressure normalization now match kernel. PTH-851, PTZ-631W, and PTH-660/860 need re-verification for eraser, hover, and pressure feel.
+
+---
+
+## Undo/Redo (Cmd+Z / Cmd+Shift+Z) — ✅ COMPLETE (2026-03-29)
+
+Implemented NSUndoManager-based undo/redo for all settings views:
+
+- ✅ TabletAreaView: drag coalescing, reset button, proportional toggle
+- ✅ PressureCurveView: drag coalescing, preset buttons, sliders
+- ✅ ButtonMappingView: recording bindings for all ~20 button/mode controls
+- ✅ DisplayMappingView: display picker + toggle display set
+- ✅ PresetsView: activate/deactivate/save/delete/rename + app bindings
+- ✅ DevicesView: tablet/tool rename undo
+
+**Infrastructure:**
+- `docUndoManager` in SettingsWindowController (NSWindow.undoManager is read-only)
+- `settings.undoManager` and `settings.activeTool.undoManager` wired
+- Edit menu with `CommandGroup(replacing: .undoRedo)` for Cmd+Z/Shift+Z
+
+**Known issues requiring attention:**
+- ⚠️ Undo stack clearing on device switch — implementation exists but needs verification
+- ⚠️ No unit tests for undo/redo functionality
+
+**Files:** TabletSettings.swift, ToolSettings.swift, SettingsWindowController.swift, PreferencesWindowController.swift, MockTabApp.swift, ButtonMappingView.swift, DisplayMappingView.swift, PresetsView.swift, DevicesView.swift
 
 ---
 
@@ -128,6 +152,7 @@ Standard feature in most tablets that many users disable because implementation 
       express keys, touch ring, center button all confirmed.
 - [x] Touch ring: fixed decoder bug and fully implemented with scroll mode + center button mapping.
 - [x] ButtonMappingView live indicators: fixed by extending `infoViewVisible` gate to include Buttons tab.
+- [x] Undo/Redo (Cmd+Z / Cmd+Shift+Z): all views complete (2026-03-29)
 - [x] Window sizing: remove per-tab size persistence; tabs use default height until user
       manually resizes, then window stays at user's chosen size across all tab switches.
 - [x] WacomDeviceRegistry: expanded ~50 → ~95 entries via OTD import.
