@@ -280,7 +280,10 @@ final class SettingsWindowController: NSWindowController {
 
     func show() {
         showWindow(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        // Only activate if not already active to avoid focus cycling
+        if !NSApp.isActive {
+            NSApp.activate(ignoringOtherApps: true)
+        }
         // Sync the Info-tab visibility flag for whichever tab is already selected.
         // Only set true if the window is key (in focus) and tab is Info or Buttons.
         let label = tabVC.tabViewItems[safe: tabVC.selectedTabViewItemIndex]?.label
