@@ -258,7 +258,7 @@ final class SettingsWindowController: NSWindowController {
             return textSize.width + 65
         }
         let minWidth = tabWidths.reduce(0, +) + 60  // sum + window margins/borders
-        window.minSize = NSSize(width: minWidth, height: minWidth)
+//        window.minSize = NSSize(width: minWidth, height: minWidth)
     }
 
     required init?(coder: NSCoder) { fatalError() }
