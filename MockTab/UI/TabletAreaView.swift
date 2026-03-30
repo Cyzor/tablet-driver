@@ -146,15 +146,19 @@ struct TabletAreaView: View {
 
             HStack {
                 Button("Reset to Full Area") {
+                    let snap = TabletSettings.AreaSnapshot(
+                        x: settings.activeAreaX, y: settings.activeAreaY,
+                        w: settings.activeAreaWidth, h: settings.activeAreaHeight)
                     settings.activeAreaX = 0; settings.activeAreaY = 0
                     settings.activeAreaWidth = 1; settings.activeAreaHeight = 1
+                    settings.recordAreaDrag(before: snap)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
 
                 Spacer()
 
-                Toggle("Proportional mapping", isOn: $settings.proportionalMapping)
+                Toggle("Proportional mapping", isOn: proportionalMappingBinding)
                     .toggleStyle(.checkbox)
             }
         }
@@ -173,6 +177,20 @@ struct TabletAreaView: View {
             set: { newPID in
                 if newPID != boundProductID, newPID != 0 {
                     onDeviceSelected?(newPID)
+                }
+            }
+        )
+    }
+
+    /// Binding that registers undo when proportional mapping is toggled.
+    private var proportionalMappingBinding: Binding<Bool> {
+        Binding(
+            get: { settings.proportionalMapping },
+            set: { newValue in
+                let oldValue = settings.proportionalMapping
+                settings.proportionalMapping = newValue
+                settings.record("Proportional Mapping") {
+                    settings.proportionalMapping = oldValue
                 }
             }
         )
@@ -383,6 +401,12 @@ struct TabletAreaView: View {
                 applyDrag(edge: edge, dx: dx, dy: dy)
             }
             .onEnded { _ in
+                // Register one coalesced undo entry for the entire drag
+                if dragAnchor != nil {
+                    settings.recordAreaDrag(before: TabletSettings.AreaSnapshot(
+                        x: dragOrigin.x, y: dragOrigin.y,
+                        w: dragOrigin.w, h: dragOrigin.h))
+                }
                 dragAnchor = nil
             }
     }

@@ -136,6 +136,7 @@ final class SettingsWindowController: NSWindowController {
     let settings: TabletSettings
     let deviceLabel: String
     let productID: Int?
+    let docUndoManager = UndoManager()
 
     private let tabVC = ResizableTabViewController()
 
@@ -166,6 +167,10 @@ final class SettingsWindowController: NSWindowController {
         window.setFrameAutosaveName("MockTabSettingsWindow")
 
         super.init(window: window)
+
+        // Set up undo manager for this window
+        settings.undoManager = undoManager
+        settings.activeTool.undoManager = undoManager
 
         // Wire up the live-state visibility flag so TabletManager can skip
         // @Published UI writes when nobody is looking at live data.
@@ -214,6 +219,7 @@ final class SettingsWindowController: NSWindowController {
         let s = settings
         let tm = TabletManager.shared
         let dr = DeviceRegistry.shared
+        let um = undoManager
         let onDevice: (Int) -> Void = { [weak self] pid in
             guard let self else { return }
             PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
@@ -236,7 +242,7 @@ final class SettingsWindowController: NSWindowController {
             DisplayMappingView(settings: s, tabletManager: tm, registry: dr)
         }
         addTab(label: "Devices", symbol: "rectangle.on.rectangle", height: 480, width: 620) {
-            DevicesView(tabletManager: tm, registry: dr)
+            DevicesView(tabletManager: tm, registry: dr, undoManager: um)
         }
         addTab(label: "Presets", symbol: "star.circle", height: 450) {
             PresetsView(settings: s)

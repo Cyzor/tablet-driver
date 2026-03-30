@@ -43,13 +43,26 @@ final class TabletSettings: ObservableObject {
     /// Suppresses UserDefaults writes during `loadForDevice()` / `activate()`.
     private var isLoading = false
 
+    /// Suppresses undo registration when replaying undo/redo actions.
+    /// Does NOT suppress `persist()` itself — undo must save restored state to UserDefaults.
+    var isUndoing = false
+
+    /// Undo manager for this device's settings, passed from SettingsWindowController.
+    /// Each window gets its own independent undo stack.
+    weak var undoManager: UndoManager?
+
     private let ud = UserDefaults.standard
 
     // MARK: - Per-tool settings
 
     /// The tool settings currently active on this device.
     /// Starts as the device-default tool; swapped by TabletManager on tool-enter.
-    @Published var activeTool: ToolSettings = ToolSettings(prefix: "device-default.")
+    @Published var activeTool: ToolSettings = ToolSettings(prefix: "device-default.") {
+        didSet {
+            // Forward current undoManager to the new active tool
+            activeTool.undoManager = undoManager
+        }
+    }
 
     /// Cache of per-serial ToolSettings instances for this device.
     private var toolCache: [String: ToolSettings] = [:]
@@ -258,6 +271,8 @@ final class TabletSettings: ObservableObject {
         devicePrefix = "device-0x\(hex)."
         toolCache.removeAll()
         activeTool = ToolSettings(prefix: devicePrefix)
+        // Clear undo stack to prevent cross-device undo entries
+        undoManager?.removeAllActions()
         loadPresetList()
         loadAppBindings()
         reloadAll()
@@ -452,6 +467,45 @@ final class TabletSettings: ObservableObject {
         appBindings = list
     }
 
+    // MARK: - Undo/Redo support
+
+    /// Snapshot of active area for undo/redo coalescing
+    struct AreaSnapshot: Equatable {
+        var x: Double
+        var y: Double
+        var w: Double
+        var h: Double
+    }
+
+    /// Registers an undo action with the current undoManager.
+    /// Guards against registration during undo replay to prevent infinite loops.
+    /// The undo block is responsible for restoring state; persist() will fire normally.
+    func record(_ actionName: String, undo: @escaping () -> Void) {
+        guard let um = undoManager, !isUndoing else { return }
+        um.setActionName(actionName)
+        um.registerUndo(withTarget: self) { [weak self] target in
+            guard let self else { return }
+            self.isUndoing = true
+            undo()
+            self.isUndoing = false
+        }
+    }
+
+    /// Records a coalesced tablet area drag (one undo entry per completed gesture, not per frame).
+    /// Call this once in DragGesture.onEnded with a snapshot captured at drag-start.
+    func recordAreaDrag(before snap: AreaSnapshot) {
+        record("Tablet Area") { [weak self] in
+            guard let self else { return }
+            let after = AreaSnapshot(x: self.activeAreaX, y: self.activeAreaY,
+                                     w: self.activeAreaWidth, h: self.activeAreaHeight)
+            self.activeAreaX = snap.x
+            self.activeAreaY = snap.y
+            self.activeAreaWidth = snap.w
+            self.activeAreaHeight = snap.h
+            self.recordAreaDrag(before: after)   // re-registers as redo
+        }
+    }
+
     // MARK: - Reload
 
     /// Reloads every setting from UserDefaults using the current `devicePrefix`
@@ -618,6 +672,89 @@ final class TabletSettings: ObservableObject {
         expressKeyRaw = ""
         touchRingButtonRaw = ""
         touchRingMode = .scroll
+    }
+
+    // MARK: - Full state snapshots (for preset activation undo)
+
+    /// Captures all current in-memory setting values for undo/redo of structural
+    /// operations like preset activation that republish all settings at once.
+    struct FullSnapshot: Equatable {
+        var activeAreaX: Double
+        var activeAreaY: Double
+        var activeAreaWidth: Double
+        var activeAreaHeight: Double
+        var proportionalMapping: Bool
+        var targetDisplayIndex: Int
+        var toggleDisplayIDs: String
+        var smoothingStrength: Double
+        var doubleClickDistance: Double
+        var pressureCurve: BezierCurve
+        var pen1Raw: String
+        var pen2Raw: String
+        var expressKeyRaw: String
+        var touchRingButtonRaw: String
+        var touchRingMode: TouchRingMode
+        var touchStrip1Mode: TouchRingMode
+        var touchStrip2Mode: TouchRingMode
+        var autoSwitchEnabled: Bool
+    }
+
+    /// Creates a snapshot of all current settings values.
+    func snapshot() -> FullSnapshot {
+        FullSnapshot(
+            activeAreaX: activeAreaX,
+            activeAreaY: activeAreaY,
+            activeAreaWidth: activeAreaWidth,
+            activeAreaHeight: activeAreaHeight,
+            proportionalMapping: proportionalMapping,
+            targetDisplayIndex: targetDisplayIndex,
+            toggleDisplayIDs: toggleDisplayIDs,
+            smoothingStrength: smoothingStrength,
+            doubleClickDistance: doubleClickDistance,
+            pressureCurve: pressureCurve,
+            pen1Raw: pen1Raw,
+            pen2Raw: pen2Raw,
+            expressKeyRaw: expressKeyRaw,
+            touchRingButtonRaw: touchRingButtonRaw,
+            touchRingMode: touchRingMode,
+            touchStrip1Mode: touchStrip1Mode,
+            touchStrip2Mode: touchStrip2Mode,
+            autoSwitchEnabled: autoSwitchEnabled
+        )
+    }
+
+    /// Applies a previously captured snapshot, registering undo for the prior state.
+    /// Used for preset activation, deletion, and other structural operations.
+    func restoreSnapshot(_ snap: FullSnapshot, actionName: String) {
+        record(actionName) { [weak self] in
+            guard let self else { return }
+            let current = self.snapshot()
+            self.applySnapshot(snap)
+            self.restoreSnapshot(current, actionName: actionName)
+        }
+    }
+
+    /// Restores all settings from a snapshot without triggering undo registration.
+    /// This is the actual work function called during undo/redo replay.
+    private func applySnapshot(_ snap: FullSnapshot) {
+        activeAreaX = snap.activeAreaX
+        activeAreaY = snap.activeAreaY
+        activeAreaWidth = snap.activeAreaWidth
+        activeAreaHeight = snap.activeAreaHeight
+        proportionalMapping = snap.proportionalMapping
+        targetDisplayIndex = snap.targetDisplayIndex
+        toggleDisplayIDs = snap.toggleDisplayIDs
+        smoothingStrength = snap.smoothingStrength
+        doubleClickDistance = snap.doubleClickDistance
+        pressureCurve = snap.pressureCurve
+        pen1Raw = snap.pen1Raw
+        pen2Raw = snap.pen2Raw
+        expressKeyRaw = snap.expressKeyRaw
+        touchRingButtonRaw = snap.touchRingButtonRaw
+        touchRingMode = snap.touchRingMode
+        touchStrip1Mode = snap.touchStrip1Mode
+        touchStrip2Mode = snap.touchStrip2Mode
+        autoSwitchEnabled = snap.autoSwitchEnabled
     }
 
     // MARK: - First-run defaults
