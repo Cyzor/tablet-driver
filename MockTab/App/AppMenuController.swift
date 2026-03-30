@@ -46,6 +46,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             insertTabletMenu()
             insertPresetsMenu()
             removeEmptyViewMenu()
+            hookAboutMenuItem()
         }
     }
 
@@ -64,6 +65,24 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         }
     }
 
+    
+    // MARK: - About
+
+    private func hookAboutMenuItem() {
+        guard
+            let appMenu = NSApp.mainMenu?.items.first?.submenu,
+            let aboutItem = appMenu.items.first(where: { $0.title.hasPrefix("About") })
+        else { return }
+
+        aboutItem.target = self
+        aboutItem.action = #selector(showAboutWindow)
+    }
+
+    @objc private func showAboutWindow() {
+        AboutWindowController.shared.show()
+    }
+    
+    
     // MARK: - Tablet menu
 
     private var tabletMenu: NSMenu?
