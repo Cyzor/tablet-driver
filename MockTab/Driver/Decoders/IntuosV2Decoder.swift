@@ -177,7 +177,8 @@ struct IntuosV2Decoder: WacomDecoder {
         }
 
         // ── Pen path ───────────────────────────────────────────────────────────
-        let pressure = Int(UInt16(report[8]) | UInt16(report[9]) << 8)
+        // Pressure: 13-bit value (d[8] + lower 5 bits of d[9]) per kernel spec.
+        let pressure = Int(UInt16(report[8]) | (UInt16(report[9] & 0x1F) << 8))
         let tiltX = Double(Int8(bitPattern: report[10])) / 127.0
         let tiltY = Double(Int8(bitPattern: report[11])) / 127.0
 
@@ -211,7 +212,8 @@ struct IntuosV2Decoder: WacomDecoder {
         let status = report[2]
         let x = Int(UInt16(report[3]) | UInt16(report[4]) << 8) | (Int(report[5]) << 16)
         let y = Int(UInt16(report[6]) | UInt16(report[7]) << 8) | (Int(report[8]) << 16)
-        let pressure = Int(UInt16(report[9]) | UInt16(report[10]) << 8)
+        // Pressure: 13-bit value (d[9] + lower 5 bits of d[10]) per kernel spec.
+        let pressure = Int(UInt16(report[9]) | (UInt16(report[10] & 0x1F) << 8))
         let tiltX = Double(Int8(bitPattern: report[11])) / 127.0
         let tiltY = Double(Int8(bitPattern: report[12])) / 127.0
         return [.pen(TabletPoint(
@@ -290,7 +292,8 @@ struct IntuosV2Decoder: WacomDecoder {
 
         let x        = Int(UInt16(report[2]) | UInt16(report[3]) << 8)
         let y        = Int(UInt16(report[4]) | UInt16(report[5]) << 8)
-        let pressure: Int = length >= 8 ? Int(UInt16(report[6]) | UInt16(report[7]) << 8) : 0
+        // Pressure: 13-bit value (d[6] + lower 5 bits of d[7]) per kernel spec.
+        let pressure: Int = length >= 8 ? Int(UInt16(report[6]) | (UInt16(report[7] & 0x1F) << 8)) : 0
         let distance: Int = length >= 9  ? Int(report[8])                              : 0
         let tiltX: Double = length >= 10 ? Double(Int8(bitPattern: report[9]))  / 127.0 : 0
         let tiltY: Double = length >= 11 ? Double(Int8(bitPattern: report[10])) / 127.0 : 0
