@@ -99,6 +99,12 @@ final class ToolSettings: ObservableObject {
     private let ud = UserDefaults.standard
     private var isLoading = false
 
+    /// Suppresses undo registration when replaying undo/redo actions.
+    var isUndoing = false
+
+    /// Undo manager shared with TabletSettings, passed from SettingsWindowController.
+    weak var undoManager: UndoManager?
+
     init(prefix: String, fallbackPrefix: String? = nil, isMouse: Bool = false) {
         self.prefix = prefix
         self.fallbackPrefix = fallbackPrefix
@@ -170,5 +176,20 @@ final class ToolSettings: ObservableObject {
             let curve = try? JSONDecoder().decode(BezierCurve.self, from: data)
         else { return }
         pressureCurve = curve
+    }
+
+    // MARK: - Undo/Redo support
+
+    /// Registers an undo action with the shared undoManager.
+    /// Guards against registration during undo replay to prevent infinite loops.
+    func record(_ actionName: String, undo: @escaping () -> Void) {
+        guard let um = undoManager, !isUndoing else { return }
+        um.setActionName(actionName)
+        um.registerUndo(withTarget: self) { [weak self] target in
+            guard let self else { return }
+            self.isUndoing = true
+            undo()
+            self.isUndoing = false
+        }
     }
 }

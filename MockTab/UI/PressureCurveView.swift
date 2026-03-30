@@ -28,6 +28,7 @@ struct PressureCurveView: View {
 
     @State private var draggingP1 = false
     @State private var draggingP2 = false
+    @State private var pressureCurveSnapshot: BezierCurve = .linear
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,9 +51,21 @@ struct PressureCurveView: View {
                 .cornerRadius(6)
 
             HStack {
-                Button("Linear")  { tool.pressureCurve = .linear }
-                Button("Soft")    { tool.pressureCurve = .soft }
-                Button("Firm")    { tool.pressureCurve = .firm }
+                Button("Linear")  {
+                    let old = tool.pressureCurve
+                    tool.pressureCurve = .linear
+                    tool.record("Linear Curve") { tool.pressureCurve = old }
+                }
+                Button("Soft")    {
+                    let old = tool.pressureCurve
+                    tool.pressureCurve = .soft
+                    tool.record("Soft Curve") { tool.pressureCurve = old }
+                }
+                Button("Firm")    {
+                    let old = tool.pressureCurve
+                    tool.pressureCurve = .firm
+                    tool.record("Firm Curve") { tool.pressureCurve = old }
+                }
             }
             .buttonStyle(.borderless)
             .controlSize(.small)
@@ -69,7 +82,7 @@ struct PressureCurveView: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
-                Slider(value: $tool.smoothingStrength, in: 0...1)
+                Slider(value: smoothingBinding, in: 0...1)
                 Text("Reduces cursor jitter. Higher values add lag.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -87,13 +100,37 @@ struct PressureCurveView: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
-                Slider(value: $settings.doubleClickDistance, in: 0...30, step: 1)
+                Slider(value: doubleClickBinding, in: 0...30, step: 1)
                 Text("Snaps a second tap to the first click position within this radius, making double-clicks reliable.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .padding()
+    }
+
+    // MARK: - Slider bindings with undo support
+
+    private var smoothingBinding: Binding<Double> {
+        Binding(
+            get: { tool.smoothingStrength },
+            set: { newVal in
+                let old = tool.smoothingStrength
+                tool.smoothingStrength = newVal
+                tool.record("Stabilization") { tool.smoothingStrength = old }
+            }
+        )
+    }
+
+    private var doubleClickBinding: Binding<Double> {
+        Binding(
+            get: { settings.doubleClickDistance },
+            set: { newVal in
+                let old = settings.doubleClickDistance
+                settings.doubleClickDistance = newVal
+                settings.record("Double-Click Distance") { settings.doubleClickDistance = old }
+            }
+        )
     }
 
     // MARK: - Smoothing label
@@ -119,8 +156,22 @@ struct PressureCurveView: View {
                 drawHandles(ctx: ctx, size: size)
             }
             .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { v in handle(drag: v, size: size) }
-                .onEnded { _ in draggingP1 = false; draggingP2 = false }
+                .onChanged { v in
+                    if !draggingP1 && !draggingP2 {
+                        // First drag event on a handle — capture snapshot for undo
+                        pressureCurveSnapshot = tool.pressureCurve
+                    }
+                    handle(drag: v, size: size)
+                }
+                .onEnded { _ in
+                    // Register one undo entry for the entire drag
+                    if draggingP1 || draggingP2 {
+                        tool.record("Pressure Curve") {
+                            tool.pressureCurve = self.pressureCurveSnapshot
+                        }
+                    }
+                    draggingP1 = false; draggingP2 = false
+                }
             )
         }
     }

@@ -29,6 +29,7 @@ import SwiftUI
 struct DevicesView: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
+    var undoManager: UndoManager?
 
     @State private var editingTabletID: Int?    = nil
     @State private var editingToolID:   String? = nil
