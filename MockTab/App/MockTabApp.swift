@@ -53,6 +53,35 @@ struct MockTabApp: App {
                 Button("Info") { PreferencesWindowController.shared.showTab(at: 7) }
                     .keyboardShortcut("8", modifiers: .command)
             }
+
+            // Edit menu - use CommandGroup to replace the default Edit menu
+            // and add proper undo/redo with enablement checking
+            CommandGroup(replacing: .undoRedo) {
+                Button("Undo") {
+                    PreferencesWindowController.shared.getUndoManager()?.undo()
+                }
+                .keyboardShortcut("z", modifiers: .command)
+
+                Button("Redo") {
+                    PreferencesWindowController.shared.getUndoManager()?.redo()
+                }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+
+                Divider()
+
+                Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
+                    .keyboardShortcut("x", modifiers: .command)
+                Button("Copy") { NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil) }
+                    .keyboardShortcut("c", modifiers: .command)
+                Button("Paste") {
+                    NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("v", modifiers: .command)
+                Button("Select All") {
+                    NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("a", modifiers: .command)
+            }
         }
     }
 }
