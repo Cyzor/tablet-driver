@@ -337,13 +337,22 @@ final class TabletManager: ObservableObject {
                 device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
 
         case 0x0084:
-            // ACK-40401 RF wireless dongle — presents same HID interfaces as the
-            // paired tablet.  WacomGenericDevice auto-detects IntuosV1 format and
-            // handles the wireless status report (0x80).  maxX/maxY are 0 in the
-            // registry so WacomGenericDevice queries the HID descriptor instead.
+            // ACK-40401 RF wireless dongle — presents the same HID interfaces and
+            // descriptor as the paired tablet (PTH-x50/x51 family, IntuosV1 format).
+            // Query the descriptor now; the RF link may not be established yet so
+            // pen events are gated until the 0x80 wireless status report with d[1] bit 0 set.
             print("TabletManager: ACK-40401 wireless dongle connected")
-            wacomDevice = WacomGenericDevice(
-                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+            let (dMaxX, dMaxY, dMaxP, _) = queryHIDDigitizerSpec(device)
+            let dongleSpec = WacomDeviceSpec(
+                productID: 0x0084,
+                name: "ACK-40401 Wireless Dongle",
+                parser: .intuosV1,
+                maxX: dMaxX, maxY: dMaxY, maxPressure: dMaxP,
+                buttonCount: 8, hasTouchRing: true, hasEraser: true,
+                featureInit: [0x02, 0x02], seizeUSB: false)
+            wacomDevice = WacomUniversalDevice(
+                device: device, deviceSpec: dongleSpec, isWireless: true,
+                onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
 
         default:
             // For any recognised PID with a live decoder and a valid spec, use
