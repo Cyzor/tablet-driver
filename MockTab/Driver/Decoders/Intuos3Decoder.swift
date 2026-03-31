@@ -267,11 +267,7 @@ struct Intuos3Decoder: WacomDecoder {
         length: CFIndex
     ) -> [DecodeResult] {
         guard length >= 2 else { return [] }
-        switch report[1] {
-        case 0x02: return [.wireless(.active)]
-        case 0x05: return [.wireless(.lost)]
-        case 0x06: return [.wireless(.lowBattery)]
-        default: return [.wireless(.unknown(report[1]))]
-        }
+        if (report[1] & 0x01) != 0 { return [.wireless(.active)] }
+        return [.wireless(.lost)]
     }
 }
