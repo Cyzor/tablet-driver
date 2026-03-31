@@ -41,6 +41,54 @@ func hidIntProperty(_ device: IOHIDDevice, _ key: String) -> Int {
     return (val as? NSNumber)?.intValue ?? 0
 }
 
+/// Query the HID descriptor elements for the digitizer's coordinate and pressure ranges.
+///
+/// Returns `(maxX, maxY, maxPressure)` read from logical-maximum values on
+/// Generic Desktop X/Y and Digitizer Tip Pressure elements.  Also returns
+/// `isLargeReport` (true when MaxInputReportSize > 64) to distinguish IntuosV1
+/// from IntuosV2 report families.
+///
+/// Used by `TabletManager` when building a `WacomDeviceSpec` at runtime —
+/// e.g. for the ACK-40401 wireless dongle whose paired-tablet dimensions are
+/// encoded in its HID descriptor rather than the static registry.
+func queryHIDDigitizerSpec(_ device: IOHIDDevice)
+    -> (maxX: Int, maxY: Int, maxPressure: Int, isLargeReport: Bool)
+{
+    var maxX = 0
+    var maxY = 0
+    var maxP = 0
+    let maxReportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
+    let isLargeReport = maxReportSize > 64
+
+    guard let elements = IOHIDDeviceCopyMatchingElements(device, nil, 0) else {
+        let fallbackP = isLargeReport ? 8191 : 1023
+        let (fallbackX, fallbackY) = isLargeReport ? (65535, 40960) : (22860, 14430)
+        return (fallbackX, fallbackY, fallbackP, isLargeReport)
+    }
+
+    let count = CFArrayGetCount(elements)
+    for i in 0..<count {
+        guard let rawPtr = CFArrayGetValueAtIndex(elements, i) else { continue }
+        let elem = Unmanaged<IOHIDElement>.fromOpaque(rawPtr).takeUnretainedValue()
+        let page = IOHIDElementGetUsagePage(elem)
+        let usage = IOHIDElementGetUsage(elem)
+        let logMax = IOHIDElementGetLogicalMax(elem)
+
+        if page == 0x01 {
+            if usage == 0x30 && logMax > maxX { maxX = logMax }
+            if usage == 0x31 && logMax > maxY { maxY = logMax }
+        }
+        if page == 0x0D && usage == 0x30 && logMax > maxP { maxP = logMax }
+    }
+
+    // Fallback values when descriptor doesn't specify X/Y. Large devices (192+ byte reports)
+    // get 65535x40960; smaller IntuosV1-family (10-byte) get 22860x14430.
+    if maxX == 0 { maxX = isLargeReport ? 65535 : 22860 }
+    if maxY == 0 { maxY = isLargeReport ? 40960 : 14430 }
+    if maxP == 0 { maxP = isLargeReport ? 8191 : 1023 }
+    return (maxX, maxY, maxP, isLargeReport)
+}
+
 /// Sends the HID Digitizer Input Mode feature report to switch the device into
 /// full tablet mode, unlocking cursor/mouse tool button state in pen reports.
 ///
