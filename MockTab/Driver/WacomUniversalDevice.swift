@@ -50,10 +50,13 @@ final class WacomUniversalDevice: TabletDevice {
     // ── Wireless dongle (ACK-40401) support ──────────────────────────────────
     // When isWireless is true, pen events are suppressed until the RF link is
     // confirmed by a 0x80 wireless status report (d[1] bit 0 set = connected).
-    // On link-up the decoder state is reset and the feature init is re-sent.
+    // On link-up the decoder state is reset and the feature init is re-sent once.
     // On link-lost the gate closes again so stale reports from a dropped connection are not forwarded.
     private let isWireless: Bool
     private var wirelessReady: Bool = false
+    /// True after the first .active status for this RF link session.
+    /// Prevents resending feature init on subsequent status reports.
+    private var wirelessLinkConfirmed: Bool = false
 
     init(
         device: IOHIDDevice,
@@ -209,23 +212,32 @@ final class WacomUniversalDevice: TabletDevice {
             case .wireless(let ws):
                 switch ws {
                 case .active:
-                    print("\(deviceSpec.name): wireless link active")
-                    // Reset decoder state so stale coordinates/tool identity from
-                    // before link-up are not forwarded on the first live report.
-                    state = DecoderState()
-                    wirelessReady = true
-                    // Send feature init now that the RF link is confirmed.
-                    // Must be dispatched to main thread — HID callbacks are background.
-                    if var bytes = deviceSpec.featureInit {
-                        let reportID = CFIndex(bytes[0])
-                        let dev = device
-                        Task { @MainActor in
-                            IOHIDDeviceSetReport(
-                                dev, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
+                    // Only transition once per RF link session. Multiple .active reports
+                    // are normal (dongle may send status reports frequently); don't resend
+                    // feature init or reset state on every one, as that disrupts the link.
+                    if !wirelessLinkConfirmed {
+                        print("\(deviceSpec.name): wireless link active")
+                        // Reset decoder state so stale coordinates/tool identity from
+                        // before link-up are not forwarded on the first live report.
+                        state = DecoderState()
+                        wirelessReady = true
+                        wirelessLinkConfirmed = true
+                        // Send feature init now that the RF link is confirmed.
+                        // Must be dispatched to main thread — HID callbacks are background.
+                        if var bytes = deviceSpec.featureInit {
+                            let reportID = CFIndex(bytes[0])
+                            let dev = device
+                            Task { @MainActor in
+                                IOHIDDeviceSetReport(
+                                    dev, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
+                            }
                         }
                     }
                 case .lost:
-                    print("\(deviceSpec.name): wireless link lost")
+                    if wirelessLinkConfirmed {
+                        print("\(deviceSpec.name): wireless link lost")
+                        wirelessLinkConfirmed = false
+                    }
                     wirelessReady = false
                     state = DecoderState()
                 case .lowBattery:
