@@ -286,11 +286,10 @@ struct IntuosV1Decoder: WacomDecoder {
         length: CFIndex
     ) -> [DecodeResult] {
         guard length >= 2 else { return [] }
-        switch report[1] {
-        case 0x02: return [.wireless(.active)]
-        case 0x05: return [.wireless(.lost)]
-        case 0x06: return [.wireless(.lowBattery)]
-        default: return [.wireless(.unknown(report[1]))]
-        }
+        // Spec (Wacom-HID-PTH-850K-Reference §Wireless Status Report):
+        //   d[1] bit 0 = connection state: 1 → connected, 0 → disconnected.
+        //   Battery level is in d[5], not d[1] — no per-bit low-battery signal here.
+        if (report[1] & 0x01) != 0 { return [.wireless(.active)] }
+        return [.wireless(.lost)]
     }
 }
