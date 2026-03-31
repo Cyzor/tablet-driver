@@ -75,29 +75,10 @@ final class DeviceRegistry: ObservableObject {
 
     // MARK: - Pen model lookup
 
-    /// Human-readable base name for a Wacom tool code (eraser suffix not included).
-    static func penBaseName(forToolCode toolCode: UInt16) -> String {
-        // Cordless mouse/cursor accessories: bits 1+2 set in the low nibble (0x_6 pattern).
-        // e.g. 0x0806 = KC-100-00 Intuos Mouse, 0x0006 = 4D Mouse.
-        if toolCode != 0 && (toolCode & 0x000F) == 0x0006 { return "Intuos Mouse" }
-        // Mask off the eraser bit (bit 3) to get the tip variant code.
-        switch toolCode & ~UInt16(0x0008) {
-        case 0x0802: return "Grip Pen"
-        case 0x0804: return "Grip Pen"
-        case 0x0812: return "Inking Pen"
-        case 0x0832: return "Pro Pen 2"
-        case 0x0842: return "Pro Pen 3"
-        case 0x0852: return "Pen 4K"
-        default: return "Stylus"
-        }
-    }
-
-    /// Full name including "(Eraser)" suffix when appropriate.
+    /// Full name for a Wacom tool code, including "(Eraser)" suffix when appropriate.
+    /// Delegates to WacomToolCatalog for the authoritative name table.
     static func penName(forToolCode toolCode: UInt16) -> String {
-        let base = penBaseName(forToolCode: toolCode)
-        // Mouse tools are never erasers regardless of toolCode bit state.
-        let isEraser = (toolCode & 0x0800) != 0 && (toolCode & 0x0008) != 0
-        return isEraser ? "\(base) (Eraser)" : base
+        return WacomToolCatalog.name(forToolCode: toolCode)
     }
 
     /// Fallback used for IntuosV1 devices that don't report a tool code.
