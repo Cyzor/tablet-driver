@@ -26,10 +26,10 @@ import IOKit.hid
 /// Supports both USB and Bluetooth transports; BLE/BT skips USB feature inits.
 final class WacomUniversalDevice: TabletDevice {
 
-    let spec: DigitizerSpec
+    var spec: DigitizerSpec
 
     private let device: IOHIDDevice
-    private let deviceSpec: WacomDeviceSpec
+    private var deviceSpec: WacomDeviceSpec
     /// True when this interface must be seized (kIOHIDOptionsTypeSeizeDevice).
     /// Only set by TabletManager when the interface is the standard HID-mouse
     /// interface (usagePage=0x01) AND the device spec requires seizure.
@@ -195,6 +195,24 @@ final class WacomUniversalDevice: TabletDevice {
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
         HIDCapture.shared.record(tag: deviceSpec.name, report: report, length: length)
+
+        // For wireless dongles, extract paired tablet PID from 0x80 status report and
+        // use its spec for accurate coordinate ranges (instead of fallback guesses).
+        if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {
+            let pairedTabletPID = Int(UInt16(report[7]) | UInt16(report[6]) << 8)  // Big-endian
+            if pairedTabletPID > 0,
+               let pairedSpec = WacomDeviceRegistry.spec(for: pairedTabletPID),
+               pairedSpec.maxX > 0 && pairedSpec.maxY > 0 {
+                // Update our spec with the paired tablet's actual dimensions
+                spec = DigitizerSpec(
+                    maxX: pairedSpec.maxX,
+                    maxY: pairedSpec.maxY,
+                    maxPressure: pairedSpec.maxPressure,
+                    buttonCount: pairedSpec.buttonCount)
+                print("\(deviceSpec.name): using paired tablet spec (PID 0x\(String(pairedTabletPID, radix: 16, uppercase: true))) — maxX=\(spec.maxX) maxY=\(spec.maxY) maxPressure=\(spec.maxPressure)")
+            }
+        }
+
         let results = decoder.decode(report: report, length: length, spec: spec, state: &state)
         for result in results {
             switch result {
