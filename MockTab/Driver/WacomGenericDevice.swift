@@ -239,18 +239,33 @@ final class WacomGenericDevice: TabletDevice {
 
         // ── Wireless status report (Report ID 0x80) ──────────────────────
         // ACK-40401 RF dongle: byte[1] = 0x02 active, 0x05 lost, 0x06 low battery.
-        // On 0x02 (link active), re-send feature init to ensure the digitizer is
-        // in Wacom mode.  This handles the case where MockTab starts while the
-        // wireless module is absent: the init sent on open is silently discarded by
-        // the dongle, so we resend it when the RF link is confirmed established.
+        // On 0x02 (link active), clear decoder state and re-send feature init to
+        // ensure the digitizer is in Wacom mode.  This handles the case where
+        // MockTab starts while the wireless module is absent: the init sent on open
+        // is silently discarded by the dongle, so we resend it when the RF link is
+        // confirmed established.
         if id == 0x80 {
             if length >= 2 {
                 let status = report[1]
                 switch status {
                 case 0x02:
-                    print("\(tag): wireless link active — re-sending feature init")
-                    var init1: [UInt8] = [0x02, 0x02]
-                    IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
+                    print("\(tag): wireless link active — clearing state and re-sending feature init")
+                    // Reset decoder state to sync with wireless link-up
+                    lastX = 0
+                    lastY = 0
+                    prevInProximity = false
+                    currentSerial = 0
+                    currentToolCode = 0
+                    isEraser = false
+                    toolIsMouse = false
+                    lastSerial = 0
+                    lastToolCode = 0
+
+                    // Send feature init safely from main thread (not from HID callback)
+                    Task { @MainActor in
+                        var init1: [UInt8] = [0x02, 0x02]
+                        IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
+                    }
                 case 0x05: print("\(tag): wireless link lost (tablet out of range or off)")
                 case 0x06: print("\(tag): battery critically low")
                 default: break
