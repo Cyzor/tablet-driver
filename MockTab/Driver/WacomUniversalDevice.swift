@@ -157,6 +157,21 @@ final class WacomUniversalDevice: TabletDevice {
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
     }
 
+    /// Register an additional IOHIDDevice (interface) for report delivery.
+    /// Used for multi-interface devices (e.g. ACK-40401 wireless dongle) that
+    /// enumerate separate IOHIDDevices for each interface (digitizer, wireless status, etc).
+    func registerDevice(_ device: IOHIDDevice) {
+        let ctx = Unmanaged.passRetained(self).toOpaque()
+        IOHIDDeviceRegisterInputReportCallback(
+            device, &reportBuffer, reportBuffer.count,
+            WacomUniversalDevice.reportCallback, ctx)
+        IOHIDDeviceScheduleWithRunLoop(
+            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+        let transport =
+            IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        print("\(deviceSpec.name): registered interface (transport=\(transport))")
+    }
+
     func close() {
         IOHIDDeviceUnscheduleFromRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)

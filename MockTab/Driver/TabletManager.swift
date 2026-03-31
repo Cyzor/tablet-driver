@@ -332,10 +332,10 @@ final class TabletManager: ObservableObject {
         // for each interface (digitizer, wireless status, touch, etc). We create one driver
         // for the product and reuse it for all interfaces. Each IOHIDDevice still registers
         // independently for its own reports.
-        if context.tabletDevice != nil {
-            // Already have a driver for this product; skip creating another.
-            // Still map this IOHIDDevice to the context for report delivery.
+        if let existingDriver = context.tabletDevice as? WacomUniversalDevice {
+            // Already have a driver for this product; register this interface for reports.
             hidDeviceMap[device] = context
+            existingDriver.registerDevice(device)
             return
         }
 
