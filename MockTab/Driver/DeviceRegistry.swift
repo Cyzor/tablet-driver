@@ -140,7 +140,9 @@ final class DeviceRegistry: ObservableObject {
 
     /// Called when a new tool enters proximity on an IntuosV2 device (serial known).
     /// Also called for IntuosV1 devices with serial = 0 (generic stylus/eraser).
-    func recordTool(identity: ToolIdentity, forDevice deviceID: Int) {
+    /// Returns the actual tool ID assigned (may have counter suffix for multi-pen IntuosV1 devices).
+    @discardableResult
+    func recordTool(identity: ToolIdentity, forDevice deviceID: Int) -> String {
         var toolID = Self.toolID(for: identity)
         // For IntuosV1 (serial=0): prefer toolCode-based name if available, fall back to productID-based.
         let kind: String
@@ -161,13 +163,14 @@ final class DeviceRegistry: ObservableObject {
         if let idx = knownTools.firstIndex(where: { $0.id == toolID }) {
             if knownTools[idx].kind != kind {
                 knownTools[idx].kind = kind
+                knownTools[idx].nickname = kind  // Update nickname to match kind
                 if knownTools[idx].toolCode == nil {
                     knownTools[idx].toolCode = identity.toolCode
                     knownTools[idx].serial = identity.serial
                 }
                 saveTools(forDevice: deviceID)
             }
-            return
+            return toolID
         }
 
         // Migration: when the real serial arrives, remove the old generic entry.
@@ -198,6 +201,7 @@ final class DeviceRegistry: ObservableObject {
                 toolCode: identity.toolCode))
         saveTools(forDevice: deviceID)
         rebuildAllTools()
+        return toolID
     }
 
     // MARK: - Renaming

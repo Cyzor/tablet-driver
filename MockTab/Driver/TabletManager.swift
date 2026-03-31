@@ -217,8 +217,7 @@ final class TabletManager: ObservableObject {
             guard let self, let context else { return }
             context.activeToolSerial = identity.serial
             context.activeToolIsMouse = identity.isMouse
-            DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
-            let toolID = DeviceRegistry.toolID(for: identity)
+            let toolID = DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
             let toolSets = context.settings.toolSettings(forID: toolID, isMouse: identity.isMouse)
             context.activeTool = toolSets
             context.injector.activeToolSettings = toolSets
@@ -258,36 +257,37 @@ final class TabletManager: ObservableObject {
             context.injector.inject(point: point, settings: context.settings)
 
             // ── UI state — gated + throttled ─────────────────────────────────
-            // Skip entirely when MockTab is in the background OR the Info/Buttons
-            // tab isn't visible. This eliminates every @Published write during
-            // normal drawing use, including when MockTab is backgrounded.
-            guard appIsFrontmost && infoViewVisible else { return }
-
+            // Proximity exit always clears state immediately, regardless of app foreground/tab visibility.
             if !point.inProximity {
-                // Proximity exit always publishes immediately so UI clears.
                 self.uiUpdateCounter = 0
                 self.activeToolID = nil
                 self.liveButtons = LiveButtonState()
                 self.livePoint = nil
-            } else {
-                // Throttle continuous updates to ~16 Hz.
-                self.uiUpdateCounter += 1
-                guard self.uiUpdateCounter >= Self.uiUpdateInterval else { return }
-                self.uiUpdateCounter = 0
-
-                let toolIsMouse = context.activeToolIsMouse
-                let tipDown = toolIsMouse ? point.penButton1 : point.normalizedPressure > 0.004
-                let newButtons = LiveButtonState(
-                    tipDown: tipDown && !point.eraser,
-                    eraserDown: tipDown && point.eraser,
-                    button1Down: point.penButton1,
-                    button2Down: point.penButton2,
-                    expressKeys: self.liveButtons.expressKeys
-                )
-                // Only assign when values changed — avoids spurious objectWillChange.
-                if newButtons != self.liveButtons { self.liveButtons = newButtons }
-                self.livePoint = point
+                return  // Skip UI updates for proximity-exit state
             }
+
+            // Skip UI updates when MockTab is in the background OR the Info/Buttons
+            // tab isn't visible. This eliminates every @Published write during
+            // normal drawing use, including when MockTab is backgrounded.
+            guard appIsFrontmost && infoViewVisible else { return }
+
+            // Throttle continuous updates to ~16 Hz.
+            self.uiUpdateCounter += 1
+            guard self.uiUpdateCounter >= Self.uiUpdateInterval else { return }
+            self.uiUpdateCounter = 0
+
+            let toolIsMouse = context.activeToolIsMouse
+            let tipDown = toolIsMouse ? point.penButton1 : point.normalizedPressure > 0.004
+            let newButtons = LiveButtonState(
+                tipDown: tipDown && !point.eraser,
+                eraserDown: tipDown && point.eraser,
+                button1Down: point.penButton1,
+                button2Down: point.penButton2,
+                expressKeys: self.liveButtons.expressKeys
+            )
+            // Only assign when values changed — avoids spurious objectWillChange.
+            if newButtons != self.liveButtons { self.liveButtons = newButtons }
+            self.livePoint = point
         }
 
         // ── Express key closure ──────────────────────────────────────────────
