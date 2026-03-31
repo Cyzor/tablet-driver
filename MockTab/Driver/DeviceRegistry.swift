@@ -141,11 +141,21 @@ final class DeviceRegistry: ObservableObject {
     /// Called when a new tool enters proximity on an IntuosV2 device (serial known).
     /// Also called for IntuosV1 devices with serial = 0 (generic stylus/eraser).
     func recordTool(identity: ToolIdentity, forDevice deviceID: Int) {
-        let toolID = Self.toolID(for: identity)
-        let kind =
-            identity.serial != 0
-            ? Self.penName(forToolCode: identity.toolCode)
-            : Self.penName(forProductID: deviceID, isEraser: identity.isEraser)
+        var toolID = Self.toolID(for: identity)
+        // For IntuosV1 (serial=0): prefer toolCode-based name if available, fall back to productID-based.
+        let kind: String
+        if identity.serial != 0 {
+            kind = Self.penName(forToolCode: identity.toolCode)
+        } else if identity.toolCode != 0 && identity.toolCode != 0x0001 {
+            // Try toolCode first for known pen types (0x0832, 0x0842, etc.)
+            let toolCodeName = Self.penName(forToolCode: identity.toolCode)
+            // If toolCode returns a non-generic name, use it; otherwise fall back to productID-based.
+            kind = (!toolCodeName.hasPrefix("Unknown") && toolCodeName != "Stylus")
+                ? toolCodeName
+                : Self.penName(forProductID: deviceID, isEraser: identity.isEraser)
+        } else {
+            kind = Self.penName(forProductID: deviceID, isEraser: identity.isEraser)
+        }
 
         // Refresh kind on existing entry (model name table may have improved).
         if let idx = knownTools.firstIndex(where: { $0.id == toolID }) {
@@ -165,6 +175,17 @@ final class DeviceRegistry: ObservableObject {
             let genericID = identity.isEraser ? "eraser" : "stylus"
             if let oldIdx = knownTools.firstIndex(where: { $0.id == genericID }) {
                 knownTools.remove(at: oldIdx)
+            }
+        }
+
+        // For serial=0 (IntuosV1) devices: if multiple pens with the same toolCode are recorded,
+        // append a counter to distinguish them (e.g., "stylus-0x0832-1", "stylus-0x0832-2").
+        if identity.serial == 0 {
+            let baseID = toolID
+            var counter = 1
+            while knownTools.contains(where: { $0.id == toolID }) {
+                toolID = "\(baseID)-\(counter)"
+                counter += 1
             }
         }
 
