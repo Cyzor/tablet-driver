@@ -437,6 +437,148 @@ tool_id = (abs_misc & 0xfff) | ((abs_misc >> 20) & 0xfff)
 
 ---
 
+## Part VI - Wacom Puck Reference
+
+### Supported Devices
+
+| Device | Puck Support | Puck Model |
+|---|---|---|
+| Intuos4 (all sizes) | Yes | Wacom Intuos4 Puck |
+| Intuos5 (all sizes) | Yes | Wacom Intuos5 Puck |
+| Intuos Pro gen1 | Yes | Wacom Intuos Pro Puck |
+| Intuos Pro gen2 | Yes | Wacom Pro Pen Puck (combined) |
+| Cintiq 24HD | Yes | Wacom Cintiq 24HD Puck |
+| Cintiq 22HD | Yes | Wacom Cintiq 22HD Puck |
+| Cintiq Pro 27 | No | — |
+| Movink 13 | No | — |
+
+### Physical Characteristics
+
+| Parameter | Value |
+|---|---|
+| Power | AAA battery (2x for some models) |
+| Communication | 2.4 GHz wireless (same RF as wireless tablets) |
+| Range | ~10 meters |
+| Battery life | ~80 hours continuous use |
+| Scroll wheel | Optical encoder, 20 steps per revolution |
+| Buttons | 5–7 (model dependent) |
+
+### Puck Detection and Tool ID
+
+Pucks are identified via the same enter-proximity sequence as other tools, with specific tool IDs:
+
+| Tool ID (hex) | Device(s) | Tool Type |
+|---|---|---|
+| 0x007 | Intuos1/2/3 | 2D Mouse |
+| 0x09C | Intuos3 | 2D Mouse |
+| 0x094 | Intuos3 | 2D Mouse |
+| 0x017 | Intuos3 | 2D Mouse |
+| 0x806 | Intuos 1/2 | 2D Mouse |
+| 0x096 | Intuos1/2/3 | Lens Cursor |
+| 0x097 | Intuos1/2/3 | Lens Cursor |
+| 0x006 | Intuos3 | Lens Cursor |
+
+The **Lens Cursor** (0x096, 0x097, 0x006) is a special high-precision cursor mode used for some puck variants.
+
+### Puck Report Format (Report ID 0x02)
+
+Pucks use the same Report ID 0x02 as pen input, with packet type encoded in `type = (d[0]>>1) & 0x0F`:
+
+#### Type 0x06 — Intuos4 Mouse Packet (10 bytes)
+
+```
+02  d1  d2  d3  d4  d5  d6  d7  d8  d9
+```
+
+| Byte | Field | Formula |
+|---|---|---|
+| `d[0]` | Status | Proximity + packet type |
+| `d[1]:d[2]` | X position (high bits) | `BE16(d[1]:d[2])` |
+| `d[3]:d[4]` | Y position (high bits) | `BE16(d[3]:d[4])` |
+| `d[5]` | X/Y low bits | `d[5] >> 4` (X), `d[5] & 0x0F` (Y) |
+| `d[6]` | Buttons | `d[6] & 0x1F` — see below |
+| `d[7]` | Scroll wheel | `((d[7]&0x80)>>7) - ((d[7]&0x40)>>6)` — signed |
+| `d[8]` | Tilt X | Same formula as pen |
+| `d[9]` | Tilt Y | Same formula as pen |
+
+**Button encoding (d[6]):**
+
+| Bit | Button |
+|---|---|
+| 0x01 | BTN_LEFT |
+| 0x02 | BTN_MIDDLE |
+| 0x04 | BTN_RIGHT |
+| 0x08 | BTN_SIDE (side button 1) |
+| 0x10 | BTN_EXTRA (side button 2) |
+
+#### Type 0x08 — Intuos 2D Mouse Packet (10 bytes)
+
+Earlier protocol used by Intuos1/2/3 pucks:
+
+```
+02  d1  d2  d3  d4  d5  d6  d7  d8  d9
+```
+
+| Byte | Field | Formula |
+|---|---|---|
+| `d[0]` | Status | Proximity + packet type |
+| `d[1]:d[2]` | X position | BE16 |
+| `d[3]:d[4]` | Y position | BE16 |
+| `d[5]` | Distance | Hover height (proximity sensor) |
+| `d[6]` | Pressure | Tablet proximity pressure |
+| `d[7]` | Reserved | — |
+| `d[8]` | Buttons + scroll | See below |
+| `d[9]` | Reserved | — |
+
+**Button encoding (d[8]):**
+
+| Bit | Button |
+|---|---|
+| 0x04 | BTN_LEFT |
+| 0x08 | BTN_MIDDLE |
+| 0x10 | BTN_RIGHT |
+| 0x01 | Scroll up (`(d[8]&0x01) - ((d[8]&0x02)>>1)`) |
+| 0x02 | Scroll down |
+| 0x40 | BTN_SIDE (Intuos3 only) |
+| 0x20 | BTN_EXTRA (Intuos3 only) |
+
+### Scroll Wheel Behavior
+
+**Intuos4/5/Pro puck wheel:**
+
+- Reports as `REL_WHEEL` (relative scroll) in `d[7]`
+- Value range: -1, 0, +1 per event (one tick per detent)
+- Wheel is clicky — each detent generates one packet with signed value
+
+**Wheel button (middle click):**
+
+- Pressing the wheel down generates `BTN_MIDDLE` (0x02 in d[6])
+- Wheel can be clicked without scrolling
+
+### Puck Power Management
+
+| State | Behavior |
+|---|---|
+| Idle | Puck enters low-power mode after ~20 seconds of no movement |
+| Sleeping | Does not respond to tablet proximity — must move to wake |
+| Wake | Movement detected via optical encoder, ~50ms wake time |
+| Battery | Reported via same feature report 0x0B as tablet battery |
+
+---
+
+## Gaps in Puck Documentation
+
+1. **Pairing procedure** — How the puck is paired to the tablet is not documented in driver source. Likely requires Wacom driver software for initial pairing.
+
+2. **Firmware updates** — Pucks may have firmware but no public update mechanism.
+
+3. **Lens Cursor mode** — The high-precision "lens" tool ID (0x096, 0x097) behavior is not fully decoded — may affect sensitivity or filtering.
+
+4. **Intuos Pro gen2 puck** — The Pro Pen Puck combines pen and puck in one body; switching between modes may involve a physical switch or button combination.
+
+---
+
+
 ## Appendix D — Device Enumeration Summary
 
 ### By Transport

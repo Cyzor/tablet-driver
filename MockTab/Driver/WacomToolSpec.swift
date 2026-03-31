@@ -110,7 +110,7 @@ enum WacomToolCatalog {
             hasWheel: false,
             hasEraserVariant: true,
             eraserToolCode: 0x080A,
-            supportedFamilies: ["intuos5", "intuos4", "intuosProGen1"]
+            supportedFamilies: ["intuos3", "intuos4", "intuos5", "intuosProGen1"]
         )
 
         // Grip Pen Eraser
@@ -125,37 +125,38 @@ enum WacomToolCatalog {
             hasWheel: false,
             hasEraserVariant: false,
             eraserToolCode: nil,
-            supportedFamilies: ["intuos5", "intuos4", "intuosProGen1"]
+            supportedFamilies: ["intuos3", "intuos4", "intuos5", "intuosProGen1"]
         )
 
-        // Airbrush
+        // Marker Pen (Intuos4 — rotation-capable; listed in kernel is_art_pen for 0x804.
+        // Likely an OEM or limited-market variant; the primary Intuos4 Art Pen is 0x10804.)
         catalog[0x0804] = WacomToolSpec(
             toolCode: 0x0804,
-            name: "Airbrush",
-            toolType: .airbrush,
+            name: "Marker Pen",
+            toolType: .artPen,
             buttonCount: 2,
             maxPressure: nil,
             hasTilt: true,
-            hasRotation: false,
-            hasWheel: true,
+            hasRotation: true,
+            hasWheel: false,
             hasEraserVariant: true,
             eraserToolCode: 0x080C,
-            supportedFamilies: ["intuos4", "intuos5"]
+            supportedFamilies: ["intuos4"]
         )
 
-        // Airbrush Eraser
+        // Marker Pen Eraser
         catalog[0x080C] = WacomToolSpec(
             toolCode: 0x080C,
-            name: "Airbrush (Eraser)",
+            name: "Marker Pen (Eraser)",
             toolType: .eraser,
             buttonCount: 2,
             maxPressure: nil,
             hasTilt: true,
-            hasRotation: false,
-            hasWheel: true,
+            hasRotation: true,
+            hasWheel: false,
             hasEraserVariant: false,
             eraserToolCode: nil,
-            supportedFamilies: ["intuos4", "intuos5"]
+            supportedFamilies: ["intuos4"]
         )
 
         // Intuos Mouse (cordless)
@@ -295,11 +296,11 @@ enum WacomToolCatalog {
             supportedFamilies: ["intuosProGen1"]
         )
 
-        // MARK: - Art Pen / Marker Pen (rotatable)
+        // MARK: - Art Pen (rotatable, ABS_Z barrel)
 
-        // Art Pen (rotatable, standard)
-        catalog[0x07A0] = WacomToolSpec(
-            toolCode: 0x07A0,
+        // Art Marker / Art Pen (Intuos3 ZP-600 + Intuos4 — same code, same kernel is_art_pen flag)
+        catalog[0x0885] = WacomToolSpec(
+            toolCode: 0x0885,
             name: "Art Pen",
             toolType: .artPen,
             buttonCount: 2,
@@ -308,13 +309,13 @@ enum WacomToolCatalog {
             hasRotation: true,
             hasWheel: false,
             hasEraserVariant: true,
-            eraserToolCode: 0x07A1,
-            supportedFamilies: ["intuos4", "intuos5", "intuosProGen1"]
+            eraserToolCode: 0x088D,
+            supportedFamilies: ["intuos3", "intuos4"]
         )
 
         // Art Pen Eraser
-        catalog[0x07A1] = WacomToolSpec(
-            toolCode: 0x07A1,
+        catalog[0x088D] = WacomToolSpec(
+            toolCode: 0x088D,
             name: "Art Pen (Eraser)",
             toolType: .eraser,
             buttonCount: 2,
@@ -324,7 +325,41 @@ enum WacomToolCatalog {
             hasWheel: false,
             hasEraserVariant: false,
             eraserToolCode: nil,
-            supportedFamilies: ["intuos4", "intuos5", "intuosProGen1"]
+            supportedFamilies: ["intuos3", "intuos4"]
+        )
+
+        // NOTE: The Intuos4 Art Pen KP-701E-2 reports as 0x10804 (extended ID assembled from
+        // multiple nibbles by the kernel's wacom_intuos_id_mangle). This value exceeds UInt16.
+        // toolCode must be widened to UInt32 to catalog these extended IDs — tracked separately.
+
+        // Art Pen 2 (Intuos5/Intuos Pro gen1)
+        catalog[0x0204] = WacomToolSpec(
+            toolCode: 0x0204,
+            name: "Art Pen 2",
+            toolType: .artPen,
+            buttonCount: 2,
+            maxPressure: nil,
+            hasTilt: true,
+            hasRotation: true,
+            hasWheel: false,
+            hasEraserVariant: true,
+            eraserToolCode: 0x020C,
+            supportedFamilies: ["intuos5", "intuosProGen1"]
+        )
+
+        // Art Pen 2 Eraser
+        catalog[0x020C] = WacomToolSpec(
+            toolCode: 0x020C,
+            name: "Art Pen 2 (Eraser)",
+            toolType: .eraser,
+            buttonCount: 2,
+            maxPressure: nil,
+            hasTilt: true,
+            hasRotation: true,
+            hasWheel: false,
+            hasEraserVariant: false,
+            eraserToolCode: nil,
+            supportedFamilies: ["intuos5", "intuosProGen1"]
         )
 
         // MARK: - Inking Pen
@@ -451,24 +486,39 @@ enum WacomToolCatalog {
             supportedFamilies: ["intuos3"]
         )
 
-        // MARK: - Mouse Tools (0x00x6 / 0x001x family)
+        // MARK: - Mouse and Cursor Tools
 
-        // 4D Mouse (Intuos series)
+        // Lens Cursor (Intuos 1/2 era and Intuos4 — kernel maps 0x006 → BTN_TOOL_LENS)
         catalog[0x0006] = WacomToolSpec(
             toolCode: 0x0006,
-            name: "4D Mouse",
+            name: "Lens Cursor",
             toolType: .mouse,
-            buttonCount: 2,
+            buttonCount: 5,
+            maxPressure: nil,
+            hasTilt: false,
+            hasRotation: false,
+            hasWheel: false,
+            hasEraserVariant: false,
+            eraserToolCode: nil,
+            supportedFamilies: ["intuos4"]
+        )
+
+        // Cordless Mouse / 4D Mouse (Intuos 1/2 legacy — kernel 0x007/0x094/0x09C → BTN_TOOL_MOUSE)
+        catalog[0x0007] = WacomToolSpec(
+            toolCode: 0x0007,
+            name: "Cordless Mouse",
+            toolType: .mouse,
+            buttonCount: 5,
             maxPressure: nil,
             hasTilt: false,
             hasRotation: false,
             hasWheel: true,
             hasEraserVariant: false,
             eraserToolCode: nil,
-            supportedFamilies: ["intuos3", "intuos4", "intuos5"]
+            supportedFamilies: []
         )
 
-        // 4D Mouse Eraser (rare)
+        // 4D Mouse Eraser (legacy)
         catalog[0x000E] = WacomToolSpec(
             toolCode: 0x000E,
             name: "4D Mouse (Eraser)",
@@ -480,13 +530,28 @@ enum WacomToolCatalog {
             hasWheel: true,
             hasEraserVariant: false,
             eraserToolCode: nil,
+            supportedFamilies: []
+        )
+
+        // 2D Mouse (Intuos3 ZC-100)
+        catalog[0x0017] = WacomToolSpec(
+            toolCode: 0x0017,
+            name: "2D Mouse",
+            toolType: .mouse,
+            buttonCount: 5,
+            maxPressure: nil,
+            hasTilt: false,
+            hasRotation: false,
+            hasWheel: true,
+            hasEraserVariant: false,
+            eraserToolCode: nil,
             supportedFamilies: ["intuos3"]
         )
 
-        // Intuos3 Mouse (older)
+        // Intuos3 Mouse fallback (code from subtype-0x08 path — actual Intuos3 mouse sends 0x0017)
         catalog[0x0016] = WacomToolSpec(
             toolCode: 0x0016,
-            name: "Intuos3 Mouse",
+            name: "Mouse",
             toolType: .mouse,
             buttonCount: 2,
             maxPressure: nil,
@@ -498,7 +563,22 @@ enum WacomToolCatalog {
             supportedFamilies: ["intuos3"]
         )
 
-        // Lens Cursor (no buttons, used for precise positioning)
+        // Lens Cursor (Intuos3 — large tablets only: PTZ-930/1231)
+        catalog[0x0097] = WacomToolSpec(
+            toolCode: 0x0097,
+            name: "Lens Cursor",
+            toolType: .mouse,
+            buttonCount: 5,
+            maxPressure: nil,
+            hasTilt: false,
+            hasRotation: false,
+            hasWheel: false,
+            hasEraserVariant: false,
+            eraserToolCode: nil,
+            supportedFamilies: ["intuos3"]
+        )
+
+        // Lens Cursor (unverified legacy code — kept for compatibility)
         catalog[0x0076] = WacomToolSpec(
             toolCode: 0x0076,
             name: "Lens Cursor",
@@ -510,7 +590,7 @@ enum WacomToolCatalog {
             hasWheel: false,
             hasEraserVariant: false,
             eraserToolCode: nil,
-            supportedFamilies: ["intuos3", "intuos4", "intuos5"]
+            supportedFamilies: []
         )
 
         // MARK: - Bamboo Series (CTL/CTH)
@@ -620,6 +700,88 @@ enum WacomToolCatalog {
             hasEraserVariant: false,
             eraserToolCode: nil,
             supportedFamilies: ["graphire"]
+        )
+
+        // MARK: - Airbrush (Intuos3/4)
+
+        // Airbrush (Intuos3 ZP-400E) — 1 side button, ABS_WHEEL fingerwheel
+        catalog[0x0913] = WacomToolSpec(
+            toolCode: 0x0913,
+            name: "Airbrush",
+            toolType: .airbrush,
+            buttonCount: 1,
+            maxPressure: 1023,
+            hasTilt: true,
+            hasRotation: false,
+            hasWheel: true,
+            hasEraserVariant: true,
+            eraserToolCode: 0x091B,
+            supportedFamilies: ["intuos3"]
+        )
+
+        catalog[0x091B] = WacomToolSpec(
+            toolCode: 0x091B,
+            name: "Airbrush (Eraser)",
+            toolType: .eraser,
+            buttonCount: 1,
+            maxPressure: 1023,
+            hasTilt: true,
+            hasRotation: false,
+            hasWheel: true,
+            hasEraserVariant: false,
+            eraserToolCode: nil,
+            supportedFamilies: ["intuos3"]
+        )
+
+        // Airbrush (Intuos4 KP-400E-2) — 1 side button, ABS_WHEEL fingerwheel
+        catalog[0x0902] = WacomToolSpec(
+            toolCode: 0x0902,
+            name: "Airbrush",
+            toolType: .airbrush,
+            buttonCount: 1,
+            maxPressure: nil,
+            hasTilt: true,
+            hasRotation: false,
+            hasWheel: true,
+            hasEraserVariant: true,
+            eraserToolCode: 0x090A,
+            supportedFamilies: ["intuos4", "intuos5"]
+        )
+
+        catalog[0x090A] = WacomToolSpec(
+            toolCode: 0x090A,
+            name: "Airbrush (Eraser)",
+            toolType: .eraser,
+            buttonCount: 1,
+            maxPressure: nil,
+            hasTilt: true,
+            hasRotation: false,
+            hasWheel: true,
+            hasEraserVariant: false,
+            eraserToolCode: nil,
+            supportedFamilies: ["intuos4", "intuos5"]
+        )
+
+        // NOTE: Intuos4 Airbrush KP-400E-2 extended ID (0x10902), Inking Pen KP-130E (0x12802),
+        // Classic Pen KP-300E-2 (0x40802), and Intuos Pro gen2 reference codes (0x10100/0x10224/
+        // 0x10184) all exceed UInt16 — they require toolCode widening to UInt32 (tracked separately).
+        // The Intuos4 primary Airbrush uses 0x0902 (above); 0x10902 is a secondary extended variant.
+
+        // MARK: - Intuos3/4 Specialty Pens
+
+        // Inking Pen (Intuos3 ZP-130 — ink cartridge, no eraser end, pressure only)
+        catalog[0x0801] = WacomToolSpec(
+            toolCode: 0x0801,
+            name: "Inking Pen",
+            toolType: .inkingPen,
+            buttonCount: 0,
+            maxPressure: 1023,
+            hasTilt: false,
+            hasRotation: false,
+            hasWheel: false,
+            hasEraserVariant: false,
+            eraserToolCode: nil,
+            supportedFamilies: ["intuos3"]
         )
 
         return catalog
