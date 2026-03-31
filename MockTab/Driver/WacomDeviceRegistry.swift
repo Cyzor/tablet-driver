@@ -362,8 +362,8 @@ enum WacomDeviceRegistry {
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
-            productID: 0x0028, name: "Intuos5 L (PTH-850)",  // ⚠ estimated
-            parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
+            productID: 0x0028, name: "Intuos5 L (PTH-850)",
+            parser: .intuosV1, maxX: 65024, maxY: 40640, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
