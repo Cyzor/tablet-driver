@@ -206,7 +206,9 @@ struct Intuos3Decoder: WacomDecoder {
 
         // Pen path — same pressure/tilt encoding as IntuosV1.
         // 11-bit pressure; right-shift for 10-bit (maxPressure ≤ 1023) devices per kernel spec.
-        let rawPressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5)
+        // Intuos5 devices (PTH-850, maxPressure=2047) include status bit 0 as 11th bit.
+        let statusBit = (spec.maxPressure == 2047) ? (Int(status) & 1) : 0
+        let rawPressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | statusBit
         let pressure = spec.maxPressure <= 1023 ? rawPressure >> 1 : rawPressure
         let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64
         let tiltYRaw = (Int(report[8]) & 0x7F) - 64
