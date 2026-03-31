@@ -47,15 +47,25 @@ final class WacomUniversalDevice: TabletDevice {
     private var reportBuffer: [UInt8]
     private var isBluetooth = false
 
+    // ── Wireless dongle (ACK-40401) support ──────────────────────────────────
+    // When isWireless is true, pen events are suppressed until the RF link is
+    // confirmed by a 0x80 wireless status report (d[1] bit 0 set = connected).
+    // On link-up the decoder state is reset and the feature init is re-sent.
+    // On link-lost the gate closes again so stale reports from a dropped connection are not forwarded.
+    private let isWireless: Bool
+    private var wirelessReady: Bool = false
+
     init(
         device: IOHIDDevice,
         deviceSpec: WacomDeviceSpec,
         seize: Bool = false,
+        isWireless: Bool = false,
         onTablet: @escaping (TabletPoint) -> Void,
         onAux: ((AuxButtons) -> Void)? = nil,
         onToolEnter: ((ToolIdentity) -> Void)? = nil,
         onMouseButton: ((UInt8) -> Void)? = nil
     ) {
+        self.isWireless = isWireless
         self.device = device
         self.deviceSpec = deviceSpec
         self.seize = seize
@@ -117,6 +127,9 @@ final class WacomUniversalDevice: TabletDevice {
         }
 
         // Feature inits activate the digitizer endpoint over USB.  Not needed for BLE.
+        // For wireless dongles, the feature init is sent immediately on open to tell the
+        // dongle to begin searching for the tablet.  It may be silently discarded if the
+        // RF link is not yet established, so it is re-sent when 0x80/0x02 confirms link-up.
         if !isBluetooth {
             // IntuosV1 / Intuos3: feature init. First byte is the report ID.
             if var bytes = deviceSpec.featureInit {
@@ -170,17 +183,40 @@ final class WacomUniversalDevice: TabletDevice {
             case .none:
                 break
             case .pen(let point):
+                // Wireless dongle: suppress pen events until RF link is confirmed active.
+                guard !isWireless || wirelessReady else { break }
                 onTablet(point)
             case .toolEnter(let identity):
+                guard !isWireless || wirelessReady else { break }
                 onToolEnter?(identity)
             case .aux(let buttons):
                 onAux?(buttons)
             case .wireless(let ws):
                 switch ws {
-                case .active: break
-                case .lost: print("\(deviceSpec.name): wireless link lost")
-                case .lowBattery: print("\(deviceSpec.name): battery critically low")
-                case .unknown: break
+                case .active:
+                    print("\(deviceSpec.name): wireless link active")
+                    // Reset decoder state so stale coordinates/tool identity from
+                    // before link-up are not forwarded on the first live report.
+                    state = DecoderState()
+                    wirelessReady = true
+                    // Send feature init now that the RF link is confirmed.
+                    // Must be dispatched to main thread — HID callbacks are background.
+                    if var bytes = deviceSpec.featureInit {
+                        let reportID = CFIndex(bytes[0])
+                        let dev = device
+                        Task { @MainActor in
+                            IOHIDDeviceSetReport(
+                                dev, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
+                        }
+                    }
+                case .lost:
+                    print("\(deviceSpec.name): wireless link lost")
+                    wirelessReady = false
+                    state = DecoderState()
+                case .lowBattery:
+                    print("\(deviceSpec.name): battery critically low")
+                case .unknown:
+                    break
                 }
             case .mouseButton(let mask):
                 onMouseButton?(mask)
