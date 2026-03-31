@@ -328,6 +328,17 @@ final class TabletManager: ObservableObject {
         }
 
         // ── Create the device driver ─────────────────────────────────────────
+        // Multi-interface devices (e.g. ACK-40401 dongle) enumerate separate IOHIDDevices
+        // for each interface (digitizer, wireless status, touch, etc). We create one driver
+        // for the product and reuse it for all interfaces. Each IOHIDDevice still registers
+        // independently for its own reports.
+        if context.tabletDevice != nil {
+            // Already have a driver for this product; skip creating another.
+            // Still map this IOHIDDevice to the context for report delivery.
+            hidDeviceMap[device] = context
+            return
+        }
+
         let wacomDevice: (any TabletDevice)?
 
         switch productID {
