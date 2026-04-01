@@ -785,6 +785,32 @@ enum WacomDeviceRegistry {
             parser: .intuosV1, maxX: 0, maxY: 0, maxPressure: 0,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: nil, seizeUSB: false),
+
+        // ── Wireless receiver dongles (HID-based) ─────────────────────────────
+        // Blueto WL tablets (Intuos4 WL, Intuos5 WL, Intuos Pro gen1 WL) pair with
+        // USB wireless receivers instead of integrated Bluetooth. The receiver
+        // enumerates as HID and presents the paired tablet's report format.
+        // These are experimental (untested on owned hardware).
+        .init(
+            productID: 0x009D, name: "Wireless Receiver (Intuos4/5 WL)",  // ⚠ experimental
+            parser: .intuosV1, maxX: 0, maxY: 0, maxPressure: 0,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x009A, name: "Wireless Receiver (Intuos Pro gen1 WL)",  // ⚠ experimental
+            parser: .intuosV1, maxX: 0, maxY: 0, maxPressure: 0,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+
+        // ── Legacy Bluetooth devices (serial-port based, out-of-scope) ─────────
+        // CTE-630BT (Graphire4 Bluetooth, PID 0x0081) and XD-0608-BT (Intuos2
+        // Bluetooth, PID 0x0CA) use RFCOMM/SPP (serial port over Bluetooth)
+        // instead of the HID Profile. They do NOT enumerate as IOHIDDevices;
+        // instead they appear as /dev/cu.* serial ports. These require a
+        // completely different driver architecture (serial I/O, not IOHIDManager).
+        // Not implemented; documented for reference.
+        // .init(productID: 0x0081, name: "CTE-630BT (Graphire4 BT) — SPP/RFCOMM", ...),
+        // .init(productID: 0x0CA, name: "XD-0608-BT (Intuos2 BT) — SPP/RFCOMM", ...),
     ]
 
     // MARK: Lookups
