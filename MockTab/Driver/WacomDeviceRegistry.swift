@@ -507,10 +507,17 @@ enum WacomDeviceRegistry {
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
-        // ── Intuos Pro second-gen additional variants (PTH-460/660 alt PIDs) ─
+        // ── Intuos Pro second-gen Bluetooth Classic PIDs (PTH-460/660/860) ──────
+        // These PIDs appear when the tablet connects over BT Classic (transport="Bluetooth").
+        // Coordinate ranges match the USB entries; seizeUSB=false (BT Classic needs no seizure).
         .init(
             productID: 0x0360, name: "Wacom PTH-660",  // ⚠ from OTD
             parser: .intuosV2, maxX: 44800, maxY: 29600, maxPressure: 8191,
+            buttonCount: 8, hasTouchRing: true, hasEraser: true,
+            featureInit: nil, seizeUSB: false),
+        .init(
+            productID: 0x0361, name: "Intuos Pro L (PTH-860) BT",  // ✓ confirmed live (BT Classic)
+            parser: .intuosV2, maxX: 62200, maxY: 43200, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: nil, seizeUSB: false),
         .init(
