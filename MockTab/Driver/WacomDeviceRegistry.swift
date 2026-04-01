@@ -521,6 +521,11 @@ enum WacomDeviceRegistry {
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: nil, seizeUSB: false),
         .init(
+            productID: 0x035B, name: "Intuos Pro S (PTH-460) BT",  // ⚠ BT Classic PID (USB 0x0352 + 9)
+            parser: .intuosV2, maxX: 31496, maxY: 19685, maxPressure: 8191,
+            buttonCount: 8, hasTouchRing: true, hasEraser: true,
+            featureInit: nil, seizeUSB: false),
+        .init(
             productID: 0x0392, name: "Wacom PTH-460",  // ⚠ from OTD
             parser: .intuosV2, maxX: 31920, maxY: 19950, maxPressure: 8191,
             buttonCount: 6, hasTouchRing: false, hasEraser: true,
