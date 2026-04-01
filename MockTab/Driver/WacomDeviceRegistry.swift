@@ -350,7 +350,22 @@ enum WacomDeviceRegistry {
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
-        // ── Intuos5 first-gen (PTH-x50, 2012) — intuosV1 parser ──────────────
+        // ── Intuos5 / Intuos Pro 1st-gen (PTH-x50/x51, 2012–2013) ──────────────
+        // IntuosV1 10-byte format, 2047-level pressure (vs Intuos Pro 2nd-gen's 8191).
+        // Predate widespread BT support; no known BLE variants (USB only).
+        //
+        // │ Model  │ Gen │ Name Change         │   USB PID   │  BT Classic  │  BLE │
+        // │────────┼─────┼─────────────────────┼─────────────┼──────────────┼──────│
+        // │PTH-450 │ 1   │ Intuos5 S           │   0x0026    │    unknown   │  —   │
+        // │PTH-650 │ 1   │ Intuos5 M           │   0x0027    │    unknown   │  —   │
+        // │PTH-850 │ 1   │ Intuos5 L           │   0x0028    │    unknown   │  —   │
+        // │PTH-451 │ 2   │ Intuos Pro S (1st)  │   0x0314    │    unknown   │  —   │
+        // │PTH-651 │ 2   │ Intuos Pro M (1st)  │   0x0316    │    unknown   │  —   │
+        // │PTH-851 │ 2   │ Intuos Pro L (1st)  │   0x00F8    │    unknown   │  —   │
+        // │                                                                          │
+        // │ These are all IntuosV1 format. Intuos Pro 2nd-gen (PTH-460/660/860)   │
+        // │ switched to IntuosV2 format and added Bluetooth support.              │
+        // └──────────────────────────────────────────────────────────────────────────┘
         .init(
             productID: 0x0026, name: "Intuos5 S (PTH-450)",  // ⚠ estimated
             parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 2047,
@@ -389,6 +404,25 @@ enum WacomDeviceRegistry {
         // 192-byte reports, LE24 coordinates, 8192-level pressure (13-bit).
         // Also supports BLE HOGP (Report IDs 0x01 pen, 0x03 pad).
         // seizeUSB=true: standard-HID-mouse interface must be seized.
+        //
+        // ┌─ INTUOS PRO 2ND-GEN DEVICE VARIANTS (PTH-460/660/860) ────────────────┐
+        // │ All use IntuosV2 parser; differ only in coordinates (S/M/L sizes).     │
+        // │                                                                         │
+        // │ Model  │ Size │   USB PID   │  BT Classic PID  │   BLE PID (TBD)      │
+        // │────────┼──────┼─────────────┼──────────────────┼──────────────────    │
+        // │PTH-460 │  S   │   0x0352    │    0x035B (+9)   │    ? (LE IntuosPro S)│
+        // │PTH-660 │  M   │   0x0357    │    0x0360 (+9)   │    ? (LE IntuosPro M)│
+        // │PTH-860 │  L   │   0x0358    │    0x0361 (+9)   │    ? (LE IntuosPro L)│
+        // │                                                                         │
+        // │ Transport notes:                                                       │
+        // │  • USB: standard HID, requires featureInit=nil + InputMode init       │
+        // │  • BT Classic: 361-byte 0x80 container, featureInit=nil, no InputMode  │
+        // │  • BLE: GATT always active, limited to trackpad mode on macOS         │
+        // │    (AppleBluetoothMultitouch kext conflict — requires device seizure) │
+        // │                                                                        │
+        // │ Pairing hint: BT Classic = power on with USB disconnected, LED blinks│
+        // │              BLE = standard BLE pairing (limited functionality)       │
+        // └────────────────────────────────────────────────────────────────────────┘
         .init(
             productID: 0x0352, name: "Intuos Pro S (PTH-460)",  // ⚠ estimated
             parser: .intuosV2, maxX: 31496, maxY: 19685, maxPressure: 8191,
