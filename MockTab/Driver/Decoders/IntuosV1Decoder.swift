@@ -39,13 +39,16 @@ struct IntuosV1Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         guard length >= 2 else { return [] }
         let id = report[0]
 
         if id == 0x01 && length >= 11 {
-            return decodeBLEPen(report: report, length: length, spec: spec, state: &state)
+            return decodeBLEPen(
+                report: report, length: length, spec: spec, state: &state,
+                deviceFamily: deviceFamily)
         }
         if id == 0x03 && length >= 3 {
             guard let aux = decodeBLEPadReport(report: report, length: length) else { return [] }
@@ -61,7 +64,8 @@ struct IntuosV1Decoder: WacomDecoder {
         // vendor-specific (Report ID 0x02, 63-byte touch payload) — reject longer reports
         // to prevent touch data from being decoded as garbage pen coordinates/pressure.
         guard (id == 0x02 || id == 0x10) && length == 10 else { return [] }
-        return decodeUSBPen(report: report, length: length, spec: spec, state: &state)
+        return decodeUSBPen(
+            report: report, length: length, spec: spec, state: &state, deviceFamily: deviceFamily)
     }
 
     // MARK: - USB pen report (10-byte IntuosV1)
@@ -70,7 +74,8 @@ struct IntuosV1Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         let status = report[1]
 
@@ -78,26 +83,60 @@ struct IntuosV1Decoder: WacomDecoder {
         // Must check BEFORE testing the inProximity bit — status 0xC0 has that bit clear
         // and would otherwise fall through to proximity-out logic.
         if (status & 0xFC) == 0xC0 {
-            return decodeToolChange(report: report, state: &state)
+            return decodeToolChange(report: report, state: &state, deviceFamily: deviceFamily)
         }
 
+        // IntuosV1 status byte: bit5=proximity, bit6=highConfidence.
+        // Kernel model: exit when !prox && !conf (both bits clear).
+        // At boundary: proximity stays 1 but confidence drops first (0x60 → 0x40 → 0x20 → 0x00).
+        // Art Pen rotation sensor causes transient oscillations - threshold boundary noise.
         let inProximity = (status & 0x20) != 0
-        let subtype = (status >> 1) & 0x0F
+        let highConfidence = (status & 0x40) != 0
+        let isExitSignal = !inProximity && !highConfidence
 
-        // Proximity-out.
-        if !inProximity {
-            state.prevInProximity = false
-            state.toolIsMouse = false
-            return [
-                .pen(
-                    TabletPoint(
-                        x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
-                        pressure: 0, maxPressure: spec.maxPressure,
-                        tiltX: 0, tiltY: 0, rotation: 0.0,
-                        penButton1: false, penButton2: false,
-                        eraser: state.isEraser, inProximity: false, hoverDistance: 0))
-            ]
+        // Genuine exit: both proximity and confidence lost.
+        if isExitSignal {
+            if state.prevInProximity {
+                state.exitFrameCount = 0
+                state.prevInProximity = false
+                state.toolIsMouse = false
+                return [
+                    .pen(
+                        TabletPoint(
+                            x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
+                            pressure: 0, maxPressure: spec.maxPressure,
+                            tiltX: 0, tiltY: 0, rotation: 0.0,
+                            penButton1: false, penButton2: false,
+                            eraser: state.isEraser, inProximity: false, hoverDistance: 0))
+                ]
+            }
+            return []
         }
+
+        // Boundary noise: proximity=1 but confidence=0 (status=0x40).
+        // Don't exit yet - wait for sustained state.
+        if !highConfidence {
+            state.exitFrameCount += 1
+            if state.exitFrameCount >= DecoderState.exitThreshold && state.prevInProximity {
+                state.exitFrameCount = 0
+                state.prevInProximity = false
+                state.toolIsMouse = false
+                return [
+                    .pen(
+                        TabletPoint(
+                            x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
+                            pressure: 0, maxPressure: spec.maxPressure,
+                            tiltX: 0, tiltY: 0, rotation: 0.0,
+                            penButton1: false, penButton2: false,
+                            eraser: state.isEraser, inProximity: false, hoverDistance: 0))
+                ]
+            }
+            // Still send point data during boundary noise - don't break decoding
+        } else {
+            state.exitFrameCount = 0
+        }
+
+        let subtype = (status >> 1) & 0x0F
 
         // Note: high-confidence bit (status & 0x40) is intentionally NOT filtered here.
         // PTH-851 lift reports are already low-pressure in the raw bytes; decoding normally
@@ -121,6 +160,20 @@ struct IntuosV1Decoder: WacomDecoder {
                         ToolIdentity(
                             serial: 0, toolCode: fallbackCode,
                             isEraser: state.isEraser, isMouse: isMouse)))
+
+                // Check tool compatibility and emit warning if unsupported
+                let caps = WacomToolCatalog.capabilities(
+                    forToolCode: fallbackCode, family: deviceFamily)
+                state.toolIsSupported = caps.isSupported
+                if !caps.isSupported {
+                    var limitations: [String] = []
+                    if !caps.hasPressure { limitations.append("pressure") }
+                    if !caps.hasTilt { limitations.append("tilt") }
+                    if !caps.hasRotation { limitations.append("rotation") }
+                    let msg =
+                        "Tool 0x\(String(format: "%04X", fallbackCode)) not fully supported on \(deviceFamily). Limited to: \(limitations.joined(separator: ", "))"
+                    results.append(.toolCompatibility(msg))
+                }
             }
         }
         state.prevInProximity = true
@@ -201,7 +254,8 @@ struct IntuosV1Decoder: WacomDecoder {
 
     private func decodeToolChange(
         report: UnsafePointer<UInt8>,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         let serial =
             UInt32(report[3] & 0x0F) << 28
@@ -220,12 +274,28 @@ struct IntuosV1Decoder: WacomDecoder {
         state.isEraser = (toolCode & 0x0008) != 0
         state.toolIsMouse = (toolCode & 0x000F) == 0x0006
 
-        return [
+        var results: [DecodeResult] = [
             .toolEnter(
                 ToolIdentity(
                     serial: serial, toolCode: toolCode,
                     isEraser: state.isEraser, isMouse: state.toolIsMouse))
         ]
+
+        // Check tool compatibility and emit warning if unsupported
+        let caps = WacomToolCatalog.capabilities(
+            forToolCode: toolCode, family: deviceFamily)
+        state.toolIsSupported = caps.isSupported
+        if !caps.isSupported {
+            var limitations: [String] = []
+            if !caps.hasPressure { limitations.append("pressure") }
+            if !caps.hasTilt { limitations.append("tilt") }
+            if !caps.hasRotation { limitations.append("rotation") }
+            let msg =
+                "Tool 0x\(String(format: "%04X", toolCode)) not fully supported on \(deviceFamily). Limited to: \(limitations.joined(separator: ", "))"
+            results.append(.toolCompatibility(msg))
+        }
+
+        return results
     }
 
     // MARK: - BLE HOGP pen (0x01)
@@ -234,7 +304,8 @@ struct IntuosV1Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         // BLE uses 13-bit pressure regardless of the device's USB maxPressure.
         let bleSpec = DigitizerSpec(maxX: spec.maxX, maxY: spec.maxY, maxPressure: 8191)

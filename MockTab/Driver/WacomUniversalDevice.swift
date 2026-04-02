@@ -201,19 +201,22 @@ final class WacomUniversalDevice: TabletDevice {
         if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {
             let pairedTabletPID = Int(UInt16(report[7]) | UInt16(report[6]) << 8)  // Big-endian
             if pairedTabletPID > 0,
-               let pairedSpec = WacomDeviceRegistry.spec(for: pairedTabletPID),
-               pairedSpec.maxX > 0 && pairedSpec.maxY > 0 {
+                let pairedSpec = WacomDeviceRegistry.spec(for: pairedTabletPID),
+                pairedSpec.maxX > 0 && pairedSpec.maxY > 0
+            {
                 // Update our spec with the paired tablet's actual dimensions
                 spec = DigitizerSpec(
                     maxX: pairedSpec.maxX,
                     maxY: pairedSpec.maxY,
                     maxPressure: pairedSpec.maxPressure,
                     buttonCount: pairedSpec.buttonCount)
-//                print("\(deviceSpec.name): using paired tablet spec (PID 0x\(String(pairedTabletPID, radix: 16, uppercase: true))) — maxX=\(spec.maxX) maxY=\(spec.maxY) maxPressure=\(spec.maxPressure)")
+                //                print("\(deviceSpec.name): using paired tablet spec (PID 0x\(String(pairedTabletPID, radix: 16, uppercase: true))) — maxX=\(spec.maxX) maxY=\(spec.maxY) maxPressure=\(spec.maxPressure)")
             }
         }
 
-        let results = decoder.decode(report: report, length: length, spec: spec, state: &state)
+        let results = decoder.decode(
+            report: report, length: length, spec: spec, state: &state,
+            deviceFamily: deviceSpec.family)
         for result in results {
             switch result {
             case .none:
@@ -265,6 +268,8 @@ final class WacomUniversalDevice: TabletDevice {
                 }
             case .mouseButton(let mask):
                 onMouseButton?(mask)
+            case .toolCompatibility(let message):
+                print("\(deviceSpec.name): \(message)")
             }
         }
     }

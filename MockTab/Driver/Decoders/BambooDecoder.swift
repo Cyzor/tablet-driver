@@ -73,7 +73,8 @@ struct BambooDecoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         guard length >= 10, report[0] == 0x10 else { return [] }
 

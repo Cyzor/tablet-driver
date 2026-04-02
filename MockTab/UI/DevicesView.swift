@@ -212,8 +212,15 @@ struct DevicesView: View {
                     .frame(maxWidth: .infinity)
                     .onSubmit { commitToolRename() }
             } else {
-                Text(tool.nickname)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 4) {
+                    Text(tool.nickname)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if !tool.isSupported {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .help("Tool not fully supported on this device")
+                    }
+                }
             }
 
             Text(tool.kind)

@@ -244,7 +244,15 @@ struct DecoderState {
     var lastBTPadKeys: UInt8 = 0
     var lastBTPadRing: UInt8 = 0x7F
     var lastBTPadBtn: UInt8 = 0
-    // btProxOutCounter removed — debounce replaced by kernel-aligned immediate exit.
+    /// Consecutive frames/reports with low-confidence or out-of-range signal.
+    /// Exit proximity only after this reaches exitThreshold, bridging transient
+    /// boundary oscillations (confirmed: Art Pen rotation sensor causes these).
+    /// Reset to 0 on any valid in-proximity frame.
+    var exitFrameCount: Int = 0
+    static let exitThreshold = 3
+    /// Whether the current tool is supported on this device family.
+    /// Used to show UI warnings for incompatible tools and adjust feature decoding.
+    var toolIsSupported: Bool = true
 }
 
 enum DecodeResult {
@@ -253,6 +261,9 @@ enum DecodeResult {
     case toolEnter(ToolIdentity)
     case aux(AuxButtons)
     case wireless(WirelessStatus)
+    /// Tool compatibility warning: tool is present but not fully supported on this device.
+    /// The associated string describes the limitation (e.g., "Rotation not supported").
+    case toolCompatibility(String)
     /// Standard USB HID mouse report (Report ID 0x01, 4 bytes) from the mouse
     /// interface (usagePage=0x01) of an Intuos Pro tablet.  Carries button state only;
     /// absolute position is delivered separately via the digitizer 0x10 stream.
@@ -263,11 +274,14 @@ enum DecodeResult {
 protocol WacomDecoder {
     /// Decode one raw HID report into zero or more results.
     /// Mutating to allow decoder structs with their own cached state if needed.
+    /// - Parameter deviceFamily: The device family string (e.g., "intuosProGen2", "cintiq")
+    ///   used to check tool compatibility and adjust feature decoding.
     mutating func decode(
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult]
 }
 

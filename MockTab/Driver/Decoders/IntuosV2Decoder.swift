@@ -36,7 +36,8 @@ struct IntuosV2Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         guard length >= 2 else { return [] }
         switch report[0] {
@@ -49,13 +50,17 @@ struct IntuosV2Decoder: WacomDecoder {
                 // [0]=0x01  [1]=buttons(bit0=L,bit1=R,bit2=M)  [2]=relX  [3]=relY
                 return [.mouseButton(report[1])]
             }
-            return decodeBLEPen(report: report, length: length, spec: spec, state: &state)
+            return decodeBLEPen(
+                report: report, length: length, spec: spec, state: &state,
+                deviceFamily: deviceFamily)
         case 0x03:
             guard let aux = decodeBLEPadReport(report: report, length: length) else { return [] }
             return [.aux(aux)]
         case 0x10:
             guard length >= 12 else { return [] }
-            return decodePenReport(report: report, length: length, spec: spec, state: &state)
+            return decodePenReport(
+                report: report, length: length, spec: spec, state: &state,
+                deviceFamily: deviceFamily)
         case 0x1E:
             return decodeOffsetPenReport(report: report, length: length, spec: spec)
         case 0x11:
@@ -70,9 +75,13 @@ struct IntuosV2Decoder: WacomDecoder {
                 return decodeWireless(report: report, length: length)
             }
             if length == 99 {
-                return decodeBTClassicFrames(report: report, length: length, spec: spec, state: &state)
+                return decodeBTClassicFrames(
+                    report: report, length: length, spec: spec, state: &state,
+                    deviceFamily: deviceFamily)
             }
-            return decodeBTPen(report: report, length: length, spec: spec, state: &state)
+            return decodeBTPen(
+                report: report, length: length, spec: spec, state: &state,
+                deviceFamily: deviceFamily)
         default:
             return []
         }
@@ -84,29 +93,59 @@ struct IntuosV2Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         let status = report[1]
+        // USB IntuosV2 status byte: bit6=proximity, bit5=highConfidence.
+        // Kernel model (wacom_intuos_pro_irq): exit when !prox && !conf (status < 0x20).
+        // Sequence at boundary: 0x60 (prox=1, conf=1) → 0x40 (prox=1, conf=0) → 0x00 (both=0).
+        // Art Pen rotation sensor causes transient oscillations (0x60 ↔ 0x40) that are NOT
+        // genuine exits. Only exit when BOTH bits clear.
+        let prox = (status & 0x40) != 0
         let highConfidence = (status & 0x20) != 0
+        let isExitSignal = !prox && !highConfidence
 
-        // Proximity-out: any report with confidence lost means the pen is leaving.
-        // The PTH-660 firmware holds the last known coordinates rather than zeroing
-        // them on exit (status 0x60 → 0x40 → 0x00 while X/Y stay constant), so the
-        // old "allZero && !highConfidence" heuristic never fired and the pen got stuck.
-        // Simplified: !highConfidence always signals proximity departure.
-        if !highConfidence {
+        if isExitSignal {
+            // Genuine firmware exit signal — both proximity and confidence lost.
+            // Don't threshold this; kernel fires it immediately.
             if state.prevInProximity {
+                state.exitFrameCount = 0
                 state.prevInProximity = false
-                return [.pen(TabletPoint(
-                    x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
-                    pressure: 0, maxPressure: spec.maxPressure,
-                    tiltX: 0, tiltY: 0, rotation: 0.0,
-                    penButton1: false, penButton2: false,
-                    eraser: false, inProximity: false, hoverDistance: 0))]
+                return [
+                    .pen(
+                        TabletPoint(
+                            x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
+                            pressure: 0, maxPressure: spec.maxPressure,
+                            tiltX: 0, tiltY: 0, rotation: 0.0,
+                            penButton1: false, penButton2: false,
+                            eraser: false, inProximity: false, hoverDistance: 0))
+                ]
             }
             return []
         }
 
+        // Boundary noise: prox=1 but highConfidence=0 (status = 0x40).
+        // Oscillations here should not trigger exit. Wait for sustained bad state.
+        if !highConfidence {
+            state.exitFrameCount += 1
+            if state.exitFrameCount >= DecoderState.exitThreshold && state.prevInProximity {
+                state.exitFrameCount = 0
+                state.prevInProximity = false
+                return [
+                    .pen(
+                        TabletPoint(
+                            x: state.lastX, y: state.lastY, maxX: spec.maxX, maxY: spec.maxY,
+                            pressure: 0, maxPressure: spec.maxPressure,
+                            tiltX: 0, tiltY: 0, rotation: 0.0,
+                            penButton1: false, penButton2: false,
+                            eraser: false, inProximity: false, hoverDistance: 0))
+                ]
+            }
+            return []
+        }
+
+        state.exitFrameCount = 0
         state.prevInProximity = true
 
         var results: [DecodeResult] = []
@@ -123,11 +162,12 @@ struct IntuosV2Decoder: WacomDecoder {
             let toolCode = UInt16(report[21]) | UInt16(report[22]) << 8
             state.currentToolCode = toolCode
 
-            let toolChanged = serial != 0
+            let toolChanged =
+                serial != 0
                 ? serial != state.lastSerial
                 : (toolCode != 0 && toolCode != state.lastToolCode)
             if toolChanged {
-                state.lastSerial   = serial
+                state.lastSerial = serial
                 state.lastToolCode = toolCode
                 let isMouse = (toolCode & 0x000F) == 0x0006
                 state.toolIsMouse = isMouse
@@ -136,11 +176,27 @@ struct IntuosV2Decoder: WacomDecoder {
                 // Eraser: standard Wacom bit3 convention, but exclude Art Pen
                 // variants (0x0804, 0x1108) that happen to have bit3 set.
                 let artPen = toolCode == 0x0804 || toolCode == 0x1108
-                results.append(.toolEnter(ToolIdentity(
-                    serial: serial,
-                    toolCode: toolCode,
-                    isEraser: !artPen && (toolCode & 0x0008) != 0,
-                    isMouse: isMouse)))
+                results.append(
+                    .toolEnter(
+                        ToolIdentity(
+                            serial: serial,
+                            toolCode: toolCode,
+                            isEraser: !artPen && (toolCode & 0x0008) != 0,
+                            isMouse: isMouse)))
+
+                // Check tool compatibility and emit warning if unsupported
+                let caps = WacomToolCatalog.capabilities(
+                    forToolCode: toolCode, family: deviceFamily)
+                state.toolIsSupported = caps.isSupported
+                if !caps.isSupported {
+                    var limitations: [String] = []
+                    if !caps.hasPressure { limitations.append("pressure") }
+                    if !caps.hasTilt { limitations.append("tilt") }
+                    if !caps.hasRotation { limitations.append("rotation") }
+                    let msg =
+                        "Tool 0x\(String(format: "%04X", toolCode)) not fully supported on \(deviceFamily). Limited to: \(limitations.joined(separator: ", "))"
+                    results.append(.toolCompatibility(msg))
+                }
             }
         }
 
@@ -157,15 +213,17 @@ struct IntuosV2Decoder: WacomDecoder {
             let scrollPos = report[16]
             let wheelDelta = Int(Int8(bitPattern: scrollPos &- state.lastScrollPos))
             state.lastScrollPos = scrollPos
-            results.append(.pen(TabletPoint(
-                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: 0, maxPressure: spec.maxPressure,
-                tiltX: 0, tiltY: 0, rotation: 0.0,
-                penButton1: (status & 0x02) != 0,
-                penButton2: (status & 0x04) != 0,
-                eraser: false, inProximity: true, hoverDistance: 0,
-                mouseMiddleButton: (report[9] & 0x02) != 0,
-                mouseWheelDelta: wheelDelta)))
+            results.append(
+                .pen(
+                    TabletPoint(
+                        x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                        pressure: 0, maxPressure: spec.maxPressure,
+                        tiltX: 0, tiltY: 0, rotation: 0.0,
+                        penButton1: (status & 0x02) != 0,
+                        penButton2: (status & 0x04) != 0,
+                        eraser: false, inProximity: true, hoverDistance: 0,
+                        mouseMiddleButton: (report[9] & 0x02) != 0,
+                        mouseWheelDelta: wheelDelta)))
             return results
         }
 
@@ -182,15 +240,17 @@ struct IntuosV2Decoder: WacomDecoder {
         var rotation = isArtPen ? Double(rawRot) / 10.0 : 0.0
         if rotation < 0 { rotation += 360.0 }
 
-        results.append(.pen(TabletPoint(
-            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-            pressure: pressure, maxPressure: spec.maxPressure,
-            tiltX: tiltX, tiltY: tiltY, rotation: rotation,
-            penButton1: (status & 0x02) != 0,
-            penButton2: (status & 0x04) != 0,
-            eraser: (status & 0x08) != 0,
-            inProximity: true,
-            hoverDistance: Int(report[16]))))
+        results.append(
+            .pen(
+                TabletPoint(
+                    x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: pressure, maxPressure: spec.maxPressure,
+                    tiltX: tiltX, tiltY: tiltY, rotation: rotation,
+                    penButton1: (status & 0x02) != 0,
+                    penButton2: (status & 0x04) != 0,
+                    eraser: (status & 0x08) != 0,
+                    inProximity: true,
+                    hoverDistance: Int(report[16]))))
         return results
     }
 
@@ -209,15 +269,18 @@ struct IntuosV2Decoder: WacomDecoder {
         let pressure = Int(UInt16(report[9]) | (UInt16(report[10] & 0x1F) << 8))
         let tiltX = Double(Int8(bitPattern: report[11])) / 127.0
         let tiltY = Double(Int8(bitPattern: report[12])) / 127.0
-        return [.pen(TabletPoint(
-            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-            pressure: pressure, maxPressure: spec.maxPressure,
-            tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
-            penButton1: (status & 0x02) != 0,
-            penButton2: (status & 0x04) != 0,
-            eraser: (status & 0x08) != 0,
-            inProximity: (status & 0x20) != 0,
-            hoverDistance: 0))]
+        return [
+            .pen(
+                TabletPoint(
+                    x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: pressure, maxPressure: spec.maxPressure,
+                    tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
+                    penButton1: (status & 0x02) != 0,
+                    penButton2: (status & 0x04) != 0,
+                    eraser: (status & 0x08) != 0,
+                    inProximity: (status & 0x20) != 0,
+                    hoverDistance: 0))
+        ]
     }
 
     // MARK: - BLE HOGP pen (0x01)
@@ -226,26 +289,31 @@ struct IntuosV2Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
-        guard let result = decodeBLEPenReport(
-            report: report, length: length, spec: spec,
-            lastX: &state.lastX, lastY: &state.lastY
-        ) else { return [] }
+        guard
+            let result = decodeBLEPenReport(
+                report: report, length: length, spec: spec,
+                lastX: &state.lastX, lastY: &state.lastY
+            )
+        else { return [] }
 
         var results: [DecodeResult] = []
         if result.toolCode != 0
             && (result.serial != state.lastSerial || result.toolCode != state.lastToolCode)
         {
-            state.lastSerial      = result.serial
-            state.lastToolCode    = result.toolCode
+            state.lastSerial = result.serial
+            state.lastToolCode = result.toolCode
             state.currentToolCode = result.toolCode
-            state.toolIsMouse     = result.isMouse
-            results.append(.toolEnter(ToolIdentity(
-                serial: result.serial,
-                toolCode: result.toolCode,
-                isEraser: result.point.eraser,
-                isMouse: result.isMouse)))
+            state.toolIsMouse = result.isMouse
+            results.append(
+                .toolEnter(
+                    ToolIdentity(
+                        serial: result.serial,
+                        toolCode: result.toolCode,
+                        isEraser: result.point.eraser,
+                        isMouse: result.isMouse)))
         }
         results.append(.pen(result.point))
         return results
@@ -267,7 +335,8 @@ struct IntuosV2Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         guard length >= 15 else { return [] }
 
@@ -306,63 +375,161 @@ struct IntuosV2Decoder: WacomDecoder {
         let toolIsEraser = !isArtPen && (toolCode & 0x0008) != 0
 
         if toolCode != 0 && toolCode != state.lastToolCode {
-            state.lastToolCode    = toolCode
+            state.lastToolCode = toolCode
             state.currentToolCode = toolCode
-            state.toolIsMouse     = isMouse
-            results.append(.toolEnter(ToolIdentity(
-                serial: 0, toolCode: toolCode,
-                isEraser: toolIsEraser,
-                isMouse: isMouse)))
+            state.toolIsMouse = isMouse
+            results.append(
+                .toolEnter(
+                    ToolIdentity(
+                        serial: 0, toolCode: toolCode,
+                        isEraser: toolIsEraser,
+                        isMouse: isMouse)))
+
+            // Check tool compatibility and emit warning if unsupported
+            let caps = WacomToolCatalog.capabilities(
+                forToolCode: toolCode, family: deviceFamily)
+            state.toolIsSupported = caps.isSupported
+            if !caps.isSupported {
+                var limitations: [String] = []
+                if !caps.hasPressure { limitations.append("pressure") }
+                if !caps.hasTilt { limitations.append("tilt") }
+                if !caps.hasRotation { limitations.append("rotation") }
+                let msg =
+                    "Tool 0x\(String(format: "%04X", toolCode)) not fully supported on \(deviceFamily). Limited to: \(limitations.joined(separator: ", "))"
+                results.append(.toolCompatibility(msg))
+            }
         }
 
         // Process up to 7 pen frames (oldest first). Each frame is 14 bytes.
         //
-        // Proximity exit: kernel model (wacom_intuos_pro2_bt_irq):
-        //   • Invalid frame (bit7=0): silently skip. If it is frame 0 and we were in
-        //     proximity, treat the whole packet as "nothing to report" → immediate exit.
-        //   • Valid frame (bit7=1) with !prox && !range: firmware exit signal → exit.
+        // Proximity exit detection: The Art Pen's rotation sensor causes extended signal
+        // loss at the detection boundary, sending streams of invalid frames (flags=0x00)
+        // that are firmware "nothing to report" signals, not real exits. The kernel model
+        // would emit an immediate exit on frame[0]=0x00, but that permanently kills
+        // proximity because the pen's recovery doesn't trigger a re-entry event.
         //
-        // No debounce. The debounce previously used was masking a deeper bug (eraser
-        // flip-flop) and itself caused stuck-proximity by resetting the counter on valid
-        // exit frames (bit7=1, bit6=0, bit5=0 = 0x80), preventing exit entirely.
+        // Solution: threshold both types of bad frames (invalid bit7 and !inRange) using
+        // the same exitFrameCount. Only emit a real exit after N consecutive packets with
+        // no valid data or no range. Reset the counter on any good frame.
         for i in 0..<7 {
-            let f = report.advanced(by: 1 + i * 14)
+            let frameOffset = 1 + i * 14
+            guard frameOffset + 1 <= length else { break }  // Ensure frame[0] is readable
+            let f = report.advanced(by: frameOffset)
             let flags = f[0]
 
-            // Invalid frame — no data for this time slot.
+            // Invalid frame (bit7=0) — either transient "nothing to report" or a real exit.
+            // At the detection boundary (especially with Art Pen), we get bursts of 0x00.
+            // Apply the same threshold as the !inRange path: require N consecutive bad
+            // packets before confirming exit. First-frame-empty remains an exit opportunity,
+            // but only after the threshold is reached.
             if (flags & 0x80) == 0 {
-                if i == 0 && state.prevInProximity {
-                    // First frame empty = device has nothing to report this packet.
-                    // Emit proximity-out immediately (kernel model: per-frame exit).
+                state.exitFrameCount += 1
+                if i == 0 && state.exitFrameCount >= DecoderState.exitThreshold
+                    && state.prevInProximity
+                {
+                    #if DEBUG
+                        NSLog(
+                            "[BT_PROX_DEBUG] frame=%d flags=0x%02X (invalid) → EXIT (threshold reached)",
+                            i, flags)
+                    #endif
+                    state.exitFrameCount = 0
                     state.prevInProximity = false
-                    results.append(.pen(TabletPoint(
-                        x: state.lastX, y: state.lastY,
-                        maxX: spec.maxX, maxY: spec.maxY,
-                        pressure: 0, maxPressure: spec.maxPressure,
-                        tiltX: 0, tiltY: 0, rotation: 0.0,
-                        penButton1: false, penButton2: false,
-                        eraser: false, inProximity: false, hoverDistance: 0)))
+                    results.append(
+                        .pen(
+                            TabletPoint(
+                                x: state.lastX, y: state.lastY,
+                                maxX: spec.maxX, maxY: spec.maxY,
+                                pressure: 0, maxPressure: spec.maxPressure,
+                                tiltX: 0, tiltY: 0, rotation: 0.0,
+                                penButton1: false, penButton2: false,
+                                eraser: false, inProximity: false, hoverDistance: 0)))
+                } else if i == 0 {
+                    #if DEBUG
+                        NSLog(
+                            "[BT_PROX_DEBUG] frame=%d flags=0x%02X (invalid) → suppressed (count=%d/%d)",
+                            i, flags, state.exitFrameCount, DecoderState.exitThreshold)
+                    #endif
                 }
                 break
             }
 
             // Valid frame — check for firmware proximity-exit signal.
-            // Kernel: if (!prox && !range) → wacom_exit_report().
-            // This is the authoritative exit path; the frame is valid but the pen has left.
-            let prox    = (flags & 0x40) != 0
+            // Kernel model (wacom_intuos_pro2_bt_irq): exit when !prox && !inRange.
+            // At the detection boundary, inRange (bit5) drops first; prox (bit6) follows.
+            // Flag sequence: 0xE0 → 0xC0 (inRange=0 but prox=1) → 0x80 (both clear).
+            // The Art Pen's rotation sensor causes transient oscillations (0xC0 ↔ 0xE0)
+            // that are NOT genuine exits. Only exit when BOTH bits clear.
+            let prox = (flags & 0x40) != 0
             let inRange = (flags & 0x20) != 0
-            if !prox && !inRange {
+            let isExitSignal = !prox && !inRange
+
+            if isExitSignal {
+                // Genuine firmware exit signal — both wireless and digitizer range lost.
+                // Don't threshold this; kernel fires it immediately.
                 if state.prevInProximity {
+                    #if DEBUG
+                        NSLog(
+                            "[BT_PROX_DEBUG] frame=%d flags=0x%02X (prox=0, inRange=0) → EXIT (kernel signal)",
+                            i, flags)
+                    #endif
+                    state.exitFrameCount = 0
                     state.prevInProximity = false
-                    results.append(.pen(TabletPoint(
-                        x: state.lastX, y: state.lastY,
-                        maxX: spec.maxX, maxY: spec.maxY,
-                        pressure: 0, maxPressure: spec.maxPressure,
-                        tiltX: 0, tiltY: 0, rotation: 0.0,
-                        penButton1: false, penButton2: false,
-                        eraser: false, inProximity: false, hoverDistance: 0)))
+                    results.append(
+                        .pen(
+                            TabletPoint(
+                                x: state.lastX, y: state.lastY,
+                                maxX: spec.maxX, maxY: spec.maxY,
+                                pressure: 0, maxPressure: spec.maxPressure,
+                                tiltX: 0, tiltY: 0, rotation: 0.0,
+                                penButton1: false, penButton2: false,
+                                eraser: false, inProximity: false, hoverDistance: 0)))
                 }
                 break
+            }
+
+            // Boundary noise: prox=1 but inRange=0 (0xC0). Oscillations here should not
+            // trigger exit. Wait for a sustained bad state (N consecutive frames) before
+            // treating it as a disconnect. Reset counter on any frame with inRange=1.
+            // NOTE: Do NOT break here — we must still decode and send the point data
+            // even during boundary noise. Only suppress the proximity exit.
+            if !inRange {
+                state.exitFrameCount += 1
+                if state.exitFrameCount >= DecoderState.exitThreshold && state.prevInProximity {
+                    #if DEBUG
+                        NSLog(
+                            "[BT_PROX_DEBUG] frame=%d flags=0x%02X (prox=1, inRange=0) → EXIT (sustained boundary, count=%d)",
+                            i, flags, state.exitFrameCount)
+                    #endif
+                    state.exitFrameCount = 0
+                    state.prevInProximity = false
+                    results.append(
+                        .pen(
+                            TabletPoint(
+                                x: state.lastX, y: state.lastY,
+                                maxX: spec.maxX, maxY: spec.maxY,
+                                pressure: 0, maxPressure: spec.maxPressure,
+                                tiltX: 0, tiltY: 0, rotation: 0.0,
+                                penButton1: false, penButton2: false,
+                                eraser: false, inProximity: false, hoverDistance: 0)))
+                    break  // Exit signal sent, stop processing frames
+                } else if state.exitFrameCount > 0 {
+                    #if DEBUG
+                        NSLog(
+                            "[BT_PROX_DEBUG] frame=%d flags=0x%02X (prox=1, inRange=0) → boundary noise (count=%d/%d)",
+                            i, flags, state.exitFrameCount, DecoderState.exitThreshold)
+                    #endif
+                }
+                // Continue to decode point data below — don't break on boundary noise
+            }
+
+            // Good frame (inRange=1) — reset boundary counter and record entry if needed.
+            state.exitFrameCount = 0
+            if !state.prevInProximity {
+                #if DEBUG
+                    NSLog(
+                        "[BT_PROX_DEBUG] frame=%d flags=0x%02X (prox=%d, inRange=1) → ENTER", i,
+                        flags, prox ? 1 : 0)
+                #endif
             }
 
             state.prevInProximity = true
@@ -372,16 +539,16 @@ struct IntuosV2Decoder: WacomDecoder {
             // frame to flip the tool type, locking up apps. Eraser state comes from the
             // metadata block toolCode (already computed as toolIsEraser above).
             let isEraser = toolIsEraser
-            let barrel1  = (flags & 0x02) != 0
-            let barrel2  = (flags & 0x04) != 0
+            let barrel1 = (flags & 0x02) != 0
+            let barrel2 = (flags & 0x04) != 0
 
-            let x        = Int(UInt16(f[1]) | UInt16(f[2]) << 8)
-            let y        = Int(UInt16(f[3]) | UInt16(f[4]) << 8)
+            let x = Int(UInt16(f[1]) | UInt16(f[2]) << 8)
+            let y = Int(UInt16(f[3]) | UInt16(f[4]) << 8)
             // Pressure: 13-bit (f[5] + lower 5 bits of f[6]) per kernel spec.
             let pressure = Int(UInt16(f[5]) | (UInt16(f[6] & 0x1F) << 8))
             // Tilt: f[7]=tiltX, f[8]=tiltY per kernel wacom_intuos_pro2_bt_irq().
-            let tiltX    = Double(Int8(bitPattern: f[7])) / 127.0
-            let tiltY    = Double(Int8(bitPattern: f[8])) / 127.0
+            let tiltX = Double(Int8(bitPattern: f[7])) / 127.0
+            let tiltY = Double(Int8(bitPattern: f[8])) / 127.0
 
             // Rotation: f[9:10], signed LE16, Art Pen only.
             // Kernel patches for wacom_intuos_pro2_bt_pen() confirm Art-Pen-specific rotation
@@ -401,15 +568,17 @@ struct IntuosV2Decoder: WacomDecoder {
             state.lastX = x
             state.lastY = y
 
-            results.append(.pen(TabletPoint(
-                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: pressure, maxPressure: spec.maxPressure,
-                tiltX: tiltX, tiltY: tiltY, rotation: rotation,
-                penButton1: barrel1,
-                penButton2: barrel2,
-                eraser: isEraser,
-                inProximity: true,
-                hoverDistance: 0)))
+            results.append(
+                .pen(
+                    TabletPoint(
+                        x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                        pressure: pressure, maxPressure: spec.maxPressure,
+                        tiltX: tiltX, tiltY: tiltY, rotation: rotation,
+                        penButton1: barrel1,
+                        penButton2: barrel2,
+                        eraser: isEraser,
+                        inProximity: true,
+                        hoverDistance: 0)))
         }
 
         // Pad sub-report is embedded at a fixed offset in the 361-byte 0x80 container (byte 281).
@@ -422,21 +591,23 @@ struct IntuosV2Decoder: WacomDecoder {
         if length >= 286 {
             let keyByte = report[283]
             let ringByte = report[285]
-            let btnByte  = report[281]
+            let btnByte = report[281]
             if keyByte != state.lastBTPadKeys
                 || ringByte != state.lastBTPadRing
-                || btnByte  != state.lastBTPadBtn
+                || btnByte != state.lastBTPadBtn
             {
                 state.lastBTPadKeys = keyByte
                 state.lastBTPadRing = ringByte
-                state.lastBTPadBtn  = btnByte
-                let buttons    = (0..<8).map { (keyByte & (1 << $0)) != 0 }
+                state.lastBTPadBtn = btnByte
+                let buttons = (0..<8).map { (keyByte & (1 << $0)) != 0 }
                 let ringActive = ringByte != 0x7F
-                results.append(.aux(AuxButtons(
-                    buttons: buttons,
-                    touchRingActive: ringActive,
-                    touchRingButtonDown: btnByte != 0,
-                    touchRingPosition: ringActive ? (ringByte & 0x7F) : 0x7F)))
+                results.append(
+                    .aux(
+                        AuxButtons(
+                            buttons: buttons,
+                            touchRingActive: ringActive,
+                            touchRingButtonDown: btnByte != 0,
+                            touchRingPosition: ringActive ? (ringByte & 0x7F) : 0x7F)))
             }
         }
 
@@ -469,7 +640,8 @@ struct IntuosV2Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         guard length >= 99 else { return [] }
 
@@ -480,9 +652,9 @@ struct IntuosV2Decoder: WacomDecoder {
 
             guard (f[0] & 0x80) != 0 else { continue }  // frame not valid — skip
 
-            let inProx  = (f[0] & 0x40) != 0
+            let inProx = (f[0] & 0x40) != 0
             let inRange = (f[0] & 0x20) != 0
-            let eraser  = (f[0] & 0x08) != 0
+            let eraser = (f[0] & 0x08) != 0
             let barrel2 = (f[0] & 0x04) != 0
             let barrel1 = (f[0] & 0x02) != 0
 
@@ -490,36 +662,40 @@ struct IntuosV2Decoder: WacomDecoder {
             if !inProx && !inRange {
                 if state.prevInProximity {
                     state.prevInProximity = false
-                    results.append(.pen(TabletPoint(
-                        x: state.lastX, y: state.lastY,
-                        maxX: spec.maxX, maxY: spec.maxY,
-                        pressure: 0, maxPressure: spec.maxPressure,
-                        tiltX: 0, tiltY: 0, rotation: 0.0,
-                        penButton1: false, penButton2: false,
-                        eraser: false, inProximity: false, hoverDistance: 0)))
+                    results.append(
+                        .pen(
+                            TabletPoint(
+                                x: state.lastX, y: state.lastY,
+                                maxX: spec.maxX, maxY: spec.maxY,
+                                pressure: 0, maxPressure: spec.maxPressure,
+                                tiltX: 0, tiltY: 0, rotation: 0.0,
+                                penButton1: false, penButton2: false,
+                                eraser: false, inProximity: false, hoverDistance: 0)))
                 }
                 continue
             }
 
             state.prevInProximity = true
 
-            let x        = Int(UInt16(f[1]) | UInt16(f[2]) << 8)
-            let y        = Int(UInt16(f[3]) | UInt16(f[4]) << 8)
+            let x = Int(UInt16(f[1]) | UInt16(f[2]) << 8)
+            let y = Int(UInt16(f[3]) | UInt16(f[4]) << 8)
             let pressure = Int(UInt16(f[5]) | UInt16(f[6]) << 8) & 0x1FFF
-            let tiltX    = Double(Int8(bitPattern: f[7])) / 127.0
-            let tiltY    = Double(Int8(bitPattern: f[8])) / 127.0
+            let tiltX = Double(Int8(bitPattern: f[7])) / 127.0
+            let tiltY = Double(Int8(bitPattern: f[8])) / 127.0
             // Rotation is NOT available over BT Classic — kernel does not decode
             // f[9:13] (reserved). Rotation only exists in USB Report ID 0x10.
 
             state.lastX = x
             state.lastY = y
 
-            results.append(.pen(TabletPoint(
-                x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: pressure, maxPressure: spec.maxPressure,
-                tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
-                penButton1: barrel1, penButton2: barrel2,
-                eraser: eraser, inProximity: true, hoverDistance: 0)))
+            results.append(
+                .pen(
+                    TabletPoint(
+                        x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                        pressure: pressure, maxPressure: spec.maxPressure,
+                        tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
+                        penButton1: barrel1, penButton2: barrel2,
+                        eraser: eraser, inProximity: true, hoverDistance: 0)))
         }
 
         return results
@@ -542,17 +718,20 @@ struct IntuosV2Decoder: WacomDecoder {
         length: CFIndex
     ) -> [DecodeResult] {
         guard length >= 3 else { return [] }
-        let auxByte  = report[1]
+        let auxByte = report[1]
         let ringByte: UInt8 = length >= 5 ? report[3] : 0
-        let posByte:  UInt8 = length >= 5 ? report[4] : 0x7F
-        let buttons        = (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }
-        let ringActive     = posByte != 0x7F   // finger on ring (position valid)
-        let ringButtonDown = ringByte != 0     // center button pressed
-        return [.aux(AuxButtons(
-            buttons: buttons,
-            touchRingActive: ringActive,
-            touchRingButtonDown: ringButtonDown,
-            touchRingPosition: ringActive ? posByte : 0x7F))]
+        let posByte: UInt8 = length >= 5 ? report[4] : 0x7F
+        let buttons = (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }
+        let ringActive = posByte != 0x7F  // finger on ring (position valid)
+        let ringButtonDown = ringByte != 0  // center button pressed
+        return [
+            .aux(
+                AuxButtons(
+                    buttons: buttons,
+                    touchRingActive: ringActive,
+                    touchRingButtonDown: ringButtonDown,
+                    touchRingPosition: ringActive ? posByte : 0x7F))
+        ]
     }
 
     // MARK: - Wireless status (0x80)
@@ -566,7 +745,7 @@ struct IntuosV2Decoder: WacomDecoder {
         case 0x02: return [.wireless(.active)]
         case 0x05: return [.wireless(.lost)]
         case 0x06: return [.wireless(.lowBattery)]
-        default:   return [.wireless(.unknown(report[1]))]
+        default: return [.wireless(.unknown(report[1]))]
         }
     }
 }

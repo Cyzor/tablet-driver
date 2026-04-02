@@ -84,6 +84,46 @@ struct WacomToolSpec: Codable, Identifiable, Equatable {
 
     /// Returns the base tool code without eraser bit.
     var baseCode: UInt16 { toolCode & ~UInt16(0x0008) }
+
+    /// Returns true if this tool is compatible with the given device family.
+    /// Empty supportedFamilies means universal compatibility.
+    func isSupported(onFamily family: String) -> Bool {
+        if supportedFamilies.isEmpty { return true }
+        return supportedFamilies.contains(family)
+    }
+
+    /// Returns the tool's capabilities adjusted for the given device family.
+    /// If the tool is unsupported, returns a fallback with limited features.
+    func capabilities(forFamily family: String) -> ToolCapabilities {
+        let supported = isSupported(onFamily: family)
+        return ToolCapabilities(
+            isSupported: supported,
+            hasPressure: supported && (maxPressure ?? 0) > 0,
+            hasTilt: supported && hasTilt,
+            hasRotation: supported && hasRotation,
+            hasWheel: supported && hasWheel,
+            // If unsupported, fall back to basic position + buttons only
+            maxPressure: supported ? (maxPressure ?? 2047) : 0
+        )
+    }
+}
+
+/// Capabilities of a tool on a specific device family.
+/// Returned by WacomToolSpec.capabilities(forFamily:) to indicate which
+/// features are available when a tool is used with an incompatible tablet.
+struct ToolCapabilities {
+    /// True if this tool is officially supported on this device family.
+    let isSupported: Bool
+    /// True if pressure data is available.
+    let hasPressure: Bool
+    /// True if tilt data is available.
+    let hasTilt: Bool
+    /// True if rotation data is available (Art Pen).
+    let hasRotation: Bool
+    /// True if the scroll wheel is available.
+    let hasWheel: Bool
+    /// Maximum pressure value (0 if pressure unsupported).
+    let maxPressure: Int
 }
 
 // MARK: - Tool Catalog
@@ -174,6 +214,68 @@ enum WacomToolCatalog {
             hasEraserVariant: false,
             eraserToolCode: nil,
             supportedFamilies: ["intuosProGen2"]
+        )
+
+        // Standard pen for Cintiq 24HD (DTK-2400) - toolCode 0x1802
+        // This is the default pen that ships with the DTK-2400
+        catalog[0x1802] = WacomToolSpec(
+            toolCode: 0x1802,
+            name: "Intuos4 Grip Pen",
+            toolType: .stylus,
+            buttonCount: 2,
+            maxPressure: 2047,
+            hasTilt: true,
+            hasRotation: false,
+            hasWheel: false,
+            hasEraserVariant: true,
+            eraserToolCode: 0x180A,
+            supportedFamilies: ["cintiq", "intuos4", "intuos5"]
+        )
+
+        // Intuos4 Grip Pen Eraser (0x180A)
+        catalog[0x180A] = WacomToolSpec(
+            toolCode: 0x180A,
+            name: "Intuos4 Grip Pen (Eraser)",
+            toolType: .eraser,
+            buttonCount: 2,
+            maxPressure: 2047,
+            hasTilt: true,
+            hasRotation: false,
+            hasWheel: false,
+            hasEraserVariant: false,
+            eraserToolCode: nil,
+            supportedFamilies: ["cintiq", "intuos4", "intuos5"]
+        )
+
+        // Art Pen extended ID (0x1804) - appears on Cintiq 24HD (DTK-2400)
+        // This is the Art Pen when used with older IntuosV1 devices
+        catalog[0x1804] = WacomToolSpec(
+            toolCode: 0x1804,
+            name: "Art Pen",
+            toolType: .artPen,
+            buttonCount: 2,
+            maxPressure: 2047,
+            hasTilt: true,
+            hasRotation: true,
+            hasWheel: false,
+            hasEraserVariant: true,
+            eraserToolCode: 0x180C,
+            supportedFamilies: ["cintiq", "intuos4", "intuos5"]
+        )
+
+        // Art Pen 0x1804 eraser
+        catalog[0x180C] = WacomToolSpec(
+            toolCode: 0x180C,
+            name: "Art Pen (Eraser)",
+            toolType: .eraser,
+            buttonCount: 2,
+            maxPressure: 2047,
+            hasTilt: true,
+            hasRotation: true,
+            hasWheel: false,
+            hasEraserVariant: false,
+            eraserToolCode: nil,
+            supportedFamilies: ["cintiq", "intuos4", "intuos5"]
         )
 
         // Intuos Mouse (cordless)
@@ -824,19 +926,44 @@ enum WacomToolCatalog {
     }
 
     /// Returns the human-readable name for a tool code.
-    /// Falls back to "Stylus", "Eraser", or "Mouse" for unknown codes.
+    /// Falls back to descriptive names based on tool code patterns for unknown codes.
     static func name(forToolCode toolCode: UInt16) -> String {
         if let spec = spec(forToolCodeRaw: toolCode) {
             return spec.name
         }
-        // Fallback heuristics for unknown codes
+        // Fallback heuristics for unknown codes - be more specific
+        let highNibble = (toolCode >> 8) & 0xFF
+        let lowByte = toolCode & 0xFF
+
+        // Mouse tools (0x06, 0x07 family)
         if (toolCode & 0x000F) == 0x0006 {
             return "Mouse"
         }
-        if (toolCode & 0x0008) != 0 {
-            return "Eraser"
+        if (toolCode & 0x000F) == 0x0007 {
+            return "Cordless Mouse"
         }
-        return "Stylus"
+
+        // Eraser (bit 3 set)
+        if (toolCode & 0x0008) != 0 {
+            // Try to be more specific based on high nibble
+            switch highNibble {
+            case 0x08: return "Eraser (Intuos Pro)"
+            case 0x00: return "Eraser (Intuos3)"
+            case 0x09: return "Eraser (Bamboo)"
+            case 0x02: return "Eraser (Graphire)"
+            default: return "Eraser"
+            }
+        }
+
+        // Stylus fallback - be specific about the family
+        switch highNibble {
+        case 0x08: return "Stylus (Intuos Pro)"
+        case 0x00: return "Stylus (Intuos3)"
+        case 0x09: return "Stylus (Bamboo)"
+        case 0x02: return "Stylus (Graphire)"
+        case 0x01: return "Stylus (PenPartner)"
+        default: return "Stylus (0x\(String(format: "%04X", toolCode)))"
+        }
     }
 
     /// Returns the tool type for a tool code.
@@ -875,6 +1002,23 @@ enum WacomToolCatalog {
         return allTools.values.filter { spec in
             spec.supportedFamilies.isEmpty || spec.supportedFamilies.contains(family)
         }
+    }
+
+    /// Returns tool capabilities for a tool code on a specific device family.
+    /// If the tool is unknown, returns a default unsupported capability set.
+    static func capabilities(forToolCode toolCode: UInt16, family: String) -> ToolCapabilities {
+        if let spec = spec(forToolCodeRaw: toolCode) {
+            return spec.capabilities(forFamily: family)
+        }
+        // Unknown tool - return basic unsupported capabilities
+        return ToolCapabilities(
+            isSupported: false,
+            hasPressure: false,
+            hasTilt: false,
+            hasRotation: false,
+            hasWheel: false,
+            maxPressure: 0
+        )
     }
 
     /// Returns all unique tool specifications.
