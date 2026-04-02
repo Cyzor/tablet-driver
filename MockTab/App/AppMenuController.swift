@@ -36,6 +36,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     private weak var settings: TabletSettings?
 
+
     // MARK: - Setup
 
     func setup(settings: TabletSettings) {
@@ -47,6 +48,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             insertPresetsMenu()
             removeEmptyViewMenu()
             hookAboutMenuItem()
+            hookAppMenu()
         }
     }
 
@@ -81,8 +83,68 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     @objc private func showAboutWindow() {
         AboutWindowController.shared.show()
     }
-    
-    
+
+    // MARK: - Factory Reset (Option-key hidden item)
+
+    private func hookAppMenu() {
+        guard let menu = NSApp.mainMenu?.items.first?.submenu else { return }
+
+        // Find the Quit item. Factory Reset is inserted immediately after it as
+        // an isAlternate — the same mechanism Finder uses for "Secure Empty Trash".
+        // AppKit's NSMenuView handles the live Option-key toggle natively.
+        // Setting self as the menu's delegate is required to trigger the alternate
+        // recognition; without it, the item is inserted but never shown.
+        guard let quitItem = menu.items.last(where: {
+            $0.action == #selector(NSApplication.terminate(_:))
+        }) else { return }
+        let quitIndex = menu.items.firstIndex(of: quitItem)!
+
+        let item = NSMenuItem(
+            title: "Factory Reset\u{2026}",
+            action: #selector(confirmFactoryReset),
+            keyEquivalent: quitItem.keyEquivalent)
+        item.keyEquivalentModifierMask = quitItem.keyEquivalentModifierMask.union(.option)
+        item.isAlternate = true
+        item.target = self
+        menu.insertItem(item, at: quitIndex + 1)
+        menu.delegate = self
+    }
+
+    @objc private func confirmFactoryReset() {
+        let alert = NSAlert()
+        alert.messageText = "Reset MockTab to Factory Settings?"
+        alert.informativeText =
+            "All tablets, tools, presets, and button mappings will be erased. " +
+            "MockTab will restart."
+        alert.alertStyle = .warning
+        let resetButton = alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        // Remove Return-key shortcut from the destructive button so it cannot
+        // be triggered accidentally — the user must click it explicitly.
+        resetButton.keyEquivalent = ""
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        performFactoryReset()
+    }
+
+    private func performFactoryReset() {
+        // Wipe the entire UserDefaults domain in one call.  This removes every
+        // key ever written: device settings, presets, tool settings, registry,
+        // and window state.  All persistent state lives here — there are no
+        // separate caches or Application Support files to clear.
+        if let domain = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: domain)
+            UserDefaults.standard.synchronize()
+        }
+
+        // Relaunch so the new instance reads factory defaults rather than the
+        // stale in-memory @Published / @AppStorage state from this session.
+        let url = Bundle.main.bundleURL
+        NSWorkspace.shared.open(url)
+        NSApp.terminate(nil)
+    }
+
+
     // MARK: - Tablet menu
 
     private var tabletMenu: NSMenu?
