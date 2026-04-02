@@ -176,7 +176,7 @@ func decodeBLEPenReport(
 
     let x = Int(UInt16(report[2]) | UInt16(report[3]) << 8)
     let y = Int(UInt16(report[4]) | UInt16(report[5]) << 8)
-    let pressure = Int(UInt16(report[6]) | UInt16(report[7]) << 8)
+    let pressure = Int(UInt16(report[6]) | (UInt16(report[7] & 0x1F) << 8))
     let distance = Int(report[8])
     let tiltX = Double(Int8(bitPattern: report[9])) / 127.0
     let tiltY = Double(Int8(bitPattern: report[10])) / 127.0
@@ -244,6 +244,7 @@ struct DecoderState {
     var lastBTPadKeys: UInt8 = 0
     var lastBTPadRing: UInt8 = 0x7F
     var lastBTPadBtn: UInt8 = 0
+    // btProxOutCounter removed — debounce replaced by kernel-aligned immediate exit.
 }
 
 enum DecodeResult {
