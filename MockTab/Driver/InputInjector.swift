@@ -647,6 +647,7 @@ final class InputInjector {
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
         e.setDoubleValueField(.tabletEventTiltX, value: point.tiltX)
         e.setDoubleValueField(.tabletEventTiltY, value: point.tiltY)
+        e.setDoubleValueField(.tabletEventRotation, value: point.rotation)
         let buttons: Int64 =
             (pressure > 0.004 ? 1 : 0)
             | (point.penButton1 ? 2 : 0)

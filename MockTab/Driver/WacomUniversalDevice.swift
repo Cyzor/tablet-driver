@@ -209,7 +209,7 @@ final class WacomUniversalDevice: TabletDevice {
                     maxY: pairedSpec.maxY,
                     maxPressure: pairedSpec.maxPressure,
                     buttonCount: pairedSpec.buttonCount)
-                print("\(deviceSpec.name): using paired tablet spec (PID 0x\(String(pairedTabletPID, radix: 16, uppercase: true))) — maxX=\(spec.maxX) maxY=\(spec.maxY) maxPressure=\(spec.maxPressure)")
+//                print("\(deviceSpec.name): using paired tablet spec (PID 0x\(String(pairedTabletPID, radix: 16, uppercase: true))) — maxX=\(spec.maxX) maxY=\(spec.maxY) maxPressure=\(spec.maxPressure)")
             }
         }
 

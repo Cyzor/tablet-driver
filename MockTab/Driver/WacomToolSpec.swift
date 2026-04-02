@@ -159,6 +159,23 @@ enum WacomToolCatalog {
             supportedFamilies: ["intuos4"]
         )
 
+        // Art Pen variant (toolCode 0x1108 — confirmed from live BT capture 2026-04-02).
+        // Reports over Bluetooth Classic as Art Pen; rotation available over USB only.
+        // Bit3 of toolCode (0x0008) is set, but this pen is NOT an eraser.
+        catalog[0x1108] = WacomToolSpec(
+            toolCode: 0x1108,
+            name: "Art Pen",
+            toolType: .artPen,
+            buttonCount: 2,
+            maxPressure: nil,
+            hasTilt: true,
+            hasRotation: true,
+            hasWheel: false,
+            hasEraserVariant: false,
+            eraserToolCode: nil,
+            supportedFamilies: ["intuosProGen2"]
+        )
+
         // Intuos Mouse (cordless)
         catalog[0x0806] = WacomToolSpec(
             toolCode: 0x0806,
