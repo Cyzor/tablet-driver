@@ -48,6 +48,7 @@ final class DTK2400Device: TabletDevice {
     let spec = DigitizerSpec(maxX: 104480, maxY: 65600, maxPressure: 2047)
 
     private let device: IOHIDDevice
+    private let deviceFamily = "cintiq"  // DTK-2400 is a Cintiq
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((AuxButtons) -> Void)?
     private let onToolEnter: ((ToolIdentity) -> Void)?
@@ -335,6 +336,12 @@ final class DTK2400Device: TabletDevice {
             | UInt16(report[7] & 0x0F) << 12
             | UInt16(report[8] & 0xF0) << 4
 
+        #if DEBUG
+            print(
+                "DTK-2400: tool-change: serial=0x\(String(serial, radix: 16, uppercase: true)) toolCode=0x\(String(toolCode, radix: 16, uppercase: true))"
+            )
+        #endif
+
         currentSerial = serial
         currentToolCode = toolCode
         // Kernel (wacom_intuos_get_tool_type): eraser detected by tool_id bit 3.
@@ -346,6 +353,18 @@ final class DTK2400Device: TabletDevice {
                 toolCode: toolCode,
                 isEraser: isEraser,
                 isMouse: false))
+
+        // Check tool compatibility and emit warning if unsupported
+        let caps = WacomToolCatalog.capabilities(forToolCode: toolCode, family: deviceFamily)
+        if !caps.isSupported {
+            var limitations: [String] = []
+            if !caps.hasPressure { limitations.append("pressure") }
+            if !caps.hasTilt { limitations.append("tilt") }
+            if !caps.hasRotation { limitations.append("rotation") }
+            print(
+                "DTK-2400: Tool 0x\(String(format: "%04X", toolCode)) not fully supported on \(deviceFamily). Limited to: \(limitations.joined(separator: ", "))"
+            )
+        }
     }
 
     // MARK: - State reset

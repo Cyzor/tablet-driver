@@ -126,6 +126,35 @@ struct WacomDeviceSpec {
         self.featureInit2 = featureInit2
         self.featureInit2Delay = featureInit2Delay
     }
+
+    /// Derives the device family identifier from parser and name.
+    /// Used to check tool compatibility against `WacomToolSpec.supportedFamilies`.
+    var family: String {
+        switch parser {
+        case .graphire:
+            return "bamboo2"
+        case .intuos3:
+            return "intuos3"
+        case .intuosV1:
+            // Intuos 1-5 and Cintiq pen displays
+            if name.contains("Cintiq") || name.contains("DTK") || name.contains("DTH") {
+                return "cintiq"
+            }
+            if name.contains("Intuos 4") || name.contains("PTK") {
+                return "intuos4"
+            }
+            if name.contains("Intuos 5") || name.contains("PTH-8") {
+                return "intuos5"
+            }
+            return "intuosProGen1"
+        case .intuosV2:
+            return "intuosProGen2"
+        case .bamboo:
+            return "bamboo"
+        
+            return "universal"
+        }
+    }
 }
 
 // MARK: - Registry

@@ -552,6 +552,14 @@ final class InputInjector {
 
     // MARK: - Mouse event helpers
 
+    /// Returns a CGEventSource that snapshots the current session modifier state.
+    /// All synthesized events use this source so their .flags field reflects
+    /// physically-held modifiers — prevents stuck-modifier bugs in apps that track
+    /// modifier state from event .flags rather than from flagsChanged events alone.
+    private var sessionSource: CGEventSource? {
+        CGEventSource(stateID: .combinedSessionState)
+    }
+
     private func postMouseDown(
         button: CGMouseButton, at location: CGPoint,
         pressure: Double, clickCount: Int
@@ -559,7 +567,7 @@ final class InputInjector {
         let type: CGEventType = button == .right ? .rightMouseDown : .leftMouseDown
         guard
             let e = CGEvent(
-                mouseEventSource: nil, mouseType: type,
+                mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
         // subtype must be set first — tabletEvent fields are stored in a union
@@ -581,7 +589,7 @@ final class InputInjector {
         let type: CGEventType = button == .right ? .rightMouseUp : .leftMouseUp
         guard
             let e = CGEvent(
-                mouseEventSource: nil, mouseType: type,
+                mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
         e.setIntegerValueField(.mouseEventSubtype, value: 1)
@@ -600,7 +608,7 @@ final class InputInjector {
         let type: CGEventType = button == .right ? .rightMouseDragged : .leftMouseDragged
         guard
             let e = CGEvent(
-                mouseEventSource: nil, mouseType: type,
+                mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
         e.setIntegerValueField(.mouseEventSubtype, value: 1)
@@ -622,7 +630,7 @@ final class InputInjector {
     private func postMouseMoved(at location: CGPoint) {
         guard
             let e = CGEvent(
-                mouseEventSource: nil, mouseType: .mouseMoved,
+                mouseEventSource: sessionSource, mouseType: .mouseMoved,
                 mouseCursorPosition: location, mouseButton: .left)
         else { return }
         e.setIntegerValueField(
@@ -638,7 +646,7 @@ final class InputInjector {
         at location: CGPoint, pressure: Double,
         point: TabletPoint
     ) {
-        guard let e = CGEvent(source: nil) else { return }
+        guard let e = CGEvent(source: sessionSource) else { return }
         e.type = .tabletPointer
         e.location = location
         e.setIntegerValueField(.tabletEventDeviceID, value: 1)
@@ -662,7 +670,7 @@ final class InputInjector {
         entering: Bool, at location: CGPoint,
         eraser: Bool
     ) {
-        guard let e = CGEvent(source: nil) else { return }
+        guard let e = CGEvent(source: sessionSource) else { return }
         e.type = .tabletProximity
         e.location = location
 
@@ -699,37 +707,41 @@ final class InputInjector {
         case .leftClick:
             let type: CGEventType = down ? .leftMouseDown : .leftMouseUp
             CGEvent(
-                mouseEventSource: nil, mouseType: type,
+                mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: .left)?
                 .post(tap: .cghidEventTap)
         case .rightClick:
             let type: CGEventType = down ? .rightMouseDown : .rightMouseUp
             CGEvent(
-                mouseEventSource: nil, mouseType: type,
+                mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: .right)?
                 .post(tap: .cghidEventTap)
         case .middleClick:
             let type: CGEventType = down ? .otherMouseDown : .otherMouseUp
             CGEvent(
-                mouseEventSource: nil, mouseType: type,
+                mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: .center)?
                 .post(tap: .cghidEventTap)
         case .keyCombo:
             if binding.keyLabel.isEmpty && binding.modifierFlags != 0 {
-                guard let e = CGEvent(source: nil) else { return }
+                guard let e = CGEvent(source: sessionSource) else { return }
                 e.type = .flagsChanged
                 e.setIntegerValueField(
                     .keyboardEventKeycode,
                     value: Int64(binding.keyCode))
-                e.flags =
-                    down
-                    ? CGEventFlags(rawValue: binding.modifierFlags)
-                    : CGEventFlags()
+                if down {
+                    e.flags = CGEventFlags(rawValue: binding.modifierFlags)
+                } else {
+                    // Preserve any modifiers the user is still physically holding;
+                    // only remove the flags this binding is releasing.
+                    let current = CGEventSource.flagsState(.combinedSessionState)
+                    e.flags = current.subtracting(CGEventFlags(rawValue: binding.modifierFlags))
+                }
                 e.post(tap: .cghidEventTap)
             } else {
                 guard
                     let e = CGEvent(
-                        keyboardEventSource: nil,
+                        keyboardEventSource: sessionSource,
                         virtualKey: CGKeyCode(binding.keyCode),
                         keyDown: down)
                 else { return }
@@ -745,7 +757,7 @@ final class InputInjector {
         // .line units: one detent = one scroll line, consistent with trackpad / Magic Mouse.
         guard
             let e = CGEvent(
-                scrollWheelEvent2Source: nil, units: .line,
+                scrollWheelEvent2Source: sessionSource, units: .line,
                 wheelCount: 1, wheel1: Int32(delta * 3), wheel2: 0, wheel3: 0)
         else { return }
         e.location = location

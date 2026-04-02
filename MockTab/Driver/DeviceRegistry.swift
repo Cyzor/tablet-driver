@@ -52,6 +52,7 @@ final class DeviceRegistry: ObservableObject {
         var kind: String  // human-readable name, refreshed on load
         var serial: UInt32?  // nil for old persisted entries without serial support
         var toolCode: UInt16?  // nil for old persisted entries
+        var isSupported: Bool = true  // true if tool is fully supported on this device
 
         /// Best available identifier string for display.
         /// Prefers the HID-reported pen serial; falls back to tool code hex; then "—".
@@ -133,7 +134,8 @@ final class DeviceRegistry: ObservableObject {
             // Try toolCode first for known pen types (0x0832, 0x0842, etc.)
             let toolCodeName = Self.penName(forToolCode: identity.toolCode)
             // If toolCode returns a non-generic name, use it; otherwise fall back to productID-based.
-            kind = (!toolCodeName.hasPrefix("Unknown") && toolCodeName != "Stylus")
+            kind =
+                (!toolCodeName.hasPrefix("Unknown") && toolCodeName != "Stylus")
                 ? toolCodeName
                 : Self.penName(forProductID: deviceID, isEraser: identity.isEraser)
         } else {
@@ -173,13 +175,19 @@ final class DeviceRegistry: ObservableObject {
             }
         }
 
+        // Check tool support for this device family
+        let deviceSpec = WacomDeviceRegistry.spec(for: deviceID)
+        let family = deviceSpec?.family ?? "universal"
+        let caps = WacomToolCatalog.capabilities(forToolCode: identity.toolCode, family: family)
+
         knownTools.append(
             KnownTool(
                 id: toolID,
                 nickname: kind,
                 kind: kind,
                 serial: identity.serial,
-                toolCode: identity.toolCode))
+                toolCode: identity.toolCode,
+                isSupported: caps.isSupported))
         saveTools(forDevice: deviceID)
         rebuildAllTools()
         return toolID
@@ -238,6 +246,8 @@ final class DeviceRegistry: ObservableObject {
         }
 
         var changed = false
+        let deviceSpec = WacomDeviceRegistry.spec(for: deviceID)
+        let family = deviceSpec?.family ?? "universal"
         for i in list.indices {
             let freshKind: String
             if let tc = list[i].toolCode {
@@ -249,6 +259,14 @@ final class DeviceRegistry: ObservableObject {
             if list[i].kind != freshKind {
                 list[i].kind = freshKind
                 changed = true
+            }
+            // Refresh support status
+            if let tc = list[i].toolCode {
+                let caps = WacomToolCatalog.capabilities(forToolCode: tc, family: family)
+                if list[i].isSupported != caps.isSupported {
+                    list[i].isSupported = caps.isSupported
+                    changed = true
+                }
             }
         }
         knownTools = list

@@ -44,7 +44,8 @@ struct Intuos3Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         guard length >= 2 else { return [] }
         let id = report[0]
@@ -104,7 +105,7 @@ struct Intuos3Decoder: WacomDecoder {
         }
 
         guard (id == 0x02 || id == 0x10) && length >= 10 else { return [] }
-        return decodeUSBPen(report: report, length: length, spec: spec, state: &state)
+        return decodeUSBPen(report: report, length: length, spec: spec, state: &state, deviceFamily: deviceFamily)
     }
 
     // MARK: - USB pen report (10-byte IntuosV1 format, Intuos3 status layout)
@@ -113,14 +114,15 @@ struct Intuos3Decoder: WacomDecoder {
         report: UnsafePointer<UInt8>,
         length: CFIndex,
         spec: DigitizerSpec,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         let status = report[1]
 
         // Tool-change packet: status bits 7:2 == 0xC0.
         // Same pre-check as IntuosV1 — must fire before proximity test.
         if (status & 0xFC) == 0xC0 {
-            return decodeToolChange(report: report, state: &state)
+            return decodeToolChange(report: report, state: &state, deviceFamily: deviceFamily)
         }
 
         // Intuos3 proximity: bit 6 (0x40). No separate high-confidence bit.
@@ -233,7 +235,8 @@ struct Intuos3Decoder: WacomDecoder {
 
     private func decodeToolChange(
         report: UnsafePointer<UInt8>,
-        state: inout DecoderState
+        state: inout DecoderState,
+        deviceFamily: String
     ) -> [DecodeResult] {
         let serial =
             UInt32(report[3] & 0x0F) << 28
