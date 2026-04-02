@@ -1,3 +1,49 @@
+2026-04-02
+
+When parsers fail on these older wireless devices, it is almost always because the data is either **encapsulated** with an unexpected header, or **batched** to save wireless bandwidth.
+
+### 1. Wacom Wireless Accessory Kit (WAK) 
+**Used by:** Intuos5, Intuos Pro Gen 1 (PTH-x51), Bamboo Gen 3, and Intuos 2015 (CTH-x90)
+**Protocol:** Proprietary 2.4 GHz RF via USB Dongle
+
+Because this uses a USB dongle, many parsers mistakenly assume they can read it exactly like a wired USB tablet. In reality, the dongle intercepts the tablet's native USB packets and **encapsulates** them inside a special wireless payload.
+
+* **Report ID:** `0x80`
+* **Format Structure:** The dongle sends a custom header followed by the original wired packet.
+  * `byte[0]` = `0x80` (Wireless Report ID)
+  * `byte [lxr.missinglinkelectronics](https://lxr.missinglinkelectronics.com/linux+v5.12/drivers/hid/wacom_wac.c)` = Wireless status and battery flags (charging state, capacity)
+  * `byte [codebrowser](https://codebrowser.dev/linux/linux/drivers/hid/wacom_wac.c.html)` = The *original* USB Report ID (e.g., `0x02` for Pen)
+  * `byte[3+]` = The standard wired USB payload.
+* **Why Parsers Break:** If a parser reads the raw USB stream without checking for the `0x80` WAK header, it interprets the battery status as coordinate data, resulting in wild cursor jumps or failure to parse entirely. You must strip the first two bytes and re-route `byte [codebrowser](https://codebrowser.dev/linux/linux/drivers/hid/wacom_wac.c.html)` into your standard USB parser.
+
+### 2. Intuos (2018 Series) Bluetooth
+**Used by:** Intuos S/M BT (CTL-4100WL, CTL-6100WL)
+**Protocol:** Bluetooth Classic and Bluetooth LE
+
+Unlike the Intuos Pro 2 (PTH-660) which uses a massive 361-byte report, the consumer Intuos BT line uses a smaller, highly compressed batched report to maintain the pen's sample rate over low-bandwidth Bluetooth LE.
+
+* **Report IDs:** `0x3F` or `0x80` (depending on BT LE vs Classic pairing)
+* **Format Structure:** A typical payload (often ~44 bytes) containing multiple sub-frames. 
+  * The report starts with a header indicating battery life and sequence numbers.
+  * The remainder of the payload contains multiple (usually 2 to 4) packed pen frames.
+  * Coordinate data, pressure, and button states are bit-packed tightly. 
+* **Why Parsers Break:** Just like the PTH-660, if a parser only processes the first frame in the payload, it drops 50% to 75% of the pen's physical polling rate, causing severe lag and staggered line drawing. Furthermore, because it lacks tilt/rotation hardware, blindly applying Intuos Pro logic to this report will misinterpret the packed data.
+
+### 3. Intuos4 Wireless (PTK-540WL)
+**Used by:** Intuos4 Wireless (The only device in its generation)
+**Protocol:** Early Bluetooth Classic
+
+This was Wacom’s first true Bluetooth tablet, and its protocol is an outlier. It does not use the modern batching techniques of the 2018 Intuos or the Intuos Pro 2. 
+
+* **Format Structure:** It largely mirrors the Intuos4 USB packet structure but adjusts the frame length (typically 10-12 bytes) and uses Bluetooth-specific Report IDs for out-of-proximity notifications and tool swapping.
+* **Why Parsers Break:** The Intuos4 was highly dependent on out-of-band "tool ID" packets. Wacom sends a specific packet when the pen enters the tablet's proximity containing the RFID of the tool (e.g., Art Pen vs. standard Grip Pen). If your Bluetooth parser drops this initial tool-identification packet over the wireless stream, the subsequent standard movement packets lack context, and the parser won't know whether to extract rotation data or standard pressure data.
+
+### Summary Rule for Pre-2020 Wireless
+If you are modifying a driver or writing a parser for field work:
+1. **Check byte 0 for `0x80`:** If it's a USB dongle, strip bytes 0-1 and parse the rest as wired USB.
+2. **Batching is mandatory for Native BT:** If it's a native Bluetooth connection, assume the packet contains a header and an array of sub-frames, not a single X/Y coordinate state.
+
+
 2026-03-25
 
 # Wacom Wireless \& Bluetooth Connectivity: Technical Specification
