@@ -181,7 +181,7 @@ enum WacomToolCatalog {
             hasWheel: false,
             hasEraserVariant: true,
             eraserToolCode: 0x080C,
-            supportedFamilies: ["intuos4"]
+            supportedFamilies: ["intuos4", "intuosProGen2"]
         )
 
         // Marker Pen Eraser
