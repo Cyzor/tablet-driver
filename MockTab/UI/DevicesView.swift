@@ -38,6 +38,12 @@ struct DevicesView: View {
     @State private var pendingForgetTool: DeviceRegistry.KnownTool? = nil
     @State private var pendingForgetDeviceID: Int? = nil
 
+    /// Tool override picker state
+    @State private var showingToolOverridePicker: Bool = false
+    @State private var selectedOverrideToolCode: UInt16? = nil
+    @State private var toolOverrideToolID: String? = nil
+    @State private var toolOverrideDeviceID: Int? = nil
+
     /// Tablet explicitly selected by the user to view its tools.
     /// Nil = auto-follow the currently active device.
     @State private var selectedTabletID: Int? = nil
@@ -84,6 +90,20 @@ struct DevicesView: View {
             Button("Cancel", role: .cancel) { pendingForgetTool = nil }
         } message: {
             Text("This tool will reappear with its default name next time the tablet detects it..")
+        }
+        .sheet(isPresented: $showingToolOverridePicker) {
+            ToolOverridePickerSheet(
+                currentToolCode: $selectedOverrideToolCode,
+                onApply: { newCode in
+                    if let tid = toolOverrideToolID, let did = toolOverrideDeviceID {
+                        registry.setForcedToolCode(newCode, forToolID: tid, deviceID: did)
+                    }
+                    showingToolOverridePicker = false
+                },
+                onCancel: {
+                    showingToolOverridePicker = false
+                }
+            )
         }
     }
 
@@ -244,18 +264,57 @@ struct DevicesView: View {
                 Button("Cancel") { editingToolID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
             } else {
-                Button {
-                    editingToolID = tool.id
-                    editingName = tool.nickname
-                } label: {
-                    Image(systemName: "pencil")
+                HStack(spacing: 4) {
+                    Button {
+                        editingToolID = tool.id
+                        editingName = tool.nickname
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
+                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
+
+                    // Tool override button
+                    Button {
+                        selectedOverrideToolCode = tool.forcedToolCode
+                        toolOverrideToolID = tool.id
+                        toolOverrideDeviceID = deviceID
+                        showingToolOverridePicker = true
+                    } label: {
+                        Image(
+                            systemName: tool.forcedToolCode != nil
+                                ? "arrow.triangle.2.circlepath"
+                                : "arrow.up.left.and.arrow.down.right")
+                    }
+                    .buttonStyle(.plain).foregroundStyle(
+                        tool.forcedToolCode != nil ? .orange : .secondary
+                    )
+                    .help(
+                        tool.forcedToolCode != nil
+                            ? "Tool override active: \(String(format: "0x%04X", tool.forcedToolCode!))"
+                            : "Force tool type")
                 }
-                .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(isInProximity ? Color.accentColor.opacity(0.08) : Color.clear)
+        .contextMenu {
+            if tool.forcedToolCode != nil {
+                Button("Clear Override") {
+                    registry.setForcedToolCode(nil, forToolID: tool.id, deviceID: deviceID ?? 0)
+                }
+            }
+            Divider()
+            Button("Force as Grip Pen (0x0802)") {
+                registry.setForcedToolCode(0x0802, forToolID: tool.id, deviceID: deviceID ?? 0)
+            }
+            Button("Force as Pro Pen 2 (0x0832)") {
+                registry.setForcedToolCode(0x0832, forToolID: tool.id, deviceID: deviceID ?? 0)
+            }
+            Button("Force as Pro Pen 3 (0x0842)") {
+                registry.setForcedToolCode(0x0842, forToolID: tool.id, deviceID: deviceID ?? 0)
+            }
+        }
     }
 
     // MARK: - All Tools
@@ -356,5 +415,54 @@ struct DevicesView: View {
     private func syncTools() {
         guard let id = effectiveTabletID else { return }
         registry.loadTools(forDevice: id)
+    }
+}
+
+// MARK: - Tool Override Picker Sheet
+
+struct ToolOverridePickerSheet: View {
+    @Binding var currentToolCode: UInt16?
+    let onApply: (UInt16?) -> Void
+    let onCancel: () -> Void
+
+    @State private var selectedCode: String = ""
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Force Tool Code").font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Select a tool to force (or leave blank to use detected tool):")
+                    .font(.caption).foregroundStyle(.secondary)
+
+                Picker("Tool Code", selection: $selectedCode) {
+                    Text("(Auto-detect)").tag("")
+                    Text("Grip Pen (0x0802)").tag("0802")
+                    Text("Pro Pen 2 (0x0832)").tag("0832")
+                    Text("Pro Pen 3 (0x0842)").tag("0842")
+                    Text("Pen 4K (0x0852)").tag("0852")
+                }
+                .pickerStyle(.menu)
+            }
+
+            HStack(spacing: 12) {
+                Button("Cancel", role: .cancel) { onCancel() }
+                    .buttonStyle(.bordered)
+                Button("Apply") {
+                    let code = selectedCode.isEmpty ? nil : UInt16(selectedCode, radix: 16)
+                    onApply(code)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            Spacer()
+        }
+        .padding()
+        .frame(minWidth: 300, minHeight: 200)
+        .onAppear {
+            if let code = currentToolCode {
+                selectedCode = String(format: "%04X", code)
+            }
+        }
     }
 }
