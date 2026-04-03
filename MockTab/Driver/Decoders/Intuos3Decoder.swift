@@ -101,7 +101,7 @@ struct Intuos3Decoder: WacomDecoder {
         }
 
         if id == 0x80 {
-            return decodeWireless(report: report, length: length)
+            return decodeWirelessReport(report: report, length: length)
         }
 
         guard (id == 0x02 || id == 0x10) && length >= 10 else { return [] }
@@ -263,14 +263,4 @@ struct Intuos3Decoder: WacomDecoder {
         ]
     }
 
-    // MARK: - Wireless status (identical to IntuosV1Decoder)
-
-    private func decodeWireless(
-        report: UnsafePointer<UInt8>,
-        length: CFIndex
-    ) -> [DecodeResult] {
-        guard length >= 2 else { return [] }
-        if (report[1] & 0x01) != 0 { return [.wireless(.active)] }
-        return [.wireless(.lost)]
-    }
 }

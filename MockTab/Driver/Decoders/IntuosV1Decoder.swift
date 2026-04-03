@@ -58,7 +58,7 @@ struct IntuosV1Decoder: WacomDecoder {
             return decodeAuxReport(report: report, length: length)
         }
         if id == 0x80 {
-            return decodeWireless(report: report, length: length)
+            return decodeWirelessReport(report: report, length: length)
         }
         // USB pen reports are exactly 10 bytes. PTH-850/Intuos5 exposes Interface 1 as
         // vendor-specific (Report ID 0x02, 63-byte touch payload) — reject longer reports
@@ -162,18 +162,9 @@ struct IntuosV1Decoder: WacomDecoder {
                             isEraser: state.isEraser, isMouse: isMouse)))
 
                 // Check tool compatibility and emit warning if unsupported
-                let caps = WacomToolCatalog.capabilities(
-                    forToolCode: fallbackCode, family: deviceFamily)
-                state.toolIsSupported = caps.isSupported
-                if !caps.isSupported {
-                    var limitations: [String] = []
-                    if !caps.hasPressure { limitations.append("pressure") }
-                    if !caps.hasTilt { limitations.append("tilt") }
-                    if !caps.hasRotation { limitations.append("rotation") }
-                    let msg =
-                        "Tool 0x\(String(format: "%04X", fallbackCode)) not fully supported on \(deviceFamily). Limited to: \(limitations.joined(separator: ", "))"
-                    results.append(.toolCompatibility(msg))
-                }
+                emitToolCompatibility(
+                    toolCode: fallbackCode, deviceFamily: deviceFamily,
+                    state: &state, results: &results)
             }
         }
         state.prevInProximity = true
@@ -282,18 +273,9 @@ struct IntuosV1Decoder: WacomDecoder {
         ]
 
         // Check tool compatibility and emit warning if unsupported
-        let caps = WacomToolCatalog.capabilities(
-            forToolCode: toolCode, family: deviceFamily)
-        state.toolIsSupported = caps.isSupported
-        if !caps.isSupported {
-            var limitations: [String] = []
-            if !caps.hasPressure { limitations.append("pressure") }
-            if !caps.hasTilt { limitations.append("tilt") }
-            if !caps.hasRotation { limitations.append("rotation") }
-            let msg =
-                "Tool 0x\(String(format: "%04X", toolCode)) not fully supported on \(deviceFamily). Limited to: \(limitations.joined(separator: ", "))"
-            results.append(.toolCompatibility(msg))
-        }
+        emitToolCompatibility(
+            toolCode: toolCode, deviceFamily: deviceFamily,
+            state: &state, results: &results)
 
         return results
     }
@@ -350,17 +332,4 @@ struct IntuosV1Decoder: WacomDecoder {
         return [.aux(AuxButtons(buttons: (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }))]
     }
 
-    // MARK: - Wireless status (0x80)
-
-    private func decodeWireless(
-        report: UnsafePointer<UInt8>,
-        length: CFIndex
-    ) -> [DecodeResult] {
-        guard length >= 2 else { return [] }
-        // Spec (Wacom-HID-PTH-850K-Reference §Wireless Status Report):
-        //   d[1] bit 0 = connection state: 1 → connected, 0 → disconnected.
-        //   Battery level is in d[5], not d[1] — no per-bit low-battery signal here.
-        if (report[1] & 0x01) != 0 { return [.wireless(.active)] }
-        return [.wireless(.lost)]
-    }
 }
