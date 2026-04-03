@@ -52,6 +52,10 @@ final class DeviceRegistry: ObservableObject {
         var kind: String  // human-readable name, refreshed on load
         var serial: UInt32?  // nil for old persisted entries without serial support
         var toolCode: UInt16?  // nil for old persisted entries
+        /// User-forced tool code override. When set, the driver reports this tool code
+        /// instead of the actual HID-reported tool code. Useful for working around
+        /// decoding issues or testing tool compatibility.
+        var forcedToolCode: UInt16?  // nil = use actual HID tool code
         var isSupported: Bool = true  // true if tool is fully supported on this device
 
         /// Best available identifier string for display.
@@ -205,6 +209,22 @@ final class DeviceRegistry: ObservableObject {
         guard let idx = knownTools.firstIndex(where: { $0.id == id }) else { return }
         knownTools[idx].nickname = name
         saveTools(forDevice: deviceID)
+    }
+
+    /// Forces the driver to report a specific tool code for this tool, ignoring the
+    /// actual HID-reported tool code. Useful for working around decoding issues
+    /// or testing tool compatibility. Pass nil to clear the override.
+    func setForcedToolCode(_ code: UInt16?, forToolID id: String, deviceID: Int) {
+        guard let idx = knownTools.firstIndex(where: { $0.id == id }) else { return }
+        knownTools[idx].forcedToolCode = code
+        saveTools(forDevice: deviceID)
+    }
+
+    /// Returns the forced tool code override for a tool, if set.
+    /// Returns nil if no override is set.
+    func forcedToolCode(forToolID id: String, deviceID: Int) -> UInt16? {
+        guard let tool = knownTools.first(where: { $0.id == id }) else { return nil }
+        return tool.forcedToolCode
     }
 
     /// Removes a tool from one tablet's persisted list.

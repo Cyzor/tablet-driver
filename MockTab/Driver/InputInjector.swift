@@ -47,6 +47,9 @@ final class InputInjector {
     /// tipDown is driven by penButton1 instead of pressure, and button1 is
     /// not dispatched as a separate button action (it already fires the primary click).
     var activeToolIsMouse: Bool = false
+    /// The tool code for the current tool. Used for proximity events and tool identification.
+    /// May be overridden by forcedToolCode from DeviceRegistry if set by the user.
+    var activeToolCode: UInt16 = 0x0802
 
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
@@ -688,7 +691,28 @@ final class InputInjector {
         let ptrType: Int64 = entering ? (eraser ? 3 : (activeToolIsMouse ? 2 : 1)) : 0
         e.setIntegerValueField(.tabletProximityEventPointerType, value: ptrType)
 
-        let vendorPtr: Int64 = eraser ? 0x080A : (activeToolIsMouse ? 0x0006 : 0x0802)
+        // Use activeToolCode for vendor pointer type; default to Grip Pen (0x0802)
+        // Art Pen variants (0x0804, 0x1108, 0x1804) report as Grip Pen to avoid rotation issues
+        let toolCode = activeToolCode
+        let vendorPtr: Int64
+        if eraser {
+            vendorPtr = 0x080A  // Grip Pen Eraser
+        } else if activeToolIsMouse {
+            vendorPtr = 0x0006  // Intuos Mouse
+        } else {
+            switch toolCode {
+            case 0x0804, 0x1108, 0x1804:  // Art Pen variants
+                vendorPtr = 0x0802  // Grip Pen (no rotation)
+            case 0x0842:  // Pro Pen 3
+                vendorPtr = 0x0842
+            case 0x0832:  // Pro Pen 2
+                vendorPtr = 0x0832
+            case 0x0852:  // Pen 4K
+                vendorPtr = 0x0852
+            default:
+                vendorPtr = 0x0802  // Grip Pen fallback
+            }
+        }
         e.setIntegerValueField(.tabletProximityEventVendorPointerType, value: vendorPtr)
         e.setIntegerValueField(.tabletProximityEventCapabilityMask, value: 0x05C7)
         e.setIntegerValueField(.tabletProximityEventEnterProximity, value: entering ? 1 : 0)
