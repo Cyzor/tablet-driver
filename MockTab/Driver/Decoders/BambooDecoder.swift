@@ -43,8 +43,8 @@ import Foundation
 /// [4:5] Y     BE16
 /// [6:7] pressure: (d6 << 3) | (d7 >> 5) — 11-bit
 ///              → right-shift by 1 if maxPressure ≤ 1023 (10-bit hardware)
-/// [8]  reserved (tilt X on CTH-480/490 only — not decoded, requires hasTilt flag)
-/// [9]  reserved (tilt Y on CTH-480/490 only — not decoded)
+/// [8]  tilt X (4-bit signed, centre=8) — decoded when spec.hasTilt; zero otherwise
+/// [9]  tilt Y (4-bit signed, centre=8) — decoded when spec.hasTilt; zero otherwise
 /// ```
 ///
 /// **Status byte d1:**
@@ -130,16 +130,22 @@ struct BambooDecoder: WacomDecoder {
         let rawPressure = (Int(report[6]) << 3) | (Int(report[7]) >> 5)
         let pressure = spec.maxPressure <= 1023 ? rawPressure >> 1 : rawPressure
 
-        // Tilt is 4-bit signed (report[8]/report[9]) on CTH-480/490 only.
-        // Suppressed until a hasTilt flag is added to DigitizerSpec to avoid
-        // garbage readings on non-tilt models (zero byte → (0 & 0x0F) - 8 = -8).
+        // Tilt: 4-bit signed (range 0–15, centre = 8) in report[8]/report[9].
+        // Only valid on devices with hasTilt = true; other models leave these
+        // bytes as zero, which decodes as -8 (non-zero garbage) without the gate.
+        var tiltX = 0.0
+        var tiltY = 0.0
+        if spec.hasTilt {
+            tiltX = Double((Int(report[8]) & 0x0F) - 8) / 8.0
+            tiltY = Double((Int(report[9]) & 0x0F) - 8) / 8.0
+        }
 
         results.append(
             .pen(
                 TabletPoint(
                     x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
                     pressure: pressure, maxPressure: spec.maxPressure,
-                    tiltX: 0, tiltY: 0, rotation: 0.0,
+                    tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
                     penButton1: (status & 0x02) != 0,
                     penButton2: (status & 0x04) != 0,
                     eraser: isEraser,

@@ -87,6 +87,9 @@ struct WacomDeviceSpec {
     let hasTouchStrips: Bool
     /// True if the pen family includes an eraser tool type.
     let hasEraser: Bool
+    /// True if this device's pen reports include tilt data (Bamboo 4-bit format).
+    /// Has no effect on IntuosV1/V2/Intuos3 decoders, which always decode tilt.
+    let hasTilt: Bool
     /// Feature report bytes to send once on open (first stage).
     /// nil = no feature init required.
     /// First byte is the HID report ID; remaining bytes are the payload.
@@ -105,7 +108,7 @@ struct WacomDeviceSpec {
         productID: Int, name: String, parser: ReportParser,
         maxX: Int, maxY: Int, maxPressure: Int,
         buttonCount: Int, hasTouchRing: Bool, hasDualRings: Bool = false,
-        hasTouchStrips: Bool = false, hasEraser: Bool,
+        hasTouchStrips: Bool = false, hasEraser: Bool, hasTilt: Bool = false,
         featureInit: [UInt8]?, seizeUSB: Bool,
         featureInit2: [UInt8]? = nil,
         featureInit2Delay: Double = 0.15
@@ -121,6 +124,7 @@ struct WacomDeviceSpec {
         self.hasDualRings = hasDualRings
         self.hasTouchStrips = hasTouchStrips
         self.hasEraser = hasEraser
+        self.hasTilt = hasTilt
         self.featureInit = featureInit
         self.seizeUSB = seizeUSB
         self.featureInit2 = featureInit2
