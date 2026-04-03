@@ -81,7 +81,8 @@ final class WacomUniversalDevice: TabletDevice {
             maxX: deviceSpec.maxX,
             maxY: deviceSpec.maxY,
             maxPressure: deviceSpec.maxPressure,
-            buttonCount: deviceSpec.buttonCount)
+            buttonCount: deviceSpec.buttonCount,
+            hasTilt: deviceSpec.hasTilt)
 
         switch deviceSpec.parser {
         case .intuosV2:

@@ -27,6 +27,10 @@ struct DigitizerSpec {
     /// Number of programmable express-key buttons on this device.
     /// Used by BambooDecoder to select the correct pad-byte bit layout.
     var buttonCount: Int = 0
+    /// True if this device's pen reports carry tilt data.
+    /// Currently relevant for BambooDecoder only (report[8]/report[9], 4-bit signed).
+    /// IntuosV1/V2/Intuos3 always decode tilt regardless of this flag.
+    var hasTilt: Bool = false
 }
 
 protocol TabletDevice: AnyObject {
