@@ -126,6 +126,8 @@ struct IntuosV2Decoder: WacomDecoder {
             if state.prevInProximity {
                 state.exitFrameCount = 0
                 state.prevInProximity = false
+                state.lastSerial = 0     // force toolEnter on re-entry
+                state.lastToolCode = 0
                 return [
                     .pen(
                         TabletPoint(
@@ -146,6 +148,8 @@ struct IntuosV2Decoder: WacomDecoder {
             if state.exitFrameCount >= DecoderState.exitThreshold && state.prevInProximity {
                 state.exitFrameCount = 0
                 state.prevInProximity = false
+                state.lastSerial = 0     // force toolEnter on re-entry
+                state.lastToolCode = 0
                 return [
                     .pen(
                         TabletPoint(
@@ -368,7 +372,8 @@ struct IntuosV2Decoder: WacomDecoder {
         // Tool identity: metadata block at byte 100 (0xCE marker).
         // Tool code at bytes [104:105] LE — confirmed from live BT captures (2026-04-01).
         // Serial number location not yet identified; reported as 0.
-        let toolCode: UInt16 = length >= 106 ? UInt16(report[104]) | UInt16(report[105]) << 8 : 0
+        // Tool identity: tool code at bytes [103:104] LE (confirmed from live BT captures).
+        let toolCode: UInt16 = length >= 105 ? UInt16(report[103]) | UInt16(report[104]) << 8 : 0
         let isMouse = (toolCode & 0x000F) == 0x0006
         // Art Pen variants: 0x0804, 0x1108 (confirmed 2026-04-01).
         // Note: 0x1108 has bit3 set, so the standard (toolCode & 0x0008) eraser test
@@ -423,13 +428,9 @@ struct IntuosV2Decoder: WacomDecoder {
                 if i == 0 && state.exitFrameCount >= DecoderState.exitThreshold
                     && state.prevInProximity
                 {
-                    #if DEBUG
-                        NSLog(
-                            "[BT_PROX_DEBUG] frame=%d flags=0x%02X (invalid) → EXIT (threshold reached)",
-                            i, flags)
-                    #endif
                     state.exitFrameCount = 0
                     state.prevInProximity = false
+                    state.lastToolCode = 0  // force toolEnter on re-entry
                     results.append(
                         .pen(
                             TabletPoint(
@@ -439,12 +440,6 @@ struct IntuosV2Decoder: WacomDecoder {
                                 tiltX: 0, tiltY: 0, rotation: 0.0,
                                 penButton1: false, penButton2: false,
                                 eraser: false, inProximity: false, hoverDistance: 0)))
-                } else if i == 0 {
-                    #if DEBUG
-                        NSLog(
-                            "[BT_PROX_DEBUG] frame=%d flags=0x%02X (invalid) → suppressed (count=%d/%d)",
-                            i, flags, state.exitFrameCount, DecoderState.exitThreshold)
-                    #endif
                 }
                 break
             }
@@ -463,13 +458,9 @@ struct IntuosV2Decoder: WacomDecoder {
                 // Genuine firmware exit signal — both wireless and digitizer range lost.
                 // Don't threshold this; kernel fires it immediately.
                 if state.prevInProximity {
-                    #if DEBUG
-                        NSLog(
-                            "[BT_PROX_DEBUG] frame=%d flags=0x%02X (prox=0, inRange=0) → EXIT (kernel signal)",
-                            i, flags)
-                    #endif
                     state.exitFrameCount = 0
                     state.prevInProximity = false
+                    state.lastToolCode = 0  // force toolEnter on re-entry
                     results.append(
                         .pen(
                             TabletPoint(
@@ -491,13 +482,9 @@ struct IntuosV2Decoder: WacomDecoder {
             if !inRange {
                 state.exitFrameCount += 1
                 if state.exitFrameCount >= DecoderState.exitThreshold && state.prevInProximity {
-                    #if DEBUG
-                        NSLog(
-                            "[BT_PROX_DEBUG] frame=%d flags=0x%02X (prox=1, inRange=0) → EXIT (sustained boundary, count=%d)",
-                            i, flags, state.exitFrameCount)
-                    #endif
                     state.exitFrameCount = 0
                     state.prevInProximity = false
+                    state.lastToolCode = 0  // force toolEnter on re-entry
                     results.append(
                         .pen(
                             TabletPoint(
@@ -508,26 +495,12 @@ struct IntuosV2Decoder: WacomDecoder {
                                 penButton1: false, penButton2: false,
                                 eraser: false, inProximity: false, hoverDistance: 0)))
                     break  // Exit signal sent, stop processing frames
-                } else if state.exitFrameCount > 0 {
-                    #if DEBUG
-                        NSLog(
-                            "[BT_PROX_DEBUG] frame=%d flags=0x%02X (prox=1, inRange=0) → boundary noise (count=%d/%d)",
-                            i, flags, state.exitFrameCount, DecoderState.exitThreshold)
-                    #endif
                 }
                 // Continue to decode point data below — don't break on boundary noise
             }
 
             // Good frame (inRange=1) — reset boundary counter and record entry if needed.
             state.exitFrameCount = 0
-            if !state.prevInProximity {
-                #if DEBUG
-                    NSLog(
-                        "[BT_PROX_DEBUG] frame=%d flags=0x%02X (prox=%d, inRange=1) → ENTER", i,
-                        flags, prox ? 1 : 0)
-                #endif
-            }
-
             state.prevInProximity = true
 
             // In the PTH-660 361-byte format, per-frame flags bit3 (0x08) is BTN_TOUCH
@@ -545,14 +518,20 @@ struct IntuosV2Decoder: WacomDecoder {
             // handling in BT frames with alignment correction: userspace expects 0° at left,
             // but raw hardware has a +90° offset baked in. Subtract 900 (90° × 10), wrap to
             // [0, 3600). Non-Art-Pen tools carry garbage in these bytes — gate strictly.
-            // ⚠ f[9:10] offset is consistent with research but needs live confirmation
-            //   by physically spinning an Art Pen while capturing BT frames.
+            // Confirmed working (2026-04-02, PTH-660 BT + Art Pen).
+            //
+            // Gate on inRange: boundary-noise frames (0xC0, !inRange) have f[9:10]=0x00,
+            // which decodes as ~270° via the -900+wrap formula. Use the last valid reading
+            // from an inRange=1 frame to suppress this oscillation.
             var rotation = 0.0
             if isArtPen {
-                let rawRot = Int(Int16(bitPattern: UInt16(f[9]) | UInt16(f[10]) << 8))
-                var r = rawRot - 900
-                if r < 0 { r += 3600 }
-                rotation = Double(r) / 10.0  // degrees [0, 360)
+                if inRange {
+                    let rawRot = Int(Int16(bitPattern: UInt16(f[9]) | UInt16(f[10]) << 8))
+                    var r = rawRot - 900
+                    if r < 0 { r += 3600 }
+                    state.lastRotation = Double(r) / 10.0  // degrees [0, 360)
+                }
+                rotation = state.lastRotation
             }
 
             state.lastX = x
