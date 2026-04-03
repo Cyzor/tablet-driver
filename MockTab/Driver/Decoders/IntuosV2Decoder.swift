@@ -87,6 +87,20 @@ struct IntuosV2Decoder: WacomDecoder {
         }
     }
 
+    // MARK: - BT frame coordinate/pressure/tilt helper
+
+    /// Decode coordinate, pressure, and tilt from a BT per-frame buffer (used by both
+    /// 361-byte and 99-byte BT paths). Offsets and interpretation are identical in both formats.
+    /// Pressure formula is canonical (mask high byte first).
+    private func decodeBTFrame(_ f: UnsafePointer<UInt8>) -> (x: Int, y: Int, pressure: Int, tiltX: Double, tiltY: Double) {
+        let x = Int(UInt16(f[1]) | UInt16(f[2]) << 8)
+        let y = Int(UInt16(f[3]) | UInt16(f[4]) << 8)
+        let pressure = Int(UInt16(f[5]) | (UInt16(f[6] & 0x1F) << 8))
+        let tiltX = Double(Int8(bitPattern: f[7])) / 127.0
+        let tiltY = Double(Int8(bitPattern: f[8])) / 127.0
+        return (x, y, pressure, tiltX, tiltY)
+    }
+
     // MARK: - Standard pen report (0x10)
 
     private func decodePenReport(
@@ -185,18 +199,9 @@ struct IntuosV2Decoder: WacomDecoder {
                             isMouse: isMouse)))
 
                 // Check tool compatibility and emit warning if unsupported
-                let caps = WacomToolCatalog.capabilities(
-                    forToolCode: toolCode, family: deviceFamily)
-                state.toolIsSupported = caps.isSupported
-                if !caps.isSupported {
-                    var limitations: [String] = []
-                    if !caps.hasPressure { limitations.append("pressure") }
-                    if !caps.hasTilt { limitations.append("tilt") }
-                    if !caps.hasRotation { limitations.append("rotation") }
-                    let msg =
-                        "Tool 0x\(String(format: "%04X", toolCode)) not fully supported on \(deviceFamily). Limited to: \(limitations.joined(separator: ", "))"
-                    results.append(.toolCompatibility(msg))
-                }
+                emitToolCompatibility(
+                    toolCode: toolCode, deviceFamily: deviceFamily,
+                    state: &state, results: &results)
             }
         }
 
@@ -386,18 +391,9 @@ struct IntuosV2Decoder: WacomDecoder {
                         isMouse: isMouse)))
 
             // Check tool compatibility and emit warning if unsupported
-            let caps = WacomToolCatalog.capabilities(
-                forToolCode: toolCode, family: deviceFamily)
-            state.toolIsSupported = caps.isSupported
-            if !caps.isSupported {
-                var limitations: [String] = []
-                if !caps.hasPressure { limitations.append("pressure") }
-                if !caps.hasTilt { limitations.append("tilt") }
-                if !caps.hasRotation { limitations.append("rotation") }
-                let msg =
-                    "Tool 0x\(String(format: "%04X", toolCode)) not fully supported on \(deviceFamily). Limited to: \(limitations.joined(separator: ", "))"
-                results.append(.toolCompatibility(msg))
-            }
+            emitToolCompatibility(
+                toolCode: toolCode, deviceFamily: deviceFamily,
+                state: &state, results: &results)
         }
 
         // Process up to 7 pen frames (oldest first). Each frame is 14 bytes.
@@ -542,13 +538,7 @@ struct IntuosV2Decoder: WacomDecoder {
             let barrel1 = (flags & 0x02) != 0
             let barrel2 = (flags & 0x04) != 0
 
-            let x = Int(UInt16(f[1]) | UInt16(f[2]) << 8)
-            let y = Int(UInt16(f[3]) | UInt16(f[4]) << 8)
-            // Pressure: 13-bit (f[5] + lower 5 bits of f[6]) per kernel spec.
-            let pressure = Int(UInt16(f[5]) | (UInt16(f[6] & 0x1F) << 8))
-            // Tilt: f[7]=tiltX, f[8]=tiltY per kernel wacom_intuos_pro2_bt_irq().
-            let tiltX = Double(Int8(bitPattern: f[7])) / 127.0
-            let tiltY = Double(Int8(bitPattern: f[8])) / 127.0
+            let (x, y, pressure, tiltX, tiltY) = decodeBTFrame(f)
 
             // Rotation: f[9:10], signed LE16, Art Pen only.
             // Kernel patches for wacom_intuos_pro2_bt_pen() confirm Art-Pen-specific rotation
@@ -658,9 +648,11 @@ struct IntuosV2Decoder: WacomDecoder {
             let barrel2 = (f[0] & 0x04) != 0
             let barrel1 = (f[0] & 0x02) != 0
 
-            // Pen left detection range — emit a final proximity-out event once.
+            // Genuine firmware exit signal — both prox and inRange lost.
+            // Kernel model: exit immediately when !prox && !inRange (0x80).
             if !inProx && !inRange {
                 if state.prevInProximity {
+                    state.exitFrameCount = 0
                     state.prevInProximity = false
                     results.append(
                         .pen(
@@ -672,16 +664,35 @@ struct IntuosV2Decoder: WacomDecoder {
                                 penButton1: false, penButton2: false,
                                 eraser: false, inProximity: false, hoverDistance: 0)))
                 }
-                continue
+                break
+            }
+
+            // Boundary noise: prox=1 but inRange=0 (0xC0). Count consecutive bad frames;
+            // exit after exitThreshold to bridge transient oscillations at detection edge.
+            if !inRange {
+                state.exitFrameCount += 1
+                if state.exitFrameCount >= DecoderState.exitThreshold && state.prevInProximity {
+                    state.exitFrameCount = 0
+                    state.prevInProximity = false
+                    results.append(
+                        .pen(
+                            TabletPoint(
+                                x: state.lastX, y: state.lastY,
+                                maxX: spec.maxX, maxY: spec.maxY,
+                                pressure: 0, maxPressure: spec.maxPressure,
+                                tiltX: 0, tiltY: 0, rotation: 0.0,
+                                penButton1: false, penButton2: false,
+                                eraser: false, inProximity: false, hoverDistance: 0)))
+                    break
+                }
+                // Continue to decode point data — don't suppress output on boundary noise
+            } else {
+                state.exitFrameCount = 0  // good frame — reset boundary counter
             }
 
             state.prevInProximity = true
 
-            let x = Int(UInt16(f[1]) | UInt16(f[2]) << 8)
-            let y = Int(UInt16(f[3]) | UInt16(f[4]) << 8)
-            let pressure = Int(UInt16(f[5]) | UInt16(f[6]) << 8) & 0x1FFF
-            let tiltX = Double(Int8(bitPattern: f[7])) / 127.0
-            let tiltY = Double(Int8(bitPattern: f[8])) / 127.0
+            let (x, y, pressure, tiltX, tiltY) = decodeBTFrame(f)
             // Rotation is NOT available over BT Classic — kernel does not decode
             // f[9:13] (reserved). Rotation only exists in USB Report ID 0x10.
 

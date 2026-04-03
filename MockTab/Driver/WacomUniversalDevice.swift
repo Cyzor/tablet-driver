@@ -135,10 +135,7 @@ final class WacomUniversalDevice: TabletDevice {
         // RF link is not yet established, so it is re-sent when 0x80/0x02 confirms link-up.
         if !isBluetooth {
             // IntuosV1 / Intuos3: feature init. First byte is the report ID.
-            if var bytes = deviceSpec.featureInit {
-                let reportID = CFIndex(bytes[0])
-                IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
-            }
+            sendFeatureInit()
 
             // Intuos3 two-stage init: second feature report after a brief delay.
             if var bytes2 = deviceSpec.featureInit2 {
@@ -181,6 +178,14 @@ final class WacomUniversalDevice: TabletDevice {
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
+    }
+
+    /// Send feature init to activate the digitizer endpoint.
+    /// Assumes caller is on the main thread (IOHIDDeviceSetReport is not thread-safe).
+    private func sendFeatureInit() {
+        guard var bytes = deviceSpec.featureInit else { return }
+        let reportID = CFIndex(bytes[0])
+        IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
     }
 
     // MARK: - C callback
@@ -245,13 +250,8 @@ final class WacomUniversalDevice: TabletDevice {
                         wirelessLinkConfirmed = true
                         // Send feature init now that the RF link is confirmed.
                         // Must be dispatched to main thread — HID callbacks are background.
-                        if var bytes = deviceSpec.featureInit {
-                            let reportID = CFIndex(bytes[0])
-                            let dev = device
-                            Task { @MainActor in
-                                IOHIDDeviceSetReport(
-                                    dev, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
-                            }
+                        Task { @MainActor in
+                            self.sendFeatureInit()
                         }
                     }
                 case .lost:

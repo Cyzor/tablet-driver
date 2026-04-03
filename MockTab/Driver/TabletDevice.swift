@@ -311,3 +311,35 @@ func decodeBLEPadReport(
         touchRingActive: ringActive,
         touchRingPosition: ringActive ? ringPos : 0x7F)
 }
+
+// MARK: - Tool compatibility checking
+
+/// Emit a toolCompatibility warning if the tool code is not fully supported on the device.
+/// Updates `state.toolIsSupported` and appends `.toolCompatibility(msg)` to results if needed.
+func emitToolCompatibility(
+    toolCode: UInt16,
+    deviceFamily: String,
+    state: inout DecoderState,
+    results: inout [DecodeResult]
+) {
+    let caps = WacomToolCatalog.capabilities(forToolCode: toolCode, family: deviceFamily)
+    state.toolIsSupported = caps.isSupported
+    if !caps.isSupported {
+        var limitations: [String] = []
+        if !caps.hasPressure { limitations.append("pressure") }
+        if !caps.hasTilt { limitations.append("tilt") }
+        if !caps.hasRotation { limitations.append("rotation") }
+        let msg = "Tool 0x\(String(format: "%04X", toolCode)) not fully supported on \(deviceFamily). Limited to: \(limitations.joined(separator: ", "))"
+        results.append(.toolCompatibility(msg))
+    }
+}
+
+// MARK: - Wireless status decoding (bit-0 protocol)
+
+/// Decode wireless status for V1/Intuos3 dongles (ACK-4040 / basic protocol).
+/// Protocol: report[1] bit 0 = connection state (1 = active, 0 = lost).
+func decodeWirelessReport(report: UnsafePointer<UInt8>, length: CFIndex) -> [DecodeResult] {
+    guard length >= 2 else { return [] }
+    if (report[1] & 0x01) != 0 { return [.wireless(.active)] }
+    return [.wireless(.lost)]
+}
