@@ -119,23 +119,51 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         alert.alertStyle = .warning
         let resetButton = alert.addButton(withTitle: "Reset")
         alert.addButton(withTitle: "Cancel")
-        // Return key and Command-R activate Reset button.
-        resetButton.keyEquivalent = "r"
-        resetButton.keyEquivalentModifierMask = .command
+        // Return key = default button (highlighted, activates on Return).
+        resetButton.keyEquivalent = "\r"
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        // Monitor for Command-R while dialog is open.
+        var eventMonitor: Any?
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            // Command-R (keyCode 15 = 'R')
+            if event.keyCode == 15 && event.modifierFlags.contains(.command) {
+                // Defer the reset to allow the dialog to close first
+                DispatchQueue.main.async { self?.performFactoryReset() }
+                if let monitor = eventMonitor {
+                    NSEvent.removeMonitor(monitor)
+                }
+                return nil  // consume the event
+            }
+            return event  // pass through all other keys
+        }
+
+        let resultCode = alert.runModal()
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+
+        guard resultCode == .alertFirstButtonReturn else { return }
         performFactoryReset()
     }
 
     private func performFactoryReset() {
+        // Tell PreferencesWindowController not to save when willTerminate fires.
+        // This prevents the window state from being re-populated after we clear it.
+        PreferencesWindowController.shared.skipNextWindowSave()
+
         // Wipe the entire UserDefaults domain in one call.  This removes every
         // key ever written: device settings, presets, tool settings, registry,
-        // and window state.  All persistent state lives here — there are no
-        // separate caches or Application Support files to clear.
+        // and window state.
         if let domain = Bundle.main.bundleIdentifier {
             UserDefaults.standard.removePersistentDomain(forName: domain)
             UserDefaults.standard.synchronize()
         }
+
+        // Also clear NSWindow autosave caches for window frames.  These are stored
+        // independently in system preferences (com.apple.NSWindow.State) and would
+        // otherwise restore stale window geometry on the next launch.
+        NSWindow.removeFrame(usingName: NSWindow.FrameAutosaveName("MockTabSettingsWindow"))
+        NSWindow.removeFrame(usingName: NSWindow.FrameAutosaveName("PreferencesWindow"))
 
         // Relaunch so the new instance reads factory defaults rather than the
         // stale in-memory @Published / @AppStorage state from this session.
