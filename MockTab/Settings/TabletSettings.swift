@@ -773,38 +773,23 @@ final class TabletSettings: ObservableObject {
     ///     5–7  —    None          (leave open for user assignment)
     func applyExpressKeyDefaults() {
         guard ud.string(forKey: devicePrefix + "expressKeyBindings") == nil else { return }
-        let cmdZ = ButtonBinding(
-            kind: .keyCombo,
-            keyCode: UInt16(kVK_ANSI_Z),
-            modifierFlags: CGEventFlags.maskCommand.rawValue,
-            keyLabel: "Z")
-        let redoZ = ButtonBinding(
-            kind: .keyCombo,
-            keyCode: UInt16(kVK_ANSI_Z),
-            modifierFlags: CGEventFlags([.maskCommand, .maskShift]).rawValue,
-            keyLabel: "Z")
-        let space = ButtonBinding(
-            kind: .keyCombo,
-            keyCode: UInt16(kVK_Space),
-            modifierFlags: 0,
-            keyLabel: "Space")
+        // Default express key bindings: keys 1-4 are modifier keys (⌘ ⌥ ⌃ ⇧).
+        // Rest are unbound (.none).
         // 16-entry layout for dual-ring Cintiq devices (indices 0–15).
         // Indices 0–2  = left  toggle buttons (near ring), 3–7  = left  express keys.
         // Indices 8–10 = right toggle buttons (near ring), 11–15 = right express keys.
         // Devices with only 8 buttons use indices 0–7; the upper 8 entries are ignored.
         expressKeyBindings = [
-            cmdZ,  // 0  left toggle 1
-            redoZ,  // 1  left toggle 2
-            space,  // 2  left toggle 3
-            ButtonBinding(modifierOnly: .option),  // 3  left key 4
-            ButtonBinding(modifierOnly: .control),  // 4  left key 5
-            .none, .none, .none,  // 5–7 left keys 6–8
-            cmdZ,  // 8  right toggle 9  (mirror)
-            redoZ,  // 9  right toggle 10 (mirror)
-            space,  // 10 right toggle 11 (mirror)
-            ButtonBinding(modifierOnly: .option),  // 11 right key 12 (mirror)
-            ButtonBinding(modifierOnly: .control),  // 12 right key 13 (mirror)
-            .none, .none, .none,  // 13–15 right keys 14–16
+            ButtonBinding(modifierOnly: .command),   // 0  left key 1 → ⌘
+            ButtonBinding(modifierOnly: .option),    // 1  left key 2 → ⌥
+            ButtonBinding(modifierOnly: .control),   // 2  left key 3 → ⌃
+            ButtonBinding(modifierOnly: .shift),     // 3  left key 4 → ⇧
+            .none, .none, .none, .none,              // 4–7 left keys 5–8
+            ButtonBinding(modifierOnly: .command),   // 8  right key 1 (mirror) → ⌘
+            ButtonBinding(modifierOnly: .option),    // 9  right key 2 (mirror) → ⌥
+            ButtonBinding(modifierOnly: .control),   // 10 right key 3 (mirror) → ⌃
+            ButtonBinding(modifierOnly: .shift),     // 11 right key 4 (mirror) → ⇧
+            .none, .none, .none, .none,              // 12–15 right keys 5–8
         ]
     }
 
