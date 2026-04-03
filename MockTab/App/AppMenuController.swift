@@ -119,9 +119,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         alert.alertStyle = .warning
         let resetButton = alert.addButton(withTitle: "Reset")
         alert.addButton(withTitle: "Cancel")
-        // Remove Return-key shortcut from the destructive button so it cannot
-        // be triggered accidentally — the user must click it explicitly.
-        resetButton.keyEquivalent = ""
+        // Return key and Command-R activate Reset button.
+        resetButton.keyEquivalent = "r"
+        resetButton.keyEquivalentModifierMask = .command
 
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         performFactoryReset()
