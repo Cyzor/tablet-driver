@@ -257,6 +257,9 @@ struct DecoderState {
     /// Whether the current tool is supported on this device family.
     /// Used to show UI warnings for incompatible tools and adjust feature decoding.
     var toolIsSupported: Bool = true
+    /// Last valid rotation reading (Art Pen BT only). Used to suppress spurious 270°
+    /// values at boundary-noise frames (0xC0, !inRange) where f[9:10]=0x00.
+    var lastRotation: Double = 0.0
 }
 
 enum DecodeResult {
