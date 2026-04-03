@@ -223,18 +223,22 @@ final class InputInjector {
                         postMouseUp(button: .right, at: smoothedPoint, clickCount: 1)
                     }
                     if (lastUSBMouseMask & 0x04) != 0 {
-                        CGEvent(
-                            mouseEventSource: nil, mouseType: .otherMouseUp,
-                            mouseCursorPosition: smoothedPoint, mouseButton: .center)?
-                            .post(tap: .cghidEventTap)
+                        if let e = CGEvent(
+                            mouseEventSource: sessionSource, mouseType: .otherMouseUp,
+                            mouseCursorPosition: smoothedPoint, mouseButton: .center) {
+                            e.flags = currentEventFlags
+                            e.post(tap: .cghidEventTap)
+                        }
                     }
                     lastUSBMouseMask = 0
                 }
                 if lastMiddleDown {
-                    CGEvent(
-                        mouseEventSource: nil, mouseType: .otherMouseUp,
-                        mouseCursorPosition: smoothedPoint, mouseButton: .center)?
-                        .post(tap: .cghidEventTap)
+                    if let e = CGEvent(
+                        mouseEventSource: sessionSource, mouseType: .otherMouseUp,
+                        mouseCursorPosition: smoothedPoint, mouseButton: .center) {
+                        e.flags = currentEventFlags
+                        e.post(tap: .cghidEventTap)
+                    }
                     lastMiddleDown = false
                 }
                 hasSmoothedPoint = false
@@ -346,10 +350,12 @@ final class InputInjector {
         // ── Middle button (mouse tool only, always immediate) ──────────────────
         if point.mouseMiddleButton != lastMiddleDown {
             let type: CGEventType = point.mouseMiddleButton ? .otherMouseDown : .otherMouseUp
-            CGEvent(
-                mouseEventSource: nil, mouseType: type,
-                mouseCursorPosition: screenPoint, mouseButton: .center)?
-                .post(tap: .cghidEventTap)
+            if let e = CGEvent(
+                mouseEventSource: sessionSource, mouseType: type,
+                mouseCursorPosition: screenPoint, mouseButton: .center) {
+                e.flags = currentEventFlags
+                e.post(tap: .cghidEventTap)
+            }
             lastMiddleDown = point.mouseMiddleButton
         }
 
@@ -427,10 +433,12 @@ final class InputInjector {
         }
         if midNow != midWas {
             let type: CGEventType = midNow ? .otherMouseDown : .otherMouseUp
-            CGEvent(
-                mouseEventSource: nil, mouseType: type,
-                mouseCursorPosition: loc, mouseButton: .center)?
-                .post(tap: .cghidEventTap)
+            if let e = CGEvent(
+                mouseEventSource: sessionSource, mouseType: type,
+                mouseCursorPosition: loc, mouseButton: .center) {
+                e.flags = currentEventFlags
+                e.post(tap: .cghidEventTap)
+            }
         }
     }
 
@@ -555,12 +563,25 @@ final class InputInjector {
 
     // MARK: - Mouse event helpers
 
-    /// Returns a CGEventSource that snapshots the current session modifier state.
-    /// All synthesized events use this source so their .flags field reflects
-    /// physically-held modifiers — prevents stuck-modifier bugs in apps that track
-    /// modifier state from event .flags rather than from flagsChanged events alone.
+    /// Tracks modifier flags synthesized by tablet button bindings.
+    /// Updated atomically in fireButtonAction before any event is posted.
+    private var activeSyntheticFlags: CGEventFlags = []
+
+    /// The definitive modifier state stamped on every outbound CGEvent.
+    /// Merges physical-keyboard-only state (hidSystemState) with any flags
+    /// this driver has pressed via button bindings.  hidSystemState is used
+    /// instead of combinedSessionState so that previously injected synthetic
+    /// modifiers never feed back into new events — the root cause of the
+    /// sticky-modifier bug shared with OpenTabletDriver and Adobe software.
+    private var currentEventFlags: CGEventFlags {
+        CGEventFlags(
+            rawValue: CGEventSource.flagsState(.hidSystemState).rawValue
+                | activeSyntheticFlags.rawValue)
+    }
+
+    /// CGEventSource backed by hidSystemState (physical devices only).
     private var sessionSource: CGEventSource? {
-        CGEventSource(stateID: .combinedSessionState)
+        CGEventSource(stateID: .hidSystemState)
     }
 
     private func postMouseDown(
@@ -582,6 +603,7 @@ final class InputInjector {
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
         e.setDoubleValueField(.mouseEventPressure, value: pressure)
         e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
+        e.flags = currentEventFlags
         e.post(tap: .cghidEventTap)
     }
 
@@ -601,6 +623,7 @@ final class InputInjector {
         e.setDoubleValueField(.tabletEventPointPressure, value: 0)
         e.setDoubleValueField(.mouseEventPressure, value: 0)
         e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
+        e.flags = currentEventFlags
         e.post(tap: .cghidEventTap)
     }
 
@@ -627,6 +650,7 @@ final class InputInjector {
             .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
         e.setIntegerValueField(
             .mouseEventDeltaY, value: Int64((location.y - lastPostedPoint.y).rounded()))
+        e.flags = currentEventFlags
         e.post(tap: .cghidEventTap)
     }
 
@@ -640,6 +664,7 @@ final class InputInjector {
             .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
         e.setIntegerValueField(
             .mouseEventDeltaY, value: Int64((location.y - lastPostedPoint.y).rounded()))
+        e.flags = currentEventFlags
         e.post(tap: .cghidEventTap)
     }
 
@@ -664,6 +689,7 @@ final class InputInjector {
             | (point.penButton1 ? 2 : 0)
             | (point.penButton2 ? 4 : 0)
         e.setIntegerValueField(.tabletEventPointButtons, value: buttons)
+        e.flags = currentEventFlags
         e.post(tap: .cghidEventTap)
     }
 
@@ -716,6 +742,7 @@ final class InputInjector {
         e.setIntegerValueField(.tabletProximityEventVendorPointerType, value: vendorPtr)
         e.setIntegerValueField(.tabletProximityEventCapabilityMask, value: 0x05C7)
         e.setIntegerValueField(.tabletProximityEventEnterProximity, value: entering ? 1 : 0)
+        e.flags = currentEventFlags
         e.post(tap: .cghidEventTap)
     }
 
@@ -730,37 +757,44 @@ final class InputInjector {
             break
         case .leftClick:
             let type: CGEventType = down ? .leftMouseDown : .leftMouseUp
-            CGEvent(
+            if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
-                mouseCursorPosition: location, mouseButton: .left)?
-                .post(tap: .cghidEventTap)
+                mouseCursorPosition: location, mouseButton: .left) {
+                e.flags = currentEventFlags
+                e.post(tap: .cghidEventTap)
+            }
         case .rightClick:
             let type: CGEventType = down ? .rightMouseDown : .rightMouseUp
-            CGEvent(
+            if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
-                mouseCursorPosition: location, mouseButton: .right)?
-                .post(tap: .cghidEventTap)
+                mouseCursorPosition: location, mouseButton: .right) {
+                e.flags = currentEventFlags
+                e.post(tap: .cghidEventTap)
+            }
         case .middleClick:
             let type: CGEventType = down ? .otherMouseDown : .otherMouseUp
-            CGEvent(
+            if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
-                mouseCursorPosition: location, mouseButton: .center)?
-                .post(tap: .cghidEventTap)
+                mouseCursorPosition: location, mouseButton: .center) {
+                e.flags = currentEventFlags
+                e.post(tap: .cghidEventTap)
+            }
         case .keyCombo:
+            // Update internal synthetic state atomically before posting anything,
+            // so currentEventFlags already reflects the new state when stamped.
+            let bindingFlags = CGEventFlags(rawValue: binding.modifierFlags)
+            if down {
+                activeSyntheticFlags.insert(bindingFlags)
+            } else {
+                activeSyntheticFlags.remove(bindingFlags)
+            }
             if binding.keyLabel.isEmpty && binding.modifierFlags != 0 {
                 guard let e = CGEvent(source: sessionSource) else { return }
                 e.type = .flagsChanged
                 e.setIntegerValueField(
                     .keyboardEventKeycode,
                     value: Int64(binding.keyCode))
-                if down {
-                    e.flags = CGEventFlags(rawValue: binding.modifierFlags)
-                } else {
-                    // Preserve any modifiers the user is still physically holding;
-                    // only remove the flags this binding is releasing.
-                    let current = CGEventSource.flagsState(.combinedSessionState)
-                    e.flags = current.subtracting(CGEventFlags(rawValue: binding.modifierFlags))
-                }
+                e.flags = currentEventFlags
                 e.post(tap: .cghidEventTap)
             } else {
                 guard
@@ -769,7 +803,7 @@ final class InputInjector {
                         virtualKey: CGKeyCode(binding.keyCode),
                         keyDown: down)
                 else { return }
-                e.flags = CGEventFlags(rawValue: binding.modifierFlags)
+                e.flags = currentEventFlags
                 e.post(tap: .cghidEventTap)
             }
         }
@@ -785,6 +819,7 @@ final class InputInjector {
                 wheelCount: 1, wheel1: Int32(delta * 3), wheel2: 0, wheel3: 0)
         else { return }
         e.location = location
+        e.flags = currentEventFlags
         e.post(tap: .cghidEventTap)
     }
 
