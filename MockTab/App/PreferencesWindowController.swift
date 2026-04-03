@@ -31,6 +31,7 @@ final class PreferencesWindowController {
     private var defaultWindow: SettingsWindowController?
     private var deviceObserver: AnyCancellable?
     private var isTerminating = false
+    private var skipWindowSave = false
 
     private static let restorationKey = "MockTab_OpenWindows"
 
@@ -71,6 +72,12 @@ final class PreferencesWindowController {
             self?.isTerminating = true
             self?.saveWindowState()
         }
+    }
+
+    /// Tell PreferencesWindowController to skip the next window state save.
+    /// Used by Factory Reset to prevent willTerminate from re-saving cleared state.
+    func skipNextWindowSave() {
+        skipWindowSave = true
     }
 
     // MARK: - Default window API
@@ -131,6 +138,7 @@ final class PreferencesWindowController {
     // MARK: - Persistence
 
     func saveWindowState() {
+        guard !skipWindowSave else { return }
         let entries = windows.compactMap { wc -> [String: Any]? in
             guard let frame = wc.window?.frame else { return nil }
             var entry: [String: Any] = [
