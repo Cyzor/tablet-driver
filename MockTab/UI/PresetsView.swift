@@ -72,13 +72,13 @@
 
 import SwiftUI
 
-/// Presets tab — lets the user create, activate, rename, and delete named
+/// Profiles tab — lets the user create, activate, rename, and delete named
 /// configuration snapshots for the current device, and bind specific apps
-/// to presets so they switch automatically on focus.
+/// to profiles so they switch automatically on focus.
 ///
-/// Each preset stores only the keys that were explicitly changed while it was
+/// Each profile stores only the keys that were explicitly changed while it was
 /// active; everything else falls through to the device defaults at read time.
-struct PresetsView: View {
+struct ProfilesView: View {
     @ObservedObject var settings: TabletSettings
 
     @State private var isCreating = false

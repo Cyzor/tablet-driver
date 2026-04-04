@@ -43,6 +43,7 @@
 		AA000049 /* WacomUniversalDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomUniversalDevice.swift */; };
 		AA000050 /* Intuos3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* Intuos3Decoder.swift */; };
 		AA000051 /* BambooDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000051 /* BambooDecoder.swift */; };
+		AA000052 /* AppOverrideBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* AppOverrideBar.swift */; };
 		AA000070 /* HIDCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000070 /* HIDCapture.swift */; };
 		AA000071 /* WacomToolSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000071 /* WacomToolSpec.swift */; };
 		AA000072 /* OTDImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000072 /* OTDImporter.swift */; };
@@ -90,6 +91,7 @@
 		AB000049 /* WacomUniversalDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomUniversalDevice.swift; sourceTree = "<group>"; };
 		AB000050 /* Intuos3Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intuos3Decoder.swift; sourceTree = "<group>"; };
 		AB000051 /* BambooDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BambooDecoder.swift; sourceTree = "<group>"; };
+		AB000052 /* AppOverrideBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverrideBar.swift; sourceTree = "<group>"; };
 		AB000070 /* HIDCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDCapture.swift; sourceTree = "<group>"; };
 		AB000071 /* WacomToolSpec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomToolSpec.swift; sourceTree = "<group>"; };
 		AB000072 /* OTDImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTDImporter.swift; sourceTree = "<group>"; };
@@ -186,6 +188,7 @@
 				AB000016 /* ScratchpadView.swift */,
 				AB000033 /* InfoView.swift */,
 				AB000034 /* PresetsView.swift */,
+				AB000052 /* AppOverrideBar.swift */,
 				AB000040 /* DevicesView.swift */,
 				AB000041 /* TabStatusBar.swift */,
 				05D7EB7A2F79E6E30086E03F /* AboutApp.swift */,
@@ -326,6 +329,7 @@
 				AA000016 /* ScratchpadView.swift in Sources */,
 				AA000033 /* InfoView.swift in Sources */,
 				AA000034 /* PresetsView.swift in Sources */,
+				AA000052 /* AppOverrideBar.swift in Sources */,
 				AA000040 /* DevicesView.swift in Sources */,
 				AA000041 /* TabStatusBar.swift in Sources */,
 			);

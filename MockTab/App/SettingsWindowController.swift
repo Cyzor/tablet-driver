@@ -146,7 +146,7 @@ final class SettingsWindowController: NSWindowController {
 
     static let tabLabels = [
         "Tablet Area", "Pressure", "Buttons", "Display",
-        "Devices", "Presets", "Scratchpad", "Info",
+        "Devices", "Profiles", "Scratchpad", "Info",
     ]
 
     private static let deviceSpecificTabIndices: Set<Int> = [0, 1, 2, 3]
@@ -251,8 +251,8 @@ final class SettingsWindowController: NSWindowController {
         addTab(label: "Devices", symbol: "rectangle.on.rectangle", height: 480, width: 620) {
             DevicesView(tabletManager: tm, registry: dr, undoManager: um)
         }
-        addTab(label: "Presets", symbol: "star.circle", height: 450) {
-            PresetsView(settings: s)
+        addTab(label: "Profiles", symbol: "star.circle", height: 450) {
+            ProfilesView(settings: s)
         }
         addTab(label: "Scratchpad", symbol: "pencil.and.outline", height: 360) {
             ScratchpadView(settings: s)

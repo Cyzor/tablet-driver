@@ -60,6 +60,7 @@ struct ButtonMappingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.buttonKeys)
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
 

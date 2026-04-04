@@ -110,7 +110,7 @@ struct PresetStatusBar: View {
 
                 Spacer()
 
-                // Preset picker — mirrors the Presets tab and the app menu.
+                // Profile picker — mirrors the Profiles tab and the app menu.
                 Menu {
                     // "Device defaults" always appears first; checkmark when active.
                     Button {
