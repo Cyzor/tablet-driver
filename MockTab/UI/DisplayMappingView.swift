@@ -66,7 +66,7 @@ struct DisplayMappingView: View {
             }
 
             Text("The active tablet area maps to the selected display.")
-                .font(.caption)
+                .font(.settingsLabel)
                 .foregroundStyle(.secondary)
 
             Picker(
@@ -103,7 +103,7 @@ struct DisplayMappingView: View {
     private var toggleSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Displays in rotation — ⌘+click individual, ⇧+click ranges")
-                .font(.caption)
+                .font(.settingsLabel)
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 8) {
@@ -146,7 +146,7 @@ struct DisplayMappingView: View {
             VStack(spacing: 0) {
                 Spacer()
                 Text(info.name)
-                    .font(.caption2)
+                    .font(.badgeTitle)
                     .bold()
                     .lineLimit(1)
                     .foregroundStyle(.white)
@@ -321,9 +321,9 @@ struct DisplayMappingView: View {
                         ), style: StrokeStyle(lineWidth: selected ? 2 : 1))
 
                     let nameResolved = ctx.resolve(
-                        Text(info.name).font(.caption2).bold().foregroundColor(.white))
+                        Text(info.name).font(.badgeTitle).bold().foregroundColor(.white))
                     let resResolved = ctx.resolve(
-                        Text(info.resolution).font(.caption2).foregroundColor(.white))
+                        Text(info.resolution).font(.badgeSubtitle).foregroundColor(.white))
                     let measure = CGSize(width: rect.width - 8, height: 40)
                     let nameSize = nameResolved.measure(in: measure)
                     let resSize = resResolved.measure(in: measure)

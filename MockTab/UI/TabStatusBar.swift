@@ -33,7 +33,7 @@ struct DeviceNameLabel: View {
                 .fill(tabletManager.isConnected ? Color.green : Color.secondary.opacity(0.5))
                 .frame(width: 6, height: 6)
             Text(displayName)
-                .font(.caption)
+                .font(.settingsLabel)
                 .foregroundStyle(.secondary)
         }
     }
@@ -61,7 +61,7 @@ struct ToolNameLabel: View {
                 .fill(tabletManager.activeToolID != nil ? Color.green : Color.secondary.opacity(0.5))
                 .frame(width: 6, height: 6)
             Text(displayName)
-                .font(.caption)
+                .font(.settingsLabel)
                 .foregroundStyle(.secondary)
         }
     }
@@ -89,22 +89,22 @@ struct PresetStatusBar: View {
             Divider()
             HStack(spacing: 6) {
                 Image(systemName: settings.activePreset == nil ? "star" : "star.fill")
-                    .font(.caption2)
+                    .font(.settingsBadge)
                     .foregroundStyle(settings.activePreset == nil
                                      ? Color.secondary
                                      : Color.yellow)
 
                 if let preset = settings.activePreset {
                     Text(preset.name)
-                        .font(.caption)
+                        .font(.settingsLabel)
                     if case .app(_, let appName) = settings.activationSource {
                         Text("· \(appName)")
-                            .font(.caption)
+                            .font(.settingsLabel)
                             .foregroundStyle(.secondary)
                     }
                 } else {
                     Text("Device defaults")
-                        .font(.caption)
+                        .font(.settingsLabel)
                         .foregroundStyle(.secondary)
                 }
 
@@ -139,7 +139,7 @@ struct PresetStatusBar: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.caption2)
+                        .font(.settingsBadge)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 4)
                 }

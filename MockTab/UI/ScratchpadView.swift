@@ -40,7 +40,7 @@ struct ScratchpadView: View {
                 .font(.headline)
 
             Text("Draw on the canvas to verify pressure and click behavior.")
-                .font(.caption)
+                .font(.settingsLabel)
                 .foregroundStyle(.secondary)
 
             ScratchpadCanvas(currentPressure: $currentPressure, clearID: clearID)
@@ -53,7 +53,7 @@ struct ScratchpadView: View {
 
             HStack(spacing: 10) {
                 Text("Pressure")
-                    .font(.caption)
+                    .font(.settingsLabel)
                     .foregroundStyle(.secondary)
                     .frame(width: 58, alignment: .leading)
 
@@ -70,7 +70,7 @@ struct ScratchpadView: View {
                 .frame(height: 8)
 
                 Text(String(format: "%.0f%%", currentPressure * 100))
-                    .font(.caption.monospacedDigit())
+                    .font(.monospaced)
                     .foregroundStyle(.secondary)
                     .frame(width: 36, alignment: .trailing)
 

@@ -34,38 +34,6 @@ struct TabletAreaView: View {
     /// The product ID this view is currently showing.
     var boundProductID: Int?
 
-    // MARK: - Device list
-
-    private struct DeviceEntry: Identifiable, Hashable {
-        let id: Int           // productID
-        let label: String     // nickname or model name
-        let isConnected: Bool
-    }
-
-    /// Merged list of all ever-seen and currently-connected tablets, connected first.
-    private var deviceEntries: [DeviceEntry] {
-        var seenPIDs = Set<Int>()
-        var entries: [DeviceEntry] = []
-        for tablet in registry.knownTablets {
-            seenPIDs.insert(tablet.id)
-            entries.append(DeviceEntry(
-                id: tablet.id,
-                label: tablet.nickname,
-                isConnected: tabletManager.connectedProductIDs.contains(tablet.id)))
-        }
-        // Connected devices not yet in the registry (first connect before first recordTablet).
-        for pid in tabletManager.connectedProductIDs where !seenPIDs.contains(pid) {
-            entries.append(DeviceEntry(
-                id: pid,
-                label: TabletManager.deviceName(forProductID: pid),
-                isConnected: true))
-        }
-        return entries.sorted {
-            if $0.isConnected != $1.isConnected { return $0.isConnected }
-            return $0.label.localizedStandardCompare($1.label) == .orderedAscending
-        }
-    }
-
     // MARK: - Digitizer dimensions
 
     /// Digitizer width for the currently-shown device, in hardware line-units.
@@ -103,27 +71,7 @@ struct TabletAreaView: View {
 
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if deviceEntries.isEmpty {
-                Text("No tablets detected yet")
-                    .foregroundStyle(.secondary)
-            } else {
-                Picker("Tablet", selection: pickerBinding) {
-                    ForEach(deviceEntries) { entry in
-                        Label {
-                            Text(entry.label)
-                        } icon: {
-                            Image(systemName: "circle.fill")
-                                .foregroundStyle(
-                                    entry.isConnected
-                                        ? AnyShapeStyle(Color.green)
-                                        : AnyShapeStyle(Color.secondary.opacity(0.3)))
-                                .font(.caption2)
-                        }
-                        .tag(entry.id)
-                    }
-                }
-                .pickerStyle(.menu)
-            }
+            deviceHeading
 
             GeometryReader { geo in
                 let cs = canvasSize(in: geo.size)
@@ -166,21 +114,38 @@ struct TabletAreaView: View {
         .padding()
     }
 
-    /// Binding that fires `onDeviceSelected` when the user picks a different tablet.
-    private var pickerBinding: Binding<Int> {
-        Binding(
-            get: {
-                boundProductID
-                    ?? tabletManager.activeContext?.productID
-                    ?? deviceEntries.first?.id
-                    ?? 0
-            },
-            set: { newPID in
-                if newPID != boundProductID, newPID != 0 {
-                    onDeviceSelected?(newPID)
-                }
+    // MARK: - Device identity
+
+    private struct DeviceLabel {
+        let primary: String
+        let secondary: String?
+    }
+
+    private var deviceLabel: DeviceLabel {
+        guard let pid = boundProductID else {
+            if let activePID = tabletManager.activeContext?.productID {
+                return DeviceLabel(primary: TabletManager.deviceName(forProductID: activePID), secondary: nil)
             }
-        )
+            return DeviceLabel(primary: "No device", secondary: nil)
+        }
+        let modelName = TabletManager.deviceName(forProductID: pid)
+        if let tablet = registry.knownTablets.first(where: { $0.id == pid }),
+           tablet.nickname != tablet.modelName {
+            return DeviceLabel(primary: tablet.nickname, secondary: modelName)
+        }
+        return DeviceLabel(primary: modelName, secondary: nil)
+    }
+
+    private var deviceHeading: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(deviceLabel.primary)
+                .font(.headline)
+            if let secondary = deviceLabel.secondary {
+                Text(secondary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 
     /// Binding that registers undo when proportional mapping is toggled.
@@ -487,12 +452,12 @@ struct TabletAreaView: View {
     /// Draws a dark translucent badge with the tablet nickname and model name
     /// centred inside `areaRect`, matching the display-pane caption style.
     private func tabletBadge(ctx: GraphicsContext, areaRect: CGRect) {
-        let (line1, line2) = badgeLines()
+        let label = deviceLabel
 
         let line1Resolved = ctx.resolve(
-            Text(line1).font(.caption2).bold().foregroundColor(.white))
-        let line2Resolved = line2.map {
-            ctx.resolve(Text($0).font(.caption2).foregroundColor(.white))
+            Text(label.primary).font(.badgeTitle).bold().foregroundColor(.white))
+        let line2Resolved = label.secondary.map {
+            ctx.resolve(Text($0).font(.badgeSubtitle).foregroundColor(.white))
         }
 
         let hPad: CGFloat = 6
@@ -531,21 +496,6 @@ struct TabletAreaView: View {
                            anchor: .center)
             }
         }
-    }
-
-    private func badgeLines() -> (String, String?) {
-        guard let pid = boundProductID else {
-            if let activePID = tabletManager.activeContext?.productID {
-                return (TabletManager.deviceName(forProductID: activePID), nil)
-            }
-            return ("No device", nil)
-        }
-        let modelName = TabletManager.deviceName(forProductID: pid)
-        if let tablet = registry.knownTablets.first(where: { $0.id == pid }),
-           tablet.nickname != tablet.modelName {
-            return (tablet.nickname, modelName)
-        }
-        return (modelName, nil)
     }
 
     // MARK: - Helpers

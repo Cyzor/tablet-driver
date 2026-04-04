@@ -475,16 +475,59 @@ final class TabletSettings: ObservableObject {
         activeAppOverride = appOverrides.last
         activeTool.overridePrefix = activeAppOverride.map { appOverrideKeyPrefix($0) }
         // No reloadAll needed — the override is empty; values are unchanged.
+        record("Add App Override") { [weak self] in
+            self?.removeAppOverride(bundleID: bundleID)
+        }
+    }
+
+    /// Moves an app override from `source` index to `destination` index.  Registers undo.
+    func reorderAppOverrides(from source: Int, to destination: Int) {
+        guard source != destination,
+              appOverrides.indices.contains(source),
+              appOverrides.indices.contains(destination)
+        else { return }
+        var reordered = appOverrides
+        let item = reordered.remove(at: source)
+        reordered.insert(item, at: destination)
+        appOverrides = reordered
+        saveAppOverrides()
+        record("Reorder App Override") { [weak self] in
+            self?.reorderAppOverrides(from: destination, to: source)
+        }
+    }
+
+    /// Renames the override entry for `bundleID`.  Registers undo.
+    func renameAppOverride(bundleID: String, to newName: String) {
+        guard let idx = appOverrides.firstIndex(where: { $0.bundleID == bundleID }) else { return }
+        let oldName = appOverrides[idx].appName
+        appOverrides[idx].appName = newName
+        if activeAppOverride?.bundleID == bundleID { activeAppOverride?.appName = newName }
+        saveAppOverrides()
+        record("Rename App Override") { [weak self] in
+            self?.renameAppOverride(bundleID: bundleID, to: oldName)
+        }
     }
 
     /// Removes override keys for `bundleID` scoped to `keyScope`.
     /// Deletes the entire override entry when no keys remain.
     /// Pass `keyScope: nil` to remove all keys (full delete).
+    /// Registers undo by snapshotting UserDefaults values before deletion.
     func removeAppOverride(bundleID: String, keyScope: Set<String>? = nil) {
         guard let override = appOverrides.first(where: { $0.bundleID == bundleID }) else { return }
         let prefix = appOverrideKeyPrefix(override)
         let keysToRemove = keyScope.map { override.overriddenKeys.intersection($0) }
                            ?? override.overriddenKeys
+
+        // Snapshot stored values before deleting so undo can restore them.
+        var snapshot: [String: Any] = [:]
+        for key in keysToRemove {
+            if let value = ud.object(forKey: prefix + key) {
+                snapshot[key] = value
+            }
+        }
+        let capturedOverride = override
+        let capturedPrefix = prefix
+
         for key in keysToRemove { ud.removeObject(forKey: prefix + key) }
 
         let remaining = override.overriddenKeys.subtracting(keysToRemove)
@@ -508,6 +551,19 @@ final class TabletSettings: ObservableObject {
             }
             reloadAll()
         }
+
+        record("Remove App Override") { [weak self] in
+            guard let self else { return }
+            // Restore UserDefaults values.
+            for (key, value) in snapshot {
+                self.ud.set(value, forKey: capturedPrefix + key)
+            }
+            // Re-insert the override struct.
+            if !self.appOverrides.contains(where: { $0.bundleID == capturedOverride.bundleID }) {
+                self.appOverrides.append(capturedOverride)
+                self.saveAppOverrides()
+            }
+        }
     }
 
     // MARK: - App override persistence
@@ -518,7 +574,7 @@ final class TabletSettings: ObservableObject {
         "\(devicePrefix)appOverride-\(override.bundleID)."
     }
 
-    private func saveAppOverrides() {
+    func saveAppOverrides() {
         guard let data = try? JSONEncoder().encode(appOverrides) else { return }
         ud.set(data, forKey: appOverridesKey)
     }
