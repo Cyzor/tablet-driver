@@ -54,6 +54,7 @@ final class AppWatcher {
         let name = app.localizedName ?? bundleID
         Task { @MainActor [weak self] in
             self?.settings?.handleAppActivation(bundleID: bundleID, appName: name)
+            self?.settings?.handleAppOverrideActivation(bundleID: bundleID, appName: name)
         }
     }
 }

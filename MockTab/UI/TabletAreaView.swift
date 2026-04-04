@@ -94,6 +94,7 @@ struct TabletAreaView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.areaKeys)
             mainContent
             Spacer(minLength: 0)
             PresetStatusBar(settings: settings)

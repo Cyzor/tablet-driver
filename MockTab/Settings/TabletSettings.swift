@@ -59,8 +59,17 @@ final class TabletSettings: ObservableObject {
     /// Starts as the device-default tool; swapped by TabletManager on tool-enter.
     @Published var activeTool: ToolSettings = ToolSettings(prefix: "device-default.") {
         didSet {
-            // Forward current undoManager to the new active tool
             activeTool.undoManager = undoManager
+            activeTool.onOverrideKeyWritten = { [weak self] key in
+                guard let self, var override = self.activeAppOverride else { return }
+                guard !override.overriddenKeys.contains(key) else { return }
+                override.overriddenKeys.insert(key)
+                self.activeAppOverride = override
+                if let idx = self.appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
+                    self.appOverrides[idx] = override
+                }
+                self.saveAppOverrides()
+            }
         }
     }
 
@@ -225,6 +234,16 @@ final class TabletSettings: ObservableObject {
         var presetID: UUID
     }
 
+    /// A per-app function override.  Stores only keys that differ from the device
+    /// baseline (or any active named profile).  Applied automatically whenever the
+    /// registered application is frontmost — no toggle required.
+    struct AppOverride: Identifiable, Codable, Equatable {
+        var bundleID: String
+        var appName: String
+        var overriddenKeys: Set<String> = []
+        var id: String { bundleID }
+    }
+
     /// All presets saved for the current device.
     @Published var presets: [Preset] = []
 
@@ -246,6 +265,13 @@ final class TabletSettings: ObservableObject {
     /// Per-app preset assignments for this device.
     @Published var appBindings: [AppPresetBinding] = []
 
+    /// All per-app overrides registered for this device.
+    @Published var appOverrides: [AppOverride] = []
+
+    /// The override currently applied because its app is frontmost (or manually selected).
+    /// Nil when the frontmost app has no registered override.
+    @Published var activeAppOverride: AppOverride? = nil
+
     // MARK: - Init
 
     /// Creates a settings instance.  If `productID` is provided, the backing
@@ -257,6 +283,7 @@ final class TabletSettings: ObservableObject {
             devicePrefix = "device-0x\(hex)."
             loadPresetList()
             loadAppBindings()
+            loadAppOverrides()
         }
         activeTool = ToolSettings(prefix: devicePrefix)
         reloadAll()
@@ -275,6 +302,9 @@ final class TabletSettings: ObservableObject {
         undoManager?.removeAllActions()
         loadPresetList()
         loadAppBindings()
+        loadAppOverrides()
+        activeAppOverride = nil
+        activeTool.overridePrefix = nil
         reloadAll()
         activationSource = .manual
     }
@@ -413,6 +443,100 @@ final class TabletSettings: ObservableObject {
         saveAppBindings()
     }
 
+    // MARK: - App override management
+
+    /// Called by AppWatcher on every app-focus change.
+    /// Activates the registered override for `bundleID`, or deactivates if none exists.
+    func handleAppOverrideActivation(bundleID: String, appName: String) {
+        let newOverride = appOverrides.first { $0.bundleID == bundleID }
+        guard newOverride?.bundleID != activeAppOverride?.bundleID else { return }
+        activeAppOverride = newOverride
+        activeTool.overridePrefix = newOverride.map { appOverrideKeyPrefix($0) }
+        reloadAll()
+    }
+
+    /// Selects an override by bundle ID for viewing/editing in the UI without
+    /// requiring the app to be frontmost.  Pass nil to return to device defaults.
+    func selectAppOverride(bundleID: String?) {
+        let newOverride = bundleID.flatMap { bid in appOverrides.first { $0.bundleID == bid } }
+        guard newOverride?.bundleID != activeAppOverride?.bundleID else { return }
+        activeAppOverride = newOverride
+        activeTool.overridePrefix = newOverride.map { appOverrideKeyPrefix($0) }
+        reloadAll()
+    }
+
+    /// Registers the frontmost application as having a per-app override for this device.
+    /// Creates an empty override entry; settings modified afterwards are routed to it.
+    /// No-ops if the app already has a registered override.
+    func addAppOverrideForFrontmostApp() {
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              let bundleID = app.bundleIdentifier
+        else { return }
+        let appName = app.localizedName ?? bundleID
+        guard !appOverrides.contains(where: { $0.bundleID == bundleID }) else { return }
+        appOverrides.append(AppOverride(bundleID: bundleID, appName: appName))
+        saveAppOverrides()
+        activeAppOverride = appOverrides.last
+        activeTool.overridePrefix = activeAppOverride.map { appOverrideKeyPrefix($0) }
+        // No reloadAll needed — the override is empty; values are unchanged.
+    }
+
+    /// Removes override keys for `bundleID` scoped to `keyScope`.
+    /// Deletes the entire override entry when no keys remain.
+    /// Pass `keyScope: nil` to remove all keys (full delete).
+    func removeAppOverride(bundleID: String, keyScope: Set<String>? = nil) {
+        guard let override = appOverrides.first(where: { $0.bundleID == bundleID }) else { return }
+        let prefix = appOverrideKeyPrefix(override)
+        let keysToRemove = keyScope.map { override.overriddenKeys.intersection($0) }
+                           ?? override.overriddenKeys
+        for key in keysToRemove { ud.removeObject(forKey: prefix + key) }
+
+        let remaining = override.overriddenKeys.subtracting(keysToRemove)
+        if remaining.isEmpty {
+            appOverrides.removeAll { $0.bundleID == bundleID }
+        } else {
+            var updated = override
+            updated.overriddenKeys = remaining
+            if let idx = appOverrides.firstIndex(where: { $0.bundleID == bundleID }) {
+                appOverrides[idx] = updated
+            }
+        }
+        saveAppOverrides()
+
+        if activeAppOverride?.bundleID == bundleID {
+            if remaining.isEmpty {
+                activeAppOverride = nil
+                activeTool.overridePrefix = nil
+            } else {
+                activeAppOverride = appOverrides.first { $0.bundleID == bundleID }
+            }
+            reloadAll()
+        }
+    }
+
+    // MARK: - App override persistence
+
+    private var appOverridesKey: String { devicePrefix + "_appOverrides" }
+
+    private func appOverrideKeyPrefix(_ override: AppOverride) -> String {
+        "\(devicePrefix)appOverride-\(override.bundleID)."
+    }
+
+    private func saveAppOverrides() {
+        guard let data = try? JSONEncoder().encode(appOverrides) else { return }
+        ud.set(data, forKey: appOverridesKey)
+    }
+
+    private func loadAppOverrides() {
+        guard let data = ud.data(forKey: appOverridesKey),
+              let list = try? JSONDecoder().decode([AppOverride].self, from: data)
+        else {
+            appOverrides = []
+            return
+        }
+        appOverrides = list
+    }
+
     // MARK: - Preset persistence
 
     private var presetListKey: String { devicePrefix + "_presets" }
@@ -540,17 +664,29 @@ final class TabletSettings: ObservableObject {
             ?? .scroll
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
         loadPressureCurve()
+        // Sync resolved pressure values into activeTool so PressureCurveView —
+        // which observes tool.pressureCurve — reflects the active override or profile.
+        activeTool.applyExternalValues(pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
         isLoading = false
     }
 
     // MARK: - Persistence helpers
 
-    /// Routes a write to the active preset's namespace (marking the key as
-    /// overridden) or to the device namespace when no preset is active.
+    /// Routes a write to the active app override, then profile, then device namespace.
+    /// Marks the key as overridden in whichever layer receives the write.
     /// No-ops while `isLoading` to avoid echoing values back during reload.
     private func persist(_ key: String, _ value: Any) {
         guard !isLoading else { return }
-        if var preset = activePreset {
+        if var override = activeAppOverride {
+            ud.set(value, forKey: appOverrideKeyPrefix(override) + key)
+            guard !override.overriddenKeys.contains(key) else { return }
+            override.overriddenKeys.insert(key)
+            activeAppOverride = override
+            if let idx = appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
+                appOverrides[idx] = override
+            }
+            saveAppOverrides()
+        } else if var preset = activePreset {
             ud.set(value, forKey: presetKeyPrefix(preset) + key)
             guard !preset.overriddenKeys.contains(key) else { return }
             preset.overriddenKeys.insert(key)
@@ -566,10 +702,16 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Load helpers
 
-    // Fallback chain: active preset (if key is overridden) → device prefix
-    //                 → legacy unprefixed key → compile-time default.
+    // Fallback chain: active app override (if key is overridden)
+    //                 → active profile (if key is overridden)
+    //                 → device prefix → legacy unprefixed key → compile-time default.
 
     private func loadDouble(_ key: String, default d: Double) -> Double {
+        if let override = activeAppOverride, override.overriddenKeys.contains(key),
+           ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
+        {
+            return ud.double(forKey: appOverrideKeyPrefix(override) + key)
+        }
         if let preset = activePreset, preset.overriddenKeys.contains(key),
             ud.object(forKey: presetKeyPrefix(preset) + key) != nil
         {
@@ -583,6 +725,11 @@ final class TabletSettings: ObservableObject {
     }
 
     private func loadBool(_ key: String, default d: Bool) -> Bool {
+        if let override = activeAppOverride, override.overriddenKeys.contains(key),
+           ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
+        {
+            return ud.bool(forKey: appOverrideKeyPrefix(override) + key)
+        }
         if let preset = activePreset, preset.overriddenKeys.contains(key),
             ud.object(forKey: presetKeyPrefix(preset) + key) != nil
         {
@@ -596,6 +743,11 @@ final class TabletSettings: ObservableObject {
     }
 
     private func loadInt(_ key: String, default d: Int) -> Int {
+        if let override = activeAppOverride, override.overriddenKeys.contains(key),
+           ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
+        {
+            return ud.integer(forKey: appOverrideKeyPrefix(override) + key)
+        }
         if let preset = activePreset, preset.overriddenKeys.contains(key),
             ud.object(forKey: presetKeyPrefix(preset) + key) != nil
         {
@@ -609,6 +761,8 @@ final class TabletSettings: ObservableObject {
     }
 
     private func loadString(_ key: String, default d: String) -> String {
+        if let override = activeAppOverride, override.overriddenKeys.contains(key),
+           let v = ud.string(forKey: appOverrideKeyPrefix(override) + key) { return v }
         if let preset = activePreset, preset.overriddenKeys.contains(key) {
             if let v = ud.string(forKey: presetKeyPrefix(preset) + key) { return v }
         }
@@ -622,7 +776,16 @@ final class TabletSettings: ObservableObject {
     private func savePressureCurve() {
         guard !isLoading else { return }
         guard let data = try? JSONEncoder().encode(pressureCurve) else { return }
-        if var preset = activePreset {
+        if var override = activeAppOverride {
+            ud.set(data, forKey: appOverrideKeyPrefix(override) + "pressureCurve")
+            guard !override.overriddenKeys.contains("pressureCurve") else { return }
+            override.overriddenKeys.insert("pressureCurve")
+            activeAppOverride = override
+            if let idx = appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
+                appOverrides[idx] = override
+            }
+            saveAppOverrides()
+        } else if var preset = activePreset {
             ud.set(data, forKey: presetKeyPrefix(preset) + "pressureCurve")
             guard !preset.overriddenKeys.contains("pressureCurve") else { return }
             preset.overriddenKeys.insert("pressureCurve")
@@ -638,14 +801,16 @@ final class TabletSettings: ObservableObject {
 
     private func loadPressureCurve() {
         let data: Data?
-        if let preset = activePreset, preset.overriddenKeys.contains("pressureCurve") {
-            data =
-                ud.data(forKey: presetKeyPrefix(preset) + "pressureCurve")
+        if let override = activeAppOverride, override.overriddenKeys.contains("pressureCurve") {
+            data = ud.data(forKey: appOverrideKeyPrefix(override) + "pressureCurve")
+                ?? ud.data(forKey: devicePrefix + "pressureCurve")
+                ?? ud.data(forKey: "pressureCurve")
+        } else if let preset = activePreset, preset.overriddenKeys.contains("pressureCurve") {
+            data = ud.data(forKey: presetKeyPrefix(preset) + "pressureCurve")
                 ?? ud.data(forKey: devicePrefix + "pressureCurve")
                 ?? ud.data(forKey: "pressureCurve")
         } else {
-            data =
-                ud.data(forKey: devicePrefix + "pressureCurve")
+            data = ud.data(forKey: devicePrefix + "pressureCurve")
                 ?? ud.data(forKey: "pressureCurve")
         }
         guard let data,

@@ -32,6 +32,7 @@ struct PressureCurveView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.pressureKeys)
             mainContent
             Spacer(minLength: 0)
             PresetStatusBar(settings: settings)
