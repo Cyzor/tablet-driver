@@ -197,7 +197,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
         // "New Settings Window" — opens a generic window.
         let newItem = NSMenuItem(
-            title: "New Settings Window",
+            title: "Duplicate Window",
             action: #selector(newSettingsWindow),
             keyEquivalent: "n")
         newItem.keyEquivalentModifierMask = [.command, .shift]
@@ -227,12 +227,12 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                     keyEquivalent: "")
                 item.target = self
                 item.tag = tablet.id
-                // Show a dot for currently connected tablets.
+                // Show a checkmark for currently connected tablets.
                 if tm.connectedProductIDs.contains(tablet.id) {
                     item.image = NSImage(
-                        systemSymbolName: "circle.fill",
+                        systemSymbolName: "checkmark.circle.fill",
                         accessibilityDescription: "Connected")
-                    item.image?.size = NSSize(width: 6, height: 6)
+                    item.image?.size = NSSize(width: 12, height: 12)
                 }
                 menu.addItem(item)
             }
