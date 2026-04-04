@@ -344,7 +344,7 @@ struct ButtonBindingControl: View {
                 Button("None") { set(.none) }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.caption2)
+                    .font(.settingsBadge)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
             }

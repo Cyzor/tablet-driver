@@ -79,13 +79,13 @@ struct PressureCurveView: View {
                         .font(.subheadline)
                     Spacer()
                     Text(smoothingLabel)
-                        .font(.caption)
+                        .font(.settingsLabel)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
                 Slider(value: smoothingBinding, in: 0...1)
                 Text("Reduces cursor jitter. Higher values add lag.")
-                    .font(.caption)
+                    .font(.settingsLabel)
                     .foregroundStyle(.secondary)
             }
 
@@ -97,13 +97,13 @@ struct PressureCurveView: View {
                     Text(settings.doubleClickDistance < 1
                          ? "Off"
                          : "\(Int(settings.doubleClickDistance)) pt")
-                        .font(.caption)
+                        .font(.settingsLabel)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
                 Slider(value: doubleClickBinding, in: 0...30, step: 1)
                 Text("Snaps a second tap to the first click position within this radius, making double-clicks reliable.")
-                    .font(.caption)
+                    .font(.settingsLabel)
                     .foregroundStyle(.secondary)
             }
         }

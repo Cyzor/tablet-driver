@@ -158,7 +158,7 @@ struct DevicesView: View {
             // Serial / ID column
             Text(tablet.displayID)
                 .foregroundStyle(.secondary)
-                .font(.system(.caption, design: .monospaced))
+                .font(.monospaced)
                 .frame(width: 110, alignment: .leading)
 
             // Actions
@@ -249,7 +249,7 @@ struct DevicesView: View {
 
             Text(tool.displayID)
                 .foregroundStyle(.secondary)
-                .font(.system(.caption, design: .monospaced))
+                .font(.monospaced)
                 .frame(width: 110, alignment: .leading)
 
             if editingToolID == tool.id {
@@ -350,7 +350,7 @@ struct DevicesView: View {
                 .frame(width: 110, alignment: .leading)
             Spacer(minLength: 60)  // room for the action buttons
         }
-        .font(.caption)
+        .font(.settingsLabel)
         .foregroundStyle(.secondary)
         .padding(.horizontal, 12)
         .padding(.top, 2)
@@ -433,7 +433,7 @@ struct ToolOverridePickerSheet: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Select a tool to force (or leave blank to use detected tool):")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.settingsLabel).foregroundStyle(.secondary)
 
                 Picker("Tool Code", selection: $selectedCode) {
                     Text("(Auto-detect)").tag("")
