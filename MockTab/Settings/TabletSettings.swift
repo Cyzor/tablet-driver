@@ -465,14 +465,10 @@ final class TabletSettings: ObservableObject {
         reloadAll()
     }
 
-    /// Registers the frontmost application as having a per-app override for this device.
+    /// Registers the given application as having a per-app override for this device.
     /// Creates an empty override entry; settings modified afterwards are routed to it.
     /// No-ops if the app already has a registered override.
-    func addAppOverrideForFrontmostApp() {
-        guard let app = NSWorkspace.shared.frontmostApplication,
-              let bundleID = app.bundleIdentifier
-        else { return }
-        let appName = app.localizedName ?? bundleID
+    func addAppOverride(bundleID: String, appName: String) {
         guard !appOverrides.contains(where: { $0.bundleID == bundleID }) else { return }
         appOverrides.append(AppOverride(bundleID: bundleID, appName: appName))
         saveAppOverrides()
