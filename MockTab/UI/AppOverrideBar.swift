@@ -18,18 +18,20 @@
 
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Per-tab application override selector.
 ///
 /// Displays a horizontal row of app chips — "Global" plus one chip per app that
-/// has a registered override for this tab's domain keys.  Clicking a chip
-/// selects that app's override for viewing and editing; the active chip matches
-/// the currently frontmost application.
+/// has a registered override for this tab.  A "+" menu lets the user pick from
+/// currently-running apps or browse with an Open panel.  The chip row also acts
+/// as a drop well: dragging any .app from Finder, Spotlight, or the Dock adds it
+/// as an override target.
 ///
 /// Domain keys identify which settings belong to the enclosing tab:
-///   - Tablet Area:  areaKeys
-///   - Pressure:     pressureKeys
-///   - Buttons:      buttonKeys
+///   - Tablet Area:   areaKeys
+///   - Pressure:      pressureKeys
+///   - Buttons:       buttonKeys
 struct AppOverrideBar: View {
 
     // MARK: - Domain key sets
@@ -56,34 +58,23 @@ struct AppOverrideBar: View {
     @ObservedObject var settings: TabletSettings
     let domainKeys: Set<String>
 
-    /// All registered overrides (visible in the chip row regardless of domain keys,
-    /// so the user can select any app and start building overrides for it).
-    private var allOverrides: [TabletSettings.AppOverride] {
-        settings.appOverrides
-    }
+    @State private var isDropTargeted = false
 
-    /// The bundle ID selected for editing (nil = Global).
-    private var selectedBundleID: String? {
-        settings.activeAppOverride?.bundleID
-    }
+    private var selectedBundleID: String? { settings.activeAppOverride?.bundleID }
 
-    /// True when the frontmost app has a registered override.
-    private var frontmostHasOverride: Bool {
-        guard let bid = NSWorkspace.shared.frontmostApplication?.bundleIdentifier else { return false }
-        return settings.appOverrides.contains { $0.bundleID == bid }
-    }
-
-    /// Display name + bundle ID of the frontmost app (for the Add button label).
-    private var frontmostApp: (name: String, bundleID: String)? {
-        guard let app = NSWorkspace.shared.frontmostApplication,
-              let bid = app.bundleIdentifier
-        else { return nil }
-        return (app.localizedName ?? bid, bid)
-    }
-
-    private var canAddFrontmostApp: Bool {
-        guard let (_, bid) = frontmostApp else { return false }
-        return !settings.appOverrides.contains { $0.bundleID == bid }
+    /// Running GUI apps, excluding MockTab itself and those already registered.
+    private var addableRunningApps: [NSRunningApplication] {
+        let myBundleID = Bundle.main.bundleIdentifier ?? ""
+        let registered = Set(settings.appOverrides.map(\.bundleID))
+        return NSWorkspace.shared.runningApplications
+            .filter {
+                $0.activationPolicy == .regular
+                && ($0.bundleIdentifier ?? "") != myBundleID
+                && !registered.contains($0.bundleIdentifier ?? "")
+                && $0.bundleIdentifier != nil
+                && $0.localizedName != nil
+            }
+            .sorted { ($0.localizedName ?? "") < ($1.localizedName ?? "") }
     }
 
     // MARK: - Body
@@ -91,11 +82,20 @@ struct AppOverrideBar: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
-                overrideChipRow
+                chipRow
+                    .onDrop(
+                        of: [UTType.applicationBundle, UTType.fileURL],
+                        isTargeted: $isDropTargeted,
+                        perform: handleDrop)
+                    .overlay(
+                        isDropTargeted
+                            ? RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(Color.accentColor, lineWidth: 2)
+                                .padding(.vertical, 2)
+                            : nil
+                    )
                 Spacer(minLength: 8)
-                if canAddFrontmostApp {
-                    addButton
-                }
+                addMenu
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
@@ -111,17 +111,16 @@ struct AppOverrideBar: View {
 
     // MARK: - Chip row
 
-    private var overrideChipRow: some View {
+    private var chipRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 5) {
-                chip(
+                appChip(
                     label: "Global",
                     icon: nil,
                     bundleID: nil,
-                    isSelected: selectedBundleID == nil
-                )
-                ForEach(allOverrides) { override in
-                    chip(
+                    isSelected: selectedBundleID == nil)
+                ForEach(settings.appOverrides) { override in
+                    appChip(
                         label: override.appName,
                         icon: appIcon(bundleID: override.bundleID),
                         bundleID: override.bundleID,
@@ -131,15 +130,14 @@ struct AppOverrideBar: View {
                             settings.removeAppOverride(
                                 bundleID: override.bundleID,
                                 keyScope: domainKeys)
-                        }
-                    )
+                        })
                 }
             }
         }
     }
 
     @ViewBuilder
-    private func chip(
+    private func appChip(
         label: String,
         icon: NSImage?,
         bundleID: String?,
@@ -181,42 +179,124 @@ struct AppOverrideBar: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(
-                isSelected
-                    ? Color.accentColor
-                    : Color(NSColor.controlColor)
-            )
+            .background(isSelected ? Color.accentColor : Color(NSColor.controlColor))
             .foregroundStyle(isSelected ? .white : Color.primary)
             .clipShape(Capsule())
             .overlay(
                 Capsule()
                     .strokeBorder(
                         isSelected ? Color.clear : Color(NSColor.separatorColor),
-                        lineWidth: 0.5)
-            )
+                        lineWidth: 0.5))
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Add button
+    // MARK: - Add menu
 
-    private var addButton: some View {
-        Button {
-            settings.addAppOverrideForFrontmostApp()
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "plus")
-                    .font(.system(size: 10, weight: .semibold))
-                if let (name, _) = frontmostApp {
-                    Text("Add \(name)")
-                        .font(.system(size: 11))
-                        .lineLimit(1)
+    private var addMenu: some View {
+        Menu {
+            let running = addableRunningApps
+            if running.isEmpty {
+                Text("No other apps running")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(running, id: \.bundleIdentifier) { app in
+                    Button {
+                        addApp(bundleID: app.bundleIdentifier!, name: app.localizedName!)
+                    } label: {
+                        if let icon = app.icon {
+                            Label {
+                                Text(app.localizedName!)
+                            } icon: {
+                                Image(nsImage: icon)
+                            }
+                        } else {
+                            Text(app.localizedName!)
+                        }
+                    }
                 }
+                Divider()
             }
-            .foregroundStyle(Color.accentColor)
+            Button("Other…") { browseForApp() }
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 20, height: 20)
         }
-        .buttonStyle(.plain)
-        .help("Add per-app override for the frontmost application")
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .frame(width: 20)
+        .help("Add per-app override — or drag an app here from Finder or the Dock")
+    }
+
+    // MARK: - Drag-and-drop
+
+    private func handleDrop(providers: [NSItemProvider]) -> Bool {
+        var handled = false
+        for provider in providers {
+            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier) { item, _ in
+                    let url: URL?
+                    if let data = item as? Data {
+                        url = URL(dataRepresentation: data, relativeTo: nil)
+                    } else if let u = item as? URL {
+                        url = u
+                    } else {
+                        url = nil
+                    }
+                    if let url, let (bid, name) = bundleInfo(fromAppURL: url) {
+                        Task { @MainActor in
+                            addApp(bundleID: bid, name: name)
+                        }
+                    }
+                }
+                handled = true
+            }
+        }
+        return handled
+    }
+
+    // MARK: - Browse with Open panel
+
+    private func browseForApp() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose Application"
+        panel.message = "Select an app to add a per-app override for"
+        panel.prompt = "Add Override"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [UTType.applicationBundle]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if let (bid, name) = bundleInfo(fromAppURL: url) {
+            addApp(bundleID: bid, name: name)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func addApp(bundleID: String, name: String) {
+        settings.addAppOverride(bundleID: bundleID, appName: name)
+    }
+
+    private func bundleInfo(fromAppURL url: URL) -> (bundleID: String, name: String)? {
+        guard let bundle = Bundle(url: url),
+              let bundleID = bundle.bundleIdentifier
+        else { return nil }
+        let name = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+            ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
+            ?? url.deletingPathExtension().lastPathComponent
+        return (bundleID, name)
+    }
+
+    private func appIcon(bundleID: String) -> NSImage? {
+        guard let path = NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: bundleID)?.path
+        else { return nil }
+        return NSWorkspace.shared.icon(forFile: path)
     }
 
     // MARK: - Override banner
@@ -245,14 +325,5 @@ struct AppOverrideBar: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 5)
         .background(Color.accentColor.opacity(0.08))
-    }
-
-    // MARK: - App icon helper
-
-    private func appIcon(bundleID: String) -> NSImage? {
-        guard let path = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: bundleID)?.path
-        else { return nil }
-        return NSWorkspace.shared.icon(forFile: path)
     }
 }
