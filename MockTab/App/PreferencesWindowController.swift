@@ -50,15 +50,23 @@ final class PreferencesWindowController {
     private init() {
         deviceObserver = TabletManager.shared.$connectedProductIDs
             .dropFirst()
-            .first(where: { !$0.isEmpty })
             .receive(on: RunLoop.main)
             .sink { [weak self] ids in
-                guard let self,
-                    let dw = self.defaultWindow,
-                    dw.productID == nil,
-                    let pid = ids.first
-                else { return }
-                self.replaceWindow(dw, withDeviceID: pid)
+                guard let self else { return }
+                // Migrate a generic (no-device) default window to the first
+                // newly-connected tablet that doesn't already have a window.
+                if let dw = self.defaultWindow,
+                   dw.productID == nil,
+                   let pid = ids.first(where: { id in
+                       !self.windows.contains(where: { $0.productID == id })
+                   }) {
+                    self.replaceWindow(dw, withDeviceID: pid)
+                    return  // replaceWindow handled this pid; loop below skips it
+                }
+                // For every connected tablet with no open window, open one.
+                for pid in ids where !self.windows.contains(where: { $0.productID == pid }) {
+                    self.openWindow(forProductID: pid)
+                }
             }
 
         restoreWindows()

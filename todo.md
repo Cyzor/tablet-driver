@@ -1,6 +1,15 @@
-# MockTab — Open Tasks
+# MockTab — Open Tasks & Project Status
 
-_Last updated: 2026-03-29 (session 11 — Undo/Redo implementation complete)_
+_Last updated: 2026-04-03 (Session 23 — Factory Reset & Sticky Modifiers FIXED; test/kernel-spec-alignment merged to main)_
+
+---
+
+## ✅ DONE IN SESSION 23
+
+- [x] Factory Reset dialog: Return + Command-R both activate button (2026-04-03)
+- [x] Factory Reset state clearing: skipNextWindowSave() + NSWindow frame cache cleanup (2026-04-03)
+- [x] Sticky modifier key prevention: hidSystemState + activeSyntheticFlags (2026-04-03)
+- [x] Branch merge: test/kernel-spec-alignment → main (20+ commits) (2026-04-03)
 
 ---
 
@@ -134,6 +143,15 @@ Standard feature in most tablets that many users disable because implementation 
 
 ## Done (recent sessions)
 
+- [x] Factory Reset fully functional (2026-04-03): skipNextWindowSave() + NSWindow frame caches +
+      Return/Command-R dialog activation. App now truly resets to factory defaults on relaunch.
+- [x] Sticky modifier keys fixed (2026-04-03): hidSystemState + activeSyntheticFlags prevents
+      feedback loops. All event types now have correct modifier flags.
+- [x] test/kernel-spec-alignment branch merged (2026-04-03): 20+ commits integrated, main stable.
+- [x] PTH-660 BT Pro Pen 3 eraser fixed (2026-04-03): tool code byte offset [103:104] correct.
+- [x] Marker Pen support added (2026-04-03): 0x0804 now works on intuosProGen2.
+- [x] Express keys defaults updated (2026-04-03): ⌘⌥⌃⇧ modifiers instead of keyboard shortcuts.
+- [x] Tool code override feature restored (2026-04-03): user can force tool as different model.
 - [x] ACK-40401 wireless init race (2026-03-29): `WacomGenericDevice` now re-sends
       `[0x02, 0x02]` feature init when 0x02 wireless status arrives, fixing the case where
       the dongle was already paired when MockTab started.
