@@ -44,12 +44,14 @@ private struct ChipContentWidthKey: PreferenceKey {
 /// **Layout:**
 /// The ScrollView spans the full bar width so the scrollbar track runs edge to edge.
 /// Chip content is inset by `chipHorizontalPadding` on the leading side and by
-/// `addMenuSlotWidth` on the trailing side, reserving room for the addMenu panel.
-/// The addMenu is an overlay on the ScrollView anchored to `.trailing`, where its
-/// content fills the overlay's full height. A narrow leading gradient gives a soft
-/// visual edge as chips scroll behind the panel. This approach keeps the button
-/// vertically centred in the well at nearly its full height while keeping the
-/// scrollbar track unobstructed across the full window width.
+/// `addMenuSlotWidth` on the trailing side, reserving clearance for the addMenu panel.
+///
+/// The addMenu panel is a `.topTrailing` overlay on the ScrollView, constrained to
+/// `chipAreaHeight` — the height of the chip row only, derived from `chipIconSize` and
+/// the bar's padding constants. This ensures the panel sits flush with the chips and
+/// never overlaps the scrollbar track that may appear below in legacy-scrollbar mode.
+/// Within the panel the button fills its full height (minus a 2 pt inset each side) so
+/// it reads as a sibling of the chips, anchored permanently at the trailing edge.
 ///
 /// **Tap vs Drag (tablet-optimized):**
 /// - Quick tap → instantly selects the override (primary action).
@@ -64,11 +66,12 @@ private struct ChipContentWidthKey: PreferenceKey {
 /// The hovered drop-target chip springs open a gap to its left before the drop lands.
 ///
 /// **Chip appearance:**
-/// Unselected chips use a dynamic fill with explicit light/dark values so they stand
-/// out clearly from the bar background in both appearances.
+/// Unselected chips use a dynamic fill with explicit light/dark values so they read
+/// clearly against the bar background in both appearances.
 ///
 /// **Icon-size plumbing:**
-/// All chip icon geometry derives from `chipIconSize`. See that constant for notes.
+/// All chip icon geometry derives from `chipIconSize`. Bumping it scales chip height
+/// and `chipAreaHeight` together, keeping the addMenu panel correctly sized.
 ///
 /// Right-click provides Rename / Reveal in Finder / Remove.
 struct AppOverrideBar: View {
@@ -123,26 +126,40 @@ struct AppOverrideBar: View {
 
     // MARK: - Constants
 
-    private let longPressDuration:      TimeInterval = 0.45  // ← Tune (try 0.4–0.55)
+    private let longPressDuration:      TimeInterval = 0.2  // ← Tune (try 0.4–0.55)
     private let longPressMaxDrift:      CGFloat      = 20    // ← Tune (try 16–30); default 10 too tight for tablet
     private let dragHoverGap:           CGFloat      = 20
 
     private let chipVerticalPadding:    CGFloat      = 7
     private let chipHorizontalPadding:  CGFloat      = 14
 
+    // Chip's own internal vertical padding (the .padding(.vertical, 4) in chipContent).
+    // Stored here so chipAreaHeight can reference it without inspecting the view body.
+    private let chipInternalVPadding:   CGFloat      = 4
+
     // Trailing content inset: keeps the last chip clear of the addMenu panel's solid area.
-    // Panel solid width = addMenuButtonWidth (28) + chipHorizontalPadding (14) = 42.
-    // The 20 pt leading fade is semi-transparent, so chips there are still partially
-    // visible; only the solid area needs to be reserved.
+    // Solid area = addMenuButtonWidth (28) + chipHorizontalPadding (14) = 42 pt.
+    // The 20 pt leading fade is semi-transparent, so chips there remain partially visible.
     private let addMenuSlotWidth:       CGFloat      = 42
-    private let addMenuButtonWidth:     CGFloat      = 28   // fixed width of the Menu trigger
-    private let addMenuPanelFadeWidth:  CGFloat      = 20   // soft leading gradient width
+    private let addMenuButtonWidth:     CGFloat      = 28
+    private let addMenuPanelFadeWidth:  CGFloat      = 20
 
     // Single knob for chip icon geometry. When going beyond ~18, also consider:
-    //   • chipContent vertical padding (currently 4 pt each side)
+    //   • chipInternalVPadding (currently 4 pt each side)
     //   • chipContent label font (currently 11 pt)
     //   • longPressMaxDrift
-    private let chipIconSize:           CGFloat      = 20   // ← Tune (e.g. 16, 18, 20)
+    // chipAreaHeight is derived from this, so the panel stays correctly sized automatically.
+    private let chipIconSize:           CGFloat      = 20    // ← Tune (e.g. 16, 18, 20)
+
+    // The height of the chip row content area, excluding any scrollbar track.
+    //
+    // Assumes chipIconSize >= rendered label height (~13 pt at 11 pt font), so the icon
+    // drives the chip height. Correct for all values of chipIconSize >= 13.
+    // Legacy-mode scrollbar track height (~15 pt) sits below this; the addMenu panel
+    // is constrained to this height so it never overlaps the track.
+    private var chipAreaHeight: CGFloat {
+        chipVerticalPadding * 2 + chipIconSize + chipInternalVPadding * 2
+    }
 
     private static let unselectedChipFill = Color(NSColor(name: nil, dynamicProvider: { appearance in
         let isDark = [NSAppearance.Name.darkAqua,
@@ -151,7 +168,7 @@ struct AppOverrideBar: View {
                       .accessibilityHighContrastVibrantDark].contains(appearance.name)
         return isDark
             ? NSColor(white: 0.30, alpha: 1.0)  // #4D4D4D — lighter than the dark bar
-            : NSColor(white: 0.91, alpha: 1.0)  // #DBDBDB — clearly grey on the light bar
+            : NSColor(white: 0.90, alpha: 1.0)  // #DBDBDB — clearly grey on the light bar
     }))
 
     // MARK: - Body
@@ -204,32 +221,29 @@ struct AppOverrideBar: View {
 
     // MARK: - Chip bar row
 
-    /// Composes the full-width ScrollView with the addMenu panel as a trailing overlay.
+    /// The addMenu panel is a `.topTrailing` overlay constrained to `chipAreaHeight`.
     ///
-    /// Using `.overlay` rather than an `HStack` means the ScrollView — and therefore
-    /// its scrollbar track — spans the complete bar width. The overlay receives the same
-    /// height as the ScrollView, so `frame(maxHeight: .infinity)` inside it fills that
-    /// height precisely, centering the button in the well at nearly its full height.
+    /// `.topTrailing` anchors it to the top of the ScrollView, so in legacy-scrollbar
+    /// mode it ends exactly where the chip row ends and the scrollbar track begins.
+    /// In overlay-scrollbar mode (default) the ScrollView has no track height, so the
+    /// panel fills the whole ScrollView — identical to the chip area. Either way the
+    /// scrollbar track is never obscured.
     private var chipBarRow: some View {
         scrollingChipRow
-            .overlay(alignment: .trailing) { addMenuPanel }
+            .overlay(alignment: .topTrailing) {
+                addMenuPanel
+                    .frame(height: chipAreaHeight)
+            }
     }
 
     // MARK: - addMenu panel
 
-    /// A trailing panel that prevents chips from showing through behind the button.
-    ///
-    /// Structure (trailing → leading):
-    ///   • Solid background covering the button column
-    ///   • The Menu trigger, filling the panel height with a small vertical inset
-    ///   • A narrow leading gradient that fades from the bar background to transparent,
-    ///     giving a smooth visual edge as chips disappear behind the panel
     private var addMenuPanel: some View {
         let barBG = Color(NSColor.controlBackgroundColor)
 
         return HStack(spacing: 0) {
-            // Soft fade: chips slide behind this gradient rather than hard-stopping
-            // at the button edge, reducing visual clutter at the boundary.
+            // Soft fade: chips slide behind this gradient rather than hard-cutting
+            // at the button edge, giving a clean leading-edge transition.
             LinearGradient(
                 colors: [barBG.opacity(0), barBG],
                 startPoint: .leading, endPoint: .trailing
@@ -237,18 +251,18 @@ struct AppOverrideBar: View {
             .frame(width: addMenuPanelFadeWidth)
             .allowsHitTesting(false)
 
-            // Button column: solid background + full-height button
+            // Button fills the panel height with a small vertical inset so it reads
+            // like a chip sibling anchored at the trailing edge of the row.
             addMenu
-                .frame(width: addMenuButtonWidth, alignment: .center)
-                .frame(maxHeight: .infinity)           // fill the overlay height
-                .padding(.vertical, 2)                 // 2 pt inset from well top and bottom
+                .frame(width: addMenuButtonWidth)
+                .frame(maxHeight: .infinity)
+                .padding(.vertical, 2)
                 .padding(.trailing, chipHorizontalPadding)
                 .background(barBG)
         }
-        .frame(maxHeight: .infinity)
     }
 
-    // MARK: - Scrolling chip row with edge-fade overlays
+    // MARK: - Scrolling chip row
 
     private var scrollingChipRow: some View {
         let barBG    = Color(NSColor.controlBackgroundColor)
@@ -352,7 +366,7 @@ struct AppOverrideBar: View {
                 chipContent(label: label, icon: icon, isSelected: isSelected, domainKeyCount: domainKeyCount)
                     .draggable(id) {
                         chipContent(label: label, icon: icon, isSelected: true, domainKeyCount: 0)
-                            .shadow(radius: 3, y: 2)
+                            .shadow(radius: 3, y: 0)
                     }
             } else {
                 chipContent(label: label, icon: icon, isSelected: isSelected, domainKeyCount: domainKeyCount)
@@ -405,7 +419,7 @@ struct AppOverrideBar: View {
             }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.vertical, chipInternalVPadding)
         .background(isSelected ? Color.accentColor : Self.unselectedChipFill)
         .foregroundStyle(isSelected ? .white : Color.primary)
         .clipShape(Capsule())
@@ -430,11 +444,6 @@ struct AppOverrideBar: View {
 
     // MARK: - Add menu
 
-    /// Height-flexible Menu trigger. The fixed width keeps the button column consistent
-    /// while `frame(maxHeight: .infinity)` in the panel overlay allows the enclosing
-    /// layout to centre the button in the well at nearly the full well height.
-    /// The image uses `frame(maxWidth:maxHeight:)` so it stays centred within
-    /// whatever height the panel grants rather than clustering at the top.
     private var addMenu: some View {
         Menu {
             if cachedRunningApps.isEmpty {
@@ -456,9 +465,9 @@ struct AppOverrideBar: View {
             Button("Other…") { browseForApp() }
         } label: {
             Image(systemName: "plus.app.fill")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 36, weight: .semibold))
                 .foregroundStyle(Color.accentColor)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)  // centre icon in the full button area
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
