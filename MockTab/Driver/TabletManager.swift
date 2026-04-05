@@ -55,6 +55,10 @@ final class TabletManager: ObservableObject {
     @Published var connectedUSBSpeed: String = "—"
     @Published var hidManagerOpen: Bool = false
 
+    /// Battery state for the active device, nil when unknown (USB or pre-first-report).
+    @Published var batteryPercent: Int? = nil
+    @Published var batteryCharging: Bool = false
+
     // MARK: - UI throttle
     //
     // @Published mutations fire objectWillChange.send() on every write, which
@@ -318,6 +322,17 @@ final class TabletManager: ObservableObject {
             }
         }
 
+        // ── Battery status closure ───────────────────────────────────────────
+        // Called when a BT device reports its battery state (INTUOSP2_BT family).
+        // Only fires when the raw battery byte changes — not on every pen report.
+        let onBattery: (Int, Bool) -> Void = { [weak self, weak context] percent, charging in
+            guard let self, let context else { return }
+            if self.activeContext === context {
+                self.batteryPercent = percent
+                self.batteryCharging = charging
+            }
+        }
+
         // ── USB HID mouse button closure (KC-100 cordless mouse) ────────────────
         // Called when a 4-byte Report ID 0x01 arrives from the mouse interface
         // (usagePage=0x01, seized).  Routes directly to the injector so buttons
@@ -380,7 +395,8 @@ final class TabletManager: ObservableObject {
                 wacomDevice = WacomUniversalDevice(
                     device: device, deviceSpec: deviceSpec, seize: shouldSeize,
                     onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
-                    onMouseButton: shouldSeize ? onMouseButton : nil)
+                    onMouseButton: shouldSeize ? onMouseButton : nil,
+                    onBattery: onBattery)
             } else {
                 let pid = String(productID, radix: 16, uppercase: true)
                 print("TabletManager: unknown Wacom 0x\(pid) — attaching generic driver")
@@ -420,6 +436,8 @@ final class TabletManager: ObservableObject {
         refreshConnectedIDs(mostRecent: nil)
         if activeContext === context {
             activeContext = hidDeviceMap.values.first
+            batteryPercent = nil
+            batteryCharging = false
         }
     }
 

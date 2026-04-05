@@ -260,6 +260,9 @@ struct DecoderState {
     /// Last valid rotation reading (Art Pen BT only). Used to suppress spurious 270°
     /// values at boundary-noise frames (0xC0, !inRange) where f[9:10]=0x00.
     var lastRotation: Double = 0.0
+    /// Last raw battery byte seen (INTUOSP2_BT 361-byte path). 0xFF = not yet received.
+    /// Used to suppress redundant .battery emissions on every pen report.
+    var lastBatteryByte: UInt8 = 0xFF
 }
 
 enum DecodeResult {
@@ -268,6 +271,9 @@ enum DecodeResult {
     case toolEnter(ToolIdentity)
     case aux(AuxButtons)
     case wireless(WirelessStatus)
+    /// Battery status from a BT device report.
+    /// `percent` is 0–100 (direct, no lookup table). `charging` is true when the device is plugged in.
+    case battery(percent: Int, charging: Bool)
     /// Tool compatibility warning: tool is present but not fully supported on this device.
     /// The associated string describes the limitation (e.g., "Rotation not supported").
     case toolCompatibility(String)
