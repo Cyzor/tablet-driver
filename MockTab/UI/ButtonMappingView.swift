@@ -94,6 +94,10 @@ struct ButtonMappingView: View {
                                 set: { tool.penButton2Binding = $0 }))
                     }
 
+                    PenDiagramView(liveButtons: lb)
+                        .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 64)
+                        .padding(.vertical, 4)
+
                     Divider()
                     DeviceNameLabel(tabletManager: tabletManager, registry: registry)
 
