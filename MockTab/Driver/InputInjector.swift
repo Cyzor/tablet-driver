@@ -717,8 +717,11 @@ final class InputInjector {
         let ptrType: Int64 = entering ? (eraser ? 3 : (activeToolIsMouse ? 2 : 1)) : 0
         e.setIntegerValueField(.tabletProximityEventPointerType, value: ptrType)
 
-        // Use activeToolCode for vendor pointer type; default to Grip Pen (0x0802)
-        // Art Pen variants (0x0804, 0x1108, 0x1804) report as Grip Pen to avoid rotation issues
+        // Use activeToolCode for vendor pointer type; default to Grip Pen (0x0802).
+        // Art Pen variants use 0x0812 (rotation-capable pen subtype) so apps like Krita
+        // and Rebelle categorise the tool correctly and use rotation rather than tilt.
+        // Previously reported as 0x0802 to work around a barrel-button debounce bug
+        // (EA/E0 sub-frame; barrel bits read from rotation packets) — now fixed.
         let toolCode = activeToolCode
         let vendorPtr: Int64
         if eraser {
@@ -728,7 +731,7 @@ final class InputInjector {
         } else {
             switch toolCode {
             case 0x0804, 0x1108, 0x1804:  // Art Pen variants
-                vendorPtr = 0x0802  // Grip Pen (no rotation)
+                vendorPtr = 0x0812  // Art Pen / rotation-capable pen
             case 0x0842:  // Pro Pen 3
                 vendorPtr = 0x0842
             case 0x0832:  // Pro Pen 2
