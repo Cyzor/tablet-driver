@@ -555,7 +555,8 @@ struct IntuosV2Decoder: WacomDecoder {
         //   byte[281] = center button (0x40 when pressed, 0x00 otherwise)
         //   byte[282] = key first-frame only (transition; prefer byte[283] for state)
         //   byte[283] = express key bitmask (bit0=key1 ... bit7=key8; direct, no shift)
-        //   byte[284] = 0x58 (constant pad-type marker)
+        //   byte[284] = battery: bit7=charging, bits6:0=capacity 0–100 (direct %)
+        //                        (kernel: wacom_intuos_pro2_bt_battery(), data[284])
         //   byte[285] = ring byte: bit7=ring active, bits0-6=position (0–71); 0x7F=no touch
         if length >= 286 {
             let keyByte = report[283]
@@ -577,6 +578,18 @@ struct IntuosV2Decoder: WacomDecoder {
                             touchRingActive: ringActive,
                             touchRingButtonDown: btnByte != 0,
                             touchRingPosition: ringActive ? (ringByte & 0x7F) : 0x7F)))
+            }
+        }
+
+        // Battery byte is at offset 284 in the 361-byte BT container.
+        // Kernel source: wacom_intuos_pro2_bt_battery(), wacom_wac.c ~line 1503.
+        //   bit7 = charging flag; bits6:0 = battery percentage (0–100, direct value).
+        // Only emit on change to avoid flooding with redundant events.
+        if length >= 285 {
+            let batByte = report[284]
+            if batByte != state.lastBatteryByte {
+                state.lastBatteryByte = batByte
+                results.append(.battery(percent: Int(batByte & 0x7F), charging: (batByte & 0x80) != 0))
             }
         }
 

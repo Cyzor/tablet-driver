@@ -89,6 +89,15 @@ struct InfoView: View {
                 value: tabletManager.isConnected ? tabletManager.connectedTransport : "—",
                 ok: tabletManager.isConnected ? true : nil)
 
+            if let pct = tabletManager.batteryPercent {
+                row(
+                    "Battery",
+                    value: tabletManager.batteryCharging
+                        ? "\(pct)%  (Charging)"
+                        : "\(pct)%",
+                    ok: pct < 20 ? false : nil)
+            }
+
             row(
                 "Speed",
                 value: tabletManager.isConnected ? tabletManager.connectedUSBSpeed : "—",
@@ -298,6 +307,10 @@ struct InfoView: View {
             }
             lines += ["Transport : \(tabletManager.connectedTransport)"]
             lines += ["Speed     : \(tabletManager.connectedUSBSpeed)"]
+            if let pct = tabletManager.batteryPercent {
+                let chgStr = tabletManager.batteryCharging ? " (charging)" : ""
+                lines += ["Battery   : \(pct)%\(chgStr)"]
+            }
         }
 
         lines += [""]
