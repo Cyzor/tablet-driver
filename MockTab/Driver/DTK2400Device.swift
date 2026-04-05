@@ -40,9 +40,11 @@ import IOKit.hid
 ///   Bytes 2–7 carry packed serial number and tool code per IntuosV1 protocol.
 ///   Eraser detected via tool_id bit 3: `toolCode & 0x0008 != 0`.
 ///
-/// **Barrel button debounce:** the device pulses the barrel button bit approximately
-///   1:5 (set:clear) while a button is held.  Clear-counter threshold of 7 survives
-///   the gap without false release.
+/// **Barrel button debounce:** buttons are read only from general pen packets
+///   (typeNibble 0–3).  The rotation sub-frame (typeNibble 5, status 0xEA) has bit 1
+///   permanently set as part of its type encoding — reading buttons from it would
+///   latch barrel button 1 forever.  Clear-counter threshold of 7 general packets
+///   survives hardware pulsing without false release.
 final class DTK2400Device: TabletDevice {
 
     let spec = DigitizerSpec(maxX: 104480, maxY: 65600, maxPressure: 2047)
@@ -176,27 +178,6 @@ final class DTK2400Device: TabletDevice {
             return
         }
 
-        // ── Barrel buttons from every in-proximity frame ─────────────────────
-        // Kernel: BTN_STYLUS = d[1] & 0x02, BTN_STYLUS2 = d[1] & 0x04.
-        // The device pulses the bit ~1:5 while held; debounce with clear-counter.
-        let curBtn1 = (status & 0x02) != 0
-        let curBtn2 = (status & 0x04) != 0
-
-        if curBtn1 {
-            btn1ClearCount = 0
-            lastButton1 = true
-        } else {
-            btn1ClearCount += 1
-            if btn1ClearCount >= Self.buttonClearThreshold { lastButton1 = false }
-        }
-        if curBtn2 {
-            btn2ClearCount = 0
-            lastButton2 = true
-        } else {
-            btn2ClearCount += 1
-            if btn2ClearCount >= Self.buttonClearThreshold { lastButton2 = false }
-        }
-
         // ── Packet type nibble: (status >> 1) & 0x0F ─────────────────────────
         let typeNibble = (Int(status) >> 1) & 0x0F
 
@@ -220,6 +201,29 @@ final class DTK2400Device: TabletDevice {
             lastRotation = degrees
 
         } else if typeNibble <= 0x03 {
+            // ── Barrel buttons — general pen packets only ─────────────────────
+            // Kernel: BTN_STYLUS = d[1] & 0x02, BTN_STYLUS2 = d[1] & 0x04.
+            // Bits 1 and 3 of the status byte carry different semantics in the
+            // rotation sub-frame (typeNibble 5); reading them there would permanently
+            // latch barrel button 1 because bit1 is always set in 0xEA packets.
+            // The device pulses the bit ~1:5 while held; debounce with clear-counter.
+            let curBtn1 = (status & 0x02) != 0
+            let curBtn2 = (status & 0x04) != 0
+            if curBtn1 {
+                btn1ClearCount = 0
+                lastButton1 = true
+            } else {
+                btn1ClearCount += 1
+                if btn1ClearCount >= Self.buttonClearThreshold { lastButton1 = false }
+            }
+            if curBtn2 {
+                btn2ClearCount = 0
+                lastButton2 = true
+            } else {
+                btn2ClearCount += 1
+                if btn2ClearCount >= Self.buttonClearThreshold { lastButton2 = false }
+            }
+
             // ── General pen packet: position, pressure, tilt ──────────────────
             // Kernel: X = (BE16(d2:d3)<<1) | ((d9>>1)&1) — 17-bit
             let x = ((Int(report[3]) | Int(report[2]) << 8) << 1) | ((Int(report[9]) >> 1) & 1)
@@ -284,25 +288,30 @@ final class DTK2400Device: TabletDevice {
     // MARK: - Report 0x0C: touch rings + express keys
     //
     // Confirmed layout (live capture + Linux kernel wacom_wac.c wacom_intuos_pad):
-    //   byte[1] — left  touch ring: raw absolute position, 0 = no contact, 1–255 = position
+    //   byte[1] — left  touch ring: bit 7 = active (1 = finger present), bits [6:0] = position 0–71
     //   byte[2] — right touch ring: same encoding as byte[1]
     //   byte[6] — express keys: bits 0–3 = left keys 0–3, bits 4–7 = right keys 4–7
     //   byte[8] — right-side buttons 8–15 (bits 0–7); 0 if only 8 buttons present
     //   bytes[3–5], [7], [9] — unused
     //
-    // Ring positions are normalized from 0–255 to 0–71 to match the injector's
-    // 72-step wrap-aware delta logic.
+    // Ring position is in bits [6:0] directly (0–71, 72 steps, ~5° each).
+    // Active raw values are therefore 0x80–0xC7 (bit 7 set).  Extracting with
+    // & 0x7F gives the correct 0–71 range without any scaling.
+    //
+    // Previous bug: the code divided raw*72/256, mapping active values 128–199
+    // to 36–56 instead of 0–71.  At the seam (pos 71→0) the uncorrected delta
+    // was -20, below the wrap threshold of 36, causing a momentary scroll reversal.
 
     private func handleExpressKeys(report: UnsafePointer<UInt8>, length: CFIndex) {
         guard length >= 7, let onAux = onAux else { return }
 
         let leftRingRaw = report[1]
-        let leftRingActive = leftRingRaw != 0
-        let leftRingPos = leftRingActive ? UInt8(Int(leftRingRaw) * 72 / 256) : UInt8(0x7F)
+        let leftRingActive = (leftRingRaw & 0x80) != 0
+        let leftRingPos = leftRingActive ? (leftRingRaw & 0x7F) : UInt8(0x7F)
 
         let rightRingRaw = report[2]
-        let rightRingActive = rightRingRaw != 0
-        let rightRingPos = rightRingActive ? UInt8(Int(rightRingRaw) * 72 / 256) : UInt8(0x7F)
+        let rightRingActive = (rightRingRaw & 0x80) != 0
+        let rightRingPos = rightRingActive ? (rightRingRaw & 0x7F) : UInt8(0x7F)
 
         // Left  buttons 0–7:  byte[6] bits 0–7
         // Right buttons 8–15: byte[8] bits 0–7  (kernel formula: (data[8]<<8)|data[6])
