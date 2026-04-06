@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // MockTab — native macOS driver for supported drawing tablets
 //
-// Copyright (C) 2026  This file is part of MockTab.
+// Copyright (C) 2026 This file is part of MockTab.
 //
 // MockTab is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -10,11 +10,11 @@
 //
 // MockTab is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+// along with MockTab. If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
 import IOKit.hid
@@ -48,7 +48,7 @@ func hidIntProperty(_ device: IOHIDDevice, _ key: String) -> Int {
 /// Query the HID descriptor elements for the digitizer's coordinate and pressure ranges.
 ///
 /// Returns `(maxX, maxY, maxPressure)` read from logical-maximum values on
-/// Generic Desktop X/Y and Digitizer Tip Pressure elements.  Also returns
+/// Generic Desktop X/Y and Digitizer Tip Pressure elements. Also returns
 /// `isLargeReport` (true when MaxInputReportSize > 64) to distinguish IntuosV1
 /// from IntuosV2 report families.
 ///
@@ -72,6 +72,7 @@ func queryHIDDigitizerSpec(_ device: IOHIDDevice)
 
     let count = CFArrayGetCount(elements)
     for i in 0..<count {
+        // Fix: Safely unwrap the optional pointer returned by CFArrayGetValueAtIndex
         guard let rawPtr = CFArrayGetValueAtIndex(elements, i) else { continue }
         let elem = Unmanaged<IOHIDElement>.fromOpaque(rawPtr).takeUnretainedValue()
         let page = IOHIDElementGetUsagePage(elem)
@@ -97,7 +98,7 @@ func queryHIDDigitizerSpec(_ device: IOHIDDevice)
 /// full tablet mode, unlocking cursor/mouse tool button state in pen reports.
 ///
 /// Searches the device's elements for Usage Page 0x0D (Digitizer) / Usage 0x29
-/// (Input Mode), reads its report ID, and sends [reportID, 2].  Call once per
+/// (Input Mode), reads its report ID, and sends [reportID, 2]. Call once per
 /// interface immediately after a successful IOHIDDeviceOpen.
 ///
 /// No-op when the element is not present on this interface (safe to call on both
@@ -113,6 +114,7 @@ func sendWacomInputModeInit(_ device: IOHIDDevice, tag: String) {
         print("\(tag): no InputMode element on this interface — skipping init")
         return
     }
+
     // CFArrayGetValueAtIndex returns an unretained IOHIDElement reference.
     let elem = Unmanaged<IOHIDElement>.fromOpaque(rawPtr).takeUnretainedValue()
     let reportID = IOHIDElementGetReportID(elem)
@@ -123,7 +125,7 @@ func sendWacomInputModeInit(_ device: IOHIDDevice, tag: String) {
 
     // Use IOHIDDeviceSetValue rather than IOHIDDeviceSetReport with a raw byte array.
     // IOHIDDeviceSetReport([reportID, 2]) only sends 2 bytes; if the feature report is
-    // longer the device discards it.  IOHIDDeviceSetValue lets IOHIDKit build the
+    // longer the device discards it. IOHIDDeviceSetValue lets IOHIDKit build the
     // correctly-sized report from the element descriptor (handles byte offset + padding).
     let value = IOHIDValueCreateWithIntegerValue(kCFAllocatorDefault, elem, 0, 2)
     let ret = IOHIDDeviceSetValue(device, elem, value)
@@ -141,18 +143,18 @@ func sendWacomInputModeInit(_ device: IOHIDDevice, tag: String) {
 /// Bluetooth Low Energy.
 ///
 /// Layout (from Wacom-Wireless-Specification-Notes.md §4.5):
-///   [0]     0x01 Report ID
-///   [1]     bits 0–3 = tool index; bit 4 = tip switch; bit 5 = barrel 1;
-///           bit 6 = barrel 2; bit 7 = proximity
-///   [2–3]   X  (LE uint16)
-///   [4–5]   Y  (LE uint16)
-///   [6–7]   Pressure (LE uint16, 0–8191)
-///   [8]     Distance (uint8, 0–63)
-///   [9]     Tilt X (signed int8, −127..+127 = sin(angle))
-///   [10]    Tilt Y (signed int8)
-///   [11–14] Tool serial (LE uint32)
-///   [15–16] Tool ID (LE uint16)
-///   [17–22] Reserved
+/// [0] 0x01 Report ID
+/// [1] bits 0–3 = tool index; bit 4 = tip switch; bit 5 = barrel 1;
+///     bit 6 = barrel 2; bit 7 = proximity
+/// [2–3] X (LE uint16)
+/// [4–5] Y (LE uint16)
+/// [6–7] Pressure (LE uint16, 0–8191)
+/// [8] Distance (uint8, 0–63)
+/// [9] Tilt X (signed int8, −127..+127 = sin(angle))
+/// [10] Tilt Y (signed int8)
+/// [11–14] Tool serial (LE uint32)
+/// [15–16] Tool ID (LE uint16)
+/// [17–22] Reserved
 ///
 /// Tilt encoding differs from USB: proportional to sin(angle), divide by 127
 /// to get −1..+1 — same normalization we use for IntuosV2 USB.
@@ -257,9 +259,19 @@ struct DecoderState {
     /// Whether the current tool is supported on this device family.
     /// Used to show UI warnings for incompatible tools and adjust feature decoding.
     var toolIsSupported: Bool = true
-    /// Last valid rotation reading (Art Pen BT only). Used to suppress spurious 270°
-    /// values at boundary-noise frames (0xC0, !inRange) where f[9:10]=0x00.
+    /// Last valid rotation reading (Art Pen). Used to hold state during boundary-noise
+    /// frames where !highConfidence (USB) or !inRange (BT). Reset to 0.0 on proximity exit.
     var lastRotation: Double = 0.0
+    /// True once at least one valid rotation frame has been decoded since tool-enter.
+    /// Prevents emitting stale 0.0 during boundary oscillations at re-entry.
+    var hasValidRotationFrame: Bool = false
+    var hasValidTiltFrame: Bool = false
+    /// Last valid tilt readings. Used to hold state during boundary-noise frames
+    /// where !highConfidence (USB) or !inRange (BT) so that apps receive a continuous
+    /// azimuth angle rather than a zero-snapped value on every low-confidence frame.
+    /// Reset to 0.0 on proximity exit alongside lastRotation.
+    var lastTiltX: Double = 0.0
+    var lastTiltY: Double = 0.0
     /// Last raw battery byte seen (INTUOSP2_BT 361-byte path). 0xFF = not yet received.
     /// Used to suppress redundant .battery emissions on every pen report.
     var lastBatteryByte: UInt8 = 0xFF
@@ -278,7 +290,7 @@ enum DecodeResult {
     /// The associated string describes the limitation (e.g., "Rotation not supported").
     case toolCompatibility(String)
     /// Standard USB HID mouse report (Report ID 0x01, 4 bytes) from the mouse
-    /// interface (usagePage=0x01) of an Intuos Pro tablet.  Carries button state only;
+    /// interface (usagePage=0x01) of an Intuos Pro tablet. Carries button state only;
     /// absolute position is delivered separately via the digitizer 0x10 stream.
     /// bit0 = left, bit1 = right, bit2 = middle.
     case mouseButton(UInt8)
@@ -298,17 +310,17 @@ protocol WacomDecoder {
     ) -> [DecodeResult]
 }
 
-// MARK: - BLE HOGP Report Decoders
+// MARK: - BLE HOGP Pad Report Decoder
 
 /// Decode a BLE HOGP pad report (Report ID 0x03, 9 bytes) common to
 /// Intuos Pro models when connected via BLE.
 ///
 /// Layout (from §4.7):
-///   [0]     0x03 Report ID
-///   [1]     Keys 1–8 bitmask
-///   [2]     bit 7 = ring active; bits 0–6 = ring position (0–71)
-///   [3]     bits 0–1 = ring mode
-///   [4–8]   Reserved
+/// [0] 0x03 Report ID
+/// [1] Keys 1–8 bitmask
+/// [2] bit 7 = ring active; bits 0–6 = ring position (0–71)
+/// [3] bits 0–1 = ring mode
+/// [4–8] Reserved
 func decodeBLEPadReport(
     report: UnsafePointer<UInt8>,
     length: CFIndex
