@@ -293,11 +293,12 @@ final class InputInjector {
                 activeClickCount = count
                 postMouseDown(
                     button: activeButton, at: clickPt,
-                    pressure: pressure, clickCount: count)
+                    pressure: pressure, clickCount: count,
+                    point: point)
             } else {
                 postMouseUp(
                     button: activeButton, at: screenPoint,
-                    clickCount: activeClickCount)
+                    clickCount: activeClickCount, point: point)
             }
             lastPostedPoint = screenPoint
             lastPostedPressure = pressure
@@ -319,9 +320,9 @@ final class InputInjector {
                 // leftMouseDown; use leftMouseDragged so apps receive proper drag events.
                 let dragging = tipDown || (activeToolIsMouse && usbMouseLeftHeld)
                 if dragging {
-                    postMouseDrag(button: activeButton, at: screenPoint, pressure: pressure)
+                    postMouseDrag(button: activeButton, at: screenPoint, pressure: pressure, point: point)
                 } else {
-                    postMouseMoved(at: screenPoint)
+                    postMouseMoved(at: screenPoint, point: point)
                 }
                 lastPostedPoint = screenPoint
                 lastPostedPressure = pressure
@@ -375,9 +376,9 @@ final class InputInjector {
         postTabletPointerEvent(at: shimLastScreen, pressure: shimLastPressure, point: point)
         let dragging = lastTipDown || (activeToolIsMouse && usbMouseLeftHeld)
         if dragging {
-            postMouseDrag(button: activeButton, at: shimLastScreen, pressure: shimLastPressure)
+            postMouseDrag(button: activeButton, at: shimLastScreen, pressure: shimLastPressure, point: point)
         } else {
-            postMouseMoved(at: shimLastScreen)
+            postMouseMoved(at: shimLastScreen, point: point)
         }
     }
 
@@ -586,7 +587,8 @@ final class InputInjector {
 
     private func postMouseDown(
         button: CGMouseButton, at location: CGPoint,
-        pressure: Double, clickCount: Int
+        pressure: Double, clickCount: Int,
+        point: TabletPoint? = nil
     ) {
         let type: CGEventType = button == .right ? .rightMouseDown : .leftMouseDown
         guard
@@ -603,13 +605,18 @@ final class InputInjector {
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
         e.setDoubleValueField(.mouseEventPressure, value: pressure)
         e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
+        if let p = point {
+            e.setDoubleValueField(.tabletEventTiltX, value: p.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: p.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: p.rotation)
+        }
         e.flags = currentEventFlags
         e.post(tap: .cghidEventTap)
     }
 
     private func postMouseUp(
         button: CGMouseButton, at location: CGPoint,
-        clickCount: Int
+        clickCount: Int, point: TabletPoint? = nil
     ) {
         let type: CGEventType = button == .right ? .rightMouseUp : .leftMouseUp
         guard
@@ -623,13 +630,18 @@ final class InputInjector {
         e.setDoubleValueField(.tabletEventPointPressure, value: 0)
         e.setDoubleValueField(.mouseEventPressure, value: 0)
         e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
+        if let p = point {
+            e.setDoubleValueField(.tabletEventTiltX, value: p.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: p.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: p.rotation)
+        }
         e.flags = currentEventFlags
         e.post(tap: .cghidEventTap)
     }
 
     private func postMouseDrag(
         button: CGMouseButton, at location: CGPoint,
-        pressure: Double
+        pressure: Double, point: TabletPoint? = nil
     ) {
         let type: CGEventType = button == .right ? .rightMouseDragged : .leftMouseDragged
         guard
@@ -642,6 +654,11 @@ final class InputInjector {
         e.setIntegerValueField(.tabletEventPointButtons, value: pressure > 0.004 ? 1 : 0)
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
         e.setDoubleValueField(.mouseEventPressure, value: pressure)
+        if let p = point {
+            e.setDoubleValueField(.tabletEventTiltX, value: p.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: p.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: p.rotation)
+        }
         // Synthetic CGEvents default to zero deltas, breaking AppKit controls (e.g.
         // Xcode's minimap) that read event.deltaX/Y rather than diffing absolute
         // positions themselves. CG Y=0 is top; NSEvent deltaY is positive-upward,
@@ -654,12 +671,19 @@ final class InputInjector {
         e.post(tap: .cghidEventTap)
     }
 
-    private func postMouseMoved(at location: CGPoint) {
+    private func postMouseMoved(at location: CGPoint, point: TabletPoint? = nil) {
         guard
             let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: .mouseMoved,
                 mouseCursorPosition: location, mouseButton: .left)
         else { return }
+        if let p = point {
+            e.setIntegerValueField(.mouseEventSubtype, value: 1)
+            e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+            e.setDoubleValueField(.tabletEventTiltX, value: p.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: p.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: p.rotation)
+        }
         e.setIntegerValueField(
             .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
         e.setIntegerValueField(
