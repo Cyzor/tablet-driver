@@ -46,7 +46,7 @@ struct MockTabApp: App {
                     .keyboardShortcut("4", modifiers: .command)
                 Button("Devices") { PreferencesWindowController.shared.showTab(at: 4) }
                     .keyboardShortcut("5", modifiers: .command)
-                Button("Presets") { PreferencesWindowController.shared.showTab(at: 5) }
+                Button("Profiles") { PreferencesWindowController.shared.showTab(at: 5) }
                     .keyboardShortcut("6", modifiers: .command)
                 Button("Scratchpad") { PreferencesWindowController.shared.showTab(at: 6) }
                     .keyboardShortcut("7", modifiers: .command)

@@ -60,6 +60,7 @@ struct ButtonMappingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.buttonKeys)
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
 
@@ -92,6 +93,10 @@ struct ButtonMappingView: View {
                                 "Pen Button 2", owner: tool, get: { tool.penButton2Binding },
                                 set: { tool.penButton2Binding = $0 }))
                     }
+
+                    PenDiagramView(liveButtons: lb)
+                        .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 64)
+                        .padding(.vertical, 4)
 
                     Divider()
                     DeviceNameLabel(tabletManager: tabletManager, registry: registry)
@@ -343,7 +348,7 @@ struct ButtonBindingControl: View {
                 Button("None") { set(.none) }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.caption2)
+                    .font(.settingsBadge)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
             }

@@ -89,6 +89,15 @@ struct InfoView: View {
                 value: tabletManager.isConnected ? tabletManager.connectedTransport : "—",
                 ok: tabletManager.isConnected ? true : nil)
 
+            if let pct = tabletManager.batteryPercent {
+                row(
+                    "Battery",
+                    value: tabletManager.batteryCharging
+                        ? "\(pct)%  (Charging)"
+                        : "\(pct)%",
+                    ok: pct < 20 ? false : nil)
+            }
+
             row(
                 "Speed",
                 value: tabletManager.isConnected ? tabletManager.connectedUSBSpeed : "—",
@@ -217,12 +226,12 @@ struct InfoView: View {
 
             if let saved = captureLastSaved {
                 Text("Saved: \(saved)")
-                    .font(.caption)
+                    .font(.settingsLabel)
                     .foregroundStyle(.secondary)
             }
 
             Text("Records every raw HID report before the decoder. Use to identify unknown byte positions (DTK-2400 barrel bits, KC-100 buttons, BT container layout).")
-                .font(.caption)
+                .font(.settingsLabel)
                 .foregroundStyle(.tertiary)
         }
         .onReceive(
@@ -241,7 +250,7 @@ struct InfoView: View {
             if diagnosticsExpanded {
                 // Only compute diagnosticText when the panel is actually open.
                 Text(diagnosticText)
-                    .font(.system(.caption2, design: .monospaced))
+                    .font(.monospaced)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(8)
@@ -298,6 +307,10 @@ struct InfoView: View {
             }
             lines += ["Transport : \(tabletManager.connectedTransport)"]
             lines += ["Speed     : \(tabletManager.connectedUSBSpeed)"]
+            if let pct = tabletManager.batteryPercent {
+                let chgStr = tabletManager.batteryCharging ? " (charging)" : ""
+                lines += ["Battery   : \(pct)%\(chgStr)"]
+            }
         }
 
         lines += [""]
@@ -486,7 +499,7 @@ private struct LiveInputView: View {
                         }
                         if !lb.tipDown && !lb.eraserDown && !lb.button1Down
                             && !lb.button2Down && !anyExpress {
-                            Text("None").foregroundStyle(.tertiary).font(.caption2)
+                            Text("None").foregroundStyle(.tertiary).font(.settingsBadge)
                         }
                     }
                 }
@@ -605,7 +618,7 @@ private struct LiveInputView: View {
 
     private func tag(_ text: String) -> some View {
         Text(text)
-            .font(.caption2)
+            .font(.settingsBadge)
             .padding(.horizontal, 4)
             .background(Color.accentColor.opacity(0.2))
             .cornerRadius(3)

@@ -72,13 +72,13 @@
 
 import SwiftUI
 
-/// Presets tab — lets the user create, activate, rename, and delete named
+/// Profiles tab — lets the user create, activate, rename, and delete named
 /// configuration snapshots for the current device, and bind specific apps
-/// to presets so they switch automatically on focus.
+/// to profiles so they switch automatically on focus.
 ///
-/// Each preset stores only the keys that were explicitly changed while it was
+/// Each profile stores only the keys that were explicitly changed while it was
 /// active; everything else falls through to the device defaults at read time.
-struct PresetsView: View {
+struct ProfilesView: View {
     @ObservedObject var settings: TabletSettings
 
     @State private var isCreating = false
@@ -137,7 +137,7 @@ struct PresetsView: View {
                 }
                 if case .app(_, let appName) = settings.activationSource {
                     Text("Auto-switched by \(appName)")
-                        .font(.caption)
+                        .font(.settingsLabel)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -221,7 +221,7 @@ struct PresetsView: View {
                         Text(
                             "\(preset.overriddenKeys.count) override\(preset.overriddenKeys.count == 1 ? "" : "s")"
                         )
-                        .font(.caption2)
+                        .font(.settingsBadge)
                         .foregroundStyle(.tertiary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -275,14 +275,14 @@ struct PresetsView: View {
         VStack(alignment: .leading, spacing: 4) {
             if bound.isEmpty {
                 Text("No apps bound to this preset")
-                    .font(.caption)
+                    .font(.settingsLabel)
                     .foregroundStyle(.tertiary)
             } else {
                 ForEach(bound) { binding in
                     HStack(spacing: 6) {
                         appIcon(bundleID: binding.bundleID)
                         Text(binding.appName)
-                            .font(.caption)
+                            .font(.settingsLabel)
                         Spacer()
                         Button {
                             // Capture current bindings before unbinding
@@ -294,7 +294,7 @@ struct PresetsView: View {
                             }
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.caption2)
+                                .font(.settingsBadge)
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
@@ -312,7 +312,7 @@ struct PresetsView: View {
                 }
             } label: {
                 Label("Bind current app", systemImage: "plus")
-                    .font(.caption)
+                    .font(.settingsLabel)
             }
             .buttonStyle(.plain)
             .foregroundStyle(Color.accentColor)
@@ -330,7 +330,7 @@ struct PresetsView: View {
                 .frame(width: 14, height: 14)
         } else {
             Image(systemName: "app")
-                .font(.caption2)
+                .font(.settingsBadge)
                 .foregroundStyle(.secondary)
                 .frame(width: 14, height: 14)
         }
@@ -383,7 +383,7 @@ struct PresetsView: View {
                     Text(
                         "When enabled, switching to a bound app automatically activates its preset."
                     )
-                    .font(.caption)
+                    .font(.settingsLabel)
                     .foregroundStyle(.secondary)
                 }
             }
@@ -391,7 +391,7 @@ struct PresetsView: View {
 
             if settings.autoSwitchEnabled && !settings.appBindings.isEmpty {
                 Text("App bindings appear under each preset above.")
-                    .font(.caption)
+                    .font(.settingsLabel)
                     .foregroundStyle(.tertiary)
             }
         }
