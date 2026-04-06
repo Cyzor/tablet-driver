@@ -41,6 +41,7 @@ final class WacomUniversalDevice: TabletDevice {
     /// standard mouse interface (usagePage=0x01).  Carries button bitmask only;
     /// absolute position is routed separately through the digitizer interface.
     private let onMouseButton: ((UInt8) -> Void)?
+    private let onBattery: ((Int, Bool) -> Void)?
 
     private var decoder: any WacomDecoder
     private var state = DecoderState()
@@ -66,7 +67,8 @@ final class WacomUniversalDevice: TabletDevice {
         onTablet: @escaping (TabletPoint) -> Void,
         onAux: ((AuxButtons) -> Void)? = nil,
         onToolEnter: ((ToolIdentity) -> Void)? = nil,
-        onMouseButton: ((UInt8) -> Void)? = nil
+        onMouseButton: ((UInt8) -> Void)? = nil,
+        onBattery: ((Int, Bool) -> Void)? = nil
     ) {
         self.isWireless = isWireless
         self.device = device
@@ -76,6 +78,7 @@ final class WacomUniversalDevice: TabletDevice {
         self.onAux = onAux
         self.onToolEnter = onToolEnter
         self.onMouseButton = onMouseButton
+        self.onBattery = onBattery
 
         self.spec = DigitizerSpec(
             maxX: deviceSpec.maxX,
@@ -267,6 +270,8 @@ final class WacomUniversalDevice: TabletDevice {
                 case .unknown:
                     break
                 }
+            case .battery(let pct, let chg):
+                onBattery?(pct, chg)
             case .mouseButton(let mask):
                 onMouseButton?(mask)
             case .toolCompatibility(let message):

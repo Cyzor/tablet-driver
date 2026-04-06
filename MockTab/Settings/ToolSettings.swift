@@ -94,10 +94,20 @@ final class ToolSettings: ObservableObject {
         set { pen2Raw = newValue.encoded }
     }
 
+    // MARK: - Override routing
+
+    /// When non-nil, persist() and savePressureCurve() write here instead of
+    /// the tool's own prefix.  Set by TabletSettings when an app override is active.
+    var overridePrefix: String? = nil
+
+    /// Called after a key is written to overridePrefix so TabletSettings can
+    /// mark the key as overridden in the active AppOverride.
+    var onOverrideKeyWritten: ((String) -> Void)? = nil
+
     // MARK: - Init
 
     private let ud = UserDefaults.standard
-    private var isLoading = false
+    var isLoading = false
 
     /// Suppresses undo registration when replaying undo/redo actions.
     var isUndoing = false
@@ -138,7 +148,12 @@ final class ToolSettings: ObservableObject {
 
     private func persist(_ key: String, _ value: Any) {
         guard !isLoading else { return }
-        ud.set(value, forKey: prefix + key)
+        if let op = overridePrefix {
+            ud.set(value, forKey: op + key)
+            onOverrideKeyWritten?(key)
+        } else {
+            ud.set(value, forKey: prefix + key)
+        }
     }
 
     private func loadDouble(_ key: String, default d: Double) -> Double {
@@ -161,10 +176,25 @@ final class ToolSettings: ObservableObject {
         return d
     }
 
+    /// Applies externally-resolved values (from a profile or app override) without
+    /// triggering persistence writes.  Called by TabletSettings.reloadAll() so that
+    /// PressureCurveView — which observes activeTool — stays in sync.
+    func applyExternalValues(pressureCurve: BezierCurve, smoothingStrength: Double) {
+        isLoading = true
+        self.pressureCurve = pressureCurve
+        self.smoothingStrength = smoothingStrength
+        isLoading = false
+    }
+
     private func savePressureCurve() {
         guard !isLoading else { return }
         guard let data = try? JSONEncoder().encode(pressureCurve) else { return }
-        ud.set(data, forKey: prefix + "pressureCurve")
+        if let op = overridePrefix {
+            ud.set(data, forKey: op + "pressureCurve")
+            onOverrideKeyWritten?("pressureCurve")
+        } else {
+            ud.set(data, forKey: prefix + "pressureCurve")
+        }
     }
 
     private func loadPressureCurve() {
