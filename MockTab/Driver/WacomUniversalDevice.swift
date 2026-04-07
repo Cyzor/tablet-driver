@@ -42,6 +42,10 @@ final class WacomUniversalDevice: TabletDevice {
     /// absolute position is routed separately through the digitizer interface.
     private let onMouseButton: ((UInt8) -> Void)?
     private let onBattery: ((Int, Bool) -> Void)?
+    /// Called when the hardware serial is successfully queried from a WACOM_REPORT_USB
+    /// (Report ID 0x03) feature report on USB/dongle connections. Serial is 0 if the
+    /// query fails or the device does not support the feature report.
+    private let onHardwareSerial: ((UInt32) -> Void)?
 
     private var decoder: any WacomDecoder
     private var state = DecoderState()
@@ -68,7 +72,8 @@ final class WacomUniversalDevice: TabletDevice {
         onAux: ((AuxButtons) -> Void)? = nil,
         onToolEnter: ((ToolIdentity) -> Void)? = nil,
         onMouseButton: ((UInt8) -> Void)? = nil,
-        onBattery: ((Int, Bool) -> Void)? = nil
+        onBattery: ((Int, Bool) -> Void)? = nil,
+        onHardwareSerial: ((UInt32) -> Void)? = nil
     ) {
         self.isWireless = isWireless
         self.device = device
@@ -79,6 +84,7 @@ final class WacomUniversalDevice: TabletDevice {
         self.onToolEnter = onToolEnter
         self.onMouseButton = onMouseButton
         self.onBattery = onBattery
+        self.onHardwareSerial = onHardwareSerial
 
         self.spec = DigitizerSpec(
             maxX: deviceSpec.maxX,
@@ -151,6 +157,10 @@ final class WacomUniversalDevice: TabletDevice {
                         dev, kIOHIDReportTypeFeature, reportID2, &bytes2, bytes2.count)
                 }
             }
+
+            // Query hardware serial from WACOM_REPORT_USB (Report ID 0x03) for device
+            // unification: same physical tablet via USB, BT, or dongle has the same serial.
+            queryHardwareSerial()
         }
 
         let ctx = Unmanaged.passRetained(self).toOpaque()
@@ -190,6 +200,51 @@ final class WacomUniversalDevice: TabletDevice {
         guard var bytes = deviceSpec.featureInit else { return }
         let reportID = CFIndex(bytes[0])
         IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
+    }
+
+    /// Query the hardware serial number from WACOM_REPORT_USB (Report ID 0x03) feature report.
+    ///
+    /// The serial is transport-agnostic (same physical tablet returns the same serial
+    /// over USB, BT, or wireless dongle). Used for device unification and distinguishing
+    /// multiple same-model tablets.
+    ///
+    /// Report format (from Linux wacom_sys.c):
+    ///   Byte 0:   Report ID (0x03)
+    ///   Bytes 1-3: Firmware version (typically ASCII)
+    ///   Bytes 4-7: Device serial (LE uint32, hardware-burned)
+    ///
+    /// Runs on the main thread (IOHIDDeviceGetReport is synchronous, not thread-safe).
+    /// Assumes device is already opened. Called from open() on USB/dongle only (never BT).
+    private func queryHardwareSerial() {
+        var buf = [UInt8](repeating: 0, count: 64)
+        var bufSize = CFIndex(buf.count)
+        let reportID = CFIndex(0x03)
+
+        let result = IOHIDDeviceGetReport(
+            device, kIOHIDReportTypeFeature, reportID, &buf, &bufSize)
+
+        guard result == kIOReturnSuccess && bufSize >= 8 else {
+            // Device does not support or failed to respond to Report ID 0x03.
+            // Call the callback with serial=0 to indicate unknown/unavailable.
+            onHardwareSerial?(0)
+            return
+        }
+
+        // Extract serial from bytes 4–7 (LE uint32)
+        let serial = UInt32(buf[4])
+            | UInt32(buf[5]) << 8
+            | UInt32(buf[6]) << 16
+            | UInt32(buf[7]) << 24
+
+        guard serial != 0 else {
+            // Serial bytes are zero (unprogrammed or reserved); treat as unavailable.
+            onHardwareSerial?(0)
+            return
+        }
+
+        let pidHex = String(deviceSpec.productID, radix: 16, uppercase: true)
+        print("\(deviceSpec.name) (0x\(pidHex)): hardware serial 0x\(String(format: "%08X", serial))")
+        onHardwareSerial?(serial)
     }
 
     // MARK: - C callback
