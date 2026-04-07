@@ -29,7 +29,8 @@ import IOKit.hid
 final class DeviceContext: ObservableObject, Identifiable {
 
     let id: Int  // productID — also serves as Identifiable key
-    let productID: Int
+    let productID: Int  // canonical (USB) product ID
+    let rawProductID: Int  // actual transport-specific PID from hardware
     let settings: TabletSettings
     let injector: InputInjector
 
@@ -52,9 +53,10 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Points to the device-default ToolSettings until the first tool-enter fires.
     @Published var activeTool: ToolSettings
 
-    init(productID: Int) {
+    init(productID: Int, rawProductID: Int? = nil) {
         self.id = productID
         self.productID = productID
+        self.rawProductID = rawProductID ?? productID
         let s = TabletSettings(productID: productID)
         self.settings = s
         self.injector = InputInjector(vendorID: 0x056A, productID: productID)

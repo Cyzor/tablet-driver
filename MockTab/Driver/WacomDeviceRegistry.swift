@@ -846,6 +846,33 @@ enum WacomDeviceRegistry {
         // .init(productID: 0x0CA, name: "XD-0608-BT (Intuos2 BT) — SPP/RFCOMM", ...),
     ]
 
+    // MARK: - Transport-variant unification
+
+    /// Maps Bluetooth Classic and wireless dongle PIDs to the canonical (USB) PID for their model family.
+    ///
+    /// Wacom assigns distinct product IDs per transport (USB, Bluetooth, wireless dongle).
+    /// This map normalizes them so that all three transports of the same physical tablet
+    /// share one `DeviceContext` and one settings namespace.
+    ///
+    /// The USB PID is canonical because it's the reference for HID feature reports and
+    /// is always enumerable first. Example: PTH-660 family maps to 0x0357 (USB).
+    ///
+    /// Note: PTH-460 wireless dongle PID (if it exists as a separate entry) needs hardware
+    /// verification before adding, as there may be a collision with PTH-860 USB 0x0358.
+    static let canonicalPIDMap: [Int: Int] = [
+        // Intuos Pro S (PTH-460 family)
+        0x035B: 0x0352,  // PTH-460 BT Classic (USB PID 0x0352 not yet in registry)
+        0x035F: 0x0356,  // PTH-460 BT Classic (alternative USB variant?)
+
+        // Intuos Pro M (PTH-660 family)
+        0x0359: 0x0357,  // Wireless dongle
+        0x0360: 0x0357,  // BT Classic
+
+        // Intuos Pro L (PTH-860 family)
+        0x035A: 0x0358,  // Wireless dongle
+        0x0361: 0x0358,  // BT Classic
+    ]
+
     // MARK: Lookups
 
     /// Returns the spec for `productID`, or nil if unrecognised.
@@ -865,5 +892,17 @@ enum WacomDeviceRegistry {
     static func hasLiveDecoder(for productID: Int) -> Bool {
         guard let s = spec(for: productID) else { return false }
         return s.parser != .graphire
+    }
+
+    /// Returns the canonical (USB) product ID for any transport variant of a tablet.
+    ///
+    /// If `productID` is a Bluetooth or wireless dongle variant, returns the equivalent USB PID.
+    /// If `productID` is already canonical (USB) or unmapped, returns it unchanged.
+    ///
+    /// Used at device connection to unify multi-transport tablets: USB PTH-660 (0x0357),
+    /// BT PTH-660 (0x0360), and wireless PTH-660 (0x0359) all normalize to 0x0357, so they
+    /// share the same `DeviceContext` and settings namespace.
+    static func canonicalProductID(for productID: Int) -> Int {
+        canonicalPIDMap[productID] ?? productID
     }
 }
