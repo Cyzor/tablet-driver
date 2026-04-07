@@ -1,6 +1,21 @@
 # MockTab — Open Tasks & Project Status
 
-_Last updated: 2026-04-03 (Session 23 — Factory Reset & Sticky Modifiers FIXED; test/kernel-spec-alignment merged to main)_
+_Last updated: 2026-04-06 (Session 24 — Per-App Overrides & Feature Integration COMPLETE; feature/per-app-overrides merged to main)_
+
+---
+
+## ✅ DONE IN SESSION 24
+
+- [x] One-window-per-tablet policy: enforced strict window-tablet binding (2026-04-06)
+- [x] Per-app overrides (Smooze model): app-specific settings with override bar in all 6 tabs (2026-04-06)
+- [x] App picker redesign: running-apps menu + drag-drop app icon support (2026-04-06)
+- [x] App chip drag-to-reorder/remove: fully functional (2026-04-06)
+- [x] Pen diagram in ButtonMappingView: visual stylus with live button feedback (2026-04-06)
+- [x] Tilt tracking: added to DecoderState for future per-pen features (2026-04-06)
+- [x] Art Pen fixes: rotation reset-to-0° + barrel debounce + touch ring seam detection (2026-04-06)
+- [x] Battery level reporting: BT devices report battery state to UI (2026-04-06)
+- [x] Semantic font naming: consistent typography across UI (2026-04-06)
+- [x] Branch merge: feature/per-app-overrides → main (8+ commits) (2026-04-06)
 
 ---
 
@@ -101,8 +116,9 @@ strips the report ID, so the callback buffer starts with the button mask at `rep
 Cursor and scroll work; buttons don't.  BT buttons unimplemented in firmware.
 Leave as-is unless Intuos 4 hardware is added.
 
-### ButtonMappingView redesign
-Current UI is functional but minimal. Planned improvements:
+### ButtonMappingView enhancements (post-v1)
+Current UI is functional with pen diagram. Remaining improvements (post-v1):
+- ✅ **Pen diagram with live button feedback** (2026-04-06)
 - **Tip/eraser bindings** in ToolSettings + InputInjector (let user choose which mouse button)
 - **ToolNameLabel** — show active pen name instead of device name in pen section
 - **Generalized side buttons** — dynamic count instead of fixed "Side button 1/2"
@@ -143,6 +159,19 @@ Standard feature in most tablets that many users disable because implementation 
 
 ## Done (recent sessions)
 
+- [x] Per-app overrides (2026-04-06): Smooze-model app-specific settings with override bar in all 6 tabs.
+      Running apps dropdown + drag-drop app chip reordering/removal. Settings merged at activation.
+- [x] One-window-per-tablet (2026-04-06): Strict enforcement; each detected tablet gets exactly one window.
+      Window locked to assigned tablet (device picker disabled). No mix-and-match reassignment possible.
+- [x] Pen diagram & live button feedback (2026-04-06): Added visual stylus to ButtonMappingView with
+      real-time button state display during user interaction.
+- [x] Tilt tracking (2026-04-06): Added tilt to DecoderState for future multi-pen serial number features.
+- [x] Art Pen fixes (2026-04-06): Fixed rotation reset-to-0° on tip-down; improved barrel button debounce
+      and touch ring seam detection on DTK-2400.
+- [x] Battery level reporting (2026-04-06): BT devices now surface battery state in UI (InfoView).
+- [x] Semantic typography (2026-04-06): Consistent font naming across UI for better maintainability.
+- [x] App picker redesign (2026-04-06): Replaced shortcut-based selection with running-apps menu + drop well.
+- [x] App chip drag-to-reorder (2026-04-06): Implemented reordering and removal via drag gestures.
 - [x] Factory Reset fully functional (2026-04-03): skipNextWindowSave() + NSWindow frame caches +
       Return/Command-R dialog activation. App now truly resets to factory defaults on relaunch.
 - [x] Sticky modifier keys fixed (2026-04-03): hidSystemState + activeSyntheticFlags prevents
