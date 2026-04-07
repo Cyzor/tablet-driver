@@ -193,15 +193,17 @@ final class TabletManager: ObservableObject {
     // MARK: - Device lifecycle
 
     private func deviceConnected(_ device: IOHIDDevice) {
-        let productID = hidIntProperty(device, kIOHIDProductIDKey)
+        let rawProductID = hidIntProperty(device, kIOHIDProductIDKey)
+        let productID = WacomDeviceRegistry.canonicalProductID(for: rawProductID)
         let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
         let usage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
         let maxRptSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
         let isBLE = transport.lowercased().contains("bluetooth")
+        let pidStr = rawProductID == productID ? "0x\(String(productID, radix:16))" : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
         print(
-            "TabletManager: device pid=0x\(String(productID, radix:16)) usagePage=0x\(String(usagePage, radix:16)) usage=0x\(String(usage, radix:16)) maxRptSize=\(maxRptSize) transport=\(transport)"
+            "TabletManager: device pid=\(pidStr) usagePage=0x\(String(usagePage, radix:16)) usage=0x\(String(usage, radix:16)) maxRptSize=\(maxRptSize) transport=\(transport)"
         )
 
         // BLE tablets expose multiple interfaces. Log all of them; skip ghost mouse only.
@@ -212,7 +214,7 @@ final class TabletManager: ObservableObject {
             return
         }
 
-        let context = contexts[productID] ?? DeviceContext(productID: productID)
+        let context = contexts[productID] ?? DeviceContext(productID: productID, rawProductID: rawProductID)
         contexts[productID] = context
         context.hidDevice = device
 
