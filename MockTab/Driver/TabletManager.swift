@@ -345,6 +345,15 @@ final class TabletManager: ObservableObject {
             context.injector.injectMouseButtons(mask: mask, settings: context.settings)
         }
 
+        // ── Hardware serial closure (device unification) ─────────────────────
+        // Called when a WACOM_REPORT_USB (Report ID 0x03) feature report query
+        // succeeds on USB or wireless dongle. Serial is 0 if the query fails or
+        // the device does not support Report ID 0x03 (e.g. old models).
+        // Used to unify multi-transport variants of the same physical tablet.
+        let onHardwareSerial: (UInt32) -> Void = { serial in
+            DeviceRegistry.shared.recordHardwareSerial(serial, forDevice: productID)
+        }
+
         // ── Create the device driver ─────────────────────────────────────────
         // Multi-interface devices (e.g. ACK-40401 dongle) enumerate separate IOHIDDevices
         // for each interface (digitizer, wireless status, touch, etc). We create one driver
@@ -381,7 +390,8 @@ final class TabletManager: ObservableObject {
                 featureInit: [0x02, 0x02], seizeUSB: false)
             wacomDevice = WacomUniversalDevice(
                 device: device, deviceSpec: dongleSpec, isWireless: true,
-                onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+                onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
+                onHardwareSerial: onHardwareSerial)
 
         default:
             // For any recognised PID with a live decoder and a valid spec, use
@@ -399,7 +409,7 @@ final class TabletManager: ObservableObject {
                     device: device, deviceSpec: deviceSpec, seize: shouldSeize,
                     onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
                     onMouseButton: shouldSeize ? onMouseButton : nil,
-                    onBattery: onBattery)
+                    onBattery: onBattery, onHardwareSerial: onHardwareSerial)
             } else {
                 let pid = String(productID, radix: 16, uppercase: true)
                 print("TabletManager: unknown Wacom 0x\(pid) — attaching generic driver")

@@ -197,6 +197,55 @@ final class DeviceRegistry: ObservableObject {
         return toolID
     }
 
+    /// Record the hardware serial number returned from a WACOM_REPORT_USB (Report ID 0x03)
+    /// feature report query. Used for device unification: same physical tablet connecting
+    /// via USB, BT, or wireless dongle returns the same serial.
+    ///
+    /// Stores a serial → canonicalProductID mapping in UserDefaults under "_hardwareSerials"
+    /// (JSON dict). This allows BT-only connections to look up their canonical PID when
+    /// querying Report ID 0x03 is not possible.
+    ///
+    /// Silently ignores serial = 0 (query failed or device does not support Report ID 0x03).
+    func recordHardwareSerial(_ serial: UInt32, forDevice canonicalProductID: Int) {
+        guard serial != 0 else { return }
+
+        var serialMap = hardwareSerialMap()
+        let serialHex = String(format: "%08X", serial)
+        let pidHex = String(canonicalProductID, radix: 16, uppercase: true)
+
+        // Check if this serial is already mapped to a different PID (shouldn't happen).
+        if let existingPID = serialMap[serialHex], existingPID != canonicalProductID {
+            print(
+                "DeviceRegistry: hardware serial 0x\(serialHex) remapped: "
+                    + "was 0x\(String(existingPID, radix: 16, uppercase: true)) "
+                    + "now 0x\(pidHex)")
+        }
+
+        serialMap[serialHex] = canonicalProductID
+        saveHardwareSerialMap(serialMap)
+        print("DeviceRegistry: stored hardware serial 0x\(serialHex) → canonical PID 0x\(pidHex)")
+    }
+
+    /// Looks up the canonical product ID for a given hardware serial, if known.
+    /// Returns nil if the serial has not been recorded.
+    func canonicalProductID(forHardwareSerial serial: UInt32) -> Int? {
+        guard serial != 0 else { return nil }
+        let serialHex = String(format: "%08X", serial)
+        return hardwareSerialMap()[serialHex]
+    }
+
+    private func hardwareSerialMap() -> [String: Int] {
+        guard let data = ud.data(forKey: "_hardwareSerials"),
+            let map = try? JSONDecoder().decode([String: Int].self, from: data)
+        else { return [:] }
+        return map
+    }
+
+    private func saveHardwareSerialMap(_ map: [String: Int]) {
+        guard let data = try? JSONEncoder().encode(map) else { return }
+        ud.set(data, forKey: "_hardwareSerials")
+    }
+
     // MARK: - Renaming
 
     func renameTablet(id: Int, to name: String) {
