@@ -29,32 +29,42 @@ final class AppWatcher {
 
     static let shared = AppWatcher()
 
-    weak var settings: TabletSettings?
+    private var observerToken: (any NSObjectProtocol)?
+
+    /// Called once at launch to force the lazy singleton to initialize
+    /// and register the NSWorkspace notification observer.
+    func start() { /* observer registered in init() */ }
 
     private init() {
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(appDidActivate(_:)),
-            name: NSWorkspace.didActivateApplicationNotification,
-            object: nil
-        )
+        // Block-based API: no NSObject requirement, queue: .main ensures delivery on main thread
+        observerToken = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            // Explicit @MainActor hop in the closure for clarity and Swift 6 compatibility
+            Task { @MainActor [weak self] in
+                self?.appDidActivate(notification)
+            }
+        }
     }
 
     deinit {
-        NSWorkspace.shared.notificationCenter.removeObserver(self)
+        if let token = observerToken {
+            NSWorkspace.shared.notificationCenter.removeObserver(token)
+        }
     }
 
-    // NSWorkspace notifications arrive on the main thread.
-    @objc private nonisolated func appDidActivate(_ notification: Notification) {
+    private func appDidActivate(_ notification: Notification) {
         guard
             let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
                 as? NSRunningApplication,
             let bundleID = app.bundleIdentifier
         else { return }
         let name = app.localizedName ?? bundleID
-        Task { @MainActor [weak self] in
-            self?.settings?.handleAppActivation(bundleID: bundleID, appName: name)
-            self?.settings?.handleAppOverrideActivation(bundleID: bundleID, appName: name)
+        for ctx in TabletManager.shared.contexts.values {
+            ctx.settings.handleAppActivation(bundleID: bundleID, appName: name)
+            ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
         }
     }
 }

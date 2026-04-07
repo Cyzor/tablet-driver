@@ -268,8 +268,14 @@ final class TabletSettings: ObservableObject {
     /// All per-app overrides registered for this device.
     @Published var appOverrides: [AppOverride] = []
 
-    /// The override currently applied because its app is frontmost (or manually selected).
-    /// Nil when the frontmost app has no registered override.
+    /// The override the driver is currently applying, keyed by frontmost app.
+    /// Set exclusively by handleAppOverrideActivation (AppWatcher).
+    /// Used by reloadAll() / load helpers so the injector reads the right values.
+    private var driverOverride: AppOverride? = nil
+
+    /// The override selected in the UI chip bar for editing.
+    /// Set by selectAppOverride (chip tap) or synced from driverOverride on app switch.
+    /// Controls which prefix persist() writes to and which chip is highlighted.
     @Published var activeAppOverride: AppOverride? = nil
 
     // MARK: - Init
@@ -303,6 +309,7 @@ final class TabletSettings: ObservableObject {
         loadPresetList()
         loadAppBindings()
         loadAppOverrides()
+        driverOverride = nil
         activeAppOverride = nil
         activeTool.overridePrefix = nil
         reloadAll()
@@ -446,17 +453,22 @@ final class TabletSettings: ObservableObject {
     // MARK: - App override management
 
     /// Called by AppWatcher on every app-focus change.
-    /// Activates the registered override for `bundleID`, or deactivates if none exists.
+    /// Updates the driver override so the injector applies the right settings,
+    /// then syncs the UI chip bar to reflect the active app.
     func handleAppOverrideActivation(bundleID: String, appName: String) {
         let newOverride = appOverrides.first { $0.bundleID == bundleID }
-        guard newOverride?.bundleID != activeAppOverride?.bundleID else { return }
-        activeAppOverride = newOverride
-        activeTool.overridePrefix = newOverride.map { appOverrideKeyPrefix($0) }
+        guard newOverride?.bundleID != driverOverride?.bundleID else { return }
+        driverOverride = newOverride
+        // Set these BEFORE reloadAll() so load helpers read from the correct override
+        activeAppOverride = driverOverride
+        activeTool.overridePrefix = driverOverride.map { appOverrideKeyPrefix($0) }
         reloadAll()
     }
 
     /// Selects an override by bundle ID for viewing/editing in the UI without
     /// requiring the app to be frontmost.  Pass nil to return to device defaults.
+    /// Changes the editing context (chip highlight, persist routing, UI panel values)
+    /// but does NOT affect what the driver applies (driverOverride).
     func selectAppOverride(bundleID: String?) {
         let newOverride = bundleID.flatMap { bid in appOverrides.first { $0.bundleID == bid } }
         guard newOverride?.bundleID != activeAppOverride?.bundleID else { return }
@@ -759,7 +771,12 @@ final class TabletSettings: ObservableObject {
     //                 → device prefix → legacy unprefixed key → compile-time default.
 
     private func loadDouble(_ key: String, default d: Double) -> Double {
-        if let override = activeAppOverride, override.overriddenKeys.contains(key),
+        // When user is editing a non-active app, show that app's values in the UI.
+        // Otherwise show the driver's active values.
+        let sourceOverride = (activeAppOverride?.bundleID != driverOverride?.bundleID)
+                            ? activeAppOverride
+                            : driverOverride
+        if let override = sourceOverride, override.overriddenKeys.contains(key),
            ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
         {
             return ud.double(forKey: appOverrideKeyPrefix(override) + key)
@@ -777,7 +794,10 @@ final class TabletSettings: ObservableObject {
     }
 
     private func loadBool(_ key: String, default d: Bool) -> Bool {
-        if let override = activeAppOverride, override.overriddenKeys.contains(key),
+        let sourceOverride = (activeAppOverride?.bundleID != driverOverride?.bundleID)
+                            ? activeAppOverride
+                            : driverOverride
+        if let override = sourceOverride, override.overriddenKeys.contains(key),
            ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
         {
             return ud.bool(forKey: appOverrideKeyPrefix(override) + key)
@@ -795,7 +815,10 @@ final class TabletSettings: ObservableObject {
     }
 
     private func loadInt(_ key: String, default d: Int) -> Int {
-        if let override = activeAppOverride, override.overriddenKeys.contains(key),
+        let sourceOverride = (activeAppOverride?.bundleID != driverOverride?.bundleID)
+                            ? activeAppOverride
+                            : driverOverride
+        if let override = sourceOverride, override.overriddenKeys.contains(key),
            ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
         {
             return ud.integer(forKey: appOverrideKeyPrefix(override) + key)
@@ -813,7 +836,10 @@ final class TabletSettings: ObservableObject {
     }
 
     private func loadString(_ key: String, default d: String) -> String {
-        if let override = activeAppOverride, override.overriddenKeys.contains(key),
+        let sourceOverride = (activeAppOverride?.bundleID != driverOverride?.bundleID)
+                            ? activeAppOverride
+                            : driverOverride
+        if let override = sourceOverride, override.overriddenKeys.contains(key),
            let v = ud.string(forKey: appOverrideKeyPrefix(override) + key) { return v }
         if let preset = activePreset, preset.overriddenKeys.contains(key) {
             if let v = ud.string(forKey: presetKeyPrefix(preset) + key) { return v }
@@ -853,7 +879,10 @@ final class TabletSettings: ObservableObject {
 
     private func loadPressureCurve() {
         let data: Data?
-        if let override = activeAppOverride, override.overriddenKeys.contains("pressureCurve") {
+        let sourceOverride = (activeAppOverride?.bundleID != driverOverride?.bundleID)
+                            ? activeAppOverride
+                            : driverOverride
+        if let override = sourceOverride, override.overriddenKeys.contains("pressureCurve") {
             data = ud.data(forKey: appOverrideKeyPrefix(override) + "pressureCurve")
                 ?? ud.data(forKey: devicePrefix + "pressureCurve")
                 ?? ud.data(forKey: "pressureCurve")
