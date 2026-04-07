@@ -99,9 +99,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         Task { @MainActor in
             let settings = PreferencesWindowController.shared.settings
-            AppWatcher.shared.settings = settings
             AppMenuController.shared.setup(settings: settings)
             TabletManager.shared.start()
+            AppWatcher.shared.start()
         }
 
         // spawnShim() — disabled; Adobe pressure is fixed via capability mask 0x05C7, no Apple Events needed.
