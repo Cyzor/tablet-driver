@@ -264,8 +264,14 @@ final class PreferencesWindowController {
     private func settingsAndLabel(forProductID productID: Int?) -> (TabletSettings, String) {
         if let pid = productID {
             let tm = TabletManager.shared
-            let s = tm.contexts[pid]?.settings ?? TabletSettings(productID: pid)
-            return (s, displayLabel(forProductID: pid))
+            // Pre-create the DeviceContext if the device hasn't connected yet so the
+            // window and driver share the same TabletSettings instance.  connectDevice()
+            // adopts any pre-existing context via `contexts[pid] ?? DeviceContext(...)`,
+            // ensuring writes from the UI are immediately visible to the driver.
+            if tm.contexts[pid] == nil {
+                tm.contexts[pid] = DeviceContext(productID: pid)
+            }
+            return (tm.contexts[pid]!.settings, displayLabel(forProductID: pid))
         }
         return (settings, "MockTab")
     }

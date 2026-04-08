@@ -241,6 +241,22 @@ final class InputInjector {
                     }
                     lastMiddleDown = false
                 }
+                // Safety valve: release any modifier keys stranded by a missed decoder
+                // release event (e.g. BT packet drop leaving lastBTPadKeys non-zero).
+                // Per-transport fixes (Defect A/B) prevent accumulation; this ensures
+                // proximity exit is always a clean slate regardless.
+                if !activeSyntheticFlags.isEmpty {
+                    activeSyntheticFlags = []
+                    if let e = CGEvent(source: sessionSource) {
+                        e.type = .flagsChanged
+                        e.setIntegerValueField(.keyboardEventKeycode, value: 0)
+                        e.flags = []
+                        e.post(tap: .cghidEventTap)
+                    }
+                }
+                // Reset aux state so the next injectAux fires fresh transitions.
+                lastAuxButtons = [Bool](repeating: false, count: 16)
+                lastRingButtonDown = false
                 hasSmoothedPoint = false
                 hasLastRawPoint = false
                 hasPostedPoint = false
@@ -453,9 +469,17 @@ final class InputInjector {
         // ── Express keys ───────────────────────────────────────────────────────
         for i in 0..<16 {
             let down = buttons[i]
+            let hasMechanicalPulse = i < 8 && (buttons.mechanicalMask >> i) & 1 != 0
             if down != lastAuxButtons[i] {
                 fireButtonAction(bindings[i], down: down, at: cursorPos)
                 lastAuxButtons[i] = down
+            } else if down && hasMechanicalPulse {
+                // Button is already tracked as down, but a new mechanical pulse arrived —
+                // the user re-pressed before the release event was seen. Force a complete
+                // up→down cycle so the key fires correctly without getting swallowed.
+                fireButtonAction(bindings[i], down: false, at: cursorPos)
+                fireButtonAction(bindings[i], down: true, at: cursorPos)
+                // lastAuxButtons[i] stays true — the button is still down after this cycle
             }
         }
 

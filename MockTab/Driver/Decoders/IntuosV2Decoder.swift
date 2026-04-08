@@ -636,28 +636,28 @@ struct IntuosV2Decoder: WacomDecoder {
         // Pad sub-report is embedded at a fixed offset in the 361-byte 0x80 container (byte 281).
         // Confirmed from live capture (2026-03-27):
         // byte[281] = center button (0x40 when pressed, 0x00 otherwise)
-        // byte[282] = key first-frame only (transition; prefer byte[283] for state)
-        // byte[283] = express key bitmask (bit0=key1 ... bit7=key8; direct, no shift)
+        // byte[282] = mechanical click pulse — set for exactly one frame on physical press
+        // byte[283] = capacitive touch state — set whenever finger rests on key (too sensitive alone)
         // byte[284] = battery: bit7=charging, bits6:0=capacity 0–100 (direct %)
         //             (kernel: wacom_intuos_pro2_bt_battery(), data[284])
         // byte[285] = ring byte: bit7=ring active, bits0-6=position (0–71); 0x7F=no touch
         if length >= 286 {
-            let keyByte = report[283]
+            let mechanicalByte = report[282]   // one-frame click pulse (rising edge)
             let ringByte = report[285]
             let btnByte = report[281]
-            if keyByte != state.lastBTPadKeys
+            if mechanicalByte != 0
                 || ringByte != state.lastBTPadRing
                 || btnByte != state.lastBTPadBtn
             {
-                state.lastBTPadKeys = keyByte
                 state.lastBTPadRing = ringByte
                 state.lastBTPadBtn = btnByte
-                let buttons = (0..<8).map { (keyByte & (1 << $0)) != 0 }
+                let buttons = (0..<8).map { (mechanicalByte & (1 << $0)) != 0 }
                 let ringActive = ringByte != 0x7F
                 results.append(
                     .aux(
                         AuxButtons(
                             buttons: buttons,
+                            mechanicalMask: mechanicalByte,
                             touchRingActive: ringActive,
                             touchRingButtonDown: btnByte != 0,
                             touchRingPosition: ringActive ? (ringByte & 0x7F) : 0x7F)))
@@ -821,16 +821,17 @@ struct IntuosV2Decoder: WacomDecoder {
         length: CFIndex
     ) -> [DecodeResult] {
         guard length >= 3 else { return [] }
-        let auxByte = report[1]
+        let mechanicalByte = report[1]
         let ringByte: UInt8 = length >= 5 ? report[3] : 0
         let posByte: UInt8 = length >= 5 ? report[4] : 0x7F
-        let buttons = (0..<8).map { bit in (auxByte & (1 << bit)) != 0 }
+        let buttons = (0..<8).map { bit in (mechanicalByte & (1 << bit)) != 0 }
         let ringActive = posByte != 0x7F  // finger on ring (position valid)
         let ringButtonDown = ringByte != 0  // center button pressed
         return [
             .aux(
                 AuxButtons(
                     buttons: buttons,
+                    mechanicalMask: mechanicalByte,
                     touchRingActive: ringActive,
                     touchRingButtonDown: ringButtonDown,
                     touchRingPosition: ringActive ? posByte : 0x7F))
