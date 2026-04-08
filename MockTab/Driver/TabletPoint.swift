@@ -66,6 +66,12 @@ struct ToolIdentity {
 
 struct AuxButtons {
     var buttons: [Bool]  // up to 8 express key buttons
+    /// Bitmask of buttons that had a new mechanical press pulse this frame.
+    /// Bit N corresponds to buttons[N].  Set even when the synthesized button state
+    /// is unchanged (e.g. rapid re-press before the previous release was detected).
+    /// Used by injectAux to force an up→down cycle so rapid same-key presses are
+    /// never swallowed by the injector's transition guard.
+    var mechanicalMask: UInt8 = 0
     /// True while a finger is resting on the touch ring (position is valid).
     var touchRingActive: Bool = false
     /// True while the center click button of the touch ring is physically pressed.
