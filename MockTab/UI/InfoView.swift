@@ -25,6 +25,7 @@ import SwiftUI
 struct InfoView: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var settings: TabletSettings
+    var productID: Int?
 
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var launchAtLogin = false
@@ -46,12 +47,11 @@ struct InfoView: View {
                     // re-renders the live section on livePoint/liveButtons
                     // changes — the static status table above is unaffected.
                     LiveInputView(
-                        livePoint:    tabletManager.livePoint,
-                        liveButtons:  tabletManager.liveButtons,
-                        activeToolID: tabletManager.activeToolID,
+                        livePoint:    tabletManager.contexts[productID ?? 0]?.livePoint,
+                        liveButtons:  tabletManager.contexts[productID ?? 0]?.liveButtons ?? LiveButtonState(),
+                        activeToolID: tabletManager.contexts[productID ?? 0]?.activeToolID,
                         registry:     DeviceRegistry.shared,
-                        hasDualRings: tabletManager.connectedProductIDs
-                            .contains { WacomDeviceRegistry.spec(for: $0)?.hasDualRings == true }
+                        hasDualRings: WacomDeviceRegistry.spec(for: productID ?? 0)?.hasDualRings == true
                     )
                     Divider()
                     captureSection
@@ -67,7 +67,7 @@ struct InfoView: View {
                 NotificationCenter.default.publisher(
                     for: NSApplication.didBecomeActiveNotification)
             ) { _ in refresh() }
-            PresetStatusBar(settings: settings)
+            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared, productID: productID ?? 0)
         }
     }
 
@@ -75,42 +75,46 @@ struct InfoView: View {
     // Re-renders only on device connect/disconnect and permission changes,
     // NOT on every pen report — livePoint/liveButtons are isolated in LiveInputView.
 
+    private var deviceContext: DeviceContext? {
+        tabletManager.contexts[productID ?? 0]
+    }
+
     private var statusTable: some View {
         Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
             row(
                 "Device",
-                value: tabletManager.isConnected
-                    ? tabletManager.connectedDeviceName
+                value: deviceContext?.isConnected ?? false
+                    ? TabletManager.deviceName(forProductID: productID ?? 0)
                     : "Not connected",
-                ok: tabletManager.isConnected)
+                ok: deviceContext?.isConnected ?? false)
 
             row(
                 "Connection",
-                value: tabletManager.isConnected ? tabletManager.connectedTransport : "—",
-                ok: tabletManager.isConnected ? true : nil)
+                value: deviceContext?.transport ?? "—",
+                ok: deviceContext?.isConnected ?? false ? true : nil)
 
-            if let pct = tabletManager.batteryPercent {
+            if let pct = deviceContext?.batteryPercent {
                 row(
                     "Battery",
-                    value: tabletManager.batteryCharging
+                    value: (deviceContext?.batteryCharging ?? false)
                         ? "\(pct)%  (Charging)"
                         : "\(pct)%",
                     ok: pct < 20 ? false : nil,
                     leadingSymbol: batterySymbolName(pct: pct,
-                                                    charging: tabletManager.batteryCharging),
+                                                    charging: deviceContext?.batteryCharging ?? false),
                     symbolColor:   batteryColor(pct: pct,
-                                                charging: tabletManager.batteryCharging))
+                                                charging: deviceContext?.batteryCharging ?? false))
             }
 
             row(
                 "Speed",
-                value: tabletManager.isConnected ? tabletManager.connectedUSBSpeed : "—",
-                ok: tabletManager.isConnected ? true : nil)
+                value: deviceContext?.usbSpeed ?? "—",
+                ok: deviceContext?.isConnected ?? false ? true : nil)
 
             row(
                 "Status",
-                value: tabletManager.isConnected ? "Active" : "Idle",
-                ok: tabletManager.isConnected ? true : nil)
+                value: (deviceContext?.isConnected ?? false) ? "Active" : "Idle",
+                ok: (deviceContext?.isConnected ?? false) ? true : nil)
 
             row(
                 "Permission",

@@ -76,79 +76,115 @@ struct ToolNameLabel: View {
     }
 }
 
-// MARK: - PresetStatusBar
+// MARK: - DeviceStatusBar
 
-/// Slim sticky footer that appears at the bottom of every settings pane.
-/// Shows the active preset name (or "Device defaults" when none is active)
-/// so the user always knows which configuration layer is in effect.
-struct PresetStatusBar: View {
-    @ObservedObject var settings: TabletSettings
+/// Slim sticky footer showing live device context: tablet name, connection
+/// type, battery (BT only), last-seen tool, and active app override.
+/// All data is sourced from the device context bound to this window's productID.
+struct DeviceStatusBar: View {
+    @ObservedObject var settings:      TabletSettings
+    @ObservedObject var tabletManager: TabletManager
+    @ObservedObject var registry:      DeviceRegistry
+    let productID: Int
 
     var body: some View {
         VStack(spacing: 0) {
             Divider()
-            HStack(spacing: 6) {
-                Image(systemName: settings.activePreset == nil ? "star" : "star.fill")
-                    .font(.settingsBadge)
-                    .foregroundStyle(settings.activePreset == nil
-                                     ? Color.secondary
-                                     : Color.yellow)
-
-                if let preset = settings.activePreset {
-                    Text(preset.name)
-                        .font(.settingsLabel)
-                    if case .app(_, let appName) = settings.activationSource {
-                        Text("· \(appName)")
-                            .font(.settingsLabel)
-                            .foregroundStyle(.secondary)
-                    }
-                } else {
-                    Text("Device defaults")
-                        .font(.settingsLabel)
-                        .foregroundStyle(.secondary)
+            HStack(spacing: 0) {
+                statusItem(symbol: "rectangle",              text: tabletName)
+                Divider().frame(height: 12)
+                statusItem(symbol: connectionSymbol,         text: connectionLabel)
+                if let (sym, label) = batteryItem {
+                    Divider().frame(height: 12)
+                    statusItem(symbol: sym, text: label, tint: batteryTint)
                 }
-
-                Spacer()
-
-                // Profile picker — mirrors the Profiles tab and the app menu.
-                Menu {
-                    // "Device defaults" always appears first; checkmark when active.
-                    Button {
-                        settings.activate(nil)
-                    } label: {
-                        if settings.activePreset == nil {
-                            Label("Device defaults", systemImage: "checkmark")
-                        } else {
-                            Text("Device defaults")
-                        }
-                    }
-
-                    if !settings.presets.isEmpty {
-                        Divider()
-                        ForEach(settings.presets) { preset in
-                            Button {
-                                settings.activate(preset)
-                            } label: {
-                                if settings.activePreset?.id == preset.id {
-                                    Label(preset.name, systemImage: "checkmark")
-                                } else {
-                                    Text(preset.name)
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.settingsBadge)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 4)
+                Divider().frame(height: 12)
+                statusItem(symbol: "pencil.tip.crop.circle", text: toolName)
+                if let appName = activeAppName {
+                    Divider().frame(height: 12)
+                    statusItem(symbol: "app.badge.checkmark", text: appName)
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .frame(width: 20)
+                Spacer(minLength: 0)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
         }
+    }
+
+    // MARK: - Sub-views
+
+    @ViewBuilder
+    private func statusItem(symbol: String, text: String, tint: Color = .secondary) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol)
+                .font(.settingsBadge)
+                .foregroundStyle(tint)
+            Text(text)
+                .font(.settingsLabel)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 8)
+    }
+
+    // MARK: - Computed values
+
+    private var context: DeviceContext? {
+        tabletManager.contexts[productID]
+    }
+
+    private var tabletName: String {
+        guard let context = context, context.isConnected else { return "No device" }
+        if let t = registry.knownTablets.first(where: { $0.id == productID }) { return t.nickname }
+        return TabletManager.deviceName(forProductID: productID)
+    }
+
+    private var connectionSymbol: String {
+        guard let context = context else { return "cable.connector.horizontal" }
+        let t = context.transport.lowercased()
+        if t.contains("bluetooth") { return "wave.3.right" }
+        return "cable.connector.horizontal"
+    }
+
+    private var connectionLabel: String {
+        guard let context = context, context.isConnected else { return "Off" }
+        return context.transport
+    }
+
+    private var batteryItem: (String, String)? {
+        guard let context = context, let pct = context.batteryPercent else { return nil }
+        let sym = batterySymbol(pct: pct, charging: context.batteryCharging)
+        let label = context.batteryCharging ? "\(pct)% ⚡" : "\(pct)%"
+        return (sym, label)
+    }
+
+    private var batteryTint: Color {
+        guard let context = context, let pct = context.batteryPercent else { return .secondary }
+        if context.batteryCharging { return .green }
+        if pct < 20 { return .red }
+        if pct < 50 { return .orange }
+        return .secondary
+    }
+
+    private func batterySymbol(pct: Int, charging: Bool) -> String {
+        guard !charging else { return "battery.100percent.bolt" }
+        switch pct {
+        case 0 ..< 13:  return "battery.0percent"
+        case 13 ..< 38: return "battery.25percent"
+        case 38 ..< 63: return "battery.50percent"
+        case 63 ..< 88: return "battery.75percent"
+        default:        return "battery.100percent"
+        }
+    }
+
+    private var toolName: String {
+        if let context = context, let toolID = context.activeToolID {
+            if let t = registry.knownTools.first(where: { $0.id == toolID }) { return t.nickname }
+            return toolID
+        }
+        return registry.knownTools.first?.nickname ?? "No tool"
+    }
+
+    private var activeAppName: String? {
+        settings.activeAppOverride?.appName
     }
 }

@@ -79,7 +79,10 @@ import SwiftUI
 /// Each profile stores only the keys that were explicitly changed while it was
 /// active; everything else falls through to the device defaults at read time.
 struct ProfilesView: View {
-    @ObservedObject var settings: TabletSettings
+    @ObservedObject var settings:      TabletSettings
+    @ObservedObject var tabletManager: TabletManager
+    @ObservedObject var registry:      DeviceRegistry
+    var productID: Int?
 
     @State private var isCreating = false
     @State private var newName = ""
@@ -119,7 +122,7 @@ struct ProfilesView: View {
                 }
                 .padding()
             }
-            PresetStatusBar(settings: settings)
+            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
     }
 

@@ -65,7 +65,7 @@ struct TabletAreaView: View {
             AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.areaKeys)
             mainContent
             Spacer(minLength: 0)
-            PresetStatusBar(settings: settings)
+            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: boundProductID ?? 0)
         }
     }
 

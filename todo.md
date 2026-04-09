@@ -1,6 +1,19 @@
 # MockTab — Open Tasks & Project Status
 
-_Last updated: 2026-04-06 (Session 24 — Per-App Overrides & Feature Integration COMPLETE; feature/per-app-overrides merged to main)_
+_Last updated: 2026-04-09 (Session 28 — Per-Device Status Bar & State Reporting COMPLETE)_
+
+---
+
+## ✅ DONE IN SESSION 28
+
+- [x] DeviceContext per-device observable state: 8 @Published properties added (2026-04-09)
+- [x] TabletManager state propagation: objectWillChange subscription + per-device writes (2026-04-09)
+- [x] DeviceStatusBar: replaced PresetStatusBar with device-specific footer (2026-04-09)
+- [x] All views: added productID parameter + updated call sites (2026-04-09)
+- [x] InfoView status table: per-device context reads instead of global active state (2026-04-09)
+- [x] Multi-tablet window state isolation: strict per-device reporting (2026-04-09)
+- [x] Window title uniformity: deferred to Session 29 (2026-04-09)
+- [x] ButtonMappingView background color: deferred to Session 29 (2026-04-09)
 
 ---
 

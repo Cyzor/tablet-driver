@@ -218,6 +218,22 @@ final class TabletManager: ObservableObject {
         contexts[productID] = context
         context.hidDevice = device
 
+        // Propagate context.objectWillChange to TabletManager so SwiftUI observers
+        // get updates when per-device state changes (transport, battery, livePoint, etc).
+        if context.cancellables.isEmpty {
+            context.objectWillChange
+                .sink { [weak self] in self?.objectWillChange.send() }
+                .store(in: &context.cancellables)
+        }
+
+        // Set initial connection state for this device.
+        context.isConnected = true
+        context.transport = transport
+        if !isBLE {
+            // Fetch USB speed only for USB devices (will be fetched in refreshConnectedIDs).
+            context.usbSpeed = "—"
+        }
+
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
             guard let self, let context else { return }
@@ -229,7 +245,8 @@ final class TabletManager: ObservableObject {
             context.injector.activeToolSettings = toolSets
             context.injector.activeToolIsMouse = identity.isMouse
             context.injector.activeToolCode = identity.toolCode
-            self.activeToolID = toolID
+            context.activeToolID = toolID
+            self.activeToolID = toolID  // Legacy: forward to global for backward compatibility
         }
 
         // ── Tablet point closure ─────────────────────────────────────────────
@@ -268,8 +285,11 @@ final class TabletManager: ObservableObject {
             if !point.inProximity {
                 self.uiUpdateCounter = 0
                 self.activeToolID = nil
+                context.activeToolID = nil
                 self.liveButtons = LiveButtonState()
+                context.liveButtons = LiveButtonState()
                 self.livePoint = nil
+                context.livePoint = nil
                 return  // Skip UI updates for proximity-exit state
             }
 
@@ -294,7 +314,9 @@ final class TabletManager: ObservableObject {
             )
             // Only assign when values changed — avoids spurious objectWillChange.
             if newButtons != self.liveButtons { self.liveButtons = newButtons }
+            context.liveButtons = newButtons
             self.livePoint = point
+            context.livePoint = point
         }
 
         // ── Express key closure ──────────────────────────────────────────────
@@ -330,6 +352,9 @@ final class TabletManager: ObservableObject {
         // Only fires when the raw battery byte changes — not on every pen report.
         let onBattery: (Int, Bool) -> Void = { [weak self, weak context] percent, charging in
             guard let self, let context else { return }
+            context.batteryPercent = percent
+            context.batteryCharging = charging
+            // Also update global for active context (backward compatibility)
             if self.activeContext === context {
                 self.batteryPercent = percent
                 self.batteryCharging = charging
@@ -445,6 +470,15 @@ final class TabletManager: ObservableObject {
         context.tabletDevice?.close()
         context.tabletDevice = nil
         context.hidDevice = nil
+        // Clear per-device state
+        context.isConnected = false
+        context.transport = "—"
+        context.usbSpeed = "—"
+        context.batteryPercent = nil
+        context.batteryCharging = false
+        context.activeToolID = nil
+        context.livePoint = nil
+        context.liveButtons = LiveButtonState()
         print("TabletManager: \(Self.deviceName(forProductID: context.productID)) disconnected")
         refreshConnectedIDs(mostRecent: nil)
         if activeContext === context {

@@ -238,7 +238,7 @@ final class SettingsWindowController: NSWindowController {
                 onDeviceSelected: onDevice, boundProductID: productID)
         }
         addTab(label: "Pressure", symbol: "scribble.variable", height: 480) {
-            PressureCurveView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr)
+            PressureCurveView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr, productID: productID)
         }
         addTab(label: "Buttons", symbol: "square.grid.2x2.fill", height: 575) {
             ButtonMappingView(
@@ -246,19 +246,19 @@ final class SettingsWindowController: NSWindowController {
                 productID: productID)
         }
         addTab(label: "Display", symbol: "display", height: 370) {
-            DisplayMappingView(settings: s, tabletManager: tm, registry: dr)
+            DisplayMappingView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
         addTab(label: "Devices", symbol: "rectangle.on.rectangle", height: 480, width: 620) {
             DevicesView(tabletManager: tm, registry: dr, undoManager: um)
         }
         addTab(label: "Profiles", symbol: "star.circle", height: 450) {
-            ProfilesView(settings: s)
+            ProfilesView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
         addTab(label: "Scratchpad", symbol: "pencil.and.outline", height: 360) {
-            ScratchpadView(settings: s)
+            ScratchpadView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
         addTab(label: "Info", symbol: "info.circle", height: 430) {
-            InfoView(tabletManager: tm, settings: s)
+            InfoView(tabletManager: tm, settings: s, productID: productID)
         }
 
         // Set minimum window size to accommodate all tabs without truncation.

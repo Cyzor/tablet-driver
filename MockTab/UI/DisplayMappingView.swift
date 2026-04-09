@@ -24,6 +24,7 @@ struct DisplayMappingView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
+    var productID: Int?
     @State private var displays: [DisplayInfo] = []
     @State private var rangeStart: Int = -1
 
@@ -53,7 +54,7 @@ struct DisplayMappingView: View {
         VStack(spacing: 0) {
             mainContent
             Spacer(minLength: 0)
-            PresetStatusBar(settings: settings)
+            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
         .onAppear { displays = DisplayInfo.all() }
     }

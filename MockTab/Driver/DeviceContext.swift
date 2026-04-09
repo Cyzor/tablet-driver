@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
 
+import Combine
 import Foundation
 import IOKit.hid
 
@@ -52,6 +53,35 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// The ToolSettings for the pen currently in proximity.
     /// Points to the device-default ToolSettings until the first tool-enter fires.
     @Published var activeTool: ToolSettings
+
+    // MARK: - Per-device observable state (synced from driver callbacks)
+
+    /// True when this device is currently connected.
+    @Published var isConnected: Bool = false
+
+    /// Transport type for this device: "USB", "Bluetooth", "Other", or "—".
+    @Published var transport: String = "—"
+
+    /// USB speed label if connected via USB: "Low Speed", "Full Speed", "High Speed", "Super Speed", etc.
+    @Published var usbSpeed: String = "—"
+
+    /// Battery percentage (0–100) if this device is BT; nil if USB or unknown.
+    @Published var batteryPercent: Int? = nil
+
+    /// True if the device is currently charging (BT only).
+    @Published var batteryCharging: Bool = false
+
+    /// Serial ID (as hex string) of the tool currently in proximity, or nil.
+    @Published var activeToolID: String? = nil
+
+    /// Last-seen pen/stylus point at tablet coordinates.
+    @Published var livePoint: TabletPoint? = nil
+
+    /// Live button state for the pen/stylus and device.
+    @Published var liveButtons: LiveButtonState = .init()
+
+    /// Subscriptions managed by this context (e.g., to TabletManager for change propagation).
+    var cancellables: Set<AnyCancellable> = []
 
     init(productID: Int, rawProductID: Int? = nil) {
         self.id = productID

@@ -25,6 +25,7 @@ struct PressureCurveView: View {
     @ObservedObject var tool:          ToolSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
+    var productID: Int?
 
     @State private var draggingP1 = false
     @State private var draggingP2 = false
@@ -35,7 +36,7 @@ struct PressureCurveView: View {
             AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.pressureKeys)
             mainContent
             Spacer(minLength: 0)
-            PresetStatusBar(settings: settings)
+            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
     }
 
