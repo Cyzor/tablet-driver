@@ -95,7 +95,11 @@ struct InfoView: View {
                     value: tabletManager.batteryCharging
                         ? "\(pct)%  (Charging)"
                         : "\(pct)%",
-                    ok: pct < 20 ? false : nil)
+                    ok: pct < 20 ? false : nil,
+                    leadingSymbol: batterySymbolName(pct: pct,
+                                                    charging: tabletManager.batteryCharging),
+                    symbolColor:   batteryColor(pct: pct,
+                                                charging: tabletManager.batteryCharging))
             }
 
             row(
@@ -143,7 +147,10 @@ struct InfoView: View {
     @ViewBuilder
     private func row(
         _ label: String, value: String,
-        ok: Bool?, fix: (() -> Void)? = nil
+        ok: Bool?,
+        leadingSymbol: String? = nil,
+        symbolColor:   Color?  = nil,
+        fix: (() -> Void)? = nil
     ) -> some View {
         GridRow {
             Text(label)
@@ -152,7 +159,12 @@ struct InfoView: View {
                 .gridColumnAlignment(.trailing)
 
             HStack(spacing: 8) {
-                statusIcon(ok)
+                if let sym = leadingSymbol {
+                    Image(systemName: sym)
+                        .foregroundStyle(symbolColor ?? .primary)
+                } else {
+                    statusIcon(ok)
+                }
                 Text(value)
                 if let fix {
                     Button("Fix", action: fix)
@@ -173,6 +185,30 @@ struct InfoView: View {
         } else {
             Image(systemName: "minus.circle.fill").foregroundStyle(.tertiary)
         }
+    }
+
+    // MARK: - Battery icon helpers
+
+    /// Maps a battery percentage (and charging state) to the closest SF Symbol
+    /// in the battery family (battery.0percent … battery.100percent.bolt).
+    private func batterySymbolName(pct: Int, charging: Bool) -> String {
+        guard !charging else { return "battery.100percent.bolt" }
+        switch pct {
+        case 0 ..< 13:  return "battery.0percent"
+        case 13 ..< 38: return "battery.25percent"
+        case 38 ..< 63: return "battery.50percent"
+        case 63 ..< 88: return "battery.75percent"
+        default:        return "battery.100percent"
+        }
+    }
+
+    /// Returns a colour that reflects battery health:
+    /// red < 20 %, orange 20–49 %, green ≥ 50 % (and charging).
+    private func batteryColor(pct: Int, charging: Bool) -> Color {
+        if charging  { return .green }
+        if pct < 20  { return .red   }
+        if pct < 50  { return .orange }
+        return .green
     }
 
     // MARK: - HID capture section
