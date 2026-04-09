@@ -273,13 +273,13 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     private func insertPresetsMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
-        guard mainMenu.items.allSatisfy({ $0.title != "Presets" }) else { return }
+        guard mainMenu.items.allSatisfy({ $0.title != "Profiles" }) else { return }
 
-        let menu = NSMenu(title: "Presets")
+        let menu = NSMenu(title: "Profiles")
         menu.delegate = self
         presetsMenu = menu
 
-        let menuItem = NSMenuItem(title: "Presets", action: nil, keyEquivalent: "")
+        let menuItem = NSMenuItem(title: "Profiles", action: nil, keyEquivalent: "")
         menuItem.submenu = menu
 
         // Insert after Edit menu (which SwiftUI generates).
@@ -317,7 +317,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         }
 
         let showItem = NSMenuItem(
-            title: "Show Presets",
+            title: "Show Saved Configurations…",
             action: #selector(showPresetsTab),
             keyEquivalent: "")
         showItem.target = self
@@ -348,7 +348,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func showPresetsTab() {
-        PreferencesWindowController.shared.showTab(named: "Presets")
+        PreferencesWindowController.shared.showTab(named: "Profiles")
     }
 
 }
