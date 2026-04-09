@@ -22,7 +22,10 @@ import AppKit
 // MARK: - SwiftUI wrapper
 
 struct ScratchpadView: View {
-    @ObservedObject var settings: TabletSettings
+    @ObservedObject var settings:      TabletSettings
+    @ObservedObject var tabletManager: TabletManager
+    @ObservedObject var registry:      DeviceRegistry
+    var productID: Int?
     @State private var currentPressure: Double = 0
     @State private var clearID = 0  // toggle to trigger a clear
 
@@ -30,7 +33,7 @@ struct ScratchpadView: View {
         VStack(spacing: 0) {
             mainContent
             Spacer(minLength: 0)
-            PresetStatusBar(settings: settings)
+            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
     }
 

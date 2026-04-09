@@ -97,7 +97,7 @@ struct ButtonMappingView: View {
             // Collect the widest natural label width from every row across all
             // sections and store it so the next render locks every label column.
             .onPreferenceChange(LabelWidthKey.self) { labelColumnWidth = $0 }
-            PresetStatusBar(settings: settings)
+            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
     }
 
