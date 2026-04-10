@@ -1136,7 +1136,7 @@ enum TouchRingMode: String, Codable, CaseIterable {
 struct ButtonBinding: Codable, Equatable {
 
     enum Kind: String, Codable {
-        case none, leftClick, rightClick, middleClick, keyCombo
+        case none, leftClick, rightClick, middleClick, eraser, keyCombo
     }
 
     var kind: Kind = .none
@@ -1150,6 +1150,7 @@ struct ButtonBinding: Codable, Equatable {
     static let leftClick = ButtonBinding(kind: .leftClick)
     static let rightClick = ButtonBinding(kind: .rightClick)
     static let middleClick = ButtonBinding(kind: .middleClick)
+    static let eraser = ButtonBinding(kind: .eraser)
 
     // MARK: Init
 
@@ -1232,6 +1233,7 @@ struct ButtonBinding: Codable, Equatable {
         case .leftClick: return "Left Click"
         case .rightClick: return "Right Click"
         case .middleClick: return "Middle Click"
+        case .eraser: return "Eraser"
         case .keyCombo:
             let f = CGEventFlags(rawValue: modifierFlags)
             var s = ""
@@ -1359,3 +1361,4 @@ struct ButtonBinding: Codable, Equatable {
         return str.uppercased()
     }
 }
+

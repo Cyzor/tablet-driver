@@ -47,6 +47,10 @@ final class InputInjector {
     /// tipDown is driven by penButton1 instead of pressure, and button1 is
     /// not dispatched as a separate button action (it already fires the primary click).
     var activeToolIsMouse: Bool = false
+    /// Cached eraser flag. Primary source: set by TabletManager.onToolEnter from ToolIdentity.isEraser
+    /// when the tool code changes (covers tool-flip without a proximity gap). Also refreshed at
+    /// proximity entry from point.eraser as defense-in-depth; cleared at proximity exit.
+    var activeToolIsEraser: Bool = false
     /// The tool code for the current tool. Used for proximity events and tool identification.
     /// May be overridden by forcedToolCode from DeviceRegistry if set by the user.
     var activeToolCode: UInt16 = 0x0802
@@ -201,9 +205,11 @@ final class InputInjector {
                 entering: point.inProximity, at: rawPoint,
                 eraser: point.eraser)
             if point.inProximity {
+                activeToolIsEraser = point.eraser
                 let s = tool.smoothingStrength
                 smoothingAlpha = s > 0 ? 1.0 - s * 0.85 : 1.0
             } else {
+                activeToolIsEraser = false
                 if lastTipDown {
                     postMouseUp(
                         button: activeButton, at: smoothedPoint,
@@ -303,8 +309,8 @@ final class InputInjector {
                 postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)
             }
             if tipDown {
-                let tipAction = point.eraser ? tool.eraserBinding : tool.tipBinding
-                activeButton = tipAction.mouseButton ?? (point.eraser ? .right : .left)
+                let tipAction = activeToolIsEraser ? tool.eraserBinding : tool.tipBinding
+                activeButton = tipAction.mouseButton ?? (activeToolIsEraser ? .right : .left)
                 let (clickPt, count) = resolveClick(screenPoint, settings: settings)
                 activeClickCount = count
                 postMouseDown(
@@ -814,7 +820,7 @@ final class InputInjector {
                 e.flags = currentEventFlags
                 e.post(tap: .cghidEventTap)
             }
-        case .rightClick:
+        case .rightClick, .eraser:
             let type: CGEventType = down ? .rightMouseDown : .rightMouseUp
             if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,

@@ -1,6 +1,19 @@
 # MockTab — Open Tasks & Project Status
 
-_Last updated: 2026-04-09 (Session 28 — Per-Device Status Bar & State Reporting COMPLETE)_
+_Last updated: 2026-04-09 (Session 29 — Eraser Binding Fix + Menu Bar App COMPLETE)_
+
+---
+
+## ✅ DONE IN SESSION 29
+
+- [x] Eraser binding bug: InputInjector activeToolIsEraser caching (2026-04-09)
+- [x] Eraser binding bug: TabletManager onToolEnter propagation (2026-04-09)
+- [x] Eraser binding bug: IntuosV2Decoder revert to status-bit reads (2026-04-09)
+- [x] Menu bar app: setActivationPolicy from showInDock UserDefaults (2026-04-09)
+- [x] Menu bar app: Launch at Login toggle with ServiceManagement (2026-04-09)
+- [x] Menu bar app: Show in Dock toggle with runtime policy change (2026-04-09)
+- [x] Menu bar app: NSApp.activate in window-show methods (2026-04-09)
+- [x] Eraser now fires correctly on all devices and binding modes (2026-04-09)
 
 ---
 
