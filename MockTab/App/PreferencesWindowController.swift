@@ -91,11 +91,13 @@ final class PreferencesWindowController {
     // MARK: - Default window API
 
     func show() {
+        NSApp.activate(ignoringOtherApps: true)
         ensureDefaultWindow().show()
     }
 
     func showIfNoSavedSession() {
         guard windows.isEmpty else { return }
+        NSApp.activate(ignoringOtherApps: true)
         ensureDefaultWindow().show()
     }
 
@@ -112,10 +114,12 @@ final class PreferencesWindowController {
     @discardableResult
     func openWindow(forProductID productID: Int) -> SettingsWindowController {
         if let existing = windows.first(where: { $0.productID == productID }) {
+            NSApp.activate(ignoringOtherApps: true)
             existing.show()
             return existing
         }
         let wc = makeWindow(productID: productID, tabIndex: 0, frame: nil)
+        NSApp.activate(ignoringOtherApps: true)
         wc.show()
         saveWindowState()
         return wc
@@ -125,6 +129,7 @@ final class PreferencesWindowController {
     func openNewWindow() -> SettingsWindowController {
         let pid = activeDeviceProductID()
         let wc = makeWindow(productID: pid, tabIndex: 0, frame: nil)
+        NSApp.activate(ignoringOtherApps: true)
         wc.show()
         saveWindowState()
         return wc
