@@ -244,6 +244,7 @@ final class TabletManager: ObservableObject {
             context.activeTool = toolSets
             context.injector.activeToolSettings = toolSets
             context.injector.activeToolIsMouse = identity.isMouse
+            context.injector.activeToolIsEraser = identity.isEraser
             context.injector.activeToolCode = identity.toolCode
             context.activeToolID = toolID
             self.activeToolID = toolID  // Legacy: forward to global for backward compatibility

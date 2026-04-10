@@ -318,7 +318,7 @@ struct IntuosV2Decoder: WacomDecoder {
                     tiltX: tiltX, tiltY: tiltY, rotation: rotation,
                     penButton1: (status & 0x02) != 0,
                     penButton2: (status & 0x04) != 0,
-                    eraser: toolIsEraser,
+                    eraser: (status & 0x08) != 0,
                     inProximity: true,
                     hoverDistance: 0)))
 
@@ -353,7 +353,7 @@ struct IntuosV2Decoder: WacomDecoder {
                     rotation: isArtPen ? state.lastRotation : 0.0,
                     penButton1: (status & 0x02) != 0,
                     penButton2: (status & 0x04) != 0,
-                    eraser: toolIsEraser,
+                    eraser: (status & 0x08) != 0,
                     inProximity: (status & 0x20) != 0,
                     hoverDistance: 0))]
     }
