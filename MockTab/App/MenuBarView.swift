@@ -17,11 +17,15 @@
 // along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
 
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 struct MenuBarView: View {
     @EnvironmentObject var tabletManager: TabletManager
     @EnvironmentObject var settings: TabletSettings
+
+    @AppStorage("showInDock") private var showInDock: Bool = false
+    @State private var launchAtLogin: Bool = (SMAppService.mainApp.status == .enabled)
 
     var body: some View {
         // Status indicator — disabled so it's informational only.
@@ -76,6 +80,25 @@ struct MenuBarView: View {
 
             Divider()
         }
+
+        Divider()
+
+        Toggle("Launch at Login", isOn: $launchAtLogin)
+            .onChange(of: launchAtLogin) { enabled in
+                do {
+                    if enabled { try SMAppService.mainApp.register() }
+                    else       { try SMAppService.mainApp.unregister() }
+                } catch {
+                    launchAtLogin = !enabled
+                }
+            }
+
+        Toggle("Show in Dock", isOn: $showInDock)
+            .onChange(of: showInDock) { show in
+                NSApp.setActivationPolicy(show ? .regular : .accessory)
+            }
+
+        Divider()
 
         Button("Preferences…") {
             PreferencesWindowController.shared.show()
