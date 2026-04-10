@@ -113,6 +113,11 @@ final class TabletSettings: ObservableObject {
         didSet { persist("proportionalMapping", proportionalMapping) }
     }
 
+    /// Physical tablet orientation — clockwise rotation from the default landscape position.
+    @Published var tabletOrientation: TabletOrientation = .landscape {
+        didSet { persist("tabletOrientation", tabletOrientation.rawValue) }
+    }
+
     // MARK: - Display mapping
 
     /// Sentinel value for targetDisplayIndex: tablet area spans all displays.
@@ -706,6 +711,7 @@ final class TabletSettings: ObservableObject {
         activeAreaWidth = loadDouble("activeAreaWidth", default: 1.0)
         activeAreaHeight = loadDouble("activeAreaHeight", default: 1.0)
         proportionalMapping = loadBool("proportionalMapping", default: true)
+        tabletOrientation = TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape
         targetDisplayIndex = loadInt("targetDisplayIndex", default: 0)
         toggleDisplayIDs   = loadString("toggleDisplayIDs", default: "")
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
@@ -908,6 +914,7 @@ final class TabletSettings: ObservableObject {
         activeAreaWidth = 1
         activeAreaHeight = 1
         proportionalMapping = true
+        tabletOrientation = .landscape
         targetDisplayIndex = 0
         toggleDisplayIDs   = ""
         pressureCurve = .linear
@@ -930,6 +937,7 @@ final class TabletSettings: ObservableObject {
         var activeAreaWidth: Double
         var activeAreaHeight: Double
         var proportionalMapping: Bool
+        var tabletOrientation: TabletOrientation
         var targetDisplayIndex: Int
         var toggleDisplayIDs: String
         var smoothingStrength: Double
@@ -953,6 +961,7 @@ final class TabletSettings: ObservableObject {
             activeAreaWidth: activeAreaWidth,
             activeAreaHeight: activeAreaHeight,
             proportionalMapping: proportionalMapping,
+            tabletOrientation: tabletOrientation,
             targetDisplayIndex: targetDisplayIndex,
             toggleDisplayIDs: toggleDisplayIDs,
             smoothingStrength: smoothingStrength,
@@ -988,6 +997,7 @@ final class TabletSettings: ObservableObject {
         activeAreaWidth = snap.activeAreaWidth
         activeAreaHeight = snap.activeAreaHeight
         proportionalMapping = snap.proportionalMapping
+        tabletOrientation = snap.tabletOrientation
         targetDisplayIndex = snap.targetDisplayIndex
         toggleDisplayIDs = snap.toggleDisplayIDs
         smoothingStrength = snap.smoothingStrength
@@ -1126,6 +1136,32 @@ enum TouchRingMode: String, Codable, CaseIterable {
         switch self {
         case .scroll: return "Scroll"
         case .off: return "Off"
+        }
+    }
+}
+
+// MARK: - TabletOrientation
+
+/// Physical rotation of the tablet relative to the default landscape position.
+/// The raw value is the number of 90° clockwise quarter-turns.
+enum TabletOrientation: Int, CaseIterable {
+    case landscape        = 0   // default  — USB port at bottom
+    case portrait         = 1   // 90° CW   — USB port at left
+    case landscapeFlipped = 2   // 180°     — USB port at top
+    case portraitFlipped  = 3   // 90° CCW  — USB port at right
+
+    /// Clockwise rotation angle in radians used for Canvas transforms.
+    var rotationAngle: Double { Double(rawValue) * .pi / 2 }
+
+    /// Whether this orientation swaps the X and Y hardware axes.
+    var swapsAxes: Bool { self == .portrait || self == .portraitFlipped }
+
+    var label: String {
+        switch self {
+        case .landscape:        return "Landscape"
+        case .portrait:         return "Portrait"
+        case .landscapeFlipped: return "Landscape Flipped"
+        case .portraitFlipped:  return "Portrait Flipped"
         }
     }
 }

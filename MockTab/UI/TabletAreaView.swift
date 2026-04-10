@@ -1,21 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// MockTab — native macOS driver for supported drawing tablets
-//
-// Copyright (C) 2026  This file is part of MockTab.
-//
-// MockTab is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// MockTab is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
-
 import SwiftUI
 
 /// Interactive tablet active-area editor.
@@ -110,6 +92,18 @@ struct TabletAreaView: View {
                 Toggle("Proportional mapping", isOn: proportionalMappingBinding)
                     .toggleStyle(.checkbox)
             }
+
+            Divider()
+
+            Form {
+                Section("Orientation") {
+                    OrientationPickerView(settings: settings)
+                }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            
+            
         }
         .padding()
     }
@@ -166,14 +160,14 @@ struct TabletAreaView: View {
 
     private var coordinateReadout: some View {
         Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
-            GridRow {
-                Text("Offset X").foregroundStyle(.secondary)
-                    .frame(width: 60, alignment: .trailing)
-                percentField($settings.activeAreaX)
-                Text("Offset Y").foregroundStyle(.secondary)
-                    .frame(width: 60, alignment: .trailing)
-                percentField($settings.activeAreaY)
-            }
+//            GridRow {
+//                Text("Offset X").foregroundStyle(.secondary)
+//                    .frame(width: 60, alignment: .trailing)
+//                percentField($settings.activeAreaX)
+//                Text("Offset Y").foregroundStyle(.secondary)
+//                    .frame(width: 60, alignment: .trailing)
+//                percentField($settings.activeAreaY)
+//            }
             GridRow {
                 Text("Width").foregroundStyle(.secondary)
                     .frame(width: 60, alignment: .trailing)
@@ -501,7 +495,9 @@ struct TabletAreaView: View {
     // MARK: - Helpers
 
     private func canvasSize(in available: CGSize) -> CGSize {
-        let ratio = activeAspectRatio
+        let ratio = settings.tabletOrientation.swapsAxes
+            ? 1.0 / activeAspectRatio
+            : activeAspectRatio
         let maxW = available.width - 8
         let maxH = available.height - 8
         if maxW / ratio <= maxH {
