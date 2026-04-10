@@ -80,7 +80,12 @@ struct AppOverrideBar: View {
 
     static let areaKeys: Set<String> = [
         "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
-        "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
+        "proportionalMapping", "tabletOrientation",
+        "targetDisplayIndex", "toggleDisplayIDs",
+    ]
+
+    static let orientationKeys: Set<String> = [
+        "tabletOrientation",
     ]
 
     static let pressureKeys: Set<String> = [

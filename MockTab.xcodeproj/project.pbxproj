@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053AB9A52F723B910084C0E2 /* TabletManager.swift */; };
+		057B24D82F899E3A0032B29E /* Path+SVGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 057B24D72F899E3A0032B29E /* Path+SVGData.swift */; };
 		05BFE59C2F79FE5200782B9E /* AboutWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05BFE59B2F79FE5200782B9E /* AboutWindowController.swift */; };
 		05D7EB7B2F79E6E30086E03F /* AboutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D7EB7A2F79E6E30086E03F /* AboutApp.swift */; };
 		AA000001 /* MockTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MockTabApp.swift */; };
@@ -44,18 +45,18 @@
 		AA000050 /* Intuos3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* Intuos3Decoder.swift */; };
 		AA000051 /* BambooDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000051 /* BambooDecoder.swift */; };
 		AA000052 /* AppOverrideBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* AppOverrideBar.swift */; };
-		AA000054 /* PenDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000054 /* PenDiagramView.swift */; };
 		AA000053 /* FontExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000053 /* FontExtensions.swift */; };
+		AA000054 /* PenDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000054 /* PenDiagramView.swift */; };
 		AA000070 /* HIDCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000070 /* HIDCapture.swift */; };
 		AA000071 /* WacomToolSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000071 /* WacomToolSpec.swift */; };
 		AA000072 /* OTDImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000072 /* OTDImporter.swift */; };
+		AA000073 /* OrientationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000073 /* OrientationPickerView.swift */; };
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
 /* End PBXBuildFile section */
 
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		053AB9A52F723B910084C0E2 /* TabletManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletManager.swift; sourceTree = "<group>"; };
+		057B24D72F899E3A0032B29E /* Path+SVGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Path+SVGData.swift"; sourceTree = "<group>"; };
 		05BFE59B2F79FE5200782B9E /* AboutWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindowController.swift; sourceTree = "<group>"; };
 		05D7EB7A2F79E6E30086E03F /* AboutApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutApp.swift; sourceTree = "<group>"; };
 		AB000001 /* MockTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTabApp.swift; sourceTree = "<group>"; };
@@ -94,24 +95,18 @@
 		AB000050 /* Intuos3Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intuos3Decoder.swift; sourceTree = "<group>"; };
 		AB000051 /* BambooDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BambooDecoder.swift; sourceTree = "<group>"; };
 		AB000052 /* AppOverrideBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverrideBar.swift; sourceTree = "<group>"; };
-		AB000054 /* PenDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenDiagramView.swift; sourceTree = "<group>"; };
 		AB000053 /* FontExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontExtensions.swift; sourceTree = "<group>"; };
+		AB000054 /* PenDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenDiagramView.swift; sourceTree = "<group>"; };
 		AB000070 /* HIDCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDCapture.swift; sourceTree = "<group>"; };
 		AB000071 /* WacomToolSpec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomToolSpec.swift; sourceTree = "<group>"; };
 		AB000072 /* OTDImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTDImporter.swift; sourceTree = "<group>"; };
+		AB000073 /* OrientationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationPickerView.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB000100 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AD000011 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AD000022 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -186,6 +181,7 @@
 			isa = PBXGroup;
 			children = (
 				AB000012 /* TabletAreaView.swift */,
+				AB000073 /* OrientationPickerView.swift */,
 				AB000013 /* PressureCurveView.swift */,
 				AB000014 /* ButtonMappingView.swift */,
 				AB000015 /* DisplayMappingView.swift */,
@@ -198,6 +194,7 @@
 				AB000040 /* DevicesView.swift */,
 				AB000041 /* TabStatusBar.swift */,
 				05D7EB7A2F79E6E30086E03F /* AboutApp.swift */,
+				057B24D72F899E3A0032B29E /* Path+SVGData.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -305,6 +302,7 @@
 				AA000036 /* AppMenuController.swift in Sources */,
 				AA000003 /* TabletPoint.swift in Sources */,
 				AA000004 /* TabletDevice.swift in Sources */,
+				057B24D82F899E3A0032B29E /* Path+SVGData.swift in Sources */,
 				AA000037 /* WacomProbeDevice.swift in Sources */,
 				AA000038 /* DTK2400Device.swift in Sources */,
 				05D7EB7B2F79E6E30086E03F /* AboutApp.swift in Sources */,
@@ -329,6 +327,7 @@
 				AA000010 /* BezierCurve.swift in Sources */,
 				AA000100 /* Profile.swift in Sources */,
 				AA000012 /* TabletAreaView.swift in Sources */,
+				AA000073 /* OrientationPickerView.swift in Sources */,
 				AA000013 /* PressureCurveView.swift in Sources */,
 				AA000014 /* ButtonMappingView.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,

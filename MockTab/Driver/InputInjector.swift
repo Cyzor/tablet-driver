@@ -895,10 +895,38 @@ final class InputInjector {
         }
         let displayBounds = cachedDisplayBounds
 
-        var areaX = settings.activeAreaX * Double(point.maxX)
-        var areaY = settings.activeAreaY * Double(point.maxY)
-        var areaW = Swift.max(settings.activeAreaWidth, 0.001) * Double(point.maxX)
-        var areaH = Swift.max(settings.activeAreaHeight, 0.001) * Double(point.maxY)
+        // Apply orientation transform before the active-area crop.
+        // The active-area fractions are defined in oriented (post-rotation) space,
+        // so we transform raw hardware coordinates first, then apply the crop.
+        let rawX = Double(point.x)
+        let rawY = Double(point.y)
+        let rawMaxX = Double(point.maxX)
+        let rawMaxY = Double(point.maxY)
+
+        let ox: Double      // oriented x
+        let oy: Double      // oriented y
+        let effMaxX: Double // range of oriented x axis
+        let effMaxY: Double // range of oriented y axis
+
+        switch settings.tabletOrientation {
+        case .landscape:
+            ox = rawX;           oy = rawY
+            effMaxX = rawMaxX;   effMaxY = rawMaxY
+        case .portrait:          // 90° CW — USB port moves to left
+            ox = rawY;                   oy = rawMaxX - rawX
+            effMaxX = rawMaxY;           effMaxY = rawMaxX
+        case .landscapeFlipped:  // 180° — USB port at top
+            ox = rawMaxX - rawX;         oy = rawMaxY - rawY
+            effMaxX = rawMaxX;           effMaxY = rawMaxY
+        case .portraitFlipped:   // 90° CCW — USB port moves to right
+            ox = rawMaxY - rawY;         oy = rawX
+            effMaxX = rawMaxY;           effMaxY = rawMaxX
+        }
+
+        var areaX = settings.activeAreaX * effMaxX
+        var areaY = settings.activeAreaY * effMaxY
+        var areaW = Swift.max(settings.activeAreaWidth, 0.001) * effMaxX
+        var areaH = Swift.max(settings.activeAreaHeight, 0.001) * effMaxY
 
         if settings.proportionalMapping {
             let tabletAspect = areaW / areaH
@@ -914,8 +942,8 @@ final class InputInjector {
             }
         }
 
-        let relX = (Double(point.x) - areaX) / areaW
-        let relY = (Double(point.y) - areaY) / areaH
+        let relX = (ox - areaX) / areaW
+        let relY = (oy - areaY) / areaH
 
         let sx = Swift.min(
             Swift.max(
