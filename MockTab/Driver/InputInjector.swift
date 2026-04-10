@@ -361,12 +361,12 @@ final class InputInjector {
             // For mouse tools button1 drives the primary click (tipDown above);
             // dispatching it again as a button action would double-fire.
             if !activeToolIsMouse {
-                fireButtonAction(btn1, down: point.penButton1, at: screenPoint)
+                fireButtonAction(btn1, down: point.penButton1, at: screenPoint, settings: settings)
             }
             lastButton1Down = point.penButton1
         }
         if point.penButton2 != lastButton2Down {
-            fireButtonAction(btn2, down: point.penButton2, at: screenPoint)
+            fireButtonAction(btn2, down: point.penButton2, at: screenPoint, settings: settings)
             lastButton2Down = point.penButton2
         }
 
@@ -477,14 +477,14 @@ final class InputInjector {
             let down = buttons[i]
             let hasMechanicalPulse = i < 8 && (buttons.mechanicalMask >> i) & 1 != 0
             if down != lastAuxButtons[i] {
-                fireButtonAction(bindings[i], down: down, at: cursorPos)
+                fireButtonAction(bindings[i], down: down, at: cursorPos, settings: s)
                 lastAuxButtons[i] = down
             } else if down && hasMechanicalPulse {
                 // Button is already tracked as down, but a new mechanical pulse arrived —
                 // the user re-pressed before the release event was seen. Force a complete
                 // up→down cycle so the key fires correctly without getting swallowed.
-                fireButtonAction(bindings[i], down: false, at: cursorPos)
-                fireButtonAction(bindings[i], down: true, at: cursorPos)
+                fireButtonAction(bindings[i], down: false, at: cursorPos, settings: s)
+                fireButtonAction(bindings[i], down: true, at: cursorPos, settings: s)
                 // lastAuxButtons[i] stays true — the button is still down after this cycle
             }
         }
@@ -492,7 +492,7 @@ final class InputInjector {
         // ── Touch ring center button ───────────────────────────────────────────
         let ringButtonDown = buttons.touchRingButtonDown
         if ringButtonDown != lastRingButtonDown {
-            fireButtonAction(s.touchRingButtonBinding, down: ringButtonDown, at: cursorPos)
+            fireButtonAction(s.touchRingButtonBinding, down: ringButtonDown, at: cursorPos, settings: s)
             lastRingButtonDown = ringButtonDown
         }
 
@@ -807,7 +807,8 @@ final class InputInjector {
 
     private func fireButtonAction(
         _ binding: ButtonBinding, down: Bool,
-        at location: CGPoint
+        at location: CGPoint,
+        settings: TabletSettings? = nil
     ) {
         switch binding.kind {
         case .none:
@@ -863,6 +864,10 @@ final class InputInjector {
                 e.flags = currentEventFlags
                 e.post(tap: .cghidEventTap)
             }
+        case .displayToggle:
+            guard down, let s = settings else { break }
+            s.targetDisplayIndex = TabletSettings.displayModeToggle
+            cycleToggleDisplay(settings: s)
         }
     }
 
