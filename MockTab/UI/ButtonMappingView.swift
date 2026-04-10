@@ -438,6 +438,8 @@ struct ButtonBindingControl: View {
                 Button("Middle Click") { set(.middleClick) }
                 Button("Eraser")       { set(.eraser)      }
                 Divider()
+                Button("Toggle Display") { set(.displayToggle) }
+                Divider()
                 Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
                 Button("⌥ Option")  { binding = ButtonBinding(modifierOnly: .option)  }
                 Button("⇧ Shift")   { binding = ButtonBinding(modifierOnly: .shift)   }
