@@ -579,11 +579,10 @@ struct IntuosV2Decoder: WacomDecoder {
                 state.prevInProximity = true
             }
 
-            // In the PTH-660 361-byte format, per-frame flags bit3 (0x08) is BTN_TOUCH
-            // (tip contact), NOT eraser. Using it for eraser detection causes every touch
-            // frame to flip the tool type, locking up apps. Eraser state comes from the
-            // metadata block toolCode (already computed as toolIsEraser above).
-            let isEraser = toolIsEraser
+            // Eraser detection: flags bit3 (0x08) directly indicates eraser, same as USB path.
+            // Toolcode-based detection (toolIsEraser) only updates on tool change; reading
+            // flags bit3 ensures correct state on every frame (handles tool flip without proximity gap).
+            let isEraser = (flags & 0x08) != 0
             let barrel1 = (flags & 0x02) != 0
             let barrel2 = (flags & 0x04) != 0
 
