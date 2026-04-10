@@ -92,7 +92,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var shimProcess: Process?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let showInDock = UserDefaults.standard.bool(forKey: "showInDock")
+        // Default to .regular (visible in Dock) on first run; user can toggle to .accessory
+        let showInDock = UserDefaults.standard.object(forKey: "showInDock") == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: "showInDock")
         NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
 
         if !AXIsProcessTrusted() {

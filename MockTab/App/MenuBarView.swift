@@ -24,7 +24,7 @@ struct MenuBarView: View {
     @EnvironmentObject var tabletManager: TabletManager
     @EnvironmentObject var settings: TabletSettings
 
-    @AppStorage("showInDock") private var showInDock: Bool = false
+    @AppStorage("showInDock") private var showInDock: Bool = true
     @State private var launchAtLogin: Bool = (SMAppService.mainApp.status == .enabled)
 
     var body: some View {
