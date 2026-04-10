@@ -40,22 +40,22 @@ struct ButtonMappingView: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
     var productID: Int?
-
+    
     /// Shared label-column width, computed from the widest label in any row.
     /// Zero until the first layout pass completes; nil-guarded in labelText(_:)
     /// so the first render uses the natural text width rather than collapsing.
     @State private var labelColumnWidth: CGFloat = 0
-
+    
     private var spec: WacomDeviceSpec? {
         productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
-
+    
     private var hasTouchRing:   Bool { spec?.hasTouchRing   == true }
     private var hasDualRings:   Bool { spec?.hasDualRings   == true }
     private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
-
+    
     // MARK: - Recording Binding Helper
-
+    
     /// Creates a binding that automatically registers undo for any change.
     /// The `owner` should be the object that has the undoManager (tool or settings).
     private func recordingBinding<T>(
@@ -77,9 +77,9 @@ struct ButtonMappingView: View {
             }
         )
     }
-
+    
     // MARK: - Body
-
+    
     var body: some View {
         VStack(spacing: 0) {
             AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.buttonKeys)
@@ -93,16 +93,16 @@ struct ButtonMappingView: View {
                 }
             }
             .formStyle(.grouped)
-//            .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+            .scrollContentBackground(.hidden)
             // Collect the widest natural label width from every row across all
             // sections and store it so the next render locks every label column.
             .onPreferenceChange(LabelWidthKey.self) { labelColumnWidth = $0 }
             DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
     }
-
+    
     // MARK: - Pen buttons section
-
+    
     @ViewBuilder
     private func penButtonsSection(lb: LiveButtonState) -> some View {
         Section {
@@ -130,7 +130,7 @@ struct ButtonMappingView: View {
                     "Pen Button 2", owner: tool,
                     get: { tool.penButton2Binding },
                     set: { tool.penButton2Binding = $0 }))
-
+            
             // Diagram row: no label column; transparent so the section
             // background shows through unchanged.
             PenDiagramView(liveButtons: lb)
@@ -144,9 +144,9 @@ struct ButtonMappingView: View {
             }
         }
     }
-
+    
     // MARK: - Single-sided layout (most tablets)
-
+    
     @ViewBuilder
     private func singleSidedSection(lb: LiveButtonState) -> some View {
         // DeviceNameLabel heads this section so it sits between the pen section
@@ -161,7 +161,7 @@ struct ButtonMappingView: View {
                 Text("Express Keys")
             }
         }
-
+        
         if hasTouchRing {
             Section("Touch Ring") {
                 buttonRow(
@@ -178,7 +178,7 @@ struct ButtonMappingView: View {
                         set: { settings.touchRingMode = $0 }))
             }
         }
-
+        
         if hasTouchStrips {
             Section("Touch Strips") {
                 touchRingRow(
@@ -196,14 +196,14 @@ struct ButtonMappingView: View {
             }
         }
     }
-
+    
     // MARK: - Dual-sided layout (Cintiq 24HD and similar)
     // Indices  0– 2 = left toggle buttons (near ring)
     // Indices  3– 7 = left express keys
     // Indices  8–10 = right toggle buttons (near ring, mirror)
     // Indices 11–15 = right express keys (mirror)
     // Both rings share the same mode setting (mirrored behavior).
-
+    
     @ViewBuilder
     private func dualSidedSection(lb: LiveButtonState) -> some View {
         Section {
@@ -216,13 +216,13 @@ struct ButtonMappingView: View {
                 Text("Toggle Buttons — Left")
             }
         }
-
+        
         Section("Express Keys — Left") {
             ForEach(3..<8, id: \.self) { i in
                 expressKeyRow(index: i, label: "Key \(i - 2)", lb: lb)
             }
         }
-
+        
         Section("Touch Ring — Left") {
             touchRingRow(
                 "Touch Ring", isActive: lb.touchRingActive,
@@ -231,19 +231,19 @@ struct ButtonMappingView: View {
                     get: { settings.touchRingMode },
                     set: { settings.touchRingMode = $0 }))
         }
-
+        
         Section("Toggle Buttons — Right") {
             ForEach(8..<11, id: \.self) { i in
                 expressKeyRow(index: i, label: "Button \(i - 7)", lb: lb)
             }
         }
-
+        
         Section("Express Keys — Right") {
             ForEach(11..<16, id: \.self) { i in
                 expressKeyRow(index: i, label: "Key \(i - 10)", lb: lb)
             }
         }
-
+        
         Section("Touch Ring — Right") {
             touchRingRow(
                 "Touch Ring", isActive: lb.touchRing2Active,
@@ -253,9 +253,9 @@ struct ButtonMappingView: View {
                     set: { settings.touchRingMode = $0 }))
         }
     }
-
+    
     // MARK: - Express key row helper
-
+    
     @ViewBuilder
     private func expressKeyRow(index: Int, label: String, lb: LiveButtonState) -> some View {
         buttonRow(
@@ -272,9 +272,9 @@ struct ButtonMappingView: View {
             )
         )
     }
-
+    
     // MARK: - Touch ring / strip row
-
+    
     @ViewBuilder
     private func touchRingRow(
         _ label: String, isActive: Bool,
@@ -283,14 +283,14 @@ struct ButtonMappingView: View {
         HStack(spacing: 10) {
             activeIndicator(isActive)
             labelText(label, isActive: isActive)   // ← pass isActive
-
+            
             // Force a pop-up menu to look like a fucking menu
             Picker("", selection: mode) {
                 ForEach(TouchRingMode.allCases, id: \.self) { m in
                     Text(m.displayLabel).tag(m)
                 }
             }
-         // .pickerStyle(.menu)
+            // .pickerStyle(.menu)
             .labelsHidden()
             .padding(1)
             
@@ -307,9 +307,9 @@ struct ButtonMappingView: View {
             
         }
     }
-
+    
     // MARK: - Button binding row
-
+    
     @ViewBuilder
     private func buttonRow(
         _ label: String, isActive: Bool,
@@ -324,10 +324,10 @@ struct ButtonMappingView: View {
         .frame(maxWidth: .infinity)
         // Row-level background removed — highlight lives on the label now.
     }
-
-
+    
+    
     // MARK: - Shared row subviews
-
+    
     /// Green checkmark when a hardware button is currently held; invisible
     /// when idle so the label column stays stable without a ghost shape.
     @ViewBuilder
@@ -337,7 +337,7 @@ struct ButtonMappingView: View {
             .imageScale(.small)
             .opacity(isActive ? 1 : 0)
     }
-
+    
     /// Renders label text right-aligned in a column whose width equals the
     /// widest natural label across the whole form.
     ///
@@ -347,11 +347,11 @@ struct ButtonMappingView: View {
     /// values to the maximum and stores it in labelColumnWidth.  The next pass
     /// locks every label to that shared width with trailing alignment.
     /// The > 0 guard avoids a zero-width collapse on the first render.
+    
     @ViewBuilder
     private func labelText(_ label: String, isActive: Bool = false) -> some View {
         Text(label)
-//            .foregroundStyle(isActive ? Color.accentColor : Color.primary)
-            .foregroundStyle(Color.primary)   // always maximum contrast; never changes
+            .foregroundStyle(Color.primary)
             .fontWeight(isActive ? .semibold : .regular)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
@@ -360,23 +360,34 @@ struct ButtonMappingView: View {
                     .fill(Color.accentColor.opacity(isActive ? 0.12 : 0))
             )
             .animation(.easeOut(duration: 0.07), value: isActive)
-            // GeometryReader still measures the full padded width —
-            // uniform across all labels so column alignment stays consistent.
-            .background {
-                GeometryReader { geo in
-                    Color.clear.preference(
-                        key: LabelWidthKey.self,
-                        value: geo.size.width
-                    )
-                }
-            }
             .frame(
                 width: labelColumnWidth > 0 ? labelColumnWidth : nil,
                 alignment: .trailing
             )
+        // Ghost sits after .frame() so it never constrains the visible view.
+        // .fixedSize() tells SwiftUI to ignore the proposed width and render
+        // at the text's natural ideal size — giving LabelWidthKey the true
+        // semibold measurement rather than a frame-clipped one.
+            .background {
+                Text(label)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .fixedSize()
+                    .hidden()
+                    .background {
+                        GeometryReader { geo in
+                            Color.clear.preference(
+                                key: LabelWidthKey.self,
+                                value: geo.size.width
+                            )
+                        }
+                    }
+            }
     }
+    
 }
-
+    
 // MARK: - ButtonBindingControl
 
 /// A Bloom-style shortcut recorder control.
@@ -425,6 +436,7 @@ struct ButtonBindingControl: View {
                 Button("Left Click")   { set(.leftClick)   }
                 Button("Right Click")  { set(.rightClick)  }
                 Button("Middle Click") { set(.middleClick) }
+                Button("Eraser")       { set(.eraser)      }
                 Divider()
                 Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
                 Button("⌥ Option")  { binding = ButtonBinding(modifierOnly: .option)  }
@@ -441,6 +453,7 @@ struct ButtonBindingControl: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .frame(width: 20)
+
         }
         .onDisappear { stopRecording() }
     }
