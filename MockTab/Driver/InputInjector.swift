@@ -812,7 +812,9 @@ final class InputInjector {
             let serial: Int64 = eraser
                 ? Int64(bitPattern: UInt64(activeToolSerial) | 0x8000_0000)
                 : Int64(activeToolSerial)
-            e.setIntegerValueField(CGEventField(rawValue: 172)!, value: serial)
+            if let serialField = CGEventField(rawValue: 172) {
+                e.setIntegerValueField(serialField, value: serial)
+            }
         }
         e.setIntegerValueField(.tabletProximityEventSystemTabletID, value: 0)
 
