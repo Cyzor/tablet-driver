@@ -190,9 +190,16 @@ struct TabletAreaView: View {
     private func pixelField(fraction: Binding<Double>, maxValue: Int,
                             minFraction: Double, maxFraction: Double) -> some View {
         let pixelBinding = Binding<Int>(
-            get: { Int(round(fraction.wrappedValue * Double(maxValue))) },
+            get: {
+                guard maxValue > 0 else { return 0 }
+                let value = fraction.wrappedValue * Double(maxValue)
+                guard !value.isNaN && !value.isInfinite else { return 0 }
+                return Int(round(value))
+            },
             set: { newPx in
+                guard maxValue > 0 else { return }
                 let f = Double(newPx) / Double(maxValue)
+                guard !f.isNaN && !f.isInfinite else { return }
                 fraction.wrappedValue = Swift.min(Swift.max(f, minFraction), maxFraction)
             }
         )
