@@ -34,8 +34,9 @@ struct PressureCurveView: View {
     var body: some View {
         VStack(spacing: 0) {
             AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.pressureKeys)
-            mainContent
-            Spacer(minLength: 0)
+            ScrollView {
+                mainContent
+            }
             DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
     }

@@ -45,67 +45,64 @@ struct TabletAreaView: View {
     var body: some View {
         VStack(spacing: 0) {
             AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.areaKeys)
-            mainContent
-            Spacer(minLength: 0)
-            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: boundProductID ?? 0)
-        }
-    }
-
-    private var mainContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            deviceHeading
-
-            GeometryReader { geo in
-                let cs = canvasSize(in: geo.size)
-                ZStack(alignment: .topLeading) {
-                    // Full digitizer outline
-                    Rectangle()
-                        .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
-                        .frame(width: cs.width, height: cs.height)
-
-                    // Active area crop rectangle
-                    activeAreaCrop(canvasSize: cs)
-                }
-                .frame(width: cs.width, height: cs.height)
-                .coordinateSpace(name: "cropCanvas")
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            }
-            .frame(height: 200)
-
-            // Coordinate readout with editable fields
-            coordinateReadout
-
-            HStack {
-                Button("Reset to Full Area") {
-                    let snap = TabletSettings.AreaSnapshot(
-                        x: settings.activeAreaX, y: settings.activeAreaY,
-                        w: settings.activeAreaWidth, h: settings.activeAreaHeight)
-                    settings.activeAreaX = 0; settings.activeAreaY = 0
-                    settings.activeAreaWidth = 1; settings.activeAreaHeight = 1
-                    settings.recordAreaDrag(before: snap)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-
-                Spacer()
-
-                Toggle("Proportional mapping", isOn: proportionalMappingBinding)
-                    .toggleStyle(.checkbox)
-            }
-
-            Divider()
-
             Form {
+                Section {
+                    deviceHeading
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
+
+                    GeometryReader { geo in
+                        let cs = canvasSize(in: geo.size)
+                        ZStack(alignment: .topLeading) {
+                            // Full digitizer outline
+                            Rectangle()
+                                .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
+                                .frame(width: cs.width, height: cs.height)
+
+                            // Active area crop rectangle
+                            activeAreaCrop(canvasSize: cs)
+                        }
+                        .frame(width: cs.width, height: cs.height)
+                        .coordinateSpace(name: "cropCanvas")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    }
+                    .frame(height: 200)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
+
+                    coordinateReadout
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
+
+                    HStack {
+                        Button("Reset to Full Area") {
+                            let snap = TabletSettings.AreaSnapshot(
+                                x: settings.activeAreaX, y: settings.activeAreaY,
+                                w: settings.activeAreaWidth, h: settings.activeAreaHeight)
+                            settings.activeAreaX = 0; settings.activeAreaY = 0
+                            settings.activeAreaWidth = 1; settings.activeAreaHeight = 1
+                            settings.recordAreaDrag(before: snap)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+
+                        Spacer()
+
+                        Toggle("Proportional mapping", isOn: proportionalMappingBinding)
+                            .toggleStyle(.checkbox)
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                }
+
                 Section("Orientation") {
                     OrientationPickerView(settings: settings)
                 }
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            
-            
+            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: boundProductID ?? 0)
         }
-        .padding()
     }
 
     // MARK: - Device identity
