@@ -40,7 +40,7 @@ struct OrientationPickerView: View {
             HStack(spacing: 10) {
                 RadioButton(isSelected: isSelected)
                 OrientationGlyph(orientation: orientation)
-                    .frame(width: 48, height: 48)
+                    .frame(width: 50, height: 50)
                 Text(orientation.pickerLabel)
                 Spacer(minLength: 0)
             }
