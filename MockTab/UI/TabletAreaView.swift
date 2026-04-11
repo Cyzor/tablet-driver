@@ -213,6 +213,9 @@ struct TabletAreaView: View {
 
     /// Drag-origin snapshot so deltas are computed from a stable reference.
     @State private var dragOrigin = DragOrigin()
+    /// Draft crop values during a drag; nil when not dragging.
+    /// Used to defer updates to settings until the drag completes.
+    @State private var draftArea: DragOrigin? = nil
 
     private struct DragOrigin {
         var x: Double = 0, y: Double = 0, w: Double = 0, h: Double = 0
@@ -230,10 +233,16 @@ struct TabletAreaView: View {
     private static let minFraction: Double = 0.05   // 5% minimum dimension
 
     private func activeAreaCrop(canvasSize cs: CGSize) -> some View {
-        let x = settings.activeAreaX * cs.width
-        let y = settings.activeAreaY * cs.height
-        let w = settings.activeAreaWidth * cs.width
-        let h = settings.activeAreaHeight * cs.height
+        // Use draft values if dragging, otherwise settings
+        let activeX = draftArea?.x ?? settings.activeAreaX
+        let activeY = draftArea?.y ?? settings.activeAreaY
+        let activeW = draftArea?.w ?? settings.activeAreaWidth
+        let activeH = draftArea?.h ?? settings.activeAreaHeight
+
+        let x = activeX * cs.width
+        let y = activeY * cs.height
+        let w = activeW * cs.width
+        let h = activeH * cs.height
         let rect = CGRect(x: x, y: y, width: w, height: h)
 
         return ZStack(alignment: .topLeading) {
@@ -348,10 +357,11 @@ struct TabletAreaView: View {
         DragGesture(minimumDistance: 1, coordinateSpace: .named("cropCanvas"))
             .onChanged { v in
                 if dragAnchor == nil {
-                    // First event — snapshot current state and record start location.
+                    // First event — snapshot current state, initialize draft, and record start location.
                     dragOrigin = DragOrigin(
                         x: settings.activeAreaX, y: settings.activeAreaY,
                         w: settings.activeAreaWidth, h: settings.activeAreaHeight)
+                    draftArea = dragOrigin  // Initialize draft from current state
                     dragAnchor = v.startLocation
                 }
                 guard let anchor = dragAnchor else { return }
@@ -360,66 +370,74 @@ struct TabletAreaView: View {
                 applyDrag(edge: edge, dx: dx, dy: dy)
             }
             .onEnded { _ in
-                // Register one coalesced undo entry for the entire drag
-                if dragAnchor != nil {
+                // Commit draft to settings and register one coalesced undo entry
+                if dragAnchor != nil, let draft = draftArea {
+                    settings.activeAreaX = draft.x
+                    settings.activeAreaY = draft.y
+                    settings.activeAreaWidth = draft.w
+                    settings.activeAreaHeight = draft.h
                     settings.recordAreaDrag(before: TabletSettings.AreaSnapshot(
                         x: dragOrigin.x, y: dragOrigin.y,
                         w: dragOrigin.w, h: dragOrigin.h))
                 }
                 dragAnchor = nil
+                draftArea = nil
             }
     }
 
     private func applyDrag(edge: CropEdge, dx: Double, dy: Double) {
+        guard var draft = draftArea else { return }
         let o = dragOrigin
         let minD = Self.minFraction
 
         switch edge {
         case .body:
             // Clamp so the active area never leaves the physical bounds.
-            settings.activeAreaX = Swift.min(Swift.max(o.x + dx, 0), 1 - o.w)
-            settings.activeAreaY = Swift.min(Swift.max(o.y + dy, 0), 1 - o.h)
+            draft.x = Swift.min(Swift.max(o.x + dx, 0), 1 - o.w)
+            draft.y = Swift.min(Swift.max(o.y + dy, 0), 1 - o.h)
 
         case .left:
             let newX = Swift.min(Swift.max(o.x + dx, 0), o.x + o.w - minD)
-            settings.activeAreaX = newX
-            settings.activeAreaWidth = o.x + o.w - newX
+            draft.x = newX
+            draft.w = o.x + o.w - newX
 
         case .right:
-            settings.activeAreaWidth = Swift.min(Swift.max(o.w + dx, minD), 1 - o.x)
+            draft.w = Swift.min(Swift.max(o.w + dx, minD), 1 - o.x)
 
         case .top:
             let newY = Swift.min(Swift.max(o.y + dy, 0), o.y + o.h - minD)
-            settings.activeAreaY = newY
-            settings.activeAreaHeight = o.y + o.h - newY
+            draft.y = newY
+            draft.h = o.y + o.h - newY
 
         case .bottom:
-            settings.activeAreaHeight = Swift.min(Swift.max(o.h + dy, minD), 1 - o.y)
+            draft.h = Swift.min(Swift.max(o.h + dy, minD), 1 - o.y)
 
         case .topLeft:
             let newX = Swift.min(Swift.max(o.x + dx, 0), o.x + o.w - minD)
             let newY = Swift.min(Swift.max(o.y + dy, 0), o.y + o.h - minD)
-            settings.activeAreaX = newX
-            settings.activeAreaY = newY
-            settings.activeAreaWidth  = o.x + o.w - newX
-            settings.activeAreaHeight = o.y + o.h - newY
+            draft.x = newX
+            draft.y = newY
+            draft.w = o.x + o.w - newX
+            draft.h = o.y + o.h - newY
 
         case .topRight:
             let newY = Swift.min(Swift.max(o.y + dy, 0), o.y + o.h - minD)
-            settings.activeAreaY = newY
-            settings.activeAreaWidth  = Swift.min(Swift.max(o.w + dx, minD), 1 - o.x)
-            settings.activeAreaHeight = o.y + o.h - newY
+            draft.y = newY
+            draft.w = Swift.min(Swift.max(o.w + dx, minD), 1 - o.x)
+            draft.h = o.y + o.h - newY
 
         case .bottomLeft:
             let newX = Swift.min(Swift.max(o.x + dx, 0), o.x + o.w - minD)
-            settings.activeAreaX = newX
-            settings.activeAreaWidth  = o.x + o.w - newX
-            settings.activeAreaHeight = Swift.min(Swift.max(o.h + dy, minD), 1 - o.y)
+            draft.x = newX
+            draft.w = o.x + o.w - newX
+            draft.h = Swift.min(Swift.max(o.h + dy, minD), 1 - o.y)
 
         case .bottomRight:
-            settings.activeAreaWidth  = Swift.min(Swift.max(o.w + dx, minD), 1 - o.x)
-            settings.activeAreaHeight = Swift.min(Swift.max(o.h + dy, minD), 1 - o.y)
+            draft.w = Swift.min(Swift.max(o.w + dx, minD), 1 - o.x)
+            draft.h = Swift.min(Swift.max(o.h + dy, minD), 1 - o.y)
         }
+
+        draftArea = draft
     }
 
     // MARK: - Cursors

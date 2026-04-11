@@ -190,7 +190,10 @@ final class InputInjector {
     func inject(point: TabletPoint, settings: TabletSettings?) {
         let settings = settings ?? TabletSettings()
         let tool = activeToolSettings ?? settings.activeTool
-        let rawPoint = mapToScreen(point, settings: settings)
+        guard let rawPoint = mapToScreen(point, settings: settings) else {
+            // Pen outside active area — deadzone, no events
+            return
+        }
         let pressure = tool.pressureCurve.evaluate(point.normalizedPressure)
         // Mouse tools have no tip pressure — button1 is the primary click trigger.
         // For KC-100 over USB, the left button arrives via the separate 0x01 mouse interface
@@ -938,7 +941,9 @@ final class InputInjector {
 
     // MARK: - Screen mapping
 
-    private func mapToScreen(_ point: TabletPoint, settings: TabletSettings) -> CGPoint {
+    /// Maps a tablet point to screen coordinates, accounting for orientation and active area cropping.
+    /// Returns nil if the pen is outside the active area (deadzone).
+    private func mapToScreen(_ point: TabletPoint, settings: TabletSettings) -> CGPoint? {
         let idx = settings.targetDisplayIndex
         if cachedDisplayIndex != idx {
             cachedDisplayBounds = resolveDisplayBounds(settings: settings)
@@ -995,6 +1000,9 @@ final class InputInjector {
 
         let relX = (ox - areaX) / areaW
         let relY = (oy - areaY) / areaH
+
+        // Outside active area — deadzone
+        guard relX >= 0, relX <= 1, relY >= 0, relY <= 1 else { return nil }
 
         let sx = Swift.min(
             Swift.max(
