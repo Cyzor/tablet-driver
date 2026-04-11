@@ -31,6 +31,18 @@ struct DisplayMappingView: View {
     private let modeAll = TabletSettings.displayModeAll  // -1
     private let modeToggle = TabletSettings.displayModeToggle  // -2
 
+    /// Whether any connected display is rotated via macOS rotation feature.
+    private var hasRotatedDisplay: Bool {
+        NSScreen.screens.contains { screen in
+            guard let numObj = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID else {
+                return false
+            }
+            // CGDisplayRotation returns 0, 90, 180, 270. Non-zero means rotated.
+            let rotation = CGDisplayRotation(numObj)
+            return rotation != 0
+        }
+    }
+
     // MARK: - Recording Binding Helper
 
     /// Creates a binding that automatically registers undo when the value changes.
@@ -70,6 +82,27 @@ struct DisplayMappingView: View {
             Text("The active tablet area maps to the selected display.")
                 .font(.settingsLabel)
                 .foregroundStyle(.secondary)
+
+            // Warning for rotated displays + rotated tablet
+            if hasRotatedDisplay && settings.tabletOrientation != .landscape && settings.tabletOrientation != .landscapeFlipped {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .imageScale(.small)
+                        .padding(.top, 2)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Display Rotation Detected")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text("Your display is rotated. Combined with a rotated tablet, this may require adjustment. Test your pen input to verify the mapping is correct.")
+                            .font(.settingsLabel)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(8)
+                .background(Color.orange.opacity(0.08))
+                .cornerRadius(6)
+            }
 
             Picker(
                 "",
