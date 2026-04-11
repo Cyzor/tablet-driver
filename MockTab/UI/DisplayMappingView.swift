@@ -52,8 +52,9 @@ struct DisplayMappingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            mainContent
-            Spacer(minLength: 0)
+            ScrollView {
+                mainContent
+            }
             DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
         .onAppear { displays = DisplayInfo.all() }
