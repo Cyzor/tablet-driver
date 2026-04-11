@@ -51,6 +51,9 @@ final class InputInjector {
     /// when the tool code changes (covers tool-flip without a proximity gap). Also refreshed at
     /// proximity entry from point.eraser as defense-in-depth; cleared at proximity exit.
     var activeToolIsEraser: Bool = false
+    /// Serial number of the active tool. Set by TabletManager.onToolEnter; 0 if unavailable.
+    /// Used in proximity events so apps key per-tool brush memory on the correct identity.
+    var activeToolSerial: UInt32 = 0
     /// The tool code for the current tool. Used for proximity events and tool identification.
     /// May be overridden by forcedToolCode from DeviceRegistry if set by the user.
     var activeToolCode: UInt16 = 0x0802
@@ -72,6 +75,7 @@ final class InputInjector {
 
     private(set) var lastProximity = false
     private var lastTipDown = false
+    private var lastEraserMode = false  // Track eraser/tip flip while in proximity
     private var lastButton1Down = false
     private var lastButton2Down = false
     private var lastMiddleDown = false
@@ -198,6 +202,7 @@ final class InputInjector {
             : pressure > 0.004
 
         let enteringProximity = point.inProximity && !lastProximity
+        let eraserFlipped = point.inProximity && lastProximity && (point.eraser != lastEraserMode)
 
         // ── Proximity transitions (always immediate) ───────────────────────────
         if point.inProximity != lastProximity {
@@ -206,10 +211,12 @@ final class InputInjector {
                 eraser: point.eraser)
             if point.inProximity {
                 activeToolIsEraser = point.eraser
+                lastEraserMode = point.eraser
                 let s = tool.smoothingStrength
                 smoothingAlpha = s > 0 ? 1.0 - s * 0.85 : 1.0
             } else {
                 activeToolIsEraser = false
+                lastEraserMode = false
                 if lastTipDown {
                     postMouseUp(
                         button: activeButton, at: smoothedPoint,
@@ -271,6 +278,18 @@ final class InputInjector {
             }
             lastProximity = point.inProximity
         }
+
+        // ── Eraser/tip flip (while in proximity) ───────────────────────────────
+        if eraserFlipped {
+            // Pen was flipped between tip and eraser while in proximity.
+            // Post synthetic proximity exit/enter so apps re-register the tool identity.
+            // This ensures distinct pointerType (1=pen, 3=eraser) and serial registration.
+            postProximityEvent(entering: false, at: rawPoint, eraser: !point.eraser)
+            activeToolIsEraser = point.eraser
+            lastEraserMode = point.eraser
+            postProximityEvent(entering: true, at: rawPoint, eraser: point.eraser)
+        }
+
         guard point.inProximity else { return }
 
         // ── Position smoothing (every report) ─────────────────────────────────
@@ -310,7 +329,7 @@ final class InputInjector {
             }
             if tipDown {
                 let tipAction = activeToolIsEraser ? tool.eraserBinding : tool.tipBinding
-                activeButton = tipAction.mouseButton ?? (activeToolIsEraser ? .right : .left)
+                activeButton = tipAction.mouseButton ?? .left
                 let (clickPt, count) = resolveClick(screenPoint, settings: settings)
                 activeClickCount = count
                 postMouseDown(
@@ -620,7 +639,12 @@ final class InputInjector {
         pressure: Double, clickCount: Int,
         point: TabletPoint? = nil
     ) {
-        let type: CGEventType = button == .right ? .rightMouseDown : .leftMouseDown
+        let type: CGEventType
+        switch button {
+        case .right:  type = .rightMouseDown
+        case .center: type = .otherMouseDown
+        default:      type = .leftMouseDown
+        }
         guard
             let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
@@ -648,7 +672,12 @@ final class InputInjector {
         button: CGMouseButton, at location: CGPoint,
         clickCount: Int, point: TabletPoint? = nil
     ) {
-        let type: CGEventType = button == .right ? .rightMouseUp : .leftMouseUp
+        let type: CGEventType
+        switch button {
+        case .right:  type = .rightMouseUp
+        case .center: type = .otherMouseUp
+        default:      type = .leftMouseUp
+        }
         guard
             let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
@@ -673,7 +702,12 @@ final class InputInjector {
         button: CGMouseButton, at location: CGPoint,
         pressure: Double, point: TabletPoint? = nil
     ) {
-        let type: CGEventType = button == .right ? .rightMouseDragged : .leftMouseDragged
+        let type: CGEventType
+        switch button {
+        case .right:  type = .rightMouseDragged
+        case .center: type = .otherMouseDragged
+        default:      type = .leftMouseDragged
+        }
         guard
             let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
@@ -742,6 +776,7 @@ final class InputInjector {
             (pressure > 0.004 ? 1 : 0)
             | (point.penButton1 ? 2 : 0)
             | (point.penButton2 ? 4 : 0)
+            | (activeToolIsEraser && pressure > 0.004 ? 8 : 0)
         e.setIntegerValueField(.tabletEventPointButtons, value: buttons)
         e.flags = currentEventFlags
         e.post(tap: .cghidEventTap)
@@ -763,8 +798,22 @@ final class InputInjector {
         e.setIntegerValueField(
             .tabletProximityEventTabletID,
             value: Int64(deviceProductID))
-        e.setIntegerValueField(.tabletProximityEventPointerID, value: 1)
+        // Tip and eraser ends get distinct pointerIDs so apps that track tool identity
+        // separately (e.g. Procreate, Clip Studio) don't conflate the two ends.
+        // 0x0002 = pen tip, 0x0082 = eraser (high bit marks the "other end" of the same pen).
+        let pointerID: Int64 = eraser ? 0x0082 : 0x0002
+        e.setIntegerValueField(.tabletProximityEventPointerID, value: pointerID)
         e.setIntegerValueField(.tabletProximityEventDeviceID, value: 1)
+
+        // Serial lets apps maintain per-tool brush memories (e.g. Photoshop's tool presets).
+        // Eraser end uses serial | 0x80000000 so tip and eraser each get an independent slot.
+        // kCGTabletProximityEventPointerSerialNumber = 172 (raw value; not exposed in Swift).
+        if activeToolSerial != 0 {
+            let serial: Int64 = eraser
+                ? Int64(bitPattern: UInt64(activeToolSerial) | 0x8000_0000)
+                : Int64(activeToolSerial)
+            e.setIntegerValueField(CGEventField(rawValue: 172)!, value: serial)
+        }
         e.setIntegerValueField(.tabletProximityEventSystemTabletID, value: 0)
 
         // pointerType: 0 = leaving, 1 = pen, 2 = cursor/mouse, 3 = eraser
