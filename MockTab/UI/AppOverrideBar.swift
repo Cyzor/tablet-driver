@@ -89,7 +89,7 @@ struct AppOverrideBar: View {
     ]
 
     static let pressureKeys: Set<String> = [
-        "pressureCurve", "smoothingStrength", "doubleClickDistance",
+        "pressureCurve", "smoothingStrength", "doubleClickDistance", "invertRotation",
     ]
 
     static let buttonKeys: Set<String> = [
