@@ -47,10 +47,6 @@ struct TabletAreaView: View {
             AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.areaKeys)
             Form {
                 Section {
-                    deviceHeading
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
-
                     GeometryReader { geo in
                         let cs = canvasSize(in: geo.size)
                         ZStack(alignment: .topLeading) {
@@ -93,6 +89,8 @@ struct TabletAreaView: View {
                     }
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                } header: {
+                    sectionHeading
                 }
 
                 Section("Orientation") {
@@ -127,15 +125,12 @@ struct TabletAreaView: View {
         return DeviceLabel(primary: modelName, secondary: nil)
     }
 
-    private var deviceHeading: some View {
+    // MARK: - Section heading
+
+    private var sectionHeading: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(deviceLabel.primary)
-                .font(.headline)
-            if let secondary = deviceLabel.secondary {
-                Text(secondary)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            Text("Active Surface Area").font(.headline)
+            DeviceNameLabel(tabletManager: tabletManager, registry: registry)
         }
     }
 
@@ -462,10 +457,16 @@ struct TabletAreaView: View {
         let s1 = line1Resolved.measure(in: measureBound)
         let s2 = line2Resolved?.measure(in: measureBound) ?? .zero
 
+        // Vanish if area is too narrow; avoids text wrapping/measurement changes
+        guard areaRect.width >= 140 else { return }
+
+        let maxTextWidth = max(s1.width, s2.width)
         let twoLines = line2Resolved != nil
         let textH    = twoLines ? s1.height + gap + s2.height : s1.height
-        let badgeW   = min(max(s1.width, s2.width) + hPad * 2, areaRect.width - 4)
+
+        let badgeW   = min(maxTextWidth + hPad * 2, areaRect.width - 4)
         let badgeH   = textH + vPad * 2
+
         let badgeX   = areaRect.midX - badgeW / 2
         let badgeY   = areaRect.midY - badgeH / 2
 
