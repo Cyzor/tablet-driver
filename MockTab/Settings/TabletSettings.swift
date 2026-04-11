@@ -163,6 +163,9 @@ final class TabletSettings: ObservableObject {
     @Published var doubleClickDistance: Double = 10.0 {
         didSet { persist("doubleClickDistance", doubleClickDistance) }
     }
+    @Published var invertRotation: Bool = false {
+        didSet { persist("invertRotation", invertRotation) }
+    }
 
     // MARK: - Touch ring & strips
 
@@ -733,6 +736,7 @@ final class TabletSettings: ObservableObject {
                 rawValue: loadString("touchStrip2Mode", default: TouchRingMode.scroll.rawValue))
             ?? .scroll
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
+        invertRotation    = loadBool("invertRotation",    default: false)
         loadPressureCurve()
         // Sync resolved pressure values into activeTool so PressureCurveView —
         // which observes tool.pressureCurve — reflects the active override or profile.

@@ -108,6 +108,11 @@ struct PressureCurveView: View {
                     .font(.settingsLabel)
                     .foregroundStyle(.secondary)
             }
+
+            Divider()
+
+            Toggle("Invert Art Pen Rotation", isOn: invertRotationBinding)
+                .help("Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
         }
         .padding()
     }
@@ -132,6 +137,17 @@ struct PressureCurveView: View {
                 let old = settings.doubleClickDistance
                 settings.doubleClickDistance = newVal
                 settings.record("Double-Click Distance") { settings.doubleClickDistance = old }
+            }
+        )
+    }
+
+    private var invertRotationBinding: Binding<Bool> {
+        Binding(
+            get: { settings.invertRotation },
+            set: { newVal in
+                let old = settings.invertRotation
+                settings.invertRotation = newVal
+                settings.record("Invert Rotation") { settings.invertRotation = old }
             }
         )
     }

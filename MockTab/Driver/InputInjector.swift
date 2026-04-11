@@ -190,6 +190,10 @@ final class InputInjector {
     func inject(point: TabletPoint, settings: TabletSettings?) {
         let settings = settings ?? TabletSettings()
         let tool = activeToolSettings ?? settings.activeTool
+        var point = point
+        if settings.invertRotation && point.rotation != 0.0 {
+            point.rotation = (360.0 - point.rotation).truncatingRemainder(dividingBy: 360.0)
+        }
         guard let rawPoint = mapToScreen(point, settings: settings) else {
             // Pen outside active area — deadzone, no events
             return
