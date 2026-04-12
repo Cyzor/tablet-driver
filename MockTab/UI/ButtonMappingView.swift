@@ -157,8 +157,8 @@ struct ButtonMappingView: View {
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
                 Text("Express Keys")
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
         
@@ -212,8 +212,8 @@ struct ButtonMappingView: View {
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
                 Text("Toggle Buttons — Left")
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
         

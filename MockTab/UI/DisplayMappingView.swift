@@ -64,25 +64,19 @@ struct DisplayMappingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView {
-                mainContent
+            Form {
+                displayMappingSection
+                canvasSection
             }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
             DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
         .onAppear { displays = DisplayInfo.all() }
     }
 
-    private var mainContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Display Mapping").font(.headline)
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
-            }
-
-            Text("The active tablet area maps to the selected display.")
-                .font(.settingsLabel)
-                .foregroundStyle(.secondary)
-
+    private var displayMappingSection: some View {
+        Section {
             // Warning for rotated displays + rotated tablet
             if hasRotatedDisplay && settings.tabletOrientation != .landscape && settings.tabletOrientation != .landscapeFlipped {
                 HStack(alignment: .top, spacing: 8) {
@@ -104,33 +98,57 @@ struct DisplayMappingView: View {
                 .cornerRadius(6)
             }
 
-            Picker(
-                "",
-                selection: recordingBinding(
-                    "Display Mapping",
-                    get: { settings.targetDisplayIndex },
-                    set: { settings.targetDisplayIndex = $0 }
-                )
-            ) {
-                Text("Primary display").tag(0)
-                ForEach(displays, id: \.listIndex) { info in
-                    Text(info.pickerLabel).tag(info.listIndex)
-                }
-                Text("Toggle between displays").tag(modeToggle)
-                    .disabled(displays.count <= 1)
-                Text("All — span across all displays").tag(modeAll)
-                    .disabled(displays.count <= 1)
+            radioRow("Primary display", tag: 0)
+            ForEach(displays, id: \.listIndex) { info in
+                radioRow(info.pickerLabel, tag: info.listIndex)
             }
-            .pickerStyle(.radioGroup)
-            .labelsHidden()
+            radioRow("Toggle between displays", tag: modeToggle, disabled: displays.count <= 1)
+            radioRow("All — span across all displays", tag: modeAll, disabled: displays.count <= 1)
 
             if settings.targetDisplayIndex == modeToggle {
                 toggleSection
             }
-
-            displayCanvas
+        } header: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Display Mapping")
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+            }
+        } footer: {
+            Text("The active tablet area maps to the selected display.")
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
-        .padding()
+    }
+
+    private var canvasSection: some View {
+        Section("Preview") {
+            displayCanvas
+                .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+        }
+    }
+
+    // MARK: - Radio row helper
+
+    @ViewBuilder
+    private func radioRow(_ label: String, tag: Int, disabled: Bool = false) -> some View {
+        Button {
+            let old = settings.targetDisplayIndex
+            guard old != tag else { return }
+            settings.targetDisplayIndex = tag
+            settings.record("Display Mapping") { self.settings.targetDisplayIndex = old }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: settings.targetDisplayIndex == tag
+                      ? "circle.inset.filled" : "circle")
+                    .foregroundStyle(settings.targetDisplayIndex == tag
+                                     ? Color.accentColor : Color.secondary)
+                Text(label)
+                    .foregroundStyle(disabled ? Color.secondary : Color.primary)
+                Spacer()
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
     }
 
     // MARK: - Toggle section
