@@ -644,10 +644,11 @@ struct IntuosV2Decoder: WacomDecoder {
             let mechanicalByte = report[282]   // one-frame click pulse (rising edge)
             let ringByte = report[285]
             let btnByte = report[281]
-            if mechanicalByte != 0
+            if mechanicalByte != state.lastBTPadKeys   // catches both press (0→n) and release (n→0)
                 || ringByte != state.lastBTPadRing
                 || btnByte != state.lastBTPadBtn
             {
+                state.lastBTPadKeys = mechanicalByte
                 state.lastBTPadRing = ringByte
                 state.lastBTPadBtn = btnByte
                 let buttons = (0..<8).map { (mechanicalByte & (1 << $0)) != 0 }

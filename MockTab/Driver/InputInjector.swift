@@ -266,11 +266,15 @@ final class InputInjector {
                 // Per-transport fixes (Defect A/B) prevent accumulation; this ensures
                 // proximity exit is always a clean slate regardless.
                 if !activeSyntheticFlags.isEmpty {
+                    let syntheticToRelease = activeSyntheticFlags
                     activeSyntheticFlags = []
                     if let e = CGEvent(source: sessionSource) {
                         e.type = .flagsChanged
                         e.setIntegerValueField(.keyboardEventKeycode, value: 0)
-                        e.flags = []
+                        // Preserve physical modifiers the user may be holding; strip only ours.
+                        let physicalRaw = CGEventSource.flagsState(.hidSystemState).rawValue
+                            & ~syntheticToRelease.rawValue
+                        e.flags = CGEventFlags(rawValue: physicalRaw)
                         e.post(tap: .cghidEventTap)
                     }
                 }
@@ -636,9 +640,12 @@ final class InputInjector {
                 | activeSyntheticFlags.rawValue)
     }
 
-    /// CGEventSource backed by hidSystemState (physical devices only).
+    /// CGEventSource backed by privateState so posted events do not write back into
+    /// hidSystemState.  Flags are stamped via currentEventFlags (which reads hidSystemState
+    /// directly), so physical keyboard state is still reflected on every outbound event —
+    /// but the feedback loop that causes sticky modifiers is broken.
     private var sessionSource: CGEventSource? {
-        CGEventSource(stateID: .hidSystemState)
+        CGEventSource(stateID: .privateState)
     }
 
     private func postMouseDown(
@@ -910,7 +917,18 @@ final class InputInjector {
                 e.setIntegerValueField(
                     .keyboardEventKeycode,
                     value: Int64(binding.keyCode))
-                e.flags = currentEventFlags
+                // flagsChanged events must NOT use currentEventFlags here.
+                // Posting through cghidEventTap updates hidSystemState regardless of the
+                // event source's stateID, so currentEventFlags would read back the synthetic
+                // modifier we just injected on the previous press — re-asserting it on every
+                // release and leaving it stuck. Instead we reconstruct a clean physical-only
+                // baseline by subtracting all synthetic flags that were active BEFORE this
+                // press/release from hidSystemState, then OR in the post-update synthetics.
+                let priorSyntheticRaw: UInt64 = down
+                    ? activeSyntheticFlags.rawValue & ~bindingFlags.rawValue   // newly added → subtract to get prior
+                    : activeSyntheticFlags.rawValue | bindingFlags.rawValue    // just removed → add back to get prior
+                let physicalRaw = CGEventSource.flagsState(.hidSystemState).rawValue & ~priorSyntheticRaw
+                e.flags = CGEventFlags(rawValue: physicalRaw | activeSyntheticFlags.rawValue)
                 e.post(tap: .cghidEventTap)
             } else {
                 guard
