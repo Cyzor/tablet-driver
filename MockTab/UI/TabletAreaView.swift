@@ -71,6 +71,12 @@ struct TabletAreaView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
 
                     HStack {
+                        
+                        Toggle("Proportional mapping", isOn: proportionalMappingBinding)
+                            .toggleStyle(.checkbox)
+                        
+                        Spacer()
+                        
                         Button("Reset to Full Area") {
                             let snap = TabletSettings.AreaSnapshot(
                                 x: settings.activeAreaX, y: settings.activeAreaY,
@@ -82,10 +88,6 @@ struct TabletAreaView: View {
                         .buttonStyle(.bordered)
                         .controlSize(.small)
 
-                        Spacer()
-
-                        Toggle("Proportional mapping", isOn: proportionalMappingBinding)
-                            .toggleStyle(.checkbox)
                     }
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))

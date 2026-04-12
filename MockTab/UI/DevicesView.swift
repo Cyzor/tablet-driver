@@ -137,6 +137,12 @@ struct DevicesView: View {
             // Active indicator
             Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(isActive ? Color.green : Color.clear)
+                .frame(width: 20, alignment: .center)
+
+            // Kind icon
+            Image(systemName: "rectangle")
+                .foregroundStyle(.secondary)
+                .frame(width: 20, alignment: .center)
 
             // Editable name
             if editingTabletID == tablet.id {
@@ -223,8 +229,15 @@ struct DevicesView: View {
     private func toolRow(_ tool: DeviceRegistry.KnownTool, forDevice deviceID: Int?) -> some View {
         let isInProximity = tool.id == tabletManager.activeToolID
         HStack(spacing: 8) {
+            // Proximity indicator
             Image(systemName: isInProximity ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(isInProximity ? Color.green : Color.clear)
+                .frame(width: 20, alignment: .center)
+
+            // Kind icon
+            Image(systemName: toolIcon(for: tool))
+                .foregroundStyle(.secondary)
+                .frame(width: 20, alignment: .center)
 
             if editingToolID == tool.id {
                 TextField("Tool name", text: $editingName)
@@ -274,24 +287,24 @@ struct DevicesView: View {
                     .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
 
                     // Tool override button
-                    Button {
-                        selectedOverrideToolCode = tool.forcedToolCode
-                        toolOverrideToolID = tool.id
-                        toolOverrideDeviceID = deviceID
-                        showingToolOverridePicker = true
-                    } label: {
-                        Image(
-                            systemName: tool.forcedToolCode != nil
-                                ? "arrow.triangle.2.circlepath"
-                                : "arrow.up.left.and.arrow.down.right")
-                    }
-                    .buttonStyle(.plain).foregroundStyle(
-                        tool.forcedToolCode != nil ? .orange : .secondary
-                    )
-                    .help(
-                        tool.forcedToolCode != nil
-                            ? "Tool override active: \(String(format: "0x%04X", tool.forcedToolCode!))"
-                            : "Force tool type")
+                    // Button {
+                    //     selectedOverrideToolCode = tool.forcedToolCode
+                    //     toolOverrideToolID = tool.id
+                    //     toolOverrideDeviceID = deviceID
+                    //     showingToolOverridePicker = true
+                    // } label: {
+                    //     Image(
+                    //         systemName: tool.forcedToolCode != nil
+                    //             ? "arrow.triangle.2.circlepath"
+                    //             : "arrow.up.left.and.arrow.down.right")
+                    // }
+                    // .buttonStyle(.plain).foregroundStyle(
+                    //     tool.forcedToolCode != nil ? .orange : .secondary
+                    // )
+                    // .help(
+                    //     tool.forcedToolCode != nil
+                    //         ? "Tool override active: \(String(format: "0x%04X", tool.forcedToolCode!))"
+                    //         : "Force tool type")
                 }
             }
         }
@@ -340,9 +353,23 @@ struct DevicesView: View {
 
     // MARK: - Shared layout helpers
 
+    private func toolIcon(for tool: DeviceRegistry.KnownTool) -> String {
+        let toolCode = tool.forcedToolCode ?? tool.toolCode ?? 0
+        let type = WacomToolCatalog.toolType(forToolCode: toolCode)
+        switch type {
+        case .stylus, .eraser, .airbrush, .artPen, .inkingPen:
+            return "pencil.tip.crop.circle"
+        case .mouse:
+            return "computermouse.fill"
+        default:
+            return "camera.metering.unknown"
+        }
+    }
+
     private func columnHeader(_ nameCol: String, _ kindCol: String, _ idCol: String) -> some View {
         HStack {
             Text(nameCol)
+                .padding(.leading, 56)  // Room for kind icon + active indicator
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(kindCol)
                 .frame(width: 100, alignment: .leading)
