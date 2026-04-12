@@ -178,7 +178,7 @@ final class ToolSettings: ObservableObject {
 
     /// Applies externally-resolved values (from a profile or app override) without
     /// triggering persistence writes.  Called by TabletSettings.reloadAll() so that
-    /// PressureCurveView — which observes activeTool — stays in sync.
+    /// PenFeel — which observes activeTool — stays in sync.
     func applyExternalValues(pressureCurve: BezierCurve, smoothingStrength: Double) {
         isLoading = true
         self.pressureCurve = pressureCurve

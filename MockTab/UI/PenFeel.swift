@@ -18,9 +18,8 @@
 
 import SwiftUI
 
-/// Bezier pressure curve editor.
-/// Draws the curve on a Canvas with two draggable control point handles.
-struct PressureCurveView: View {
+/// Stylus feel settings: pressure curve, stabilization, click behaviour, and rotation.
+struct PenFeel: View {
     @ObservedObject var settings:      TabletSettings
     @ObservedObject var tool:          ToolSettings
     @ObservedObject var tabletManager: TabletManager
@@ -31,93 +30,103 @@ struct PressureCurveView: View {
     @State private var draggingP2 = false
     @State private var pressureCurveSnapshot: BezierCurve = .linear
 
+    // MARK: - Body
+
     var body: some View {
         VStack(spacing: 0) {
             AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.pressureKeys)
-            ScrollView {
-                mainContent
+            Form {
+                pressureCurveSection
+
+                Section("Stabilization") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Strength")
+                                .font(.subheadline)
+                            Spacer()
+                            Text(smoothingLabel)
+                                .font(.settingsLabel)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        Slider(value: smoothingBinding, in: 0...1)
+                        Text("Reduces cursor jitter. Higher values add lag.")
+                            .font(.settingsLabel)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Double-Click Distance") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Distance")
+                                .font(.subheadline)
+                            Spacer()
+                            Text(settings.doubleClickDistance < 1
+                                 ? "Off"
+                                 : "\(Int(settings.doubleClickDistance)) pt")
+                                .font(.settingsLabel)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        Slider(value: doubleClickBinding, in: 0...30, step: 1)
+                        Text("Snaps a second tap to the first click position within this radius, making double-clicks reliable.")
+                            .font(.settingsLabel)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Art Pen") {
+                    Toggle("Invert Rotation", isOn: invertRotationBinding)
+                        .help("Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
+                }
             }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
             DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
     }
 
-    private var mainContent: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Pressure Curve").font(.headline)
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
-            }
+    // MARK: - Pressure curve section
 
+    @ViewBuilder
+    private var pressureCurveSection: some View {
+        Section {
             curveCanvas
                 .frame(height: 180)
-                .background(Color(nsColor: .controlBackgroundColor))
-                .cornerRadius(6)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
 
-            HStack {
-                Button("Linear")  {
+            HStack(spacing: 4) {
+                Button("Linear") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .linear
                     tool.record("Linear Curve") { tool.pressureCurve = old }
                 }
-                Button("Soft")    {
+                Button("Soft") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .soft
                     tool.record("Soft Curve") { tool.pressureCurve = old }
                 }
-                Button("Firm")    {
+                Button("Firm") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .firm
                     tool.record("Firm Curve") { tool.pressureCurve = old }
                 }
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.bordered)
             .controlSize(.small)
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Stabilization")
-                        .font(.subheadline)
-                    Spacer()
-                    Text(smoothingLabel)
-                        .font(.settingsLabel)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-                Slider(value: smoothingBinding, in: 0...1)
-                Text("Reduces cursor jitter. Higher values add lag.")
-                    .font(.settingsLabel)
-                    .foregroundStyle(.secondary)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
+        } header: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Pressure Curve")
+                ToolNameLabel(tabletManager: tabletManager, registry: registry)
             }
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Double-Click Distance")
-                        .font(.subheadline)
-                    Spacer()
-                    Text(settings.doubleClickDistance < 1
-                         ? "Off"
-                         : "\(Int(settings.doubleClickDistance)) pt")
-                        .font(.settingsLabel)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-                Slider(value: doubleClickBinding, in: 0...30, step: 1)
-                Text("Snaps a second tap to the first click position within this radius, making double-clicks reliable.")
-                    .font(.settingsLabel)
-                    .foregroundStyle(.secondary)
-            }
-
-            Divider()
-
-            Toggle("Invert Art Pen Rotation", isOn: invertRotationBinding)
-                .help("Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
         }
-        .padding()
     }
 
-    // MARK: - Slider bindings with undo support
+    // MARK: - Bindings with undo support
 
     private var smoothingBinding: Binding<Double> {
         Binding(
@@ -156,7 +165,7 @@ struct PressureCurveView: View {
 
     private var smoothingLabel: String {
         switch tool.smoothingStrength {
-        case 0..<0.15:  return "Off"
+        case 0..<0.15:   return "Off"
         case 0.15..<0.4: return "Low"
         case 0.4..<0.65: return "Medium"
         case 0.65..<0.85: return "High"
