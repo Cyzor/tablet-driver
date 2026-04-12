@@ -89,7 +89,7 @@ struct AppOverrideBar: View {
     ]
 
     static let pressureKeys: Set<String> = [
-        "pressureCurve", "smoothingStrength", "doubleClickDistance", "invertRotation",
+        "pressureCurve", "smoothingStrength", "doubleClickDistance", "invertRotation", "relativeCursorMovement",
     ]
 
     static let buttonKeys: Set<String> = [
@@ -131,8 +131,8 @@ struct AppOverrideBar: View {
 
     // MARK: - Constants
 
-    private let longPressDuration:      TimeInterval = 0.2  // ← Tune (try 0.4–0.55)
-    private let longPressMaxDrift:      CGFloat      = 16    // ← Tune (try 16–30); default 10 too tight for tablet
+    private let longPressDuration:      TimeInterval = 0.4  // ← Tune (try 0.4–0.55)
+    private let longPressMaxDrift:      CGFloat      = 18    // ← Tune (try 16–30); default 10 too tight for tablet
     private let dragHoverGap:           CGFloat      = 20
 
     private let chipVerticalPadding:    CGFloat      = 7
