@@ -253,12 +253,37 @@ final class PreferencesWindowController {
             settings: s, deviceLabel: label, productID: productID)
 
         if let frame {
+            // Explicit frame passed (from restore or replace operations)
             wc.window?.setFrame(frame, display: false)
-        } else if let lastFrame = windows.last?.window?.frame {
-            wc.window?.setFrameOrigin(
-                NSPoint(
-                    x: lastFrame.minX + 20,
-                    y: lastFrame.minY - 20))
+        } else {
+            // Place new window: cascade from the previous window if one exists,
+            // otherwise land in the upper-left area of the primary display.
+            let screen = NSScreen.main ?? NSScreen.screens.first
+            let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
+            let windowSize = wc.window?.frame.size ?? NSSize(width: 560, height: 870)
+
+            let origin: NSPoint
+            if let lastFrame = windows.last?.window?.frame {
+                // Cascade: step right and down from the previous window
+                var candidate = NSPoint(x: lastFrame.minX + 20, y: lastFrame.minY - 20)
+                // Wrap horizontally if the window would clip the right edge
+                if candidate.x + windowSize.width > visible.maxX {
+                    candidate.x = visible.minX + 40
+                }
+                // Wrap vertically if the window would fall below the bottom edge
+                if candidate.y < visible.minY {
+                    candidate.y = visible.maxY - windowSize.height - 40
+                }
+                origin = candidate
+            } else {
+                // First window: upper-left area of the primary display, with a
+                // small inset so it clears the menu bar comfortably.
+                origin = NSPoint(
+                    x: visible.minX + 40,
+                    y: visible.maxY - windowSize.height - 40
+                )
+            }
+            wc.window?.setFrameOrigin(origin)
         }
 
         windows.append(wc)
