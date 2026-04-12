@@ -159,7 +159,7 @@ final class SettingsWindowController: NSWindowController {
         tabVC.tabStyle = .toolbar
 
         let window = ResizableWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 400),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 790),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -168,7 +168,11 @@ final class SettingsWindowController: NSWindowController {
         window.title = "MockTab"
         window.isReleasedWhenClosed = false
         window.collectionBehavior = [.managed]
-        window.setFrameAutosaveName("MockTabSettingsWindow")
+        // Don't auto-save frame for device-specific windows — PreferencesWindowController
+        // handles manual persistence to support per-device window positions.
+        if productID == nil {
+            window.setFrameAutosaveName("PreferencesWindow")
+        }
 
         super.init(window: window)
 
@@ -232,7 +236,7 @@ final class SettingsWindowController: NSWindowController {
             PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
         }
 
-        addTab(label: "Tablet Area", symbol: "rectangle.dashed", height: 420) {
+        addTab(label: "Tablet Area", symbol: "rectangle.dashed", height: 790) {
             TabletAreaView(
                 settings: s, tabletManager: tm, registry: dr,
                 onDeviceSelected: onDevice, boundProductID: productID)
