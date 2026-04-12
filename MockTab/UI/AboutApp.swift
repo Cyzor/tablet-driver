@@ -76,11 +76,11 @@ struct AboutView: View {
             Text(
                 "“Once,” said the Mock Turtle at last, with a deep sigh, “I was a real Turtle.”"
             )
-            .font(.system(size: 15).italic().bold())
+            .font(.system(size: 16).italic().bold())
             .foregroundColor(.secondary)
             .multilineTextAlignment(.center)
             .lineLimit(nil)
-            .padding(2)
+            .padding(1)
             Divider()
 
             // App Name + Icon

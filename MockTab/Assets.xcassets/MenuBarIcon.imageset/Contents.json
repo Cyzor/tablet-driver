@@ -1,14 +1,18 @@
 {
   "images" : [
     {
-      "filename" : "menubar_18.png",
-      "idiom" : "mac",
-      "scale" : "1x"
+      "filename" : "menubar-icon-dark.svg",
+      "idiom" : "universal"
     },
     {
-      "filename" : "menubar_36.png",
-      "idiom" : "mac",
-      "scale" : "2x"
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "menubar-icon-light.svg",
+      "idiom" : "universal"
     }
   ],
   "info" : {
@@ -16,6 +20,6 @@
     "version" : 1
   },
   "properties" : {
-    "rendering-intent" : "template"
+    "preserves-vector-representation" : true
   }
 }
