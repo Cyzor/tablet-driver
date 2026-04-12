@@ -31,9 +31,18 @@ final class AppWatcher {
 
     private var observerToken: (any NSObjectProtocol)?
 
-    /// Called once at launch to force the lazy singleton to initialize
-    /// and register the NSWorkspace notification observer.
-    func start() { /* observer registered in init() */ }
+    /// Called once at launch to force the lazy singleton to initialize,
+    /// register the NSWorkspace notification observer, and seed the initial
+    /// per-app override state from whichever app is currently frontmost.
+    func start() {
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              let bundleID = app.bundleIdentifier
+        else { return }
+        let name = app.localizedName ?? bundleID
+        for ctx in TabletManager.shared.contexts.values {
+            ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
+        }
+    }
 
     private init() {
         // Block-based API: no NSObject requirement, queue: .main ensures delivery on main thread

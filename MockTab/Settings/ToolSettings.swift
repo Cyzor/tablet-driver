@@ -136,11 +136,12 @@ final class ToolSettings: ObservableObject {
 
     // MARK: - Persistence
 
-    /// Reads `key` directly from UserDefaults, respecting the two-level fallback chain,
-    /// without relying on the in-memory `@Published` cache.  Used by button-binding
-    /// getters so that per-serial ToolSettings instances pick up device-default changes
-    /// made in the UI without requiring an explicit `reload()`.
+    /// Reads `key` directly from UserDefaults, respecting the full lookup chain:
+    /// active app override → tool-specific prefix → device-level fallback.
+    /// Used by button-binding getters so values are always consistent with where
+    /// `persist()` writes — both routes check `overridePrefix` first.
     private func freshString(_ key: String) -> String? {
+        if let op = overridePrefix, let v = ud.string(forKey: op + key) { return v }
         if let v = ud.string(forKey: prefix + key) { return v }
         if let fb = fallbackPrefix, let v = ud.string(forKey: fb + key) { return v }
         return nil
