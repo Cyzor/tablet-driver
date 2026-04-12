@@ -525,6 +525,7 @@ struct AppOverrideBar: View {
     }
 
     private func addApp(bundleID: String, name: String) {
+        guard bundleID != Bundle.main.bundleIdentifier else { return }
         settings.addAppOverride(bundleID: bundleID, appName: name)
     }
 

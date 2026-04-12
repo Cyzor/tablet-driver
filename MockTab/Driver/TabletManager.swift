@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
 
+import AppKit
 import Foundation
 import IOKit.hid
 
@@ -217,6 +218,15 @@ final class TabletManager: ObservableObject {
         let context = contexts[productID] ?? DeviceContext(productID: productID, rawProductID: rawProductID)
         contexts[productID] = context
         context.hidDevice = device
+
+        // Seed the per-app override for whatever app is currently frontmost.
+        // AppWatcher seeds existing contexts at start(), but a device may connect
+        // after launch (or in dockless mode where no app switch occurred yet).
+        if let app = NSWorkspace.shared.frontmostApplication,
+           let bundleID = app.bundleIdentifier {
+            let name = app.localizedName ?? bundleID
+            context.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
+        }
 
         // Propagate context.objectWillChange to TabletManager so SwiftUI observers
         // get updates when per-device state changes (transport, battery, livePoint, etc).

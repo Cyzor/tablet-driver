@@ -461,13 +461,23 @@ final class TabletSettings: ObservableObject {
     // MARK: - App override management
 
     /// Called by AppWatcher on every app-focus change.
-    /// Updates the driver override so the injector applies the right settings,
-    /// then syncs the UI chip bar to reflect the active app.
+    /// Updates the driver override so the injector applies the right settings.
+    ///
+    /// When MockTab itself is frontmost (the user is editing settings), only
+    /// `driverOverride` is updated and the UI editing context is left alone —
+    /// `activeAppOverride`, `activeTool.overridePrefix`, and all @Published values
+    /// keep their current state so the user can freely edit any chip without
+    /// losing their selection when they switch between apps.
+    ///
+    /// When a drawing app becomes frontmost, the UI chip bar is synced to the
+    /// driver's active app and settings are reloaded for the injector.
     func handleAppOverrideActivation(bundleID: String, appName: String) {
-        let newOverride = appOverrides.first { $0.bundleID == bundleID }
+        let isSelf = bundleID == (Bundle.main.bundleIdentifier ?? "")
+        let newOverride = isSelf ? nil : appOverrides.first { $0.bundleID == bundleID }
         guard newOverride?.bundleID != driverOverride?.bundleID else { return }
         driverOverride = newOverride
-        // Set these BEFORE reloadAll() so load helpers read from the correct override
+        guard !isSelf else { return }
+        // Drawing app became frontmost — sync UI chip bar to driver state and reload.
         activeAppOverride = driverOverride
         activeTool.overridePrefix = driverOverride.map { appOverrideKeyPrefix($0) }
         reloadAll()
@@ -741,6 +751,11 @@ final class TabletSettings: ObservableObject {
         // Sync resolved pressure values into activeTool so PenFeel —
         // which observes tool.pressureCurve — reflects the active override or profile.
         activeTool.applyExternalValues(pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
+        // Also propagate to all cached per-tool instances so the injector (which uses
+        // activeToolSettings — a cached ToolSettings — not activeTool) picks up the change.
+        for tool in toolCache.values where tool !== activeTool {
+            tool.applyExternalValues(pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
+        }
         isLoading = false
     }
 
