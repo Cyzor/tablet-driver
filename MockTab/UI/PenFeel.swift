@@ -76,9 +76,30 @@ struct PenFeel: View {
                     }
                 }
 
-                Section("Art Pen") {
-                    Toggle("Invert Rotation", isOn: invertRotationBinding)
-                        .help("Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
+                Section("Movement") {
+                    Toggle(isOn: invertRotationBinding) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Invert Rotation Direction")
+                            Text(settings.invertRotation
+                                 ? "Current: \u{100149} Counter-clockwise"
+                                 : "Current: \u{100148} Clockwise")
+                                .font(.settingsLabel)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .help("Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
+
+                    Toggle(isOn: relativeCursorMovementBinding) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Relative Cursor Movement")
+                            Text(settings.relativeCursorMovement
+                                 ? "Current: \u{10071F} Relative, like a mouse"
+                                 : "Current: \u{10088A} Absolute, like a stylus")
+                                .font(.settingsLabel)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .help("In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse.")
                 }
             }
             .formStyle(.grouped)
@@ -157,6 +178,17 @@ struct PenFeel: View {
                 let old = settings.invertRotation
                 settings.invertRotation = newVal
                 settings.record("Invert Rotation") { settings.invertRotation = old }
+            }
+        )
+    }
+
+    private var relativeCursorMovementBinding: Binding<Bool> {
+        Binding(
+            get: { settings.relativeCursorMovement },
+            set: { newVal in
+                let old = settings.relativeCursorMovement
+                settings.relativeCursorMovement = newVal
+                settings.record("Relative Cursor Movement") { settings.relativeCursorMovement = old }
             }
         )
     }

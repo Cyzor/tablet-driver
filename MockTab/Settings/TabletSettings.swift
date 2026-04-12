@@ -166,6 +166,9 @@ final class TabletSettings: ObservableObject {
     @Published var invertRotation: Bool = false {
         didSet { persist("invertRotation", invertRotation) }
     }
+    @Published var relativeCursorMovement: Bool = false {
+        didSet { persist("relativeCursorMovement", relativeCursorMovement) }
+    }
 
     // MARK: - Touch ring & strips
 
@@ -746,7 +749,8 @@ final class TabletSettings: ObservableObject {
                 rawValue: loadString("touchStrip2Mode", default: TouchRingMode.scroll.rawValue))
             ?? .scroll
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
-        invertRotation    = loadBool("invertRotation",    default: false)
+        invertRotation           = loadBool("invertRotation",           default: false)
+        relativeCursorMovement   = loadBool("relativeCursorMovement",   default: false)
         loadPressureCurve()
         // Sync resolved pressure values into activeTool so PenFeel —
         // which observes tool.pressureCurve — reflects the active override or profile.
