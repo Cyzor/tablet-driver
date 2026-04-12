@@ -129,6 +129,15 @@ final class InputInjector {
         hoverSum = 0
     }
 
+    // MARK: - Relative movement
+    //
+    // When relativeCursorMovement is enabled, the pen acts like a mouse: each report
+    // moves the cursor by the delta from the previous normalized tablet position,
+    // scaled to the display size.  lastRelativeNorm is cleared at proximity exit so
+    // the first report after hover-entry doesn't produce a large jump.
+
+    private var lastRelativeNorm: CGPoint? = nil
+
     // MARK: - Smoothing
 
     private var smoothedPoint: CGPoint = .zero
@@ -194,9 +203,16 @@ final class InputInjector {
         if settings.invertRotation && point.rotation != 0.0 {
             point.rotation = (360.0 - point.rotation).truncatingRemainder(dividingBy: 360.0)
         }
-        guard let rawPoint = mapToScreen(point, settings: settings) else {
-            // Pen outside active area — deadzone, no events
-            return
+        let rawPoint: CGPoint
+        if settings.relativeCursorMovement {
+            rawPoint = resolveRelativePoint(point, settings: settings)
+        } else {
+            guard let absPoint = mapToScreen(point, settings: settings) else {
+                // Pen outside active area — deadzone, no events
+                lastRelativeNorm = nil
+                return
+            }
+            rawPoint = absPoint
         }
         let pressure = tool.pressureCurve.evaluate(point.normalizedPressure)
         // Mouse tools have no tip pressure — button1 is the primary click trigger.
@@ -284,6 +300,7 @@ final class InputInjector {
                 hasSmoothedPoint = false
                 hasLastRawPoint = false
                 hasPostedPoint = false
+                lastRelativeNorm = nil
                 lastPostedPressure = -1.0
                 clearHoverDeltas()
             }
@@ -962,6 +979,63 @@ final class InputInjector {
     }
 
     // MARK: - Screen mapping
+
+    /// In relative mode: computes a delta from the previous normalized tablet position
+    /// and applies it to the current cursor location, then clamps to screen bounds.
+    /// The scaling factor converts one full tablet-area width/height sweep to one full
+    /// display width/height traversal, matching the feel of a typical mouse.
+    private func resolveRelativePoint(_ point: TabletPoint, settings: TabletSettings) -> CGPoint {
+        let idx = settings.targetDisplayIndex
+        if cachedDisplayIndex != idx {
+            cachedDisplayBounds = resolveDisplayBounds(settings: settings)
+            cachedDisplayIndex = idx
+        }
+        let display = cachedDisplayBounds
+
+        // Compute normalized position within the active area (same math as mapToScreen).
+        let rawX = Double(point.x)
+        let rawY = Double(point.y)
+        let rawMaxX = Double(point.maxX)
+        let rawMaxY = Double(point.maxY)
+        let ox: Double; let oy: Double
+        let effMaxX: Double; let effMaxY: Double
+        switch settings.tabletOrientation {
+        case .landscape:
+            ox = rawX;           oy = rawY
+            effMaxX = rawMaxX;   effMaxY = rawMaxY
+        case .portrait:
+            ox = rawY;           oy = rawMaxX - rawX
+            effMaxX = rawMaxY;   effMaxY = rawMaxX
+        case .landscapeFlipped:
+            ox = rawMaxX - rawX; oy = rawMaxY - rawY
+            effMaxX = rawMaxX;   effMaxY = rawMaxY
+        case .portraitFlipped:
+            ox = rawMaxY - rawY; oy = rawX
+            effMaxX = rawMaxY;   effMaxY = rawMaxX
+        }
+        let areaW = Swift.max(settings.activeAreaWidth, 0.001) * effMaxX
+        let areaH = Swift.max(settings.activeAreaHeight, 0.001) * effMaxY
+        let areaX = settings.activeAreaX * effMaxX
+        let areaY = settings.activeAreaY * effMaxY
+        let norm = CGPoint(
+            x: (ox - areaX) / areaW,
+            y: (oy - areaY) / areaH)
+
+        // On first report after proximity entry there is no previous position, so we
+        // anchor without moving the cursor.
+        guard let prev = lastRelativeNorm else {
+            lastRelativeNorm = norm
+            return currentCursorPosition()
+        }
+        lastRelativeNorm = norm
+
+        let dx = (norm.x - prev.x) * display.width
+        let dy = (norm.y - prev.y) * display.height
+        let cur = currentCursorPosition()
+        return CGPoint(
+            x: Swift.min(Swift.max(cur.x + dx, display.minX), display.maxX),
+            y: Swift.min(Swift.max(cur.y + dy, display.minY), display.maxY))
+    }
 
     /// Maps a tablet point to screen coordinates, accounting for orientation and active area cropping.
     /// Returns nil if the pen is outside the active area (deadzone).
