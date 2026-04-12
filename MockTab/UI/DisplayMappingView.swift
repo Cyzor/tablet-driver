@@ -107,6 +107,7 @@ struct DisplayMappingView: View {
 
             if settings.targetDisplayIndex == modeToggle {
                 toggleSection
+                displayToggleHintRow
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
@@ -167,6 +168,47 @@ struct DisplayMappingView: View {
             }
         }
         .disabled(displays.count <= 1)
+    }
+
+    /// Returns the names of buttons currently bound to displayToggle, or nil if none.
+    private var displayToggleAssignedLabel: String? {
+        var names: [String] = []
+        if settings.activeTool.penButton1Binding.kind == .displayToggle { names.append("Pen Button 1") }
+        if settings.activeTool.penButton2Binding.kind == .displayToggle { names.append("Pen Button 2") }
+        let ekNames = settings.expressKeyBindings.enumerated()
+            .filter { $0.element.kind == .displayToggle }
+            .map { "Key \($0.offset + 1)" }
+        names += ekNames
+        if settings.touchRingButtonBinding.kind == .displayToggle { names.append("Ring Button") }
+        return names.isEmpty ? nil : names.joined(separator: ", ")
+    }
+
+    private var displayToggleHintRow: some View {
+        let assignedLabel = displayToggleAssignedLabel
+        return HStack(spacing: 8) {
+            if assignedLabel != nil {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            } else {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.primary)
+            }
+            Text(assignedLabel.map { "Triggered by \($0)" } ?? "No button assigned to toggle")
+                .foregroundStyle(assignedLabel != nil ? .secondary : .primary)
+            Spacer()
+            if assignedLabel == nil {
+                Button("Set Up") {
+                    if let wc = NSApp.keyWindow?.windowController as? SettingsWindowController {
+                        wc.showTab(named: "Buttons")
+                    } else {
+                        PreferencesWindowController.shared.showTab(named: "Buttons")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .padding(.vertical, 2)
     }
 
     private func toggleThumbnail(at index: Int, info: DisplayInfo) -> some View {
@@ -286,6 +328,7 @@ struct DisplayMappingView: View {
         guard displays.indices.contains(index) else { return }
         let info = displays[index]
         let oldIDs = settings.toggleDisplayIDSet
+        let oldDisplayIndex = settings.targetDisplayIndex
         var ids = oldIDs
         if ids.isEmpty {
             // Start fresh: select only the clicked display
@@ -299,9 +342,10 @@ struct DisplayMappingView: View {
         let newIDs = (ids == Set(displays.map(\.id))) ? [] : ids
         settings.toggleDisplayIDSet = newIDs
         settings.targetDisplayIndex = modeToggle
-        // Register undo for the toggle set change
+        // Register undo for both changes
         settings.record("Toggle Display Set") {
             settings.toggleDisplayIDSet = oldIDs
+            settings.targetDisplayIndex = oldDisplayIndex
         }
     }
 
@@ -416,7 +460,10 @@ struct DisplayMappingView: View {
 
                 if flags.contains(.shift), displays.count > 1 {
                     // Shift+click any display → All mode
+                    let old = settings.targetDisplayIndex
+                    guard old != modeAll else { return }
                     settings.targetDisplayIndex = modeAll
+                    settings.record("Display Mapping") { self.settings.targetDisplayIndex = old }
 
                 } else if flags.contains(.command), displays.count > 1 {
                     // Cmd+click → build toggle rotation and activate Toggle mode
@@ -427,7 +474,11 @@ struct DisplayMappingView: View {
                 } else {
                     // Plain click → select that specific display
                     for (index, rect) in rects.enumerated() where rect.contains(location) {
-                        settings.targetDisplayIndex = displays[index].listIndex
+                        let old = settings.targetDisplayIndex
+                        let newVal = displays[index].listIndex
+                        guard old != newVal else { break }
+                        settings.targetDisplayIndex = newVal
+                        settings.record("Display Mapping") { self.settings.targetDisplayIndex = old }
                         break
                     }
                 }
