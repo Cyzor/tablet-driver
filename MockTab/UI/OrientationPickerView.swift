@@ -16,12 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with MockTab. If not, see <https://www.gnu.org/licenses/>.
 
+import AppKit
 import SwiftUI
 
 // MARK: - Orientation picker
 
-/// Orientation selector with vertical radio button layout (buttons on left).
-/// Each orientation is rendered as a separate form row.
+/// Orientation selector with a native radio button on the left of each row.
 struct OrientationPickerView: View {
     @ObservedObject var settings: TabletSettings
 
@@ -35,10 +35,11 @@ struct OrientationPickerView: View {
 
     @ViewBuilder
     private func orientationRow(_ orientation: TabletOrientation) -> some View {
-        let isSelected = settings.tabletOrientation == orientation
         Button(action: { selectOrientation(orientation) }) {
             HStack(spacing: 10) {
-                RadioButton(isSelected: isSelected)
+                NativeRadioIndicator(isSelected: settings.tabletOrientation == orientation)
+                    .frame(width: 18, height: 18)
+                    .allowsHitTesting(false)
                 OrientationGlyph(orientation: orientation)
                     .frame(width: 50, height: 50)
                 Text(orientation.pickerLabel)
@@ -61,22 +62,37 @@ struct OrientationPickerView: View {
     }
 }
 
-// MARK: - Radio button control
+// MARK: - Native radio button indicator
 
-private struct RadioButton: View {
+/// Display-only native macOS radio circle drawn via NSButtonCell.
+/// Position (circle left, label right) is controlled by the enclosing HStack.
+/// Interaction is handled by the parent — this view ignores hit-testing.
+struct NativeRadioIndicator: NSViewRepresentable {
     let isSelected: Bool
 
-    var body: some View {
-        Circle()
-            .strokeBorder(Color.secondary, lineWidth: 1.5)
-            .frame(width: 16, height: 16)
-            .overlay(
-                Circle()
-                    .fill(Color.accentColor)
-                    .frame(width: 8, height: 8)
-                    .opacity(isSelected ? 1 : 0)
-            )
-            .animation(.easeOut(duration: 0.07), value: isSelected)
+    func makeNSView(context: Context) -> RadioIndicatorView { RadioIndicatorView() }
+
+    func updateNSView(_ view: RadioIndicatorView, context: Context) {
+        view.isSelected = isSelected
+    }
+
+    final class RadioIndicatorView: NSView {
+        var isSelected = false { didSet { needsDisplay = true } }
+
+        private let cell: NSButtonCell = {
+            let c = NSButtonCell()
+            c.setButtonType(.radio)
+            c.title = ""
+            c.imagePosition = .imageOnly
+            c.isBordered = false
+            return c
+        }()
+
+        override func draw(_ dirtyRect: NSRect) {
+            cell.isEnabled = true
+            cell.state = isSelected ? .on : .off
+            cell.draw(withFrame: bounds, in: self)
+        }
     }
 }
 
