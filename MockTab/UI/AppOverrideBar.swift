@@ -132,7 +132,7 @@ struct AppOverrideBar: View {
     // MARK: - Constants
 
     private let longPressDuration:      TimeInterval = 0.2  // ← Tune (try 0.4–0.55)
-    private let longPressMaxDrift:      CGFloat      = 20    // ← Tune (try 16–30); default 10 too tight for tablet
+    private let longPressMaxDrift:      CGFloat      = 16    // ← Tune (try 16–30); default 10 too tight for tablet
     private let dragHoverGap:           CGFloat      = 20
 
     private let chipVerticalPadding:    CGFloat      = 7
@@ -362,22 +362,28 @@ struct AppOverrideBar: View {
         isSelected: Bool,
         domainKeyCount: Int = 0
     ) -> some View {
-        let isDragReady = bundleID != nil && dragEnabledID == bundleID
+        // isDragLifted: long press has fired — used for visual feedback only.
+        // .draggable is always armed (not gated on this) so the drag recognizer is
+        // present from the first touch. Gating it caused a race: the recognizer was
+        // added after mouseDown, so it sometimes missed the in-progress press.
+        let isDragLifted = bundleID != nil && dragEnabledID == bundleID
 
         Button {
             settings.selectAppOverride(bundleID: bundleID)
         } label: {
-            if isDragReady, let id = bundleID {
+            if let id = bundleID {
                 chipContent(label: label, icon: icon, isSelected: isSelected, domainKeyCount: domainKeyCount)
                     .draggable(id) {
                         chipContent(label: label, icon: icon, isSelected: true, domainKeyCount: 0)
-                            .shadow(radius: 3, y: 0)
+                            .shadow(radius: 0, y: 0)
                     }
             } else {
                 chipContent(label: label, icon: icon, isSelected: isSelected, domainKeyCount: domainKeyCount)
             }
         }
         .buttonStyle(.plain)
+        .scaleEffect(isDragLifted ? 1.06 : 1.0)
+        .animation(.spring(response: 0.2, dampingFraction: 0.65), value: isDragLifted)
         .contextMenu {
             if let bundleID {
                 Button("Rename…") { renamingBundleID = bundleID; renameText = label }
