@@ -138,14 +138,14 @@ struct DisplayMappingView: View {
             settings.record("Display Mapping") { self.settings.targetDisplayIndex = old }
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: settings.targetDisplayIndex == tag
-                      ? "circle.inset.filled" : "circle")
-                    .foregroundStyle(settings.targetDisplayIndex == tag
-                                     ? Color.accentColor : Color.secondary)
+                NativeRadioIndicator(isSelected: settings.targetDisplayIndex == tag)
+                    .frame(width: 18, height: 18)
+                    .allowsHitTesting(false)
                 Text(label)
                     .foregroundStyle(disabled ? Color.secondary : Color.primary)
                 Spacer()
             }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(disabled)
