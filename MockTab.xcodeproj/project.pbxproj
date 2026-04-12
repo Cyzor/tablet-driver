@@ -19,7 +19,7 @@
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
 		AA000010 /* BezierCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* BezierCurve.swift */; };
 		AA000012 /* TabletAreaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000012 /* TabletAreaView.swift */; };
-		AA000013 /* PressureCurveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* PressureCurveView.swift */; };
+		AA000013 /* PenFeel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* PenFeel.swift */; };
 		AA000014 /* ButtonMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ButtonMappingView.swift */; };
 		AA000015 /* DisplayMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* DisplayMappingView.swift */; };
 		AA000016 /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* ScratchpadView.swift */; };
@@ -67,7 +67,7 @@
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
 		AB000010 /* BezierCurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BezierCurve.swift; sourceTree = "<group>"; };
 		AB000012 /* TabletAreaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletAreaView.swift; sourceTree = "<group>"; };
-		AB000013 /* PressureCurveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PressureCurveView.swift; sourceTree = "<group>"; };
+		AB000013 /* PenFeel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenFeel.swift; sourceTree = "<group>"; };
 		AB000014 /* ButtonMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingView.swift; sourceTree = "<group>"; };
 		AB000015 /* DisplayMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMappingView.swift; sourceTree = "<group>"; };
 		AB000016 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
@@ -182,7 +182,7 @@
 			children = (
 				AB000012 /* TabletAreaView.swift */,
 				AB000073 /* OrientationPickerView.swift */,
-				AB000013 /* PressureCurveView.swift */,
+				AB000013 /* PenFeel.swift */,
 				AB000014 /* ButtonMappingView.swift */,
 				AB000015 /* DisplayMappingView.swift */,
 				AB000016 /* ScratchpadView.swift */,
@@ -328,7 +328,7 @@
 				AA000100 /* Profile.swift in Sources */,
 				AA000012 /* TabletAreaView.swift in Sources */,
 				AA000073 /* OrientationPickerView.swift in Sources */,
-				AA000013 /* PressureCurveView.swift in Sources */,
+				AA000013 /* PenFeel.swift in Sources */,
 				AA000014 /* ButtonMappingView.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,
 				AA000016 /* ScratchpadView.swift in Sources */,

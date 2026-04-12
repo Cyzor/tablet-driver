@@ -738,7 +738,7 @@ final class TabletSettings: ObservableObject {
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
         invertRotation    = loadBool("invertRotation",    default: false)
         loadPressureCurve()
-        // Sync resolved pressure values into activeTool so PressureCurveView —
+        // Sync resolved pressure values into activeTool so PenFeel —
         // which observes tool.pressureCurve — reflects the active override or profile.
         activeTool.applyExternalValues(pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
         isLoading = false

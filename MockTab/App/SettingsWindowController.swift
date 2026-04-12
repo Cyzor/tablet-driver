@@ -237,8 +237,8 @@ final class SettingsWindowController: NSWindowController {
                 settings: s, tabletManager: tm, registry: dr,
                 onDeviceSelected: onDevice, boundProductID: productID)
         }
-        addTab(label: "Pressure", symbol: "scribble.variable", height: 480) {
-            PressureCurveView(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr, productID: productID)
+        addTab(label: "Pen Feel", symbol: "scribble.variable", height: 480) {
+            PenFeel(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr, productID: productID)
         }
         addTab(label: "Buttons", symbol: "square.grid.2x2.fill", height: 575) {
             ButtonMappingView(
