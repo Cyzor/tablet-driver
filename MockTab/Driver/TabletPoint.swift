@@ -48,6 +48,10 @@ struct TabletPoint {
     var mouseMiddleButton: Bool = false
     /// For mouse tools only: scroll-wheel step this report (+1 up / -1 down / 0 none).
     var mouseWheelDelta: Int = 0
+    /// Extra barrel / mouse buttons beyond the standard two side buttons.
+    var penButton3: Bool = false
+    var penButton4: Bool = false
+    var penButton5: Bool = false
 }
 
 /// Identity of a physical pen as reported by the tablet firmware.
@@ -106,6 +110,10 @@ struct LiveButtonState: Equatable {
     var button1Down: Bool = false
     /// Side button 2 held.
     var button2Down: Bool = false
+    /// Extra buttons 3–5 (mice or future multi-button pens).
+    var button3Down: Bool = false
+    var button4Down: Bool = false
+    var button5Down: Bool = false
     /// Express key states (up to 8).
     var expressKeys: [Bool] = Array(repeating: false, count: 16)
     /// True while a finger is actively touching the touch ring.

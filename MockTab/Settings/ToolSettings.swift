@@ -94,6 +94,42 @@ final class ToolSettings: ObservableObject {
         set { pen2Raw = newValue.encoded }
     }
 
+    @Published private var pen3Raw: String = "" {
+        didSet { persist("penButton3Binding", pen3Raw) }
+    }
+
+    @Published private var pen4Raw: String = "" {
+        didSet { persist("penButton4Binding", pen4Raw) }
+    }
+
+    @Published private var pen5Raw: String = "" {
+        didSet { persist("penButton5Binding", pen5Raw) }
+    }
+
+    @Published private var wheelRaw: String = "" {
+        didSet { persist("wheelBinding", wheelRaw) }
+    }
+
+    var penButton3Binding: ButtonBinding {
+        get { ButtonBinding.decode(freshString("penButton3Binding") ?? "") ?? .none }
+        set { pen3Raw = newValue.encoded }
+    }
+
+    var penButton4Binding: ButtonBinding {
+        get { ButtonBinding.decode(freshString("penButton4Binding") ?? "") ?? .none }
+        set { pen4Raw = newValue.encoded }
+    }
+
+    var penButton5Binding: ButtonBinding {
+        get { ButtonBinding.decode(freshString("penButton5Binding") ?? "") ?? .none }
+        set { pen5Raw = newValue.encoded }
+    }
+
+    var wheelBinding: ButtonBinding {
+        get { ButtonBinding.decode(freshString("wheelBinding") ?? "") ?? .none }
+        set { wheelRaw = newValue.encoded }
+    }
+
     // MARK: - Override routing
 
     /// When non-nil, persist() and savePressureCurve() write here instead of
@@ -130,6 +166,10 @@ final class ToolSettings: ObservableObject {
         eraserRaw = loadString("eraserBinding", default: "")
         pen1Raw = loadString("penButton1Binding", default: "")
         pen2Raw = loadString("penButton2Binding", default: "")
+        pen3Raw = loadString("penButton3Binding", default: "")
+        pen4Raw = loadString("penButton4Binding", default: "")
+        pen5Raw = loadString("penButton5Binding", default: "")
+        wheelRaw = loadString("wheelBinding", default: "")
         loadPressureCurve()
         isLoading = false
     }

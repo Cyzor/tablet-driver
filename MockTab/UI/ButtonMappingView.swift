@@ -49,7 +49,12 @@ struct ButtonMappingView: View {
     private var spec: WacomDeviceSpec? {
         productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
-    
+
+    private var activeToolSpec: WacomToolSpec? {
+        guard let productID, let ctx = tabletManager.contexts[productID] else { return nil }
+        return WacomToolCatalog.spec(forToolCode: ctx.activeToolCode)
+    }
+
     private var hasTouchRing:   Bool { spec?.hasTouchRing   == true }
     private var hasDualRings:   Bool { spec?.hasDualRings   == true }
     private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
@@ -102,35 +107,107 @@ struct ButtonMappingView: View {
     }
     
     // MARK: - Pen buttons section
-    
+
     @ViewBuilder
     private func penButtonsSection(lb: LiveButtonState) -> some View {
+        let toolSpec = activeToolSpec
+        let isMouse = toolSpec?.toolType == .mouse
+        let btnCount = toolSpec?.buttonCount ?? 2
+        let hasWheel = toolSpec?.hasWheel == true
+
         Section {
-            buttonRow(
-                "Tip", isActive: lb.tipDown,
-                binding: recordingBinding(
-                    "Tip Button", owner: tool,
-                    get: { tool.tipBinding },
-                    set: { tool.tipBinding = $0 }))
-            buttonRow(
-                "Eraser", isActive: lb.eraserDown,
-                binding: recordingBinding(
-                    "Eraser Button", owner: tool,
-                    get: { tool.eraserBinding },
-                    set: { tool.eraserBinding = $0 }))
-            buttonRow(
-                "Side button 1", isActive: lb.button1Down,
-                binding: recordingBinding(
-                    "Pen Button 1", owner: tool,
-                    get: { tool.penButton1Binding },
-                    set: { tool.penButton1Binding = $0 }))
-            buttonRow(
-                "Side button 2", isActive: lb.button2Down,
-                binding: recordingBinding(
-                    "Pen Button 2", owner: tool,
-                    get: { tool.penButton2Binding },
-                    set: { tool.penButton2Binding = $0 }))
-            
+            // Tip — only for non-mouse tools
+            if !isMouse {
+                buttonRow(
+                    "Tip", isActive: lb.tipDown,
+                    binding: recordingBinding(
+                        "Tip Button", owner: tool,
+                        get: { tool.tipBinding },
+                        set: { tool.tipBinding = $0 }))
+            }
+
+            // Eraser — only for non-mouse tools
+            if !isMouse {
+                buttonRow(
+                    "Eraser", isActive: lb.eraserDown,
+                    binding: recordingBinding(
+                        "Eraser Button", owner: tool,
+                        get: { tool.eraserBinding },
+                        set: { tool.eraserBinding = $0 }))
+            }
+
+            // Barrel/side button rows — count driven by spec
+            // For airbrush (1 button): "Side button"
+            // For mice: "Button 1", "Button 2", etc.
+            let buttonLabel: (Int) -> String = { i in
+                if isMouse {
+                    return "Button \(i + 1)"
+                } else {
+                    return btnCount == 1 ? "Side button" : "Side button \(i + 1)"
+                }
+            }
+
+            // Button 1
+            if btnCount >= 1 {
+                buttonRow(
+                    buttonLabel(0), isActive: lb.button1Down,
+                    binding: recordingBinding(
+                        "Button 1", owner: tool,
+                        get: { tool.penButton1Binding },
+                        set: { tool.penButton1Binding = $0 }))
+            }
+
+            // Button 2
+            if btnCount >= 2 {
+                buttonRow(
+                    buttonLabel(1), isActive: lb.button2Down,
+                    binding: recordingBinding(
+                        "Button 2", owner: tool,
+                        get: { tool.penButton2Binding },
+                        set: { tool.penButton2Binding = $0 }))
+            }
+
+            // Button 3
+            if btnCount >= 3 {
+                buttonRow(
+                    buttonLabel(2), isActive: lb.button3Down,
+                    binding: recordingBinding(
+                        "Button 3", owner: tool,
+                        get: { tool.penButton3Binding },
+                        set: { tool.penButton3Binding = $0 }))
+            }
+
+            // Button 4
+            if btnCount >= 4 {
+                buttonRow(
+                    buttonLabel(3), isActive: lb.button4Down,
+                    binding: recordingBinding(
+                        "Button 4", owner: tool,
+                        get: { tool.penButton4Binding },
+                        set: { tool.penButton4Binding = $0 }))
+            }
+
+            // Button 5
+            if btnCount >= 5 {
+                buttonRow(
+                    buttonLabel(4), isActive: lb.button5Down,
+                    binding: recordingBinding(
+                        "Button 5", owner: tool,
+                        get: { tool.penButton5Binding },
+                        set: { tool.penButton5Binding = $0 }))
+            }
+
+            // Wheel row — airbrush fingerwheel or scroll wheel
+            if hasWheel {
+                let wheelLabel = toolSpec?.toolType == .airbrush ? "Fingerwheel" : "Scroll Wheel"
+                buttonRow(
+                    wheelLabel, isActive: false,
+                    binding: recordingBinding(
+                        "Wheel", owner: tool,
+                        get: { tool.wheelBinding },
+                        set: { tool.wheelBinding = $0 }))
+            }
+
             // Diagram row: no label column; transparent so the section
             // background shows through unchanged.
             PenDiagramView(liveButtons: lb)
@@ -139,7 +216,7 @@ struct ButtonMappingView: View {
                 .listRowBackground(Color.clear)
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Pen Buttons")
+                Text(isMouse ? "Mouse Buttons" : "Pen Buttons")
                 ToolNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }

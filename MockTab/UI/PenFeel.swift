@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // MockTab — native macOS driver for supported drawing tablets
 //
-// Copyright (C) 2026  This file is part of MockTab.
+// Copyright (C) 2026 This file is part of MockTab.
 //
 // MockTab is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -10,25 +10,21 @@
 //
 // MockTab is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+// along with MockTab. If not, see <https://www.gnu.org/licenses/>.
 
 import SwiftUI
 
 /// Stylus feel settings: pressure curve, stabilization, click behaviour, and rotation.
 struct PenFeel: View {
-    @ObservedObject var settings:      TabletSettings
-    @ObservedObject var tool:          ToolSettings
+    @ObservedObject var settings: TabletSettings
+    @ObservedObject var tool: ToolSettings
     @ObservedObject var tabletManager: TabletManager
-    @ObservedObject var registry:      DeviceRegistry
+    @ObservedObject var registry: DeviceRegistry
     var productID: Int?
-
-    @State private var draggingP1 = false
-    @State private var draggingP2 = false
-    @State private var pressureCurveSnapshot: BezierCurve = .linear
 
     // MARK: - Body
 
@@ -39,7 +35,7 @@ struct PenFeel: View {
                 pressureCurveSection
 
                 Section("Stabilization") {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 4) {   // ← Added .leading for consistency
                         HStack {
                             Text("Strength")
                                 .font(.subheadline)
@@ -49,11 +45,15 @@ struct PenFeel: View {
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
                         }
+                        
                         Slider(value: smoothingBinding, in: 0...1)
+                            .labelsHidden()
+                        
                         Text("Reduces cursor jitter. Higher values add lag.")
                             .font(.settingsLabel)
                             .foregroundStyle(.secondary)
                     }
+                    // .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                 }
 
                 Section("Double-Click Distance") {
@@ -63,13 +63,15 @@ struct PenFeel: View {
                                 .font(.subheadline)
                             Spacer()
                             Text(settings.doubleClickDistance < 1
-                                 ? "Off"
-                                 : "\(Int(settings.doubleClickDistance)) pt")
+                                ? "Off"
+                                : "\(Int(settings.doubleClickDistance)) pt")
                                 .font(.settingsLabel)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
                         }
                         Slider(value: doubleClickBinding, in: 0...30, step: 1)
+                            .labelsHidden()
+                        
                         Text("Snaps a second tap to the first click position within this radius, making double-clicks reliable.")
                             .font(.settingsLabel)
                             .foregroundStyle(.secondary)
@@ -80,9 +82,13 @@ struct PenFeel: View {
                     Toggle(isOn: invertRotationBinding) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Invert Rotation Direction")
-                            Text(settings.invertRotation
-                                 ? "Current: \u{100149} Counter-clockwise"
-                                 : "Current: \u{100148} Clockwise")
+                            (Text("Current: ")
+                                + Text(Image(systemName: settings.invertRotation
+                                    ? "arrow.counterclockwise"
+                                    : "arrow.clockwise"))
+                                + Text(settings.invertRotation
+                                    ? " Counter-clockwise"
+                                    : " Clockwise"))
                                 .font(.settingsLabel)
                                 .foregroundStyle(.secondary)
                         }
@@ -92,9 +98,13 @@ struct PenFeel: View {
                     Toggle(isOn: relativeCursorMovementBinding) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Relative Cursor Movement")
-                            Text(settings.relativeCursorMovement
-                                 ? "Current: \u{10071F} Relative, like a mouse"
-                                 : "Current: \u{10088A} Absolute, like a stylus")
+                            (Text("Current: ")
+                                + Text(Image(systemName: settings.relativeCursorMovement
+                                    ? "cursorarrow.motionlines"
+                                    : "pencil.tip"))
+                                + Text(settings.relativeCursorMovement
+                                    ? " Relative, like a mouse"
+                                    : " Absolute, like a stylus"))
                                 .font(.settingsLabel)
                                 .foregroundStyle(.secondary)
                         }
@@ -108,12 +118,12 @@ struct PenFeel: View {
         }
     }
 
-    // MARK: - Pressure curve section
+    // MARK: - Pressure curve section (with extracted canvas)
 
     @ViewBuilder
     private var pressureCurveSection: some View {
         Section {
-            curveCanvas
+            PressureCurveCanvas(tool: tool)
                 .frame(height: 180)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
@@ -197,17 +207,25 @@ struct PenFeel: View {
 
     private var smoothingLabel: String {
         switch tool.smoothingStrength {
-        case 0..<0.15:   return "Off"
-        case 0.15..<0.4: return "Low"
-        case 0.4..<0.65: return "Medium"
+        case 0..<0.15:  return "Off"
+        case 0.15..<0.4:  return "Low"
+        case 0.4..<0.65:  return "Medium"
         case 0.65..<0.85: return "High"
         default:          return "Max"
         }
     }
+}
 
-    // MARK: - Canvas
+// MARK: - Pressure Curve Canvas (extracted for clarity)
 
-    private var curveCanvas: some View {
+private struct PressureCurveCanvas: View {
+    @ObservedObject var tool: ToolSettings
+
+    @State private var draggingP1 = false
+    @State private var draggingP2 = false
+    @State private var pressureCurveSnapshot: BezierCurve = .linear
+
+    var body: some View {
         GeometryReader { geo in
             let size = geo.size
             Canvas { ctx, _ in
@@ -230,7 +248,8 @@ struct PenFeel: View {
                             tool.pressureCurve = self.pressureCurveSnapshot
                         }
                     }
-                    draggingP1 = false; draggingP2 = false
+                    draggingP1 = false
+                    draggingP2 = false
                 }
             )
         }
@@ -241,7 +260,7 @@ struct PenFeel: View {
     private func drawGrid(ctx: GraphicsContext, size: CGSize) {
         var path = Path()
         for i in 1..<4 {
-            let x = size.width * Double(i) / 4
+            let x = size.width  * Double(i) / 4
             let y = size.height * Double(i) / 4
             path.move(to: CGPoint(x: x, y: 0))
             path.addLine(to: CGPoint(x: x, y: size.height))
@@ -265,10 +284,10 @@ struct PenFeel: View {
 
     private func drawHandles(ctx: GraphicsContext, size: CGSize) {
         let curve = tool.pressureCurve
-        let p0 = toCanvas(x: 0, y: 0, size: size)
+        let p0 = toCanvas(x: 0,          y: 0,          size: size)
         let p1 = toCanvas(x: curve.p1.x, y: curve.p1.y, size: size)
         let p2 = toCanvas(x: curve.p2.x, y: curve.p2.y, size: size)
-        let p3 = toCanvas(x: 1, y: 1, size: size)
+        let p3 = toCanvas(x: 1,          y: 1,          size: size)
 
         // Guide lines from anchors to control points
         var guides = Path()
@@ -300,7 +319,7 @@ struct PenFeel: View {
             let d1 = dist(drag.location, p1Canvas)
             let d2 = dist(drag.location, p2Canvas)
             if d1 < hitRadius && d1 <= d2 { draggingP1 = true }
-            else if d2 < hitRadius        { draggingP2 = true }
+            else if d2 < hitRadius         { draggingP2 = true }
         }
 
         let clamp01: (Double) -> Double = { Swift.min(Swift.max($0, 0), 1) }
@@ -319,7 +338,7 @@ struct PenFeel: View {
     }
 
     private func fromCanvas(_ pt: CGPoint, size: CGSize) -> CGPoint {
-        CGPoint(x: Swift.min(Swift.max(pt.x / size.width, 0), 1),
+        CGPoint(x: Swift.min(Swift.max(pt.x / size.width,  0), 1),
                 y: Swift.min(Swift.max(1 - pt.y / size.height, 0), 1))
     }
 

@@ -510,6 +510,30 @@ final class InputInjector {
                 e.post(tap: .cghidEventTap)
             }
         }
+        // Button 4 (bit 3)
+        let btn4Now = (mask & 0x08) != 0
+        let btn4Was = (oldMask & 0x08) != 0
+        if btn4Now != btn4Was {
+            let type: CGEventType = btn4Now ? .otherMouseDown : .otherMouseUp
+            if let e = CGEvent(
+                mouseEventSource: sessionSource, mouseType: type,
+                mouseCursorPosition: loc, mouseButton: CGMouseButton(rawValue: 3)!) {
+                e.flags = currentEventFlags
+                e.post(tap: .cghidEventTap)
+            }
+        }
+        // Button 5 (bit 4)
+        let btn5Now = (mask & 0x10) != 0
+        let btn5Was = (oldMask & 0x10) != 0
+        if btn5Now != btn5Was {
+            let type: CGEventType = btn5Now ? .otherMouseDown : .otherMouseUp
+            if let e = CGEvent(
+                mouseEventSource: sessionSource, mouseType: type,
+                mouseCursorPosition: loc, mouseButton: CGMouseButton(rawValue: 4)!) {
+                e.flags = currentEventFlags
+                e.post(tap: .cghidEventTap)
+            }
+        }
     }
 
     // MARK: - Express key injection

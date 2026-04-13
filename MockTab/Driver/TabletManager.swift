@@ -249,6 +249,7 @@ final class TabletManager: ObservableObject {
             guard let self, let context else { return }
             context.activeToolSerial = identity.serial
             context.activeToolIsMouse = identity.isMouse
+            context.activeToolCode = identity.toolCode
             let toolID = DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
             let toolSets = context.settings.toolSettings(forID: toolID, isMouse: identity.isMouse)
             context.activeTool = toolSets
@@ -298,6 +299,7 @@ final class TabletManager: ObservableObject {
                 self.uiUpdateCounter = 0
                 self.activeToolID = nil
                 context.activeToolID = nil
+                context.activeToolCode = 0
                 self.liveButtons = LiveButtonState()
                 context.liveButtons = LiveButtonState()
                 self.livePoint = nil
@@ -322,6 +324,9 @@ final class TabletManager: ObservableObject {
                 eraserDown: tipDown && point.eraser,
                 button1Down: point.penButton1,
                 button2Down: point.penButton2,
+                button3Down: point.penButton3,
+                button4Down: point.penButton4,
+                button5Down: point.penButton5,
                 expressKeys: self.liveButtons.expressKeys
             )
             // Only assign when values changed — avoids spurious objectWillChange.
@@ -489,6 +494,7 @@ final class TabletManager: ObservableObject {
         context.batteryPercent = nil
         context.batteryCharging = false
         context.activeToolID = nil
+        context.activeToolCode = 0
         context.livePoint = nil
         context.liveButtons = LiveButtonState()
         print("TabletManager: \(Self.deviceName(forProductID: context.productID)) disconnected")
