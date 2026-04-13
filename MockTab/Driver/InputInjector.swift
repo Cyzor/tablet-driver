@@ -214,7 +214,8 @@ final class InputInjector {
             }
             rawPoint = absPoint
         }
-        let pressure = tool.pressureCurve.evaluate(point.normalizedPressure)
+        let lutIdx = Swift.min(Swift.max(Int((point.normalizedPressure * 255.0).rounded()), 0), 255)
+        let pressure = tool.pressureLUT[lutIdx]
         // Mouse tools have no tip pressure — button1 is the primary click trigger.
         // For KC-100 over USB, the left button arrives via the separate 0x01 mouse interface
         // and injectMouseButtons() has already fired leftMouseDown/Up.  Keep tipDown false
@@ -685,9 +686,11 @@ final class InputInjector {
     /// hidSystemState.  Flags are stamped via currentEventFlags (which reads hidSystemState
     /// directly), so physical keyboard state is still reflected on every outbound event —
     /// but the feedback loop that causes sticky modifiers is broken.
-    private var sessionSource: CGEventSource? {
-        CGEventSource(stateID: .privateState)
-    }
+    ///
+    /// Stored once at init — NOT a computed property.  Creating a new CGEventSource on
+    /// every event (400+/s at 133 Hz) allocates a private-state slab in the WindowServer
+    /// on each call, causing the memory leak observed when a pen is in proximity.
+    private let sessionSource: CGEventSource? = CGEventSource(stateID: .privateState)
 
     private func postMouseDown(
         button: CGMouseButton, at location: CGPoint,
