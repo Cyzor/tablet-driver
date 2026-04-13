@@ -230,7 +230,7 @@ final class TabletSettings: ObservableObject {
 
     /// A named configuration snapshot.  `overriddenKeys` tracks which settings
     /// the preset stores; all other keys fall through to device defaults.
-    struct Preset: Identifiable, Codable, Equatable {
+    struct Profile: Identifiable, Codable, Equatable {
         var id: UUID = UUID()
         var name: String
         var overriddenKeys: Set<String> = []
@@ -238,11 +238,11 @@ final class TabletSettings: ObservableObject {
 
     /// A mapping from one app (by bundle ID) to a preset.
     /// Stored per device; used by app auto-switching.
-    struct AppPresetBinding: Identifiable, Codable, Equatable {
+    struct AppProfileBinding: Identifiable, Codable, Equatable {
         var id: String { bundleID }
         var bundleID: String
         var appName: String  // display name captured at bind time
-        var presetID: UUID
+        var profileID: UUID
     }
 
     /// A per-app function override.  Stores only keys that differ from the device
@@ -256,10 +256,10 @@ final class TabletSettings: ObservableObject {
     }
 
     /// All presets saved for the current device.
-    @Published var presets: [Preset] = []
+    @Published var profiles: [Profile] = []
 
     /// The currently active preset, or `nil` when using raw device settings.
-    @Published var activePreset: Preset? = nil
+    @Published var activeProfile: (Profile?) = nil
 
     /// How the current preset was activated — for status display only, not persisted.
     enum ActivationSource: Equatable {
@@ -274,7 +274,7 @@ final class TabletSettings: ObservableObject {
     }
 
     /// Per-app preset assignments for this device.
-    @Published var appBindings: [AppPresetBinding] = []
+    @Published var appBindings: [AppProfileBinding] = []
 
     /// All per-app overrides registered for this device.
     @Published var appOverrides: [AppOverride] = []
@@ -298,7 +298,7 @@ final class TabletSettings: ObservableObject {
         if let pid = productID {
             let hex = String(pid, radix: 16, uppercase: true)
             devicePrefix = "device-0x\(hex)."
-            loadPresetList()
+            loadProfileList()
             loadAppBindings()
             loadAppOverrides()
         }
@@ -317,7 +317,7 @@ final class TabletSettings: ObservableObject {
         activeTool = ToolSettings(prefix: devicePrefix)
         // Clear undo stack to prevent cross-device undo entries
         undoManager?.removeAllActions()
-        loadPresetList()
+        loadProfileList()
         loadAppBindings()
         loadAppOverrides()
         driverOverride = nil
@@ -330,15 +330,15 @@ final class TabletSettings: ObservableObject {
     // MARK: - Preset management
 
     /// UserDefaults key prefix for a specific preset's overridden values.
-    private func presetKeyPrefix(_ preset: Preset) -> String {
-        "\(devicePrefix)preset-\(preset.id.uuidString)."
+    private func profileKeyPrefix(_ profile: Profile) -> String {
+        "\(devicePrefix)preset-\(profile.id.uuidString)."
     }
 
     /// Activates `preset` (or pass `nil` to revert to raw device settings).
     /// Marks the source as `.manual` and republishes all settings values.
-    func activate(_ preset: Preset?) {
-        activePreset = preset
-        saveActivePresetID()
+    func activate(_ preset: (Profile?)) {
+        activeProfile = preset
+        saveActiveProfileID()
         reloadAll()
         activationSource = .manual
     }
@@ -346,8 +346,8 @@ final class TabletSettings: ObservableObject {
     /// Snapshots the current in-memory settings into a new preset, saves it,
     /// and makes it active.
     func saveAsPreset(name: String) {
-        var preset = Preset(name: name)
-        let prefix = presetKeyPrefix(preset)
+        var profile = Profile(name: name)
+        let prefix = profileKeyPrefix(profile)
 
         // Copy every current live value into the preset namespace.
         ud.set(activeAreaX, forKey: prefix + "activeAreaX")
@@ -370,7 +370,7 @@ final class TabletSettings: ObservableObject {
             ud.set(data, forKey: prefix + "pressureCurve")
         }
 
-        preset.overriddenKeys = [
+        profile.overriddenKeys = [
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
             "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
             "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
@@ -378,24 +378,52 @@ final class TabletSettings: ObservableObject {
             "touchStrip1Mode", "touchStrip2Mode", "pressureCurve",
         ]
 
-        presets.append(preset)
-        savePresetList()
-        activePreset = preset
-        saveActivePresetID()
+        profiles.append(profile)
+        saveProfileList()
+        activeProfile = profile
+        saveActiveProfileID()
+    }
+
+    /// Creates a new preset from a parsed import dict (keys are the same internal
+    /// key names used by `saveAsPreset`, values are already in UserDefaults-ready form).
+    /// The preset is appended but NOT activated.  Returns the new preset.
+    @discardableResult
+    func importProfile(name: String, from values: [String: Any]) -> Profile {
+        var profile = Profile(name: name)
+        let prefix = profileKeyPrefix(profile)
+        var writtenKeys = Set<String>()
+        for (key, value) in values {
+            ud.set(value, forKey: prefix + key)
+            writtenKeys.insert(key)
+        }
+        profile.overriddenKeys = writtenKeys
+        profiles.append(profile)
+        saveProfileList()
+        return profile
+    }
+
+    /// Returns a preset name that doesn't collide with any existing preset name.
+    /// If `name` is already taken, appends " (2)", " (3)", etc.
+    func uniqueProfileName(_ name: String) -> String {
+        let existing = Set(profiles.map(\.name))
+        guard existing.contains(name) else { return name }
+        var n = 2
+        while existing.contains("\(name) (\(n))") { n += 1 }
+        return "\(name) (\(n))"
     }
 
     /// Renames `preset` to `newName`.
-    func renamePreset(_ preset: Preset, to newName: String) {
-        guard let idx = presets.firstIndex(of: preset) else { return }
-        presets[idx].name = newName
-        if activePreset?.id == preset.id { activePreset?.name = newName }
-        savePresetList()
+    func renamePreset(_ profile: Profile, to newName: String) {
+        guard let idx = profiles.firstIndex(of: profile) else { return }
+        profiles[idx].name = newName
+        if activeProfile?.id == profile.id { activeProfile?.name = newName }
+        saveProfileList()
     }
 
     /// Deletes `preset` and all its stored values.
     /// Removes any app bindings pointing to it.  If it was active, reverts to device defaults.
-    func deletePreset(_ preset: Preset) {
-        let prefix = presetKeyPrefix(preset)
+    func deletePreset(_ profile: Profile) {
+        let prefix = profileKeyPrefix(profile)
         let allKeys = [
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
             "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
@@ -404,15 +432,15 @@ final class TabletSettings: ObservableObject {
             "touchStrip1Mode", "touchStrip2Mode", "pressureCurve",
         ]
         for key in allKeys { ud.removeObject(forKey: prefix + key) }
-        presets.removeAll { $0.id == preset.id }
-        // Remove app bindings that referenced this preset.
+        profiles.removeAll { $0.id == profile.id }
+        // Remove app bindings that referenced this profile.
         let before = appBindings.count
-        appBindings.removeAll { $0.presetID == preset.id }
+        appBindings.removeAll { $0.profileID == profile.id }
         if appBindings.count != before { saveAppBindings() }
-        if activePreset?.id == preset.id {
+        if activeProfile?.id == profile.id {
             activate(nil)
         } else {
-            savePresetList()
+            saveProfileList()
         }
     }
 
@@ -425,15 +453,15 @@ final class TabletSettings: ObservableObject {
     func handleAppActivation(bundleID: String, appName: String) {
         guard autoSwitchEnabled else { return }
         let target = appBindings.first(where: { $0.bundleID == bundleID })
-            .flatMap { b in presets.first { $0.id == b.presetID } }
-        guard target?.id != activePreset?.id || activationSource == .manual else {
-            // Same preset already active via auto-switch — just refresh the label.
+            .flatMap { b in profiles.first { $0.id == b.profileID } }
+        guard target?.id != activeProfile?.id || activationSource == .manual else {
+            // Same profile already active via auto-switch — just refresh the label.
             activationSource = .app(bundleID: bundleID, name: appName)
             return
         }
-        if target?.id != activePreset?.id {
-            activePreset = target
-            saveActivePresetID()
+        if target?.id != activeProfile?.id {
+            activeProfile = target
+            saveActiveProfileID()
             reloadAll()
         }
         activationSource = .app(bundleID: bundleID, name: appName)
@@ -441,17 +469,17 @@ final class TabletSettings: ObservableObject {
 
     /// Binds the currently frontmost app to `preset`.
     /// Replaces any existing binding for that bundle ID.
-    func bindFrontmostApp(to preset: Preset) {
+    func bindFrontmostApp(to profile: Profile) {
         guard let app = NSWorkspace.shared.frontmostApplication,
             let bundleID = app.bundleIdentifier
         else { return }
         let name = app.localizedName ?? bundleID
         appBindings.removeAll { $0.bundleID == bundleID }
         appBindings.append(
-            AppPresetBinding(
+            AppProfileBinding(
                 bundleID: bundleID,
                 appName: name,
-                presetID: preset.id))
+                profileID: profile.id))
         saveAppBindings()
     }
 
@@ -624,38 +652,38 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Preset persistence
 
-    private var presetListKey: String { devicePrefix + "_presets" }
-    private var activePresetIDKey: String { devicePrefix + "_activePreset" }
+    private var profileListKey: String { devicePrefix + "_presets" }
+    private var activeProfileIDKey: String { devicePrefix + "_activeProfile" }
 
-    private func loadPresetList() {
-        guard let data = ud.data(forKey: presetListKey),
-            let list = try? JSONDecoder().decode([Preset].self, from: data)
+    private func loadProfileList() {
+        guard let data = ud.data(forKey: profileListKey),
+            let list = try? JSONDecoder().decode([Profile].self, from: data)
         else {
-            presets = []
-            activePreset = nil
+            profiles = []
+            activeProfile = nil
             return
         }
-        presets = list
-        if let uuidStr = ud.string(forKey: activePresetIDKey),
+        profiles = list
+        if let uuidStr = ud.string(forKey: activeProfileIDKey),
             let uuid = UUID(uuidString: uuidStr),
             let match = list.first(where: { $0.id == uuid })
         {
-            activePreset = match
+            activeProfile = match
         } else {
-            activePreset = nil
+            activeProfile = nil
         }
     }
 
-    private func savePresetList() {
-        guard let data = try? JSONEncoder().encode(presets) else { return }
-        ud.set(data, forKey: presetListKey)
+    private func saveProfileList() {
+        guard let data = try? JSONEncoder().encode(profiles) else { return }
+        ud.set(data, forKey: profileListKey)
     }
 
-    private func saveActivePresetID() {
-        if let id = activePreset?.id.uuidString {
-            ud.set(id, forKey: activePresetIDKey)
+    private func saveActiveProfileID() {
+        if let id = activeProfile?.id.uuidString {
+            ud.set(id, forKey: activeProfileIDKey)
         } else {
-            ud.removeObject(forKey: activePresetIDKey)
+            ud.removeObject(forKey: activeProfileIDKey)
         }
     }
 
@@ -668,7 +696,7 @@ final class TabletSettings: ObservableObject {
 
     private func loadAppBindings() {
         guard let data = ud.data(forKey: appBindingsKey),
-            let list = try? JSONDecoder().decode([AppPresetBinding].self, from: data)
+            let list = try? JSONDecoder().decode([AppProfileBinding].self, from: data)
         else {
             appBindings = []
             return
@@ -718,7 +746,7 @@ final class TabletSettings: ObservableObject {
     // MARK: - Reload
 
     /// Reloads every setting from UserDefaults using the current `devicePrefix`
-    /// and `activePreset`.  Falls back to legacy unprefixed keys, then to
+    /// and `activeProfile`.  Falls back to legacy unprefixed keys, then to
     /// compile-time defaults.
     private func reloadAll() {
         isLoading = true
@@ -779,15 +807,15 @@ final class TabletSettings: ObservableObject {
                 appOverrides[idx] = override
             }
             saveAppOverrides()
-        } else if var preset = activePreset {
-            ud.set(value, forKey: presetKeyPrefix(preset) + key)
+        } else if var preset = activeProfile {
+            ud.set(value, forKey: profileKeyPrefix(preset) + key)
             guard !preset.overriddenKeys.contains(key) else { return }
             preset.overriddenKeys.insert(key)
-            activePreset = preset
-            if let idx = presets.firstIndex(where: { $0.id == preset.id }) {
-                presets[idx] = preset
+            activeProfile = preset
+            if let idx = profiles.firstIndex(where: { $0.id == preset.id }) {
+                profiles[idx] = preset
             }
-            savePresetList()
+            saveProfileList()
         } else {
             ud.set(value, forKey: devicePrefix + key)
         }
@@ -810,10 +838,10 @@ final class TabletSettings: ObservableObject {
         {
             return ud.double(forKey: appOverrideKeyPrefix(override) + key)
         }
-        if let preset = activePreset, preset.overriddenKeys.contains(key),
-            ud.object(forKey: presetKeyPrefix(preset) + key) != nil
+        if let preset = activeProfile, preset.overriddenKeys.contains(key),
+            ud.object(forKey: profileKeyPrefix(preset) + key) != nil
         {
-            return ud.double(forKey: presetKeyPrefix(preset) + key)
+            return ud.double(forKey: profileKeyPrefix(preset) + key)
         }
         if ud.object(forKey: devicePrefix + key) != nil {
             return ud.double(forKey: devicePrefix + key)
@@ -831,10 +859,10 @@ final class TabletSettings: ObservableObject {
         {
             return ud.bool(forKey: appOverrideKeyPrefix(override) + key)
         }
-        if let preset = activePreset, preset.overriddenKeys.contains(key),
-            ud.object(forKey: presetKeyPrefix(preset) + key) != nil
+        if let preset = activeProfile, preset.overriddenKeys.contains(key),
+            ud.object(forKey: profileKeyPrefix(preset) + key) != nil
         {
-            return ud.bool(forKey: presetKeyPrefix(preset) + key)
+            return ud.bool(forKey: profileKeyPrefix(preset) + key)
         }
         if ud.object(forKey: devicePrefix + key) != nil {
             return ud.bool(forKey: devicePrefix + key)
@@ -852,10 +880,10 @@ final class TabletSettings: ObservableObject {
         {
             return ud.integer(forKey: appOverrideKeyPrefix(override) + key)
         }
-        if let preset = activePreset, preset.overriddenKeys.contains(key),
-            ud.object(forKey: presetKeyPrefix(preset) + key) != nil
+        if let preset = activeProfile, preset.overriddenKeys.contains(key),
+            ud.object(forKey: profileKeyPrefix(preset) + key) != nil
         {
-            return ud.integer(forKey: presetKeyPrefix(preset) + key)
+            return ud.integer(forKey: profileKeyPrefix(preset) + key)
         }
         if ud.object(forKey: devicePrefix + key) != nil {
             return ud.integer(forKey: devicePrefix + key)
@@ -870,8 +898,8 @@ final class TabletSettings: ObservableObject {
                             : driverOverride
         if let override = sourceOverride, override.overriddenKeys.contains(key),
            let v = ud.string(forKey: appOverrideKeyPrefix(override) + key) { return v }
-        if let preset = activePreset, preset.overriddenKeys.contains(key) {
-            if let v = ud.string(forKey: presetKeyPrefix(preset) + key) { return v }
+        if let preset = activeProfile, preset.overriddenKeys.contains(key) {
+            if let v = ud.string(forKey: profileKeyPrefix(preset) + key) { return v }
         }
         if let v = ud.string(forKey: devicePrefix + key) { return v }
         if let v = ud.string(forKey: key) { return v }
@@ -892,15 +920,15 @@ final class TabletSettings: ObservableObject {
                 appOverrides[idx] = override
             }
             saveAppOverrides()
-        } else if var preset = activePreset {
-            ud.set(data, forKey: presetKeyPrefix(preset) + "pressureCurve")
+        } else if var preset = activeProfile {
+            ud.set(data, forKey: profileKeyPrefix(preset) + "pressureCurve")
             guard !preset.overriddenKeys.contains("pressureCurve") else { return }
             preset.overriddenKeys.insert("pressureCurve")
-            activePreset = preset
-            if let idx = presets.firstIndex(where: { $0.id == preset.id }) {
-                presets[idx] = preset
+            activeProfile = preset
+            if let idx = profiles.firstIndex(where: { $0.id == preset.id }) {
+                profiles[idx] = preset
             }
-            savePresetList()
+            saveProfileList()
         } else {
             ud.set(data, forKey: devicePrefix + "pressureCurve")
         }
@@ -915,8 +943,8 @@ final class TabletSettings: ObservableObject {
             data = ud.data(forKey: appOverrideKeyPrefix(override) + "pressureCurve")
                 ?? ud.data(forKey: devicePrefix + "pressureCurve")
                 ?? ud.data(forKey: "pressureCurve")
-        } else if let preset = activePreset, preset.overriddenKeys.contains("pressureCurve") {
-            data = ud.data(forKey: presetKeyPrefix(preset) + "pressureCurve")
+        } else if let preset = activeProfile, preset.overriddenKeys.contains("pressureCurve") {
+            data = ud.data(forKey: profileKeyPrefix(preset) + "pressureCurve")
                 ?? ud.data(forKey: devicePrefix + "pressureCurve")
                 ?? ud.data(forKey: "pressureCurve")
         } else {
@@ -1079,8 +1107,8 @@ final class TabletSettings: ObservableObject {
     /// The snapshot reflects what is actually in use at call time: area, display,
     /// active-tool pressure curve and button bindings, touch ring mode.
     /// It does not include express-key bindings (Phase 2) or per-serial overrides.
-    func exportCurrentAsProfile(name: String, deviceName: String) -> Profile {
-        Profile(
+    func exportCurrentAsProfile(name: String, deviceName: String) -> TabletSnapshot {
+        TabletSnapshot(
             name: name,
             deviceModel: deviceName,
             tabletAreaX: activeAreaX,
@@ -1105,7 +1133,7 @@ final class TabletSettings: ObservableObject {
     /// Settings not represented in `Profile` (express keys, double-click distance,
     /// strip modes) are left unchanged.  An unrecognised `touchRingMode` string
     /// is silently ignored so future format additions don't break older builds.
-    func importProfile(_ profile: Profile) {
+    func importSnapshot(_ profile: TabletSnapshot) {
         activeAreaX = profile.tabletAreaX
         activeAreaY = profile.tabletAreaY
         activeAreaWidth = profile.tabletAreaWidth
@@ -1321,6 +1349,85 @@ struct ButtonBinding: Codable, Equatable {
     static func decode(_ s: String) -> ButtonBinding? {
         guard !s.isEmpty, let data = s.data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode(ButtonBinding.self, from: data)
+    }
+
+    /// Reconstructs a ButtonBinding from a human-readable display label produced
+    /// by `displayLabel`.  Used by the profile importer to reverse the export encoding.
+    ///
+    /// Simple cases ("Right Click", "Toggle Display", etc.) are decoded exactly.
+    /// Key combos ("⌘Z", "⌃⇧F5", etc.) are parsed by stripping modifier prefixes
+    /// and then scanning the `charLabel` reverse-table for a matching keyCode.
+    /// Unknown labels fall back to `.none` so a bad value doesn't hard-fail an import.
+    static func fromDisplayLabel(_ label: String) -> ButtonBinding {
+        switch label {
+        case "None":            return .none
+        case "Left Click":      return .leftClick
+        case "Right Click":     return .rightClick
+        case "Middle Click":    return .middleClick
+        case "Eraser":          return .eraser
+        case "Toggle Display":  return ButtonBinding(kind: .displayToggle)
+        default:
+            return parseKeyComboLabel(label) ?? .none
+        }
+    }
+
+    /// Parses modifier-prefix strings like "⌘Z", "⌃⇧F5", "⌥Space" into a
+    /// `.keyCombo` ButtonBinding.  Returns nil if the label can't be decoded.
+    private static func parseKeyComboLabel(_ label: String) -> ButtonBinding? {
+        var remaining = label
+        var nsFlags = NSEvent.ModifierFlags()
+        var cgFlags = CGEventFlags()
+
+        // Strip leading modifier symbols in any order.
+        let modPairs: [(String, NSEvent.ModifierFlags, CGEventFlags, UInt16)] = [
+            ("⌃", .control, .maskControl,  59),
+            ("⌥", .option,  .maskAlternate, 58),
+            ("⇧", .shift,   .maskShift,     56),
+            ("⌘", .command, .maskCommand,   55),
+        ]
+        var changed = true
+        while changed {
+            changed = false
+            for (sym, ns, cg, _) in modPairs {
+                if remaining.hasPrefix(sym) {
+                    remaining = String(remaining.dropFirst())
+                    nsFlags.insert(ns)
+                    cgFlags.insert(cg)
+                    changed = true
+                }
+            }
+        }
+        guard !remaining.isEmpty else { return nil }
+
+        // Find the keyCode that produces this label.
+        let keyCode = keyCodeForLabel(remaining, modifiers: nsFlags)
+        guard let kc = keyCode else { return nil }
+
+        // Build keyLabel using charLabel so it matches what we'd produce normally.
+        let keyLabel = charLabel(keyCode: kc, modifiers: nsFlags)
+        return ButtonBinding(kind: .keyCombo, keyCode: kc,
+                             modifierFlags: cgFlags.rawValue, keyLabel: keyLabel)
+    }
+
+    /// Reverse lookup: given a display string and modifier state, find a virtual key code.
+    /// Checks the static symbol table first, then scans keyCodes 0–127 via `charLabel`.
+    private static func keyCodeForLabel(_ label: String, modifiers: NSEvent.ModifierFlags) -> UInt16? {
+        // Static reverse table for special keys (same set as charLabel).
+        let specialKeys: [String: UInt16] = [
+            "↩": 36, "⇥": 48, "Space": 49, "⌫": 51, "⎋": 53,
+            "⌧": 71, "⌅": 76, "↖": 115, "⇞": 116, "⌦": 117,
+            "↘": 119, "⇟": 121, "←": 123, "→": 124, "↓": 125, "↑": 126,
+            "F1": 122, "F2": 120, "F3": 99,  "F4": 118, "F5": 96,
+            "F6": 97,  "F7": 98,  "F8": 100, "F9": 101, "F10": 109,
+            "F11": 103,"F12": 111,
+        ]
+        if let kc = specialKeys[label] { return kc }
+
+        // Scan printable key range.
+        for kc: UInt16 in 0..<128 {
+            if charLabel(keyCode: kc, modifiers: modifiers) == label { return kc }
+        }
+        return nil
     }
 
     // MARK: Key label lookup

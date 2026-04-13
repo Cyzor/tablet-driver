@@ -87,7 +87,7 @@ struct ProfilesView: View {
 
     @State private var isCreating = false
     @State private var newName = ""
-    @State private var editingPreset: TabletSettings.Preset? = nil
+    @State private var editingPreset: TabletSettings.Profile? = nil
     @State private var editingName = ""
 
     // Summary + export state
@@ -95,6 +95,11 @@ struct ProfilesView: View {
     /// TabletSettings instances for tablets that aren't currently connected.
     /// Populated lazily in onAppear so we don't rebuild on every render.
     @State private var offlineSettings: [Int: TabletSettings] = [:]
+
+    // Import state
+    @State private var pendingImport: ImportPlan? = nil
+    @State private var showImportSheet = false
+    @State private var importError: String? = nil
 
     // MARK: - Recording Binding Helper
 
@@ -152,13 +157,13 @@ struct ProfilesView: View {
 
     private var activeBanner: some View {
         HStack(spacing: 8) {
-            Image(systemName: settings.activePreset == nil ? "star" : "star.fill")
-                .foregroundStyle(settings.activePreset == nil ? Color.secondary : Color.yellow)
+            Image(systemName: settings.activeProfile == nil ? "star" : "star.fill")
+                .foregroundStyle(settings.activeProfile == nil ? Color.secondary : Color.yellow)
             VStack(alignment: .leading, spacing: 2) {
-                if let preset = settings.activePreset {
+                if let preset = settings.activeProfile {
                     Text("Active: \(preset.name)").fontWeight(.medium)
                 } else {
-                    Text("Device defaults — no preset active").foregroundStyle(.secondary)
+                    Text("Device defaults — no profile active").foregroundStyle(.secondary)
                 }
                 if case .app(_, let appName) = settings.activationSource {
                     Text("Auto-switched by \(appName)")
@@ -167,12 +172,12 @@ struct ProfilesView: View {
                 }
             }
             Spacer()
-            if settings.activePreset != nil {
+            if settings.activeProfile != nil {
                 Button("Deactivate") {
                     // Capture snapshot before deactivating so we can undo
                     let snap = settings.snapshot()
                     settings.activate(nil)
-                    settings.restoreSnapshot(snap, actionName: "Deactivate Preset")
+                    settings.restoreSnapshot(snap, actionName: "Deactivate Profile")
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -190,9 +195,9 @@ struct ProfilesView: View {
 
     @ViewBuilder
     private var presetList: some View {
-        if settings.presets.isEmpty {
+        if settings.profiles.isEmpty {
             Text(
-                "No presets yet.\nUse the button below to save the current settings as a named snapshot."
+                "No profiles yet.\nUse the button below to save the current settings as a named profile."
             )
             .foregroundStyle(.secondary)
             .font(.callout)
@@ -201,9 +206,9 @@ struct ProfilesView: View {
             .padding(.vertical, 12)
         } else {
             VStack(spacing: 0) {
-                ForEach(settings.presets) { preset in
+                ForEach(settings.profiles) { preset in
                     presetRow(preset)
-                    if preset.id != settings.presets.last?.id {
+                    if preset.id != settings.profiles.last?.id {
                         Divider().padding(.leading, 40)
                     }
                 }
@@ -217,8 +222,8 @@ struct ProfilesView: View {
     }
 
     @ViewBuilder
-    private func presetRow(_ preset: TabletSettings.Preset) -> some View {
-        let isActive = settings.activePreset?.id == preset.id
+    private func presetRow(_ preset: TabletSettings.Profile) -> some View {
+        let isActive = settings.activeProfile?.id == preset.id
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 // Activation toggle
@@ -226,7 +231,7 @@ struct ProfilesView: View {
                     // Capture snapshot before activating so we can undo
                     let snap = settings.snapshot()
                     settings.activate(isActive ? nil : preset)
-                    settings.restoreSnapshot(snap, actionName: "Activate Preset")
+                    settings.restoreSnapshot(snap, actionName: "Activate Profile")
                 } label: {
                     Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
                         .imageScale(.large)
@@ -236,7 +241,7 @@ struct ProfilesView: View {
 
                 // Name — inline edit while renaming
                 if editingPreset?.id == preset.id {
-                    TextField("Preset name", text: $editingName)
+                    TextField("Profile name", text: $editingName)
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: .infinity)
                         .onSubmit { commitRename() }
@@ -272,7 +277,7 @@ struct ProfilesView: View {
                         let snap = settings.snapshot()
                         settings.deletePreset(preset)
                         // Register undo that restores the deleted preset
-                        settings.restoreSnapshot(snap, actionName: "Delete Preset")
+                        settings.restoreSnapshot(snap, actionName: "Delete Profile")
                     } label: {
                         Image(systemName: "trash")
                     }
@@ -295,11 +300,11 @@ struct ProfilesView: View {
     // MARK: - App bindings sub-section
 
     @ViewBuilder
-    private func appBindingsForPreset(_ preset: TabletSettings.Preset) -> some View {
-        let bound = settings.appBindings.filter { $0.presetID == preset.id }
+    private func appBindingsForPreset(_ preset: TabletSettings.Profile) -> some View {
+        let bound = settings.appBindings.filter { $0.profileID == preset.id }
         VStack(alignment: .leading, spacing: 4) {
             if bound.isEmpty {
-                Text("No apps bound to this preset")
+                Text("No apps bound to this profile")
                     .font(.settingsLabel)
                     .foregroundStyle(.tertiary)
             } else {
@@ -341,7 +346,7 @@ struct ProfilesView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(Color.accentColor)
-            .help("Assigns the currently frontmost app to this preset")
+            .help("Assigns the currently frontmost app to this profile")
         }
     }
 
@@ -367,7 +372,7 @@ struct ProfilesView: View {
     private var createRow: some View {
         if isCreating {
             HStack(spacing: 8) {
-                TextField("New preset name", text: $newName)
+                TextField("New profile name", text: $newName)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { commitCreate() }
                 Button("Save") { commitCreate() }
@@ -384,7 +389,7 @@ struct ProfilesView: View {
                 newName = ""
                 isCreating = true
             } label: {
-                Label("Save current settings as preset…", systemImage: "plus.circle")
+                Label("Save current settings as profile…", systemImage: "plus.circle")
             }
             .buttonStyle(.plain)
             .foregroundStyle(Color.accentColor)
@@ -403,10 +408,10 @@ struct ProfilesView: View {
                 )
             ) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Auto-switch preset by app")
+                    Text("Auto-switch profile by app")
                         .fontWeight(.medium)
                     Text(
-                        "When enabled, switching to a bound app automatically activates its preset."
+                        "When enabled, switching to a bound app automatically activates its profile."
                     )
                     .font(.settingsLabel)
                     .foregroundStyle(.secondary)
@@ -415,7 +420,7 @@ struct ProfilesView: View {
             .toggleStyle(.switch)
 
             if settings.autoSwitchEnabled && !settings.appBindings.isEmpty {
-                Text("App bindings appear under each preset above.")
+                Text("App bindings appear under each profile above.")
                     .font(.settingsLabel)
                     .foregroundStyle(.tertiary)
             }
@@ -598,17 +603,36 @@ struct ProfilesView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 12) {
-                ExportDragWell(generateJSON: buildExportData)
+                ExportDragWell(generateJSON: buildExportData, onImport: handleImportData)
                     .frame(width: 80, height: 80)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Drag to the Finder to save a backup, or use the button below.")
+                    Text("Drag out to save a backup. Drag a .json file in to import.")
                         .font(.settingsLabel)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Button("Export as JSON…") { saveExportToFile() }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                    HStack(spacing: 8) {
+                        Button("Export as JSON…") { saveExportToFile() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        Button("Import from File…") { openImportPanel() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    }
+                    if let err = importError {
+                        Text(err)
+                            .font(.settingsBadge)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .sheet(isPresented: $showImportSheet) {
+                if let plan = pendingImport {
+                    ImportPreviewSheet(plan: plan, registry: registry, tabletManager: tabletManager,
+                                       offlineSettings: offlineSettings) {
+                        showImportSheet = false
+                        pendingImport = nil
+                    }
                 }
             }
         }
@@ -648,8 +672,8 @@ struct ProfilesView: View {
         let overrides = ts.appOverrides.map { exportAppOverride($0, devicePrefix: devicePrefix) }
         if !overrides.isEmpty { d["appOverrides"] = overrides }
 
-        let presets = ts.presets.map { exportPreset($0, activeID: ts.activePreset?.id, devicePrefix: devicePrefix) }
-        if !presets.isEmpty { d["presets"] = presets }
+        let presets = ts.profiles.map { exportPreset($0, activeID: ts.activeProfile?.id, devicePrefix: devicePrefix) }
+        if !presets.isEmpty { d["profiles"] = presets }
 
         let tools = registry.tools(forDevice: pid).map { exportTool($0, ts: ts, devicePrefix: devicePrefix) }
         if !tools.isEmpty { d["tools"] = tools }
@@ -717,7 +741,7 @@ struct ProfilesView: View {
     }
 
     private func exportPreset(
-        _ preset: TabletSettings.Preset,
+        _ preset: TabletSettings.Profile,
         activeID: UUID?,
         devicePrefix: String
     ) -> [String: Any] {
@@ -837,6 +861,35 @@ struct ProfilesView: View {
         }
     }
 
+    // MARK: - Import
+
+    /// Called by the drag well or file picker with raw JSON data.
+    private func handleImportData(_ data: Data) {
+        importError = nil
+        do {
+            let plan = try ImportPlan.parse(data, registry: registry)
+            pendingImport = plan
+            showImportSheet = true
+        } catch let e as ImportPlan.ParseError {
+            importError = e.localizedDescription
+        } catch {
+            importError = "Could not read file."
+        }
+    }
+
+    private func openImportPanel() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.message = "Choose a MockTab backup file to import"
+        panel.begin { response in
+            guard response == .OK, let url = panel.url,
+                  let data = try? Data(contentsOf: url)
+            else { return }
+            self.handleImportData(data)
+        }
+    }
+
     // MARK: - Actions
 
     private func commitCreate() {
@@ -846,12 +899,12 @@ struct ProfilesView: View {
         let snap = settings.snapshot()
         settings.saveAsPreset(name: trimmed)
         // Register undo that deletes the new preset
-        if let newPreset = settings.presets.last(where: { $0.name == trimmed }) {
+        if let newPreset = settings.profiles.last(where: { $0.name == trimmed }) {
             let presetToDelete = newPreset
             let snapshotForUndo = snap
-            settings.record("Save Preset") {
+            settings.record("Save Profile") {
                 settings.deletePreset(presetToDelete)
-                settings.restoreSnapshot(snapshotForUndo, actionName: "Undo Save Preset")
+                settings.restoreSnapshot(snapshotForUndo, actionName: "Undo Save Profile")
             }
         }
         isCreating = false
@@ -867,7 +920,7 @@ struct ProfilesView: View {
             // Register undo for rename
             let presetForUndo = preset
             let nameForUndo = oldName
-            settings.record("Rename Preset") {
+            settings.record("Rename Profile") {
                 settings.renamePreset(presetForUndo, to: nameForUndo)
             }
         }
@@ -875,36 +928,382 @@ struct ProfilesView: View {
     }
 }
 
+// MARK: - ImportPlan
+
+/// The result of parsing a v2 JSON backup: one entry per tablet found in the file.
+struct ImportPlan {
+    struct TabletEntry {
+        let productID: Int          // hex string parsed to Int
+        let modelName: String
+        let nickname: String
+        /// The preset name that will be created (may have suffix if name already taken).
+        let resolvedProfileName: String
+        /// All keys/values ready to write to UserDefaults for the preset.
+        let profileValues: [String: Any]
+        /// True if this productID is already in the registry.
+        let isKnown: Bool
+    }
+
+    let sourceDate: String          // "exportedAt" from file, for display
+    let entries: [TabletEntry]
+
+    enum ParseError: LocalizedError {
+        case notJSON, wrongVersion(Int?), noTablets
+
+        var errorDescription: String? {
+            switch self {
+            case .notJSON:        return "Not a valid JSON file."
+            case .wrongVersion(let v):
+                if let v { return "Unsupported profile version (\(v)). Expected version 2." }
+                return "File is missing a version field."
+            case .noTablets:      return "No tablet data found in this file."
+            }
+        }
+    }
+
+    // MARK: Parsing
+
+    @MainActor
+    static func parse(_ data: Data, registry: DeviceRegistry) throws -> ImportPlan {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { throw ParseError.notJSON }
+
+        let version = root["version"] as? Int
+        guard version == 2 else { throw ParseError.wrongVersion(version) }
+
+        let sourceDate = root["exportedAt"] as? String ?? ""
+        guard let tabletsRaw = root["tablets"] as? [[String: Any]], !tabletsRaw.isEmpty
+        else { throw ParseError.noTablets }
+
+        var entries: [TabletEntry] = []
+        for tabletDict in tabletsRaw {
+            guard let pidStr = tabletDict["productID"] as? String,
+                  let pid = Int(pidStr.dropFirst(2), radix: 16)  // "0x0357" → 855
+            else { continue }
+
+            let modelName = tabletDict["modelName"] as? String ?? pidStr
+            let nickname  = tabletDict["nickname"]  as? String ?? modelName
+            let isKnown   = registry.knownTablets.contains { $0.id == pid }
+
+            // Decode device-level settings into UserDefaults-ready values.
+            var values: [String: Any] = [:]
+            if let s = tabletDict["settings"] as? [String: Any] {
+                decodeDeviceSettings(s, into: &values)
+            }
+
+            // Build a non-colliding preset name using existing presets for this device.
+            // We'll finalize dedup at apply-time; here use the nickname as a base.
+            let baseName = nickname
+
+            entries.append(TabletEntry(
+                productID: pid,
+                modelName: modelName,
+                nickname: nickname,
+                resolvedProfileName: baseName,
+                profileValues: values,
+                isKnown: isKnown
+            ))
+        }
+
+        if entries.isEmpty { throw ParseError.noTablets }
+        return ImportPlan(sourceDate: sourceDate, entries: entries)
+    }
+
+    // MARK: Decoder helpers
+
+    private static func decodeDeviceSettings(
+        _ s: [String: Any],
+        into values: inout [String: Any]
+    ) {
+        if let area = s["tabletArea"] as? [String: Any] {
+            if let v = area["x"]      as? Double { values["activeAreaX"]      = v }
+            if let v = area["y"]      as? Double { values["activeAreaY"]      = v }
+            if let v = area["width"]  as? Double { values["activeAreaWidth"]  = v }
+            if let v = area["height"] as? Double { values["activeAreaHeight"] = v }
+            if let v = area["proportionalMapping"] as? Bool { values["proportionalMapping"] = v }
+            if let v = area["orientation"] as? String {
+                values["tabletOrientation"] = decodeOrientation(v)
+            }
+        }
+        if let v = s["display"] { values["targetDisplayIndex"] = decodeDisplay(v) }
+        if let v = s["smoothing"]          as? Double { values["smoothingStrength"]  = v }
+        if let v = s["doubleClickDistance"] as? Double { values["doubleClickDistance"] = v }
+        if let v = s["invertRotation"]     as? Bool   { values["invertRotation"]     = v }
+        if let v = s["relativeCursorMovement"] as? Bool { values["relativeCursorMovement"] = v }
+        if let v = s["penButton1"]        as? String  { values["penButton1Binding"]  = ButtonBinding.fromDisplayLabel(v).encoded }
+        if let v = s["penButton2"]        as? String  { values["penButton2Binding"]  = ButtonBinding.fromDisplayLabel(v).encoded }
+        if let v = s["touchRingButton"]   as? String  { values["touchRingButtonBinding"] = ButtonBinding.fromDisplayLabel(v).encoded }
+        if let v = s["touchRing"]         as? String  { values["touchRingMode"]      = decodeTouchRingMode(v) }
+        if let v = s["touchStrip1"]       as? String  { values["touchStrip1Mode"]    = decodeTouchRingMode(v) }
+        if let v = s["touchStrip2"]       as? String  { values["touchStrip2Mode"]    = decodeTouchRingMode(v) }
+        if let v = s["expressKeys"]       as? [String] { values["expressKeyBindings"] = decodeExpressKeys(v) }
+        if let v = s["pressureCurve"]     as? [String: Any] {
+            if let data = decodeCurveData(v) { values["pressureCurve"] = data }
+        }
+    }
+
+    private static func decodeOrientation(_ label: String) -> Int {
+        switch label {
+        case "Portrait":          return 1
+        case "Landscape Flipped": return 2
+        case "Portrait Flipped":  return 3
+        default:                  return 0  // "Landscape"
+        }
+    }
+
+    private static func decodeDisplay(_ value: Any) -> Int {
+        if let s = value as? String {
+            switch s {
+            case "primary": return 0
+            case "all":     return TabletSettings.displayModeAll
+            case "toggle":  return TabletSettings.displayModeToggle
+            default:
+                // "display-2" → 2
+                if s.hasPrefix("display-"), let n = Int(s.dropFirst(8)) { return n }
+                return 0
+            }
+        }
+        if let d = value as? [String: Any], (d["mode"] as? String) == "toggle" {
+            return TabletSettings.displayModeToggle
+        }
+        return 0
+    }
+
+    private static func decodeTouchRingMode(_ label: String) -> String {
+        switch label {
+        case "Scroll": return TouchRingMode.scroll.rawValue
+        default:       return TouchRingMode.off.rawValue
+        }
+    }
+
+    private static func decodeExpressKeys(_ labels: [String]) -> String {
+        var bindings = labels.map { ButtonBinding.fromDisplayLabel($0) }
+        while bindings.count < 16 { bindings.append(.none) }
+        let arr = Array(bindings.prefix(16))
+        guard let data = try? JSONEncoder().encode(arr),
+              let s = String(data: data, encoding: .utf8)
+        else { return "" }
+        return s
+    }
+
+    private static func decodeCurveData(_ d: [String: Any]) -> Data? {
+        guard let p1arr = d["p1"] as? [Double], p1arr.count == 2,
+              let p2arr = d["p2"] as? [Double], p2arr.count == 2
+        else { return nil }
+        let curve = BezierCurve(
+            p1: CGPoint(x: p1arr[0], y: p1arr[1]),
+            p2: CGPoint(x: p2arr[0], y: p2arr[1]))
+        return try? JSONEncoder().encode(curve)
+    }
+}
+
+// MARK: - ImportPreviewSheet
+
+private struct ImportPreviewSheet: View {
+    let plan: ImportPlan
+    @ObservedObject var registry: DeviceRegistry
+    @ObservedObject var tabletManager: TabletManager
+    let offlineSettings: [Int: TabletSettings]
+    let onDismiss: () -> Void
+
+    /// Product IDs the user has unchecked — these are skipped on import.
+    @State private var excluded: Set<Int> = []
+
+    private var includedCount: Int { plan.entries.filter { !excluded.contains($0.productID) }.count }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Import Configuration")
+                    .font(.headline)
+                if !plan.sourceDate.isEmpty {
+                    Text("Exported \(formattedDate(plan.sourceDate))")
+                        .font(.settingsLabel)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding([.horizontal, .top], 20)
+            .padding(.bottom, 12)
+
+            Divider()
+
+            // Entry list
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(plan.entries, id: \.productID) { entry in
+                        entryRow(entry)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if excluded.contains(entry.productID) {
+                                    excluded.remove(entry.productID)
+                                } else {
+                                    excluded.insert(entry.productID)
+                                }
+                            }
+                    }
+                }
+                .padding(16)
+            }
+            .frame(minHeight: 80, maxHeight: 300)
+
+            Divider()
+
+            // Note
+            Text("Each tablet's settings will be added as a new profile. Your current settings are not changed until you activate a profile.")
+                .font(.settingsLabel)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+
+            Divider()
+
+            // Buttons
+            HStack {
+                Spacer()
+                Button("Cancel") { onDismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button(includedCount == 0 ? "Import" : "Import \(includedCount)") {
+                    applyImport()
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+                .disabled(includedCount == 0)
+            }
+            .padding(16)
+        }
+        .frame(width: 420)
+    }
+
+    @ViewBuilder
+    private func entryRow(_ entry: ImportPlan.TabletEntry) -> some View {
+        let isExcluded = excluded.contains(entry.productID)
+        let ts: TabletSettings? = tabletManager.contexts[entry.productID]?.settings
+            ?? offlineSettings[entry.productID]
+        let finalName = ts?.uniqueProfileName(entry.resolvedProfileName)
+            ?? entry.resolvedProfileName
+        let renamed = finalName != entry.resolvedProfileName
+
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: isExcluded ? "circle" : (entry.isKnown ? "checkmark.circle.fill" : "questionmark.circle"))
+                .foregroundStyle(isExcluded ? Color.secondary : (entry.isKnown ? Color.green : Color.orange))
+                .frame(width: 16)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(entry.nickname)
+                        .fontWeight(.medium)
+                        .foregroundStyle(isExcluded ? Color.secondary : Color.primary)
+                    Text(entry.modelName)
+                        .font(.settingsBadge)
+                        .foregroundStyle(.secondary)
+                }
+                if !isExcluded {
+                    HStack(spacing: 4) {
+                        Text("→ New profile:")
+                            .font(.settingsLabel)
+                            .foregroundStyle(.secondary)
+                        Text("\"\(finalName)\"")
+                            .font(.settingsLabel)
+                            .foregroundStyle(renamed ? Color.orange : Color.secondary)
+                        if renamed {
+                            Text("(renamed to avoid conflict)")
+                                .font(.settingsBadge)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    if !entry.isKnown {
+                        Text("Not in your registry — profile will be available when this tablet connects.")
+                            .font(.settingsBadge)
+                            .foregroundStyle(.orange)
+                    }
+                    Text("\(entry.profileValues.count) setting\(entry.profileValues.count == 1 ? "" : "s")")
+                        .font(.settingsBadge)
+                        .foregroundStyle(.tertiary)
+                } else {
+                    Text("Skipped")
+                        .font(.settingsLabel)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6)
+            .strokeBorder(isExcluded ? Color(NSColor.separatorColor).opacity(0.5) : Color(NSColor.separatorColor), lineWidth: 1))
+        .opacity(isExcluded ? 0.5 : 1.0)
+    }
+
+    private func applyImport() {
+        for entry in plan.entries where !excluded.contains(entry.productID) {
+            let ts: TabletSettings
+            if let live = tabletManager.contexts[entry.productID]?.settings {
+                ts = live
+            } else if let offline = offlineSettings[entry.productID] {
+                ts = offline
+            } else {
+                ts = TabletSettings(productID: entry.productID)
+            }
+            let name = ts.uniqueProfileName(entry.resolvedProfileName)
+            ts.importProfile(name: name, from: entry.profileValues)
+        }
+        onDismiss()
+    }
+
+    private func formattedDate(_ iso: String) -> String {
+        let parser = ISO8601DateFormatter()
+        guard let date = parser.date(from: iso) else { return iso }
+        let fmt = DateFormatter()
+        fmt.dateStyle = .medium
+        fmt.timeStyle = .short
+        return fmt.string(from: date)
+    }
+}
+
 // MARK: - ExportDragWell
 
-/// An 80×80 pt drag well.  The user can drag the document icon out to Finder
-/// to save a JSON backup, or click nowhere — the Export button below the well
-/// handles the save-panel path.
+/// An 80×80 pt well that supports both drag-out (export) and drag-in (import).
+/// Drag the document icon out to Finder to save a backup.
+/// Drag a .json file onto it to trigger an import.
 private struct ExportDragWell: NSViewRepresentable {
     var generateJSON: () -> Data?
+    /// Called on the main actor when a JSON file is dropped onto the well.
+    var onImport: (Data) -> Void
 
     func makeNSView(context: Context) -> ExportWellNSView {
         let v = ExportWellNSView()
         v.generateJSON = generateJSON
+        v.onImport = onImport
         return v
     }
 
     func updateNSView(_ nsView: ExportWellNSView, context: Context) {
         nsView.generateJSON = generateJSON
+        nsView.onImport = onImport
     }
 }
 
 @MainActor
 final class ExportWellNSView: NSView, NSDraggingSource, NSFilePromiseProviderDelegate {
     var generateJSON: (() -> Data?)?
+    var onImport: ((Data) -> Void)?
 
     private let iconLayer = CALayer()
     private let borderLayer = CAShapeLayer()
+    private var isDropTarget = false {
+        didSet { updateDropAppearance() }
+    }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         setupLayers()
+        registerForDraggedTypes([.fileURL, NSPasteboard.PasteboardType("public.file-url")])
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -922,13 +1321,29 @@ final class ExportWellNSView: NSView, NSDraggingSource, NSFilePromiseProviderDel
         layer?.addSublayer(borderLayer)
 
         // Document icon
+        updateIconSymbol(receiving: false)
+        layer?.addSublayer(iconLayer)
+    }
+
+    private func updateIconSymbol(receiving: Bool) {
+        let name = receiving ? "doc.badge.arrow.down" : "doc.badge.arrow.up"
         let cfg = NSImage.SymbolConfiguration(pointSize: 28, weight: .light)
-        if let img = NSImage(systemSymbolName: "doc.badge.arrow.up", accessibilityDescription: nil)?
-            .withSymbolConfiguration(cfg) {
+        if let img = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+                .withSymbolConfiguration(cfg) {
             iconLayer.contents = img
             iconLayer.contentsGravity = .resizeAspect
         }
-        layer?.addSublayer(iconLayer)
+    }
+
+    private func updateDropAppearance() {
+        let accent = NSColor.controlAccentColor.cgColor
+        let separator = NSColor.separatorColor.cgColor
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.15)
+        borderLayer.strokeColor = isDropTarget ? accent : separator
+        borderLayer.lineWidth = isDropTarget ? 2.0 : 1.5
+        CATransaction.commit()
+        updateIconSymbol(receiving: isDropTarget)
     }
 
     override func layout() {
@@ -947,7 +1362,42 @@ final class ExportWellNSView: NSView, NSDraggingSource, NSFilePromiseProviderDel
 
     override func updateLayer() {
         layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        borderLayer.strokeColor = NSColor.separatorColor.cgColor
+        if !isDropTarget { borderLayer.strokeColor = NSColor.separatorColor.cgColor }
+    }
+
+    // MARK: - NSDraggingDestination
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard jsonURL(from: sender) != nil else { return [] }
+        isDropTarget = true
+        return .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard jsonURL(from: sender) != nil else { return [] }
+        return .copy
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        isDropTarget = false
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        isDropTarget = false
+        guard let url = jsonURL(from: sender),
+              let data = try? Data(contentsOf: url)
+        else { return false }
+        onImport?(data)
+        return true
+    }
+
+    private func jsonURL(from info: NSDraggingInfo) -> URL? {
+        guard let urls = info.draggingPasteboard
+                .readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
+              let url = urls.first,
+              url.pathExtension.lowercased() == "json"
+        else { return nil }
+        return url
     }
 
     // MARK: Drag source

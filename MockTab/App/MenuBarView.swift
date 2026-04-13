@@ -42,13 +42,13 @@ struct MenuBarView: View {
 
         Divider()
 
-        // Preset submenu — shown only when at least one preset exists.
-        if !settings.presets.isEmpty {
+        // Profile submenu — shown only when at least one profile exists.
+        if !settings.profiles.isEmpty {
             Menu {
                 Button {
                     settings.activate(nil)
                 } label: {
-                    if settings.activePreset == nil {
+                    if settings.activeProfile == nil {
                         Label("Device Defaults", systemImage: "checkmark")
                     } else {
                         Text("Device Defaults")
@@ -57,24 +57,24 @@ struct MenuBarView: View {
 
                 Divider()
 
-                ForEach(settings.presets) { preset in
+                ForEach(settings.profiles) { profile in
                     Button {
-                        settings.activate(preset)
+                        settings.activate(profile)
                     } label: {
-                        if settings.activePreset?.id == preset.id {
-                            Label(preset.name, systemImage: "checkmark")
+                        if settings.activeProfile?.id == profile.id {
+                            Label(profile.name, systemImage: "checkmark")
                         } else {
-                            Text(preset.name)
+                            Text(profile.name)
                         }
                     }
                 }
             } label: {
                 switch settings.activationSource {
                 case .manual:
-                    Text("Preset: \(settings.activePreset?.name ?? "Device Defaults")")
+                    Text("Profile: \(settings.activeProfile?.name ?? "Device Defaults")")
                 case .app(_, let appName):
                     Text(
-                        "Preset: \(settings.activePreset?.name ?? "Device Defaults")  (\(appName))")
+                        "Profile: \(settings.activeProfile?.name ?? "Device Defaults")  (\(appName))")
                 }
             }
 
