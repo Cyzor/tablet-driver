@@ -50,6 +50,10 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// True when the tool currently in proximity is a cordless mouse accessory.
     @Published var activeToolIsMouse: Bool = false
 
+    /// Wacom tool code for the pen currently in proximity (e.g. 0x0802 Grip Pen).
+    /// 0 when no tool is in proximity.
+    @Published var activeToolCode: UInt16 = 0
+
     /// The ToolSettings for the pen currently in proximity.
     /// Points to the device-default ToolSettings until the first tool-enter fires.
     @Published var activeTool: ToolSettings
