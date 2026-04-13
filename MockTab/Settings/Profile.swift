@@ -28,7 +28,7 @@ import Foundation
 /// Phase 2 additions (when per-serial tool support is complete):
 ///   - `toolSettingsPerSerial` populated with `ToolSnapshot` entries
 ///   - `expressKeyBindings` array for the full 16-key layout
-struct Profile: Codable, Equatable {
+struct TabletSnapshot: Codable, Equatable {
 
     // MARK: - Identity
 

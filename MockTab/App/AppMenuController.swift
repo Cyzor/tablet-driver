@@ -25,7 +25,7 @@ import AppKit
 /// "New Settings Window" and a dynamic list of known tablets from
 /// DeviceRegistry.  Rebuilt on every open via `menuNeedsUpdate(_:)`.
 ///
-/// **Presets menu** — inserted after the Tablet menu.  Rebuilt on every open.
+/// **Profiles menu** — inserted after the Tablet menu.  Rebuilt on every open.
 ///
 /// **Duplicate View menu removal** — SwiftUI generates an empty "View" menu;
 /// we remove it here so only the one with ⌘1–⌘8 shortcuts remains.
@@ -267,7 +267,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         PreferencesWindowController.shared.openWindow(forProductID: pid)
     }
 
-    // MARK: - Presets menu
+    // MARK: - **Profiles menu
 
     private var presetsMenu: NSMenu?
 
@@ -288,29 +288,29 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         }
     }
 
-    /// Rebuild the Presets menu every time it is about to open.
+    /// Rebuild the **Profiles menu every time it is about to open.
     private func rebuildPresetsMenu(_ menu: NSMenu) {
         guard let settings else { return }
         menu.removeAllItems()
 
-        if !settings.presets.isEmpty {
+        if !settings.profiles.isEmpty {
             let defsItem = NSMenuItem(
                 title: "Device Defaults",
                 action: #selector(activateDeviceDefaults),
                 keyEquivalent: "")
             defsItem.target = self
-            defsItem.state = settings.activePreset == nil ? .on : .off
+            defsItem.state = settings.activeProfile == nil ? .on : .off
             menu.addItem(defsItem)
             menu.addItem(.separator())
 
-            for preset in settings.presets {
+            for profile in settings.profiles {
                 let item = NSMenuItem(
-                    title: preset.name,
+                    title: profile.name,
                     action: #selector(activatePreset(_:)),
                     keyEquivalent: "")
                 item.target = self
-                item.representedObject = preset.id
-                item.state = settings.activePreset?.id == preset.id ? .on : .off
+                item.representedObject = profile.id
+                item.state = settings.activeProfile?.id == profile.id ? .on : .off
                 menu.addItem(item)
             }
             menu.addItem(.separator())
@@ -342,9 +342,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     @objc private func activatePreset(_ sender: NSMenuItem) {
         guard let uuid = sender.representedObject as? UUID,
-            let preset = settings?.presets.first(where: { $0.id == uuid })
+            let profile = settings?.profiles.first(where: { $0.id == uuid })
         else { return }
-        settings?.activate(preset)
+        settings?.activate(profile)
     }
 
     @objc private func showPresetsTab() {

@@ -128,7 +128,7 @@ struct InfoView: View {
                 ok: tabletManager.hidManagerOpen ? true : false)
 
             row(
-                "Preset",
+                "Profile",
                 value: presetLabel,
                 ok: nil)
 
@@ -305,12 +305,12 @@ struct InfoView: View {
     }
 
     private var presetLabel: String {
-        guard let preset = settings.activePreset else { return "None (device defaults)" }
+        guard let profile = settings.activeProfile else { return "None (device defaults)" }
         switch settings.activationSource {
         case .manual:
-            return "\(preset.name)"
+            return "\(profile.name)"
         case .app(_, let appName):
-            return "\(preset.name)  (Auto: \(appName))"
+            return "\(profile.name)  (Auto: \(appName))"
         }
     }
 
@@ -357,7 +357,7 @@ struct InfoView: View {
         lines += ["HID Manager    : \(tabletManager.hidManagerOpen ? "open" : "failed to open")"]
         lines += ["Accessibility  : \(accessibilityGranted ? "granted" : "not granted")"]
         lines += ["Launch at login: \(launchAtLogin ? "enabled" : "disabled")"]
-        lines += ["Preset         : \(presetLabel)"]
+        lines += ["Profile        : \(presetLabel)"]
 
         lines += [""]
         if conflicts.isEmpty {
