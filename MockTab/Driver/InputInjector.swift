@@ -981,22 +981,37 @@ final class InputInjector {
     // MARK: - Screen mapping
 
     /// In relative mode: computes a delta from the previous normalized tablet position
-    /// and applies it to the current cursor location, then clamps to screen bounds.
-    /// The scaling factor converts one full tablet-area width/height sweep to one full
-    /// display width/height traversal, matching the feel of a typical mouse.
+    /// and applies it to the current cursor location.
+    ///
+    /// Display mapping is intentionally ignored — it makes no sense for mouse-like input.
+    /// Deltas are scaled by the total virtual screen space (union of all displays), so a
+    /// full active-area sweep traverses the entire available screen real estate.  The
+    /// cursor is clamped to the same total bounds so it can reach any display.
+    ///
+    /// Active-area crop is still respected: a smaller crop = higher sensitivity.
     private func resolveRelativePoint(_ point: TabletPoint, settings: TabletSettings) -> CGPoint {
-        let idx = settings.targetDisplayIndex
-        if cachedDisplayIndex != idx {
-            cachedDisplayBounds = resolveDisplayBounds(settings: settings)
-            cachedDisplayIndex = idx
+        // Total virtual screen: union of all display frames.
+        // NSScreen.frame is in AppKit coordinates (bottom-left origin); CGEvent uses
+        // top-left origin, so we convert.  We cache nothing here — display changes
+        // affect cachedDisplayBounds (absolute mode) via the existing observer.
+        let primaryH = CGFloat(CGDisplayPixelsHigh(CGMainDisplayID()))
+        let virtualBounds: CGRect = NSScreen.screens.reduce(CGRect.null) { acc, screen in
+            // Convert AppKit frame (bottom-left origin) → CG frame (top-left origin).
+            let f = screen.frame
+            let cgRect = CGRect(x: f.minX, y: primaryH - f.maxY,
+                                width: f.width, height: f.height)
+            return acc.union(cgRect)
         }
-        let display = cachedDisplayBounds
+        let screen = virtualBounds.isEmpty
+            ? CGRect(x: 0, y: 0,
+                     width: CGFloat(CGDisplayPixelsWide(CGMainDisplayID())),
+                     height: CGFloat(CGDisplayPixelsHigh(CGMainDisplayID())))
+            : virtualBounds
 
-        // Compute normalized position within the active area (same math as mapToScreen).
-        let rawX = Double(point.x)
-        let rawY = Double(point.y)
-        let rawMaxX = Double(point.maxX)
-        let rawMaxY = Double(point.maxY)
+        // Compute normalized position within the active area (same orientation math
+        // as mapToScreen; active-area crop controls sensitivity).
+        let rawX = Double(point.x), rawY = Double(point.y)
+        let rawMaxX = Double(point.maxX), rawMaxY = Double(point.maxY)
         let ox: Double; let oy: Double
         let effMaxX: Double; let effMaxY: Double
         switch settings.tabletOrientation {
@@ -1013,28 +1028,24 @@ final class InputInjector {
             ox = rawMaxY - rawY; oy = rawX
             effMaxX = rawMaxY;   effMaxY = rawMaxX
         }
-        let areaW = Swift.max(settings.activeAreaWidth, 0.001) * effMaxX
+        let areaW = Swift.max(settings.activeAreaWidth,  0.001) * effMaxX
         let areaH = Swift.max(settings.activeAreaHeight, 0.001) * effMaxY
-        let areaX = settings.activeAreaX * effMaxX
-        let areaY = settings.activeAreaY * effMaxY
-        let norm = CGPoint(
-            x: (ox - areaX) / areaW,
-            y: (oy - areaY) / areaH)
+        let norm = CGPoint(x: (ox - settings.activeAreaX * effMaxX) / areaW,
+                           y: (oy - settings.activeAreaY * effMaxY) / areaH)
 
-        // On first report after proximity entry there is no previous position, so we
-        // anchor without moving the cursor.
+        // First report after proximity entry: anchor without moving.
         guard let prev = lastRelativeNorm else {
             lastRelativeNorm = norm
             return currentCursorPosition()
         }
         lastRelativeNorm = norm
 
-        let dx = (norm.x - prev.x) * display.width
-        let dy = (norm.y - prev.y) * display.height
+        let dx = (norm.x - prev.x) * screen.width
+        let dy = (norm.y - prev.y) * screen.height
         let cur = currentCursorPosition()
         return CGPoint(
-            x: Swift.min(Swift.max(cur.x + dx, display.minX), display.maxX),
-            y: Swift.min(Swift.max(cur.y + dy, display.minY), display.maxY))
+            x: Swift.min(Swift.max(cur.x + dx, screen.minX), screen.maxX),
+            y: Swift.min(Swift.max(cur.y + dy, screen.minY), screen.maxY))
     }
 
     /// Maps a tablet point to screen coordinates, accounting for orientation and active area cropping.
