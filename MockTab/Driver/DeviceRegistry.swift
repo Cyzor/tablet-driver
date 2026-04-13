@@ -361,6 +361,15 @@ final class DeviceRegistry: ObservableObject {
         allKnownTools = merged
     }
 
+    /// Returns the saved tool list for `productID` without mutating `knownTools`.
+    /// Safe to call for any known or unknown device — returns empty array if not found.
+    func tools(forDevice productID: Int) -> [KnownTool] {
+        guard let data = ud.data(forKey: toolsKey(productID)),
+              let list = try? JSONDecoder().decode([KnownTool].self, from: data)
+        else { return [] }
+        return list
+    }
+
     /// Canonical tool ID string for a ToolIdentity.
     static func toolID(for identity: ToolIdentity) -> String {
         if identity.serial == 0 {
