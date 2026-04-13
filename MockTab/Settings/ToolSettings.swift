@@ -48,8 +48,16 @@ final class ToolSettings: ObservableObject {
     // MARK: - Settings
 
     @Published var pressureCurve: BezierCurve = .linear {
-        didSet { savePressureCurve() }
+        didSet {
+            savePressureCurve()
+            pressureLUT = pressureCurve.buildLookupTable()
+        }
     }
+
+    /// 256-entry precomputed lookup table for `pressureCurve`.
+    /// Rebuilt whenever `pressureCurve` changes (including on load from UserDefaults).
+    /// Consumed by `InputInjector.inject()` — replaces per-report bisection with one array index.
+    private(set) var pressureLUT: [Double] = BezierCurve.linear.buildLookupTable()
 
     @Published var smoothingStrength: Double = 0.0 {
         didSet { persist("smoothingStrength", smoothingStrength) }
