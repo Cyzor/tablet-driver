@@ -370,6 +370,7 @@ struct ButtonMappingView: View {
             // .pickerStyle(.menu)
             .labelsHidden()
             .padding(1)
+            .help("Action performed when sliding a finger around the touch ring.")
             
             .controlSize(.regular)
             .background(
@@ -495,6 +496,7 @@ struct ButtonBindingControl: View {
             }
             .buttonStyle(.plain)
             .background(fieldBackground)
+            .help("Click to record a keyboard shortcut. Press Escape to cancel or Delete to clear. Use the ▾ menu to assign a click action.")
 
             // Clear button
             if binding.kind != .none && !isRecording {
@@ -506,6 +508,7 @@ struct ButtonBindingControl: View {
                         .imageScale(.medium)
                 }
                 .buttonStyle(.plain)
+                .help("Clear this button assignment.")
             }
 
             // Click-action picker
@@ -532,6 +535,7 @@ struct ButtonBindingControl: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .frame(width: 20)
+            .help("Assign a click action: left-click, right-click, middle-click, modifier keys, or display toggle.")
 
         }
         .onDisappear { stopRecording() }

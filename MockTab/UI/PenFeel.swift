@@ -48,7 +48,8 @@ struct PenFeel: View {
                         
                         Slider(value: smoothingBinding, in: 0...1)
                             .labelsHidden()
-                        
+                            .help("Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but add input lag.")
+
                         Text("Reduces cursor jitter. Higher values add lag.")
                             .font(.settingsLabel)
                             .foregroundStyle(.secondary)
@@ -71,7 +72,8 @@ struct PenFeel: View {
                         }
                         Slider(value: doubleClickBinding, in: 0...30, step: 1)
                             .labelsHidden()
-                        
+                            .help("How close a second tap must land to the first to count as a double-click. Drag to Off to disable position snapping.")
+
                         Text("Snaps a second tap to the first click position within this radius, making double-clicks reliable.")
                             .font(.settingsLabel)
                             .foregroundStyle(.secondary)
@@ -134,16 +136,19 @@ struct PenFeel: View {
                     tool.pressureCurve = .linear
                     tool.record("Linear Curve") { tool.pressureCurve = old }
                 }
+                .help("Linear response — equal pen force produces equal pressure output. Best for general use.")
                 Button("Soft") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .soft
                     tool.record("Soft Curve") { tool.pressureCurve = old }
                 }
+                .help("Soft response — light pressure reaches full output quickly. Good for loose, expressive work.")
                 Button("Firm") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .firm
                     tool.record("Firm Curve") { tool.pressureCurve = old }
                 }
+                .help("Firm response — requires more force to reach full output. Good for precise detail work.")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
