@@ -52,6 +52,11 @@
 		AA000072 /* OTDImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000072 /* OTDImporter.swift */; };
 		AA000073 /* OrientationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000073 /* OrientationPickerView.swift */; };
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
+	AAAAAA02 /* PresetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA01 /* PresetExporter.swift */; };
+	AAAAAA04 /* PresetImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA03 /* PresetImporter.swift */; };
+	AAAAAA06 /* ImportPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA05 /* ImportPlan.swift */; };
+	AAAAAA08 /* ExportDragWell.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA07 /* ExportDragWell.swift */; };
+	AAAAAA10 /* ImportPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA09 /* ImportPreviewSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -103,6 +108,11 @@
 		AB000073 /* OrientationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationPickerView.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB000100 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
+	AAAAAA01 /* PresetExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetExporter.swift; sourceTree = "<group>"; };
+	AAAAAA03 /* PresetImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetImporter.swift; sourceTree = "<group>"; };
+	AAAAAA05 /* ImportPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPlan.swift; sourceTree = "<group>"; };
+	AAAAAA07 /* ExportDragWell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportDragWell.swift; sourceTree = "<group>"; };
+	AAAAAA09 /* ImportPreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPreviewSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -195,6 +205,11 @@
 				AB000041 /* TabStatusBar.swift */,
 				05D7EB7A2F79E6E30086E03F /* AboutApp.swift */,
 				057B24D72F899E3A0032B29E /* Path+SVGData.swift */,
+			AAAAAA01 /* PresetExporter.swift */,
+			AAAAAA03 /* PresetImporter.swift */,
+			AAAAAA05 /* ImportPlan.swift */,
+			AAAAAA07 /* ExportDragWell.swift */,
+			AAAAAA09 /* ImportPreviewSheet.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -339,6 +354,11 @@
 				AA000053 /* FontExtensions.swift in Sources */,
 				AA000040 /* DevicesView.swift in Sources */,
 				AA000041 /* TabStatusBar.swift in Sources */,
+			AAAAAA02 /* PresetExporter.swift in Sources */,
+			AAAAAA04 /* PresetImporter.swift in Sources */,
+			AAAAAA06 /* ImportPlan.swift in Sources */,
+			AAAAAA08 /* ExportDragWell.swift in Sources */,
+			AAAAAA10 /* ImportPreviewSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
