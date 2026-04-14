@@ -136,6 +136,12 @@ final class DTK2400Device: TabletDevice {
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
         HIDCapture.shared.record(tag: "DTK-2400", report: report, length: length)
+    // Delta capture — only fires when CaptureEngine.isRunning is true.
+    Task { @MainActor in
+        if CaptureEngine.shared.isRunning {
+            CaptureEngine.shared.recordSample(reportID: report[0], report: report, length: length)
+        }
+    }
         guard length >= 2 else { return }
 
         let id = report[0]

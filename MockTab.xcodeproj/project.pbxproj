@@ -52,11 +52,14 @@
 		AA000072 /* OTDImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000072 /* OTDImporter.swift */; };
 		AA000073 /* OrientationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000073 /* OrientationPickerView.swift */; };
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
-	AAAAAA02 /* PresetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA01 /* PresetExporter.swift */; };
-	AAAAAA04 /* PresetImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA03 /* PresetImporter.swift */; };
-	AAAAAA06 /* ImportPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA05 /* ImportPlan.swift */; };
-	AAAAAA08 /* ExportDragWell.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA07 /* ExportDragWell.swift */; };
-	AAAAAA10 /* ImportPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA09 /* ImportPreviewSheet.swift */; };
+		AA000101 /* CaptureModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000101 /* CaptureModels.swift */; };
+		AA000102 /* CaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000102 /* CaptureEngine.swift */; };
+		AA000103 /* CaptureWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000103 /* CaptureWizardView.swift */; };
+		AAAAAA02 /* PresetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA01 /* PresetExporter.swift */; };
+		AAAAAA04 /* PresetImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA03 /* PresetImporter.swift */; };
+		AAAAAA06 /* ImportPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA05 /* ImportPlan.swift */; };
+		AAAAAA08 /* ExportDragWell.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA07 /* ExportDragWell.swift */; };
+		AAAAAA10 /* ImportPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA09 /* ImportPreviewSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +67,11 @@
 		057B24D72F899E3A0032B29E /* Path+SVGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Path+SVGData.swift"; sourceTree = "<group>"; };
 		05BFE59B2F79FE5200782B9E /* AboutWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindowController.swift; sourceTree = "<group>"; };
 		05D7EB7A2F79E6E30086E03F /* AboutApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutApp.swift; sourceTree = "<group>"; };
+		AAAAAA01 /* PresetExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetExporter.swift; sourceTree = "<group>"; };
+		AAAAAA03 /* PresetImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetImporter.swift; sourceTree = "<group>"; };
+		AAAAAA05 /* ImportPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPlan.swift; sourceTree = "<group>"; };
+		AAAAAA07 /* ExportDragWell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportDragWell.swift; sourceTree = "<group>"; };
+		AAAAAA09 /* ImportPreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPreviewSheet.swift; sourceTree = "<group>"; };
 		AB000001 /* MockTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTabApp.swift; sourceTree = "<group>"; };
 		AB000002 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		AB000003 /* TabletPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletPoint.swift; sourceTree = "<group>"; };
@@ -108,11 +116,9 @@
 		AB000073 /* OrientationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationPickerView.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB000100 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
-	AAAAAA01 /* PresetExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetExporter.swift; sourceTree = "<group>"; };
-	AAAAAA03 /* PresetImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetImporter.swift; sourceTree = "<group>"; };
-	AAAAAA05 /* ImportPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPlan.swift; sourceTree = "<group>"; };
-	AAAAAA07 /* ExportDragWell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportDragWell.swift; sourceTree = "<group>"; };
-	AAAAAA09 /* ImportPreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPreviewSheet.swift; sourceTree = "<group>"; };
+		AB000101 /* CaptureModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureModels.swift; sourceTree = "<group>"; };
+		AB000102 /* CaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEngine.swift; sourceTree = "<group>"; };
+		AB000103 /* CaptureWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWizardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -163,6 +169,8 @@
 				AB000045 /* WacomGenericDevice.swift */,
 				AB000046 /* WacomDeviceRegistry.swift */,
 				AB000070 /* HIDCapture.swift */,
+				AB000101 /* CaptureModels.swift */,
+				AB000102 /* CaptureEngine.swift */,
 				AB000071 /* WacomToolSpec.swift */,
 				AB000072 /* OTDImporter.swift */,
 				AB000049 /* WacomUniversalDevice.swift */,
@@ -192,6 +200,7 @@
 			children = (
 				AB000012 /* TabletAreaView.swift */,
 				AB000073 /* OrientationPickerView.swift */,
+				AB000103 /* CaptureWizardView.swift */,
 				AB000013 /* PenFeel.swift */,
 				AB000014 /* ButtonMappingView.swift */,
 				AB000015 /* DisplayMappingView.swift */,
@@ -205,11 +214,11 @@
 				AB000041 /* TabStatusBar.swift */,
 				05D7EB7A2F79E6E30086E03F /* AboutApp.swift */,
 				057B24D72F899E3A0032B29E /* Path+SVGData.swift */,
-			AAAAAA01 /* PresetExporter.swift */,
-			AAAAAA03 /* PresetImporter.swift */,
-			AAAAAA05 /* ImportPlan.swift */,
-			AAAAAA07 /* ExportDragWell.swift */,
-			AAAAAA09 /* ImportPreviewSheet.swift */,
+				AAAAAA01 /* PresetExporter.swift */,
+				AAAAAA03 /* PresetImporter.swift */,
+				AAAAAA05 /* ImportPlan.swift */,
+				AAAAAA07 /* ExportDragWell.swift */,
+				AAAAAA09 /* ImportPreviewSheet.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -324,6 +333,8 @@
 				AA000045 /* WacomGenericDevice.swift in Sources */,
 				AA000046 /* WacomDeviceRegistry.swift in Sources */,
 				AA000070 /* HIDCapture.swift in Sources */,
+				AA000101 /* CaptureModels.swift in Sources */,
+				AA000102 /* CaptureEngine.swift in Sources */,
 				AA000071 /* WacomToolSpec.swift in Sources */,
 				AA000072 /* OTDImporter.swift in Sources */,
 				AA000049 /* WacomUniversalDevice.swift in Sources */,
@@ -343,6 +354,7 @@
 				AA000100 /* Profile.swift in Sources */,
 				AA000012 /* TabletAreaView.swift in Sources */,
 				AA000073 /* OrientationPickerView.swift in Sources */,
+				AA000103 /* CaptureWizardView.swift in Sources */,
 				AA000013 /* PenFeel.swift in Sources */,
 				AA000014 /* ButtonMappingView.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,
@@ -354,11 +366,11 @@
 				AA000053 /* FontExtensions.swift in Sources */,
 				AA000040 /* DevicesView.swift in Sources */,
 				AA000041 /* TabStatusBar.swift in Sources */,
-			AAAAAA02 /* PresetExporter.swift in Sources */,
-			AAAAAA04 /* PresetImporter.swift in Sources */,
-			AAAAAA06 /* ImportPlan.swift in Sources */,
-			AAAAAA08 /* ExportDragWell.swift in Sources */,
-			AAAAAA10 /* ImportPreviewSheet.swift in Sources */,
+				AAAAAA02 /* PresetExporter.swift in Sources */,
+				AAAAAA04 /* PresetImporter.swift in Sources */,
+				AAAAAA06 /* ImportPlan.swift in Sources */,
+				AAAAAA08 /* ExportDragWell.swift in Sources */,
+				AAAAAA10 /* ImportPreviewSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

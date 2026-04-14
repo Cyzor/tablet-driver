@@ -18,24 +18,51 @@
 
 import SwiftUI
 
+//extension Font {
+//    /// Secondary label text: setting names, descriptions, status lines, footnotes.
+//    /// Usage: `Text("Setting name").font(.settingsLabel)`
+//    static var settingsLabel: Font { .caption }
+//
+//    /// Tertiary label: count badges, secondary status, help text, secondary information.
+//    /// Usage: `Text("5 overrides").font(.settingsBadge)`
+//    static var settingsBadge: Font { .caption2 }
+//
+//    /// Overlay badge title: device/app names on canvas, emphasized labels.
+//    /// Usage: `Text("Intuos Pro M").font(.badgeTitle)`
+//    static var badgeTitle: Font { .caption2 }
+//
+//    /// Overlay badge subtitle: model numbers, secondary badges, coordinates.
+//    /// Usage: `Text("PTH-660").font(.badgeSubtitle)`
+//    static var badgeSubtitle: Font { .caption2 }
+//
+//    /// Monospaced variant for numbers, codes, and technical readouts.
+//    /// Usage: `Text("(1024, 2048)").font(.monospaced)`
+//    static var monospaced: Font { .system(.caption, design: .monospaced) }
+//}
+
+
 extension Font {
-    /// Secondary label text: setting names, descriptions, status lines, footnotes.
-    /// Usage: `Text("Setting name").font(.settingsLabel)`
-    static var settingsLabel: Font { .caption }
+    // Body-level: setting names, descriptions, toggle labels, status lines.
+    // Usage: .font(.settingsLabel) — replaces previous .caption assignment.
+    static var settingsLabel: Font { .body }
 
-    /// Tertiary label: count badges, secondary status, help text, secondary information.
-    /// Usage: `Text("5 overrides").font(.settingsBadge)`
-    static var settingsBadge: Font { .caption2 }
+    // Secondary: count badges, overridden-key counts, active/inactive chips.
+    // Usage: .font(.settingsBadge)
+    static var settingsBadge: Font { .footnote }
 
-    /// Overlay badge title: device/app names on canvas, emphasized labels.
-    /// Usage: `Text("Intuos Pro M").font(.badgeTitle)`
-    static var badgeTitle: Font { .caption2 }
+    // Tertiary: canvas overlay titles — device/app names.
+    // Usage: .font(.badgeTitle)
+    static var badgeTitle: Font { .callout }
 
-    /// Overlay badge subtitle: model numbers, secondary badges, coordinates.
-    /// Usage: `Text("PTH-660").font(.badgeSubtitle)`
-    static var badgeSubtitle: Font { .caption2 }
+    // Quaternary: canvas overlay subtitles — model numbers, coordinates.
+    // Usage: .font(.badgeSubtitle)
+    static var badgeSubtitle: Font { .caption }
 
-    /// Monospaced variant for numbers, codes, and technical readouts.
-    /// Usage: `Text("(1024, 2048)").font(.monospaced)`
-    static var monospaced: Font { .system(.caption, design: .monospaced) }
+    // Explicit caption tier for any view that legitimately needs 10pt text.
+    // Views currently broken by the .settingsLabel bump should migrate here
+    // only if the tiny size was intentional.
+    static var settingsCaption: Font { .caption2 }
+
+    // Monospaced technical readouts — coordinates, hex codes.
+    static var monospaced: Font { .system(.body, design: .monospaced) }
 }

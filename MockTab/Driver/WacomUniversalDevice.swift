@@ -259,7 +259,12 @@ final class WacomUniversalDevice: TabletDevice {
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
         HIDCapture.shared.record(tag: deviceSpec.name, report: report, length: length)
-
+    // Delta capture — only fires when CaptureEngine.isRunning is true.
+    Task { @MainActor in
+        if CaptureEngine.shared.isRunning {
+            CaptureEngine.shared.recordSample(reportID: report[0], report: report, length: length)
+        }
+    }
         // For wireless dongles, extract paired tablet PID from 0x80 status report and
         // use its spec for accurate coordinate ranges (instead of fallback guesses).
         if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {
