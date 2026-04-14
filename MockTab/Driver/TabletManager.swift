@@ -331,7 +331,7 @@ final class TabletManager: ObservableObject {
             )
             // Only assign when values changed — avoids spurious objectWillChange.
             if newButtons != self.liveButtons { self.liveButtons = newButtons }
-            context.liveButtons = newButtons
+            if newButtons != context.liveButtons { context.liveButtons = newButtons }
             self.livePoint = point
             context.livePoint = point
         }
