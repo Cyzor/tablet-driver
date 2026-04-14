@@ -60,8 +60,6 @@ struct InfoView: View {
                 }
                 .padding()
             }
-            .contentShape(Rectangle())
-            .onTapGesture { refresh() }
             .onAppear { refresh() }
             .onReceive(
                 NotificationCenter.default.publisher(

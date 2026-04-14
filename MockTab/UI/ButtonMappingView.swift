@@ -19,19 +19,6 @@
 import AppKit
 import SwiftUI
 
-// MARK: - Label-width coordination
-
-/// Collects the natural (unconstrained) width of every label text across the
-/// entire view tree and reduces to the widest value.  The result is fed back
-/// into each row so all control fields start at the same horizontal position
-/// regardless of which Section they live in.
-private struct LabelWidthKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
 // MARK: - ButtonMappingView
 
 struct ButtonMappingView: View {
@@ -40,11 +27,6 @@ struct ButtonMappingView: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
     var productID: Int?
-    
-    /// Shared label-column width, computed from the widest label in any row.
-    /// Zero until the first layout pass completes; nil-guarded in labelText(_:)
-    /// so the first render uses the natural text width rather than collapsing.
-    @State private var labelColumnWidth: CGFloat = 0
     
     private var spec: WacomDeviceSpec? {
         productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
@@ -99,9 +81,6 @@ struct ButtonMappingView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            // Collect the widest natural label width from every row across all
-            // sections and store it so the next render locks every label column.
-            .onPreferenceChange(LabelWidthKey.self) { labelColumnWidth = $0 }
             DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
         }
     }
@@ -416,16 +395,10 @@ struct ButtonMappingView: View {
             .opacity(isActive ? 1 : 0)
     }
     
-    /// Renders label text right-aligned in a column whose width equals the
-    /// widest natural label across the whole form.
-    ///
-    /// **Two-pass layout:**
-    /// A GeometryReader in the Text background measures the natural (pre-frame)
-    /// width and reports it via LabelWidthKey.  onPreferenceChange reduces all
-    /// values to the maximum and stores it in labelColumnWidth.  The next pass
-    /// locks every label to that shared width with trailing alignment.
-    /// The > 0 guard avoids a zero-width collapse on the first render.
-    
+    /// Renders label text right-aligned in a fixed-width column so all control
+    /// fields start at the same horizontal position regardless of which Section
+    /// they live in.  100 pt comfortably fits the longest label ("Side button 1",
+    /// "Fingerwheel", "Scroll Wheel") plus horizontal padding at the default font size.
     @ViewBuilder
     private func labelText(_ label: String, isActive: Bool = false) -> some View {
         Text(label)
@@ -438,30 +411,7 @@ struct ButtonMappingView: View {
                     .fill(Color.accentColor.opacity(isActive ? 0.12 : 0))
             )
             .animation(.easeOut(duration: 0.07), value: isActive)
-            .frame(
-                width: labelColumnWidth > 0 ? labelColumnWidth : nil,
-                alignment: .trailing
-            )
-        // Ghost sits after .frame() so it never constrains the visible view.
-        // .fixedSize() tells SwiftUI to ignore the proposed width and render
-        // at the text's natural ideal size — giving LabelWidthKey the true
-        // semibold measurement rather than a frame-clipped one.
-            .background {
-                Text(label)
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .fixedSize()
-                    .hidden()
-                    .background {
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: LabelWidthKey.self,
-                                value: geo.size.width
-                            )
-                        }
-                    }
-            }
+            .frame(width: 100, alignment: .trailing)
     }
     
 }

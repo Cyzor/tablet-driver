@@ -121,6 +121,8 @@ struct AppOverrideBar: View {
 
     @State private var alwaysShowScrollbars = (NSScroller.preferredScrollerStyle == .legacy)
 
+    @State private var iconCache: [String: NSImage] = [:]
+
     @State private var renamingBundleID: String?   = nil
     @State private var renameText                  = ""
     @State private var pendingDropURLs:    [URL]   = []
@@ -326,7 +328,7 @@ struct AppOverrideBar: View {
             ForEach(settings.appOverrides) { override in
                 appChip(
                     label: override.appName,
-                    icon: appIcon(bundleID: override.bundleID),
+                    icon: appIconCached(bundleID: override.bundleID),
                     bundleID: override.bundleID,
                     isSelected: selectedBundleID == override.bundleID,
                     domainKeyCount: override.overriddenKeys.intersection(domainKeys).count
@@ -548,6 +550,15 @@ struct AppOverrideBar: View {
         return NSWorkspace.shared.icon(forFile: path)
     }
 
+    /// Returns the icon for `bundleID`, loading it once and caching the result.
+    /// Eliminates repeated LaunchServices lookups on every render.
+    private func appIconCached(bundleID: String) -> NSImage? {
+        if let hit = iconCache[bundleID] { return hit }
+        let img = appIcon(bundleID: bundleID)
+        if let img { iconCache[bundleID] = img }
+        return img
+    }
+
     private func refreshRunningApps() {
         let myBundleID = Bundle.main.bundleIdentifier ?? ""
         let registered = Set(settings.appOverrides.map(\.bundleID))
@@ -566,7 +577,7 @@ struct AppOverrideBar: View {
 
     private func overrideBanner(_ override: TabletSettings.AppOverride) -> some View {
         HStack(spacing: 6) {
-            if let icon = appIcon(bundleID: override.bundleID) {
+            if let icon = appIconCached(bundleID: override.bundleID) {
                 Image(nsImage: icon).resizable().scaledToFit().frame(width: 14, height: 14)
             }
             Text("Editing **\(override.appName)** settings").font(.settingsLabel)
