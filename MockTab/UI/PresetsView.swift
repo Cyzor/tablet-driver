@@ -97,7 +97,7 @@ struct ProfilesView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
                 Text("Active profile:")
-                    .font(.settingsLabel)
+                    .font(.headline)
                 Text(active.name)
                     .font(.settingsLabel)
                     .fontWeight(.medium)

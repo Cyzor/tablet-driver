@@ -227,7 +227,13 @@ final class WacomGenericDevice: TabletDevice {
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
         HIDCapture.shared.record(tag: tag, report: report, length: length)
-        guard length >= 2 else { return }
+    // Delta capture — only fires when CaptureEngine.isRunning is true.
+    Task { @MainActor in
+        if CaptureEngine.shared.isRunning {
+            CaptureEngine.shared.recordSample(reportID: report[0], report: report, length: length)
+        }
+    }
+ guard length >= 2 else { return }
         let id = report[0]
 
         // ── BLE HOGP pen report (Report ID 0x01, ≥11 bytes) ────────────

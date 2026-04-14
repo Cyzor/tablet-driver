@@ -36,6 +36,8 @@ struct InfoView: View {
     @State private var captureActive = false
     @State private var captureCount = 0
     @State private var captureLastSaved: String? = nil
+    @State private var showCaptureWizard = false
+    @State private var discoverySaved: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -66,6 +68,14 @@ struct InfoView: View {
                     for: NSApplication.didBecomeActiveNotification)
             ) { _ in refresh() }
             DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared, productID: productID ?? 0)
+ .sheet(isPresented: $showCaptureWizard) {
+ CaptureWizardView(
+ engine: CaptureEngine.shared,
+ tabletManager: tabletManager,
+ productID: productID ?? 0,
+ onDismiss: { showCaptureWizard = false }
+ )
+ }
         }
     }
 
@@ -269,6 +279,24 @@ struct InfoView: View {
                 .help("Stop capture (if running) and save all recorded HID reports to a JSON file on the Desktop.")
             }
 
+ HStack(spacing: 12) {
+ Button("Calibrate Unknown Device") {
+ showCaptureWizard = true
+ }
+ .buttonStyle(.bordered)
+ .tint(.blue)
+ .controlSize(.small)
+ .help("Guided calibration for unknown tablets. Produces a small JSON file for device support.")
+ Button("Quick Discovery (60s)") {
+            startDiscovery()
+        }
+        .buttonStyle(.bordered)
+        .tint(.purple)
+        .controlSize(.small)
+        .help("Automatically discover all HID reports for 60 seconds.")
+ Spacer()
+ }
+
             if let saved = captureLastSaved {
                 Text("Saved: \(saved)")
                     .font(.settingsLabel)
@@ -284,6 +312,38 @@ struct InfoView: View {
         ) { _ in
             if captureActive {
                 captureCount = HIDCapture.shared.reportCount
+            }
+        }
+    }
+
+
+    // MARK: - Discovery Mode
+
+    private func startDiscovery() {
+        guard let spec = WacomDeviceRegistry.spec(for: productID ?? 0) else { return }
+        let vendorID = 0x056A
+        let deviceInfo = CaptureDeviceInfo(
+            vendorID: vendorID,
+            productID: spec.productID,
+            name: spec.name,
+            locationID: nil,
+            serialNumber: nil
+        )
+
+        // Set up completion callback
+        CaptureEngine.shared.onCalibrationComplete = nil  // Clear calibration callback
+
+        // Start discovery
+        CaptureEngine.shared.startDiscovery(deviceInfo: deviceInfo, duration: 60)
+
+        // Set up timer to finish and save
+        DispatchQueue.main.asyncAfter(deadline: .now() + 61) {
+            if CaptureEngine.shared.isRunning {
+                if let result = CaptureEngine.shared.finishDiscovery() {
+                    if let url = CaptureEngine.shared.exportDiscoveryJSON(result: result) {
+                        discoverySaved = url.lastPathComponent
+                    }
+                }
             }
         }
     }
