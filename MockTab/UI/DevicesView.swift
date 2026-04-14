@@ -274,6 +274,7 @@ struct DevicesView: View {
                 }
                 .buttonStyle(.bordered).controlSize(.small)
                 .foregroundStyle(.red)
+                .help("Remove this tool from the registry. It will reappear with its default name next time it is detected.")
                 Button("Cancel") { editingToolID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
             } else {

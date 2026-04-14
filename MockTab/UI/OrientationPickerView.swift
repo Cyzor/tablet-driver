@@ -49,6 +49,7 @@ struct OrientationPickerView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .help(orientation.helpText)
     }
 
     // MARK: - Action
@@ -106,6 +107,16 @@ extension TabletOrientation {
         case .portrait:         return "Portrait"
         case .landscapeFlipped: return "Landscape (Flipped)"
         case .portraitFlipped:  return "Portrait (Flipped)"
+        }
+    }
+
+    /// Tooltip shown on hover.
+    var helpText: String {
+        switch self {
+        case .landscape:        return "Standard orientation — tablet's long edge is horizontal."
+        case .portrait:         return "Rotate the active surface 90° clockwise. Hold the tablet in portrait orientation."
+        case .landscapeFlipped: return "Flip 180° — useful for left-handed use or reversed cable routing."
+        case .portraitFlipped:  return "Rotate the active surface 90° counter-clockwise."
         }
     }
 }

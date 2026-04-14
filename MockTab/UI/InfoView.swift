@@ -120,7 +120,8 @@ struct InfoView: View {
                 "Permission",
                 value: accessibilityGranted ? "Granted" : "Not granted",
                 ok: accessibilityGranted,
-                fix: accessibilityGranted ? nil : requestAccessibility)
+                fix: accessibilityGranted ? nil : requestAccessibility,
+                fixHelp: "Open System Settings to grant MockTab permission to inject keyboard and mouse events into other apps.")
 
             row(
                 "HID Manager",
@@ -136,7 +137,8 @@ struct InfoView: View {
                 "Launch at Login",
                 value: launchAtLogin ? "Enabled" : "Disabled",
                 ok: launchAtLogin ? true : nil,
-                fix: launchAtLogin ? nil : enableLaunchAtLogin)
+                fix: launchAtLogin ? nil : enableLaunchAtLogin,
+                fixHelp: "Enable MockTab to start automatically when you log in.")
 
             row(
                 "Conflicts",
@@ -144,7 +146,8 @@ struct InfoView: View {
                     ? "None detected"
                     : "\(conflicts.count) issue\(conflicts.count == 1 ? "" : "s")",
                 ok: conflicts.isEmpty ? true : false,
-                fix: conflicts.isEmpty ? nil : showConflictAlert)
+                fix: conflicts.isEmpty ? nil : showConflictAlert,
+                fixHelp: "Show details about detected conflicts with other tablet drivers and how to resolve them.")
         }
     }
 
@@ -154,7 +157,8 @@ struct InfoView: View {
         ok: Bool?,
         leadingSymbol: String? = nil,
         symbolColor:   Color?  = nil,
-        fix: (() -> Void)? = nil
+        fix: (() -> Void)? = nil,
+        fixHelp: String? = nil
     ) -> some View {
         GridRow {
             Text(label)
@@ -174,6 +178,7 @@ struct InfoView: View {
                     Button("Fix", action: fix)
                         .buttonStyle(.bordered)
                         .controlSize(.small)
+                        .help(fixHelp ?? "")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -238,6 +243,7 @@ struct InfoView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(captureActive ? .red : .accentColor)
                 .controlSize(.small)
+                .help("Record every raw HID report from the tablet before decoding. Use to diagnose unknown byte positions or decoder issues.")
 
                 if captureActive {
                     Text("\(captureCount) reports")
@@ -262,6 +268,7 @@ struct InfoView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .disabled(captureCount == 0 && !captureActive)
+                .help("Stop capture (if running) and save all recorded HID reports to a JSON file on the Desktop.")
             }
 
             if let saved = captureLastSaved {
