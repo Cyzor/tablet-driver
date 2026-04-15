@@ -31,7 +31,7 @@ struct InfoView: View {
     @State private var launchAtLogin = false
     @State private var diagnosticsExpanded = false
     @State private var conflicts: [String] = []
-    @State private var showCaptureWizard = false
+    @State private var showCaptureGuide = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -64,12 +64,12 @@ struct InfoView: View {
                 settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared,
                 productID: productID ?? 0
             )
-            .sheet(isPresented: $showCaptureWizard) {
-                CaptureWizardView(
+            .sheet(isPresented: $showCaptureGuide) {
+                CaptureGuideView(
                     engine: CaptureEngine.shared,
                     tabletManager: tabletManager,
                     productID: productID ?? 0,
-                    onDismiss: { showCaptureWizard = false }
+                    onDismiss: { showCaptureGuide = false }
                 )
             }
         }
@@ -233,7 +233,7 @@ struct InfoView: View {
 
             HStack(spacing: 12) {
                 Button("Collect Device Data\u{2026}") {
-                    showCaptureWizard = true
+                    showCaptureGuide = true
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)

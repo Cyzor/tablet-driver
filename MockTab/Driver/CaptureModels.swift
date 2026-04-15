@@ -20,7 +20,7 @@ import Foundation
 
 // MARK: - Calibration Steps
 
-/// Ordered steps for the guided calibration wizard.
+/// Ordered steps for the guided calibration guide.
 /// Each case represents a specific user action that produces a distinct HID signal.
 enum CalibrationStep: Int, CaseIterable, Identifiable {
     case idle            = 0  // capture baseline (no input)
@@ -50,7 +50,7 @@ enum CalibrationStep: Int, CaseIterable, Identifiable {
 
     var id: Int { rawValue }
 
-    /// Human-readable instruction shown in the wizard UI.
+    /// Human-readable instruction shown in the guide UI.
     var instruction: String {
         switch self {
         case .idle:        return "Hold the pen still without touching the tablet"

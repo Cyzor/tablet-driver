@@ -54,7 +54,7 @@
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
 		AA000101 /* CaptureModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000101 /* CaptureModels.swift */; };
 		AA000102 /* CaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000102 /* CaptureEngine.swift */; };
-		AA000103 /* CaptureWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000103 /* CaptureWizardView.swift */; };
+		AA000103 /* CaptureGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000103 /* CaptureGuideView.swift */; };
 		AAAAAA02 /* PresetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA01 /* PresetExporter.swift */; };
 		AAAAAA04 /* PresetImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA03 /* PresetImporter.swift */; };
 		AAAAAA06 /* ImportPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA05 /* ImportPlan.swift */; };
@@ -118,7 +118,7 @@
 		AB000100 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		AB000101 /* CaptureModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureModels.swift; sourceTree = "<group>"; };
 		AB000102 /* CaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEngine.swift; sourceTree = "<group>"; };
-		AB000103 /* CaptureWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWizardView.swift; sourceTree = "<group>"; };
+		AB000103 /* CaptureGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGuideView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -200,7 +200,7 @@
 			children = (
 				AB000012 /* TabletAreaView.swift */,
 				AB000073 /* OrientationPickerView.swift */,
-				AB000103 /* CaptureWizardView.swift */,
+				AB000103 /* CaptureGuideView.swift */,
 				AB000013 /* PenFeel.swift */,
 				AB000014 /* ButtonMappingView.swift */,
 				AB000015 /* DisplayMappingView.swift */,
@@ -354,7 +354,7 @@
 				AA000100 /* Profile.swift in Sources */,
 				AA000012 /* TabletAreaView.swift in Sources */,
 				AA000073 /* OrientationPickerView.swift in Sources */,
-				AA000103 /* CaptureWizardView.swift in Sources */,
+				AA000103 /* CaptureGuideView.swift in Sources */,
 				AA000013 /* PenFeel.swift in Sources */,
 				AA000014 /* ButtonMappingView.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,
