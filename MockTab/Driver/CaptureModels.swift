@@ -160,6 +160,9 @@ struct CapturedSample: Identifiable {
     let timestamp: Date
     let baseline: [UInt8]
     let action: [UInt8]
+    /// Wacom tool code observed when this sample was captured (e.g. 0x0802 pen, 0x080A eraser).
+    /// Nil if tool code was not available at capture time.
+    var toolCode: UInt16?
 
     /// Byte positions (0-indexed) that differ between baseline and action.
     var changedIndices: [Int] {
@@ -309,8 +312,11 @@ struct DiscoveryReportSummary: Codable {
     let reportID: UInt8
     let length: Int
     let sampleCount: Int
-    var varyingBytes: [Int]  // byte positions that vary across samples
-    var constantBytes: [Int]  // byte positions that are constant
+    var varyingBytes: [Int]           // byte positions that vary across samples
+    var constantBytes: [Int]          // byte positions that are constant
+    var firstSample: String?          // hex string of first captured sample
+    var constantValues: [Int]?        // actual constant byte values (same for all samples)
+    var byteSampleValues: [Int: [Int]]?  // byteIdx -> sample of observed values (up to 20)
 }
 
 // MARK: - Capture Mode

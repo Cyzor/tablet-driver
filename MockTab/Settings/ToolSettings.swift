@@ -119,7 +119,10 @@ final class ToolSettings: ObservableObject {
     }
 
     var penButton3Binding: ButtonBinding {
-        get { ButtonBinding.decode(freshString("penButton3Binding") ?? "") ?? .none }
+        get {
+            let fallback: ButtonBinding = isMouse ? .middleClick : .none
+            return ButtonBinding.decode(freshString("penButton3Binding") ?? "") ?? fallback
+        }
         set { pen3Raw = newValue.encoded }
     }
 

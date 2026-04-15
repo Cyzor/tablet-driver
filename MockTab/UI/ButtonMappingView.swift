@@ -91,7 +91,9 @@ struct ButtonMappingView: View {
     private func penButtonsSection(lb: LiveButtonState) -> some View {
         let toolSpec = activeToolSpec
         let isMouse = toolSpec?.toolType == .mouse
-        let btnCount = toolSpec?.buttonCount ?? 2
+        // For mice, show all 5 HID-path button slots regardless of spec.buttonCount
+        // (spec.buttonCount describes only the digitizer path, not the full HID mouse report)
+        let btnCount = isMouse ? 5 : (toolSpec?.buttonCount ?? 2)
         let hasWheel = toolSpec?.hasWheel == true
 
         Section {

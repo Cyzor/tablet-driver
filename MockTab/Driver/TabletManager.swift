@@ -202,7 +202,10 @@ final class TabletManager: ObservableObject {
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
         let isBLE = transport.lowercased().contains("bluetooth")
-        let pidStr = rawProductID == productID ? "0x\(String(productID, radix:16))" : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
+        let pidStr =
+            rawProductID == productID
+            ? "0x\(String(productID, radix:16))"
+            : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
         print(
             "TabletManager: device pid=\(pidStr) usagePage=0x\(String(usagePage, radix:16)) usage=0x\(String(usage, radix:16)) maxRptSize=\(maxRptSize) transport=\(transport)"
         )
@@ -215,7 +218,8 @@ final class TabletManager: ObservableObject {
             return
         }
 
-        let context = contexts[productID] ?? DeviceContext(productID: productID, rawProductID: rawProductID)
+        let context =
+            contexts[productID] ?? DeviceContext(productID: productID, rawProductID: rawProductID)
         contexts[productID] = context
         context.hidDevice = device
 
@@ -223,7 +227,8 @@ final class TabletManager: ObservableObject {
         // AppWatcher seeds existing contexts at start(), but a device may connect
         // after launch (or in dockless mode where no app switch occurred yet).
         if let app = NSWorkspace.shared.frontmostApplication,
-           let bundleID = app.bundleIdentifier {
+            let bundleID = app.bundleIdentifier
+        {
             let name = app.localizedName ?? bundleID
             context.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
         }
@@ -250,6 +255,8 @@ final class TabletManager: ObservableObject {
             context.activeToolSerial = identity.serial
             context.activeToolIsMouse = identity.isMouse
             context.activeToolCode = identity.toolCode
+            // Propagate tool code to calibration session so tool changes are tracked.
+            CaptureEngine.shared.updateToolCode(identity.toolCode)
             let toolID = DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
             let toolSets = context.settings.toolSettings(forID: toolID, isMouse: identity.isMouse)
             context.activeTool = toolSets

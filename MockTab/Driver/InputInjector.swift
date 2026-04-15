@@ -502,38 +502,27 @@ final class InputInjector {
                 postMouseUp(button: .right, at: loc, clickCount: 1)
             }
         }
+        // Button 3 (bit 2) — routed through configured binding
         if midNow != midWas {
-            let type: CGEventType = midNow ? .otherMouseDown : .otherMouseUp
-            if let e = CGEvent(
-                mouseEventSource: sessionSource, mouseType: type,
-                mouseCursorPosition: loc, mouseButton: .center) {
-                e.flags = currentEventFlags
-                e.post(tap: .cghidEventTap)
-            }
+            let tool = activeToolSettings
+            let binding = tool?.penButton3Binding ?? .middleClick
+            fireButtonAction(binding, down: midNow, at: loc, settings: s)
         }
-        // Button 4 (bit 3)
+        // Button 4 (bit 3) — routed through configured binding
         let btn4Now = (mask & 0x08) != 0
         let btn4Was = (oldMask & 0x08) != 0
         if btn4Now != btn4Was {
-            let type: CGEventType = btn4Now ? .otherMouseDown : .otherMouseUp
-            if let e = CGEvent(
-                mouseEventSource: sessionSource, mouseType: type,
-                mouseCursorPosition: loc, mouseButton: CGMouseButton(rawValue: 3)!) {
-                e.flags = currentEventFlags
-                e.post(tap: .cghidEventTap)
-            }
+            let tool = activeToolSettings
+            let binding = tool?.penButton4Binding ?? .none
+            fireButtonAction(binding, down: btn4Now, at: loc, settings: s)
         }
-        // Button 5 (bit 4)
+        // Button 5 (bit 4) — routed through configured binding
         let btn5Now = (mask & 0x10) != 0
         let btn5Was = (oldMask & 0x10) != 0
         if btn5Now != btn5Was {
-            let type: CGEventType = btn5Now ? .otherMouseDown : .otherMouseUp
-            if let e = CGEvent(
-                mouseEventSource: sessionSource, mouseType: type,
-                mouseCursorPosition: loc, mouseButton: CGMouseButton(rawValue: 4)!) {
-                e.flags = currentEventFlags
-                e.post(tap: .cghidEventTap)
-            }
+            let tool = activeToolSettings
+            let binding = tool?.penButton5Binding ?? .none
+            fireButtonAction(binding, down: btn5Now, at: loc, settings: s)
         }
     }
 
