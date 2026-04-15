@@ -19,7 +19,7 @@
 import Combine
 import Foundation
 
-/// Phase 1+2: Guided calibration wizard + delta filtering engine.
+/// Phase 1+2: Guided calibration guide + delta filtering engine.
 ///
 /// Usage:
 /// 1. Call `startCalibration(deviceInfo:steps:)` to begin a session.
