@@ -147,7 +147,7 @@ struct IntuosV2Decoder: WacomDecoder {
                             pressure: 0, maxPressure: spec.maxPressure,
                             tiltX: exitTiltX, tiltY: exitTiltY, rotation: exitRotation,
                             penButton1: false, penButton2: false,
-                            eraser: false, inProximity: false, hoverDistance: 0))
+                            eraser: false, inProximity: false, hoverDistance: 0))  // Exit event
                 ]
             }
             return []
@@ -193,6 +193,7 @@ struct IntuosV2Decoder: WacomDecoder {
             // FIX: use cached lastTiltX/lastTiltY instead of hardcoded 0 so that the
             // azimuth angle (atan2 of tilt components) doesn't snap to 0° on every
             // low-confidence frame — the primary cause of wobbly strokes in Rebelle.
+            // For low-confidence frames, report 0 hover (no valid measurement during noise).
             if state.prevInProximity && state.hasValidTiltFrame {
                 return [
                     .pen(
@@ -310,6 +311,11 @@ struct IntuosV2Decoder: WacomDecoder {
             state.hasValidRotationFrame = true
         }
 
+        // Proximity distance (hover height): Byte 14, 0-255 scale.
+        // When the pen is closer (lower hover distance), pressure increases.
+        // Max range is device-dependent but typically 0-127 for practical hovering.
+        let hoverDistance = Int(report[14])
+
         results.append(
             .pen(
                 TabletPoint(
@@ -320,7 +326,7 @@ struct IntuosV2Decoder: WacomDecoder {
                     penButton2: (status & 0x04) != 0,
                     eraser: (status & 0x08) != 0,
                     inProximity: true,
-                    hoverDistance: 0)))  // IntuosV2 format doesn't report proximity height
+                    hoverDistance: hoverDistance)))
 
         return results
     }
@@ -333,7 +339,7 @@ struct IntuosV2Decoder: WacomDecoder {
         spec: DigitizerSpec,
         state: inout DecoderState
     ) -> [DecodeResult] {
-        guard length >= 13 else { return [] }
+        guard length >= 14 else { return [] }
         let status = report[2]
         let x = Int(UInt16(report[3]) | UInt16(report[4]) << 8) | (Int(report[5]) << 16)
         let y = Int(UInt16(report[6]) | UInt16(report[7]) << 8) | (Int(report[8]) << 16)
@@ -341,6 +347,7 @@ struct IntuosV2Decoder: WacomDecoder {
         let pressure = Int(UInt16(report[9]) | (UInt16(report[10] & 0x1F) << 8))
         let tiltX = Double(Int8(bitPattern: report[11])) / 127.0
         let tiltY = Double(Int8(bitPattern: report[12])) / 127.0
+        let hoverDistance = Int(report[13])
         let isArtPen = state.currentToolCode == 0x0804 || state.currentToolCode == 0x1108
         let toolIsEraser = !isArtPen && (state.currentToolCode & 0x0008) != 0
 
@@ -355,7 +362,7 @@ struct IntuosV2Decoder: WacomDecoder {
                     penButton2: (status & 0x04) != 0,
                     eraser: (status & 0x08) != 0,
                     inProximity: (status & 0x20) != 0,
-                    hoverDistance: 0))]  // Not reported in offset format
+                    hoverDistance: hoverDistance))]
     }
 
     // MARK: - BLE HOGP pen (0x01)
