@@ -336,7 +336,12 @@ final class TabletManager: ObservableObject {
                 button3Down: point.penButton3,
                 button4Down: point.penButton4,
                 button5Down: point.penButton5,
-                expressKeys: self.liveButtons.expressKeys
+                expressKeys: self.liveButtons.expressKeys,
+                touchRingActive: self.liveButtons.touchRingActive,
+                touchRingButtonDown: self.liveButtons.touchRingButtonDown,
+                touchRing2Active: self.liveButtons.touchRing2Active,
+                touchStrip1Active: self.liveButtons.touchStrip1Active,
+                touchStrip2Active: self.liveButtons.touchStrip2Active
             )
             // Only assign when values changed — avoids spurious objectWillChange.
             if newButtons != self.liveButtons { self.liveButtons = newButtons }
@@ -355,21 +360,27 @@ final class TabletManager: ObservableObject {
             let keys = (0..<16).map { aux[$0] }
             if keys != self.liveButtons.expressKeys {
                 self.liveButtons.expressKeys = keys
+                context.liveButtons.expressKeys = keys
             }
             if aux.touchRingActive != self.liveButtons.touchRingActive {
                 self.liveButtons.touchRingActive = aux.touchRingActive
+                context.liveButtons.touchRingActive = aux.touchRingActive
             }
             if aux.touchRing2Active != self.liveButtons.touchRing2Active {
                 self.liveButtons.touchRing2Active = aux.touchRing2Active
+                context.liveButtons.touchRing2Active = aux.touchRing2Active
             }
             if aux.touchRingButtonDown != self.liveButtons.touchRingButtonDown {
                 self.liveButtons.touchRingButtonDown = aux.touchRingButtonDown
+                context.liveButtons.touchRingButtonDown = aux.touchRingButtonDown
             }
             if aux.touchStrip1Active != self.liveButtons.touchStrip1Active {
                 self.liveButtons.touchStrip1Active = aux.touchStrip1Active
+                context.liveButtons.touchStrip1Active = aux.touchStrip1Active
             }
             if aux.touchStrip2Active != self.liveButtons.touchStrip2Active {
                 self.liveButtons.touchStrip2Active = aux.touchStrip2Active
+                context.liveButtons.touchStrip2Active = aux.touchStrip2Active
             }
         }
 
