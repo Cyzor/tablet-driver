@@ -31,12 +31,15 @@ private final class CaptureGate: ObservableObject {
 /// Unified device data collection wizard.
 ///
 /// Guides the user through 5 grouped activities. Each activity shows a "Ready"
-/// button: while waiting the baseline is continuously refreshed so hover movement
+/// button: while waiting, the baseline is continuously refreshed so hover movement
 /// doesn't trigger a false capture. Once the user clicks Ready, the next HID
 /// report that differs from the current baseline is captured as the action sample.
 ///
 /// Activities with no matching hardware (eraser-less pens, no express keys) are
-/// skipped automatically after a short timeout.
+/// skipped automatically via the Skip button.
+///
+/// Express keys auto-rearm the gate after each capture so the user only clicks
+/// Ready once for the whole group, then presses keys in sequence.
 struct CaptureWizardView: View {
 
     @ObservedObject var engine: CaptureEngine
@@ -67,11 +70,17 @@ struct CaptureWizardView: View {
 
         var readyPrompt: String {
             switch self {
-            case .tip:           return "Hold the pen still above the surface, then click Ready."
-            case .penButtons:    return "Rest your finger near a side button, then click Ready."
-            case .eraser:        return "Hold the eraser end near the surface, then click Ready."
-            case .expressKeys:   return "Rest a finger near a tablet button, then click Ready."
-            case .touchControls: return "Rest a finger near the ring or strip, then click Ready."
+            case .tip:
+                return "Hold the pen still above the surface, then click Ready."
+            case .penButtons:
+                return "Rest your finger near a side button, then click Ready."
+            case .eraser:
+                return "Hold the eraser end near the surface, then click Ready."
+            case .expressKeys:
+                // The gate stays armed between key presses — one Ready for the whole group.
+                return "Rest a finger near the first button, then click Ready. Press each key in sequence; click Skip when finished."
+            case .touchControls:
+                return "Rest a finger near the ring or strip, then click Ready."
             }
         }
 
@@ -83,6 +92,13 @@ struct CaptureWizardView: View {
             case .expressKeys:   return "rectangle.grid.2x2"
             case .touchControls: return "circle.dashed"
             }
+        }
+
+        /// When true, the gate re-arms automatically after each captured key step
+        /// within this group. The user clicks Ready once, then performs each action
+        /// in sequence without clicking Ready again.
+        var autoRearmAfterCapture: Bool {
+            self == .expressKeys
         }
 
         static func activity(for step: CalibrationStep) -> Activity? {
@@ -104,7 +120,7 @@ struct CaptureWizardView: View {
         }
 
         /// Background steps capture ambient device state and should advance
-        /// automatically without user interaction.  Key steps require the user
+        /// automatically without user interaction. Key steps require the user
         /// to perform a deliberate action (tip contact, button press, etc.).
         static func isKeyStep(_ step: CalibrationStep) -> Bool {
             switch step {
@@ -123,9 +139,11 @@ struct CaptureWizardView: View {
 
     // MARK: - State
 
-    /// Which activities have been confirmed (data captured for at least one of their steps).
-    @State private var detectedActivities: Set<Activity.RawValue> = []
-    /// The activity currently armed — baseline keeps refreshing until the user clicks Ready.
+    /// Which activity groups have been fully exited (engine moved on to the next group).
+    /// Updated exclusively in `onChange(of: engine.armedStep)` when the active group
+    /// changes, so the checkmark never appears while sub-steps are still in progress.
+    @State private var detectedActivities: Set<Int> = []
+    /// The activity group currently being collected.
     @State private var armedActivity: Activity? = nil
     /// Reference-type gate so the onSampleCaptured closure always reads the current value.
     @StateObject private var gate = CaptureGate()
@@ -133,13 +151,16 @@ struct CaptureWizardView: View {
     @State private var rebaselineTimer: Timer? = nil
     @State private var savedURL: URL? = nil
     @State private var showCancelConfirm = false
+    /// Running count of express key steps captured in the current session of the
+    /// expressKeys group. Shown in the caption so the user knows presses are landing.
+    @State private var capturedKeyCount: Int = 0
 
     private var activeActivity: Activity? {
         guard let step = engine.armedStep else { return nil }
         return Activity.activity(for: step)
     }
 
-    private var isComplete: Bool { !engine.isRunning && savedURL != nil }
+    private var isComplete: Bool { engine.armedStep == nil && savedURL != nil }
 
     // MARK: - Body
 
@@ -169,12 +190,59 @@ struct CaptureWizardView: View {
         .onAppear { startCollection() }
         .onDisappear { stopRebaseline() }
         // React to the engine advancing to a new step.
+        //
+        // Three bugs fixed here vs. the original implementation:
+        //
+        //  1. INTRA-GROUP DEADLOCK: The original code only restarted the rebaseline
+        //     timer and reset the gate on activity-group transitions. Within a group,
+        //     consecutive key sub-steps (e.g. .tipDown → .tipUp) left the timer
+        //     stopped and the gate permanently closed. The engine then waited forever
+        //     for a sub-step it could never receive.
+        //     Fix: gate reset + rebaseline (or auto-rearm) now run on EVERY step change.
+        //
+        //  2. PREMATURE CHECKMARK: detectedActivities.insert was called in
+        //     onSampleCaptured after the first key sub-step of a group, hiding the
+        //     UI controls before remaining sub-steps completed.
+        //     Fix: insert only when the engine exits the group (newActivity != armedActivity).
+        //
+        //  3. EXPRESS KEY FRICTION: each of up to 8 key steps required a separate
+        //     Ready click, giving no confirmation that any press was received.
+        //     Fix: autoRearmAfterCapture activities re-arm the gate automatically
+        //     after each capture; the user clicks Ready once, then presses keys in
+        //     sequence. capturedKeyCount provides running feedback.
         .onChange(of: engine.armedStep) { newStep in
             let newActivity = newStep.flatMap { Activity.activity(for: $0) }
-            if newActivity != armedActivity {
-                // Moved to a new activity group — reset armed state and begin rebaselining.
+            let crossedBoundary = newActivity != armedActivity
+
+            if crossedBoundary {
+                // Leaving an activity group — mark it complete now that all
+                // its sub-steps are behind us.
+                if let completed = armedActivity {
+                    detectedActivities.insert(completed.rawValue)
+                }
+                if armedActivity == .expressKeys {
+                    capturedKeyCount = 0
+                }
                 armedActivity = newActivity
-                gate.isArmed = false
+            }
+
+            // Reset the gate on every step change, then decide how to proceed.
+            gate.isArmed = false
+
+            if newStep == nil {
+                // Engine exhausted all steps.
+                stopRebaseline()
+            } else if !crossedBoundary, let activity = newActivity, activity.autoRearmAfterCapture {
+                // Intra-group transition for an auto-rearm activity (express keys).
+                // Re-arm after a brief drain — no manual Ready required between keys.
+                stopRebaseline()
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 300_000_000) // 300 ms drain
+                    engine.rebaseline()
+                    gate.isArmed = true
+                }
+            } else {
+                // Normal activities: restart the rebaseline timer and wait for Ready.
                 startRebaseline()
             }
         }
@@ -231,9 +299,11 @@ struct CaptureWizardView: View {
             ZStack {
                 Circle()
                     .fill(
-                        isDone ? Color.green.opacity(0.15)
-                        : isActive ? Color.blue.opacity(0.12)
-                        : Color.clear
+                        isDone
+                            ? Color.green.opacity(0.15)
+                            : isActive
+                                ? Color.blue.opacity(0.12)
+                                : Color.clear
                     )
                     .frame(width: 32, height: 32)
 
@@ -262,11 +332,18 @@ struct CaptureWizardView: View {
                     .font(.body)
                     .foregroundStyle(isDone ? .secondary : isActive ? .primary : .secondary)
 
-                if isActive && !isDone {
+                if isActive {
                     if isReadyPhase {
-                        Text("Perform the action now…")
-                            .font(.caption)
-                            .foregroundStyle(.blue)
+                        if activity == .expressKeys && capturedKeyCount > 0 {
+                            // Running confirmation: the user can see each press is landing.
+                            Text("\(capturedKeyCount) key\(capturedKeyCount == 1 ? "" : "s") captured — press the next, or Skip when finished")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                        } else {
+                            Text("Perform the action now…")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                        }
                     } else {
                         Text(activity.readyPrompt)
                             .font(.caption)
@@ -277,24 +354,47 @@ struct CaptureWizardView: View {
 
             Spacer()
 
-            if isActive && !isDone && !isReadyPhase {
-                Button("Ready") {
-                    // Stop rebaselining immediately so the next different report
-                    // counts as a capture. Then wait 400ms to let any button-click
-                    // HID events drain, then open the gate.
-                    stopRebaseline()
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 400_000_000)
-                        gate.isArmed = true
+            // Buttons are shown whenever the row is active, regardless of isDone.
+            // Skip is always available so the user is never trapped waiting for
+            // hardware they don't have or a step they can't perform.
+            if isActive {
+                HStack(spacing: 8) {
+                    if isReadyPhase {
+                        // Gate is open — waiting for a valid pen/key action.
+                        Button("Next") {
+                            stopRebaseline()
+                            engine.confirmAndContinue()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    } else {
+                        // Gate is closed — user must click Ready to arm capture.
+                        // "Ready" means "I am now in position — capture what I do next."
+                        Button("Ready") {
+                            stopRebaseline()
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 400_000_000)
+                                engine.rebaseline()
+                                gate.isArmed = true
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
                     }
+
+                    Button("Skip") {
+                        gate.isArmed = false
+                        stopRebaseline()
+                        engine.confirmAndContinue()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
             }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
-        .background(isActive && !isDone ? Color.blue.opacity(0.04) : Color.clear)
+        .background(isActive ? Color.blue.opacity(0.04) : Color.clear)
         .animation(.easeInOut(duration: 0.2), value: isActive)
         .animation(.easeInOut(duration: 0.2), value: isDone)
         .animation(.easeInOut(duration: 0.15), value: isReadyPhase)
@@ -328,7 +428,7 @@ struct CaptureWizardView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
 
-            Text("Share this file with the MockTab developer to add or fix device support.")
+            Text("Share this file with MockTab developers for potential feature support.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
@@ -378,6 +478,7 @@ struct CaptureWizardView: View {
         if spec?.hasTilt == true {
             steps += [.hover5mm, .tilt15, .tilt45, .rotationCW, .rotationCCW]
         }
+
         if let ek = spec?.buttonCount, ek > 0 {
             let keyMap: [Int: CalibrationStep] = [
                 1: .expressKey1, 2: .expressKey2, 3: .expressKey3, 4: .expressKey4,
@@ -387,41 +488,55 @@ struct CaptureWizardView: View {
                 if let k = keyMap[i] { steps.append(k) }
             }
         }
+
         if spec?.hasTouchRing == true {
             steps += [.touchRing, .touchRingPos0]
         }
 
-        let gate = gate  // local let so the closure captures the object, not self
+        let gate = gate // local let so the closure captures the object, not self
         engine.onSampleCaptured = { [gate] _, sample in
             if !Activity.isKeyStep(sample.step) {
                 // Background step (idle baseline, hover, tilt, rotation) — advance silently.
                 engine.confirmAndContinue()
                 return
             }
+
             guard gate.isArmed else {
-                // Key step but Ready hasn't been clicked yet — ignore it.
-                // The rebaseline timer (if still running) will reset the baseline.
-                // Once the user clicks Ready and the 400ms drain completes, the
-                // gate opens and we capture the next key step.
+                // Key step but the gate isn't open — ignore it.
+                // The rebaseline timer (if running) keeps the baseline fresh until Ready.
                 return
             }
-            gate.isArmed = false  // close the gate before advancing
-            if let act = Activity.activity(for: sample.step) {
-                Task { @MainActor in
-                    detectedActivities.insert(act.rawValue)
-                }
+
+            gate.isArmed = false // close gate before advancing
+
+            // Track express key captures for the running UI counter.
+            if Activity.activity(for: sample.step) == .expressKeys {
+                Task { @MainActor in capturedKeyCount += 1 }
             }
-            // Brief pause so the user can see the checkmark, then advance.
+
+            // For express keys, a shorter post-capture pause is sufficient because the
+            // gate will auto-rearm via onChange and the user is already in button-press
+            // mode. Other steps use the longer pause so the user can register the state
+            // change before the next instruction appears.
+            let pauseNS: UInt64 = Activity.activity(for: sample.step) == .expressKeys
+                ? 600_000_000   // 0.6 s
+                : 1_200_000_000 // 1.2 s
+
             Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                try? await Task.sleep(nanoseconds: pauseNS)
                 engine.confirmAndContinue()
             }
         }
 
+        // Wrap in Task { @MainActor in } because the engine may invoke this callback
+        // from a background HID-event thread. Mutating @State from any non-main-actor
+        // context is undefined behaviour and can silently drop the UI update.
         engine.onCalibrationComplete = { result in
-            stopRebaseline()
-            if let url = engine.exportJSON(result: result) {
-                savedURL = url
+            Task { @MainActor in
+                stopRebaseline()
+                if let url = engine.exportJSON(result: result) {
+                    savedURL = url
+                }
             }
         }
 
@@ -448,7 +563,7 @@ struct CaptureWizardView: View {
 
     // MARK: - Baseline timer
 
-    /// Fires every 0.25s, resetting the engine's baseline so that pen hover
+    /// Fires every 0.25 s, resetting the engine's baseline so that pen hover
     /// movement doesn't constitute "input" until the user clicks Ready.
     private func startRebaseline() {
         stopRebaseline()
