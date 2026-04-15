@@ -26,6 +26,7 @@ struct InfoView: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var settings: TabletSettings
     var productID: Int?
+    @StateObject private var captureEngine = CaptureEngine.shared
 
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var launchAtLogin = false
@@ -38,6 +39,7 @@ struct InfoView: View {
     @State private var captureLastSaved: String? = nil
     @State private var showCaptureWizard = false
     @State private var discoverySaved: String? = nil
+    @State private var discoveryInstructions: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -287,13 +289,13 @@ struct InfoView: View {
  .tint(.blue)
  .controlSize(.small)
  .help("Guided calibration for unknown tablets. Produces a small JSON file for device support.")
- Button("Quick Discovery (60s)") {
+ Button("Quick Discovery (10s)") {
             startDiscovery()
         }
         .buttonStyle(.bordered)
         .tint(.purple)
         .controlSize(.small)
-        .help("Automatically discover all HID reports for 60 seconds.")
+        .help("Capture HID reports for 10 seconds while you move the stylus and press buttons.")
  Spacer()
  }
 
@@ -303,6 +305,18 @@ struct InfoView: View {
                     .foregroundStyle(.secondary)
             }
 
+
+        if captureEngine.isDiscoveryMode {
+            Text("Move stylus, press buttons, tilt, rotate...")
+                .font(.settingsLabel)
+                .foregroundStyle(.blue)
+        }
+
+        if let saved = discoverySaved {
+            Text("Discovery saved: \(saved)")
+                .font(.settingsLabel)
+                .foregroundStyle(.secondary)
+        }
             Text("Records every raw HID report before the decoder. Use to identify unknown byte positions (DTK-2400 barrel bits, KC-100 buttons, BT container layout).")
                 .font(.settingsLabel)
                 .foregroundStyle(.tertiary)
@@ -330,22 +344,21 @@ struct InfoView: View {
             serialNumber: nil
         )
 
-        // Set up completion callback
-        CaptureEngine.shared.onCalibrationComplete = nil  // Clear calibration callback
+        // Clear previous state
+        discoverySaved = nil
+        discoveryInstructions = nil
 
-        // Start discovery
-        CaptureEngine.shared.startDiscovery(deviceInfo: deviceInfo, duration: 60)
-
-        // Set up timer to finish and save
-        DispatchQueue.main.asyncAfter(deadline: .now() + 61) {
-            if CaptureEngine.shared.isRunning {
-                if let result = CaptureEngine.shared.finishDiscovery() {
-                    if let url = CaptureEngine.shared.exportDiscoveryJSON(result: result) {
-                        discoverySaved = url.lastPathComponent
-                    }
-                }
+        // Clear calibration callback and set discovery completion handler
+        captureEngine.onCalibrationComplete = nil
+        captureEngine.onDiscoveryComplete = { result in
+            if let url = CaptureEngine.shared.exportDiscoveryJSON(result: result) {
+                discoverySaved = url.lastPathComponent
             }
+            discoveryInstructions = nil
         }
+
+        // Start discovery (10 seconds)
+        captureEngine.startDiscovery(deviceInfo: deviceInfo, duration: 10)
     }
 
     // MARK: - Diagnostic section
