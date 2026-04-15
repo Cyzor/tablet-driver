@@ -311,10 +311,10 @@ struct IntuosV2Decoder: WacomDecoder {
             state.hasValidRotationFrame = true
         }
 
-        // Proximity distance (hover height): Byte 14, 0-255 scale.
-        // When the pen is closer (lower hover distance), pressure increases.
-        // Max range is device-dependent but typically 0-127 for practical hovering.
-        let hoverDistance = Int(report[14])
+        // Proximity distance (hover height): Byte 16, 0-63 scale.
+        // 0 = tip in contact, 1-63 = hover height (kernel: features.distance_max = 63).
+        // When the pen approaches the tablet, distance decreases toward 0.
+        let hoverDistance = Int(report[16])
 
         results.append(
             .pen(
@@ -339,7 +339,7 @@ struct IntuosV2Decoder: WacomDecoder {
         spec: DigitizerSpec,
         state: inout DecoderState
     ) -> [DecodeResult] {
-        guard length >= 14 else { return [] }
+        guard length >= 17 else { return [] }
         let status = report[2]
         let x = Int(UInt16(report[3]) | UInt16(report[4]) << 8) | (Int(report[5]) << 16)
         let y = Int(UInt16(report[6]) | UInt16(report[7]) << 8) | (Int(report[8]) << 16)
@@ -347,7 +347,8 @@ struct IntuosV2Decoder: WacomDecoder {
         let pressure = Int(UInt16(report[9]) | (UInt16(report[10] & 0x1F) << 8))
         let tiltX = Double(Int8(bitPattern: report[11])) / 127.0
         let tiltY = Double(Int8(bitPattern: report[12])) / 127.0
-        let hoverDistance = Int(report[13])
+        // Hover distance: same absolute position as 0x10 per kernel spec.
+        let hoverDistance = Int(report[16])
         let isArtPen = state.currentToolCode == 0x0804 || state.currentToolCode == 0x1108
         let toolIsEraser = !isArtPen && (state.currentToolCode & 0x0008) != 0
 
