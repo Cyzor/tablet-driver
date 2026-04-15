@@ -124,6 +124,16 @@ final class CaptureEngine: ObservableObject {
         currentToolCode = toolCode
     }
 
+    /// Reset the current step's baseline to the next incoming report.
+    /// Also resets `hasCapturedThisStep` so the step can capture again — used
+    /// when a spurious capture (e.g. hover movement) must be discarded.
+    func rebaseline() {
+        guard isRunning, !isDiscoveryMode else { return }
+        currentBaseline = nil
+        hasCapturedThisStep = false
+        capturedAction = nil
+    }
+
     /// Request that the current step be skipped.
     func skipCurrentStep() {
         guard isRunning else { return }
