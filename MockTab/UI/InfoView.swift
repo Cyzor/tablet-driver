@@ -28,14 +28,8 @@ struct CollectTabletDataView: View {
     let productID: Int
     let onComplete: () -> Void
     @Binding var discoverySaved: String?
-
     @State private var currentPressure: Double = 0
     @State private var feedbackCount = 0
-    @State private var timeRemaining = 15
-    @State private var isRunning = false
-    @State private var countdownTimer: Timer?
-
-    private let duration = 15
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,7 +41,7 @@ struct CollectTabletDataView: View {
             Divider()
             footer
         }
-        .frame(width: 480, height: 420)
+        .frame(width: 480, height: 380)
         .onAppear { startCollection() }
         .onDisappear { stopCollection() }
     }
@@ -61,11 +55,6 @@ struct CollectTabletDataView: View {
                 .foregroundStyle(.purple)
             Text("Collect Tablet Data")
                 .font(.headline)
-            Spacer()
-            Text("\(timeRemaining)s")
-                .font(.title2)
-                .monospacedDigit()
-                .foregroundStyle(timeRemaining <= 5 ? .red : .secondary)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
@@ -153,33 +142,27 @@ struct CollectTabletDataView: View {
     }
 
     // MARK: - Footer
-
     private var footer: some View {
         HStack {
             Button("Cancel") {
                 cancelCollection()
             }
             .keyboardShortcut(.escape)
-
             Spacer()
-
-            if !isRunning && feedbackCount > 0 {
+            if feedbackCount > 0 {
                 Text("Collection complete!")
                     .font(.callout)
                     .foregroundStyle(.green)
-            } else if isRunning {
+            } else {
                 Text("Tap, click, and draw to provide input...")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-
             Spacer()
-
-            Button(isRunning ? "Done" : "Close") {
+            Button("Close") {
                 onComplete()
             }
             .keyboardShortcut(.defaultAction)
-            .disabled(isRunning)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
@@ -191,18 +174,14 @@ struct CollectTabletDataView: View {
 
     private func startCollection() {
         guard let spec = WacomDeviceRegistry.spec(for: productID) else { return }
-        isRunning = true
         feedbackCount = 0
-
         CaptureEngine.shared.onDiscoveryComplete = { [self] result in
             Task { @MainActor in
-                isRunning = false
                 if let url = CaptureEngine.shared.exportDiscoveryJSON(result: result) {
                     discoverySaved = url.lastPathComponent
                 }
             }
         }
-
         let deviceInfo = CaptureDeviceInfo(
             vendorID: 0x056A,
             productID: spec.productID,
@@ -210,41 +189,19 @@ struct CollectTabletDataView: View {
             locationID: nil,
             serialNumber: nil
         )
-
         CaptureEngine.shared.startDiscovery(
             deviceInfo: deviceInfo,
-            duration: TimeInterval(duration)
+            duration: 60
         )
-        startCountdownTimer()
     }
 
     private func stopCollection() {
         CaptureEngine.shared.cancelDiscovery()
-        countdownTimer?.invalidate()
-        countdownTimer = nil
     }
 
     private func cancelCollection() {
         stopCollection()
         onComplete()
-    }
-
-    private func startCountdownTimer() {
-        timeRemaining = duration
-        countdownTimer?.invalidate()
-        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
-            Task { @MainActor in
-                guard timeRemaining > 0 else {
-                    countdownTimer?.invalidate()
-                    countdownTimer = nil
-                    return
-                }
-                timeRemaining -= 1
-                if timeRemaining == 0 {
-                    isRunning = false
-                }
-            }
-        }
     }
 }
 
