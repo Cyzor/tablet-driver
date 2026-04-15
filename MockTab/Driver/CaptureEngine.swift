@@ -41,7 +41,11 @@ final class CaptureEngine: ObservableObject {
 
     // MARK: - Published UI State
 
-    @Published private(set) var isRunning = false
+    @Published private(set) var isRunning = false {
+        didSet { _isRunningNonisolated = isRunning }
+    }
+    /// Nonisolated mirror of `isRunning` for use in HID callbacks (main run loop, no data race).
+    nonisolated(unsafe) private(set) var _isRunningNonisolated = false
     @Published private(set) var currentStepIndex = 0
     @Published private(set) var armedStep: CalibrationStep?
     @Published private(set) var lastError: String?

@@ -64,80 +64,85 @@ final class ToolSettings: ObservableObject {
     }
 
     @Published private var tipRaw: String = "" {
-        didSet { persist("tipBinding", tipRaw) }
+        didSet { persist("tipBinding", tipRaw); _tipBinding = ButtonBinding.decode(tipRaw) ?? .leftClick }
     }
 
     @Published private var eraserRaw: String = "" {
-        didSet { persist("eraserBinding", eraserRaw) }
+        didSet { persist("eraserBinding", eraserRaw); _eraserBinding = ButtonBinding.decode(eraserRaw) ?? .rightClick }
     }
 
+    private var _tipBinding: ButtonBinding = .leftClick
+    private var _eraserBinding: ButtonBinding = .rightClick
+
     var tipBinding: ButtonBinding {
-        get { ButtonBinding.decode(freshString("tipBinding") ?? "") ?? .leftClick }
+        get { _tipBinding }
         set { tipRaw = newValue.encoded }
     }
 
     var eraserBinding: ButtonBinding {
-        get { ButtonBinding.decode(freshString("eraserBinding") ?? "") ?? .rightClick }
+        get { _eraserBinding }
         set { eraserRaw = newValue.encoded }
     }
 
     @Published private var pen1Raw: String = "" {
-        didSet { persist("penButton1Binding", pen1Raw) }
+        didSet { persist("penButton1Binding", pen1Raw); _pen1Binding = ButtonBinding.decode(pen1Raw) ?? .rightClick }
     }
 
     @Published private var pen2Raw: String = "" {
-        didSet { persist("penButton2Binding", pen2Raw) }
+        didSet { persist("penButton2Binding", pen2Raw); _pen2Binding = ButtonBinding.decode(pen2Raw) ?? (isMouse ? .rightClick : .middleClick) }
     }
 
+    private var _pen1Binding: ButtonBinding = .rightClick
+    private var _pen2Binding: ButtonBinding = .middleClick
+
     var penButton1Binding: ButtonBinding {
-        get { ButtonBinding.decode(freshString("penButton1Binding") ?? "") ?? .rightClick }
+        get { _pen1Binding }
         set { pen1Raw = newValue.encoded }
     }
 
     var penButton2Binding: ButtonBinding {
-        get {
-            let defaultBinding: ButtonBinding = isMouse ? .rightClick : .middleClick
-            return ButtonBinding.decode(freshString("penButton2Binding") ?? "") ?? defaultBinding
-        }
+        get { _pen2Binding }
         set { pen2Raw = newValue.encoded }
     }
 
     @Published private var pen3Raw: String = "" {
-        didSet { persist("penButton3Binding", pen3Raw) }
+        didSet { persist("penButton3Binding", pen3Raw); _pen3Binding = ButtonBinding.decode(pen3Raw) ?? (isMouse ? .middleClick : .none) }
     }
 
     @Published private var pen4Raw: String = "" {
-        didSet { persist("penButton4Binding", pen4Raw) }
+        didSet { persist("penButton4Binding", pen4Raw); _pen4Binding = ButtonBinding.decode(pen4Raw) ?? .none }
     }
 
     @Published private var pen5Raw: String = "" {
-        didSet { persist("penButton5Binding", pen5Raw) }
+        didSet { persist("penButton5Binding", pen5Raw); _pen5Binding = ButtonBinding.decode(pen5Raw) ?? .none }
     }
 
     @Published private var wheelRaw: String = "" {
-        didSet { persist("wheelBinding", wheelRaw) }
+        didSet { persist("wheelBinding", wheelRaw); _wheelBinding = ButtonBinding.decode(wheelRaw) ?? .none }
     }
 
+    private var _pen3Binding: ButtonBinding = .none
+    private var _pen4Binding: ButtonBinding = .none
+    private var _pen5Binding: ButtonBinding = .none
+    private var _wheelBinding: ButtonBinding = .none
+
     var penButton3Binding: ButtonBinding {
-        get {
-            let fallback: ButtonBinding = isMouse ? .middleClick : .none
-            return ButtonBinding.decode(freshString("penButton3Binding") ?? "") ?? fallback
-        }
+        get { _pen3Binding }
         set { pen3Raw = newValue.encoded }
     }
 
     var penButton4Binding: ButtonBinding {
-        get { ButtonBinding.decode(freshString("penButton4Binding") ?? "") ?? .none }
+        get { _pen4Binding }
         set { pen4Raw = newValue.encoded }
     }
 
     var penButton5Binding: ButtonBinding {
-        get { ButtonBinding.decode(freshString("penButton5Binding") ?? "") ?? .none }
+        get { _pen5Binding }
         set { pen5Raw = newValue.encoded }
     }
 
     var wheelBinding: ButtonBinding {
-        get { ButtonBinding.decode(freshString("wheelBinding") ?? "") ?? .none }
+        get { _wheelBinding }
         set { wheelRaw = newValue.encoded }
     }
 
