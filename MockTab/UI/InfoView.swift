@@ -51,11 +51,13 @@ struct InfoView: View {
                     // re-renders the live section on livePoint/liveButtons
                     // changes — the static status table above is unaffected.
                     LiveInputView(
-                        livePoint:    tabletManager.contexts[productID ?? 0]?.livePoint,
-                        liveButtons:  tabletManager.contexts[productID ?? 0]?.liveButtons ?? LiveButtonState(),
+                        livePoint: tabletManager.contexts[productID ?? 0]?.livePoint,
+                        liveButtons: tabletManager.contexts[productID ?? 0]?.liveButtons
+                            ?? LiveButtonState(),
                         activeToolID: tabletManager.contexts[productID ?? 0]?.activeToolID,
-                        registry:     DeviceRegistry.shared,
-                        hasDualRings: WacomDeviceRegistry.spec(for: productID ?? 0)?.hasDualRings == true
+                        registry: DeviceRegistry.shared,
+                        hasDualRings: WacomDeviceRegistry.spec(for: productID ?? 0)?.hasDualRings
+                            == true
                     )
                     Divider()
                     captureSection
@@ -69,15 +71,18 @@ struct InfoView: View {
                 NotificationCenter.default.publisher(
                     for: NSApplication.didBecomeActiveNotification)
             ) { _ in refresh() }
-            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared, productID: productID ?? 0)
- .sheet(isPresented: $showCaptureWizard) {
- CaptureWizardView(
- engine: CaptureEngine.shared,
- tabletManager: tabletManager,
- productID: productID ?? 0,
- onDismiss: { showCaptureWizard = false }
- )
- }
+            DeviceStatusBar(
+                settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared,
+                productID: productID ?? 0
+            )
+            .sheet(isPresented: $showCaptureWizard) {
+                CaptureWizardView(
+                    engine: CaptureEngine.shared,
+                    tabletManager: tabletManager,
+                    productID: productID ?? 0,
+                    onDismiss: { showCaptureWizard = false }
+                )
+            }
         }
     }
 
@@ -110,10 +115,12 @@ struct InfoView: View {
                         ? "\(pct)%  (Charging)"
                         : "\(pct)%",
                     ok: pct < 20 ? false : nil,
-                    leadingSymbol: batterySymbolName(pct: pct,
-                                                    charging: deviceContext?.batteryCharging ?? false),
-                    symbolColor:   batteryColor(pct: pct,
-                                                charging: deviceContext?.batteryCharging ?? false))
+                    leadingSymbol: batterySymbolName(
+                        pct: pct,
+                        charging: deviceContext?.batteryCharging ?? false),
+                    symbolColor: batteryColor(
+                        pct: pct,
+                        charging: deviceContext?.batteryCharging ?? false))
             }
 
             row(
@@ -131,7 +138,9 @@ struct InfoView: View {
                 value: accessibilityGranted ? "Granted" : "Not granted",
                 ok: accessibilityGranted,
                 fix: accessibilityGranted ? nil : requestAccessibility,
-                fixHelp: "Open System Settings to grant MockTab permission to inject keyboard and mouse events into other apps.")
+                fixHelp:
+                    "Open System Settings to grant MockTab permission to inject keyboard and mouse events into other apps."
+            )
 
             row(
                 "HID Manager",
@@ -157,7 +166,9 @@ struct InfoView: View {
                     : "\(conflicts.count) issue\(conflicts.count == 1 ? "" : "s")",
                 ok: conflicts.isEmpty ? true : false,
                 fix: conflicts.isEmpty ? nil : showConflictAlert,
-                fixHelp: "Show details about detected conflicts with other tablet drivers and how to resolve them.")
+                fixHelp:
+                    "Show details about detected conflicts with other tablet drivers and how to resolve them."
+            )
         }
     }
 
@@ -166,7 +177,7 @@ struct InfoView: View {
         _ label: String, value: String,
         ok: Bool?,
         leadingSymbol: String? = nil,
-        symbolColor:   Color?  = nil,
+        symbolColor: Color? = nil,
         fix: (() -> Void)? = nil,
         fixHelp: String? = nil
     ) -> some View {
@@ -213,20 +224,20 @@ struct InfoView: View {
     private func batterySymbolName(pct: Int, charging: Bool) -> String {
         guard !charging else { return "battery.100percent.bolt" }
         switch pct {
-        case 0 ..< 13:  return "battery.0percent"
-        case 13 ..< 38: return "battery.25percent"
-        case 38 ..< 63: return "battery.50percent"
-        case 63 ..< 88: return "battery.75percent"
-        default:        return "battery.100percent"
+        case 0..<13: return "battery.0percent"
+        case 13..<38: return "battery.25percent"
+        case 38..<63: return "battery.50percent"
+        case 63..<88: return "battery.75percent"
+        default: return "battery.100percent"
         }
     }
 
     /// Returns a colour that reflects battery health:
     /// red < 20 %, orange 20–49 %, green ≥ 50 % (and charging).
     private func batteryColor(pct: Int, charging: Bool) -> Color {
-        if charging  { return .green }
-        if pct < 20  { return .red   }
-        if pct < 50  { return .orange }
+        if charging { return .green }
+        if pct < 20 { return .red }
+        if pct < 50 { return .orange }
         return .green
     }
 
@@ -238,66 +249,75 @@ struct InfoView: View {
                 .font(.headline)
 
             HStack(spacing: 12) {
-                Button(captureActive ? "Stop Capture" : "Start Capture") {
+                // Start Capture / Save to Desktop removed — the raw HID firehose is
+                // no longer needed now that Calibrate Unknown Device produces clean delta reports.
+                #if false
+                    Button(captureActive ? "Stop Capture" : "Start Capture") {
+                        if captureActive {
+                            HIDCapture.shared.stop()
+                            captureCount = HIDCapture.shared.reportCount
+                            captureActive = false
+                        } else {
+                            HIDCapture.shared.start()
+                            captureCount = 0
+                            captureLastSaved = nil
+                            captureActive = true
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(captureActive ? .red : .accentColor)
+                    .controlSize(.small)
+                    .help(
+                        "Record every raw HID report from the tablet before decoding. Use to diagnose unknown byte positions or decoder issues."
+                    )
                     if captureActive {
-                        HIDCapture.shared.stop()
+                        Text("\(captureCount) reports")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    Spacer()
+                    Button("Save to Desktop") {
+                        if captureActive {
+                            HIDCapture.shared.stop()
+                            captureActive = false
+                        }
                         captureCount = HIDCapture.shared.reportCount
-                        captureActive = false
-                    } else {
-                        HIDCapture.shared.start()
-                        captureCount = 0
-                        captureLastSaved = nil
-                        captureActive = true
+                        if let url = HIDCapture.shared.save() {
+                            captureLastSaved = url.lastPathComponent
+                            HIDCapture.shared.clear()
+                            captureCount = 0
+                        }
                     }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(captureActive ? .red : .accentColor)
-                .controlSize(.small)
-                .help("Record every raw HID report from the tablet before decoding. Use to diagnose unknown byte positions or decoder issues.")
-
-                if captureActive {
-                    Text("\(captureCount) reports")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-
-                Spacer()
-
-                Button("Save to Desktop") {
-                    if captureActive {
-                        HIDCapture.shared.stop()
-                        captureActive = false
-                    }
-                    captureCount = HIDCapture.shared.reportCount
-                    if let url = HIDCapture.shared.save() {
-                        captureLastSaved = url.lastPathComponent
-                        HIDCapture.shared.clear()
-                        captureCount = 0
-                    }
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(captureCount == 0 && !captureActive)
-                .help("Stop capture (if running) and save all recorded HID reports to a JSON file on the Desktop.")
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(captureCount == 0 && !captureActive)
+                    .help(
+                        "Stop capture (if running) and save all recorded HID reports to a JSON file on the Desktop."
+                    )
+                #endif
             }
 
- HStack(spacing: 12) {
- Button("Calibrate Unknown Device") {
- showCaptureWizard = true
- }
- .buttonStyle(.bordered)
- .tint(.blue)
- .controlSize(.small)
- .help("Guided calibration for unknown tablets. Produces a small JSON file for device support.")
- Button("Quick Discovery (10s)") {
-            startDiscovery()
-        }
-        .buttonStyle(.bordered)
-        .tint(.purple)
-        .controlSize(.small)
-        .help("Capture HID reports for 10 seconds while you move the stylus and press buttons.")
- Spacer()
- }
+            HStack(spacing: 12) {
+                Button("Calibrate Unknown Device") {
+                    showCaptureWizard = true
+                }
+                .buttonStyle(.bordered)
+                .tint(.blue)
+                .controlSize(.small)
+                .help(
+                    "Guided calibration for unknown tablets. Produces a small JSON file for device support."
+                )
+                Button("Quick Discovery (10s)") {
+                    startDiscovery()
+                }
+                .buttonStyle(.bordered)
+                .tint(.purple)
+                .controlSize(.small)
+                .help(
+                    "Capture HID reports for 10 seconds while you move the stylus and press buttons."
+                )
+                Spacer()
+            }
 
             if let saved = captureLastSaved {
                 Text("Saved: \(saved)")
@@ -305,21 +325,22 @@ struct InfoView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if captureEngine.isDiscoveryMode {
+                Text("Move stylus, press buttons, tilt, rotate...")
+                    .font(.settingsLabel)
+                    .foregroundStyle(.blue)
+            }
 
-        if captureEngine.isDiscoveryMode {
-            Text("Move stylus, press buttons, tilt, rotate...")
-                .font(.settingsLabel)
-                .foregroundStyle(.blue)
-        }
-
-        if let saved = discoverySaved {
-            Text("Discovery saved: \(saved)")
-                .font(.settingsLabel)
-                .foregroundStyle(.secondary)
-        }
-            Text("Records every raw HID report before the decoder. Use to identify unknown byte positions (DTK-2400 barrel bits, KC-100 buttons, BT container layout).")
-                .font(.settingsLabel)
-                .foregroundStyle(.tertiary)
+            if let saved = discoverySaved {
+                Text("Discovery saved: \(saved)")
+                    .font(.settingsLabel)
+                    .foregroundStyle(.secondary)
+            }
+            Text(
+                "Records every raw HID report before the decoder. Use to identify unknown byte positions (DTK-2400 barrel bits, KC-100 buttons, BT container layout)."
+            )
+            .font(.settingsLabel)
+            .foregroundStyle(.tertiary)
         }
         .onReceive(
             Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
@@ -329,7 +350,6 @@ struct InfoView: View {
             }
         }
     }
-
 
     // MARK: - Discovery Mode
 
@@ -400,7 +420,8 @@ struct InfoView: View {
         fmt.timeStyle = .medium
         lines += ["Generated : \(fmt.string(from: Date()))"]
 
-        let ver   = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let ver =
+            Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
         lines += ["App       : MockTab \(ver) (build \(build))"]
 
@@ -474,14 +495,14 @@ struct InfoView: View {
     // MARK: - Conflict detection
 
     private static let competingProcesses: [(name: String, label: String)] = [
-        ("WacomTabletDriver",       "Wacom Tablet Driver"),
-        ("TabletDriver",            "Wacom TabletDriver"),
-        ("Wacom_IOManager",         "Wacom I/O Manager"),
-        ("WacomTabletSpringboard",  "Wacom Springboard"),
-        ("DataStoreMgr",            "Wacom DataStore Manager"),
+        ("WacomTabletDriver", "Wacom Tablet Driver"),
+        ("TabletDriver", "Wacom TabletDriver"),
+        ("Wacom_IOManager", "Wacom I/O Manager"),
+        ("WacomTabletSpringboard", "Wacom Springboard"),
+        ("DataStoreMgr", "Wacom DataStore Manager"),
         ("OpenTabletDriver.Daemon", "OpenTabletDriver Daemon"),
-        ("OpenTabletDriver.UX",     "OpenTabletDriver UX"),
-        ("OpenTabletDriver",        "OpenTabletDriver (GUI)"),
+        ("OpenTabletDriver.UX", "OpenTabletDriver UX"),
+        ("OpenTabletDriver", "OpenTabletDriver (GUI)"),
     ]
 
     private func detectConflicts() -> [String] {
@@ -526,7 +547,9 @@ struct InfoView: View {
         for i in 0..<actualCount {
             let comm = procs[i].kp_proc.p_comm
             let name = withUnsafeBytes(of: comm) { buf in
-                guard let base = buf.baseAddress?.assumingMemoryBound(to: CChar.self) else { return "" }
+                guard let base = buf.baseAddress?.assumingMemoryBound(to: CChar.self) else {
+                    return ""
+                }
                 return String(cString: base)
             }
             if !name.isEmpty { names.insert(name) }
@@ -539,13 +562,16 @@ struct InfoView: View {
         alert.alertStyle = .warning
         alert.messageText = "Potential Conflicts Detected"
 
-        var body = "MockTab found the following issues that may interfere with tablet operation:\n\n"
+        var body =
+            "MockTab found the following issues that may interfere with tablet operation:\n\n"
         for (i, conflict) in conflicts.enumerated() {
             body += "  \(i + 1). \(conflict)\n"
         }
         body += "\nRecommendation: Quit or disable the listed processes, then restart MockTab. "
-        body += "For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. "
-        body += "For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet."
+        body +=
+            "For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. "
+        body +=
+            "For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet."
 
         alert.informativeText = body
         alert.addButton(withTitle: "OK")
@@ -572,10 +598,10 @@ struct InfoView: View {
 // by pen-report updates.
 
 private struct LiveInputView: View {
-    let livePoint:    TabletPoint?
-    let liveButtons:  LiveButtonState
+    let livePoint: TabletPoint?
+    let liveButtons: LiveButtonState
     let activeToolID: String?
-    let registry:     DeviceRegistry
+    let registry: DeviceRegistry
     var hasDualRings: Bool = false
 
     var body: some View {
@@ -591,7 +617,7 @@ private struct LiveInputView: View {
                 }()
 
                 stylusRow(label: "Stylus Name", value: tool?.nickname ?? "—")
-                stylusRow(label: "Stylus Type", value: tool?.kind     ?? "—")
+                stylusRow(label: "Stylus Type", value: tool?.kind ?? "—")
                 stylusRow(
                     label: "Tool Code",
                     value: tool?.toolCode.map { "0x\(String(format: "%04X", $0))" } ?? "—")
@@ -603,20 +629,21 @@ private struct LiveInputView: View {
 
                 // ── Live data ─────────────────────────────────────────────────
                 let point = livePoint
-                let lb    = liveButtons
+                let lb = liveButtons
 
                 liveRow(label: "Buttons") {
                     let anyExpress = lb.expressKeys.contains(true)
                     HStack(spacing: 4) {
-                        if lb.tipDown     { tag("Tip") }
-                        if lb.eraserDown  { tag("Eraser") }
+                        if lb.tipDown { tag("Tip") }
+                        if lb.eraserDown { tag("Eraser") }
                         if lb.button1Down { tag("B1") }
                         if lb.button2Down { tag("B2") }
                         ForEach(0..<lb.expressKeys.count, id: \.self) { i in
                             if lb.expressKeys[i] { tag("K\(i + 1)") }
                         }
                         if !lb.tipDown && !lb.eraserDown && !lb.button1Down
-                            && !lb.button2Down && !anyExpress {
+                            && !lb.button2Down && !anyExpress
+                        {
                             Text("None").foregroundStyle(.tertiary).font(.settingsBadge)
                         }
                     }
@@ -647,18 +674,22 @@ private struct LiveInputView: View {
                 }
 
                 liveRow(label: "Coordinate") {
-                    Text(point != nil
-                         ? "X: \(point!.x)   Y: \(point!.y)"
-                         : "X: 0   Y: 0")
-                        .monospacedDigit()
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(
+                        point != nil
+                            ? "X: \(point!.x)   Y: \(point!.y)"
+                            : "X: 0   Y: 0"
+                    )
+                    .monospacedDigit()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 liveRow(label: "Tilt") {
-                    Text(point != nil
-                         ? "X: \(String(format: "%+.2f", point!.tiltX))   Y: \(String(format: "%+.2f", point!.tiltY))"
-                         : "X: +0.00   Y: +0.00")
-                        .monospacedDigit()
+                    Text(
+                        point != nil
+                            ? "X: \(String(format: "%+.2f", point!.tiltX))   Y: \(String(format: "%+.2f", point!.tiltY))"
+                            : "X: +0.00   Y: +0.00"
+                    )
+                    .monospacedDigit()
                 }
 
                 liveRow(label: "Hover") {
@@ -672,10 +703,12 @@ private struct LiveInputView: View {
 
                 liveRow(label: hasDualRings ? "Ring — Left" : "Touch Ring") {
                     HStack(spacing: 6) {
-                        Image(systemName: lb.touchRingActive
-                              ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(lb.touchRingActive ? Color.green : Color.secondary)
-                            .imageScale(.small)
+                        Image(
+                            systemName: lb.touchRingActive
+                                ? "checkmark.circle.fill" : "circle"
+                        )
+                        .foregroundStyle(lb.touchRingActive ? Color.green : Color.secondary)
+                        .imageScale(.small)
                         Text(lb.touchRingActive ? "Active" : "Idle")
                             .foregroundStyle(lb.touchRingActive ? .primary : .tertiary)
                     }
@@ -684,10 +717,12 @@ private struct LiveInputView: View {
                 if hasDualRings {
                     liveRow(label: "Ring — Right") {
                         HStack(spacing: 6) {
-                            Image(systemName: lb.touchRing2Active
-                                  ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(lb.touchRing2Active ? Color.green : Color.secondary)
-                                .imageScale(.small)
+                            Image(
+                                systemName: lb.touchRing2Active
+                                    ? "checkmark.circle.fill" : "circle"
+                            )
+                            .foregroundStyle(lb.touchRing2Active ? Color.green : Color.secondary)
+                            .imageScale(.small)
                             Text(lb.touchRing2Active ? "Active" : "Idle")
                                 .foregroundStyle(lb.touchRing2Active ? .primary : .tertiary)
                         }
@@ -720,8 +755,10 @@ private struct LiveInputView: View {
     }
 
     @ViewBuilder
-    private func liveRow(label: String,
-                         @ViewBuilder value: () -> some View) -> some View {
+    private func liveRow(
+        label: String,
+        @ViewBuilder value: () -> some View
+    ) -> some View {
         GridRow {
             Text(label)
                 .foregroundStyle(.secondary)

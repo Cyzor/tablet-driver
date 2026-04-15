@@ -231,3 +231,37 @@ Standard feature in most tablets that many users disable because implementation 
 - [x] WacomDeviceRegistry: expanded ~50 → ~95 entries via OTD import.
 - [x] TabletAreaView: replaced hardcoded TabletModel picker with dynamic DeviceRegistry list.
 - [x] Phase 1–5: multi-device architecture, decoders, WacomGenericDevice, WacomDeviceRegistry.
+
+
+## Session 36 (2026-04-14) — Unknown Tablet Expansion: Architecture Analysis
+
+**Analysis conducted:** Review of WacomGenericDevice, WacomProbeDevice, WacomUniversalDevice, TabletManager device-matching, CaptureEngine, and WacomDeviceRegistry.
+
+**Key findings:**
+
+### WacomProbeDevice is dead code
+`WacomProbeDevice` exists as a designed-but-unwired probe shim. It never calls `onTablet`, so it cannot inject events — it only logs peaks to console. More critically, it is never instantiated in `TabletManager.deviceConnected()`. The path for unknown PIDs goes: DTK-2400 → ACK-40401 → WacomUniversal → WacomGeneric. WacomProbeDevice is unreachable.
+
+### WacomGenericDevice handles unknown Wacom already
+For any Wacom PID not in the registry (or with a known spec but no decoder), the fallback is `WacomGenericDevice`. It auto-detects IntuosV1 vs IntuosV2 by maxReportSize, queries the HID descriptor for coordinate and pressure ranges, decodes using standard Wacom formulas, runs 30s peak tracking, and calls `onTablet` with full TabletPoint. The issue: decoding assumes IntuosV1/V2 format — a genuinely different Wacom format produces garbage.
+
+### Non-Wacom tablets are invisible
+`TabletManager.start()` sets vendor matching to `kIOHIDVendorIDKey → 0x056A` (Wacom only). No other vendor is visible. Supporting e.g. Huion requires removing the vendor filter AND building a vendor-specific decoder — HID descriptors reveal ranges but not byte layout.
+
+### CaptureEngine is production-ready
+CaptureModels, CaptureEngine, and CaptureWizardView work well and produce ~15KB JSON vs 500MB+ raw dumps. The gap: JSON is export-only, cannot be applied back to the driver automatically.
+
+### What 1.0 groundwork needs (Wacom only)
+
+**Phase A — Wire WacomProbeDevice into device-matching (1 day)**
+Add a path in `TabletManager.deviceConnected()` for PIDs with no registry entry AND maxReportSize == 10. Attach WacomProbeDevice. Show user feedback: Unknown Wacom detected. WacomProbeDevice must also call `onTablet` to produce usable cursor events, not just log peaks.
+
+**Phase B — Runtime registry (3–5 days)**
+Add `WacomDeviceRegistry.userDefinedSpecs: [WacomDeviceSpec]` (static, UserDefaults-persisted). `TabletManager.registerDevice(spec:)` accepts a user-supplied spec and re-maps the running DeviceContext. This closes the calibration loop: user captures → gets spec → registers → device works. Add Register button in UI.
+
+**Phase C — Generic fallback driver (1–2 weeks)**
+`GenericHIDDevice` that reads HID descriptor for maxX/Y and emits X/Y as mouse events with no pressure, tilt, or rotation. Works for any HID digitizer tablet (page 0x0D). Basic cursor for any tablet falling through all other paths.
+
+**Out of scope for 1.0:** Non-Wacom tablet support (Huion, XP-Pen, Gaomon) — requires per-vendor reverse-engineering and hardware testing.
+
+**Files affected:** TabletManager.swift (Phase A), WacomDeviceRegistry.swift (Phase B), CaptureEngine.swift, CaptureModels.swift (Phase B loop closure), WacomProbeDevice.swift (Phase A wiring + onTablet).
