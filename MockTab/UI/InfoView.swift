@@ -21,6 +21,365 @@ import ServiceManagement
 import SwiftUI
 
 /// Status dashboard tab — shows live device state, system permissions,
+// MARK: - Collect Tablet Data Sheet
+
+struct CollectTabletDataView: View {
+    @ObservedObject var tabletManager: TabletManager
+    let productID: Int
+    let onComplete: () -> Void
+    @Binding var discoverySaved: String?
+
+    @State private var currentPressure: Double = 0
+    @State private var feedbackCount = 0
+    @State private var timeRemaining = 15
+    @State private var isRunning = false
+    @State private var countdownTimer: Timer?
+
+    private let duration = 15
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            instructionsSection
+            Divider()
+            scratchpadSection
+            Divider()
+            footer
+        }
+        .frame(width: 480, height: 420)
+        .onAppear { startCollection() }
+        .onDisappear { stopCollection() }
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack {
+            Image(systemName: "antenna.radiowaves.left.and.right")
+                .font(.title2)
+                .foregroundStyle(.purple)
+            Text("Collect Tablet Data")
+                .font(.headline)
+            Spacer()
+            Text("\(timeRemaining)s")
+                .font(.title2)
+                .monospacedDigit()
+                .foregroundStyle(timeRemaining <= 5 ? .red : .secondary)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+
+    // MARK: - Instructions
+
+    private var instructionsSection: some View {
+        VStack(spacing: 8) {
+            Text("Move the stylus and press each button")
+                .font(.body)
+                .fontWeight(.medium)
+            Text(
+                "Cover all buttons, express keys, and touch rings if present.\nTap and draw in the area below to confirm input is detected."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+        }
+        .padding(.top, 12)
+    }
+
+    // MARK: - Scratchpad
+
+    private var scratchpadSection: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                CollectFeedbackCanvas(
+                    feedbackCount: $feedbackCount,
+                    currentPressure: $currentPressure
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+                .background(Color.white)
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                )
+
+                if feedbackCount > 0 {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Text("\(feedbackCount)")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.purple.opacity(0.8))
+                                .cornerRadius(4)
+                                .padding(8)
+                        }
+                        Spacer()
+                    }
+                }
+            }
+
+            HStack(spacing: 10) {
+                Text("Pressure")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 58, alignment: .leading)
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.secondary.opacity(0.12))
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(pressureColor)
+                            .frame(width: geo.size.width * currentPressure)
+                            .animation(.linear(duration: 0.05), value: currentPressure)
+                    }
+                }
+                .frame(height: 8)
+
+                Text(String(format: "%.0f%%", currentPressure * 100))
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    // MARK: - Footer
+
+    private var footer: some View {
+        HStack {
+            Button("Cancel") {
+                cancelCollection()
+            }
+            .keyboardShortcut(.escape)
+
+            Spacer()
+
+            if !isRunning && feedbackCount > 0 {
+                Text("Collection complete!")
+                    .font(.callout)
+                    .foregroundStyle(.green)
+            } else if isRunning {
+                Text("Tap, click, and draw to provide input...")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(isRunning ? "Done" : "Close") {
+                onComplete()
+            }
+            .keyboardShortcut(.defaultAction)
+            .disabled(isRunning)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+    }
+
+    private var pressureColor: Color {
+        currentPressure < 0.5 ? .purple : Color(hue: 0.05, saturation: 0.8, brightness: 0.85)
+    }
+
+    private func startCollection() {
+        guard let spec = WacomDeviceRegistry.spec(for: productID) else { return }
+        isRunning = true
+        feedbackCount = 0
+
+        CaptureEngine.shared.onDiscoveryComplete = { [self] result in
+            Task { @MainActor in
+                isRunning = false
+                if let url = CaptureEngine.shared.exportDiscoveryJSON(result: result) {
+                    discoverySaved = url.lastPathComponent
+                }
+            }
+        }
+
+        let deviceInfo = CaptureDeviceInfo(
+            vendorID: 0x056A,
+            productID: spec.productID,
+            name: spec.name,
+            locationID: nil,
+            serialNumber: nil
+        )
+
+        CaptureEngine.shared.startDiscovery(
+            deviceInfo: deviceInfo,
+            duration: TimeInterval(duration)
+        )
+        startCountdownTimer()
+    }
+
+    private func stopCollection() {
+        CaptureEngine.shared.cancelDiscovery()
+        countdownTimer?.invalidate()
+        countdownTimer = nil
+    }
+
+    private func cancelCollection() {
+        stopCollection()
+        onComplete()
+    }
+
+    private func startCountdownTimer() {
+        timeRemaining = duration
+        countdownTimer?.invalidate()
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
+            Task { @MainActor in
+                guard timeRemaining > 0 else {
+                    countdownTimer?.invalidate()
+                    countdownTimer = nil
+                    return
+                }
+                timeRemaining -= 1
+                if timeRemaining == 0 {
+                    isRunning = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Feedback Canvas
+
+private struct CollectFeedbackCanvas: NSViewRepresentable {
+    @Binding var feedbackCount: Int
+    @Binding var currentPressure: Double
+
+    func makeNSView(context: Context) -> FeedbackCanvasView {
+        let view = FeedbackCanvasView()
+        view.onPressureChange = { p in currentPressure = p }
+        view.onActivity = { _ in }
+        return view
+    }
+
+    func updateNSView(_ nsView: FeedbackCanvasView, context: Context) {
+        if feedbackCount != context.coordinator.lastFeedbackCount {
+            nsView.recordFeedback()
+            context.coordinator.lastFeedbackCount = feedbackCount
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    final class Coordinator {
+        var lastFeedbackCount = 0
+    }
+}
+
+private final class FeedbackCanvasView: NSView {
+    var onPressureChange: ((Double) -> Void)?
+    var onActivity: ((Int) -> Void)?
+
+    private var feedbackDots: [(NSPoint, Date)] = []
+    private let feedbackLifetime: TimeInterval = 1.5
+
+    override var isOpaque: Bool { true }
+    override var acceptsFirstResponder: Bool { true }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+    }
+
+    func recordFeedback() {
+        let center = NSPoint(x: bounds.midX, y: bounds.midY)
+        feedbackDots.append((center, Date()))
+        needsDisplay = true
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        recordDot(at: event.locationInWindow)
+        onPressureChange?(Double(event.pressure))
+        needsDisplay = true
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        let p = convert(event.locationInWindow, from: nil)
+        feedbackDots.append((p, Date()))
+        onPressureChange?(Double(event.pressure))
+        needsDisplay = true
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        onPressureChange?(0)
+        needsDisplay = true
+    }
+
+    private func recordDot(at point: NSPoint) {
+        let p = convert(point, from: nil)
+        feedbackDots.append((p, Date()))
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.white.setFill()
+        bounds.fill()
+
+        let gridColor = NSColor.black.withAlphaComponent(0.04)
+        gridColor.setFill()
+        let spacing: CGFloat = 16
+        var x: CGFloat = spacing
+        while x < bounds.width {
+            var y: CGFloat = spacing
+            while y < bounds.height {
+                let dot = CGRect(x: x - 0.75, y: y - 0.75, width: 1.5, height: 1.5)
+                NSBezierPath(ovalIn: dot).fill()
+                y += spacing
+            }
+            x += spacing
+        }
+
+        let now = Date()
+        feedbackDots.removeAll { now.timeIntervalSince($0.1) > feedbackLifetime }
+
+        for (point, timestamp) in feedbackDots {
+            let age = now.timeIntervalSince(timestamp)
+            let alpha = max(0, 1 - age / feedbackLifetime)
+            let scale = 0.5 + (alpha * 0.5)
+            let r: CGFloat = 8 * scale
+            let dot = CGRect(x: point.x - r / 2, y: point.y - r / 2, width: r, height: r)
+            NSColor.purple.withAlphaComponent(CGFloat(alpha * 0.8)).setFill()
+            NSBezierPath(ovalIn: dot).fill()
+        }
+    }
+}
+
+/// Status dashboard tab — shows live device state, system permissions,
+/// and a collapsible diagnostic dump for technical analysis.
+// SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026  This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+
+/// Status dashboard tab — shows live device state, system permissions,
 /// and a collapsible diagnostic dump for technical analysis.
 struct InfoView: View {
     @ObservedObject var tabletManager: TabletManager
@@ -40,6 +399,7 @@ struct InfoView: View {
     @State private var showCaptureWizard = false
     @State private var discoverySaved: String? = nil
     @State private var discoveryInstructions: String? = nil
+    @State private var showCollectDataSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -81,6 +441,14 @@ struct InfoView: View {
                     tabletManager: tabletManager,
                     productID: productID ?? 0,
                     onDismiss: { showCaptureWizard = false }
+                )
+            }
+            .sheet(isPresented: $showCollectDataSheet) {
+                CollectTabletDataView(
+                    tabletManager: tabletManager,
+                    productID: productID ?? 0,
+                    onComplete: { showCollectDataSheet = false },
+                    discoverySaved: $discoverySaved
                 )
             }
         }
@@ -307,8 +675,8 @@ struct InfoView: View {
                 .help(
                     "Guided calibration for unknown tablets. Produces a small JSON file for device support."
                 )
-                Button("Quick Discovery (10s)") {
-                    startDiscovery()
+                Button("Collect Tablet Data\u{2026}") {
+                    showCollectDataSheet = true
                 }
                 .buttonStyle(.bordered)
                 .tint(.purple)
