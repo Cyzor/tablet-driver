@@ -231,6 +231,8 @@ final class TabletManager: ObservableObject {
         {
             let name = app.localizedName ?? bundleID
             context.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
+            context.injector.activeAppNeedsTabletPointerEvents =
+                AppWatcher.qtGtkBundleIDs.contains(bundleID)
         }
 
         // Propagate context.objectWillChange to TabletManager so SwiftUI observers

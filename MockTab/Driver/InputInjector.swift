@@ -58,6 +58,11 @@ final class InputInjector {
     /// May be overridden by forcedToolCode from DeviceRegistry if set by the user.
     var activeToolCode: UInt16 = 0x0802
 
+    /// When true, the frontmost app consumes `.tabletPointer` CGEvents (Qt/GTK: Krita, GIMP).
+    /// Set by AppWatcher on every app switch. When false, postTabletPointerEvent is skipped,
+    /// saving one WindowServer IPC round-trip per inject() call.
+    var activeAppNeedsTabletPointerEvents: Bool = false
+
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
         self.deviceProductID = productID
@@ -353,7 +358,7 @@ final class InputInjector {
 
         // ── Tip press transitions (always immediate) ───────────────────────────
         if tipDown != lastTipDown {
-            if !activeToolIsMouse {
+            if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
                 postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)
             }
             if tipDown {
@@ -383,7 +388,7 @@ final class InputInjector {
                 || (tipDown && abs(pressure - lastPostedPressure) > Self.pressureEpsilon)
 
             if moved {
-                if !activeToolIsMouse {
+                if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
                     postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)
                 }
                 // USB mouse left button held (KC-100): injectMouseButtons() already sent
