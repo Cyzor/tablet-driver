@@ -323,29 +323,11 @@ struct ProfilesView: View {
 
     // MARK: - Summary Section
 
-    @ViewBuilder
     private var summarySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button {
-                withAnimation { summaryExpanded.toggle() }
-            } label: {
-                HStack {
-                    Text("Device Summary")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Image(systemName: summaryExpanded ? "chevron.up" : "chevron.down")
-                        .font(.settingsLabel)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .buttonStyle(.plain)
-
-            if summaryExpanded {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(registry.knownTablets, id: \.id) { tablet in
-                        tabletSummaryCard(tablet)
-                    }
+        DisclosureRow(label: "Device Summary", isExpanded: $summaryExpanded) {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(registry.knownTablets, id: \.id) { tablet in
+                    tabletSummaryCard(tablet)
                 }
             }
         }
