@@ -279,7 +279,7 @@ struct IntuosV2Decoder: WacomDecoder {
                         tiltX: 0, tiltY: 0, rotation: 0.0,
                         penButton1: (status & 0x02) != 0,
                         penButton2: (status & 0x04) != 0,
-                        eraser: false, inProximity: true, hoverDistance: 0,
+                        eraser: false, inProximity: true, hoverDistance: 0,  // Not reported by mouse
                         mouseMiddleButton: (report[9] & 0x02) != 0,
                         mouseWheelDelta: wheelDelta)))
             return results
@@ -320,7 +320,7 @@ struct IntuosV2Decoder: WacomDecoder {
                     penButton2: (status & 0x04) != 0,
                     eraser: (status & 0x08) != 0,
                     inProximity: true,
-                    hoverDistance: 0)))
+                    hoverDistance: 0)))  // IntuosV2 format doesn't report proximity height
 
         return results
     }
@@ -355,7 +355,7 @@ struct IntuosV2Decoder: WacomDecoder {
                     penButton2: (status & 0x04) != 0,
                     eraser: (status & 0x08) != 0,
                     inProximity: (status & 0x20) != 0,
-                    hoverDistance: 0))]
+                    hoverDistance: 0))]  // Not reported in offset format
     }
 
     // MARK: - BLE HOGP pen (0x01)

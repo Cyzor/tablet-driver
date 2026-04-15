@@ -93,7 +93,7 @@ struct BambooDecoder: WacomDecoder {
                             pressure: 0, maxPressure: spec.maxPressure,
                             tiltX: 0, tiltY: 0, rotation: 0.0,
                             penButton1: false, penButton2: false,
-                            eraser: state.isEraser, inProximity: false, hoverDistance: 0)))
+                            eraser: state.isEraser, inProximity: false, hoverDistance: 0)))  // Not reported by Bamboo format
             }
             // Decode pad buttons (only when device has express keys).
             if spec.buttonCount > 0 {
@@ -150,7 +150,7 @@ struct BambooDecoder: WacomDecoder {
                     penButton2: (status & 0x04) != 0,
                     eraser: isEraser,
                     inProximity: true,
-                    hoverDistance: 0)))
+                    hoverDistance: 0)))  // Not reported by Bamboo format
 
         return results
     }
