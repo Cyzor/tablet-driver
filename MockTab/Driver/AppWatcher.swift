@@ -29,6 +29,14 @@ final class AppWatcher {
 
     static let shared = AppWatcher()
 
+    /// Bundle IDs of Qt/GTK apps that consume `.tabletPointer` CGEvents.
+    /// All other apps only need the mouse event with mouseEventSubtype=1.
+    static let qtGtkBundleIDs: Set<String> = [
+        "org.kde.krita",
+        "org.gimp.gimp-2.10",
+        "org.gimp.gimp",
+    ]
+
     private var observerToken: (any NSObjectProtocol)?
 
     /// Called once at launch to force the lazy singleton to initialize,
@@ -39,8 +47,10 @@ final class AppWatcher {
               let bundleID = app.bundleIdentifier
         else { return }
         let name = app.localizedName ?? bundleID
+        let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
         for ctx in TabletManager.shared.contexts.values {
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
+            ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
         }
     }
 
@@ -71,9 +81,11 @@ final class AppWatcher {
             let bundleID = app.bundleIdentifier
         else { return }
         let name = app.localizedName ?? bundleID
+        let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
         for ctx in TabletManager.shared.contexts.values {
             ctx.settings.handleAppActivation(bundleID: bundleID, appName: name)
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
+            ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
         }
     }
 }
