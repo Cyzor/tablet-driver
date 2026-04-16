@@ -89,7 +89,7 @@ struct DevicesView: View {
             }
             Button(LocalizedStringKey("Cancel"), role: .cancel) { pendingForgetTool = nil }
         } message: {
-            Text("This tool will reappear with its default name next time the tablet detects it..")
+            Text(String(localized: "This tool will reappear with its default name next time the tablet detects it.", comment: "Message explaining that removed tool nicknames are temporary"))
         }
         .sheet(isPresented: $showingToolOverridePicker) {
             ToolOverridePickerSheet(
