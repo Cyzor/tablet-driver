@@ -1,336 +1,2402 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-
-    "%" : {
-      "comment" : "Battery percentage display in status bar"
-    },
-
-    "Active Surface Area" : {
-      "comment" : "Section header in Tablet Area tab"
-    },
-    "Orientation" : {
-      "comment" : "Section header in Tablet Area tab"
-    },
-    "Proportional mapping" : {
-      "comment" : "Checkbox label in Tablet Area tab"
-    },
-    "Reset to Full Area" : {
-      "comment" : "Button label in Tablet Area tab"
-    },
-    "Width" : {
-      "comment" : "Coordinate readout label in Tablet Area tab"
-    },
-    "Height" : {
-      "comment" : "Coordinate readout label in Tablet Area tab"
-    },
-
-    "Pressure Curve" : {
-      "comment" : "Section header in Pen Feel tab"
-    },
-    "Stabilization" : {
-      "comment" : "Section header in Pen Feel tab"
-    },
-    "Strength" : {
-      "comment" : "Slider label — stabilization strength"
-    },
-    "Reduces cursor jitter. Higher values add lag." : {
-      "comment" : "Help text under stabilization slider"
-    },
-    "Double-Click Distance" : {
-      "comment" : "Section header in Pen Feel tab"
-    },
-    "Distance" : {
-      "comment" : "Slider label — double-click distance"
-    },
-    "Movement" : {
-      "comment" : "Section header in Pen Feel tab"
-    },
-    "Invert Rotation Direction" : {
-      "comment" : "Toggle label in Pen Feel tab"
-    },
-    "Relative Cursor Movement" : {
-      "comment" : "Toggle label in Pen Feel tab"
-    },
-    "Current: " : {
-      "comment" : "Prefix label showing current rotation or movement mode"
-    },
-    " Counter-clockwise" : {
-      "comment" : "Rotation direction label after SF Symbol"
-    },
-    " Clockwise" : {
-      "comment" : "Rotation direction label after SF Symbol"
-    },
-    " Relative, like a mouse" : {
-      "comment" : "Movement mode label after SF Symbol"
-    },
-    " Absolute, like a stylus" : {
-      "comment" : "Movement mode label after SF Symbol"
-    },
-    "Linear" : {
-      "comment" : "Pressure curve preset button — linear response"
-    },
-    "Soft" : {
-      "comment" : "Pressure curve preset button — soft response"
-    },
-    "Firm" : {
-      "comment" : "Pressure curve preset button — firm response"
-    },
-
-    "Off" : {
-      "comment" : "Feature disabled — used for stabilization and double-click distance sliders at minimum value"
-    },
-    "Low" : {
-      "comment" : "Stabilization strength label"
-    },
-    "Medium" : {
-      "comment" : "Stabilization strength label"
-    },
-    "High" : {
-      "comment" : "Stabilization strength label"
-    },
-    "Max" : {
-      "comment" : "Stabilization strength label — maximum value"
-    },
-    "%lld pt" : {
-      "comment" : "Distance in points, e.g. '10 pt'"
-    },
-
-    "Pen Buttons" : {
-      "comment" : "Section header in Buttons tab — stylus"
-    },
-    "Mouse Buttons" : {
-      "comment" : "Section header in Buttons tab — mouse accessory"
-    },
-    "Express Keys" : {
-      "comment" : "Section header in Buttons tab — single-sided tablet"
-    },
-    "Touch Ring" : {
-      "comment" : "Section header / row label for touch ring"
-    },
-    "Touch Strips" : {
-      "comment" : "Section header in Buttons tab — PTZ-631W and similar"
-    },
-    "Toggle Buttons — Left" : {
-      "comment" : "Section header in Buttons tab — Cintiq left-side toggle buttons"
-    },
-    "Toggle Buttons — Right" : {
-      "comment" : "Section header in Buttons tab — Cintiq right-side toggle buttons"
-    },
-    "Express Keys — Left" : {
-      "comment" : "Section header in Buttons tab — Cintiq left express keys"
-    },
-    "Express Keys — Right" : {
-      "comment" : "Section header in Buttons tab — Cintiq right express keys"
-    },
-    "Touch Ring — Left" : {
-      "comment" : "Section header in Buttons tab — Cintiq left touch ring"
-    },
-    "Touch Ring — Right" : {
-      "comment" : "Section header in Buttons tab — Cintiq right touch ring"
-    },
-    "Tip" : {
-      "comment" : "Pen tip button row label in Buttons tab"
-    },
-    "Eraser" : {
-      "comment" : "Eraser button row label in Buttons tab — also used as a button action label"
-    },
-    "Center" : {
-      "comment" : "Touch ring center button row label"
-    },
-    "Left" : {
-      "comment" : "Left touch strip row label"
-    },
-    "Right" : {
-      "comment" : "Right touch strip row label"
-    },
-    "Side button" : {
-      "comment" : "Single side button label on airbrush"
-    },
-    "Side button %lld" : {
-      "comment" : "Side button N label, e.g. 'Side button 1'"
-    },
-    "Button %lld" : {
-      "comment" : "Mouse or toggle button N, e.g. 'Button 1'"
-    },
-    "Key %lld" : {
-      "comment" : "Express key N, e.g. 'Key 1'"
-    },
-    "Fingerwheel" : {
-      "comment" : "Airbrush fingerwheel row label"
-    },
-    "Scroll Wheel" : {
-      "comment" : "Mouse scroll wheel row label"
-    },
-    "Left Click" : {
-      "comment" : "Button action menu item"
-    },
-    "Right Click" : {
-      "comment" : "Button action menu item"
-    },
-    "Middle Click" : {
-      "comment" : "Button action menu item"
-    },
-    "Toggle Display" : {
-      "comment" : "Button action menu item — cycles active display mapping"
-    },
-    "None" : {
-      "comment" : "Button action — no assignment"
-    },
-    "Type shortcut\u2026" : {
-      "comment" : "Placeholder text in shortcut recorder field while recording"
-    },
-    "Record Shortcut" : {
-      "comment" : "Placeholder text in shortcut recorder field when empty"
-    },
-
-    "Display Mapping" : {
-      "comment" : "Section header in Display tab"
-    },
-    "Preview" : {
-      "comment" : "Section header in Display tab — canvas preview"
-    },
-    "Primary display" : {
-      "comment" : "Radio row label in Display tab"
-    },
-    "Toggle between displays" : {
-      "comment" : "Radio row label in Display tab"
-    },
-    "All — span across all displays" : {
-      "comment" : "Radio row label in Display tab"
-    },
-    "Display Rotation Detected" : {
-      "comment" : "Warning heading in Display tab"
-    },
-    "No button assigned to toggle" : {
-      "comment" : "Hint row text in Display tab — display toggle not configured"
-    },
-    "Set Up" : {
-      "comment" : "Button in Display tab hint row — go to Buttons tab"
-    },
-    "Displays in rotation — \u2318+click individual, \u21e7+click ranges" : {
-      "comment" : "Caption above display rotation thumbnails"
-    },
-    "The active tablet area maps to the selected display." : {
-      "comment" : "Footer text in Display Mapping section"
-    },
-
-    "Global" : {
-      "comment" : "App override bar chip — settings apply to all apps not specifically overridden"
-    },
-    "Rename\u2026" : {
-      "comment" : "Context menu item on app override chip"
-    },
-    "Reveal in Finder" : {
-      "comment" : "Context menu item on app override chip"
-    },
-    "Remove" : {
-      "comment" : "Context menu item on app override chip — destructive"
-    },
-    "Rename App" : {
-      "comment" : "Alert title for renaming an app override chip"
-    },
-    "App name" : {
-      "comment" : "Text field placeholder in Rename App alert"
-    },
-    "Rename" : {
-      "comment" : "Alert confirm button"
-    },
-    "Add Multiple Apps?" : {
-      "comment" : "Alert title when user drops multiple app icons"
-    },
-    "Other\u2026" : {
-      "comment" : "Menu item at bottom of running-apps list — opens file browser"
-    },
-    "No other apps running" : {
-      "comment" : "Placeholder when add-app menu has no entries"
-    },
-    "Reset" : {
-      "comment" : "Button in app override banner — clears overrides for this tab"
-    },
-
-    "Device" : {
-      "comment" : "Row label in Info tab status table"
-    },
-    "Connection" : {
-      "comment" : "Row label in Info tab status table"
-    },
-    "Battery" : {
-      "comment" : "Row label in Info tab status table"
-    },
-    "Speed" : {
-      "comment" : "Row label in Info tab status table — USB speed"
-    },
-    "Status" : {
-      "comment" : "Row label in Info tab status table — driver status"
-    },
-    "Permission" : {
-      "comment" : "Row label in Info tab status table — Accessibility permission"
-    },
-    "HID Manager" : {
-      "comment" : "Row label in Info tab status table"
-    },
-    "Profile" : {
-      "comment" : "Row label in Info tab status table — active profile name"
-    },
-    "Launch at Login" : {
-      "comment" : "Row label in Info tab status table"
-    },
-    "Conflicts" : {
-      "comment" : "Row label in Info tab status table"
-    },
-    "Fix" : {
-      "comment" : "Small Fix button next to rows that have a corrective action"
-    },
-    "Not connected" : {
-      "comment" : "Device connection status value"
-    },
-    "Active" : {
-      "comment" : "Driver status value (device active) and touch ring / ring state label"
-    },
-    "Idle" : {
-      "comment" : "Driver status value (device idle) and touch ring / ring idle label"
-    },
-    "Granted" : {
-      "comment" : "Accessibility permission status value"
-    },
-    "Not granted" : {
-      "comment" : "Accessibility permission status value"
-    },
-    "Running" : {
-      "comment" : "HID Manager status value"
-    },
-    "Failed to open" : {
-      "comment" : "HID Manager status value — error state"
-    },
-    "Enabled" : {
-      "comment" : "Launch at Login status value"
-    },
-    "Disabled" : {
-      "comment" : "Launch at Login status value"
-    },
-    "None detected" : {
-      "comment" : "Conflicts status value — no conflicts"
-    },
-    "(Charging)" : {
-      "comment" : "Suffix added to battery percentage when device is charging, e.g. '85%  (Charging)'"
-    },
-    "info.conflicts.count %lld" : {
-      "comment" : "Number of detected driver conflicts in Info tab status table",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld issue"
+  "sourceLanguage": "en",
+  "strings": {
+    "%": {
+      "comment": "Battery percentage display in status bar"
+    },
+    "Active Surface Area": {
+      "comment": "Section header in Tablet Area tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiver Tabellettenbereich"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Área activa de la tableta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクティブな作業エリア"
+          }
+        }
+      }
+    },
+    "Orientation": {
+      "comment": "Section header in Tablet Area tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausrichtung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orientación"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向き"
+          }
+        }
+      }
+    },
+    "Proportional mapping": {
+      "comment": "Checkbox label in Tablet Area tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proportionale Projektion"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asignación proporcional"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロポーショナルマッピング"
+          }
+        }
+      }
+    },
+    "Reset to Full Area": {
+      "comment": "Button label in Tablet Area tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf gesamten Bereich zurücksetzen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer al área completa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全エリアにリセット"
+          }
+        }
+      }
+    },
+    "Width": {
+      "comment": "Coordinate readout label in Tablet Area tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Breite"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anchura"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幅"
+          }
+        }
+      }
+    },
+    "Height": {
+      "comment": "Coordinate readout label in Tablet Area tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Höhe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altura"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高さ"
+          }
+        }
+      }
+    },
+    "Pressure Curve": {
+      "comment": "Section header in Pen Feel tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Druckkurve"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Curva de presión"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "筆圧カーブ"
+          }
+        }
+      }
+    },
+    "Stabilization": {
+      "comment": "Section header in Pen Feel tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stabilisierung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estabilización"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手ぶれ補正"
+          }
+        }
+      }
+    },
+    "Strength": {
+      "comment": "Slider label — stabilization strength",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stärke"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intensidad"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "強度"
+          }
+        }
+      }
+    },
+    "Reduces cursor jitter. Higher values add lag.": {
+      "comment": "Help text under stabilization slider",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduziert das Zittern des Cursors. Höhere Werte erhöhen die Latenz."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduce el temblor del cursor. Los valores más altos añaden latencia."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カーソルのブレを減らします。値が高いほどラグが増えます。"
+          }
+        }
+      }
+    },
+    "Double-Click Distance": {
+      "comment": "Section header in Pen Feel tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doppelklick-Abstand"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distancia de doble clic"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダブルクリック距離"
+          }
+        }
+      }
+    },
+    "Distance": {
+      "comment": "Slider label — double-click distance",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abstand"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distancia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距離"
+          }
+        }
+      }
+    },
+    "Movement": {
+      "comment": "Section header in Pen Feel tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewegung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movimiento"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動作モード"
+          }
+        }
+      }
+    },
+    "Invert Rotation Direction": {
+      "comment": "Toggle label in Pen Feel tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drehrichtung umkehren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invertir dirección de rotación"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回転方向を反転"
+          }
+        }
+      }
+    },
+    "Relative Cursor Movement": {
+      "comment": "Toggle label in Pen Feel tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relative Cursorbewegung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movimiento relativo del cursor"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相対カーソル移動"
+          }
+        }
+      }
+    },
+    "Current: ": {
+      "comment": "Prefix label showing current rotation or movement mode",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktuell: "
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actual: "
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在: "
+          }
+        }
+      }
+    },
+    " Counter-clockwise": {
+      "comment": "Rotation direction label after SF Symbol",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Gegen den Uhrzeigersinn"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " En sentido antihorario"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " 反時計回り"
+          }
+        }
+      }
+    },
+    " Clockwise": {
+      "comment": "Rotation direction label after SF Symbol",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Im Uhrzeigersinn"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " En sentido horario"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " 時計回り"
+          }
+        }
+      }
+    },
+    " Relative, like a mouse": {
+      "comment": "Movement mode label after SF Symbol",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Relativ, wie eine Maus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Relativo, como un ratón"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " 相対、マウスのように"
+          }
+        }
+      }
+    },
+    " Absolute, like a stylus": {
+      "comment": "Movement mode label after SF Symbol",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Absolut, wie ein Stift"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " Absoluto, como un lápiz"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " 絶対、スタイラスのように"
+          }
+        }
+      }
+    },
+    "Linear": {
+      "comment": "Pressure curve preset button — linear response",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linear"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lineal"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リニア"
+          }
+        }
+      }
+    },
+    "Soft": {
+      "comment": "Pressure curve preset button — soft response",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weich"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suave"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柔らかい"
+          }
+        }
+      }
+    },
+    "Firm": {
+      "comment": "Pressure curve preset button — firm response",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hart"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firme"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "硬い"
+          }
+        }
+      }
+    },
+    "Off": {
+      "comment": "Feature disabled — used for stabilization and double-click distance sliders at minimum value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オフ"
+          }
+        }
+      }
+    },
+    "Low": {
+      "comment": "Stabilization strength label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niedrig"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低"
+          }
+        }
+      }
+    },
+    "Medium": {
+      "comment": "Stabilization strength label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mittel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Media"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中"
+          }
+        }
+      }
+    },
+    "High": {
+      "comment": "Stabilization strength label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoch"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高"
+          }
+        }
+      }
+    },
+    "Max": {
+      "comment": "Stabilization strength label — maximum value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maximum"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Máximo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最大"
+          }
+        }
+      }
+    },
+    "%lld pt": {
+      "comment": "Distance in points, e.g. '10 pt'",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Pt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld pt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld pt"
+          }
+        }
+      }
+    },
+    "Pen Buttons": {
+      "comment": "Section header in Buttons tab — stylus",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stifttasten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botones del lápiz"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペンボタン"
+          }
+        }
+      }
+    },
+    "Mouse Buttons": {
+      "comment": "Section header in Buttons tab — mouse accessory",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maustasten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botones del ratón"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マウスボタン"
+          }
+        }
+      }
+    },
+    "Express Keys": {
+      "comment": "Section header in Buttons tab — single-sided tablet",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ExpressKeys"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ExpressKeys"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ExpressKey"
+          }
+        }
+      }
+    },
+    "Touch Ring": {
+      "comment": "Section header / row label for touch ring",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touch Ring"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touch Ring"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タッチホイール"
+          }
+        }
+      }
+    },
+    "Touch Strips": {
+      "comment": "Section header in Buttons tab — PTZ-631W and similar",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touch Strips"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touch Strips"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タッチストリップ"
+          }
+        }
+      }
+    },
+    "Toggle Buttons — Left": {
+      "comment": "Section header in Buttons tab — Cintiq left-side toggle buttons",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umschalt-Tasten — Links"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botones de alternancia — Izquierda"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トグルボタン — 左"
+          }
+        }
+      }
+    },
+    "Toggle Buttons — Right": {
+      "comment": "Section header in Buttons tab — Cintiq right-side toggle buttons",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umschalt-Tasten — Rechts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botones de alternancia — Derecha"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トグルボタン — 右"
+          }
+        }
+      }
+    },
+    "Express Keys — Left": {
+      "comment": "Section header in Buttons tab — Cintiq left express keys",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ExpressKeys — Links"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ExpressKeys — Izquierda"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ExpressKey — 左"
+          }
+        }
+      }
+    },
+    "Express Keys — Right": {
+      "comment": "Section header in Buttons tab — Cintiq right express keys",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ExpressKeys — Rechts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ExpressKeys — Derecha"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ExpressKey — 右"
+          }
+        }
+      }
+    },
+    "Touch Ring — Left": {
+      "comment": "Section header in Buttons tab — Cintiq left touch ring",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touch Ring — Links"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touch Ring — Izquierda"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タッチホイール — 左"
+          }
+        }
+      }
+    },
+    "Touch Ring — Right": {
+      "comment": "Section header in Buttons tab — Cintiq right touch ring",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touch Ring — Rechts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Touch Ring — Derecha"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タッチホイール — 右"
+          }
+        }
+      }
+    },
+    "Tip": {
+      "comment": "Pen tip button row label in Buttons tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stiftspitze"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペン先"
+          }
+        }
+      }
+    },
+    "Eraser": {
+      "comment": "Eraser button row label in Buttons tab — also used as a button action label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Radiergummi"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrador"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "消しゴム"
+          }
+        }
+      }
+    },
+    "Center": {
+      "comment": "Touch ring center button row label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitte"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Centro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "センター"
+          }
+        }
+      }
+    },
+    "Left": {
+      "comment": "Left touch strip row label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Links"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izquierda"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左"
+          }
+        }
+      }
+    },
+    "Right": {
+      "comment": "Right touch strip row label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Derecha"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右"
+          }
+        }
+      }
+    },
+    "Side button": {
+      "comment": "Single side button label on airbrush",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seitentaste"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botón lateral"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイドボタン"
+          }
+        }
+      }
+    },
+    "Side button %lld": {
+      "comment": "Side button N label, e.g. 'Side button 1'",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seitentaste %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botón lateral %lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイドボタン %lld"
+          }
+        }
+      }
+    },
+    "Button %lld": {
+      "comment": "Mouse or toggle button N, e.g. 'Button 1'",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taste %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botón %lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ボタン %lld"
+          }
+        }
+      }
+    },
+    "Key %lld": {
+      "comment": "Express key N, e.g. 'Key 1'",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taste %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tecla %lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キー %lld"
+          }
+        }
+      }
+    },
+    "Fingerwheel": {
+      "comment": "Airbrush fingerwheel row label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fingerrad"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rueda de dedo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フィンガーホイール"
+          }
+        }
+      }
+    },
+    "Scroll Wheel": {
+      "comment": "Mouse scroll wheel row label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrollrad"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rueda de desplazamiento"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スクロールホイール"
+          }
+        }
+      }
+    },
+    "Left Click": {
+      "comment": "Button action menu item",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linksklick"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clic izquierdo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左クリック"
+          }
+        }
+      }
+    },
+    "Right Click": {
+      "comment": "Button action menu item",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechtsklick"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clic derecho"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右クリック"
+          }
+        }
+      }
+    },
+    "Middle Click": {
+      "comment": "Button action menu item",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mittelklick"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clic central"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中央クリック"
+          }
+        }
+      }
+    },
+    "Toggle Display": {
+      "comment": "Button action menu item — cycles active display mapping",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anzeige wechseln"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar pantalla"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マッピング画面切り替え"
+          }
+        }
+      }
+    },
+    "None": {
+      "comment": "Button action — no assignment",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguno"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし"
+          }
+        }
+      }
+    },
+    "Type shortcut…": {
+      "comment": "Placeholder text in shortcut recorder field while recording",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tastenkürzel eingeben …"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribir atajo…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ショートカット入力…"
+          }
+        }
+      }
+    },
+    "Record Shortcut": {
+      "comment": "Placeholder text in shortcut recorder field when empty",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tastenkürzel aufzeichnen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grabar atajo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ショートカットを記録"
+          }
+        }
+      }
+    },
+    "Display Mapping": {
+      "comment": "Section header in Display tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Displayzuordnung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asignación de pantalla"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面マッピング"
+          }
+        }
+      }
+    },
+    "Preview": {
+      "comment": "Section header in Display tab — canvas preview",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschau"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista previa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレビュー"
+          }
+        }
+      }
+    },
+    "Primary display": {
+      "comment": "Radio row label in Display tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hauptdisplay"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pantalla principal"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メインディスプレイ"
+          }
+        }
+      }
+    },
+    "Toggle between displays": {
+      "comment": "Radio row label in Display tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwischen Displays wechseln"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alternar entre pantallas"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディスプレイを切り替える"
+          }
+        }
+      }
+    },
+    "All — span across all displays": {
+      "comment": "Radio row label in Display tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle — über alle Displays"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todas — abarcar todas las pantallas"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全て — すべてのディスプレイにまたがる"
+          }
+        }
+      }
+    },
+    "Display Rotation Detected": {
+      "comment": "Warning heading in Display tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Displaydrehung erkannt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rotación de pantalla detectada"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ディスプレイの回転を検出"
+          }
+        }
+      }
+    },
+    "No button assigned to toggle": {
+      "comment": "Hint row text in Display tab — display toggle not configured",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Taste für den Wechsel zugewiesen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún botón asignado para alternar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切り替えボタンが未割り当て"
+          }
+        }
+      }
+    },
+    "Set Up": {
+      "comment": "Button in Display tab hint row — go to Buttons tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einrichten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定"
+          }
+        }
+      }
+    },
+    "Displays in rotation — ⌘+click individual, ⇧+click ranges": {
+      "comment": "Caption above display rotation thumbnails",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Displays in Rotation — ⌘+Klick einzeln, ⇧+Klick Bereiche"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pantallas en rotación — ⌘+clic individual, ⇧+clic rangos"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回転中のディスプレイ — ⌘+クリックで個別、⇧+クリックで範囲選択"
+          }
+        }
+      }
+    },
+    "The active tablet area maps to the selected display.": {
+      "comment": "Footer text in Display Mapping section",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der aktive Tabellettenbereich wird auf den ausgewählten Display projiziert."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El área activa de la tableta se asigna a la pantalla seleccionada."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクティブな作業エリアが選択したディスプレイにマッピングされます。"
+          }
+        }
+      }
+    },
+    "Global": {
+      "comment": "App override bar chip — settings apply to all apps not specifically overridden",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Global"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Global"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グローバル"
+          }
+        }
+      }
+    },
+    "Rename…": {
+      "comment": "Context menu item on app override chip",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umbenennen …"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar nombre…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前の変更…"
+          }
+        }
+      }
+    },
+    "Reveal in Finder": {
+      "comment": "Context menu item on app override chip",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Finder anzeigen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar en el Finder"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finderで表示"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "comment": "Context menu item on app override chip — destructive",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除"
+          }
+        }
+      }
+    },
+    "Rename App": {
+      "comment": "Alert title for renaming an app override chip",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App umbenennen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar nombre de la app"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appの名前を変更"
+          }
+        }
+      }
+    },
+    "App name": {
+      "comment": "Text field placeholder in Rename App alert",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App-Name"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre de la app"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App名"
+          }
+        }
+      }
+    },
+    "Rename": {
+      "comment": "Menu item to rename a profile",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umbenennen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar nombre"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前の変更"
+          }
+        }
+      }
+    },
+    "Add Multiple Apps?": {
+      "comment": "Alert title when user drops multiple app icons",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mehrere Apps hinzufügen?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Añadir varias apps?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "複数のAppを追加しますか？"
+          }
+        }
+      }
+    },
+    "Other…": {
+      "comment": "Menu item at bottom of running-apps list — opens file browser",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andere …"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otro…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "その他…"
+          }
+        }
+      }
+    },
+    "No other apps running": {
+      "comment": "Placeholder when add-app menu has no entries",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine anderen Apps aktiv"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay otras apps en ejecución"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "他のAppが起動していません"
+          }
+        }
+      }
+    },
+    "Reset": {
+      "comment": "Button in app override banner — clears overrides for this tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurücksetzen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リセット"
+          }
+        }
+      }
+    },
+    "Device": {
+      "comment": "Row label in Info tab status table",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerät"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイス"
+          }
+        }
+      }
+    },
+    "Connection": {
+      "comment": "Row label in Info tab status table",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conexión"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接続"
+          }
+        }
+      }
+    },
+    "Battery": {
+      "comment": "Row label in Info tab status table",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batterie"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batería"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バッテリー"
+          }
+        }
+      }
+    },
+    "Speed": {
+      "comment": "Row label in Info tab status table — USB speed",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geschwindigkeit"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velocidad"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "速度"
+          }
+        }
+      }
+    },
+    "Status": {
+      "comment": "Row label in Info tab status table — driver status",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estado"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステータス"
+          }
+        }
+      }
+    },
+    "Permission": {
+      "comment": "Row label in Info tab status table — Accessibility permission",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Berechtigung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permiso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクセス許可"
+          }
+        }
+      }
+    },
+    "HID Manager": {
+      "comment": "Row label in Info tab status table",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HID-Manager"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Administrador HID"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HIDマネージャー"
+          }
+        }
+      }
+    },
+    "Profile": {
+      "comment": "Row label in Info tab status table — active profile name",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfil"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロフィール"
+          }
+        }
+      }
+    },
+    "Launch at Login": {
+      "comment": "Row label in Info tab status table",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei Anmeldung starten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar al acceder"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ログイン時に起動"
+          }
+        }
+      }
+    },
+    "Conflicts": {
+      "comment": "Row label in Info tab status table",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konflikte"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflictos"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "競合"
+          }
+        }
+      }
+    },
+    "Fix": {
+      "comment": "Small Fix button next to rows that have a corrective action",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beheben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修正"
+          }
+        }
+      }
+    },
+    "Not connected": {
+      "comment": "Device connection status value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht verbunden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No conectado"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未接続"
+          }
+        }
+      }
+    },
+    "Active": {
+      "comment": "Driver status value (device active) and touch ring / ring state label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiv"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクティブ"
+          }
+        }
+      }
+    },
+    "Idle": {
+      "comment": "Driver status value (device idle) and touch ring / ring idle label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inaktiv"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inactivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "待機中"
+          }
+        }
+      }
+    },
+    "Granted": {
+      "comment": "Accessibility permission status value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erteilt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concedido"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "許可済み"
+          }
+        }
+      }
+    },
+    "Not granted": {
+      "comment": "Accessibility permission status value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht erteilt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No concedido"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未許可"
+          }
+        }
+      }
+    },
+    "Running": {
+      "comment": "HID Manager status value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiv"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En ejecución"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実行中"
+          }
+        }
+      }
+    },
+    "Failed to open": {
+      "comment": "HID Manager status value — error state",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Öffnen fehlgeschlagen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error al abrir"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開けませんでした"
+          }
+        }
+      }
+    },
+    "Enabled": {
+      "comment": "Launch at Login status value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktiviert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activado"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効"
+          }
+        }
+      }
+    },
+    "Disabled": {
+      "comment": "Launch at Login status value",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deaktiviert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desactivado"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効"
+          }
+        }
+      }
+    },
+    "None detected": {
+      "comment": "Conflicts status value — no conflicts",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine erkannt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguno detectado"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検出なし"
+          }
+        }
+      }
+    },
+    "(Charging)": {
+      "comment": "Suffix added to battery percentage when device is charging, e.g. '85%  (Charging)'",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(Lädt)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(Cargando)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(充電中)"
+          }
+        }
+      }
+    },
+    "info.conflicts.count %lld": {
+      "comment": "Number of detected driver conflicts in Info tab status table",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld issue"
                 }
               },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld issues"
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld issues"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Problem"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Probleme"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld problema"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld problemas"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 件の問題"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 件の問題"
                 }
               }
             }
@@ -338,235 +2404,1268 @@
         }
       }
     },
-    "alert.conflicts.title" : {
-      "comment" : "Alert title when user taps Fix on the Conflicts row",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Potential Conflicts Detected"
+    "alert.conflicts.title": {
+      "comment": "Alert title when user taps Fix on the Conflicts row",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Potential Conflicts Detected"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Potenzielle Konflikte erkannt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflictos potenciales detectados"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "競合する可能性が検出されました"
           }
         }
       }
     },
-    "alert.conflicts.intro" : {
-      "comment" : "First sentence of conflict alert body",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab found the following issues that may interfere with tablet operation:"
+    "alert.conflicts.intro": {
+      "comment": "First sentence of conflict alert body",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MockTab found the following issues that may interfere with tablet operation:"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MockTab hat folgende Probleme gefunden, die den Tablettbetrieb beeinträchtigen könnten:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MockTab ha encontrado los siguientes problemas que pueden interferir con el funcionamiento de la tableta:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MockTabはタブレットの操作に干渉する可能性のある以下の問題を検出しました："
           }
         }
       }
     },
-    "alert.conflicts.recommendation" : {
-      "comment" : "Recommendation paragraph at the end of the conflict alert body",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recommendation: Quit or disable the listed processes, then restart MockTab. For Wacom drivers, check System Settings \u2192 General \u2192 Login Items to prevent them from launching at startup. For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet."
+    "alert.conflicts.recommendation": {
+      "comment": "Recommendation paragraph at the end of the conflict alert body",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommendation: Quit or disable the listed processes, then restart MockTab. For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empfehlung: Beenden oder deaktivieren Sie die aufgelisteten Prozesse und starten Sie MockTab neu. Bei Wacom-Treibern prüfen Sie unter Systemeinstellungen → Allgemein → Startobjekte, ob diese beim Start geöffnet werden. Bei HF-Rauschen versuchen Sie, Empfänger (Mäuse, Tastaturen, WLAN-Dongles) vom Tablett zu entfernen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recomendación: Cierre o desactive los procesos indicados y reinicie MockTab. Para controladores Wacom, compruebe en Configuración del sistema → General → Elementos de inicio de sesión que no se inicien al arrancar. Si hay interferencia de RF, intente alejar los receptores inalámbricos de la tableta."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "推奨事項：リストされたプロセスを終了または無効にして、MockTabを再起動してください。Wacomドライバーの場合は、システム設定 → 一般 → ログイン項目 で起動時に開かないように確認してください。RFの干渉の場合は、ワイヤレス受信機をタブレットから遠ざけてみてください。"
           }
         }
       }
     },
-    "Live Input" : {
-      "comment" : "Section heading in Info tab"
-    },
-    "Diagnostics" : {
-      "comment" : "Section heading in Info tab"
-    },
-    "Diagnostic Detail" : {
-      "comment" : "Disclosure row label in Info tab"
-    },
-    "Collect Device Data\u2026" : {
-      "comment" : "Button to open HID capture guide in Info tab"
-    },
-    "Stylus Name" : {
-      "comment" : "Live Input table row label"
-    },
-    "Stylus Type" : {
-      "comment" : "Live Input table row label"
-    },
-    "Tool Code" : {
-      "comment" : "Live Input table row label — hex tool identifier"
-    },
-    "Serial" : {
-      "comment" : "Live Input table row label — tool serial number"
-    },
-    "Buttons" : {
-      "comment" : "Live Input table row label"
-    },
-    "Pressure" : {
-      "comment" : "Live Input table row label"
-    },
-    "Rotation" : {
-      "comment" : "Live Input table row label — pen rotation in degrees"
-    },
-    "Coordinate" : {
-      "comment" : "Live Input table row label — raw X/Y position"
-    },
-    "Tilt" : {
-      "comment" : "Live Input table row label — pen tilt X/Y"
-    },
-    "Hover" : {
-      "comment" : "Live Input table row label — hover distance"
-    },
-    "Ring \u2014 Left" : {
-      "comment" : "Live Input table row label — left touch ring on dual-ring tablets"
-    },
-    "Ring \u2014 Right" : {
-      "comment" : "Live Input table row label — right touch ring on dual-ring tablets"
-    },
-    "(In Range)" : {
-      "comment" : "Hover proximity state in Live Input"
-    },
-    "(Out)" : {
-      "comment" : "Hover proximity state — out of range in Live Input"
-    },
-
-    "No device connected" : {
-      "comment" : "Device name label when no tablet is connected — full phrase"
-    },
-    "No tool in proximity" : {
-      "comment" : "Tool name label when no pen is in range — full phrase"
-    },
-    "No device" : {
-      "comment" : "Device name in status bar when no tablet is connected — short form"
-    },
-    "No tool" : {
-      "comment" : "Tool name in status bar when no pen is active — short form"
-    },
-
-    "None (device defaults)" : {
-      "comment" : "Profile row value in Info tab when no profile is active"
-    },
-    "(Auto: %@)" : {
-      "comment" : "Auto-activation suffix in Profile row, e.g. '(Auto: TextEdit)'",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Auto: %@)"
+    "Live Input": {
+      "comment": "Section heading in Info tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liveeingabe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrada en vivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライブ入力"
           }
         }
       }
     },
-    "conflict.processRunning %@" : {
-      "comment" : "Conflict detection: named process is running and may conflict",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ is running \u2014 may conflict with MockTab\u2019s HID access"
+    "Diagnostics": {
+      "comment": "Section heading in Info tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnose"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnósticos"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "診断"
           }
         }
       }
     },
-    "conflict.rfJitter %@" : {
-      "comment" : "Conflict detection: RF interference detected, %@ is jitter level in pt/sample",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "High hover jitter (%@ pt/sample) \u2014 possible RF interference"
+    "Diagnostic Detail": {
+      "comment": "Disclosure row label in Info tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnosedetails"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalle de diagnóstico"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "診断の詳細"
           }
         }
       }
     },
-
-    "Not a valid JSON file." : {
-      "comment" : "Import error — file could not be parsed as JSON"
-    },
-    "error.import.wrongVersion %lld" : {
-      "comment" : "Import error — file was created with an incompatible format version",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unsupported profile version (%lld). Expected version 2."
+    "Collect Device Data…": {
+      "comment": "Button to open HID capture guide in Info tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerätedaten erfassen …"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recopilar datos del dispositivo…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイスデータを収集…"
           }
         }
       }
     },
-    "File is missing a version field." : {
-      "comment" : "Import error — file does not contain a 'version' key"
+    "Stylus Name": {
+      "comment": "Live Input table row label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stiftname"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre del lápiz"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スタイラス名"
+          }
+        }
+      }
     },
-    "No tablet data found in this file." : {
-      "comment" : "Import error — file has no tablet entries"
+    "Stylus Type": {
+      "comment": "Live Input table row label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stifttyp"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo de lápiz"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スタイラスの種類"
+          }
+        }
+      }
     },
-
-    "Profiles" : {
-      "comment" : "Section heading in Profiles tab"
+    "Tool Code": {
+      "comment": "Live Input table row label — hex tool identifier",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Werkzeugcode"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código de herramienta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ツールコード"
+          }
+        }
+      }
     },
-    "New Profile" : {
-      "comment" : "Section heading in Profiles tab — create new profile"
+    "Serial": {
+      "comment": "Live Input table row label — tool serial number",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seriennummer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Número de serie"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シリアル番号"
+          }
+        }
+      }
     },
-    "Auto-Switch" : {
-      "comment" : "Section heading in Profiles tab"
+    "Buttons": {
+      "comment": "Live Input table row label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tasten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Botones"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ボタン"
+          }
+        }
+      }
     },
-    "Device Summary" : {
-      "comment" : "Disclosure row label in Profiles tab"
+    "Pressure": {
+      "comment": "Live Input table row label",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Druck"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presión"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "筆圧"
+          }
+        }
+      }
     },
-    "Backup & Restore" : {
-      "comment" : "Section heading in Profiles tab"
+    "Rotation": {
+      "comment": "Live Input table row label — pen rotation in degrees",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drehung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rotación"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回転"
+          }
+        }
+      }
     },
-    "Active profile:" : {
-      "comment" : "Label in active profile banner"
+    "Coordinate": {
+      "comment": "Live Input table row label — raw X/Y position",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koordinate"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coordenada"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "座標"
+          }
+        }
+      }
     },
-    "No profiles yet. Create one below." : {
-      "comment" : "Placeholder in profile list when empty"
+    "Tilt": {
+      "comment": "Live Input table row label — pen tilt X/Y",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neigung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inclinación"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "傾き"
+          }
+        }
+      }
     },
-    "Profile name" : {
-      "comment" : "Text field placeholder for new/renamed profile"
+    "Hover": {
+      "comment": "Live Input table row label — hover distance",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schweben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proximidad"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホバー"
+          }
+        }
+      }
     },
-    "Save" : {
-      "comment" : "Confirm button when renaming a profile inline"
+    "Ring — Left": {
+      "comment": "Live Input table row label — left touch ring on dual-ring tablets",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ring — Links"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ring — Izquierda"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホイール — 左"
+          }
+        }
+      }
     },
-    "Cancel" : {
-      "comment" : "Cancel button"
+    "Ring — Right": {
+      "comment": "Live Input table row label — right touch ring on dual-ring tablets",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ring — Rechts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ring — Derecha"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホイール — 右"
+          }
+        }
+      }
     },
-    "Activate" : {
-      "comment" : "Button to activate a profile"
+    "(In Range)": {
+      "comment": "Hover proximity state in Live Input",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(Im Bereich)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(En rango)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(範囲内)"
+          }
+        }
+      }
     },
-    "Create Profile" : {
-      "comment" : "Button to start creating a new profile"
+    "(Out)": {
+      "comment": "Hover proximity state — out of range in Live Input",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(Außerhalb)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(Fuera de rango)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(範囲外)"
+          }
+        }
+      }
     },
-    "Create" : {
-      "comment" : "Confirm button in Create Profile flow"
+    "No device connected": {
+      "comment": "Device name label when no tablet is connected — full phrase",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Gerät verbunden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún dispositivo conectado"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイス未接続"
+          }
+        }
+      }
     },
-    "Rename" : {
-      "comment" : "Menu item to rename a profile"
+    "No tool in proximity": {
+      "comment": "Tool name label when no pen is in range — full phrase",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Werkzeug in der Nähe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna herramienta cerca"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ツールが近くにありません"
+          }
+        }
+      }
     },
-    "Delete" : {
-      "comment" : "Menu item to delete a profile — destructive"
+    "No device": {
+      "comment": "Device name in status bar when no tablet is connected — short form",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Gerät"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin dispositivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイスなし"
+          }
+        }
+      }
     },
-    "Export as JSON\u2026" : {
-      "comment" : "Button to save a backup JSON file"
+    "No tool": {
+      "comment": "Tool name in status bar when no pen is active — short form",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Werkzeug"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin herramienta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ツールなし"
+          }
+        }
+      }
     },
-    "Import from File\u2026" : {
-      "comment" : "Button to open a file picker for importing a backup"
+    "None (device defaults)": {
+      "comment": "Profile row value in Info tab when no profile is active",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine (Gerätevorgaben)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguno (valores pred. del dispositivo)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし（デバイスのデフォルト）"
+          }
+        }
+      }
     },
-    "No profiles" : {
-      "comment" : "Profile count badge when a device has no profiles"
+    "(Auto: %@)": {
+      "comment": "Auto-activation suffix in Profile row, e.g. '(Auto: TextEdit)'",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(Auto: %@)"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(Auto: %@)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(Auto: %@)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（自動: %@）"
+          }
+        }
+      }
     },
-    "profiles.count %lld" : {
-      "comment" : "Profile count badge, e.g. '2 profiles'",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld profile"
+    "conflict.processRunning %@": {
+      "comment": "Conflict detection: named process is running and may conflict",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is running — may conflict with MockTab’s HID access"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ läuft — kann mit MockTabs HID-Zugriff in Konflikt stehen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ está en ejecución — puede entrar en conflicto con el acceso HID de MockTab"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ が実行中 — MockTabのHIDアクセスと競合する可能性があります"
+          }
+        }
+      }
+    },
+    "conflict.rfJitter %@": {
+      "comment": "Conflict detection: RF interference detected, %@ is jitter level in pt/sample",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "High hover jitter (%@ pt/sample) — possible RF interference"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hohes Hover-Zittern (%@ Pkt/Probe) — mögliche HF-Interferenz"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alta vibración al desplazar (%@ pt/muestra) — posible interferencia de RF"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホバーのブレが大きい（%@ ポイント/サンプル）— RFの干渉の可能性"
+          }
+        }
+      }
+    },
+    "Not a valid JSON file.": {
+      "comment": "Import error — file could not be parsed as JSON",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine gültige JSON-Datei."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No es un archivo JSON válido."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効なJSONファイルではありません。"
+          }
+        }
+      }
+    },
+    "error.import.wrongVersion %lld": {
+      "comment": "Import error — file was created with an incompatible format version",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsupported profile version (%lld). Expected version 2."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht unterstützte Profilversion (%lld). Version 2 erwartet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versión de perfil no compatible (%lld). Se esperaba la versión 2."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サポートされていないプロフィールバージョン（%lld）。バージョン2が必要です。"
+          }
+        }
+      }
+    },
+    "File is missing a version field.": {
+      "comment": "Import error — file does not contain a 'version' key",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Datei fehlt ein Versionsfeld."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al archivo le falta un campo de versión."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルにバージョンフィールドがありません。"
+          }
+        }
+      }
+    },
+    "No tablet data found in this file.": {
+      "comment": "Import error — file has no tablet entries",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Tablettdaten in dieser Datei gefunden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontraron datos de tableta en este archivo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルにはタブレットデータがありません。"
+          }
+        }
+      }
+    },
+    "Profiles": {
+      "comment": "Section heading in Profiles tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfiles"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロフィール"
+          }
+        }
+      }
+    },
+    "New Profile": {
+      "comment": "Section heading in Profiles tab — create new profile",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neues Profil"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevo perfil"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規プロフィール"
+          }
+        }
+      }
+    },
+    "Auto-Switch": {
+      "comment": "Section heading in Profiles tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch wechseln"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambio automático"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動切り替え"
+          }
+        }
+      }
+    },
+    "Device Summary": {
+      "comment": "Disclosure row label in Profiles tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerätezusammenfassung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resumen del dispositivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイスの概要"
+          }
+        }
+      }
+    },
+    "Backup & Restore": {
+      "comment": "Section heading in Profiles tab",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sichern & Wiederherstellen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia de seguridad y restaurar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バックアップと復元"
+          }
+        }
+      }
+    },
+    "Active profile:": {
+      "comment": "Label in active profile banner",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktives Profil:"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfil activo:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクティブなプロフィール:"
+          }
+        }
+      }
+    },
+    "No profiles yet. Create one below.": {
+      "comment": "Placeholder in profile list when empty",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Profile. Unten erstellen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay perfiles. Crear uno abajo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロフィールはまだありません。以下で作成してください。"
+          }
+        }
+      }
+    },
+    "Profile name": {
+      "comment": "Text field placeholder for new/renamed profile",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profilname"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre del perfil"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロフィール名"
+          }
+        }
+      }
+    },
+    "Save": {
+      "comment": "Confirm button when renaming a profile inline",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speichern"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "comment": "Cancel button",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbrechen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キャンセル"
+          }
+        }
+      }
+    },
+    "Activate": {
+      "comment": "Button to activate a profile",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivieren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効にする"
+          }
+        }
+      }
+    },
+    "Create Profile": {
+      "comment": "Button to start creating a new profile",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil erstellen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear perfil"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロフィールを作成"
+          }
+        }
+      }
+    },
+    "Create": {
+      "comment": "Confirm button in Create Profile flow",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erstellen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作成"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "comment": "Menu item to delete a profile — destructive",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Löschen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除"
+          }
+        }
+      }
+    },
+    "Export as JSON…": {
+      "comment": "Button to save a backup JSON file",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als JSON exportieren …"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar como JSON…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSONとして書き出す…"
+          }
+        }
+      }
+    },
+    "Import from File…": {
+      "comment": "Button to open a file picker for importing a backup",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus Datei importieren …"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importar desde archivo…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルから読み込む…"
+          }
+        }
+      }
+    },
+    "No profiles": {
+      "comment": "Profile count badge when a device has no profiles",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Profile"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin perfiles"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロフィールなし"
+          }
+        }
+      }
+    },
+    "profiles.count %lld": {
+      "comment": "Profile count badge, e.g. '2 profiles'",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld profile"
                 }
               },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld profiles"
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld profiles"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Profil"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Profile"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld perfil"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld perfiles"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 件"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 件"
                 }
               }
             }
@@ -574,22 +3673,76 @@
         }
       }
     },
-    "settings.count %lld" : {
-      "comment" : "Settings count badge on a profile row, e.g. '3 settings'",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld setting"
+    "settings.count %lld": {
+      "comment": "Settings count badge on a profile row, e.g. '3 settings'",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld setting"
                 }
               },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld settings"
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld settings"
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Einstellung"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Einstellungen"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ajuste"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ajustes"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 件の設定"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 件の設定"
                 }
               }
             }
@@ -597,7 +3750,6 @@
         }
       }
     }
-
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
