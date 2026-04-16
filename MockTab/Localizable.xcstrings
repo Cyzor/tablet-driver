@@ -1,0 +1,603 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+
+    "%" : {
+      "comment" : "Battery percentage display in status bar"
+    },
+
+    "Active Surface Area" : {
+      "comment" : "Section header in Tablet Area tab"
+    },
+    "Orientation" : {
+      "comment" : "Section header in Tablet Area tab"
+    },
+    "Proportional mapping" : {
+      "comment" : "Checkbox label in Tablet Area tab"
+    },
+    "Reset to Full Area" : {
+      "comment" : "Button label in Tablet Area tab"
+    },
+    "Width" : {
+      "comment" : "Coordinate readout label in Tablet Area tab"
+    },
+    "Height" : {
+      "comment" : "Coordinate readout label in Tablet Area tab"
+    },
+
+    "Pressure Curve" : {
+      "comment" : "Section header in Pen Feel tab"
+    },
+    "Stabilization" : {
+      "comment" : "Section header in Pen Feel tab"
+    },
+    "Strength" : {
+      "comment" : "Slider label — stabilization strength"
+    },
+    "Reduces cursor jitter. Higher values add lag." : {
+      "comment" : "Help text under stabilization slider"
+    },
+    "Double-Click Distance" : {
+      "comment" : "Section header in Pen Feel tab"
+    },
+    "Distance" : {
+      "comment" : "Slider label — double-click distance"
+    },
+    "Movement" : {
+      "comment" : "Section header in Pen Feel tab"
+    },
+    "Invert Rotation Direction" : {
+      "comment" : "Toggle label in Pen Feel tab"
+    },
+    "Relative Cursor Movement" : {
+      "comment" : "Toggle label in Pen Feel tab"
+    },
+    "Current: " : {
+      "comment" : "Prefix label showing current rotation or movement mode"
+    },
+    " Counter-clockwise" : {
+      "comment" : "Rotation direction label after SF Symbol"
+    },
+    " Clockwise" : {
+      "comment" : "Rotation direction label after SF Symbol"
+    },
+    " Relative, like a mouse" : {
+      "comment" : "Movement mode label after SF Symbol"
+    },
+    " Absolute, like a stylus" : {
+      "comment" : "Movement mode label after SF Symbol"
+    },
+    "Linear" : {
+      "comment" : "Pressure curve preset button — linear response"
+    },
+    "Soft" : {
+      "comment" : "Pressure curve preset button — soft response"
+    },
+    "Firm" : {
+      "comment" : "Pressure curve preset button — firm response"
+    },
+
+    "Off" : {
+      "comment" : "Feature disabled — used for stabilization and double-click distance sliders at minimum value"
+    },
+    "Low" : {
+      "comment" : "Stabilization strength label"
+    },
+    "Medium" : {
+      "comment" : "Stabilization strength label"
+    },
+    "High" : {
+      "comment" : "Stabilization strength label"
+    },
+    "Max" : {
+      "comment" : "Stabilization strength label — maximum value"
+    },
+    "%lld pt" : {
+      "comment" : "Distance in points, e.g. '10 pt'"
+    },
+
+    "Pen Buttons" : {
+      "comment" : "Section header in Buttons tab — stylus"
+    },
+    "Mouse Buttons" : {
+      "comment" : "Section header in Buttons tab — mouse accessory"
+    },
+    "Express Keys" : {
+      "comment" : "Section header in Buttons tab — single-sided tablet"
+    },
+    "Touch Ring" : {
+      "comment" : "Section header / row label for touch ring"
+    },
+    "Touch Strips" : {
+      "comment" : "Section header in Buttons tab — PTZ-631W and similar"
+    },
+    "Toggle Buttons — Left" : {
+      "comment" : "Section header in Buttons tab — Cintiq left-side toggle buttons"
+    },
+    "Toggle Buttons — Right" : {
+      "comment" : "Section header in Buttons tab — Cintiq right-side toggle buttons"
+    },
+    "Express Keys — Left" : {
+      "comment" : "Section header in Buttons tab — Cintiq left express keys"
+    },
+    "Express Keys — Right" : {
+      "comment" : "Section header in Buttons tab — Cintiq right express keys"
+    },
+    "Touch Ring — Left" : {
+      "comment" : "Section header in Buttons tab — Cintiq left touch ring"
+    },
+    "Touch Ring — Right" : {
+      "comment" : "Section header in Buttons tab — Cintiq right touch ring"
+    },
+    "Tip" : {
+      "comment" : "Pen tip button row label in Buttons tab"
+    },
+    "Eraser" : {
+      "comment" : "Eraser button row label in Buttons tab — also used as a button action label"
+    },
+    "Center" : {
+      "comment" : "Touch ring center button row label"
+    },
+    "Left" : {
+      "comment" : "Left touch strip row label"
+    },
+    "Right" : {
+      "comment" : "Right touch strip row label"
+    },
+    "Side button" : {
+      "comment" : "Single side button label on airbrush"
+    },
+    "Side button %lld" : {
+      "comment" : "Side button N label, e.g. 'Side button 1'"
+    },
+    "Button %lld" : {
+      "comment" : "Mouse or toggle button N, e.g. 'Button 1'"
+    },
+    "Key %lld" : {
+      "comment" : "Express key N, e.g. 'Key 1'"
+    },
+    "Fingerwheel" : {
+      "comment" : "Airbrush fingerwheel row label"
+    },
+    "Scroll Wheel" : {
+      "comment" : "Mouse scroll wheel row label"
+    },
+    "Left Click" : {
+      "comment" : "Button action menu item"
+    },
+    "Right Click" : {
+      "comment" : "Button action menu item"
+    },
+    "Middle Click" : {
+      "comment" : "Button action menu item"
+    },
+    "Toggle Display" : {
+      "comment" : "Button action menu item — cycles active display mapping"
+    },
+    "None" : {
+      "comment" : "Button action — no assignment"
+    },
+    "Type shortcut\u2026" : {
+      "comment" : "Placeholder text in shortcut recorder field while recording"
+    },
+    "Record Shortcut" : {
+      "comment" : "Placeholder text in shortcut recorder field when empty"
+    },
+
+    "Display Mapping" : {
+      "comment" : "Section header in Display tab"
+    },
+    "Preview" : {
+      "comment" : "Section header in Display tab — canvas preview"
+    },
+    "Primary display" : {
+      "comment" : "Radio row label in Display tab"
+    },
+    "Toggle between displays" : {
+      "comment" : "Radio row label in Display tab"
+    },
+    "All — span across all displays" : {
+      "comment" : "Radio row label in Display tab"
+    },
+    "Display Rotation Detected" : {
+      "comment" : "Warning heading in Display tab"
+    },
+    "No button assigned to toggle" : {
+      "comment" : "Hint row text in Display tab — display toggle not configured"
+    },
+    "Set Up" : {
+      "comment" : "Button in Display tab hint row — go to Buttons tab"
+    },
+    "Displays in rotation — \u2318+click individual, \u21e7+click ranges" : {
+      "comment" : "Caption above display rotation thumbnails"
+    },
+    "The active tablet area maps to the selected display." : {
+      "comment" : "Footer text in Display Mapping section"
+    },
+
+    "Global" : {
+      "comment" : "App override bar chip — settings apply to all apps not specifically overridden"
+    },
+    "Rename\u2026" : {
+      "comment" : "Context menu item on app override chip"
+    },
+    "Reveal in Finder" : {
+      "comment" : "Context menu item on app override chip"
+    },
+    "Remove" : {
+      "comment" : "Context menu item on app override chip — destructive"
+    },
+    "Rename App" : {
+      "comment" : "Alert title for renaming an app override chip"
+    },
+    "App name" : {
+      "comment" : "Text field placeholder in Rename App alert"
+    },
+    "Rename" : {
+      "comment" : "Alert confirm button"
+    },
+    "Add Multiple Apps?" : {
+      "comment" : "Alert title when user drops multiple app icons"
+    },
+    "Other\u2026" : {
+      "comment" : "Menu item at bottom of running-apps list — opens file browser"
+    },
+    "No other apps running" : {
+      "comment" : "Placeholder when add-app menu has no entries"
+    },
+    "Reset" : {
+      "comment" : "Button in app override banner — clears overrides for this tab"
+    },
+
+    "Device" : {
+      "comment" : "Row label in Info tab status table"
+    },
+    "Connection" : {
+      "comment" : "Row label in Info tab status table"
+    },
+    "Battery" : {
+      "comment" : "Row label in Info tab status table"
+    },
+    "Speed" : {
+      "comment" : "Row label in Info tab status table — USB speed"
+    },
+    "Status" : {
+      "comment" : "Row label in Info tab status table — driver status"
+    },
+    "Permission" : {
+      "comment" : "Row label in Info tab status table — Accessibility permission"
+    },
+    "HID Manager" : {
+      "comment" : "Row label in Info tab status table"
+    },
+    "Profile" : {
+      "comment" : "Row label in Info tab status table — active profile name"
+    },
+    "Launch at Login" : {
+      "comment" : "Row label in Info tab status table"
+    },
+    "Conflicts" : {
+      "comment" : "Row label in Info tab status table"
+    },
+    "Fix" : {
+      "comment" : "Small Fix button next to rows that have a corrective action"
+    },
+    "Not connected" : {
+      "comment" : "Device connection status value"
+    },
+    "Active" : {
+      "comment" : "Driver status value (device active) and touch ring / ring state label"
+    },
+    "Idle" : {
+      "comment" : "Driver status value (device idle) and touch ring / ring idle label"
+    },
+    "Granted" : {
+      "comment" : "Accessibility permission status value"
+    },
+    "Not granted" : {
+      "comment" : "Accessibility permission status value"
+    },
+    "Running" : {
+      "comment" : "HID Manager status value"
+    },
+    "Failed to open" : {
+      "comment" : "HID Manager status value — error state"
+    },
+    "Enabled" : {
+      "comment" : "Launch at Login status value"
+    },
+    "Disabled" : {
+      "comment" : "Launch at Login status value"
+    },
+    "None detected" : {
+      "comment" : "Conflicts status value — no conflicts"
+    },
+    "(Charging)" : {
+      "comment" : "Suffix added to battery percentage when device is charging, e.g. '85%  (Charging)'"
+    },
+    "info.conflicts.count %lld" : {
+      "comment" : "Number of detected driver conflicts in Info tab status table",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld issue"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld issues"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "alert.conflicts.title" : {
+      "comment" : "Alert title when user taps Fix on the Conflicts row",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Potential Conflicts Detected"
+          }
+        }
+      }
+    },
+    "alert.conflicts.intro" : {
+      "comment" : "First sentence of conflict alert body",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab found the following issues that may interfere with tablet operation:"
+          }
+        }
+      }
+    },
+    "alert.conflicts.recommendation" : {
+      "comment" : "Recommendation paragraph at the end of the conflict alert body",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommendation: Quit or disable the listed processes, then restart MockTab. For Wacom drivers, check System Settings \u2192 General \u2192 Login Items to prevent them from launching at startup. For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet."
+          }
+        }
+      }
+    },
+    "Live Input" : {
+      "comment" : "Section heading in Info tab"
+    },
+    "Diagnostics" : {
+      "comment" : "Section heading in Info tab"
+    },
+    "Diagnostic Detail" : {
+      "comment" : "Disclosure row label in Info tab"
+    },
+    "Collect Device Data\u2026" : {
+      "comment" : "Button to open HID capture guide in Info tab"
+    },
+    "Stylus Name" : {
+      "comment" : "Live Input table row label"
+    },
+    "Stylus Type" : {
+      "comment" : "Live Input table row label"
+    },
+    "Tool Code" : {
+      "comment" : "Live Input table row label — hex tool identifier"
+    },
+    "Serial" : {
+      "comment" : "Live Input table row label — tool serial number"
+    },
+    "Buttons" : {
+      "comment" : "Live Input table row label"
+    },
+    "Pressure" : {
+      "comment" : "Live Input table row label"
+    },
+    "Rotation" : {
+      "comment" : "Live Input table row label — pen rotation in degrees"
+    },
+    "Coordinate" : {
+      "comment" : "Live Input table row label — raw X/Y position"
+    },
+    "Tilt" : {
+      "comment" : "Live Input table row label — pen tilt X/Y"
+    },
+    "Hover" : {
+      "comment" : "Live Input table row label — hover distance"
+    },
+    "Ring \u2014 Left" : {
+      "comment" : "Live Input table row label — left touch ring on dual-ring tablets"
+    },
+    "Ring \u2014 Right" : {
+      "comment" : "Live Input table row label — right touch ring on dual-ring tablets"
+    },
+    "(In Range)" : {
+      "comment" : "Hover proximity state in Live Input"
+    },
+    "(Out)" : {
+      "comment" : "Hover proximity state — out of range in Live Input"
+    },
+
+    "No device connected" : {
+      "comment" : "Device name label when no tablet is connected — full phrase"
+    },
+    "No tool in proximity" : {
+      "comment" : "Tool name label when no pen is in range — full phrase"
+    },
+    "No device" : {
+      "comment" : "Device name in status bar when no tablet is connected — short form"
+    },
+    "No tool" : {
+      "comment" : "Tool name in status bar when no pen is active — short form"
+    },
+
+    "None (device defaults)" : {
+      "comment" : "Profile row value in Info tab when no profile is active"
+    },
+    "(Auto: %@)" : {
+      "comment" : "Auto-activation suffix in Profile row, e.g. '(Auto: TextEdit)'",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(Auto: %@)"
+          }
+        }
+      }
+    },
+    "conflict.processRunning %@" : {
+      "comment" : "Conflict detection: named process is running and may conflict",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is running \u2014 may conflict with MockTab\u2019s HID access"
+          }
+        }
+      }
+    },
+    "conflict.rfJitter %@" : {
+      "comment" : "Conflict detection: RF interference detected, %@ is jitter level in pt/sample",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "High hover jitter (%@ pt/sample) \u2014 possible RF interference"
+          }
+        }
+      }
+    },
+
+    "Not a valid JSON file." : {
+      "comment" : "Import error — file could not be parsed as JSON"
+    },
+    "error.import.wrongVersion %lld" : {
+      "comment" : "Import error — file was created with an incompatible format version",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unsupported profile version (%lld). Expected version 2."
+          }
+        }
+      }
+    },
+    "File is missing a version field." : {
+      "comment" : "Import error — file does not contain a 'version' key"
+    },
+    "No tablet data found in this file." : {
+      "comment" : "Import error — file has no tablet entries"
+    },
+
+    "Profiles" : {
+      "comment" : "Section heading in Profiles tab"
+    },
+    "New Profile" : {
+      "comment" : "Section heading in Profiles tab — create new profile"
+    },
+    "Auto-Switch" : {
+      "comment" : "Section heading in Profiles tab"
+    },
+    "Device Summary" : {
+      "comment" : "Disclosure row label in Profiles tab"
+    },
+    "Backup & Restore" : {
+      "comment" : "Section heading in Profiles tab"
+    },
+    "Active profile:" : {
+      "comment" : "Label in active profile banner"
+    },
+    "No profiles yet. Create one below." : {
+      "comment" : "Placeholder in profile list when empty"
+    },
+    "Profile name" : {
+      "comment" : "Text field placeholder for new/renamed profile"
+    },
+    "Save" : {
+      "comment" : "Confirm button when renaming a profile inline"
+    },
+    "Cancel" : {
+      "comment" : "Cancel button"
+    },
+    "Activate" : {
+      "comment" : "Button to activate a profile"
+    },
+    "Create Profile" : {
+      "comment" : "Button to start creating a new profile"
+    },
+    "Create" : {
+      "comment" : "Confirm button in Create Profile flow"
+    },
+    "Rename" : {
+      "comment" : "Menu item to rename a profile"
+    },
+    "Delete" : {
+      "comment" : "Menu item to delete a profile — destructive"
+    },
+    "Export as JSON\u2026" : {
+      "comment" : "Button to save a backup JSON file"
+    },
+    "Import from File\u2026" : {
+      "comment" : "Button to open a file picker for importing a backup"
+    },
+    "No profiles" : {
+      "comment" : "Profile count badge when a device has no profiles"
+    },
+    "profiles.count %lld" : {
+      "comment" : "Profile count badge, e.g. '2 profiles'",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld profile"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld profiles"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "settings.count %lld" : {
+      "comment" : "Settings count badge on a profile row, e.g. '3 settings'",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld setting"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld settings"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+  },
+  "version" : "1.0"
+}

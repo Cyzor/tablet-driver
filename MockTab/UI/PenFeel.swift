@@ -40,7 +40,7 @@ struct PenFeel: View {
                             Text("Strength")
                                 .font(.subheadline)
                             Spacer()
-                            Text(smoothingLabel)
+                            Text(verbatim: smoothingLabel)
                                 .font(.settingsLabel)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
@@ -63,9 +63,9 @@ struct PenFeel: View {
                             Text("Distance")
                                 .font(.subheadline)
                             Spacer()
-                            Text(settings.doubleClickDistance < 1
-                                ? "Off"
-                                : "\(Int(settings.doubleClickDistance)) pt")
+                            Text(verbatim: settings.doubleClickDistance < 1
+                                ? String(localized: "Off", comment: "Feature disabled — double-click distance slider at minimum value")
+                                : String(localized: "\(Int(settings.doubleClickDistance)) pt", comment: "Distance in points, e.g. '10 pt'"))
                                 .font(.settingsLabel)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
@@ -212,11 +212,11 @@ struct PenFeel: View {
 
     private var smoothingLabel: String {
         switch tool.smoothingStrength {
-        case 0..<0.15:  return "Off"
-        case 0.15..<0.4:  return "Low"
-        case 0.4..<0.65:  return "Medium"
-        case 0.65..<0.85: return "High"
-        default:          return "Max"
+        case 0..<0.15:  return String(localized: "Off",    comment: "Stabilization strength — disabled")
+        case 0.15..<0.4:  return String(localized: "Low",    comment: "Stabilization strength label")
+        case 0.4..<0.65:  return String(localized: "Medium", comment: "Stabilization strength label")
+        case 0.65..<0.85: return String(localized: "High",   comment: "Stabilization strength label")
+        default:          return String(localized: "Max",    comment: "Stabilization strength label — maximum value")
         }
     }
 }

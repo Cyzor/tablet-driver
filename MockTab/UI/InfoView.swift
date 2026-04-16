@@ -84,22 +84,22 @@ struct InfoView: View {
     private var statusTable: some View {
         Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
             row(
-                "Device",
+                String(localized: "Device", comment: "Row label in Info tab status table"),
                 value: deviceContext?.isConnected ?? false
                     ? TabletManager.deviceName(forProductID: productID ?? 0)
-                    : "Not connected",
+                    : String(localized: "Not connected", comment: "Device connection status value"),
                 ok: deviceContext?.isConnected ?? false)
 
             row(
-                "Connection",
+                String(localized: "Connection", comment: "Row label in Info tab status table"),
                 value: deviceContext?.transport ?? "—",
                 ok: deviceContext?.isConnected ?? false ? true : nil)
 
             if let pct = deviceContext?.batteryPercent {
                 row(
-                    "Battery",
+                    String(localized: "Battery", comment: "Row label in Info tab status table"),
                     value: (deviceContext?.batteryCharging ?? false)
-                        ? "\(pct)%  (Charging)"
+                        ? "\(pct)%  \(String(localized: "(Charging)", comment: "Suffix when device is charging, e.g. '85%  (Charging)'"))"
                         : "\(pct)%",
                     ok: pct < 20 ? false : nil,
                     leadingSymbol: batterySymbolName(
@@ -111,50 +111,56 @@ struct InfoView: View {
             }
 
             row(
-                "Speed",
+                String(localized: "Speed", comment: "Row label in Info tab status table — USB speed"),
                 value: deviceContext?.usbSpeed ?? "—",
                 ok: deviceContext?.isConnected ?? false ? true : nil)
 
             row(
-                "Status",
-                value: (deviceContext?.isConnected ?? false) ? "Active" : "Idle",
+                String(localized: "Status", comment: "Row label in Info tab status table — driver status"),
+                value: (deviceContext?.isConnected ?? false)
+                    ? String(localized: "Active", comment: "Driver status value — device is active")
+                    : String(localized: "Idle", comment: "Driver status value — device is idle"),
                 ok: (deviceContext?.isConnected ?? false) ? true : nil)
 
             row(
-                "Permission",
-                value: accessibilityGranted ? "Granted" : "Not granted",
+                String(localized: "Permission", comment: "Row label in Info tab status table — Accessibility permission"),
+                value: accessibilityGranted
+                    ? String(localized: "Granted", comment: "Accessibility permission status value")
+                    : String(localized: "Not granted", comment: "Accessibility permission status value"),
                 ok: accessibilityGranted,
                 fix: accessibilityGranted ? nil : requestAccessibility,
-                fixHelp:
-                    "Open System Settings to grant MockTab permission to inject keyboard and mouse events into other apps."
+                fixHelp: String(localized: "Open System Settings to grant MockTab permission to inject keyboard and mouse events into other apps.", comment: "Tooltip on Fix button for Accessibility permission")
             )
 
             row(
-                "HID Manager",
-                value: tabletManager.hidManagerOpen ? "Running" : "Failed to open",
+                String(localized: "HID Manager", comment: "Row label in Info tab status table"),
+                value: tabletManager.hidManagerOpen
+                    ? String(localized: "Running", comment: "HID Manager status value")
+                    : String(localized: "Failed to open", comment: "HID Manager status value — error state"),
                 ok: tabletManager.hidManagerOpen ? true : false)
 
             row(
-                "Profile",
+                String(localized: "Profile", comment: "Row label in Info tab status table — active profile name"),
                 value: presetLabel,
                 ok: nil)
 
             row(
-                "Launch at Login",
-                value: launchAtLogin ? "Enabled" : "Disabled",
+                String(localized: "Launch at Login", comment: "Row label in Info tab status table"),
+                value: launchAtLogin
+                    ? String(localized: "Enabled", comment: "Launch at Login status value")
+                    : String(localized: "Disabled", comment: "Launch at Login status value"),
                 ok: launchAtLogin ? true : nil,
                 fix: launchAtLogin ? nil : enableLaunchAtLogin,
-                fixHelp: "Enable MockTab to start automatically when you log in.")
+                fixHelp: String(localized: "Enable MockTab to start automatically when you log in.", comment: "Tooltip on Fix button for Launch at Login"))
 
             row(
-                "Conflicts",
+                String(localized: "Conflicts", comment: "Row label in Info tab status table"),
                 value: conflicts.isEmpty
-                    ? "None detected"
-                    : "\(conflicts.count) issue\(conflicts.count == 1 ? "" : "s")",
+                    ? String(localized: "None detected", comment: "Conflicts status value — no conflicts")
+                    : String(localized: "info.conflicts.count \(conflicts.count)"),
                 ok: conflicts.isEmpty ? true : false,
                 fix: conflicts.isEmpty ? nil : showConflictAlert,
-                fixHelp:
-                    "Show details about detected conflicts with other tablet drivers and how to resolve them."
+                fixHelp: String(localized: "Show details about detected conflicts with other tablet drivers and how to resolve them.", comment: "Tooltip on Fix button for Conflicts row")
             )
         }
     }
@@ -270,12 +276,14 @@ struct InfoView: View {
     }
 
     private var presetLabel: String {
-        guard let profile = settings.activeProfile else { return "None (device defaults)" }
+        guard let profile = settings.activeProfile else {
+            return String(localized: "None (device defaults)", comment: "Profile row value when no profile is active")
+        }
         switch settings.activationSource {
         case .manual:
             return "\(profile.name)"
         case .app(_, let appName):
-            return "\(profile.name)  (Auto: \(appName))"
+            return "\(profile.name)  \(String(localized: "(Auto: \(appName))", comment: "Auto-activation suffix in Profile row, e.g. '(Auto: TextEdit)'"))"
         }
     }
 
@@ -388,13 +396,13 @@ struct InfoView: View {
             }
             if !matchingLive.isEmpty {
                 claimedNames.formUnion(matchingLive)
-                found.append("\(label) is running — may conflict with MockTab's HID access")
+                found.append(String(localized: "conflict.processRunning \(label)", comment: "Conflict detection: named process is running"))
             }
         }
 
         if let ctx = tabletManager.activeContext, ctx.injector.isJittery {
             let level = String(format: "%.1f", ctx.injector.jitterLevel)
-            found.append("High hover jitter (\(level) pt/sample) — possible RF interference")
+            found.append(String(localized: "conflict.rfJitter \(level)", comment: "Conflict detection: RF interference jitter"))
         }
 
         return found
@@ -427,18 +435,15 @@ struct InfoView: View {
     private func showConflictAlert() {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Potential Conflicts Detected"
+        alert.messageText = String(localized: "alert.conflicts.title", defaultValue: "Potential Conflicts Detected", comment: "Alert title when user taps Fix on the Conflicts row")
 
-        var body =
-            "MockTab found the following issues that may interfere with tablet operation:\n\n"
+        let intro = String(localized: "alert.conflicts.intro", defaultValue: "MockTab found the following issues that may interfere with tablet operation:", comment: "First sentence of conflict alert body")
+        var body = "\(intro)\n\n"
         for (i, conflict) in conflicts.enumerated() {
             body += "  \(i + 1). \(conflict)\n"
         }
-        body += "\nRecommendation: Quit or disable the listed processes, then restart MockTab. "
-        body +=
-            "For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. "
-        body +=
-            "For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet."
+        let recommendation = String(localized: "alert.conflicts.recommendation", defaultValue: "Recommendation: Quit or disable the listed processes, then restart MockTab. For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet.", comment: "Recommendation paragraph at the end of the conflict alert body")
+        body += "\n\(recommendation)"
 
         alert.informativeText = body
         alert.addButton(withTitle: "OK")
@@ -480,12 +485,12 @@ private struct LiveInputView: View {
                     return registry.knownTools.first(where: { $0.id == id })
                 }()
 
-                stylusRow(label: "Stylus Name", value: tool?.nickname ?? "—")
-                stylusRow(label: "Stylus Type", value: tool?.kind ?? "—")
+                stylusRow(label: String(localized: "Stylus Name", comment: "Live Input table row label"), value: tool?.nickname ?? "—")
+                stylusRow(label: String(localized: "Stylus Type", comment: "Live Input table row label"), value: tool?.kind ?? "—")
                 stylusRow(
-                    label: "Tool Code",
+                    label: String(localized: "Tool Code", comment: "Live Input table row label — hex tool identifier"),
                     value: tool?.toolCode.map { "0x\(String(format: "%04X", $0))" } ?? "—")
-                stylusRow(label: "Serial", value: tool?.displayID ?? "—")
+                stylusRow(label: String(localized: "Serial", comment: "Live Input table row label — tool serial number"), value: tool?.displayID ?? "—")
 
                 Divider()
                     .gridCellColumns(3)
@@ -494,11 +499,11 @@ private struct LiveInputView: View {
                 let point = livePoint
                 let lb = liveButtons
 
-                liveRow(label: "Buttons") {
+                liveRow(label: String(localized: "Buttons", comment: "Live Input table row label")) {
                     let anyExpress = lb.expressKeys.contains(true)
                     HStack(spacing: 4) {
-                        if lb.tipDown { tag("Tip") }
-                        if lb.eraserDown { tag("Eraser") }
+                        if lb.tipDown { tag(String(localized: "Tip", comment: "Pen tip live input tag")) }
+                        if lb.eraserDown { tag(String(localized: "Eraser", comment: "Eraser live input tag")) }
                         if lb.button1Down { tag("B1") }
                         if lb.button2Down { tag("B2") }
                         ForEach(0..<lb.expressKeys.count, id: \.self) { i in
@@ -512,7 +517,7 @@ private struct LiveInputView: View {
                     }
                 }
 
-                liveRow(label: "Pressure") {
+                liveRow(label: String(localized: "Pressure", comment: "Live Input table row label")) {
                     HStack {
                         Text(point != nil ? "\(point!.pressure)" : "0")
                             .monospacedDigit()
@@ -531,12 +536,12 @@ private struct LiveInputView: View {
                     }
                 }
 
-                liveRow(label: "Rotation") {
+                liveRow(label: String(localized: "Rotation", comment: "Live Input table row label — pen rotation in degrees")) {
                     Text(point != nil ? String(format: "%.1f°", point!.rotation) : "—")
                         .monospacedDigit()
                 }
 
-                liveRow(label: "Coordinate") {
+                liveRow(label: String(localized: "Coordinate", comment: "Live Input table row label — raw X/Y position")) {
                     Text(
                         point != nil
                             ? "X: \(point!.x)   Y: \(point!.y)"
@@ -546,7 +551,7 @@ private struct LiveInputView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                liveRow(label: "Tilt") {
+                liveRow(label: String(localized: "Tilt", comment: "Live Input table row label — pen tilt X/Y")) {
                     Text(
                         point != nil
                             ? "X: \(String(format: "%+.2f", point!.tiltX))   Y: \(String(format: "%+.2f", point!.tiltY))"
@@ -555,16 +560,16 @@ private struct LiveInputView: View {
                     .monospacedDigit()
                 }
 
-                liveRow(label: "Hover") {
+                liveRow(label: String(localized: "Hover", comment: "Live Input table row label — hover distance")) {
                     if let p = point {
-                        Text("\(p.hoverDistance)   \(p.inProximity ? "(In Range)" : "(Out)")")
+                        Text("\(p.hoverDistance)   \(p.inProximity ? String(localized: "(In Range)", comment: "Hover proximity state") : String(localized: "(Out)", comment: "Hover proximity state — out of range"))")
                             .monospacedDigit()
                     } else {
                         Text("—").monospacedDigit()
                     }
                 }
 
-                liveRow(label: hasDualRings ? "Ring — Left" : "Touch Ring") {
+                liveRow(label: hasDualRings ? String(localized: "Ring \u{2014} Left", comment: "Live Input table row label — left touch ring on dual-ring tablets") : String(localized: "Touch Ring", comment: "Section header / row label for touch ring")) {
                     HStack(spacing: 6) {
                         Image(
                             systemName: lb.touchRingActive
@@ -572,13 +577,15 @@ private struct LiveInputView: View {
                         )
                         .foregroundStyle(lb.touchRingActive ? Color.green : Color.secondary)
                         .imageScale(.small)
-                        Text(lb.touchRingActive ? "Active" : "Idle")
+                        Text(verbatim: lb.touchRingActive
+                            ? String(localized: "Active", comment: "Touch ring active state in Live Input")
+                            : String(localized: "Idle", comment: "Touch ring idle state in Live Input"))
                             .foregroundStyle(lb.touchRingActive ? .primary : .tertiary)
                     }
                 }
 
                 if hasDualRings {
-                    liveRow(label: "Ring — Right") {
+                    liveRow(label: String(localized: "Ring \u{2014} Right", comment: "Live Input table row label — right touch ring on dual-ring tablets")) {
                         HStack(spacing: 6) {
                             Image(
                                 systemName: lb.touchRing2Active
@@ -586,7 +593,9 @@ private struct LiveInputView: View {
                             )
                             .foregroundStyle(lb.touchRing2Active ? Color.green : Color.secondary)
                             .imageScale(.small)
-                            Text(lb.touchRing2Active ? "Active" : "Idle")
+                            Text(verbatim: lb.touchRing2Active
+                                ? String(localized: "Active", comment: "Touch ring active state in Live Input")
+                                : String(localized: "Idle", comment: "Touch ring idle state in Live Input"))
                                 .foregroundStyle(lb.touchRing2Active ? .primary : .tertiary)
                         }
                     }

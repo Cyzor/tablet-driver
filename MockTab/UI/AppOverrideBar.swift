@@ -373,7 +373,7 @@ struct AppOverrideBar: View {
 
     private var chipRow: some View {
         HStack(spacing: 5) {
-            appChip(label: "Global", icon: nil, bundleID: nil, isSelected: selectedBundleID == nil)
+            appChip(label: String(localized: "Global", comment: "App override bar chip — settings apply to all apps not specifically overridden"), icon: nil, bundleID: nil, isSelected: selectedBundleID == nil)
 
             ForEach(settings.appOverrides) { override in
                 appChip(

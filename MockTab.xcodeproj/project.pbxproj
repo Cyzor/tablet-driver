@@ -61,6 +61,7 @@
 		AAAAAA06 /* ImportPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA05 /* ImportPlan.swift */; };
 		AAAAAA08 /* ExportDragWell.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA07 /* ExportDragWell.swift */; };
 		AAAAAA10 /* ImportPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA09 /* ImportPreviewSheet.swift */; };
+		AB001001 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AB001000 /* Localizable.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -121,6 +122,7 @@
 		AB000101 /* CaptureModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureModels.swift; sourceTree = "<group>"; };
 		AB000102 /* CaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEngine.swift; sourceTree = "<group>"; };
 		AB000103 /* CaptureGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGuideView.swift; sourceTree = "<group>"; };
+		AB001000 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -142,6 +144,7 @@
 				AC000003 /* Settings */,
 				AC000004 /* UI */,
 				AB000030 /* Assets.xcassets */,
+				AB001000 /* Localizable.xcstrings */,
 				AB000020 /* Info.plist */,
 				AB000021 /* MockTab.entitlements */,
 			);
@@ -295,6 +298,9 @@
 			knownRegions = (
 				en,
 				Base,
+				de,
+				es,
+				ja,
 			);
 			mainGroup = AC000099;
 			productRefGroup = AC000010 /* Products */;
@@ -312,6 +318,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA000030 /* Assets.xcassets in Resources */,
+				AB001001 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
