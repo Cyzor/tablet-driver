@@ -202,7 +202,7 @@ struct DisplayMappingView: View {
                 .foregroundStyle(assignedLabel != nil ? .secondary : .primary)
             Spacer()
             if assignedLabel == nil {
-                Button("Set Up") {
+                Button(LocalizedStringKey("Set Up")) {
                     if let wc = NSApp.keyWindow?.windowController as? SettingsWindowController {
                         wc.showTab(named: "Buttons")
                     } else {

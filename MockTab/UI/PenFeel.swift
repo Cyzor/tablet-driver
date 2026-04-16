@@ -131,19 +131,19 @@ struct PenFeel: View {
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
 
             HStack(spacing: 4) {
-                Button("Linear") {
+                Button(LocalizedStringKey("Linear")) {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .linear
                     tool.record("Linear Curve") { tool.pressureCurve = old }
                 }
                 .help("Linear response — equal pen force produces equal pressure output. Best for general use.")
-                Button("Soft") {
+                Button(LocalizedStringKey("Soft")) {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .soft
                     tool.record("Soft Curve") { tool.pressureCurve = old }
                 }
                 .help("Soft response — light pressure reaches full output quickly. Good for loose, expressive work.")
-                Button("Firm") {
+                Button(LocalizedStringKey("Firm")) {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .firm
                     tool.record("Firm Curve") { tool.pressureCurve = old }

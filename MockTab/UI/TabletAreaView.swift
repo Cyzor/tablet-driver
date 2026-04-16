@@ -78,7 +78,7 @@ struct TabletAreaView: View {
                         
                         Spacer()
                         
-                        Button("Reset to Full Area") {
+                        Button(LocalizedStringKey("Reset to Full Area")) {
                             let snap = TabletSettings.AreaSnapshot(
                                 x: settings.activeAreaX, y: settings.activeAreaY,
                                 w: settings.activeAreaWidth, h: settings.activeAreaHeight)

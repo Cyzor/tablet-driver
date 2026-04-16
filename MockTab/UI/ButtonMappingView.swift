@@ -469,19 +469,19 @@ struct ButtonBindingControl: View {
 
             // Click-action picker
             Menu {
-                Button("Left Click")   { set(.leftClick)   }
-                Button("Right Click")  { set(.rightClick)  }
-                Button("Middle Click") { set(.middleClick) }
-                Button("Eraser")       { set(.eraser)      }
+                Button(LocalizedStringKey("Left Click"))   { set(.leftClick)   }
+                Button(LocalizedStringKey("Right Click"))  { set(.rightClick)  }
+                Button(LocalizedStringKey("Middle Click")) { set(.middleClick) }
+                Button(LocalizedStringKey("Eraser"))       { set(.eraser)      }
                 Divider()
-                Button("Toggle Display") { set(.displayToggle) }
+                Button(LocalizedStringKey("Toggle Display")) { set(.displayToggle) }
                 Divider()
                 Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
                 Button("⌥ Option")  { binding = ButtonBinding(modifierOnly: .option)  }
                 Button("⇧ Shift")   { binding = ButtonBinding(modifierOnly: .shift)   }
                 Button("⌃ Control") { binding = ButtonBinding(modifierOnly: .control) }
                 Divider()
-                Button("None") { set(.none) }
+                Button(LocalizedStringKey("None")) { set(.none) }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.settingsBadge)

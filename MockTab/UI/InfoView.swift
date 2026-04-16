@@ -189,7 +189,7 @@ struct InfoView: View {
                 }
                 Text(value)
                 if let fix {
-                    Button("Fix", action: fix)
+                    Button(LocalizedStringKey("Fix"), action: fix)
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .help(fixHelp ?? "")
@@ -238,7 +238,7 @@ struct InfoView: View {
                 .font(.headline)
 
             HStack(spacing: 12) {
-                Button("Collect Device Data\u{2026}") {
+                Button(String(localized: "Collect Device Data…", comment: "Button label: start device data collection")) {
                     showCaptureGuide = true
                 }
                 .buttonStyle(.bordered)

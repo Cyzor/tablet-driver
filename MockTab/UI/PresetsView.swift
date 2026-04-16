@@ -149,11 +149,11 @@ struct ProfilesView: View {
                     .frame(maxWidth: 200)
                     .onSubmit { commitRename() }
 
-                Button("Save") { commitRename() }
+                Button(LocalizedStringKey("Save")) { commitRename() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
 
-                Button("Cancel") {
+                Button(LocalizedStringKey("Cancel")) {
                     editingPreset = nil
                     editingName = ""
                 }
@@ -177,7 +177,7 @@ struct ProfilesView: View {
                 Spacer()
 
                 if !isActive {
-                    Button("Activate") {
+                    Button(LocalizedStringKey("Activate")) {
                         settings.activate(preset)
                     }
                     .controlSize(.small)
@@ -194,12 +194,12 @@ struct ProfilesView: View {
 
                 // Edit / Delete
                 Menu {
-                    Button("Rename") {
+                    Button(LocalizedStringKey("Rename")) {
                         editingPreset = preset
                         editingName = preset.name
                     }
                     Divider()
-                    Button("Delete", role: .destructive) {
+                    Button(LocalizedStringKey("Delete"), role: .destructive) {
                         if settings.activeProfile?.id == preset.id {
                             settings.activeProfile = nil
                         }
@@ -274,12 +274,12 @@ struct ProfilesView: View {
                         .frame(maxWidth: 200)
                         .onSubmit { commitCreate() }
 
-                    Button("Create") { commitCreate() }
+                    Button(LocalizedStringKey("Create")) { commitCreate() }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                         .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
 
-                    Button("Cancel") {
+                    Button(LocalizedStringKey("Cancel")) {
                         isCreating = false
                         newName = ""
                     }
@@ -458,10 +458,10 @@ struct ProfilesView: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     HStack(spacing: 8) {
-                        Button("Export as JSON…") { saveExportToFile() }
+                        Button(LocalizedStringKey("Export as JSON…")) { saveExportToFile() }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
-                        Button("Import from File…") { openImportPanel() }
+                        Button(LocalizedStringKey("Import from File…")) { openImportPanel() }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
                     }

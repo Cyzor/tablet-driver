@@ -77,7 +77,7 @@ struct DevicesView: View {
             )
         ) {
             // No .destructive role so "Remove" is the default (blue) button — Enter confirms.
-            Button("Remove") {
+            Button(LocalizedStringKey("Remove")) {
                 guard let tool = pendingForgetTool else { return }
                 if let did = pendingForgetDeviceID {
                     registry.forgetTool(id: tool.id, forDevice: did)
@@ -87,7 +87,7 @@ struct DevicesView: View {
                 pendingForgetTool = nil
                 editingToolID = nil
             }
-            Button("Cancel", role: .cancel) { pendingForgetTool = nil }
+            Button(LocalizedStringKey("Cancel"), role: .cancel) { pendingForgetTool = nil }
         } message: {
             Text("This tool will reappear with its default name next time the tablet detects it..")
         }
@@ -169,9 +169,9 @@ struct DevicesView: View {
 
             // Actions
             if editingTabletID == tablet.id {
-                Button("Save") { commitTabletRename() }
+                Button(LocalizedStringKey("Save")) { commitTabletRename() }
                     .buttonStyle(.borderedProminent).controlSize(.small)
-                Button("Cancel") { editingTabletID = nil }
+                Button(LocalizedStringKey("Cancel")) { editingTabletID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
             } else {
                 Button {
@@ -266,16 +266,16 @@ struct DevicesView: View {
                 .frame(width: 110, alignment: .leading)
 
             if editingToolID == tool.id {
-                Button("Rename") { commitToolRename() }
+                Button(LocalizedStringKey("Rename")) { commitToolRename() }
                     .buttonStyle(.borderedProminent).controlSize(.small)
-                Button("Forget…") {
+                Button(LocalizedStringKey("Forget…")) {
                     pendingForgetTool = tool
                     pendingForgetDeviceID = deviceID
                 }
                 .buttonStyle(.bordered).controlSize(.small)
                 .foregroundStyle(.red)
                 .help("Remove this tool from the registry. It will reappear with its default name next time it is detected.")
-                Button("Cancel") { editingToolID = nil }
+                Button(LocalizedStringKey("Cancel")) { editingToolID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
             } else {
                 HStack(spacing: 4) {
@@ -314,18 +314,18 @@ struct DevicesView: View {
         .background(isInProximity ? Color.accentColor.opacity(0.08) : Color.clear)
         .contextMenu {
             if tool.forcedToolCode != nil {
-                Button("Clear Override") {
+                Button(LocalizedStringKey("Clear Override")) {
                     registry.setForcedToolCode(nil, forToolID: tool.id, deviceID: deviceID ?? 0)
                 }
             }
             Divider()
-            Button("Force as Grip Pen (0x0802)") {
+            Button(LocalizedStringKey("Force as Grip Pen (0x0802)")) {
                 registry.setForcedToolCode(0x0802, forToolID: tool.id, deviceID: deviceID ?? 0)
             }
-            Button("Force as Pro Pen 2 (0x0832)") {
+            Button(LocalizedStringKey("Force as Pro Pen 2 (0x0832)")) {
                 registry.setForcedToolCode(0x0832, forToolID: tool.id, deviceID: deviceID ?? 0)
             }
-            Button("Force as Pro Pen 3 (0x0842)") {
+            Button(LocalizedStringKey("Force as Pro Pen 3 (0x0842)")) {
                 registry.setForcedToolCode(0x0842, forToolID: tool.id, deviceID: deviceID ?? 0)
             }
         }
@@ -474,9 +474,9 @@ struct ToolOverridePickerSheet: View {
             }
 
             HStack(spacing: 12) {
-                Button("Cancel", role: .cancel) { onCancel() }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) { onCancel() }
                     .buttonStyle(.bordered)
-                Button("Apply") {
+                Button(LocalizedStringKey("Apply")) {
                     let code = selectedCode.isEmpty ? nil : UInt16(selectedCode, radix: 16)
                     onApply(code)
                 }
