@@ -293,51 +293,51 @@ struct InfoView: View {
         let fmt = DateFormatter()
         fmt.dateStyle = .medium
         fmt.timeStyle = .medium
-        lines += ["Generated : \(fmt.string(from: Date()))"]
+        lines += [String(localized: "Generated : \(fmt.string(from: Date()))", comment: "Diagnostic: timestamp when info was generated")]
 
         let ver =
             Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
-        lines += ["App       : MockTab \(ver) (build \(build))"]
+        lines += [String(localized: "App       : MockTab \(ver) (build \(build))", comment: "Diagnostic: app version and build number")]
 
         let os = ProcessInfo.processInfo.operatingSystemVersion
-        lines += ["macOS     : \(os.majorVersion).\(os.minorVersion).\(os.patchVersion)"]
+        lines += [String(localized: "macOS     : \(os.majorVersion).\(os.minorVersion).\(os.patchVersion)", comment: "Diagnostic: macOS version")]
 
         #if arch(arm64)
-            lines += ["CPU       : Apple Silicon (arm64)"]
+            lines += [String(localized: "CPU       : Apple Silicon (arm64)", comment: "Diagnostic: CPU architecture")]
         #else
-            lines += ["CPU       : Intel (x86_64)"]
+            lines += [String(localized: "CPU       : Intel (x86_64)", comment: "Diagnostic: CPU architecture")]
         #endif
 
         lines += [""]
 
         if tabletManager.connectedProductIDs.isEmpty {
-            lines += ["Tablets   : none"]
+            lines += [String(localized: "Tablets   : none", comment: "Diagnostic: no tablets connected")]
         } else {
-            lines += ["Tablets   : \(tabletManager.connectedProductIDs.count)"]
+            lines += [String(localized: "Tablets   : \(tabletManager.connectedProductIDs.count)", comment: "Diagnostic: number of connected tablets")]
             for pid in tabletManager.connectedProductIDs {
                 let name = TabletManager.deviceName(forProductID: pid)
                 lines += ["  • \(name)  (ProductID 0x\(String(pid, radix: 16, uppercase: true)))"]
             }
-            lines += ["Transport : \(tabletManager.connectedTransport)"]
-            lines += ["Speed     : \(tabletManager.connectedUSBSpeed)"]
+            lines += [String(localized: "Transport : \(tabletManager.connectedTransport)", comment: "Diagnostic: USB/Bluetooth transport type")]
+            lines += [String(localized: "Speed     : \(tabletManager.connectedUSBSpeed)", comment: "Diagnostic: USB speed or Bluetooth version")]
             if let pct = tabletManager.batteryPercent {
-                let chgStr = tabletManager.batteryCharging ? " (charging)" : ""
-                lines += ["Battery   : \(pct)%\(chgStr)"]
+                let chgStr = tabletManager.batteryCharging ? String(localized: " (charging)", comment: "Battery status indicator") : ""
+                lines += [String(localized: "Battery   : \(pct)%\(chgStr)", comment: "Diagnostic: battery percentage and charging status")]
             }
         }
 
         lines += [""]
-        lines += ["HID Manager    : \(tabletManager.hidManagerOpen ? "open" : "failed to open")"]
-        lines += ["Accessibility  : \(accessibilityGranted ? "granted" : "not granted")"]
-        lines += ["Launch at login: \(launchAtLogin ? "enabled" : "disabled")"]
-        lines += ["Profile        : \(presetLabel)"]
+        lines += [String(localized: "HID Manager    : \(tabletManager.hidManagerOpen ? String(localized: "open", comment: "HID Manager status") : String(localized: "failed to open", comment: "HID Manager status"))", comment: "Diagnostic: HID Manager status")]
+        lines += [String(localized: "Accessibility  : \(accessibilityGranted ? String(localized: "granted", comment: "Accessibility permission status") : String(localized: "not granted", comment: "Accessibility permission status"))", comment: "Diagnostic: Accessibility permission")]
+        lines += [String(localized: "Launch at login: \(launchAtLogin ? String(localized: "enabled", comment: "Launch at login status") : String(localized: "disabled", comment: "Launch at login status"))", comment: "Diagnostic: Launch at login setting")]
+        lines += [String(localized: "Profile        : \(presetLabel)", comment: "Diagnostic: active profile name")]
 
         lines += [""]
         if conflicts.isEmpty {
-            lines += ["Conflicts      : none"]
+            lines += [String(localized: "Conflicts      : none", comment: "Diagnostic: no conflicting drivers")]
         } else {
-            lines += ["Conflicts      : \(conflicts.count)"]
+            lines += [String(localized: "Conflicts      : \(conflicts.count)", comment: "Diagnostic: number of conflicting drivers")]
             for conflict in conflicts {
                 lines += ["  ⚠ \(conflict)"]
             }
@@ -345,9 +345,8 @@ struct InfoView: View {
 
         if let ctx = tabletManager.activeContext {
             let jitter = String(format: "%.2f", ctx.injector.jitterLevel)
-            lines += [
-                "Jitter level   : \(jitter) pt/sample\(ctx.injector.isJittery ? " (HIGH)" : "")"
-            ]
+            let highLabel = ctx.injector.isJittery ? String(localized: " (HIGH)", comment: "Jitter level warning") : ""
+            lines += [String(localized: "Jitter level   : \(jitter) pt/sample\(highLabel)", comment: "Diagnostic: input jitter measurement")]
         }
 
         return lines.joined(separator: "\n")

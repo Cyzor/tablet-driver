@@ -5509,6 +5509,581 @@
           }
         }
       }
+    },
+    "Generated : %@": {
+      "comment": "Diagnostic: timestamp when info was generated",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generiert : %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generado : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成 : %@"
+          }
+        }
+      }
+    },
+    "App       : MockTab %@ (build %@)": {
+      "comment": "Diagnostic: app version and build number",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App       : MockTab %@ (build %@)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App       : MockTab %@ (build %@)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App       : MockTab %@ (build %@)"
+          }
+        }
+      }
+    },
+    "macOS     : %@": {
+      "comment": "Diagnostic: macOS version",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS     : %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS     : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS     : %@"
+          }
+        }
+      }
+    },
+    "CPU       : Apple Silicon (arm64)": {
+      "comment": "Diagnostic: CPU architecture",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CPU       : Apple Silicon (arm64)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CPU       : Apple Silicon (arm64)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CPU       : Apple Silicon (arm64)"
+          }
+        }
+      }
+    },
+    "CPU       : Intel (x86_64)": {
+      "comment": "Diagnostic: CPU architecture",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CPU       : Intel (x86_64)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CPU       : Intel (x86_64)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CPU       : Intel (x86_64)"
+          }
+        }
+      }
+    },
+    "Tablets   : none": {
+      "comment": "Diagnostic: no tablets connected",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablets   : keine"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablets   : ninguno"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablets   : なし"
+          }
+        }
+      }
+    },
+    "Tablets   : %lld": {
+      "comment": "Diagnostic: number of connected tablets",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablets   : %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablets   : %lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablets   : %lld"
+          }
+        }
+      }
+    },
+    "Transport : %@": {
+      "comment": "Diagnostic: USB/Bluetooth transport type",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transport : %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transport : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transport : %@"
+          }
+        }
+      }
+    },
+    "Speed     : %@": {
+      "comment": "Diagnostic: USB speed or Bluetooth version",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speed     : %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speed     : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speed     : %@"
+          }
+        }
+      }
+    },
+    "Battery   : %@%%%@": {
+      "comment": "Diagnostic: battery percentage and charging status",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Battery   : %@%%%@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Battery   : %@%%%@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Battery   : %@%%%@"
+          }
+        }
+      }
+    },
+    " (charging)": {
+      "comment": "Battery status indicator",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (wird geladen)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (cargando)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (充電中)"
+          }
+        }
+      }
+    },
+    "HID Manager    : %@": {
+      "comment": "Diagnostic: HID Manager status",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HID Manager    : %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HID Manager    : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HID Manager    : %@"
+          }
+        }
+      }
+    },
+    "open": {
+      "comment": "HID Manager status",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "offen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abierto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開く"
+          }
+        }
+      }
+    },
+    "failed to open": {
+      "comment": "HID Manager status",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "konnte nicht öffnen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "error al abrir"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開くに失敗しました"
+          }
+        }
+      }
+    },
+    "Accessibility  : %@": {
+      "comment": "Diagnostic: Accessibility permission",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility  : %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility  : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accessibility  : %@"
+          }
+        }
+      }
+    },
+    "granted": {
+      "comment": "Accessibility permission status",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gewährt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "otorgado"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "付与"
+          }
+        }
+      }
+    },
+    "not granted": {
+      "comment": "Accessibility permission status",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht gewährt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no otorgado"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "付与されていない"
+          }
+        }
+      }
+    },
+    "Launch at login: %@": {
+      "comment": "Diagnostic: Launch at login setting",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Launch at login: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar en login: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ログイン時に起動: %@"
+          }
+        }
+      }
+    },
+    "enabled": {
+      "comment": "Launch at login status",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aktiviert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "habilitado"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有効"
+          }
+        }
+      }
+    },
+    "disabled": {
+      "comment": "Launch at login status",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "deaktiviert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "deshabilitado"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効"
+          }
+        }
+      }
+    },
+    "Profile        : %@": {
+      "comment": "Diagnostic: active profile name",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile        : %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile        : %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile        : %@"
+          }
+        }
+      }
+    },
+    "Conflicts      : none": {
+      "comment": "Diagnostic: no conflicting drivers",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflicts      : keine"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflicts      : ninguno"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflicts      : なし"
+          }
+        }
+      }
+    },
+    "Conflicts      : %lld": {
+      "comment": "Diagnostic: number of conflicting drivers",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflicts      : %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflicts      : %lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conflicts      : %lld"
+          }
+        }
+      }
+    },
+    "Jitter level   : %@ pt/sample%@": {
+      "comment": "Diagnostic: input jitter measurement",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jitter level   : %@ pt/sample%@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jitter level   : %@ pt/sample%@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jitter level   : %@ pt/sample%@"
+          }
+        }
+      }
+    },
+    " (HIGH)": {
+      "comment": "Jitter level warning",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (HOCH)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (ALTO)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (高い)"
+          }
+        }
+      }
     }
   },
   "version": "1.1"
