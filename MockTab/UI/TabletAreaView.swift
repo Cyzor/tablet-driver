@@ -133,7 +133,7 @@ struct TabletAreaView: View {
 
     private var sectionHeading: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Active Surface Area").font(.headline)
+            Text(LocalizedStringKey("Active Surface Area")).font(.headline)
             DeviceNameLabel(tabletManager: tabletManager, registry: registry)
         }
     }

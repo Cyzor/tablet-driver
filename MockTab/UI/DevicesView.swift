@@ -111,7 +111,7 @@ struct DevicesView: View {
 
     private var tabletsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Tablets").font(.headline)
+            Text(LocalizedStringKey("Tablets")).font(.headline)
             columnHeader("Name", "Kind", "Serial / ID")
             if registry.knownTablets.isEmpty {
                 emptyState("No tablets have been connected yet.")
@@ -200,7 +200,7 @@ struct DevicesView: View {
         VStack(alignment: .leading, spacing: 6) {
             // Header shows which tablet's tools are listed
             HStack(spacing: 0) {
-                Text("Tools").font(.headline)
+                Text(LocalizedStringKey("Tools")).font(.headline)
                 if let id = effectiveTabletID,
                     let tablet = registry.knownTablets.first(where: { $0.id == id })
                 {
@@ -335,7 +335,7 @@ struct DevicesView: View {
 
     private var allToolsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Tools (All Tablets)").font(.headline)
+            Text(LocalizedStringKey("Tools (All Tablets)")).font(.headline)
             columnHeader("Name", "Kind", "Serial / ID")
             if registry.allKnownTools.isEmpty {
                 emptyState("No tools detected yet.\nMove the pen over a tablet to register it.")
@@ -457,7 +457,7 @@ struct ToolOverridePickerSheet: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("Force Tool Code").font(.headline)
+            Text(LocalizedStringKey("Force Tool Code")).font(.headline)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Select a tool to force (or leave blank to use detected tool):")

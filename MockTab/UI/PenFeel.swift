@@ -156,7 +156,7 @@ struct PenFeel: View {
             .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Pressure Curve")
+                Text(LocalizedStringKey("Pressure Curve"))
                 ToolNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }

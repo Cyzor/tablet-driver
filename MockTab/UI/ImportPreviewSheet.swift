@@ -33,7 +33,7 @@ struct ImportPreviewSheet: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Import Configuration").font(.headline)
+            Text(LocalizedStringKey("Import Configuration")).font(.headline)
             if !plan.sourceDate.isEmpty {
                 Text("Exported \(formattedDate(plan.sourceDate))")
                     .font(.settingsLabel).foregroundStyle(.secondary)

@@ -96,7 +96,7 @@ struct ProfilesView: View {
             HStack(spacing: 10) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                Text("Active profile:")
+                Text(LocalizedStringKey("Active profile:"))
                     .font(.headline)
                 Text(active.name)
                     .font(.settingsLabel)
@@ -114,7 +114,7 @@ struct ProfilesView: View {
 
     private var presetList: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Profiles")
+            Text(LocalizedStringKey("Profiles"))
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
@@ -263,7 +263,7 @@ struct ProfilesView: View {
 
     private var createRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("New Profile")
+            Text(LocalizedStringKey("New Profile"))
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
@@ -305,7 +305,7 @@ struct ProfilesView: View {
     @ViewBuilder
     private var autoSwitchSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Auto-Switch")
+            Text(LocalizedStringKey("Auto-Switch"))
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
@@ -433,7 +433,7 @@ struct ProfilesView: View {
 
     private var exportSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Backup & Restore")
+            Text(LocalizedStringKey("Backup & Restore"))
                 .fontWeight(.medium)
             Text(
                 "Export your current configuration as a JSON file. You can restore it later if settings get reset or corrupted."

@@ -115,18 +115,18 @@ struct DisplayMappingView: View {
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Display Mapping")
+                Text(LocalizedStringKey("Display Mapping"))
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         } footer: {
-            Text("The active tablet area maps to the selected display.")
+            Text(LocalizedStringKey("The active tablet area maps to the selected display."))
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
     private var canvasSection: some View {
-        Section("Preview") {
+        Section(LocalizedStringKey("Preview")) {
             displayCanvas
                 .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
         }

@@ -145,8 +145,14 @@ final class SettingsWindowController: NSWindowController {
     private let tabVC = ResizableTabViewController()
 
     static let tabLabels = [
-        "Tablet Area", "Pressure", "Buttons", "Display",
-        "Devices", "Profiles", "Scratchpad", "Info",
+        String(localized: "Tablet Area", comment: "Tab name: tablet active area configuration"),
+        String(localized: "Pen Feel", comment: "Tab name: pen pressure, smoothing, double-click settings"),
+        String(localized: "Buttons", comment: "Tab name: button and key mapping"),
+        String(localized: "Display", comment: "Tab name: display mapping and preview"),
+        String(localized: "Devices", comment: "Tab name: tablet and tool registry"),
+        String(localized: "Profiles", comment: "Tab name: profile management"),
+        String(localized: "Scratchpad", comment: "Tab name: test area for pen input"),
+        String(localized: "Info", comment: "Tab name: live pen coordinates and device info"),
     ]
 
     private static let deviceSpecificTabIndices: Set<Int> = [0, 1, 2, 3]
@@ -236,32 +242,32 @@ final class SettingsWindowController: NSWindowController {
             PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
         }
 
-        addTab(label: "Tablet Area", symbol: "rectangle.dashed", height: 790) {
+        addTab(label: String(localized: "Tablet Area", comment: "Tab name: tablet active area configuration"), symbol: "rectangle.dashed", height: 790) {
             TabletAreaView(
                 settings: s, tabletManager: tm, registry: dr,
                 onDeviceSelected: onDevice, boundProductID: productID)
         }
-        addTab(label: "Pen Feel", symbol: "scribble.variable", height: 480) {
+        addTab(label: String(localized: "Pen Feel", comment: "Tab name: pen pressure, smoothing, double-click settings"), symbol: "scribble.variable", height: 480) {
             PenFeel(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: "Buttons", symbol: "square.grid.2x2.fill", height: 575) {
+        addTab(label: String(localized: "Buttons", comment: "Tab name: button and key mapping"), symbol: "square.grid.2x2.fill", height: 575) {
             ButtonMappingView(
                 settings: s, tool: s.activeTool, tabletManager: tm, registry: dr,
                 productID: productID)
         }
-        addTab(label: "Display", symbol: "display", height: 370) {
+        addTab(label: String(localized: "Display", comment: "Tab name: display mapping and preview"), symbol: "display", height: 370) {
             DisplayMappingView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: "Devices", symbol: "rectangle.on.rectangle", height: 480, width: 620) {
+        addTab(label: String(localized: "Devices", comment: "Tab name: tablet and tool registry"), symbol: "rectangle.on.rectangle", height: 480, width: 620) {
             DevicesView(tabletManager: tm, registry: dr, undoManager: um)
         }
-        addTab(label: "Profiles", symbol: "star.circle", height: 450) {
+        addTab(label: String(localized: "Profiles", comment: "Tab name: profile management"), symbol: "star.circle", height: 450) {
             ProfilesView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: "Scratchpad", symbol: "pencil.and.outline", height: 360) {
+        addTab(label: String(localized: "Scratchpad", comment: "Tab name: test area for pen input"), symbol: "pencil.and.outline", height: 360) {
             ScratchpadView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: "Info", symbol: "info.circle", height: 430) {
+        addTab(label: String(localized: "Info", comment: "Tab name: live pen coordinates and device info"), symbol: "info.circle", height: 430) {
             InfoView(tabletManager: tm, settings: s, productID: productID)
         }
 
