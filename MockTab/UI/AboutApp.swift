@@ -89,7 +89,7 @@ struct AboutView: View {
                     .resizable()
                     .frame(width: 48, height: 48)
 
-                Text("MockTab")
+                Text(String(localized: "MockTab", comment: "Application name"))
                     .font(.system(size: 32, weight: .semibold))
             }
 

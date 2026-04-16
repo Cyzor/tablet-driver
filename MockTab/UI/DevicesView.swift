@@ -146,7 +146,7 @@ struct DevicesView: View {
 
             // Editable name
             if editingTabletID == tablet.id {
-                TextField("Device name", text: $editingName)
+                TextField(String(localized: "Device name", comment: "Placeholder text in rename tablet field"), text: $editingName)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: .infinity)
                     .onSubmit { commitTabletRename() }
@@ -240,7 +240,7 @@ struct DevicesView: View {
                 .frame(width: 20, alignment: .center)
 
             if editingToolID == tool.id {
-                TextField("Tool name", text: $editingName)
+                TextField(String(localized: "Tool name", comment: "Placeholder text in rename tool field"), text: $editingName)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: .infinity)
                     .onSubmit { commitToolRename() }
@@ -463,12 +463,12 @@ struct ToolOverridePickerSheet: View {
                 Text("Select a tool to force (or leave blank to use detected tool):")
                     .font(.settingsLabel).foregroundStyle(.secondary)
 
-                Picker("Tool Code", selection: $selectedCode) {
-                    Text("(Auto-detect)").tag("")
-                    Text("Grip Pen (0x0802)").tag("0802")
-                    Text("Pro Pen 2 (0x0832)").tag("0832")
-                    Text("Pro Pen 3 (0x0842)").tag("0842")
-                    Text("Pen 4K (0x0852)").tag("0852")
+                Picker(String(localized: "Tool Code", comment: "Label for tool code selection picker"), selection: $selectedCode) {
+                    Text(String(localized: "(Auto-detect)", comment: "Placeholder: automatically detect tool code")).tag("")
+                    Text(String(localized: "Grip Pen (0x0802)", comment: "Tool code option: Grip Pen")).tag("0802")
+                    Text(String(localized: "Pro Pen 2 (0x0832)", comment: "Tool code option: Pro Pen 2")).tag("0832")
+                    Text(String(localized: "Pro Pen 3 (0x0842)", comment: "Tool code option: Pro Pen 3")).tag("0842")
+                    Text(String(localized: "Pen 4K (0x0852)", comment: "Tool code option: Pen 4K")).tag("0852")
                 }
                 .pickerStyle(.menu)
             }
