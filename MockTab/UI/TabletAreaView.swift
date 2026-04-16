@@ -74,7 +74,7 @@ struct TabletAreaView: View {
                         
                         Toggle("Proportional mapping", isOn: proportionalMappingBinding)
                             .toggleStyle(.checkbox)
-                            .help("Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed.")
+                            .help(LocalizedStringKey("Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed."))
                         
                         Spacer()
                         
@@ -88,7 +88,7 @@ struct TabletAreaView: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .help("Reset the active area to the full tablet surface (undoable).")
+                        .help(LocalizedStringKey("Reset the active area to the full tablet surface (undoable)."))
 
                     }
                     .listRowBackground(Color.clear)
