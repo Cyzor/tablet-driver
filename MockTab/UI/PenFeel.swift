@@ -30,7 +30,7 @@ struct PenFeel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.pressureKeys)
+            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.pressureKeys, productID: productID)
             Form {
                 pressureCurveSection
 

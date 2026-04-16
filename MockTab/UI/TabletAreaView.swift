@@ -44,7 +44,7 @@ struct TabletAreaView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.areaKeys)
+            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.areaKeys, productID: boundProductID)
             Form {
                 Section {
                     GeometryReader { geo in

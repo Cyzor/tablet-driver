@@ -22,6 +22,21 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+// MARK: - TabletColorTheme
+
+struct TabletColorTheme {
+    /// Returns a subtle background tint color for a given tablet productID.
+    /// Colors are deterministic: same tablet always gets the same hue.
+    static func barBackgroundColor(for productID: Int?) -> Color {
+        guard let pid = productID else {
+            return Color(NSColor.controlBackgroundColor)
+        }
+        let hue = CGFloat(abs(pid.hashValue) % 360) / 360.0
+        let nsColor = NSColor(hue: hue, saturation: 0.15, brightness: 0.95, alpha: 1.0)
+        return Color(nsColor)
+    }
+}
+
 // MARK: - Scroll-tracking preference keys
 
 private struct ChipScrollOffsetKey: PreferenceKey {
@@ -104,6 +119,7 @@ struct AppOverrideBar: View {
 
     @ObservedObject var settings: TabletSettings
     let domainKeys: Set<String>
+    let productID: Int?
 
     @State private var isDropTargeted     = false
     @State private var dragEnabledID:     String? = nil
@@ -183,7 +199,7 @@ struct AppOverrideBar: View {
     var body: some View {
         VStack(spacing: 0) {
             chipBarRow
-                .background(Color(NSColor.controlBackgroundColor))
+                .background(TabletColorTheme.barBackgroundColor(for: productID))
                 .onDrop(of: [UTType.fileURL], isTargeted: $isDropTargeted, perform: handleDrop)
                 .overlay(
                     isDropTargeted
