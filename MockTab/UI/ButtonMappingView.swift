@@ -100,7 +100,7 @@ struct ButtonMappingView: View {
             // Tip — only for non-mouse tools
             if !isMouse {
                 buttonRow(
-                    "Tip", isActive: lb.tipDown,
+                    String(localized: "Tip", comment: "Pen tip button row label in Buttons tab"), isActive: lb.tipDown,
                     binding: recordingBinding(
                         "Tip Button", owner: tool,
                         get: { tool.tipBinding },
@@ -110,7 +110,7 @@ struct ButtonMappingView: View {
             // Eraser — only for non-mouse tools
             if !isMouse {
                 buttonRow(
-                    "Eraser", isActive: lb.eraserDown,
+                    String(localized: "Eraser", comment: "Eraser button row label in Buttons tab"), isActive: lb.eraserDown,
                     binding: recordingBinding(
                         "Eraser Button", owner: tool,
                         get: { tool.eraserBinding },
@@ -122,9 +122,11 @@ struct ButtonMappingView: View {
             // For mice: "Button 1", "Button 2", etc.
             let buttonLabel: (Int) -> String = { i in
                 if isMouse {
-                    return "Button \(i + 1)"
+                    return String(localized: "Button \(i + 1)", comment: "Mouse button N label, e.g. 'Button 1'")
                 } else {
-                    return btnCount == 1 ? "Side button" : "Side button \(i + 1)"
+                    return btnCount == 1
+                        ? String(localized: "Side button", comment: "Single side button label on airbrush")
+                        : String(localized: "Side button \(i + 1)", comment: "Side button N label, e.g. 'Side button 1'")
                 }
             }
 
@@ -180,7 +182,9 @@ struct ButtonMappingView: View {
 
             // Wheel row — airbrush fingerwheel or scroll wheel
             if hasWheel {
-                let wheelLabel = toolSpec?.toolType == .airbrush ? "Fingerwheel" : "Scroll Wheel"
+                let wheelLabel = toolSpec?.toolType == .airbrush
+                    ? String(localized: "Fingerwheel", comment: "Airbrush fingerwheel row label")
+                    : String(localized: "Scroll Wheel", comment: "Mouse scroll wheel row label")
                 buttonRow(
                     wheelLabel, isActive: false,
                     binding: recordingBinding(
@@ -211,7 +215,7 @@ struct ButtonMappingView: View {
         // and the hardware button rows, matching the original visual intent.
         Section {
             ForEach(0..<8, id: \.self) { i in
-                expressKeyRow(index: i, label: "Key \(i + 1)", lb: lb)
+                expressKeyRow(index: i, label: String(localized: "Key \(i + 1)", comment: "Express key N label, e.g. 'Key 1'"), lb: lb)
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
@@ -223,30 +227,30 @@ struct ButtonMappingView: View {
         if hasTouchRing {
             Section("Touch Ring") {
                 buttonRow(
-                    "Center", isActive: lb.touchRingButtonDown,
+                    String(localized: "Center", comment: "Touch ring center button row label"), isActive: lb.touchRingButtonDown,
                     binding: recordingBinding(
                         "Touch Ring Button", owner: settings,
                         get: { settings.touchRingButtonBinding },
                         set: { settings.touchRingButtonBinding = $0 }))
                 touchRingRow(
-                    "Touch Ring", isActive: lb.touchRingActive,
+                    String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRingActive,
                     mode: recordingBinding(
                         "Touch Ring Mode", owner: settings,
                         get: { settings.touchRingMode },
                         set: { settings.touchRingMode = $0 }))
             }
         }
-        
+
         if hasTouchStrips {
             Section("Touch Strips") {
                 touchRingRow(
-                    "Left", isActive: lb.touchStrip1Active,
+                    String(localized: "Left", comment: "Left touch strip row label"), isActive: lb.touchStrip1Active,
                     mode: recordingBinding(
                         "Touch Strip 1 Mode", owner: settings,
                         get: { settings.touchStrip1Mode },
                         set: { settings.touchStrip1Mode = $0 }))
                 touchRingRow(
-                    "Right", isActive: lb.touchStrip2Active,
+                    String(localized: "Right", comment: "Right touch strip row label"), isActive: lb.touchStrip2Active,
                     mode: recordingBinding(
                         "Touch Strip 2 Mode", owner: settings,
                         get: { settings.touchStrip2Mode },
@@ -266,7 +270,7 @@ struct ButtonMappingView: View {
     private func dualSidedSection(lb: LiveButtonState) -> some View {
         Section {
             ForEach(0..<3, id: \.self) { i in
-                expressKeyRow(index: i, label: "Button \(i + 1)", lb: lb)
+                expressKeyRow(index: i, label: String(localized: "Button \(i + 1)", comment: "Toggle button N label, e.g. 'Button 1'"), lb: lb)
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
@@ -277,34 +281,34 @@ struct ButtonMappingView: View {
         
         Section("Express Keys — Left") {
             ForEach(3..<8, id: \.self) { i in
-                expressKeyRow(index: i, label: "Key \(i - 2)", lb: lb)
+                expressKeyRow(index: i, label: String(localized: "Key \(i - 2)", comment: "Express key N label, e.g. 'Key 1'"), lb: lb)
             }
         }
-        
+
         Section("Touch Ring — Left") {
             touchRingRow(
-                "Touch Ring", isActive: lb.touchRingActive,
+                String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRingActive,
                 mode: recordingBinding(
                     "Touch Ring Mode", owner: settings,
                     get: { settings.touchRingMode },
                     set: { settings.touchRingMode = $0 }))
         }
-        
+
         Section("Toggle Buttons — Right") {
             ForEach(8..<11, id: \.self) { i in
-                expressKeyRow(index: i, label: "Button \(i - 7)", lb: lb)
+                expressKeyRow(index: i, label: String(localized: "Button \(i - 7)", comment: "Toggle button N label, e.g. 'Button 1'"), lb: lb)
             }
         }
-        
+
         Section("Express Keys — Right") {
             ForEach(11..<16, id: \.self) { i in
-                expressKeyRow(index: i, label: "Key \(i - 10)", lb: lb)
+                expressKeyRow(index: i, label: String(localized: "Key \(i - 10)", comment: "Express key N label, e.g. 'Key 1'"), lb: lb)
             }
         }
-        
+
         Section("Touch Ring — Right") {
             touchRingRow(
-                "Touch Ring", isActive: lb.touchRing2Active,
+                String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRing2Active,
                 mode: recordingBinding(
                     "Touch Ring Mode", owner: settings,
                     get: { settings.touchRingMode },
@@ -413,7 +417,7 @@ struct ButtonMappingView: View {
                     .fill(Color.accentColor.opacity(isActive ? 0.12 : 0))
             )
             .animation(.easeOut(duration: 0.07), value: isActive)
-            .frame(width: 100, alignment: .trailing)
+            .frame(minWidth: 60, alignment: .trailing)
     }
     
 }
@@ -498,10 +502,10 @@ struct ButtonBindingControl: View {
     private var fieldText: String {
         if isRecording {
             return pendingModifiers.isEmpty
-                ? "Type shortcut…"
+                ? String(localized: "Type shortcut\u{2026}", comment: "Placeholder in shortcut recorder field while recording")
                 : modifierGlyphs(pendingModifiers) + "…"
         }
-        if binding.kind == .none { return "Record Shortcut" }
+        if binding.kind == .none { return String(localized: "Record Shortcut", comment: "Placeholder in shortcut recorder field when empty") }
         return binding.displayLabel
     }
 

@@ -13,14 +13,14 @@ struct PresetImporter {
         var errorDescription: String? {
             switch self {
             case .notJSON:
-                return "Not a valid JSON file."
+                return String(localized: "Not a valid JSON file.", comment: "Import error — file could not be parsed as JSON")
             case .wrongVersion(let v):
                 if let v {
-                    return "Unsupported profile version (\(v)). Expected version 2."
+                    return String(localized: "error.import.wrongVersion \(v)", comment: "Import error — incompatible backup format version")
                 }
-                return "File is missing a version field."
+                return String(localized: "File is missing a version field.", comment: "Import error — no version key in backup file")
             case .noTablets:
-                return "No tablet data found in this file."
+                return String(localized: "No tablet data found in this file.", comment: "Import error — backup file has no tablet entries")
             }
         }
     }

@@ -39,7 +39,9 @@ struct DeviceNameLabel: View {
     }
 
     private var displayName: String {
-        guard tabletManager.isConnected else { return "No device connected" }
+        guard tabletManager.isConnected else {
+            return String(localized: "No device connected", comment: "Device name label when no tablet is connected")
+        }
         let id = tabletManager.connectedProductID
         if let t = registry.knownTablets.first(where: { $0.id == id }) { return t.nickname }
         return TabletManager.deviceName(forProductID: id)
@@ -69,7 +71,8 @@ struct ToolNameLabel: View {
     private var displayName: String {
         guard let toolID = tabletManager.activeToolID else {
             // Fall back to last-seen tool if registry has one
-            return registry.knownTools.first?.nickname ?? "No tool in proximity"
+            return registry.knownTools.first?.nickname
+                ?? String(localized: "No tool in proximity", comment: "Tool name label when no pen is in range")
         }
         if let t = registry.knownTools.first(where: { $0.id == toolID }) { return t.nickname }
         return toolID
@@ -133,7 +136,9 @@ struct DeviceStatusBar: View {
     }
 
     private var tabletName: String {
-        guard let context = context, context.isConnected else { return "No device" }
+        guard let context = context, context.isConnected else {
+            return String(localized: "No device", comment: "Device name in status bar when no tablet is connected")
+        }
         if let t = registry.knownTablets.first(where: { $0.id == productID }) { return t.nickname }
         return TabletManager.deviceName(forProductID: productID)
     }
@@ -146,7 +151,9 @@ struct DeviceStatusBar: View {
     }
 
     private var connectionLabel: String {
-        guard let context = context, context.isConnected else { return "Off" }
+        guard let context = context, context.isConnected else {
+            return String(localized: "Off", comment: "Connection status when device is disconnected")
+        }
         return context.transport
     }
 
@@ -181,7 +188,8 @@ struct DeviceStatusBar: View {
             if let t = registry.knownTools.first(where: { $0.id == toolID }) { return t.nickname }
             return toolID
         }
-        return registry.knownTools.first?.nickname ?? "No tool"
+        return registry.knownTools.first?.nickname
+            ?? String(localized: "No tool", comment: "Tool name in status bar when no pen is active")
     }
 
     private var activeAppName: String? {

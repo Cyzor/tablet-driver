@@ -258,7 +258,7 @@ struct DisplayMappingView: View {
                     .padding(.bottom, 3)
             }
         }
-        .frame(width: 76, height: 48)
+        .frame(minWidth: 76, minHeight: 48)
         .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 5, style: .continuous)
