@@ -53,11 +53,15 @@ struct TabletColorTheme {
     /// Blends a tint color onto a background using alpha composition.
     /// result = tint * alpha + background * (1 - alpha)
     private static func blendColors(background: NSColor, tint: NSColor, alpha: CGFloat) -> NSColor {
+        // Convert catalog colors to concrete RGB colorspace for component extraction
+        let bgRGB = background.usingColorSpace(.sRGB) ?? background
+        let tintRGB = tint.usingColorSpace(.sRGB) ?? tint
+
         var bgR: CGFloat = 0, bgG: CGFloat = 0, bgB: CGFloat = 0, bgA: CGFloat = 0
         var tR: CGFloat = 0, tG: CGFloat = 0, tB: CGFloat = 0, tA: CGFloat = 0
 
-        background.getRed(&bgR, green: &bgG, blue: &bgB, alpha: &bgA)
-        tint.getRed(&tR, green: &tG, blue: &tB, alpha: &tA)
+        bgRGB.getRed(&bgR, green: &bgG, blue: &bgB, alpha: &bgA)
+        tintRGB.getRed(&tR, green: &tG, blue: &tB, alpha: &tA)
 
         let resultR = tR * alpha + bgR * (1 - alpha)
         let resultG = tG * alpha + bgG * (1 - alpha)
