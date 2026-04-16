@@ -44,7 +44,7 @@ struct TabletColorTheme {
             let tintColor = NSColor(hue: hue, saturation: 0.08, brightness: 1.0, alpha: 1.0)
 
             // Blend tint at 6% opacity onto the control background
-            return blendColors(background: controlBG, tint: tintColor, alpha: 0.06)
+            return blendColors(background: controlBG, tint: tintColor, alpha: 0.08)
         })
 
         return Color(nsColor)
@@ -242,7 +242,7 @@ struct AppOverrideBar: View {
                             .padding(.vertical, 2)
                         : nil
                 )
-
+            Divider()
             if let override = settings.activeAppOverride {
                 overrideBanner(override)
                 Divider()
