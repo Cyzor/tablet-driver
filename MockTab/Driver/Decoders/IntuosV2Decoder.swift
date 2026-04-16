@@ -93,14 +93,15 @@ struct IntuosV2Decoder: WacomDecoder {
     /// 361-byte and 99-byte BT paths). Offsets and interpretation are identical in both formats.
     /// Pressure formula is canonical (mask high byte first).
     private func decodeBTFrame(_ f: UnsafePointer<UInt8>)
-        -> (x: Int, y: Int, pressure: Int, tiltX: Double, tiltY: Double)
+        -> (x: Int, y: Int, pressure: Int, tiltX: Double, tiltY: Double, hoverDistance: Int)
     {
         let x = Int(UInt16(f[1]) | UInt16(f[2]) << 8)
         let y = Int(UInt16(f[3]) | UInt16(f[4]) << 8)
         let pressure = Int(UInt16(f[5]) | (UInt16(f[6] & 0x1F) << 8))
         let tiltX = Double(Int8(bitPattern: f[7])) / 127.0
         let tiltY = Double(Int8(bitPattern: f[8])) / 127.0
-        return (x, y, pressure, tiltX, tiltY)
+        let hoverDistance = Int(f[13])
+        return (x, y, pressure, tiltX, tiltY, hoverDistance)
     }
 
     // MARK: - Standard pen report (0x10)
@@ -594,7 +595,7 @@ struct IntuosV2Decoder: WacomDecoder {
             let barrel1 = (flags & 0x02) != 0
             let barrel2 = (flags & 0x04) != 0
 
-            let (x, y, pressure, rawTiltX, rawTiltY) = decodeBTFrame(f)
+            let (x, y, pressure, rawTiltX, rawTiltY, hoverDistance) = decodeBTFrame(f)
                 let tiltX = inRange ? rawTiltX : state.lastTiltX
                 let tiltY = inRange ? rawTiltY : state.lastTiltY
                 if inRange {
@@ -637,7 +638,7 @@ struct IntuosV2Decoder: WacomDecoder {
                         penButton2: barrel2,
                         eraser: isEraser,
                         inProximity: true,
-                        hoverDistance: 0)))
+                        hoverDistance: hoverDistance)))
         }
 
         // Pad sub-report is embedded at a fixed offset in the 361-byte 0x80 container (byte 281).
@@ -785,7 +786,7 @@ struct IntuosV2Decoder: WacomDecoder {
                 state.prevInProximity = true
             }
 
-            let (x, y, pressure, rawTiltX, rawTiltY) = decodeBTFrame(f)
+            let (x, y, pressure, rawTiltX, rawTiltY, hoverDistance) = decodeBTFrame(f)
                 let tiltX = inRange ? rawTiltX : state.lastTiltX
                 let tiltY = inRange ? rawTiltY : state.lastTiltY
                 if inRange {
@@ -806,7 +807,7 @@ struct IntuosV2Decoder: WacomDecoder {
                         pressure: pressure, maxPressure: spec.maxPressure,
                         tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
                         penButton1: barrel1, penButton2: barrel2,
-                        eraser: eraser, inProximity: true, hoverDistance: 0)))
+                        eraser: eraser, inProximity: true, hoverDistance: hoverDistance)))
         }
 
         return results
