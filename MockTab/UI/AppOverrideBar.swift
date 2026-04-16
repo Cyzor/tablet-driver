@@ -27,7 +27,8 @@ import UniformTypeIdentifiers
 struct TabletColorTheme {
     /// Returns a subtle appearance-aware background tint color for a given tablet productID.
     /// Colors are deterministic: same tablet always gets the same hue.
-    /// Very low saturation (5%) and high brightness to subtly tint the default fill.
+    /// Blends a barely-visible tint (6% opacity) onto the system control background,
+    /// automatically adapting to light mode, dark mode, and high contrast appearances.
     static func barBackgroundColor(for productID: Int?) -> Color {
         guard let pid = productID else {
             return Color(NSColor.controlBackgroundColor)
@@ -36,21 +37,33 @@ struct TabletColorTheme {
         let hue = CGFloat(abs(pid.hashValue) % 360) / 360.0
 
         let nsColor = NSColor(name: nil, dynamicProvider: { appearance in
-            let isDark = [NSAppearance.Name.darkAqua,
-                         .vibrantDark,
-                         .accessibilityHighContrastDarkAqua,
-                         .accessibilityHighContrastVibrantDark].contains(appearance.name)
+            // Get control background in the current appearance context
+            let controlBG = NSColor.controlBackgroundColor
 
-            if isDark {
-                // Dark mode: very subtle tint at ~92% brightness
-                return NSColor(hue: hue, saturation: 0.05, brightness: 0.92, alpha: 1.0)
-            } else {
-                // Light mode: very subtle tint at ~98% brightness
-                return NSColor(hue: hue, saturation: 0.05, brightness: 0.98, alpha: 1.0)
-            }
+            // Create tint color: desaturated hue at full brightness
+            let tintColor = NSColor(hue: hue, saturation: 0.08, brightness: 1.0, alpha: 1.0)
+
+            // Blend tint at 6% opacity onto the control background
+            return blendColors(background: controlBG, tint: tintColor, alpha: 0.06)
         })
 
         return Color(nsColor)
+    }
+
+    /// Blends a tint color onto a background using alpha composition.
+    /// result = tint * alpha + background * (1 - alpha)
+    private static func blendColors(background: NSColor, tint: NSColor, alpha: CGFloat) -> NSColor {
+        var bgR: CGFloat = 0, bgG: CGFloat = 0, bgB: CGFloat = 0, bgA: CGFloat = 0
+        var tR: CGFloat = 0, tG: CGFloat = 0, tB: CGFloat = 0, tA: CGFloat = 0
+
+        background.getRed(&bgR, green: &bgG, blue: &bgB, alpha: &bgA)
+        tint.getRed(&tR, green: &tG, blue: &tB, alpha: &tA)
+
+        let resultR = tR * alpha + bgR * (1 - alpha)
+        let resultG = tG * alpha + bgG * (1 - alpha)
+        let resultB = tB * alpha + bgB * (1 - alpha)
+
+        return NSColor(red: resultR, green: resultG, blue: resultB, alpha: bgA)
     }
 }
 
