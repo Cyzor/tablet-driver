@@ -49,9 +49,9 @@ struct MenuBarView: View {
                     settings.activate(nil)
                 } label: {
                     if settings.activeProfile == nil {
-                        Label("Device Defaults", systemImage: "checkmark")
+                        Label(String(localized: "Device Defaults", comment: "Profile option: use device's default settings"), systemImage: "checkmark")
                     } else {
-                        Text("Device Defaults")
+                        Text(String(localized: "Device Defaults", comment: "Profile option: use device's default settings"))
                     }
                 }
 
@@ -83,7 +83,7 @@ struct MenuBarView: View {
 
         Divider()
 
-        Toggle("Launch at Login", isOn: $launchAtLogin)
+        Toggle(String(localized: "Launch at Login", comment: "Menu toggle: start app automatically on login"), isOn: $launchAtLogin)
             .onChange(of: launchAtLogin) { enabled in
                 do {
                     if enabled { try SMAppService.mainApp.register() }
@@ -93,20 +93,20 @@ struct MenuBarView: View {
                 }
             }
 
-        Toggle("Show in Dock", isOn: $showInDock)
+        Toggle(String(localized: "Show in Dock", comment: "Menu toggle: show app icon in dock"), isOn: $showInDock)
             .onChange(of: showInDock) { show in
                 NSApp.setActivationPolicy(show ? .regular : .accessory)
             }
 
         Divider()
 
-        Button("Preferences…") {
+        Button(String(localized: "Preferences…", comment: "Menu button: open preferences window")) {
             PreferencesWindowController.shared.show()
         }
 
         Divider()
 
-        Button("Quit MockTab") {
+        Button(String(localized: "Quit MockTab", comment: "Menu button: quit the application")) {
             NSApp.terminate(nil)
         }
     }

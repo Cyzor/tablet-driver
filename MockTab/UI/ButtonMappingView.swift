@@ -476,10 +476,10 @@ struct ButtonBindingControl: View {
                 Divider()
                 Button(LocalizedStringKey("Toggle Display")) { set(.displayToggle) }
                 Divider()
-                Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
-                Button("⌥ Option")  { binding = ButtonBinding(modifierOnly: .option)  }
-                Button("⇧ Shift")   { binding = ButtonBinding(modifierOnly: .shift)   }
-                Button("⌃ Control") { binding = ButtonBinding(modifierOnly: .control) }
+                Button(LocalizedStringKey("⌘ Command")) { binding = ButtonBinding(modifierOnly: .command) }
+                Button(LocalizedStringKey("⌥ Option"))  { binding = ButtonBinding(modifierOnly: .option)  }
+                Button(LocalizedStringKey("⇧ Shift"))   { binding = ButtonBinding(modifierOnly: .shift)   }
+                Button(LocalizedStringKey("⌃ Control")) { binding = ButtonBinding(modifierOnly: .control) }
                 Divider()
                 Button(LocalizedStringKey("None")) { set(.none) }
             } label: {
