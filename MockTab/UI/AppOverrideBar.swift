@@ -25,14 +25,31 @@ import UniformTypeIdentifiers
 // MARK: - TabletColorTheme
 
 struct TabletColorTheme {
-    /// Returns a subtle background tint color for a given tablet productID.
+    /// Returns a subtle appearance-aware background tint color for a given tablet productID.
     /// Colors are deterministic: same tablet always gets the same hue.
+    /// Very low saturation (5%) and high brightness to subtly tint the default fill.
     static func barBackgroundColor(for productID: Int?) -> Color {
         guard let pid = productID else {
             return Color(NSColor.controlBackgroundColor)
         }
+
         let hue = CGFloat(abs(pid.hashValue) % 360) / 360.0
-        let nsColor = NSColor(hue: hue, saturation: 0.15, brightness: 0.95, alpha: 1.0)
+
+        let nsColor = NSColor(name: nil, dynamicProvider: { appearance in
+            let isDark = [NSAppearance.Name.darkAqua,
+                         .vibrantDark,
+                         .accessibilityHighContrastDarkAqua,
+                         .accessibilityHighContrastVibrantDark].contains(appearance.name)
+
+            if isDark {
+                // Dark mode: very subtle tint at ~92% brightness
+                return NSColor(hue: hue, saturation: 0.05, brightness: 0.92, alpha: 1.0)
+            } else {
+                // Light mode: very subtle tint at ~98% brightness
+                return NSColor(hue: hue, saturation: 0.05, brightness: 0.98, alpha: 1.0)
+            }
+        })
+
         return Color(nsColor)
     }
 }
@@ -262,7 +279,7 @@ struct AppOverrideBar: View {
     // MARK: - addMenu panel
 
     private var addMenuPanel: some View {
-        let barBG = Color(NSColor.controlBackgroundColor)
+        let barBG = TabletColorTheme.barBackgroundColor(for: productID)
 
         return HStack(spacing: 0) {
             // Soft fade: chips slide behind this gradient rather than hard-cutting
@@ -288,7 +305,7 @@ struct AppOverrideBar: View {
     // MARK: - Scrolling chip row
 
     private var scrollingChipRow: some View {
-        let barBG    = Color(NSColor.controlBackgroundColor)
+        let barBG    = TabletColorTheme.barBackgroundColor(for: productID)
         let fadeWidth: CGFloat = 24
 
         return ScrollView(.horizontal, showsIndicators: true) {
