@@ -198,7 +198,7 @@ struct DisplayMappingView: View {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.primary)
             }
-            Text(assignedLabel.map { "Triggered by \($0)" } ?? "No button assigned to toggle")
+            Text(assignedLabel.map { String(localized: "Triggered by \($0)", comment: "Label showing which button triggers the display toggle") } ?? String(localized: "No button assigned to toggle", comment: "Label when no button is assigned to display toggle"))
                 .foregroundStyle(assignedLabel != nil ? .secondary : .primary)
             Spacer()
             if assignedLabel == nil {

@@ -33,8 +33,8 @@ struct MenuBarView: View {
         } label: {
             Label(
                 tabletManager.isConnected
-                    ? "\(tabletManager.connectedDeviceName) connected"
-                    : "No tablet detected",
+                    ? String(localized: "\(tabletManager.connectedDeviceName) connected", comment: "Menu bar status: tablet connected with device name")
+                    : String(localized: "No tablet detected", comment: "Menu bar status: no tablet currently connected"),
                 systemImage: tabletManager.isConnected ? "circle.fill" : "circle"
             )
         }
@@ -71,10 +71,10 @@ struct MenuBarView: View {
             } label: {
                 switch settings.activationSource {
                 case .manual:
-                    Text("Profile: \(settings.activeProfile?.name ?? "Device Defaults")")
+                    Text(String(localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")", comment: "Menu label showing current active profile"))
                 case .app(_, let appName):
                     Text(
-                        "Profile: \(settings.activeProfile?.name ?? "Device Defaults")  (\(appName))")
+                        String(localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")  (\(appName))", comment: "Menu label showing current active profile and triggering app"))
                 }
             }
 

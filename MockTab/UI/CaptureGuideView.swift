@@ -122,8 +122,8 @@ struct CaptureGuideView: View {
                     .fill(engine.isRunning ? Color.red : Color.secondary)
                     .frame(width: 7, height: 7)
                 Text(engine.isRunning
-                     ? "\(engine.discoverySampleCount) events recorded"
-                     : "Starting…")
+                     ? String(localized: "\(engine.discoverySampleCount) events recorded", comment: "HID discovery: number of events captured during device discovery")
+                     : String(localized: "Starting…", comment: "HID discovery: status indicator while discovery is starting"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
