@@ -57,14 +57,14 @@ struct CaptureGuideView: View {
             footer
         }
         .frame(width: 460, height: 400)
-        .alert("Cancel Data Collection?", isPresented: $showCancelConfirm) {
+        .alert(String(localized: "Cancel Data Collection?", comment: "Data collection confirmation alert title"), isPresented: $showCancelConfirm) {
             Button(LocalizedStringKey("Continue Collecting"), role: .cancel) {}
             Button(LocalizedStringKey("Cancel"), role: .destructive) {
                 engine.cancelDiscovery()
                 onDismiss()
             }
         } message: {
-            Text("Any data collected so far will be discarded.")
+            Text(String(localized: "Any data collected so far will be discarded.", comment: "Data collection alert message"))
         }
         .onAppear { startCollection() }
     }
@@ -77,7 +77,7 @@ struct CaptureGuideView: View {
                 .font(.title2)
                 .foregroundStyle(.blue)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Collect Device Data")
+                Text(String(localized: "Collect Device Data", comment: "Sheet title: device data collection"))
                     .font(.headline)
                 Text(subtitle)
                     .font(.caption)
@@ -91,15 +91,15 @@ struct CaptureGuideView: View {
 
     private var subtitle: String {
         WacomDeviceRegistry.spec(for: productID) != nil
-            ? "Captures diagnostic data to help investigate a problem with your device."
-            : "Helps add support for your device by capturing its HID report layout."
+            ? String(localized: "Captures diagnostic data to help investigate a problem with your device.", comment: "Subtitle for device data collection when tablet is already supported")
+            : String(localized: "Helps add support for your device by capturing its HID report layout.", comment: "Subtitle for device data collection when tablet is not yet supported")
     }
 
     // MARK: - Recording view
 
     private var recordingView: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Perform each of these actions, then click Done:")
+            Text(String(localized: "Perform each of these actions, then click Done:", comment: "Instruction text for device data collection"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 20)
@@ -107,11 +107,11 @@ struct CaptureGuideView: View {
                 .padding(.bottom, 12)
 
             VStack(alignment: .leading, spacing: 10) {
-                instruction("hand.point.down.left",  "Touch the pen tip to the surface, then lift")
-                instruction("button.horizontal",      "Press and hold each side button on the pen")
-                instruction("arrow.up.and.down.circle", "Press the eraser end to the surface (if present)")
-                instruction("rectangle.grid.2x2",    "Press each button on the tablet body (if any)")
-                instruction("circle.dashed",          "Slide or touch any rings or strips on the tablet (if any)")
+                instruction("hand.point.down.left",  String(localized: "Touch the pen tip to the surface, then lift", comment: "Device data collection instruction: pen tip"))
+                instruction("button.horizontal",      String(localized: "Press and hold each side button on the pen", comment: "Device data collection instruction: pen buttons"))
+                instruction("arrow.up.and.down.circle", String(localized: "Press the eraser end to the surface (if present)", comment: "Device data collection instruction: eraser"))
+                instruction("rectangle.grid.2x2",    String(localized: "Press each button on the tablet body (if any)", comment: "Device data collection instruction: tablet buttons"))
+                instruction("circle.dashed",          String(localized: "Slide or touch any rings or strips on the tablet (if any)", comment: "Device data collection instruction: touch ring/strip"))
             }
             .padding(.horizontal, 20)
 
@@ -154,19 +154,19 @@ struct CaptureGuideView: View {
                 .font(.system(size: 44))
                 .foregroundStyle(.green)
 
-            Text("Collection Complete")
+            Text(String(localized: "Collection Complete", comment: "Data collection completion status"))
                 .font(.title3)
                 .fontWeight(.semibold)
 
             Button {
                 NSWorkspace.shared.activateFileViewerSelecting([url])
             } label: {
-                Label("Show File in Finder", systemImage: "doc.badge.arrow.up")
+                Label(String(localized: "Show File in Finder", comment: "Button label: open data collection file in Finder"), systemImage: "doc.badge.arrow.up")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
 
-            Text("Share this file with MockTab developers for potential feature support.")
+            Text(String(localized: "Share this file with MockTab developers for potential feature support.", comment: "Message encouraging user to share data collection file"))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)

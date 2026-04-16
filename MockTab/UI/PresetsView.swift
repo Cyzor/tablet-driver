@@ -167,7 +167,7 @@ struct ProfilesView: View {
 
                     if !preset.overriddenKeys.isEmpty {
                         Text(
-                            "\(preset.overriddenKeys.count) setting\(preset.overriddenKeys.count == 1 ? "" : "s")"
+                            String(localized: "\(preset.overriddenKeys.count) setting\(preset.overriddenKeys.count == 1 ? "" : "s")", comment: "Badge showing number of overridden settings in a profile")
                         )
                         .font(.settingsBadge)
                         .foregroundStyle(.tertiary)
@@ -310,7 +310,7 @@ struct ProfilesView: View {
                 .foregroundStyle(.secondary)
 
             Toggle(
-                "Automatically switch to the matching profile when this tablet connects",
+                String(localized: "Automatically switch to the matching profile when this tablet connects", comment: "Toggle: auto-activate profile when tablet connects"),
                 isOn: recordingBinding(
                     "Auto-Switch",
                     get: { settings.autoSwitchEnabled },
@@ -351,8 +351,8 @@ struct ProfilesView: View {
                 Spacer()
                 Text(
                     ts.profiles.count == 0
-                        ? "No profiles"
-                        : "\(ts.profiles.count) profile\(ts.profiles.count == 1 ? "" : "s")"
+                        ? String(localized: "No profiles", comment: "Badge text when tablet has no profiles")
+                        : String(localized: "\(ts.profiles.count) profile\(ts.profiles.count == 1 ? "" : "s")", comment: "Badge showing profile count, plural handled by format string")
                 )
                 .font(.settingsBadge)
                 .foregroundStyle(.tertiary)
@@ -436,7 +436,7 @@ struct ProfilesView: View {
             Text(LocalizedStringKey("Backup & Restore"))
                 .fontWeight(.medium)
             Text(
-                "Export your current configuration as a JSON file. You can restore it later if settings get reset or corrupted."
+                String(localized: "Export your current configuration as a JSON file. You can restore it later if settings get reset or corrupted.", comment: "Description of the backup/export functionality")
             )
             .font(.settingsLabel)
             .foregroundStyle(.secondary)
@@ -452,7 +452,7 @@ struct ProfilesView: View {
                 .frame(width: 80, height: 80)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Drag out to save a backup. Drag a .json file in to import.")
+                    Text(String(localized: "Drag out to save a backup. Drag a .json file in to import.", comment: "Description of export/import drag-and-drop functionality"))
                         .font(.settingsLabel)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
