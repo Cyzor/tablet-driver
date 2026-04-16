@@ -119,10 +119,14 @@ struct ProfilesView: View {
                 .foregroundStyle(.secondary)
 
             if settings.profiles.isEmpty {
-                Text("No profiles yet. Create one below.")
-                    .font(.settingsLabel)
-                    .foregroundStyle(.tertiary)
-                    .padding(.vertical, 4)
+                Text(
+                    String(
+                        localized: "No profiles yet. Create one below.",
+                        comment: "Empty state message when no profiles exist")
+                )
+                .font(.settingsLabel)
+                .foregroundStyle(.tertiary)
+                .padding(.vertical, 4)
             } else {
                 ForEach(settings.profiles, id: \.id) { preset in
                     presetRow(preset)
@@ -167,7 +171,10 @@ struct ProfilesView: View {
 
                     if !preset.overriddenKeys.isEmpty {
                         Text(
-                            String(localized: "\(preset.overriddenKeys.count) setting\(preset.overriddenKeys.count == 1 ? "" : "s")", comment: "Badge showing number of overridden settings in a profile")
+                            String(
+                                localized:
+                                    "\(preset.overriddenKeys.count) setting\(preset.overriddenKeys.count == 1 ? "" : "s")",
+                                comment: "Badge showing number of overridden settings in a profile")
                         )
                         .font(.settingsBadge)
                         .foregroundStyle(.tertiary)
@@ -182,7 +189,7 @@ struct ProfilesView: View {
                     }
                     .controlSize(.small)
                 } else {
-                    Text("Active")
+                    Text(String(localized: "Active", comment: "Badge label when profile is active"))
                         .font(.settingsBadge)
                         .foregroundStyle(.green)
                 }
@@ -292,7 +299,10 @@ struct ProfilesView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "plus.circle.fill")
-                        Text("Create Profile")
+                        Text(
+                            String(
+                                localized: "Create Profile",
+                                comment: "Button to create a new profile"))
                     }
                 }
                 .buttonStyle(.bordered)
@@ -310,7 +320,10 @@ struct ProfilesView: View {
                 .foregroundStyle(.secondary)
 
             Toggle(
-                String(localized: "Automatically switch to the matching profile when this tablet connects", comment: "Toggle: auto-activate profile when tablet connects"),
+                String(
+                    localized:
+                        "Automatically switch to the matching profile when this tablet connects",
+                    comment: "Toggle: auto-activate profile when tablet connects"),
                 isOn: recordingBinding(
                     "Auto-Switch",
                     get: { settings.autoSwitchEnabled },
@@ -324,7 +337,11 @@ struct ProfilesView: View {
     // MARK: - Summary Section
 
     private var summarySection: some View {
-        DisclosureRow(label: "Device Summary", isExpanded: $summaryExpanded) {
+        DisclosureRow(
+            label: String(
+                localized: "Device Summary", comment: "Disclosure row label in Profiles tab"),
+            isExpanded: $summaryExpanded
+        ) {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(registry.knownTablets, id: \.id) { tablet in
                     tabletSummaryCard(tablet)
@@ -351,8 +368,13 @@ struct ProfilesView: View {
                 Spacer()
                 Text(
                     ts.profiles.count == 0
-                        ? String(localized: "No profiles", comment: "Badge text when tablet has no profiles")
-                        : String(localized: "\(ts.profiles.count) profile\(ts.profiles.count == 1 ? "" : "s")", comment: "Badge showing profile count, plural handled by format string")
+                        ? String(
+                            localized: "No profiles",
+                            comment: "Badge text when tablet has no profiles")
+                        : String(
+                            localized:
+                                "\(ts.profiles.count) profile\(ts.profiles.count == 1 ? "" : "s")",
+                            comment: "Badge showing profile count, plural handled by format string")
                 )
                 .font(.settingsBadge)
                 .foregroundStyle(.tertiary)
@@ -386,7 +408,12 @@ struct ProfilesView: View {
     ) -> some View {
         let t = deviceSettings.toolSettings(forID: tool.id)
         let nonDefault = toolNonDefaultLines(t)
-        let toolKind = tool.kind.lowercased() == "pen" ? "Pen" : (tool.kind.lowercased() == "eraser" ? "Eraser" : "Tool")
+        let toolKind =
+            tool.kind.lowercased() == "pen"
+            ? String(localized: "Pen", comment: "Tool type: pen")
+            : (tool.kind.lowercased() == "eraser"
+                ? String(localized: "Eraser", comment: "Tool type: eraser")
+                : String(localized: "Tool", comment: "Tool type: generic"))
 
         HStack(alignment: .top, spacing: 8) {
             Text(toolKind)
@@ -397,9 +424,11 @@ struct ProfilesView: View {
                 .font(.settingsBadge)
                 .foregroundStyle(.secondary)
             if !nonDefault.isEmpty {
-                Text("(\(nonDefault.joined(separator: ", ")))")
-                    .font(.settingsBadge)
-                    .foregroundStyle(.tertiary)
+                Text(
+                    "(\(nonDefault.joined(separator: String(localized: ", ", comment: "List separator"))))"
+                )
+                .font(.settingsBadge)
+                .foregroundStyle(.tertiary)
             }
         }
         .padding(.leading, 8)
@@ -408,24 +437,50 @@ struct ProfilesView: View {
 
     private func deviceNonDefaultLines(_ s: TabletSettings) -> [String] {
         var lines: [String] = []
-        if s.activeAreaX != 0 || s.activeAreaY != 0 { lines.append("area offset") }
-        if s.activeAreaWidth != 1.0 || s.activeAreaHeight != 1.0 { lines.append("area scaled") }
-        if s.targetDisplayIndex != 0 { lines.append("display != primary") }
-        if s.pressureCurve.p1 != CGPoint(x: 0, y: 0) || s.pressureCurve.p2 != CGPoint(x: 1, y: 1) {
-            lines.append("pressure curve")
+        if s.activeAreaX != 0 || s.activeAreaY != 0 {
+            lines.append(String(localized: "area offset", comment: "Device summary: area offset"))
         }
-        if s.proportionalMapping { lines.append("proportional") }
-        if s.invertRotation { lines.append("rotation inverted") }
+        if s.activeAreaWidth != 1.0 || s.activeAreaHeight != 1.0 {
+            lines.append(String(localized: "area scaled", comment: "Device summary: area scaled"))
+        }
+        if s.targetDisplayIndex != 0 {
+            lines.append(
+                String(
+                    localized: "display != primary", comment: "Device summary: non-primary display")
+            )
+        }
+        if s.pressureCurve.p1 != CGPoint(x: 0, y: 0) || s.pressureCurve.p2 != CGPoint(x: 1, y: 1) {
+            lines.append(
+                String(localized: "pressure curve", comment: "Device summary: pressure curve"))
+        }
+        if s.proportionalMapping {
+            lines.append(
+                String(localized: "proportional", comment: "Device summary: proportional mapping"))
+        }
+        if s.invertRotation {
+            lines.append(
+                String(localized: "rotation inverted", comment: "Device summary: rotation inverted")
+            )
+        }
         return lines
     }
 
     private func toolNonDefaultLines(_ t: ToolSettings) -> [String] {
         var lines: [String] = []
         if t.pressureCurve.p1 != CGPoint(x: 0, y: 0) || t.pressureCurve.p2 != CGPoint(x: 1, y: 1) {
-            lines.append("curve")
+            lines.append(String(localized: "curve", comment: "Tool summary: pressure curve"))
         }
-        if t.tipBinding != .leftClick { lines.append("tip ≠ default") }
-        if t.eraserBinding != .eraser { lines.append("eraser ≠ default") }
+        if t.tipBinding != .leftClick {
+            lines.append(
+                String(localized: "tip ≠ default", comment: "Tool summary: non-default tip binding")
+            )
+        }
+        if t.eraserBinding != .eraser {
+            lines.append(
+                String(
+                    localized: "eraser ≠ default",
+                    comment: "Tool summary: non-default eraser binding"))
+        }
         return lines
     }
 
@@ -436,7 +491,10 @@ struct ProfilesView: View {
             Text(LocalizedStringKey("Backup & Restore"))
                 .fontWeight(.medium)
             Text(
-                String(localized: "Export your current configuration as a JSON file. You can restore it later if settings get reset or corrupted.", comment: "Description of the backup/export functionality")
+                String(
+                    localized:
+                        "Export your current configuration as a JSON file. You can restore it later if settings get reset or corrupted.",
+                    comment: "Description of the backup/export functionality")
             )
             .font(.settingsLabel)
             .foregroundStyle(.secondary)
@@ -452,10 +510,14 @@ struct ProfilesView: View {
                 .frame(width: 80, height: 80)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(String(localized: "Drag out to save a backup. Drag a .json file in to import.", comment: "Description of export/import drag-and-drop functionality"))
-                        .font(.settingsLabel)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Text(
+                        String(
+                            localized: "Drag out to save a backup. Drag a .json file in to import.",
+                            comment: "Description of export/import drag-and-drop functionality")
+                    )
+                    .font(.settingsLabel)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                     HStack(spacing: 8) {
                         Button(LocalizedStringKey("Export as JSON…")) { saveExportToFile() }
@@ -515,7 +577,9 @@ struct ProfilesView: View {
         } catch let e as PresetImporter.ParseError {
             importError = e.localizedDescription
         } catch {
-            importError = "Could not read file."
+            importError = String(
+                localized: "Could not read file.",
+                comment: "Error message when import file cannot be read")
         }
     }
 
@@ -523,7 +587,9 @@ struct ProfilesView: View {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.allowsMultipleSelection = false
-        panel.message = "Choose a MockTab backup file to import"
+        panel.message = String(
+            localized: "Choose a MockTab backup file to import",
+            comment: "File picker message for importing backup")
         panel.begin { response in
             guard response == .OK, let url = panel.url,
                 let data = try? Data(contentsOf: url)
