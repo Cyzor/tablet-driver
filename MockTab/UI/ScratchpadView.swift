@@ -39,7 +39,7 @@ struct ScratchpadView: View {
 
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Test Area")
+            Text(LocalizedStringKey("Test Area"))
                 .font(.headline)
 
             Text("Draw on the canvas to verify pressure and click behavior.")

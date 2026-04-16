@@ -201,7 +201,7 @@ struct ButtonMappingView: View {
                 .listRowBackground(Color.clear)
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(isMouse ? "Mouse Buttons" : "Pen Buttons")
+                Text(LocalizedStringKey(isMouse ? "Mouse Buttons" : "Pen Buttons"))
                 ToolNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
@@ -219,13 +219,13 @@ struct ButtonMappingView: View {
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Express Keys")
+                Text(LocalizedStringKey("Express Keys"))
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
         
         if hasTouchRing {
-            Section("Touch Ring") {
+            Section(LocalizedStringKey("Touch Ring")) {
                 buttonRow(
                     String(localized: "Center", comment: "Touch ring center button row label"), isActive: lb.touchRingButtonDown,
                     binding: recordingBinding(
@@ -242,7 +242,7 @@ struct ButtonMappingView: View {
         }
 
         if hasTouchStrips {
-            Section("Touch Strips") {
+            Section(LocalizedStringKey("Touch Strips")) {
                 touchRingRow(
                     String(localized: "Left", comment: "Left touch strip row label"), isActive: lb.touchStrip1Active,
                     mode: recordingBinding(
@@ -279,13 +279,13 @@ struct ButtonMappingView: View {
             }
         }
         
-        Section("Express Keys — Left") {
+        Section(LocalizedStringKey("Express Keys — Left")) {
             ForEach(3..<8, id: \.self) { i in
                 expressKeyRow(index: i, label: String(localized: "Key \(i - 2)", comment: "Express key N label, e.g. 'Key 1'"), lb: lb)
             }
         }
 
-        Section("Touch Ring — Left") {
+        Section(LocalizedStringKey("Touch Ring — Left")) {
             touchRingRow(
                 String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRingActive,
                 mode: recordingBinding(
@@ -294,19 +294,19 @@ struct ButtonMappingView: View {
                     set: { settings.touchRingMode = $0 }))
         }
 
-        Section("Toggle Buttons — Right") {
+        Section(LocalizedStringKey("Toggle Buttons — Right")) {
             ForEach(8..<11, id: \.self) { i in
                 expressKeyRow(index: i, label: String(localized: "Button \(i - 7)", comment: "Toggle button N label, e.g. 'Button 1'"), lb: lb)
             }
         }
 
-        Section("Express Keys — Right") {
+        Section(LocalizedStringKey("Express Keys — Right")) {
             ForEach(11..<16, id: \.self) { i in
                 expressKeyRow(index: i, label: String(localized: "Key \(i - 10)", comment: "Express key N label, e.g. 'Key 1'"), lb: lb)
             }
         }
 
-        Section("Touch Ring — Right") {
+        Section(LocalizedStringKey("Touch Ring — Right")) {
             touchRingRow(
                 String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRing2Active,
                 mode: recordingBinding(
