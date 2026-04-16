@@ -5463,6 +5463,29 @@
           }
         }
       }
+    },
+    "Profile: %@ (%@)": {
+      "comment": "Menu label showing current active profile and triggering app",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil: %@ (%@)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfil: %@ (%@)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロファイル: %@ (%@)"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

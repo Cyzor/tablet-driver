@@ -265,7 +265,7 @@ struct AppOverrideBar: View {
             Button(LocalizedStringKey("Add First 3 Only")) { addMultipleApps(Array(urls.prefix(3))) }
             Button(LocalizedStringKey("Cancel"), role: .cancel) {}
         } message: { urls in
-            Text("You dropped \(urls.count) apps. Add all of them as overrides?")
+            Text(String(localized: "You dropped \(urls.count) apps. Add all of them as overrides?", comment: "Alert when user drag-drops multiple apps into the override bar"))
         }
         .onAppear { refreshRunningApps() }
         .onChange(of: settings.appOverrides.map(\.bundleID)) { _ in refreshRunningApps() }
@@ -630,8 +630,9 @@ struct AppOverrideBar: View {
             if let icon = appIconCached(bundleID: override.bundleID) {
                 Image(nsImage: icon).resizable().scaledToFit().frame(width: 14, height: 14)
             }
-            Text("Editing **\(override.appName)** settings").font(.settingsLabel)
-            Text("· changes apply only when \(override.appName) is active")
+            Text(String(localized: "Editing **\(override.appName)** settings", comment: "Label showing which app's settings are being edited"))
+                .font(.settingsLabel)
+            Text(String(localized: "· changes apply only when \(override.appName) is active", comment: "Note that per-app overrides only apply to the specific app"))
                 .font(.settingsLabel)
                 .foregroundStyle(.secondary)
             Spacer()

@@ -35,7 +35,7 @@ struct ImportPreviewSheet: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(LocalizedStringKey("Import Configuration")).font(.headline)
             if !plan.sourceDate.isEmpty {
-                Text("Exported \(formattedDate(plan.sourceDate))")
+                Text(String(localized: "Exported \(formattedDate(plan.sourceDate))", comment: "Label showing when the backup was created"))
                     .font(.settingsLabel).foregroundStyle(.secondary)
             }
         }
