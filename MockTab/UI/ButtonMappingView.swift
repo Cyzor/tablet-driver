@@ -69,7 +69,7 @@ struct ButtonMappingView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.buttonKeys)
+            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.buttonKeys, productID: productID)
             Form {
                 let lb = tabletManager.liveButtons
                 penButtonsSection(lb: lb)
