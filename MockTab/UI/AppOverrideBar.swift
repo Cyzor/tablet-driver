@@ -534,7 +534,7 @@ struct AppOverrideBar: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .help("Add per-app override — or drag an app here from Finder or the Dock")
+        .help(LocalizedStringKey("Add per-app override — or drag an app here from Finder or the Dock"))
     }
 
     // MARK: - Drop handling
@@ -641,7 +641,7 @@ struct AppOverrideBar: View {
             .font(.settingsLabel)
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
-            .help("Remove all \(override.appName) overrides for this tab")
+            .help(String(localized: "Remove all \(override.appName) overrides for this tab", comment: "Help: remove all per-app overrides for current tab"))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 5)

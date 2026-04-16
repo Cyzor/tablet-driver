@@ -99,15 +99,15 @@ struct DisplayMappingView: View {
             }
 
             radioRow("Primary display", tag: 0)
-                .help("Map the tablet to your main display.")
+                .help(LocalizedStringKey("Map the tablet to your main display."))
             ForEach(displays, id: \.listIndex) { info in
                 radioRow(info.pickerLabel, tag: info.listIndex)
-                    .help("Map the tablet to \(info.name) only.")
+                    .help(String(localized: "Map the tablet to \(info.name) only.", comment: "Help: specific display mapping"))
             }
             radioRow("Toggle between displays", tag: modeToggle, disabled: displays.count <= 1)
-                .help("Use a button press to cycle the tablet's active mapping between selected displays.")
+                .help(LocalizedStringKey("Use a button press to cycle the tablet's active mapping between selected displays."))
             radioRow("All — span across all displays", tag: modeAll, disabled: displays.count <= 1)
-                .help("Map the tablet across all displays as one continuous surface.")
+                .help(LocalizedStringKey("Map the tablet across all displays as one continuous surface."))
 
             if settings.targetDisplayIndex == modeToggle {
                 toggleSection
@@ -163,7 +163,7 @@ struct DisplayMappingView: View {
             Text("Displays in rotation — ⌘+click individual, ⇧+click ranges")
                 .font(.settingsLabel)
                 .foregroundStyle(.secondary)
-                .help("Click a thumbnail to toggle that display in or out of the rotation. ⌘+click to add individual displays; ⇧+click to select a range.")
+                .help(LocalizedStringKey("Click a thumbnail to toggle that display in or out of the rotation. ⌘+click to add individual displays; ⇧+click to select a range."))
 
             HStack(spacing: 8) {
                 ForEach(Array(displays.enumerated()), id: \.element.id) { index, info in
@@ -211,7 +211,7 @@ struct DisplayMappingView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .help("Go to the Buttons tab to assign a button that triggers the display toggle.")
+                .help(LocalizedStringKey("Go to the Buttons tab to assign a button that triggers the display toggle."))
             }
         }
         .padding(.vertical, 2)
@@ -491,7 +491,7 @@ struct DisplayMappingView: View {
             }
         }
         .frame(height: 180)
-        .help("Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays.")
+        .help(LocalizedStringKey("Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays."))
     }
 
     // MARK: - Coordinate helpers

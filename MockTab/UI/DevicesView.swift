@@ -180,7 +180,7 @@ struct DevicesView: View {
                 } label: {
                     Image(systemName: "pencil")
                 }
-                .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
+                .buttonStyle(.plain).foregroundStyle(.secondary).help(LocalizedStringKey("Rename"))
             }
         }
         .padding(.horizontal, 12)
@@ -251,7 +251,7 @@ struct DevicesView: View {
                     if !tool.isSupported {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
-                            .help("Tool not fully supported on this device")
+                            .help(LocalizedStringKey("Tool not fully supported on this device"))
                     }
                 }
             }
@@ -274,7 +274,7 @@ struct DevicesView: View {
                 }
                 .buttonStyle(.bordered).controlSize(.small)
                 .foregroundStyle(.red)
-                .help("Remove this tool from the registry. It will reappear with its default name next time it is detected.")
+                .help(LocalizedStringKey("Remove this tool from the registry. It will reappear with its default name next time it is detected."))
                 Button(LocalizedStringKey("Cancel")) { editingToolID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
             } else {
@@ -285,7 +285,7 @@ struct DevicesView: View {
                     } label: {
                         Image(systemName: "pencil")
                     }
-                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
+                    .buttonStyle(.plain).foregroundStyle(.secondary).help(LocalizedStringKey("Rename"))
 
                     // Tool override button
                     // Button {
