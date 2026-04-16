@@ -42,7 +42,7 @@ struct ScratchpadView: View {
             Text(LocalizedStringKey("Test Area"))
                 .font(.headline)
 
-            Text("Draw on the canvas to verify pressure and click behavior.")
+            Text(String(localized: "Draw on the canvas to verify pressure and click behavior.", comment: "Description of the scratchpad drawing area"))
                 .font(.settingsLabel)
                 .foregroundStyle(.secondary)
 

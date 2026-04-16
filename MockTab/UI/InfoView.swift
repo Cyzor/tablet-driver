@@ -157,7 +157,7 @@ struct InfoView: View {
                 String(localized: "Conflicts", comment: "Row label in Info tab status table"),
                 value: conflicts.isEmpty
                     ? String(localized: "None detected", comment: "Conflicts status value — no conflicts")
-                    : String(localized: "info.conflicts.count \(conflicts.count)"),
+                    : String(localized: "\(conflicts.count) detected", comment: "Conflicts status value when conflicts are found, showing count"),
                 ok: conflicts.isEmpty ? true : false,
                 fix: conflicts.isEmpty ? nil : showConflictAlert,
                 fixHelp: String(localized: "Show details about detected conflicts with other tablet drivers and how to resolve them.", comment: "Tooltip on Fix button for Conflicts row")
@@ -234,7 +234,7 @@ struct InfoView: View {
 
     private var captureSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Diagnostics")
+            Text(String(localized: "Diagnostics", comment: "Section header: device diagnostics and data collection"))
                 .font(.headline)
 
             HStack(spacing: 12) {
@@ -243,24 +243,20 @@ struct InfoView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .help(
-                    "Guides you through a short set of actions to capture how your device communicates. Produces a small JSON file you can share to add or fix device support."
-                )
+                .help(String(localized: "Guides you through a short set of actions to capture how your device communicates. Produces a small JSON file you can share to add or fix device support.", comment: "Help text for the Collect Device Data button"))
                 Spacer()
             }
 
-            Text(
-                "Use this if your device is unrecognised or a feature isn't working as expected. The collection takes about one minute."
-            )
-            .font(.settingsLabel)
-            .foregroundStyle(.tertiary)
+            Text(String(localized: "Use this if your device is unrecognised or a feature isn't working as expected. The collection takes about one minute.", comment: "Description below the Collect Device Data button"))
+                .font(.settingsLabel)
+                .foregroundStyle(.tertiary)
         }
     }
 
     // MARK: - Diagnostic section
 
     private var diagnosticSection: some View {
-        DisclosureRow(label: "Diagnostic Detail", isExpanded: $diagnosticsExpanded) {
+        DisclosureRow(label: String(localized: "Diagnostic Detail", comment: "Collapsible section header for detailed diagnostic information"), isExpanded: $diagnosticsExpanded) {
             Text(diagnosticText)
                 .font(.monospaced)
                 .textSelection(.enabled)
@@ -395,13 +391,13 @@ struct InfoView: View {
             }
             if !matchingLive.isEmpty {
                 claimedNames.formUnion(matchingLive)
-                found.append(String(localized: "conflict.processRunning \(label)", comment: "Conflict detection: named process is running"))
+                found.append(String(localized: "Conflicting driver: \(label)", comment: "Conflict detection: named process is running"))
             }
         }
 
         if let ctx = tabletManager.activeContext, ctx.injector.isJittery {
             let level = String(format: "%.1f", ctx.injector.jitterLevel)
-            found.append(String(localized: "conflict.rfJitter \(level)", comment: "Conflict detection: RF interference jitter"))
+            found.append(String(localized: "RF interference: \(level) pt/sample", comment: "Conflict detection: RF interference jitter"))
         }
 
         return found
@@ -434,14 +430,14 @@ struct InfoView: View {
     private func showConflictAlert() {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = String(localized: "alert.conflicts.title", defaultValue: "Potential Conflicts Detected", comment: "Alert title when user taps Fix on the Conflicts row")
+        alert.messageText = String(localized: "Potential Conflicts Detected", comment: "Alert title when user taps Fix on the Conflicts row")
 
-        let intro = String(localized: "alert.conflicts.intro", defaultValue: "MockTab found the following issues that may interfere with tablet operation:", comment: "First sentence of conflict alert body")
+        let intro = String(localized: "MockTab found the following issues that may interfere with tablet operation:", comment: "First sentence of conflict alert body")
         var body = "\(intro)\n\n"
         for (i, conflict) in conflicts.enumerated() {
             body += "  \(i + 1). \(conflict)\n"
         }
-        let recommendation = String(localized: "alert.conflicts.recommendation", defaultValue: "Recommendation: Quit or disable the listed processes, then restart MockTab. For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet.", comment: "Recommendation paragraph at the end of the conflict alert body")
+        let recommendation = String(localized: "Recommendation: Quit or disable the listed processes, then restart MockTab. For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet.", comment: "Recommendation paragraph at the end of the conflict alert body")
         body += "\n\(recommendation)"
 
         alert.informativeText = body
@@ -475,7 +471,7 @@ private struct LiveInputView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Live Input")
+            Text(String(localized: "Live Input", comment: "Section header: live input state and pen position"))
                 .font(.headline)
 
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
@@ -544,7 +540,7 @@ private struct LiveInputView: View {
                     Text(
                         point != nil
                             ? "X: \(point!.x)   Y: \(point!.y)"
-                            : "X: 0   Y: 0"
+                            : String(localized: "X: 0   Y: 0", comment: "Default coordinate display when no pen is detected")
                     )
                     .monospacedDigit()
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -554,7 +550,7 @@ private struct LiveInputView: View {
                     Text(
                         point != nil
                             ? "X: \(String(format: "%+.2f", point!.tiltX))   Y: \(String(format: "%+.2f", point!.tiltY))"
-                            : "X: +0.00   Y: +0.00"
+                            : String(localized: "X: +0.00   Y: +0.00", comment: "Default tilt display when no pen is detected")
                     )
                     .monospacedDigit()
                 }

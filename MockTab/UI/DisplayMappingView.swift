@@ -85,10 +85,10 @@ struct DisplayMappingView: View {
                         .imageScale(.small)
                         .padding(.top, 2)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Display Rotation Detected")
+                        Text(String(localized: "Display Rotation Detected", comment: "Warning title for rotated display"))
                             .font(.subheadline)
                             .fontWeight(.semibold)
-                        Text("Your display is rotated. Combined with a rotated tablet, this may require adjustment. Test your pen input to verify the mapping is correct.")
+                        Text(String(localized: "Your display is rotated. Combined with a rotated tablet, this may require adjustment. Test your pen input to verify the mapping is correct.", comment: "Warning message for rotated display"))
                             .font(.settingsLabel)
                             .foregroundStyle(.secondary)
                     }

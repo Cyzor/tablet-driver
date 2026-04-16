@@ -70,7 +70,7 @@ struct DevicesView: View {
             if selectedTabletID == nil { syncTools() }
         }
         .alert(
-            "Remove \"\(pendingForgetTool?.nickname ?? "")\"?",
+            String(localized: "Remove \"\(pendingForgetTool?.nickname ?? "")\"?", comment: "Confirmation alert when removing a tool"),
             isPresented: Binding(
                 get: { pendingForgetTool != nil },
                 set: { if !$0 { pendingForgetTool = nil } }
@@ -419,7 +419,7 @@ struct DevicesView: View {
         undoManager?.registerUndo(withTarget: registry) { target in
             target.renameTablet(id: id, to: oldName)
         }
-        undoManager?.setActionName("Rename Tablet")
+        undoManager?.setActionName(String(localized: "Rename Tablet", comment: "Undo action name when renaming a tablet"))
         editingTabletID = nil
     }
 
@@ -436,7 +436,7 @@ struct DevicesView: View {
         undoManager?.registerUndo(withTarget: registry) { target in
             target.renameTool(id: toolID, to: oldName, forDevice: deviceID)
         }
-        undoManager?.setActionName("Rename Tool")
+        undoManager?.setActionName(String(localized: "Rename Tool", comment: "Undo action name when renaming a tool"))
         editingToolID = nil
     }
 
@@ -460,7 +460,7 @@ struct ToolOverridePickerSheet: View {
             Text(LocalizedStringKey("Force Tool Code")).font(.headline)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Select a tool to force (or leave blank to use detected tool):")
+                Text(String(localized: "Select a tool to force (or leave blank to use detected tool):", comment: "Instruction text for tool code override selection"))
                     .font(.settingsLabel).foregroundStyle(.secondary)
 
                 Picker(String(localized: "Tool Code", comment: "Label for tool code selection picker"), selection: $selectedCode) {
