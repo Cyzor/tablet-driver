@@ -120,17 +120,19 @@ struct ImportPreviewSheet: View {
                         Text("\"\(finalName)\"").font(.settingsLabel)
                             .foregroundStyle(renamed ? Color.orange : Color.secondary)
                         if renamed {
-                            Text("(renamed to avoid conflict)").font(.settingsBadge).foregroundStyle(.orange)
+                            Text(String(localized: "(renamed to avoid conflict)", comment: "Label when a profile name was changed to avoid a duplicate"))
+                                .font(.settingsBadge).foregroundStyle(.orange)
                         }
                     }
                     if !entry.isKnown {
-                        Text("Not in your registry — profile will be available when this tablet connects.")
+                        Text(String(localized: "Not in your registry — profile will be available when this tablet connects.", comment: "Message when importing a profile for a tablet that hasn't been connected yet"))
                             .font(.settingsBadge).foregroundStyle(.orange)
                     }
                     Text("\(entry.profileValues.count) setting\(entry.profileValues.count == 1 ? "" : "s")")
                         .font(.settingsBadge).foregroundStyle(.tertiary)
                 } else {
-                    Text("Skipped").font(.settingsLabel).foregroundStyle(.secondary)
+                    Text(String(localized: "Skipped", comment: "Label when a tablet profile is excluded from import"))
+                        .font(.settingsLabel).foregroundStyle(.secondary)
                 }
             }
 

@@ -95,8 +95,8 @@ struct AboutView: View {
 
             // Version
             HStack(spacing: 1) {
-                Text("Version \(version)")
-                Text("(\(build))")
+                Text(String(localized: "Version \(version)", comment: "App version label in about view"))
+                Text(String(localized: "(\(build))", comment: "Build number in parentheses"))
                     .foregroundColor(.secondary)
             }
             .font(.system(size: 13))
@@ -106,7 +106,7 @@ struct AboutView: View {
                 .frame(maxWidth: 220)
 
             // Description
-            Text("Native macOS driver for a few legacy drawing tablets")
+            Text(String(localized: "Native macOS driver for a few legacy drawing tablets", comment: "App tagline in about view"))
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -118,19 +118,19 @@ struct AboutView: View {
             // Links
             HStack(spacing: 24) {
                 Link(destination: URL(string: "https://github.com/mocktab/mocktab")!) {
-                    Label("Source Code", systemImage: "chevron.left.forwardslash.chevron.right")
+                    Label(String(localized: "Source Code", comment: "Link label: view source code on GitHub"), systemImage: "chevron.left.forwardslash.chevron.right")
                 }
                 .buttonStyle(.link)
 
                 Link(destination: URL(string: "https://github.com/mocktab/mocktab/releases")!) {
-                    Label("Releases", systemImage: "arrow.down.circle")
+                    Label(String(localized: "Releases", comment: "Link label: view releases on GitHub"), systemImage: "arrow.down.circle")
                 }
                 .buttonStyle(.link)
             }
             .font(.system(size: 11))
 
             // Copyright
-            Text("Copyright © \(copyrightYears) MockTab Contributors")
+            Text(String(localized: "Copyright © \(copyrightYears) MockTab Contributors", comment: "Copyright notice with year range"))
                 .font(.system(size: 10))
                 .foregroundColor(.secondary)
         }
@@ -140,18 +140,18 @@ struct AboutView: View {
 
     private var licenseBox: some View {
         VStack(spacing: 0) {
-            Text("Open Source License")
+            Text(String(localized: "Open Source License", comment: "Section header: open source license information"))
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.primary)
 
-            Text("MockTab is free software released under the GNU General Public License v3.0.")
+            Text(String(localized: "MockTab is free software released under the GNU General Public License v3.0.", comment: "License description in about view"))
                 .font(.system(size: 10))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(nil)
 
             Link(
-                "View License",
+                String(localized: "View License", comment: "Link label: view full GPL v3.0 license text"),
                 destination: URL(string: "https://www.gnu.org/licenses/gpl-3.0.html")!
             )
             .font(.system(size: 10))
