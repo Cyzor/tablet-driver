@@ -58,8 +58,8 @@ struct CaptureGuideView: View {
         }
         .frame(width: 460, height: 400)
         .alert("Cancel Data Collection?", isPresented: $showCancelConfirm) {
-            Button("Continue Collecting", role: .cancel) {}
-            Button("Cancel", role: .destructive) {
+            Button(LocalizedStringKey("Continue Collecting"), role: .cancel) {}
+            Button(LocalizedStringKey("Cancel"), role: .destructive) {
                 engine.cancelDiscovery()
                 onDismiss()
             }
@@ -180,18 +180,18 @@ struct CaptureGuideView: View {
     private var footer: some View {
         HStack {
             if !isComplete {
-                Button("Cancel") {
+                Button(LocalizedStringKey("Cancel")) {
                     if engine.isRunning { showCancelConfirm = true } else { onDismiss() }
                 }
                 .foregroundStyle(.secondary)
             }
             Spacer()
             if isComplete {
-                Button("Done") { onDismiss() }
+                Button(LocalizedStringKey("Done")) { onDismiss() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             } else {
-                Button("Done") {
+                Button(LocalizedStringKey("Done")) {
                     _ = engine.finishDiscovery()
                 }
                 .buttonStyle(.borderedProminent)

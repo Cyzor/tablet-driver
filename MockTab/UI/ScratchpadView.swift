@@ -79,7 +79,7 @@ struct ScratchpadView: View {
 
                 Spacer()
 
-                Button("Clear") { clearID += 1 }
+                Button(LocalizedStringKey("Clear")) { clearID += 1 }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
             }

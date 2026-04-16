@@ -77,9 +77,9 @@ struct ImportPreviewSheet: View {
     private var buttons: some View {
         HStack {
             Spacer()
-            Button("Cancel") { onDismiss() }
+            Button(LocalizedStringKey("Cancel")) { onDismiss() }
                 .keyboardShortcut(.cancelAction)
-            Button(includedCount == 0 ? "Import" : "Import \(includedCount)") {
+            Button(includedCount == 0 ? String(localized: "Import") : "Import \(includedCount)") {
                 applyImport()
             }
             .keyboardShortcut(.defaultAction)

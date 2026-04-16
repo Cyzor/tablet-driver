@@ -257,13 +257,13 @@ struct AppOverrideBar: View {
             presenting: renamingBundleID
         ) { bundleID in
             TextField("App name", text: $renameText)
-            Button("Cancel", role: .cancel) { renamingBundleID = nil }
-            Button("Rename") { commitRename(bundleID: bundleID) }
+            Button(LocalizedStringKey("Cancel"), role: .cancel) { renamingBundleID = nil }
+            Button(LocalizedStringKey("Rename")) { commitRename(bundleID: bundleID) }
         }
         .alert("Add Multiple Apps?", isPresented: $showMultiDropAlert, presenting: pendingDropURLs) { urls in
-            Button("Add All (\(urls.count))") { addMultipleApps(urls) }
-            Button("Add First 3 Only") { addMultipleApps(Array(urls.prefix(3))) }
-            Button("Cancel", role: .cancel) {}
+            Button(String(localized: "Add All (\(urls.count))", comment: "Button label: add all apps from drag drop")) { addMultipleApps(urls) }
+            Button(LocalizedStringKey("Add First 3 Only")) { addMultipleApps(Array(urls.prefix(3))) }
+            Button(LocalizedStringKey("Cancel"), role: .cancel) {}
         } message: { urls in
             Text("You dropped \(urls.count) apps. Add all of them as overrides?")
         }
@@ -438,10 +438,10 @@ struct AppOverrideBar: View {
         .animation(.spring(response: 0.2, dampingFraction: 0.65), value: isDragLifted)
         .contextMenu {
             if let bundleID {
-                Button("Rename…") { renamingBundleID = bundleID; renameText = label }
-                Button("Reveal in Finder") { revealInFinder(bundleID: bundleID) }
+                Button(LocalizedStringKey("Rename…")) { renamingBundleID = bundleID; renameText = label }
+                Button(LocalizedStringKey("Reveal in Finder")) { revealInFinder(bundleID: bundleID) }
                 Divider()
-                Button("Remove", role: .destructive) { settings.removeAppOverride(bundleID: bundleID) }
+                Button(LocalizedStringKey("Remove"), role: .destructive) { settings.removeAppOverride(bundleID: bundleID) }
             }
         }
         .onLongPressGesture(
@@ -525,7 +525,7 @@ struct AppOverrideBar: View {
                 }
                 Divider()
             }
-            Button("Other…") { browseForApp() }
+            Button(LocalizedStringKey("Other…")) { browseForApp() }
         } label: {
             Image(systemName: "plus.app.fill")
                 .font(.system(size: 36, weight: .semibold))
@@ -635,7 +635,7 @@ struct AppOverrideBar: View {
                 .font(.settingsLabel)
                 .foregroundStyle(.secondary)
             Spacer()
-            Button("Reset") {
+            Button(LocalizedStringKey("Reset")) {
                 settings.removeAppOverride(bundleID: override.bundleID, keyScope: domainKeys)
             }
             .font(.settingsLabel)
