@@ -183,7 +183,7 @@ struct AppOverrideBar: View {
     var body: some View {
         VStack(spacing: 0) {
             chipBarRow
-                .background(.thinMaterial)
+                .background(Color(NSColor.controlBackgroundColor))
                 .onDrop(of: [UTType.fileURL], isTargeted: $isDropTargeted, perform: handleDrop)
                 .overlay(
                     isDropTargeted
