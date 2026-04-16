@@ -29,15 +29,15 @@ struct DisclosureRow<Content: View>: View {
         VStack(alignment: .leading, spacing: 8) {
             Button { isExpanded.toggle() } label: {
                 HStack {
-                    Text(label)
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
                     Image(systemName: "chevron.down")
                         .rotationEffect(.degrees(isExpanded ? -180 : 0))
                         .animation(.easeInOut(duration: 0.25), value: isExpanded)
                         .font(.settingsLabel)
                         .foregroundStyle(.secondary)
+                    Text(label)
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
                 }
                 .contentShape(Rectangle())
             }
