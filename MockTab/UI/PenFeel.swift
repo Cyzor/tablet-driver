@@ -91,7 +91,9 @@ struct PenFeel: View {
                                 ))
 
                         Text(
-                            LocalizedStringKey("Snaps a second tap to the first click position within this radius, making double-clicks reliable.")
+                            LocalizedStringKey(
+                                "Snaps a second tap to the first click position within this radius, making double-clicks reliable."
+                            )
                         )
                         .font(.settingsLabel)
                         .foregroundStyle(.secondary)
@@ -120,6 +122,48 @@ struct PenFeel: View {
                         LocalizedStringKey(
                             "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita)."
                         ))
+
+                    Toggle(
+                        isOn: Binding(
+                            get: { tool.useRotationAsTilt },
+                            set: { newVal in tool.useRotationAsTilt = newVal }
+                        )
+                    ) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(LocalizedStringKey("Art Pen: Swap Tilt with Rotation"))
+                            Text(
+                                "Sacrifices an Art Pen's tilt behavior, allowing apps like Adobe Photoshop to harness true barrel rotation."
+                            ).font(
+                                .settingsLabel
+                            ).foregroundStyle(.secondary)
+                        }
+                    }
+                    .help(
+                        "Feeds barrel rotation into Photoshop's Pen Tilt control by sending fake tilt data. Real tilt is suppressed while this is on. Use in Brush Dynamics → Shape Dynamics → Angle → Pen Tilt."
+                    )
+
+                    if tool.useRotationAsTilt {
+                        HStack {
+                            Text("Tilt Offset")
+                            Slider(
+                                value: Binding(
+                                    get: { tool.rotationTiltOffsetDegrees },
+                                    set: { tool.rotationTiltOffsetDegrees = $0 }
+                                ), in: -180...180)
+                            Text("\(Int(tool.rotationTiltOffsetDegrees))°").frame(width: 40)
+                        }
+
+                        HStack {
+                            Text("Tilt Magnitude")
+                            Slider(
+                                value: Binding(
+                                    get: { tool.rotationTiltMagnitude },
+                                    set: { tool.rotationTiltMagnitude = $0 }
+                                ), in: 0.1...1.0)
+                            Text(String(format: "%.0f%%", tool.rotationTiltMagnitude * 100)).frame(
+                                width: 40)
+                        }
+                    }
 
                     Toggle(isOn: relativeCursorMovementBinding) {
                         VStack(alignment: .leading, spacing: 2) {

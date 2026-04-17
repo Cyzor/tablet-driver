@@ -63,6 +63,26 @@ final class ToolSettings: ObservableObject {
         didSet { persist("smoothingStrength", smoothingStrength) }
     }
 
+    /// When true, real tilt is suppressed and barrel rotation is sent as synthetic tilt
+    /// instead — a "bait and switch" so Photoshop's Pen Tilt brush dynamics respond to
+    /// barrel twist. Intended as a per-app opt-in (e.g. Adobe Photoshop); real tilt is
+    /// sacrificed while this is enabled.
+    @Published var useRotationAsTilt: Bool = false {
+        didSet { persist("useRotationAsTilt", useRotationAsTilt) }
+    }
+
+    /// Offset (degrees) applied to barrel rotation before mapping to synthetic tilt.
+    /// Lets users align "neutral" pen orientation with a desired brush angle.
+    @Published var rotationTiltOffsetDegrees: Double = 0.0 {
+        didSet { persist("rotationTiltOffsetDegrees", rotationTiltOffsetDegrees) }
+    }
+
+    /// Magnitude (0.0–1.0) of the synthetic tilt vector derived from rotation.
+    /// Lower values reduce effective tilt range; 1.0 = full unit circle.
+    @Published var rotationTiltMagnitude: Double = 0.8 {
+        didSet { persist("rotationTiltMagnitude", rotationTiltMagnitude) }
+    }
+
     @Published private var tipRaw: String = "" {
         didSet {
             persist("tipBinding", tipRaw)
@@ -202,6 +222,9 @@ final class ToolSettings: ObservableObject {
     func reload() {
         isLoading = true
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
+        useRotationAsTilt = loadBool("useRotationAsTilt", default: false)
+        rotationTiltOffsetDegrees = loadDouble("rotationTiltOffsetDegrees", default: 0.0)
+        rotationTiltMagnitude = loadDouble("rotationTiltMagnitude", default: 0.8)
         tipRaw = loadString("tipBinding", default: "")
         eraserRaw = loadString("eraserBinding", default: "")
         pen1Raw = loadString("penButton1Binding", default: "")
@@ -250,6 +273,19 @@ final class ToolSettings: ObservableObject {
         return d
     }
 
+    private func loadBool(_ key: String, default d: Bool) -> Bool {
+        if let op = overridePrefix, ud.object(forKey: op + key) != nil {
+            return ud.bool(forKey: op + key)
+        }
+        if ud.object(forKey: prefix + key) != nil { return ud.bool(forKey: prefix + key) }
+        if let fb = fallbackPrefix,
+            ud.object(forKey: fb + key) != nil
+        {
+            return ud.bool(forKey: fb + key)
+        }
+        return d
+    }
+
     private func loadString(_ key: String, default d: String) -> String {
         return freshString(key) ?? d
     }
@@ -261,6 +297,9 @@ final class ToolSettings: ObservableObject {
         isLoading = true
         self.pressureCurve = pressureCurve
         self.smoothingStrength = smoothingStrength
+        self.useRotationAsTilt = false
+        self.rotationTiltOffsetDegrees = 0.0
+        self.rotationTiltMagnitude = 0.8
         isLoading = false
     }
 

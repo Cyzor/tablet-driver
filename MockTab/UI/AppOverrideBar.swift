@@ -36,16 +36,18 @@ struct TabletColorTheme {
 
         let hue = CGFloat(abs(pid.hashValue) % 360) / 360.0
 
-        let nsColor = NSColor(name: nil, dynamicProvider: { appearance in
-            // Get control background in the current appearance context
-            let controlBG = NSColor.controlBackgroundColor
+        let nsColor = NSColor(
+            name: nil,
+            dynamicProvider: { appearance in
+                // Get control background in the current appearance context
+                let controlBG = NSColor.controlBackgroundColor
 
-            // Create tint color: desaturated hue at full brightness
-            let tintColor = NSColor(hue: hue, saturation: 0.08, brightness: 1.0, alpha: 1.0)
+                // Create tint color: desaturated hue at full brightness
+                let tintColor = NSColor(hue: hue, saturation: 0.08, brightness: 1.0, alpha: 1.0)
 
-            // Blend tint at 6% opacity onto the control background
-            return blendColors(background: controlBG, tint: tintColor, alpha: 0.08)
-        })
+                // Blend tint at 6% opacity onto the control background
+                return blendColors(background: controlBG, tint: tintColor, alpha: 0.08)
+            })
 
         return Color(nsColor)
     }
@@ -57,8 +59,14 @@ struct TabletColorTheme {
         let bgRGB = background.usingColorSpace(.sRGB) ?? background
         let tintRGB = tint.usingColorSpace(.sRGB) ?? tint
 
-        var bgR: CGFloat = 0, bgG: CGFloat = 0, bgB: CGFloat = 0, bgA: CGFloat = 0
-        var tR: CGFloat = 0, tG: CGFloat = 0, tB: CGFloat = 0, tA: CGFloat = 0
+        var bgR: CGFloat = 0
+        var bgG: CGFloat = 0
+        var bgB: CGFloat = 0
+        var bgA: CGFloat = 0
+        var tR: CGFloat = 0
+        var tG: CGFloat = 0
+        var tB: CGFloat = 0
+        var tA: CGFloat = 0
 
         bgRGB.getRed(&bgR, green: &bgG, blue: &bgB, alpha: &bgA)
         tintRGB.getRed(&tR, green: &tG, blue: &tB, alpha: &tA)
@@ -134,11 +142,13 @@ struct AppOverrideBar: View {
     ]
 
     static let orientationKeys: Set<String> = [
-        "tabletOrientation",
+        "tabletOrientation"
     ]
 
     static let pressureKeys: Set<String> = [
-        "pressureCurve", "smoothingStrength", "doubleClickDistance", "invertRotation", "relativeCursorMovement",
+        "pressureCurve", "smoothingStrength", "doubleClickDistance", "invertRotation",
+        "relativeCursorMovement",
+        "useRotationAsTilt", "rotationTiltOffsetDegrees", "rotationTiltMagnitude",
     ]
 
     static let buttonKeys: Set<String> = [
@@ -155,12 +165,12 @@ struct AppOverrideBar: View {
     let domainKeys: Set<String>
     let productID: Int?
 
-    @State private var isDropTargeted     = false
-    @State private var dragEnabledID:     String? = nil
+    @State private var isDropTargeted = false
+    @State private var dragEnabledID: String? = nil
     @State private var dragHoverTargetID: String? = nil
 
-    @State private var chipScrollOffset:  CGFloat = 0
-    @State private var chipContentWidth:  CGFloat = 0
+    @State private var chipScrollOffset: CGFloat = 0
+    @State private var chipContentWidth: CGFloat = 0
     @State private var chipViewportWidth: CGFloat = 0
 
     private var canScrollLeading: Bool { chipScrollOffset < -2 }
@@ -173,40 +183,40 @@ struct AppOverrideBar: View {
 
     @State private var iconCache: [String: NSImage] = [:]
 
-    @State private var renamingBundleID: String?   = nil
-    @State private var renameText                  = ""
-    @State private var pendingDropURLs:    [URL]   = []
-    @State private var showMultiDropAlert          = false
+    @State private var renamingBundleID: String? = nil
+    @State private var renameText = ""
+    @State private var pendingDropURLs: [URL] = []
+    @State private var showMultiDropAlert = false
     @State private var cachedRunningApps: [NSRunningApplication] = []
 
     private var selectedBundleID: String? { settings.activeAppOverride?.bundleID }
 
     // MARK: - Constants
 
-    private let longPressDuration:      TimeInterval = 0.4  // ← Tune (try 0.4–0.55)
-    private let longPressMaxDrift:      CGFloat      = 18    // ← Tune (try 16–30); default 10 too tight for tablet
-    private let dragHoverGap:           CGFloat      = 20
+    private let longPressDuration: TimeInterval = 0.4  // ← Tune (try 0.4–0.55)
+    private let longPressMaxDrift: CGFloat = 18  // ← Tune (try 16–30); default 10 too tight for tablet
+    private let dragHoverGap: CGFloat = 20
 
-    private let chipVerticalPadding:    CGFloat      = 7
-    private let chipHorizontalPadding:  CGFloat      = 14
+    private let chipVerticalPadding: CGFloat = 7
+    private let chipHorizontalPadding: CGFloat = 14
 
     // Chip's own internal vertical padding (the .padding(.vertical, 4) in chipContent).
     // Stored here so chipAreaHeight can reference it without inspecting the view body.
-    private let chipInternalVPadding:   CGFloat      = 4
+    private let chipInternalVPadding: CGFloat = 4
 
     // Trailing content inset: keeps the last chip clear of the addMenu panel's solid area.
     // Solid area = addMenuButtonWidth (28) + chipHorizontalPadding (14) = 42 pt.
     // The 20 pt leading fade is semi-transparent, so chips there remain partially visible.
-    private let addMenuSlotWidth:       CGFloat      = 42
-    private let addMenuButtonWidth:     CGFloat      = 28
-    private let addMenuPanelFadeWidth:  CGFloat      = 20
+    private let addMenuSlotWidth: CGFloat = 42
+    private let addMenuButtonWidth: CGFloat = 28
+    private let addMenuPanelFadeWidth: CGFloat = 20
 
     // Single knob for chip icon geometry. When going beyond ~18, also consider:
     //   • chipInternalVPadding (currently 4 pt each side)
     //   • chipContent label font (currently 11 pt)
     //   • longPressMaxDrift
     // chipAreaHeight is derived from this, so the panel stays correctly sized automatically.
-    private let chipIconSize:           CGFloat      = 20    // ← Tune (e.g. 16, 18, 20)
+    private let chipIconSize: CGFloat = 20  // ← Tune (e.g. 16, 18, 20)
 
     // The height of the chip row content area, excluding any scrollbar track.
     //
@@ -218,15 +228,20 @@ struct AppOverrideBar: View {
         chipVerticalPadding * 2 + chipIconSize + chipInternalVPadding * 2
     }
 
-    private static let unselectedChipFill = Color(NSColor(name: nil, dynamicProvider: { appearance in
-        let isDark = [NSAppearance.Name.darkAqua,
-                      .vibrantDark,
-                      .accessibilityHighContrastDarkAqua,
-                      .accessibilityHighContrastVibrantDark].contains(appearance.name)
-        return isDark
-            ? NSColor(white: 0.30, alpha: 1.0)  // #4D4D4D — lighter than the dark bar
-            : NSColor(white: 0.90, alpha: 1.0)  // #DBDBDB — clearly grey on the light bar
-    }))
+    private static let unselectedChipFill = Color(
+        NSColor(
+            name: nil,
+            dynamicProvider: { appearance in
+                let isDark = [
+                    NSAppearance.Name.darkAqua,
+                    .vibrantDark,
+                    .accessibilityHighContrastDarkAqua,
+                    .accessibilityHighContrastVibrantDark,
+                ].contains(appearance.name)
+                return isDark
+                    ? NSColor(white: 0.30, alpha: 1.0)  // #4D4D4D — lighter than the dark bar
+                    : NSColor(white: 0.90, alpha: 1.0)  // #DBDBDB — clearly grey on the light bar
+            }))
 
     // MARK: - Body
 
@@ -256,22 +271,47 @@ struct AppOverrideBar: View {
             ),
             presenting: renamingBundleID
         ) { bundleID in
-            TextField(String(localized: "App name", comment: "Placeholder text in app rename field"), text: $renameText)
+            TextField(
+                String(localized: "App name", comment: "Placeholder text in app rename field"),
+                text: $renameText)
             Button(LocalizedStringKey("Cancel"), role: .cancel) { renamingBundleID = nil }
             Button(LocalizedStringKey("Rename")) { commitRename(bundleID: bundleID) }
         }
-        .alert(String(localized: "Add Multiple Apps?", comment: "Alert title when user drops multiple apps"), isPresented: $showMultiDropAlert, presenting: pendingDropURLs) { urls in
-            Button(String(localized: "Add All (\(urls.count))", comment: "Button label: add all apps from drag drop")) { addMultipleApps(urls) }
-            Button(LocalizedStringKey("Add First 3 Only")) { addMultipleApps(Array(urls.prefix(3))) }
+        .alert(
+            String(
+                localized: "Add Multiple Apps?",
+                comment: "Alert title when user drops multiple apps"),
+            isPresented: $showMultiDropAlert, presenting: pendingDropURLs
+        ) { urls in
+            Button(
+                String(
+                    localized: "Add All (\(urls.count))",
+                    comment: "Button label: add all apps from drag drop")
+            ) { addMultipleApps(urls) }
+            Button(LocalizedStringKey("Add First 3 Only")) {
+                addMultipleApps(Array(urls.prefix(3)))
+            }
             Button(LocalizedStringKey("Cancel"), role: .cancel) {}
         } message: { urls in
-            Text(String(localized: "You dropped \(urls.count) apps. Add all of them as overrides?", comment: "Alert when user drag-drops multiple apps into the override bar"))
+            Text(
+                String(
+                    localized: "You dropped \(urls.count) apps. Add all of them as overrides?",
+                    comment: "Alert when user drag-drops multiple apps into the override bar"))
         }
         .onAppear { refreshRunningApps() }
         .onChange(of: settings.appOverrides.map(\.bundleID)) { _ in refreshRunningApps() }
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didLaunchApplicationNotification))    { _ in refreshRunningApps() }
-        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { _ in refreshRunningApps() }
-        .onReceive(NotificationCenter.default.publisher(for: NSScroller.preferredScrollerStyleDidChangeNotification)) { _ in
+        .onReceive(
+            NSWorkspace.shared.notificationCenter.publisher(
+                for: NSWorkspace.didLaunchApplicationNotification)
+        ) { _ in refreshRunningApps() }
+        .onReceive(
+            NSWorkspace.shared.notificationCenter.publisher(
+                for: NSWorkspace.didTerminateApplicationNotification)
+        ) { _ in refreshRunningApps() }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: NSScroller.preferredScrollerStyleDidChangeNotification)
+        ) { _ in
             alwaysShowScrollbars = (NSScroller.preferredScrollerStyle == .legacy)
         }
     }
@@ -322,20 +362,21 @@ struct AppOverrideBar: View {
     // MARK: - Scrolling chip row
 
     private var scrollingChipRow: some View {
-        let barBG    = TabletColorTheme.barBackgroundColor(for: productID)
+        let barBG = TabletColorTheme.barBackgroundColor(for: productID)
         let fadeWidth: CGFloat = 24
 
         return ScrollView(.horizontal, showsIndicators: true) {
             chipRow
-                .padding(.leading,  chipHorizontalPadding)
+                .padding(.leading, chipHorizontalPadding)
                 .padding(.trailing, addMenuSlotWidth)
                 .padding(.vertical, chipVerticalPadding)
                 .background(
                     GeometryReader { geo in
                         Color.clear
-                            .preference(key: ChipContentWidthKey.self,  value: geo.size.width)
-                            .preference(key: ChipScrollOffsetKey.self,
-                                        value: geo.frame(in: .named("chipScroll")).minX)
+                            .preference(key: ChipContentWidthKey.self, value: geo.size.width)
+                            .preference(
+                                key: ChipScrollOffsetKey.self,
+                                value: geo.frame(in: .named("chipScroll")).minX)
                     }
                 )
         }
@@ -351,20 +392,24 @@ struct AppOverrideBar: View {
         .onPreferenceChange(ChipScrollOffsetKey.self) { chipScrollOffset = $0 }
         .overlay(alignment: .leading) {
             if canScrollLeading && !alwaysShowScrollbars {
-                LinearGradient(colors: [barBG, barBG.opacity(0)],
-                               startPoint: .leading, endPoint: .trailing)
-                    .frame(width: fadeWidth)
-                    .allowsHitTesting(false)
-                    .animation(.easeInOut(duration: 0.15), value: canScrollLeading)
+                LinearGradient(
+                    colors: [barBG, barBG.opacity(0)],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: fadeWidth)
+                .allowsHitTesting(false)
+                .animation(.easeInOut(duration: 0.15), value: canScrollLeading)
             }
         }
         .overlay(alignment: .trailing) {
             if canScrollTrailing && !alwaysShowScrollbars {
-                LinearGradient(colors: [barBG.opacity(0), barBG],
-                               startPoint: .leading, endPoint: .trailing)
-                    .frame(width: fadeWidth)
-                    .allowsHitTesting(false)
-                    .animation(.easeInOut(duration: 0.15), value: canScrollTrailing)
+                LinearGradient(
+                    colors: [barBG.opacity(0), barBG],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: fadeWidth)
+                .allowsHitTesting(false)
+                .animation(.easeInOut(duration: 0.15), value: canScrollTrailing)
             }
         }
     }
@@ -373,7 +418,12 @@ struct AppOverrideBar: View {
 
     private var chipRow: some View {
         HStack(spacing: 5) {
-            appChip(label: String(localized: "Global", comment: "App override bar chip — settings apply to all apps not specifically overridden"), icon: nil, bundleID: nil, isSelected: selectedBundleID == nil)
+            appChip(
+                label: String(
+                    localized: "Global",
+                    comment:
+                        "App override bar chip — settings apply to all apps not specifically overridden"
+                ), icon: nil, bundleID: nil, isSelected: selectedBundleID == nil)
 
             ForEach(settings.appOverrides) { override in
                 appChip(
@@ -385,7 +435,9 @@ struct AppOverrideBar: View {
                 )
                 .padding(.leading, dragHoverTargetID == override.bundleID ? dragHoverGap : 0)
                 .dropDestination(for: String.self) { droppedIDs, _ in
-                    guard let sourceID = droppedIDs.first, sourceID != override.bundleID else { return false }
+                    guard let sourceID = droppedIDs.first, sourceID != override.bundleID else {
+                        return false
+                    }
                     reorderChip(from: sourceID, to: override.bundleID)
                     return true
                 } isTargeted: { targeted in
@@ -394,12 +446,14 @@ struct AppOverrideBar: View {
             }
         }
         .animation(.spring(response: 0.25, dampingFraction: 0.75), value: dragHoverTargetID)
-        .animation(.spring(response: 0.3,  dampingFraction: 0.8),  value: settings.appOverrides.map(\.bundleID))
+        .animation(
+            .spring(response: 0.3, dampingFraction: 0.8),
+            value: settings.appOverrides.map(\.bundleID))
     }
 
     private func reorderChip(from sourceID: String, to targetID: String) {
         guard let sourceIdx = settings.appOverrides.firstIndex(where: { $0.bundleID == sourceID }),
-              let targetIdx = settings.appOverrides.firstIndex(where: { $0.bundleID == targetID })
+            let targetIdx = settings.appOverrides.firstIndex(where: { $0.bundleID == targetID })
         else { return }
         settings.reorderAppOverrides(from: sourceIdx, to: targetIdx)
     }
@@ -424,13 +478,17 @@ struct AppOverrideBar: View {
             settings.selectAppOverride(bundleID: bundleID)
         } label: {
             if let id = bundleID {
-                chipContent(label: label, icon: icon, isSelected: isSelected, domainKeyCount: domainKeyCount)
-                    .draggable(id) {
-                        chipContent(label: label, icon: icon, isSelected: true, domainKeyCount: 0)
-                            .shadow(radius: 0, y: 0)
-                    }
+                chipContent(
+                    label: label, icon: icon, isSelected: isSelected, domainKeyCount: domainKeyCount
+                )
+                .draggable(id) {
+                    chipContent(label: label, icon: icon, isSelected: true, domainKeyCount: 0)
+                        .shadow(radius: 0, y: 0)
+                }
             } else {
-                chipContent(label: label, icon: icon, isSelected: isSelected, domainKeyCount: domainKeyCount)
+                chipContent(
+                    label: label, icon: icon, isSelected: isSelected, domainKeyCount: domainKeyCount
+                )
             }
         }
         .buttonStyle(.plain)
@@ -438,10 +496,17 @@ struct AppOverrideBar: View {
         .animation(.spring(response: 0.2, dampingFraction: 0.65), value: isDragLifted)
         .contextMenu {
             if let bundleID {
-                Button(LocalizedStringKey("Rename…")) { renamingBundleID = bundleID; renameText = label }
-                Button(LocalizedStringKey("Reveal in Finder")) { revealInFinder(bundleID: bundleID) }
+                Button(LocalizedStringKey("Rename…")) {
+                    renamingBundleID = bundleID
+                    renameText = label
+                }
+                Button(LocalizedStringKey("Reveal in Finder")) {
+                    revealInFinder(bundleID: bundleID)
+                }
                 Divider()
-                Button(LocalizedStringKey("Remove"), role: .destructive) { settings.removeAppOverride(bundleID: bundleID) }
+                Button(LocalizedStringKey("Remove"), role: .destructive) {
+                    settings.removeAppOverride(bundleID: bundleID)
+                }
             }
         }
         .onLongPressGesture(
@@ -449,7 +514,10 @@ struct AppOverrideBar: View {
             maximumDistance: longPressMaxDrift,
             perform: { dragEnabledID = bundleID },
             onPressingChanged: { pressing in
-                if !pressing { dragEnabledID = nil; dragHoverTargetID = nil }
+                if !pressing {
+                    dragEnabledID = nil
+                    dragHoverTargetID = nil
+                }
             }
         )
     }
@@ -486,7 +554,9 @@ struct AppOverrideBar: View {
         .background(isSelected ? Color.accentColor : Self.unselectedChipFill)
         .foregroundStyle(isSelected ? .white : Color.primary)
         .clipShape(Capsule())
-        .overlay(Capsule().strokeBorder(isSelected ? Color.clear : Color(NSColor.separatorColor), lineWidth: 0.5))
+        .overlay(
+            Capsule().strokeBorder(
+                isSelected ? Color.clear : Color(NSColor.separatorColor), lineWidth: 0.5))
     }
 
     // MARK: - Helpers
@@ -500,7 +570,8 @@ struct AppOverrideBar: View {
 
     private func revealInFinder(bundleID: String) {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
-            NSSound.beep(); return
+            NSSound.beep()
+            return
         }
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
@@ -517,7 +588,11 @@ struct AppOverrideBar: View {
                         addApp(bundleID: app.bundleIdentifier!, name: app.localizedName!)
                     } label: {
                         if let icon = app.icon {
-                            Label { Text(app.localizedName!) } icon: { Image(nsImage: icon) }
+                            Label {
+                                Text(app.localizedName!)
+                            } icon: {
+                                Image(nsImage: icon)
+                            }
                         } else {
                             Text(app.localizedName!)
                         }
@@ -534,7 +609,9 @@ struct AppOverrideBar: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .help(LocalizedStringKey("Add per-app override — or drag an app here from Finder or the Dock"))
+        .help(
+            LocalizedStringKey("Add per-app override — or drag an app here from Finder or the Dock")
+        )
     }
 
     // MARK: - Drop handling
@@ -588,15 +665,19 @@ struct AppOverrideBar: View {
     }
 
     private func bundleInfo(fromAppURL url: URL) -> (bundleID: String, name: String)? {
-        guard let bundle = Bundle(url: url), let bundleID = bundle.bundleIdentifier else { return nil }
-        let name = bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
+        guard let bundle = Bundle(url: url), let bundleID = bundle.bundleIdentifier else {
+            return nil
+        }
+        let name =
+            bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
             ?? bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
             ?? url.deletingPathExtension().lastPathComponent
         return (bundleID, name)
     }
 
     private func appIcon(bundleID: String) -> NSImage? {
-        guard let path = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)?.path else { return nil }
+        guard let path = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)?.path
+        else { return nil }
         return NSWorkspace.shared.icon(forFile: path)
     }
 
@@ -630,11 +711,19 @@ struct AppOverrideBar: View {
             if let icon = appIconCached(bundleID: override.bundleID) {
                 Image(nsImage: icon).resizable().scaledToFit().frame(width: 14, height: 14)
             }
-            Text(String(localized: "Editing **\(override.appName)** settings", comment: "Label showing which app's settings are being edited"))
-                .font(.settingsLabel)
-            Text(String(localized: "· changes apply only when \(override.appName) is active", comment: "Note that per-app overrides only apply to the specific app"))
-                .font(.settingsLabel)
-                .foregroundStyle(.secondary)
+            Text(
+                String(
+                    localized: "Editing **\(override.appName)** settings",
+                    comment: "Label showing which app's settings are being edited")
+            )
+            .font(.settingsLabel)
+            Text(
+                String(
+                    localized: "· changes apply only when \(override.appName) is active",
+                    comment: "Note that per-app overrides only apply to the specific app")
+            )
+            .font(.settingsLabel)
+            .foregroundStyle(.secondary)
             Spacer()
             Button(LocalizedStringKey("Reset")) {
                 settings.removeAppOverride(bundleID: override.bundleID, keyScope: domainKeys)
@@ -642,7 +731,10 @@ struct AppOverrideBar: View {
             .font(.settingsLabel)
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
-            .help(String(localized: "Remove all \(override.appName) overrides for this tab", comment: "Help: remove all per-app overrides for current tab"))
+            .help(
+                String(
+                    localized: "Remove all \(override.appName) overrides for this tab",
+                    comment: "Help: remove all per-app overrides for current tab"))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 5)

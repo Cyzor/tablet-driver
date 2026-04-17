@@ -249,7 +249,8 @@ final class InputInjector {
                 if lastTipDown {
                     postMouseUp(
                         button: activeButton, at: smoothedPoint,
-                        clickCount: activeClickCount)
+                        clickCount: activeClickCount,
+                        settings: settings)
                     lastTipDown = false
                 }
                 // Release any USB HID mouse buttons that were held when the tool left
@@ -258,11 +259,14 @@ final class InputInjector {
                     if usbMouseLeftHeld {
                         postMouseUp(
                             button: .left, at: smoothedPoint,
-                            clickCount: activeClickCount)
+                            clickCount: activeClickCount,
+                            settings: settings)
                         usbMouseLeftHeld = false
                     }
                     if (lastUSBMouseMask & 0x02) != 0 {
-                        postMouseUp(button: .right, at: smoothedPoint, clickCount: 1)
+                        postMouseUp(
+                            button: .right, at: smoothedPoint, clickCount: 1,
+                            settings: settings)
                     }
                     if (lastUSBMouseMask & 0x04) != 0 {
                         if let e = CGEvent(
@@ -368,7 +372,8 @@ final class InputInjector {
         // ── Tip press transitions (always immediate) ───────────────────────────
         if tipDown != lastTipDown {
             if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
-                postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)
+                postTabletPointerEvent(
+                    at: screenPoint, pressure: pressure, point: point, settings: settings)
             }
             if tipDown {
                 let tipAction = activeToolIsEraser ? tool.eraserBinding : tool.tipBinding
@@ -378,11 +383,13 @@ final class InputInjector {
                 postMouseDown(
                     button: activeButton, at: clickPt,
                     pressure: pressure, clickCount: count,
-                    point: point)
+                    point: point,
+                    settings: settings)
             } else {
                 postMouseUp(
                     button: activeButton, at: screenPoint,
-                    clickCount: activeClickCount, point: point)
+                    clickCount: activeClickCount, point: point,
+                    settings: settings)
             }
             lastPostedPoint = screenPoint
             lastPostedPressure = pressure
@@ -398,16 +405,20 @@ final class InputInjector {
 
             if moved {
                 if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
-                    postTabletPointerEvent(at: screenPoint, pressure: pressure, point: point)
+                    postTabletPointerEvent(
+                        at: screenPoint, pressure: pressure, point: point, settings: settings)
                 }
                 // USB mouse left button held (KC-100): injectMouseButtons() already sent
                 // leftMouseDown; use leftMouseDragged so apps receive proper drag events.
                 let dragging = tipDown || (activeToolIsMouse && usbMouseLeftHeld)
                 if dragging {
                     postMouseDrag(
-                        button: activeButton, at: screenPoint, pressure: pressure, point: point)
+                        button: activeButton, at: screenPoint, pressure: pressure, point: point,
+                        settings: settings)
                 } else {
-                    postMouseMoved(at: screenPoint, point: point)
+                    postMouseMoved(
+                        at: screenPoint, point: point,
+                        settings: settings)
                 }
                 lastPostedPoint = screenPoint
                 lastPostedPressure = pressure
@@ -457,15 +468,19 @@ final class InputInjector {
     /// Re-emits the last tablet pointer event.
     /// Called by TabletManager when WacomShim receives an eSendTabletEvent(eEventPointer)
     /// Apple Event from Adobe Photoshop / Illustrator.
-    func replayPointerEvent() {
+    func replayPointerEvent(settings: TabletSettings? = nil) {
         guard let point = shimLastPoint else { return }
-        postTabletPointerEvent(at: shimLastScreen, pressure: shimLastPressure, point: point)
+        let s = settings ?? TabletSettings()
+        let tool = activeToolSettings ?? s.activeTool
+        postTabletPointerEvent(
+            at: shimLastScreen, pressure: shimLastPressure, point: point, settings: s)
         let dragging = lastTipDown || (activeToolIsMouse && usbMouseLeftHeld)
         if dragging {
             postMouseDrag(
-                button: activeButton, at: shimLastScreen, pressure: shimLastPressure, point: point)
+                button: activeButton, at: shimLastScreen, pressure: shimLastPressure, point: point,
+                settings: s)
         } else {
-            postMouseMoved(at: shimLastScreen, point: point)
+            postMouseMoved(at: shimLastScreen, point: point, settings: s)
         }
     }
 
@@ -505,18 +520,19 @@ final class InputInjector {
             if leftNow {
                 let (clickPt, count) = resolveClick(loc, settings: s)
                 activeClickCount = count
-                postMouseDown(button: .left, at: clickPt, pressure: 1.0, clickCount: count)
+                postMouseDown(
+                    button: .left, at: clickPt, pressure: 1.0, clickCount: count, settings: s)
             } else {
-                postMouseUp(button: .left, at: loc, clickCount: activeClickCount)
+                postMouseUp(button: .left, at: loc, clickCount: activeClickCount, settings: s)
             }
             lastPostedPoint = loc
             hasPostedPoint = true
         }
         if rightNow != rightWas {
             if rightNow {
-                postMouseDown(button: .right, at: loc, pressure: 1.0, clickCount: 1)
+                postMouseDown(button: .right, at: loc, pressure: 1.0, clickCount: 1, settings: s)
             } else {
-                postMouseUp(button: .right, at: loc, clickCount: 1)
+                postMouseUp(button: .right, at: loc, clickCount: 1, settings: s)
             }
         }
         // Button 3 (bit 2) — routed through configured binding
@@ -741,10 +757,45 @@ final class InputInjector {
     /// on each call, causing the memory leak observed when a pen is in proximity.
     private let sessionSource: CGEventSource? = CGEventSource(stateID: .privateState)
 
+    /// Resolves effective pen pose for CGEvent stamping.
+    /// When useRotationAsTilt is true on the active tool, real tilt is suppressed and
+    /// barrel rotation is sent as synthetic tilt instead — a "bait and switch" so
+    /// Photoshop's Pen Tilt brush dynamics respond to barrel twist.
+    private func resolveEffectivePose(
+        point: TabletPoint,
+        settings: TabletSettings
+    ) -> (tiltX: Double, tiltY: Double, rotation: Double) {
+        let tool = activeToolSettings ?? settings.activeTool
+
+        var tiltX = point.tiltX
+        var tiltY = point.tiltY
+        let rotation = point.rotation
+
+        if tool.useRotationAsTilt && point.rotation != 0.0 {
+            var degrees = point.rotation
+
+            if settings.invertRotation {
+                degrees = (360.0 - degrees).truncatingRemainder(dividingBy: 360.0)
+            }
+
+            degrees += tool.rotationTiltOffsetDegrees
+            // Rotation gives 0–360° but Photoshop's tilt range is only 0–180°.
+            // Double the rotation so a full barrel sweep covers the full tilt span.
+            let radians = degrees * 2.0 * .pi / 180.0
+            let magnitude = tool.rotationTiltMagnitude
+
+            tiltX = magnitude * cos(radians)
+            tiltY = magnitude * sin(radians)
+        }
+
+        return (tiltX, tiltY, rotation)
+    }
+
     private func postMouseDown(
         button: CGMouseButton, at location: CGPoint,
         pressure: Double, clickCount: Int,
-        point: TabletPoint? = nil
+        point: TabletPoint? = nil,
+        settings: TabletSettings
     ) {
         let type: CGEventType
         switch button {
@@ -767,9 +818,10 @@ final class InputInjector {
         e.setDoubleValueField(.mouseEventPressure, value: pressure)
         e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
         if let p = point {
-            e.setDoubleValueField(.tabletEventTiltX, value: p.tiltX)
-            e.setDoubleValueField(.tabletEventTiltY, value: p.tiltY)
-            e.setDoubleValueField(.tabletEventRotation, value: p.rotation)
+            let pose = resolveEffectivePose(point: p, settings: settings)
+            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         }
         e.flags = currentEventFlags
         finalizeAndPost(e)
@@ -777,7 +829,8 @@ final class InputInjector {
 
     private func postMouseUp(
         button: CGMouseButton, at location: CGPoint,
-        clickCount: Int, point: TabletPoint? = nil
+        clickCount: Int, point: TabletPoint? = nil,
+        settings: TabletSettings
     ) {
         let type: CGEventType
         switch button {
@@ -797,9 +850,10 @@ final class InputInjector {
         e.setDoubleValueField(.mouseEventPressure, value: 0)
         e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
         if let p = point {
-            e.setDoubleValueField(.tabletEventTiltX, value: p.tiltX)
-            e.setDoubleValueField(.tabletEventTiltY, value: p.tiltY)
-            e.setDoubleValueField(.tabletEventRotation, value: p.rotation)
+            let pose = resolveEffectivePose(point: p, settings: settings)
+            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         }
         e.flags = currentEventFlags
         finalizeAndPost(e)
@@ -807,7 +861,8 @@ final class InputInjector {
 
     private func postMouseDrag(
         button: CGMouseButton, at location: CGPoint,
-        pressure: Double, point: TabletPoint? = nil
+        pressure: Double, point: TabletPoint? = nil,
+        settings: TabletSettings
     ) {
         let type: CGEventType
         switch button {
@@ -826,9 +881,10 @@ final class InputInjector {
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
         e.setDoubleValueField(.mouseEventPressure, value: pressure)
         if let p = point {
-            e.setDoubleValueField(.tabletEventTiltX, value: p.tiltX)
-            e.setDoubleValueField(.tabletEventTiltY, value: p.tiltY)
-            e.setDoubleValueField(.tabletEventRotation, value: p.rotation)
+            let pose = resolveEffectivePose(point: p, settings: settings)
+            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         }
         // Synthetic CGEvents default to zero deltas, breaking AppKit controls (e.g.
         // Xcode's minimap) that read event.deltaX/Y rather than diffing absolute
@@ -842,18 +898,21 @@ final class InputInjector {
         finalizeAndPost(e)
     }
 
-    private func postMouseMoved(at location: CGPoint, point: TabletPoint? = nil) {
+    private func postMouseMoved(
+        at location: CGPoint, point: TabletPoint? = nil, settings: TabletSettings
+    ) {
         guard
             let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: .mouseMoved,
                 mouseCursorPosition: location, mouseButton: .left)
         else { return }
         if let p = point {
+            let pose = resolveEffectivePose(point: p, settings: settings)
             e.setIntegerValueField(.mouseEventSubtype, value: 1)
             e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-            e.setDoubleValueField(.tabletEventTiltX, value: p.tiltX)
-            e.setDoubleValueField(.tabletEventTiltY, value: p.tiltY)
-            e.setDoubleValueField(.tabletEventRotation, value: p.rotation)
+            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         }
         e.setIntegerValueField(
             .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
@@ -867,7 +926,7 @@ final class InputInjector {
 
     private func postTabletPointerEvent(
         at location: CGPoint, pressure: Double,
-        point: TabletPoint
+        point: TabletPoint, settings: TabletSettings
     ) {
         guard let e = CGEvent(source: sessionSource) else { return }
         e.type = .tabletPointer
@@ -876,9 +935,10 @@ final class InputInjector {
         e.setIntegerValueField(.tabletEventPointX, value: Int64(point.x))
         e.setIntegerValueField(.tabletEventPointY, value: Int64(point.y))
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
-        e.setDoubleValueField(.tabletEventTiltX, value: point.tiltX)
-        e.setDoubleValueField(.tabletEventTiltY, value: point.tiltY)
-        e.setDoubleValueField(.tabletEventRotation, value: point.rotation)
+        let pose = resolveEffectivePose(point: point, settings: settings)
+        e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+        e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+        e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         let buttons: Int64 =
             (pressure > 0.004 ? 1 : 0)
             | (point.penButton1 ? 2 : 0)
