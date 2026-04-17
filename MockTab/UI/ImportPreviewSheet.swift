@@ -116,7 +116,7 @@ struct ImportPreviewSheet: View {
 
                 if !isExcluded {
                     HStack(spacing: 4) {
-                        Text("→ New profile:").font(.settingsLabel).foregroundStyle(.secondary)
+                        Text(LocalizedStringKey("→ New profile:")).font(.settingsLabel).foregroundStyle(.secondary)
                         Text("\"\(finalName)\"").font(.settingsLabel)
                             .foregroundStyle(renamed ? Color.orange : Color.secondary)
                         if renamed {
@@ -128,7 +128,7 @@ struct ImportPreviewSheet: View {
                         Text(String(localized: "Not in your registry — profile will be available when this tablet connects.", comment: "Message when importing a profile for a tablet that hasn't been connected yet"))
                             .font(.settingsBadge).foregroundStyle(.orange)
                     }
-                    Text("\(entry.profileValues.count) setting\(entry.profileValues.count == 1 ? "" : "s")")
+                    Text(String(localized: "\(entry.profileValues.count) setting\(entry.profileValues.count == 1 ? "" : "s")", comment: "Badge showing number of overridden settings in a profile"))
                         .font(.settingsBadge).foregroundStyle(.tertiary)
                 } else {
                     Text(String(localized: "Skipped", comment: "Label when a tablet profile is excluded from import"))

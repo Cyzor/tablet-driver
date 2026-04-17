@@ -160,7 +160,7 @@ struct DisplayMappingView: View {
 
     private var toggleSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Displays in rotation — ⌘+click individual, ⇧+click ranges")
+            Text(LocalizedStringKey("Displays in rotation — ⌘+click individual, ⇧+click ranges"))
                 .font(.settingsLabel)
                 .foregroundStyle(.secondary)
                 .help(LocalizedStringKey("Click a thumbnail to toggle that display in or out of the rotation. ⌘+click to add individual displays; ⇧+click to select a range."))

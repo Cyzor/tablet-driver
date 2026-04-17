@@ -249,18 +249,18 @@ struct AppOverrideBar: View {
             }
         }
         .alert(
-            "Rename App",
+            String(localized: "Rename App", comment: "Alert title when renaming an app override"),
             isPresented: Binding(
                 get: { renamingBundleID != nil },
                 set: { if !$0 { renamingBundleID = nil } }
             ),
             presenting: renamingBundleID
         ) { bundleID in
-            TextField("App name", text: $renameText)
+            TextField(String(localized: "App name", comment: "Placeholder text in app rename field"), text: $renameText)
             Button(LocalizedStringKey("Cancel"), role: .cancel) { renamingBundleID = nil }
             Button(LocalizedStringKey("Rename")) { commitRename(bundleID: bundleID) }
         }
-        .alert("Add Multiple Apps?", isPresented: $showMultiDropAlert, presenting: pendingDropURLs) { urls in
+        .alert(String(localized: "Add Multiple Apps?", comment: "Alert title when user drops multiple apps"), isPresented: $showMultiDropAlert, presenting: pendingDropURLs) { urls in
             Button(String(localized: "Add All (\(urls.count))", comment: "Button label: add all apps from drag drop")) { addMultipleApps(urls) }
             Button(LocalizedStringKey("Add First 3 Only")) { addMultipleApps(Array(urls.prefix(3))) }
             Button(LocalizedStringKey("Cancel"), role: .cancel) {}
@@ -510,7 +510,7 @@ struct AppOverrideBar: View {
     private var addMenu: some View {
         Menu {
             if cachedRunningApps.isEmpty {
-                Text("No other apps running").foregroundStyle(.secondary)
+                Text(LocalizedStringKey("No other apps running")).foregroundStyle(.secondary)
             } else {
                 ForEach(cachedRunningApps, id: \.bundleIdentifier) { app in
                     Button {

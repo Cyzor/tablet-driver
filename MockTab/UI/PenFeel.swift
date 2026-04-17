@@ -36,10 +36,10 @@ struct PenFeel: View {
             Form {
                 pressureCurveSection
 
-                Section("Stabilization") {
+                Section(LocalizedStringKey("Stabilization")) {
                     VStack(alignment: .leading, spacing: 4) {  // ← Added .leading for consistency
                         HStack {
-                            Text("Strength")
+                            Text(LocalizedStringKey("Strength"))
                                 .font(.subheadline)
                             Spacer()
                             Text(verbatim: smoothingLabel)
@@ -55,17 +55,17 @@ struct PenFeel: View {
                                     "Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but add input lag."
                                 ))
 
-                        Text("Reduces cursor jitter. Higher values add lag.")
+                        Text(LocalizedStringKey("Reduces cursor jitter. Higher values add lag."))
                             .font(.settingsLabel)
                             .foregroundStyle(.secondary)
                     }
                     // .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                 }
 
-                Section("Double-Click Distance") {
+                Section(LocalizedStringKey("Double-Click Distance")) {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text("Distance")
+                            Text(LocalizedStringKey("Distance"))
                                 .font(.subheadline)
                             Spacer()
                             Text(
@@ -91,18 +91,18 @@ struct PenFeel: View {
                                 ))
 
                         Text(
-                            "Snaps a second tap to the first click position within this radius, making double-clicks reliable."
+                            LocalizedStringKey("Snaps a second tap to the first click position within this radius, making double-clicks reliable.")
                         )
                         .font(.settingsLabel)
                         .foregroundStyle(.secondary)
                     }
                 }
 
-                Section("Movement") {
+                Section(LocalizedStringKey("Movement")) {
                     Toggle(isOn: invertRotationBinding) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Invert Rotation Direction")
-                            (Text("Current: ")
+                            Text(LocalizedStringKey("Invert Rotation Direction"))
+                            (Text(LocalizedStringKey("Current: "))
                                 + Text(
                                     Image(
                                         systemName: settings.invertRotation
@@ -110,8 +110,8 @@ struct PenFeel: View {
                                             : "arrow.clockwise"))
                                 + Text(
                                     settings.invertRotation
-                                        ? " Counter-clockwise"
-                                        : " Clockwise"))
+                                        ? LocalizedStringKey(" Counter-clockwise")
+                                        : LocalizedStringKey(" Clockwise")))
                                 .font(.settingsLabel)
                                 .foregroundStyle(.secondary)
                         }
@@ -123,8 +123,8 @@ struct PenFeel: View {
 
                     Toggle(isOn: relativeCursorMovementBinding) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Relative Cursor Movement")
-                            (Text("Current: ")
+                            Text(LocalizedStringKey("Relative Cursor Movement"))
+                            (Text(LocalizedStringKey("Current: "))
                                 + Text(
                                     Image(
                                         systemName: settings.relativeCursorMovement
@@ -132,8 +132,8 @@ struct PenFeel: View {
                                             : "pencil.tip"))
                                 + Text(
                                     settings.relativeCursorMovement
-                                        ? " Relative, like a mouse"
-                                        : " Absolute, like a stylus"))
+                                        ? LocalizedStringKey(" Relative, like a mouse")
+                                        : LocalizedStringKey(" Absolute, like a stylus")))
                                 .font(.settingsLabel)
                                 .foregroundStyle(.secondary)
                         }
