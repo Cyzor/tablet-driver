@@ -668,7 +668,7 @@ struct IntuosV2Decoder: WacomDecoder {
                             buttons: buttons,
                             mechanicalMask: mechanicalByte,
                             touchRingActive: ringActive,
-                            touchRingButtonDown: btnByte != 0,
+                            touchRingButtonDown: (btnByte & 0x40) != 0,
                             touchRingPosition: ringActive ? (ringByte & 0x7F) : 0x7F)))
             }
         }
