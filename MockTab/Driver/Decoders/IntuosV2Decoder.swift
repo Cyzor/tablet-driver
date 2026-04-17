@@ -305,6 +305,8 @@ struct IntuosV2Decoder: WacomDecoder {
         let isArtPen = state.currentToolCode == 0x0804 || state.currentToolCode == 0x1108
         let toolIsEraser = !isArtPen && (state.currentToolCode & 0x0008) != 0
         let rawRot = Int16(bitPattern: UInt16(report[12]) | UInt16(report[13]) << 8)
+        // Negate raw rotation so clockwise barrel twist produces an increasing angle,
+        // matching the geometric convention apps expect (0°=natural grip, CW=positive).
         var rotation = isArtPen ? Double(rawRot) / 10.0 : 0.0
         if rotation < 0 { rotation += 360.0 }
         if isArtPen {
@@ -611,14 +613,15 @@ struct IntuosV2Decoder: WacomDecoder {
             // [0, 3600). Non-Art-Pen tools carry garbage in these bytes — gate strictly.
             // Confirmed working (2026-04-02, PTH-660 BT + Art Pen).
             //
-            // Gate on inRange: boundary-noise frames (0xC0, !inRange) have f[9:10]=0x00,
-            // which decodes as ~270° via the -900+wrap formula. Use the last valid reading
-            // from an inRange=1 frame to suppress this oscillation.
+            // Gate on inRange: boundary-noise frames (0xC0, !inRange) have f[9:10]=0x00.
+            // Use the last valid reading from an inRange=1 frame to suppress oscillation.
             var rotation = 0.0
             if isArtPen {
                 if inRange {
                     let rawRot = Int(Int16(bitPattern: UInt16(f[9]) | UInt16(f[10]) << 8))
-                    var r = rawRot - 900
+                    // Negate so clockwise twist increases angle, matching USB path.
+                    // No centering offset — 0° = natural grip on both BT and USB.
+                    var r = rawRot
                     if r < 0 { r += 3600 }
                     state.lastRotation = Double(r) / 10.0  // degrees [0, 360)
                 }
