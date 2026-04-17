@@ -128,7 +128,13 @@ final class TabletSettings: ObservableObject {
     /// 0 = primary display, 1..N = specific display (1-indexed CGGetActiveDisplayList order).
     /// -1 = all displays (span union rect), -2 = toggle rotation.
     @Published var targetDisplayIndex: Int = 0 {
-        didSet { persist("targetDisplayIndex", targetDisplayIndex) }
+        didSet {
+            if targetDisplayIndex == -2 && !isLoading {
+                print("DEBUG: targetDisplayIndex set to -2 (toggle) from \(oldValue)")
+                print(Thread.callStackSymbols[0...3].joined(separator: "\n"))
+            }
+            persist("targetDisplayIndex", targetDisplayIndex)
+        }
     }
 
     /// CGDirectDisplayID values (comma-separated) included in the toggle rotation.
