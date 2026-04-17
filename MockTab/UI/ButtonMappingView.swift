@@ -301,7 +301,7 @@ struct ButtonMappingView: View {
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Toggle Buttons — Left")
+                Text(LocalizedStringKey("Toggle Buttons — Left"))
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }

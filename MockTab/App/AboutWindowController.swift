@@ -19,7 +19,7 @@ final class AboutWindowController {
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false)
-        win.title = "About MockTab"
+        win.title = String(localized: "About MockTab", comment: "Window title: about view")
         win.isReleasedWhenClosed = false
         win.center()
         win.contentView = NSHostingView(rootView: AboutView())

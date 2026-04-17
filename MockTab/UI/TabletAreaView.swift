@@ -71,8 +71,8 @@ struct TabletAreaView: View {
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
 
                     HStack {
-                        
-                        Toggle("Proportional mapping", isOn: proportionalMappingBinding)
+
+                        Toggle(LocalizedStringKey("Proportional mapping"), isOn: proportionalMappingBinding)
                             .toggleStyle(.checkbox)
                             .help(LocalizedStringKey("Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed."))
                         
@@ -97,7 +97,7 @@ struct TabletAreaView: View {
                     sectionHeading
                 }
 
-                Section("Orientation") {
+                Section(LocalizedStringKey("Orientation")) {
                     OrientationPickerView(settings: settings)
                 }
             }
@@ -119,7 +119,7 @@ struct TabletAreaView: View {
             if let activePID = tabletManager.activeContext?.productID {
                 return DeviceLabel(primary: TabletManager.deviceName(forProductID: activePID), secondary: nil)
             }
-            return DeviceLabel(primary: "No device", secondary: nil)
+            return DeviceLabel(primary: String(localized: "No device", comment: "Fallback label when no tablet is connected"), secondary: nil)
         }
         let modelName = TabletManager.deviceName(forProductID: pid)
         if let tablet = registry.knownTablets.first(where: { $0.id == pid }),
@@ -165,13 +165,13 @@ struct TabletAreaView: View {
 //                percentField($settings.activeAreaY)
 //            }
             GridRow {
-                Text("Width").foregroundStyle(.secondary)
+                Text(LocalizedStringKey("Width")).foregroundStyle(.secondary)
                     .frame(width: 60, alignment: .trailing)
                 pixelField(fraction: $settings.activeAreaWidth,
                            maxValue: activeDeviceMaxX,
                            minFraction: Self.minFraction,
                            maxFraction: 1 - settings.activeAreaX)
-                Text("Height").foregroundStyle(.secondary)
+                Text(LocalizedStringKey("Height")).foregroundStyle(.secondary)
                     .frame(width: 60, alignment: .trailing)
                 pixelField(fraction: $settings.activeAreaHeight,
                            maxValue: activeDeviceMaxY,

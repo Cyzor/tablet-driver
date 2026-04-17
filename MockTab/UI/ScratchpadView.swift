@@ -55,7 +55,7 @@ struct ScratchpadView: View {
                     .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
 
             HStack(spacing: 10) {
-                Text("Pressure")
+                Text(LocalizedStringKey("Pressure"))
                     .font(.settingsLabel)
                     .foregroundStyle(.secondary)
                     .frame(width: 58, alignment: .leading)

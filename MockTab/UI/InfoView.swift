@@ -507,7 +507,7 @@ private struct LiveInputView: View {
                         if !lb.tipDown && !lb.eraserDown && !lb.button1Down
                             && !lb.button2Down && !anyExpress
                         {
-                            Text("None").foregroundStyle(.tertiary).font(.settingsBadge)
+                            Text(LocalizedStringKey("None")).foregroundStyle(.tertiary).font(.settingsBadge)
                         }
                     }
                 }

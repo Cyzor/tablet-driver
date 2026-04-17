@@ -36,7 +36,6 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     private weak var settings: TabletSettings?
 
-
     // MARK: - Setup
 
     func setup(settings: TabletSettings) {
@@ -59,7 +58,8 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     /// has no items — that is always the SwiftUI-generated stub.
     private func removeEmptyViewMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
-        for item in mainMenu.items where item.title == "View" {
+        let viewTitle = String(localized: "View", comment: "Menu header: view/navigate tabs")
+        for item in mainMenu.items where item.title == viewTitle {
             if item.submenu?.items.isEmpty ?? true {
                 mainMenu.removeItem(item)
                 return  // only one stub expected
@@ -67,13 +67,14 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         }
     }
 
-    
     // MARK: - About
 
     private func hookAboutMenuItem() {
         guard
             let appMenu = NSApp.mainMenu?.items.first?.submenu,
-            let aboutItem = appMenu.items.first(where: { $0.title.hasPrefix("About") })
+            let aboutItem = appMenu.items.first(where: {
+                $0.action == #selector(NSApplication.orderFrontStandardAboutPanel(_:))
+            })
         else { return }
 
         aboutItem.target = self
@@ -94,13 +95,17 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         // AppKit's NSMenuView handles the live Option-key toggle natively.
         // Setting self as the menu's delegate is required to trigger the alternate
         // recognition; without it, the item is inserted but never shown.
-        guard let quitItem = menu.items.last(where: {
-            $0.action == #selector(NSApplication.terminate(_:))
-        }) else { return }
+        guard
+            let quitItem = menu.items.last(where: {
+                $0.action == #selector(NSApplication.terminate(_:))
+            })
+        else { return }
         let quitIndex = menu.items.firstIndex(of: quitItem)!
 
         let item = NSMenuItem(
-            title: "Factory Reset\u{2026}",
+            title: String(
+                localized: "Factory Reset\u{2026}",
+                comment: "Menu item: factory reset (Option-key hidden)"),
             action: #selector(confirmFactoryReset),
             keyEquivalent: quitItem.keyEquivalent)
         item.keyEquivalentModifierMask = quitItem.keyEquivalentModifierMask.union(.option)
@@ -112,13 +117,18 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     @objc private func confirmFactoryReset() {
         let alert = NSAlert()
-        alert.messageText = "Reset MockTab to Factory Settings?"
-        alert.informativeText =
-            "All tablets, tools, presets, and button mappings will be erased. " +
-            "MockTab will restart."
+        alert.messageText = String(
+            localized: "Reset MockTab to Factory Settings?",
+            comment: "Alert title: factory reset confirmation")
+        alert.informativeText = String(
+            localized:
+                "All tablets, tools, presets, and button mappings will be erased. MockTab will restart.",
+            comment: "Alert body: explaining the consequences of factory reset")
         alert.alertStyle = .warning
-        let resetButton = alert.addButton(withTitle: "Reset")
-        alert.addButton(withTitle: "Cancel")
+        let resetButton = alert.addButton(
+            withTitle: String(localized: "Reset", comment: "Button label: confirm factory reset"))
+        alert.addButton(
+            withTitle: String(localized: "Cancel", comment: "Button label: cancel factory reset"))
         // Return key = default button (highlighted, activates on Return).
         resetButton.keyEquivalent = "\r"
 
@@ -172,20 +182,23 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         NSApp.terminate(nil)
     }
 
-
     // MARK: - Tablet menu
 
     private var tabletMenu: NSMenu?
 
     private func insertTabletMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
-        guard mainMenu.items.allSatisfy({ $0.title != "Tablet" }) else { return }
+        // "Tablet" is not currently in Localizable.xcstrings, but we'll use localized
+        // string lookup anyway to be future-proof.
+        let tabletTitle = String(
+            localized: "Tablet", comment: "Menu header: tablet-specific actions")
+        guard mainMenu.items.allSatisfy({ $0.title != tabletTitle }) else { return }
 
-        let menu = NSMenu(title: "Tablet")
+        let menu = NSMenu(title: tabletTitle)
         menu.delegate = self
         tabletMenu = menu
 
-        let menuItem = NSMenuItem(title: "Tablet", action: nil, keyEquivalent: "")
+        let menuItem = NSMenuItem(title: tabletTitle, action: nil, keyEquivalent: "")
         menuItem.submenu = menu
 
         // Insert immediately after the application menu (index 0).
@@ -197,7 +210,8 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
         // "New Settings Window" — opens a generic window.
         let newItem = NSMenuItem(
-            title: "Duplicate Window",
+            title: String(
+                localized: "Duplicate Window", comment: "Menu item: open a new settings window"),
             action: #selector(newSettingsWindow),
             keyEquivalent: "n")
         newItem.keyEquivalentModifierMask = [.command, .shift]
@@ -206,7 +220,8 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
         // "Detect Tablet" — re-evaluates the active device and focuses its window.
         let detectItem = NSMenuItem(
-            title: "Detect Tablet",
+            title: String(
+                localized: "Detect Tablet", comment: "Menu item: find and focus the active tablet"),
             action: #selector(detectTablet),
             keyEquivalent: "r")
         detectItem.keyEquivalentModifierMask = [.command]
@@ -231,7 +246,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 if tm.connectedProductIDs.contains(tablet.id) {
                     item.image = NSImage(
                         systemSymbolName: "checkmark.circle.fill",
-                        accessibilityDescription: "Connected")
+                        accessibilityDescription: String(
+                            localized: "Connected",
+                            comment: "Accessibility label for connected tablet indicator"))
                     item.image?.size = NSSize(width: 12, height: 12)
                 }
                 menu.addItem(item)
@@ -273,18 +290,26 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     private func insertPresetsMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
-        guard mainMenu.items.allSatisfy({ $0.title != "Profiles" }) else { return }
+        let profilesTitle = String(
+            localized: "Profiles", comment: "Menu header: profile management")
+        guard mainMenu.items.allSatisfy({ $0.title != profilesTitle }) else { return }
 
-        let menu = NSMenu(title: "Profiles")
+        let menu = NSMenu(title: profilesTitle)
         menu.delegate = self
         presetsMenu = menu
 
-        let menuItem = NSMenuItem(title: "Profiles", action: nil, keyEquivalent: "")
+        let menuItem = NSMenuItem(title: profilesTitle, action: nil, keyEquivalent: "")
         menuItem.submenu = menu
 
-        // Insert after Edit menu (which SwiftUI generates).
-        if let editIndex = mainMenu.items.firstIndex(where: { $0.title == "Edit" }) {
+        // Insert after Edit menu. Finding by "undo:" action is localization-robust.
+        let editIndex = mainMenu.items.firstIndex { item in
+            item.submenu?.items.contains { $0.action == Selector(("undo:")) } ?? false
+        }
+        if let editIndex {
             mainMenu.insertItem(menuItem, at: editIndex + 1)
+        } else {
+            // Fallback: insert after app menu and tablet menu.
+            mainMenu.insertItem(menuItem, at: 2)
         }
     }
 
@@ -295,7 +320,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
         if !settings.profiles.isEmpty {
             let defsItem = NSMenuItem(
-                title: "Device Defaults",
+                title: String(
+                    localized: "Device Defaults",
+                    comment: "Profile option: use device's default settings"),
                 action: #selector(activateDeviceDefaults),
                 keyEquivalent: "")
             defsItem.target = self
@@ -317,7 +344,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         }
 
         let showItem = NSMenuItem(
-            title: "Show Saved Configurations…",
+            title: String(
+                localized: "Show Saved Configurations…", comment: "Menu item: open the Profiles tab"
+            ),
             action: #selector(showPresetsTab),
             keyEquivalent: "")
         showItem.target = self

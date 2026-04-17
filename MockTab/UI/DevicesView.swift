@@ -114,7 +114,7 @@ struct DevicesView: View {
             Text(LocalizedStringKey("Tablets")).font(.headline)
             columnHeader("Name", "Kind", "Serial / ID")
             if registry.knownTablets.isEmpty {
-                emptyState("No tablets have been connected yet.")
+                emptyState(String(localized: "No tablets have been connected yet.", comment: "Empty state message when no tablets have been detected"))
             } else {
                 card {
                     ForEach(registry.knownTablets) { tablet in
@@ -211,7 +211,7 @@ struct DevicesView: View {
             }
             columnHeader("Name", "Kind", "Serial / ID")
             if registry.knownTools.isEmpty {
-                emptyState("No tools detected yet.\nMove the pen over the tablet to register it.")
+                emptyState(String(localized: "No tools detected yet.\nMove the pen over the tablet to register it.", comment: "Empty state message in tools list — singular tablet"))
             } else {
                 card {
                     ForEach(registry.knownTools) { tool in
@@ -338,7 +338,7 @@ struct DevicesView: View {
             Text(LocalizedStringKey("Tools (All Tablets)")).font(.headline)
             columnHeader("Name", "Kind", "Serial / ID")
             if registry.allKnownTools.isEmpty {
-                emptyState("No tools detected yet.\nMove the pen over a tablet to register it.")
+                emptyState(String(localized: "No tools detected yet.\nMove the pen over a tablet to register it.", comment: "Empty state message in tools list — multiple tablets"))
             } else {
                 card {
                     ForEach(registry.allKnownTools) { tool in
