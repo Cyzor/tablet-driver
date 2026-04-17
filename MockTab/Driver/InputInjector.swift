@@ -267,7 +267,8 @@ final class InputInjector {
                     if (lastUSBMouseMask & 0x04) != 0 {
                         if let e = CGEvent(
                             mouseEventSource: sessionSource, mouseType: .otherMouseUp,
-                            mouseCursorPosition: smoothedPoint, mouseButton: .center) {
+                            mouseCursorPosition: smoothedPoint, mouseButton: .center)
+                        {
                             e.flags = currentEventFlags
                             e.post(tap: .cghidEventTap)
                         }
@@ -277,7 +278,8 @@ final class InputInjector {
                 if lastMiddleDown {
                     if let e = CGEvent(
                         mouseEventSource: sessionSource, mouseType: .otherMouseUp,
-                        mouseCursorPosition: smoothedPoint, mouseButton: .center) {
+                        mouseCursorPosition: smoothedPoint, mouseButton: .center)
+                    {
                         e.flags = currentEventFlags
                         e.post(tap: .cghidEventTap)
                     }
@@ -290,16 +292,20 @@ final class InputInjector {
                 if !activeSyntheticFlags.isEmpty {
                     let syntheticToRelease = activeSyntheticFlags
                     activeSyntheticFlags = []
+                    // Clear ref-counts
+                    for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
+
                     if let e = CGEvent(source: sessionSource) {
                         e.type = .flagsChanged
                         e.setIntegerValueField(.keyboardEventKeycode, value: 0)
                         // Preserve physical modifiers the user may be holding; strip only ours.
-                        let physicalRaw = CGEventSource.flagsState(.hidSystemState).rawValue
-                            & ~syntheticToRelease.rawValue
+                        let systemRaw = CGEventSource.flagsState(.hidSystemState).rawValue
+                        let physicalRaw = systemRaw & ~syntheticToRelease.rawValue
                         e.flags = CGEventFlags(rawValue: physicalRaw)
                         e.post(tap: .cghidEventTap)
                     }
                 }
+
                 // Reset aux state so the next injectAux fires fresh transitions.
                 lastAuxButtons = [Bool](repeating: false, count: 16)
                 lastRingButtonDown = false
@@ -395,7 +401,8 @@ final class InputInjector {
                 // leftMouseDown; use leftMouseDragged so apps receive proper drag events.
                 let dragging = tipDown || (activeToolIsMouse && usbMouseLeftHeld)
                 if dragging {
-                    postMouseDrag(button: activeButton, at: screenPoint, pressure: pressure, point: point)
+                    postMouseDrag(
+                        button: activeButton, at: screenPoint, pressure: pressure, point: point)
                 } else {
                     postMouseMoved(at: screenPoint, point: point)
                 }
@@ -428,7 +435,8 @@ final class InputInjector {
             let type: CGEventType = point.mouseMiddleButton ? .otherMouseDown : .otherMouseUp
             if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
-                mouseCursorPosition: screenPoint, mouseButton: .center) {
+                mouseCursorPosition: screenPoint, mouseButton: .center)
+            {
                 e.flags = currentEventFlags
                 e.post(tap: .cghidEventTap)
             }
@@ -451,7 +459,8 @@ final class InputInjector {
         postTabletPointerEvent(at: shimLastScreen, pressure: shimLastPressure, point: point)
         let dragging = lastTipDown || (activeToolIsMouse && usbMouseLeftHeld)
         if dragging {
-            postMouseDrag(button: activeButton, at: shimLastScreen, pressure: shimLastPressure, point: point)
+            postMouseDrag(
+                button: activeButton, at: shimLastScreen, pressure: shimLastPressure, point: point)
         } else {
             postMouseMoved(at: shimLastScreen, point: point)
         }
@@ -558,7 +567,8 @@ final class InputInjector {
         // ── Touch ring center button ───────────────────────────────────────────
         let ringButtonDown = buttons.touchRingButtonDown
         if ringButtonDown != lastRingButtonDown {
-            fireButtonAction(s.touchRingButtonBinding, down: ringButtonDown, at: cursorPos, settings: s)
+            fireButtonAction(
+                s.touchRingButtonBinding, down: ringButtonDown, at: cursorPos, settings: s)
             lastRingButtonDown = ringButtonDown
         }
 
@@ -664,6 +674,14 @@ final class InputInjector {
     /// Updated atomically in fireButtonAction before any event is posted.
     private var activeSyntheticFlags: CGEventFlags = []
 
+    /// Reference counts for each modifier bit to support multiple buttons mapped to the same key.
+    private var modifierRefCounts: [UInt64: Int] = [
+        CGEventFlags.maskCommand.rawValue: 0,
+        CGEventFlags.maskShift.rawValue: 0,
+        CGEventFlags.maskAlternate.rawValue: 0,
+        CGEventFlags.maskControl.rawValue: 0,
+    ]
+
     /// The definitive modifier state stamped on every outbound CGEvent.
     /// Merges physical-keyboard-only state (hidSystemState) with any flags
     /// this driver has pressed via button bindings.  hidSystemState is used
@@ -671,9 +689,11 @@ final class InputInjector {
     /// modifiers never feed back into new events — the root cause of the
     /// sticky-modifier bug shared with OpenTabletDriver and Adobe software.
     private var currentEventFlags: CGEventFlags {
-        CGEventFlags(
-            rawValue: CGEventSource.flagsState(.hidSystemState).rawValue
-                | activeSyntheticFlags.rawValue)
+        let systemRaw = CGEventSource.flagsState(.hidSystemState).rawValue
+        // Reconstruction: Physical state is whatever bits are set in the system that
+        // WE haven't set ourselves. This ensures stuck synthetic flags are stripped.
+        let physicalRaw = systemRaw & ~activeSyntheticFlags.rawValue
+        return CGEventFlags(rawValue: physicalRaw | activeSyntheticFlags.rawValue)
     }
 
     /// CGEventSource backed by privateState so posted events do not write back into
@@ -693,9 +713,9 @@ final class InputInjector {
     ) {
         let type: CGEventType
         switch button {
-        case .right:  type = .rightMouseDown
+        case .right: type = .rightMouseDown
         case .center: type = .otherMouseDown
-        default:      type = .leftMouseDown
+        default: type = .leftMouseDown
         }
         guard
             let e = CGEvent(
@@ -726,9 +746,9 @@ final class InputInjector {
     ) {
         let type: CGEventType
         switch button {
-        case .right:  type = .rightMouseUp
+        case .right: type = .rightMouseUp
         case .center: type = .otherMouseUp
-        default:      type = .leftMouseUp
+        default: type = .leftMouseUp
         }
         guard
             let e = CGEvent(
@@ -756,9 +776,9 @@ final class InputInjector {
     ) {
         let type: CGEventType
         switch button {
-        case .right:  type = .rightMouseDragged
+        case .right: type = .rightMouseDragged
         case .center: type = .otherMouseDragged
-        default:      type = .leftMouseDragged
+        default: type = .leftMouseDragged
         }
         guard
             let e = CGEvent(
@@ -861,7 +881,8 @@ final class InputInjector {
         // Eraser end uses serial | 0x80000000 so tip and eraser each get an independent slot.
         // kCGTabletProximityEventPointerSerialNumber = 172 (raw value; not exposed in Swift).
         if activeToolSerial != 0 {
-            let serial: Int64 = eraser
+            let serial: Int64 =
+                eraser
                 ? Int64(bitPattern: UInt64(activeToolSerial) | 0x8000_0000)
                 : Int64(activeToolSerial)
             if let serialField = CGEventField(rawValue: 172) {
@@ -920,7 +941,8 @@ final class InputInjector {
             let type: CGEventType = down ? .leftMouseDown : .leftMouseUp
             if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
-                mouseCursorPosition: location, mouseButton: .left) {
+                mouseCursorPosition: location, mouseButton: .left)
+            {
                 e.flags = currentEventFlags
                 e.post(tap: .cghidEventTap)
             }
@@ -928,7 +950,8 @@ final class InputInjector {
             let type: CGEventType = down ? .rightMouseDown : .rightMouseUp
             if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
-                mouseCursorPosition: location, mouseButton: .right) {
+                mouseCursorPosition: location, mouseButton: .right)
+            {
                 e.flags = currentEventFlags
                 e.post(tap: .cghidEventTap)
             }
@@ -936,7 +959,8 @@ final class InputInjector {
             let type: CGEventType = down ? .otherMouseDown : .otherMouseUp
             if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
-                mouseCursorPosition: location, mouseButton: .center) {
+                mouseCursorPosition: location, mouseButton: .center)
+            {
                 e.flags = currentEventFlags
                 e.post(tap: .cghidEventTap)
             }
@@ -944,31 +968,37 @@ final class InputInjector {
             // Update internal synthetic state atomically before posting anything,
             // so currentEventFlags already reflects the new state when stamped.
             let bindingFlags = CGEventFlags(rawValue: binding.modifierFlags)
-            if down {
-                activeSyntheticFlags.insert(bindingFlags)
-            } else {
-                activeSyntheticFlags.remove(bindingFlags)
+
+            // Update reference counts for each individual modifier bit.
+            let modBits: [CGEventFlags] = [.maskCommand, .maskShift, .maskAlternate, .maskControl]
+            for bit in modBits {
+                if bindingFlags.contains(bit) {
+                    let raw = bit.rawValue
+                    let currentCount = modifierRefCounts[raw] ?? 0
+                    if down {
+                        modifierRefCounts[raw] = currentCount + 1
+                        activeSyntheticFlags.insert(bit)
+                    } else {
+                        let newCount = Swift.max(0, currentCount - 1)
+                        modifierRefCounts[raw] = newCount
+                        if newCount == 0 {
+                            activeSyntheticFlags.remove(bit)
+                        }
+                    }
+                }
             }
+
             if binding.keyLabel.isEmpty && binding.modifierFlags != 0 {
+                // Modifier-only binding: post a .flagsChanged event.
                 guard let e = CGEvent(source: sessionSource) else { return }
                 e.type = .flagsChanged
-                e.setIntegerValueField(
-                    .keyboardEventKeycode,
-                    value: Int64(binding.keyCode))
-                // flagsChanged events must NOT use currentEventFlags here.
-                // Posting through cghidEventTap updates hidSystemState regardless of the
-                // event source's stateID, so currentEventFlags would read back the synthetic
-                // modifier we just injected on the previous press — re-asserting it on every
-                // release and leaving it stuck. Instead we reconstruct a clean physical-only
-                // baseline by subtracting all synthetic flags that were active BEFORE this
-                // press/release from hidSystemState, then OR in the post-update synthetics.
-                let priorSyntheticRaw: UInt64 = down
-                    ? activeSyntheticFlags.rawValue & ~bindingFlags.rawValue   // newly added → subtract to get prior
-                    : activeSyntheticFlags.rawValue | bindingFlags.rawValue    // just removed → add back to get prior
-                let physicalRaw = CGEventSource.flagsState(.hidSystemState).rawValue & ~priorSyntheticRaw
-                e.flags = CGEventFlags(rawValue: physicalRaw | activeSyntheticFlags.rawValue)
+                e.setIntegerValueField(.keyboardEventKeycode, value: Int64(binding.keyCode))
+                // Stamp with our newly updated combined state. Reconstruction in
+                // currentEventFlags ensures this is a clean 'physical + synthetic' merge.
+                e.flags = currentEventFlags
                 e.post(tap: .cghidEventTap)
             } else {
+                // Regular key combo: post keyDown/Up.
                 guard
                     let e = CGEvent(
                         keyboardEventSource: sessionSource,
@@ -978,6 +1008,7 @@ final class InputInjector {
                 e.flags = currentEventFlags
                 e.post(tap: .cghidEventTap)
             }
+
         case .displayToggle:
             guard down, let s = settings else { break }
             s.targetDisplayIndex = TabletSettings.displayModeToggle
@@ -989,7 +1020,8 @@ final class InputInjector {
                     let type: CGEventType = isDown ? .leftMouseDown : .leftMouseUp
                     if let e = CGEvent(
                         mouseEventSource: sessionSource, mouseType: type,
-                        mouseCursorPosition: location, mouseButton: .left) {
+                        mouseCursorPosition: location, mouseButton: .left)
+                    {
                         e.flags = currentEventFlags
                         e.setIntegerValueField(.mouseEventClickState, value: Int64(clickState))
                         e.post(tap: .cghidEventTap)
@@ -1038,40 +1070,56 @@ final class InputInjector {
         let virtualBounds: CGRect = NSScreen.screens.reduce(CGRect.null) { acc, screen in
             // Convert AppKit frame (bottom-left origin) → CG frame (top-left origin).
             let f = screen.frame
-            let cgRect = CGRect(x: f.minX, y: primaryH - f.maxY,
-                                width: f.width, height: f.height)
+            let cgRect = CGRect(
+                x: f.minX, y: primaryH - f.maxY,
+                width: f.width, height: f.height)
             return acc.union(cgRect)
         }
-        let screen = virtualBounds.isEmpty
-            ? CGRect(x: 0, y: 0,
-                     width: CGFloat(CGDisplayPixelsWide(CGMainDisplayID())),
-                     height: CGFloat(CGDisplayPixelsHigh(CGMainDisplayID())))
+        let screen =
+            virtualBounds.isEmpty
+            ? CGRect(
+                x: 0, y: 0,
+                width: CGFloat(CGDisplayPixelsWide(CGMainDisplayID())),
+                height: CGFloat(CGDisplayPixelsHigh(CGMainDisplayID())))
             : virtualBounds
 
         // Compute normalized position within the active area (same orientation math
         // as mapToScreen; active-area crop controls sensitivity).
-        let rawX = Double(point.x), rawY = Double(point.y)
-        let rawMaxX = Double(point.maxX), rawMaxY = Double(point.maxY)
-        let ox: Double; let oy: Double
-        let effMaxX: Double; let effMaxY: Double
+        let rawX = Double(point.x)
+        let rawY = Double(point.y)
+        let rawMaxX = Double(point.maxX)
+        let rawMaxY = Double(point.maxY)
+        let ox: Double
+        let oy: Double
+        let effMaxX: Double
+        let effMaxY: Double
         switch settings.tabletOrientation {
         case .landscape:
-            ox = rawX;           oy = rawY
-            effMaxX = rawMaxX;   effMaxY = rawMaxY
+            ox = rawX
+            oy = rawY
+            effMaxX = rawMaxX
+            effMaxY = rawMaxY
         case .portrait:
-            ox = rawY;           oy = rawMaxX - rawX
-            effMaxX = rawMaxY;   effMaxY = rawMaxX
+            ox = rawY
+            oy = rawMaxX - rawX
+            effMaxX = rawMaxY
+            effMaxY = rawMaxX
         case .landscapeFlipped:
-            ox = rawMaxX - rawX; oy = rawMaxY - rawY
-            effMaxX = rawMaxX;   effMaxY = rawMaxY
+            ox = rawMaxX - rawX
+            oy = rawMaxY - rawY
+            effMaxX = rawMaxX
+            effMaxY = rawMaxY
         case .portraitFlipped:
-            ox = rawMaxY - rawY; oy = rawX
-            effMaxX = rawMaxY;   effMaxY = rawMaxX
+            ox = rawMaxY - rawY
+            oy = rawX
+            effMaxX = rawMaxY
+            effMaxY = rawMaxX
         }
-        let areaW = Swift.max(settings.activeAreaWidth,  0.001) * effMaxX
+        let areaW = Swift.max(settings.activeAreaWidth, 0.001) * effMaxX
         let areaH = Swift.max(settings.activeAreaHeight, 0.001) * effMaxY
-        let norm = CGPoint(x: (ox - settings.activeAreaX * effMaxX) / areaW,
-                           y: (oy - settings.activeAreaY * effMaxY) / areaH)
+        let norm = CGPoint(
+            x: (ox - settings.activeAreaX * effMaxX) / areaW,
+            y: (oy - settings.activeAreaY * effMaxY) / areaH)
 
         // First report after proximity entry: anchor without moving.
         guard let prev = lastRelativeNorm else {
@@ -1106,24 +1154,32 @@ final class InputInjector {
         let rawMaxX = Double(point.maxX)
         let rawMaxY = Double(point.maxY)
 
-        let ox: Double      // oriented x
-        let oy: Double      // oriented y
-        let effMaxX: Double // range of oriented x axis
-        let effMaxY: Double // range of oriented y axis
+        let ox: Double  // oriented x
+        let oy: Double  // oriented y
+        let effMaxX: Double  // range of oriented x axis
+        let effMaxY: Double  // range of oriented y axis
 
         switch settings.tabletOrientation {
         case .landscape:
-            ox = rawX;           oy = rawY
-            effMaxX = rawMaxX;   effMaxY = rawMaxY
-        case .portrait:          // 90° CW — USB port moves to left
-            ox = rawY;                   oy = rawMaxX - rawX
-            effMaxX = rawMaxY;           effMaxY = rawMaxX
+            ox = rawX
+            oy = rawY
+            effMaxX = rawMaxX
+            effMaxY = rawMaxY
+        case .portrait:  // 90° CW — USB port moves to left
+            ox = rawY
+            oy = rawMaxX - rawX
+            effMaxX = rawMaxY
+            effMaxY = rawMaxX
         case .landscapeFlipped:  // 180° — USB port at top
-            ox = rawMaxX - rawX;         oy = rawMaxY - rawY
-            effMaxX = rawMaxX;           effMaxY = rawMaxY
-        case .portraitFlipped:   // 90° CCW — USB port moves to right
-            ox = rawMaxY - rawY;         oy = rawX
-            effMaxX = rawMaxY;           effMaxY = rawMaxX
+            ox = rawMaxX - rawX
+            oy = rawMaxY - rawY
+            effMaxX = rawMaxX
+            effMaxY = rawMaxY
+        case .portraitFlipped:  // 90° CCW — USB port moves to right
+            ox = rawMaxY - rawY
+            oy = rawX
+            effMaxX = rawMaxY
+            effMaxY = rawMaxX
         }
 
         var areaX = settings.activeAreaX * effMaxX
@@ -1194,8 +1250,10 @@ final class InputInjector {
 
     /// Returns the ordered list of display IDs in the toggle rotation,
     /// filtered by the IDs stored in settings (empty = all included).
-    private func toggleRotation(settings: TabletSettings,
-                                allIDs: [CGDirectDisplayID]) -> [CGDirectDisplayID] {
+    private func toggleRotation(
+        settings: TabletSettings,
+        allIDs: [CGDirectDisplayID]
+    ) -> [CGDirectDisplayID] {
         let stored = settings.toggleDisplayIDSet
         if stored.isEmpty { return allIDs }
         return allIDs.filter { stored.contains($0) }
@@ -1211,6 +1269,6 @@ final class InputInjector {
         let rotation = toggleRotation(settings: settings, allIDs: ids)
         guard rotation.count > 1 else { return }
         currentToggleIndex = (currentToggleIndex + 1) % rotation.count
-        cachedDisplayIndex = Int.min   // force cache miss on next inject
+        cachedDisplayIndex = Int.min  // force cache miss on next inject
     }
 }
