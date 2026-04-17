@@ -65,7 +65,9 @@ final class TabletSettings: ObservableObject {
                 guard !override.overriddenKeys.contains(key) else { return }
                 override.overriddenKeys.insert(key)
                 self.activeAppOverride = override
-                if let idx = self.appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
+                if let idx = self.appOverrides.firstIndex(where: {
+                    $0.bundleID == override.bundleID
+                }) {
                     self.appOverrides[idx] = override
                 }
                 self.saveAppOverrides()
@@ -121,7 +123,7 @@ final class TabletSettings: ObservableObject {
     // MARK: - Display mapping
 
     /// Sentinel value for targetDisplayIndex: tablet area spans all displays.
-    static let displayModeAll    = -1
+    static let displayModeAll = -1
     /// Sentinel value for targetDisplayIndex: tablet cycles through selected displays.
     static let displayModeToggle = -2
 
@@ -140,8 +142,9 @@ final class TabletSettings: ObservableObject {
     /// Typed get/set for the toggle display ID set.
     var toggleDisplayIDSet: Set<CGDirectDisplayID> {
         get {
-            Set(toggleDisplayIDs.split(separator: ",")
-                .compactMap { CGDirectDisplayID($0.trimmingCharacters(in: .whitespaces)) })
+            Set(
+                toggleDisplayIDs.split(separator: ",")
+                    .compactMap { CGDirectDisplayID($0.trimmingCharacters(in: .whitespaces)) })
         }
         set {
             let s = newValue.sorted().map { String($0) }.joined(separator: ",")
@@ -356,8 +359,8 @@ final class TabletSettings: ObservableObject {
         ud.set(activeAreaHeight, forKey: prefix + "activeAreaHeight")
         ud.set(proportionalMapping, forKey: prefix + "proportionalMapping")
         ud.set(targetDisplayIndex, forKey: prefix + "targetDisplayIndex")
-        ud.set(toggleDisplayIDs,   forKey: prefix + "toggleDisplayIDs")
-        ud.set(smoothingStrength,  forKey: prefix + "smoothingStrength")
+        ud.set(toggleDisplayIDs, forKey: prefix + "toggleDisplayIDs")
+        ud.set(smoothingStrength, forKey: prefix + "smoothingStrength")
         ud.set(doubleClickDistance, forKey: prefix + "doubleClickDistance")
         ud.set(pen1Raw, forKey: prefix + "penButton1Binding")
         ud.set(pen2Raw, forKey: prefix + "penButton2Binding")
@@ -544,8 +547,8 @@ final class TabletSettings: ObservableObject {
     /// Moves an app override from `source` index to `destination` index.  Registers undo.
     func reorderAppOverrides(from source: Int, to destination: Int) {
         guard source != destination,
-              appOverrides.indices.contains(source),
-              appOverrides.indices.contains(destination)
+            appOverrides.indices.contains(source),
+            appOverrides.indices.contains(destination)
         else { return }
         var reordered = appOverrides
         let item = reordered.remove(at: source)
@@ -576,8 +579,9 @@ final class TabletSettings: ObservableObject {
     func removeAppOverride(bundleID: String, keyScope: Set<String>? = nil) {
         guard let override = appOverrides.first(where: { $0.bundleID == bundleID }) else { return }
         let prefix = appOverrideKeyPrefix(override)
-        let keysToRemove = keyScope.map { override.overriddenKeys.intersection($0) }
-                           ?? override.overriddenKeys
+        let keysToRemove =
+            keyScope.map { override.overriddenKeys.intersection($0) }
+            ?? override.overriddenKeys
 
         // Snapshot stored values before deleting so undo can restore them.
         var snapshot: [String: Any] = [:]
@@ -642,7 +646,7 @@ final class TabletSettings: ObservableObject {
 
     private func loadAppOverrides() {
         guard let data = ud.data(forKey: appOverridesKey),
-              let list = try? JSONDecoder().decode([AppOverride].self, from: data)
+            let list = try? JSONDecoder().decode([AppOverride].self, from: data)
         else {
             appOverrides = []
             return
@@ -733,13 +737,14 @@ final class TabletSettings: ObservableObject {
     func recordAreaDrag(before snap: AreaSnapshot) {
         record("Tablet Area") { [weak self] in
             guard let self else { return }
-            let after = AreaSnapshot(x: self.activeAreaX, y: self.activeAreaY,
-                                     w: self.activeAreaWidth, h: self.activeAreaHeight)
+            let after = AreaSnapshot(
+                x: self.activeAreaX, y: self.activeAreaY,
+                w: self.activeAreaWidth, h: self.activeAreaHeight)
             self.activeAreaX = snap.x
             self.activeAreaY = snap.y
             self.activeAreaWidth = snap.w
             self.activeAreaHeight = snap.h
-            self.recordAreaDrag(before: after)   // re-registers as redo
+            self.recordAreaDrag(before: after)  // re-registers as redo
         }
     }
 
@@ -755,9 +760,10 @@ final class TabletSettings: ObservableObject {
         activeAreaWidth = loadDouble("activeAreaWidth", default: 1.0)
         activeAreaHeight = loadDouble("activeAreaHeight", default: 1.0)
         proportionalMapping = loadBool("proportionalMapping", default: true)
-        tabletOrientation = TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape
+        tabletOrientation =
+            TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape
         targetDisplayIndex = loadInt("targetDisplayIndex", default: 0)
-        toggleDisplayIDs   = loadString("toggleDisplayIDs", default: "")
+        toggleDisplayIDs = loadString("toggleDisplayIDs", default: "")
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
         doubleClickDistance = loadDouble("doubleClickDistance", default: 10.0)
         pen1Raw = loadString("penButton1Binding", default: "")
@@ -777,16 +783,18 @@ final class TabletSettings: ObservableObject {
                 rawValue: loadString("touchStrip2Mode", default: TouchRingMode.scroll.rawValue))
             ?? .scroll
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
-        invertRotation           = loadBool("invertRotation",           default: false)
-        relativeCursorMovement   = loadBool("relativeCursorMovement",   default: false)
+        invertRotation = loadBool("invertRotation", default: false)
+        relativeCursorMovement = loadBool("relativeCursorMovement", default: false)
         loadPressureCurve()
         // Sync resolved pressure values into activeTool so PenFeel —
         // which observes tool.pressureCurve — reflects the active override or profile.
-        activeTool.applyExternalValues(pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
+        activeTool.applyExternalValues(
+            pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
         // Also propagate to all cached per-tool instances so the injector (which uses
         // activeToolSettings — a cached ToolSettings — not activeTool) picks up the change.
         for tool in toolCache.values where tool !== activeTool {
-            tool.applyExternalValues(pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
+            tool.applyExternalValues(
+                pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
         }
         isLoading = false
     }
@@ -830,11 +838,12 @@ final class TabletSettings: ObservableObject {
     private func loadDouble(_ key: String, default d: Double) -> Double {
         // When user is editing a non-active app, show that app's values in the UI.
         // Otherwise show the driver's active values.
-        let sourceOverride = (activeAppOverride?.bundleID != driverOverride?.bundleID)
-                            ? activeAppOverride
-                            : driverOverride
+        let sourceOverride =
+            (activeAppOverride?.bundleID != driverOverride?.bundleID)
+            ? activeAppOverride
+            : driverOverride
         if let override = sourceOverride, override.overriddenKeys.contains(key),
-           ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
+            ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
         {
             return ud.double(forKey: appOverrideKeyPrefix(override) + key)
         }
@@ -851,11 +860,12 @@ final class TabletSettings: ObservableObject {
     }
 
     private func loadBool(_ key: String, default d: Bool) -> Bool {
-        let sourceOverride = (activeAppOverride?.bundleID != driverOverride?.bundleID)
-                            ? activeAppOverride
-                            : driverOverride
+        let sourceOverride =
+            (activeAppOverride?.bundleID != driverOverride?.bundleID)
+            ? activeAppOverride
+            : driverOverride
         if let override = sourceOverride, override.overriddenKeys.contains(key),
-           ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
+            ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
         {
             return ud.bool(forKey: appOverrideKeyPrefix(override) + key)
         }
@@ -872,11 +882,12 @@ final class TabletSettings: ObservableObject {
     }
 
     private func loadInt(_ key: String, default d: Int) -> Int {
-        let sourceOverride = (activeAppOverride?.bundleID != driverOverride?.bundleID)
-                            ? activeAppOverride
-                            : driverOverride
+        let sourceOverride =
+            (activeAppOverride?.bundleID != driverOverride?.bundleID)
+            ? activeAppOverride
+            : driverOverride
         if let override = sourceOverride, override.overriddenKeys.contains(key),
-           ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
+            ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
         {
             return ud.integer(forKey: appOverrideKeyPrefix(override) + key)
         }
@@ -893,11 +904,15 @@ final class TabletSettings: ObservableObject {
     }
 
     private func loadString(_ key: String, default d: String) -> String {
-        let sourceOverride = (activeAppOverride?.bundleID != driverOverride?.bundleID)
-                            ? activeAppOverride
-                            : driverOverride
+        let sourceOverride =
+            (activeAppOverride?.bundleID != driverOverride?.bundleID)
+            ? activeAppOverride
+            : driverOverride
         if let override = sourceOverride, override.overriddenKeys.contains(key),
-           let v = ud.string(forKey: appOverrideKeyPrefix(override) + key) { return v }
+            let v = ud.string(forKey: appOverrideKeyPrefix(override) + key)
+        {
+            return v
+        }
         if let preset = activeProfile, preset.overriddenKeys.contains(key) {
             if let v = ud.string(forKey: profileKeyPrefix(preset) + key) { return v }
         }
@@ -936,19 +951,23 @@ final class TabletSettings: ObservableObject {
 
     private func loadPressureCurve() {
         let data: Data?
-        let sourceOverride = (activeAppOverride?.bundleID != driverOverride?.bundleID)
-                            ? activeAppOverride
-                            : driverOverride
+        let sourceOverride =
+            (activeAppOverride?.bundleID != driverOverride?.bundleID)
+            ? activeAppOverride
+            : driverOverride
         if let override = sourceOverride, override.overriddenKeys.contains("pressureCurve") {
-            data = ud.data(forKey: appOverrideKeyPrefix(override) + "pressureCurve")
+            data =
+                ud.data(forKey: appOverrideKeyPrefix(override) + "pressureCurve")
                 ?? ud.data(forKey: devicePrefix + "pressureCurve")
                 ?? ud.data(forKey: "pressureCurve")
         } else if let preset = activeProfile, preset.overriddenKeys.contains("pressureCurve") {
-            data = ud.data(forKey: profileKeyPrefix(preset) + "pressureCurve")
+            data =
+                ud.data(forKey: profileKeyPrefix(preset) + "pressureCurve")
                 ?? ud.data(forKey: devicePrefix + "pressureCurve")
                 ?? ud.data(forKey: "pressureCurve")
         } else {
-            data = ud.data(forKey: devicePrefix + "pressureCurve")
+            data =
+                ud.data(forKey: devicePrefix + "pressureCurve")
                 ?? ud.data(forKey: "pressureCurve")
         }
         guard let data,
@@ -967,7 +986,7 @@ final class TabletSettings: ObservableObject {
         proportionalMapping = true
         tabletOrientation = .landscape
         targetDisplayIndex = 0
-        toggleDisplayIDs   = ""
+        toggleDisplayIDs = ""
         pressureCurve = .linear
         smoothingStrength = 0.0
         doubleClickDistance = 10.0
@@ -1087,16 +1106,16 @@ final class TabletSettings: ObservableObject {
         // Indices 8–10 = right toggle buttons (near ring), 11–15 = right express keys.
         // Devices with only 8 buttons use indices 0–7; the upper 8 entries are ignored.
         expressKeyBindings = [
-            ButtonBinding(modifierOnly: .command),   // 0  left key 1 → ⌘
-            ButtonBinding(modifierOnly: .option),    // 1  left key 2 → ⌥
-            ButtonBinding(modifierOnly: .control),   // 2  left key 3 → ⌃
-            ButtonBinding(modifierOnly: .shift),     // 3  left key 4 → ⇧
-            .none, .none, .none, .none,              // 4–7 left keys 5–8
-            ButtonBinding(modifierOnly: .command),   // 8  right key 1 (mirror) → ⌘
-            ButtonBinding(modifierOnly: .option),    // 9  right key 2 (mirror) → ⌥
-            ButtonBinding(modifierOnly: .control),   // 10 right key 3 (mirror) → ⌃
-            ButtonBinding(modifierOnly: .shift),     // 11 right key 4 (mirror) → ⇧
-            .none, .none, .none, .none,              // 12–15 right keys 5–8
+            ButtonBinding(modifierOnly: .command),  // 0  left key 1 → ⌘
+            ButtonBinding(modifierOnly: .option),  // 1  left key 2 → ⌥
+            ButtonBinding(modifierOnly: .control),  // 2  left key 3 → ⌃
+            ButtonBinding(modifierOnly: .shift),  // 3  left key 4 → ⇧
+            .none, .none, .none, .none,  // 4–7 left keys 5–8
+            ButtonBinding(modifierOnly: .command),  // 8  right key 1 (mirror) → ⌘
+            ButtonBinding(modifierOnly: .option),  // 9  right key 2 (mirror) → ⌥
+            ButtonBinding(modifierOnly: .control),  // 10 right key 3 (mirror) → ⌃
+            ButtonBinding(modifierOnly: .shift),  // 11 right key 4 (mirror) → ⇧
+            .none, .none, .none, .none,  // 12–15 right keys 5–8
         ]
     }
 
@@ -1185,8 +1204,9 @@ enum TouchRingMode: String, Codable, CaseIterable {
 
     var displayLabel: String {
         switch self {
-        case .scroll: return "Scroll"
-        case .off: return "Off"
+        case .scroll:
+            return String(localized: "Scroll", comment: "Touch ring mode: scroll wheel output")
+        case .off: return String(localized: "Off", comment: "Touch ring mode: disabled")
         }
     }
 }
@@ -1196,18 +1216,18 @@ enum TouchRingMode: String, Codable, CaseIterable {
 /// Physical rotation of the tablet relative to the default landscape position.
 /// The raw value is the number of 90° clockwise quarter-turns.
 enum TabletOrientation: Int, CaseIterable {
-    case landscape        = 0   // default  — USB port at bottom
-    case portrait         = 1   // 90° CCW  — USB port at right
-    case landscapeFlipped = 2   // 180°     — USB port at top
-    case portraitFlipped  = 3   // 90° CW   — USB port at left
+    case landscape = 0  // default  — USB port at bottom
+    case portrait = 1  // 90° CCW  — USB port at right
+    case landscapeFlipped = 2  // 180°     — USB port at top
+    case portraitFlipped = 3  // 90° CW   — USB port at left
 
     /// Clockwise rotation angle in radians used for Canvas transforms.
     var rotationAngle: Double {
         switch self {
-        case .landscape:        return 0
-        case .portrait:         return 3 * .pi / 2  // 270° (swapped from 90°)
-        case .landscapeFlipped: return .pi          // 180°
-        case .portraitFlipped:  return .pi / 2      // 90° (swapped from 270°)
+        case .landscape: return 0
+        case .portrait: return 3 * .pi / 2  // 270° (swapped from 90°)
+        case .landscapeFlipped: return .pi  // 180°
+        case .portraitFlipped: return .pi / 2  // 90° (swapped from 270°)
         }
     }
 
@@ -1216,10 +1236,16 @@ enum TabletOrientation: Int, CaseIterable {
 
     var label: String {
         switch self {
-        case .landscape:        return "Landscape"
-        case .portrait:         return "Portrait"
-        case .landscapeFlipped: return "Landscape Flipped"
-        case .portraitFlipped:  return "Portrait Flipped"
+        case .landscape:
+            return String(localized: "Landscape", comment: "Tablet orientation: default landscape")
+        case .portrait:
+            return String(localized: "Portrait", comment: "Tablet orientation: rotated 90° CCW")
+        case .landscapeFlipped:
+            return String(
+                localized: "Landscape Flipped", comment: "Tablet orientation: rotated 180°")
+        case .portraitFlipped:
+            return String(
+                localized: "Portrait Flipped", comment: "Tablet orientation: rotated 90° CW")
         }
     }
 }
@@ -1230,7 +1256,8 @@ enum TabletOrientation: Int, CaseIterable {
 struct ButtonBinding: Codable, Equatable {
 
     enum Kind: String, Codable {
-        case none, leftClick, rightClick, middleClick, eraser, keyCombo, displayToggle, doubleClick, spacebar
+        case none, leftClick, rightClick, middleClick, eraser, keyCombo, displayToggle, doubleClick,
+            spacebar
     }
 
     var kind: Kind = .none
@@ -1244,9 +1271,9 @@ struct ButtonBinding: Codable, Equatable {
     static let leftClick = ButtonBinding(kind: .leftClick)
     static let rightClick = ButtonBinding(kind: .rightClick)
     static let middleClick = ButtonBinding(kind: .middleClick)
-    static let eraser      = ButtonBinding(kind: .eraser)
+    static let eraser = ButtonBinding(kind: .eraser)
     static let doubleClick = ButtonBinding(kind: .doubleClick)
-    static let spacebar    = ButtonBinding(kind: .spacebar)
+    static let spacebar = ButtonBinding(kind: .spacebar)
 
     // MARK: Init
 
@@ -1325,14 +1352,21 @@ struct ButtonBinding: Codable, Equatable {
 
     var displayLabel: String {
         switch kind {
-        case .none: return "None"
-        case .leftClick: return "Left Click"
-        case .rightClick: return "Right Click"
-        case .middleClick: return "Middle Click"
-        case .eraser: return "Eraser"
-        case .displayToggle: return "Toggle Display"
-        case .doubleClick:   return "Double Click"
-        case .spacebar:      return "Spacebar"
+        case .none: return String(localized: "None", comment: "Button action: no action")
+        case .leftClick:
+            return String(localized: "Left Click", comment: "Button action: left mouse click")
+        case .rightClick:
+            return String(localized: "Right Click", comment: "Button action: right mouse click")
+        case .middleClick:
+            return String(localized: "Middle Click", comment: "Button action: middle mouse click")
+        case .eraser:
+            return String(localized: "Eraser", comment: "Button action: switch to eraser tool")
+        case .displayToggle:
+            return String(
+                localized: "Toggle Display", comment: "Button action: cycle through displays")
+        case .doubleClick:
+            return String(localized: "Double Click", comment: "Button action: double-click")
+        case .spacebar: return String(localized: "Spacebar", comment: "Button action: spacebar key")
         case .keyCombo:
             let f = CGEventFlags(rawValue: modifierFlags)
             var s = ""
@@ -1364,12 +1398,12 @@ struct ButtonBinding: Codable, Equatable {
     /// Unknown labels fall back to `.none` so a bad value doesn't hard-fail an import.
     static func fromDisplayLabel(_ label: String) -> ButtonBinding {
         switch label {
-        case "None":            return .none
-        case "Left Click":      return .leftClick
-        case "Right Click":     return .rightClick
-        case "Middle Click":    return .middleClick
-        case "Eraser":          return .eraser
-        case "Toggle Display":  return ButtonBinding(kind: .displayToggle)
+        case "None": return .none
+        case "Left Click": return .leftClick
+        case "Right Click": return .rightClick
+        case "Middle Click": return .middleClick
+        case "Eraser": return .eraser
+        case "Toggle Display": return ButtonBinding(kind: .displayToggle)
         default:
             return parseKeyComboLabel(label) ?? .none
         }
@@ -1384,10 +1418,10 @@ struct ButtonBinding: Codable, Equatable {
 
         // Strip leading modifier symbols in any order.
         let modPairs: [(String, NSEvent.ModifierFlags, CGEventFlags, UInt16)] = [
-            ("⌃", .control, .maskControl,  59),
-            ("⌥", .option,  .maskAlternate, 58),
-            ("⇧", .shift,   .maskShift,     56),
-            ("⌘", .command, .maskCommand,   55),
+            ("⌃", .control, .maskControl, 59),
+            ("⌥", .option, .maskAlternate, 58),
+            ("⇧", .shift, .maskShift, 56),
+            ("⌘", .command, .maskCommand, 55),
         ]
         var changed = true
         while changed {
@@ -1409,21 +1443,24 @@ struct ButtonBinding: Codable, Equatable {
 
         // Build keyLabel using charLabel so it matches what we'd produce normally.
         let keyLabel = charLabel(keyCode: kc, modifiers: nsFlags)
-        return ButtonBinding(kind: .keyCombo, keyCode: kc,
-                             modifierFlags: cgFlags.rawValue, keyLabel: keyLabel)
+        return ButtonBinding(
+            kind: .keyCombo, keyCode: kc,
+            modifierFlags: cgFlags.rawValue, keyLabel: keyLabel)
     }
 
     /// Reverse lookup: given a display string and modifier state, find a virtual key code.
     /// Checks the static symbol table first, then scans keyCodes 0–127 via `charLabel`.
-    private static func keyCodeForLabel(_ label: String, modifiers: NSEvent.ModifierFlags) -> UInt16? {
+    private static func keyCodeForLabel(_ label: String, modifiers: NSEvent.ModifierFlags)
+        -> UInt16?
+    {
         // Static reverse table for special keys (same set as charLabel).
         let specialKeys: [String: UInt16] = [
             "↩": 36, "⇥": 48, "Space": 49, "⌫": 51, "⎋": 53,
             "⌧": 71, "⌅": 76, "↖": 115, "⇞": 116, "⌦": 117,
             "↘": 119, "⇟": 121, "←": 123, "→": 124, "↓": 125, "↑": 126,
-            "F1": 122, "F2": 120, "F3": 99,  "F4": 118, "F5": 96,
-            "F6": 97,  "F7": 98,  "F8": 100, "F9": 101, "F10": 109,
-            "F11": 103,"F12": 111,
+            "F1": 122, "F2": 120, "F3": 99, "F4": 118, "F5": 96,
+            "F6": 97, "F7": 98, "F8": 100, "F9": 101, "F10": 109,
+            "F11": 103, "F12": 111,
         ]
         if let kc = specialKeys[label] { return kc }
 
@@ -1539,4 +1576,3 @@ struct ButtonBinding: Codable, Equatable {
         return str.uppercased()
     }
 }
-
