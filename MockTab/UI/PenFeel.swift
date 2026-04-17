@@ -21,21 +21,23 @@ import SwiftUI
 /// Stylus feel settings: pressure curve, stabilization, click behaviour, and rotation.
 struct PenFeel: View {
     @ObservedObject var settings: TabletSettings
-    @ObservedObject var tool: ToolSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
     var productID: Int?
+
+    private var tool: ToolSettings { settings.activeTool }
 
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
-            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.pressureKeys, productID: productID)
+            AppOverrideBar(
+                settings: settings, domainKeys: AppOverrideBar.pressureKeys, productID: productID)
             Form {
                 pressureCurveSection
 
                 Section("Stabilization") {
-                    VStack(alignment: .leading, spacing: 4) {   // ← Added .leading for consistency
+                    VStack(alignment: .leading, spacing: 4) {  // ← Added .leading for consistency
                         HStack {
                             Text("Strength")
                                 .font(.subheadline)
@@ -45,10 +47,13 @@ struct PenFeel: View {
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
                         }
-                        
+
                         Slider(value: smoothingBinding, in: 0...1)
                             .labelsHidden()
-                            .help(LocalizedStringKey("Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but add input lag."))
+                            .help(
+                                LocalizedStringKey(
+                                    "Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but add input lag."
+                                ))
 
                         Text("Reduces cursor jitter. Higher values add lag.")
                             .font(.settingsLabel)
@@ -63,20 +68,33 @@ struct PenFeel: View {
                             Text("Distance")
                                 .font(.subheadline)
                             Spacer()
-                            Text(verbatim: settings.doubleClickDistance < 1
-                                ? String(localized: "Off", comment: "Feature disabled — double-click distance slider at minimum value")
-                                : String(localized: "\(Int(settings.doubleClickDistance)) pt", comment: "Distance in points, e.g. '10 pt'"))
-                                .font(.settingsLabel)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
+                            Text(
+                                verbatim: settings.doubleClickDistance < 1
+                                    ? String(
+                                        localized: "Off",
+                                        comment:
+                                            "Feature disabled — double-click distance slider at minimum value"
+                                    )
+                                    : String(
+                                        localized: "\(Int(settings.doubleClickDistance)) pt",
+                                        comment: "Distance in points, e.g. '10 pt'")
+                            )
+                            .font(.settingsLabel)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
                         }
                         Slider(value: doubleClickBinding, in: 0...30, step: 1)
                             .labelsHidden()
-                            .help(LocalizedStringKey("How close a second tap must land to the first to count as a double-click. Drag to Off to disable position snapping."))
+                            .help(
+                                LocalizedStringKey(
+                                    "How close a second tap must land to the first to count as a double-click. Drag to Off to disable position snapping."
+                                ))
 
-                        Text("Snaps a second tap to the first click position within this radius, making double-clicks reliable.")
-                            .font(.settingsLabel)
-                            .foregroundStyle(.secondary)
+                        Text(
+                            "Snaps a second tap to the first click position within this radius, making double-clicks reliable."
+                        )
+                        .font(.settingsLabel)
+                        .foregroundStyle(.secondary)
                     }
                 }
 
@@ -85,38 +103,52 @@ struct PenFeel: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Invert Rotation Direction")
                             (Text("Current: ")
-                                + Text(Image(systemName: settings.invertRotation
-                                    ? "arrow.counterclockwise"
-                                    : "arrow.clockwise"))
-                                + Text(settings.invertRotation
-                                    ? " Counter-clockwise"
-                                    : " Clockwise"))
+                                + Text(
+                                    Image(
+                                        systemName: settings.invertRotation
+                                            ? "arrow.counterclockwise"
+                                            : "arrow.clockwise"))
+                                + Text(
+                                    settings.invertRotation
+                                        ? " Counter-clockwise"
+                                        : " Clockwise"))
                                 .font(.settingsLabel)
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .help(LocalizedStringKey("Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita)."))
+                    .help(
+                        LocalizedStringKey(
+                            "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita)."
+                        ))
 
                     Toggle(isOn: relativeCursorMovementBinding) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Relative Cursor Movement")
                             (Text("Current: ")
-                                + Text(Image(systemName: settings.relativeCursorMovement
-                                    ? "cursorarrow.motionlines"
-                                    : "pencil.tip"))
-                                + Text(settings.relativeCursorMovement
-                                    ? " Relative, like a mouse"
-                                    : " Absolute, like a stylus"))
+                                + Text(
+                                    Image(
+                                        systemName: settings.relativeCursorMovement
+                                            ? "cursorarrow.motionlines"
+                                            : "pencil.tip"))
+                                + Text(
+                                    settings.relativeCursorMovement
+                                        ? " Relative, like a mouse"
+                                        : " Absolute, like a stylus"))
                                 .font(.settingsLabel)
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .help(LocalizedStringKey("In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse."))
+                    .help(
+                        LocalizedStringKey(
+                            "In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse."
+                        ))
                 }
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
+            DeviceStatusBar(
+                settings: settings, tabletManager: tabletManager, registry: registry,
+                productID: productID ?? 0)
         }
     }
 
@@ -136,19 +168,28 @@ struct PenFeel: View {
                     tool.pressureCurve = .linear
                     tool.record("Linear Curve") { tool.pressureCurve = old }
                 }
-                .help(LocalizedStringKey("Linear response — equal pen force produces equal pressure output. Best for general use."))
+                .help(
+                    LocalizedStringKey(
+                        "Linear response — equal pen force produces equal pressure output. Best for general use."
+                    ))
                 Button(LocalizedStringKey("Soft")) {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .soft
                     tool.record("Soft Curve") { tool.pressureCurve = old }
                 }
-                .help(LocalizedStringKey("Soft response — light pressure reaches full output quickly. Good for loose, expressive work."))
+                .help(
+                    LocalizedStringKey(
+                        "Soft response — light pressure reaches full output quickly. Good for loose, expressive work."
+                    ))
                 Button(LocalizedStringKey("Firm")) {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .firm
                     tool.record("Firm Curve") { tool.pressureCurve = old }
                 }
-                .help(LocalizedStringKey("Firm response — requires more force to reach full output. Good for precise detail work."))
+                .help(
+                    LocalizedStringKey(
+                        "Firm response — requires more force to reach full output. Good for precise detail work."
+                    ))
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -203,7 +244,9 @@ struct PenFeel: View {
             set: { newVal in
                 let old = settings.relativeCursorMovement
                 settings.relativeCursorMovement = newVal
-                settings.record("Relative Cursor Movement") { settings.relativeCursorMovement = old }
+                settings.record("Relative Cursor Movement") {
+                    settings.relativeCursorMovement = old
+                }
             }
         )
     }
@@ -212,11 +255,12 @@ struct PenFeel: View {
 
     private var smoothingLabel: String {
         switch tool.smoothingStrength {
-        case 0..<0.15:  return String(localized: "Off",    comment: "Stabilization strength — disabled")
-        case 0.15..<0.4:  return String(localized: "Low",    comment: "Stabilization strength label")
-        case 0.4..<0.65:  return String(localized: "Medium", comment: "Stabilization strength label")
-        case 0.65..<0.85: return String(localized: "High",   comment: "Stabilization strength label")
-        default:          return String(localized: "Max",    comment: "Stabilization strength label — maximum value")
+        case 0..<0.15: return String(localized: "Off", comment: "Stabilization strength — disabled")
+        case 0.15..<0.4: return String(localized: "Low", comment: "Stabilization strength label")
+        case 0.4..<0.65: return String(localized: "Medium", comment: "Stabilization strength label")
+        case 0.65..<0.85: return String(localized: "High", comment: "Stabilization strength label")
+        default:
+            return String(localized: "Max", comment: "Stabilization strength label — maximum value")
         }
     }
 }
@@ -238,24 +282,25 @@ private struct PressureCurveCanvas: View {
                 drawCurve(ctx: ctx, size: size)
                 drawHandles(ctx: ctx, size: size)
             }
-            .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { v in
-                    if !draggingP1 && !draggingP2 {
-                        // First drag event on a handle — capture snapshot for undo
-                        pressureCurveSnapshot = tool.pressureCurve
-                    }
-                    handle(drag: v, size: size)
-                }
-                .onEnded { _ in
-                    // Register one undo entry for the entire drag
-                    if draggingP1 || draggingP2 {
-                        tool.record("Pressure Curve") {
-                            tool.pressureCurve = self.pressureCurveSnapshot
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { v in
+                        if !draggingP1 && !draggingP2 {
+                            // First drag event on a handle — capture snapshot for undo
+                            pressureCurveSnapshot = tool.pressureCurve
                         }
+                        handle(drag: v, size: size)
                     }
-                    draggingP1 = false
-                    draggingP2 = false
-                }
+                    .onEnded { _ in
+                        // Register one undo entry for the entire drag
+                        if draggingP1 || draggingP2 {
+                            tool.record("Pressure Curve") {
+                                tool.pressureCurve = self.pressureCurveSnapshot
+                            }
+                        }
+                        draggingP1 = false
+                        draggingP2 = false
+                    }
             )
         }
     }
@@ -265,7 +310,7 @@ private struct PressureCurveCanvas: View {
     private func drawGrid(ctx: GraphicsContext, size: CGSize) {
         var path = Path()
         for i in 1..<4 {
-            let x = size.width  * Double(i) / 4
+            let x = size.width * Double(i) / 4
             let y = size.height * Double(i) / 4
             path.move(to: CGPoint(x: x, y: 0))
             path.addLine(to: CGPoint(x: x, y: size.height))
@@ -284,20 +329,23 @@ private struct PressureCurveCanvas: View {
             let t = Double(i) / 64.0
             path.addLine(to: toCanvas(x: t, y: curve.evaluate(t), size: size))
         }
-        ctx.stroke(path, with: .color(.accentColor), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+        ctx.stroke(
+            path, with: .color(.accentColor), style: StrokeStyle(lineWidth: 2, lineCap: .round))
     }
 
     private func drawHandles(ctx: GraphicsContext, size: CGSize) {
         let curve = tool.pressureCurve
-        let p0 = toCanvas(x: 0,          y: 0,          size: size)
+        let p0 = toCanvas(x: 0, y: 0, size: size)
         let p1 = toCanvas(x: curve.p1.x, y: curve.p1.y, size: size)
         let p2 = toCanvas(x: curve.p2.x, y: curve.p2.y, size: size)
-        let p3 = toCanvas(x: 1,          y: 1,          size: size)
+        let p3 = toCanvas(x: 1, y: 1, size: size)
 
         // Guide lines from anchors to control points
         var guides = Path()
-        guides.move(to: p0); guides.addLine(to: p1)
-        guides.move(to: p3); guides.addLine(to: p2)
+        guides.move(to: p0)
+        guides.addLine(to: p1)
+        guides.move(to: p3)
+        guides.addLine(to: p2)
         ctx.stroke(guides, with: .color(.secondary.opacity(0.4)), lineWidth: 1)
 
         // Control point handles
@@ -314,17 +362,22 @@ private struct PressureCurveCanvas: View {
     private func handle(drag: DragGesture.Value, size: CGSize) {
         let pt = fromCanvas(drag.location, size: size)
 
-        let p1Canvas = toCanvas(x: tool.pressureCurve.p1.x,
-                                y: tool.pressureCurve.p1.y, size: size)
-        let p2Canvas = toCanvas(x: tool.pressureCurve.p2.x,
-                                y: tool.pressureCurve.p2.y, size: size)
+        let p1Canvas = toCanvas(
+            x: tool.pressureCurve.p1.x,
+            y: tool.pressureCurve.p1.y, size: size)
+        let p2Canvas = toCanvas(
+            x: tool.pressureCurve.p2.x,
+            y: tool.pressureCurve.p2.y, size: size)
 
         let hitRadius: Double = 16
         if !draggingP1 && !draggingP2 {
             let d1 = dist(drag.location, p1Canvas)
             let d2 = dist(drag.location, p2Canvas)
-            if d1 < hitRadius && d1 <= d2 { draggingP1 = true }
-            else if d2 < hitRadius         { draggingP2 = true }
+            if d1 < hitRadius && d1 <= d2 {
+                draggingP1 = true
+            } else if d2 < hitRadius {
+                draggingP2 = true
+            }
         }
 
         let clamp01: (Double) -> Double = { Swift.min(Swift.max($0, 0), 1) }
@@ -343,8 +396,9 @@ private struct PressureCurveCanvas: View {
     }
 
     private func fromCanvas(_ pt: CGPoint, size: CGSize) -> CGPoint {
-        CGPoint(x: Swift.min(Swift.max(pt.x / size.width,  0), 1),
-                y: Swift.min(Swift.max(1 - pt.y / size.height, 0), 1))
+        CGPoint(
+            x: Swift.min(Swift.max(pt.x / size.width, 0), 1),
+            y: Swift.min(Swift.max(1 - pt.y / size.height, 0), 1))
     }
 
     private func dist(_ a: CGPoint, _ b: CGPoint) -> Double {

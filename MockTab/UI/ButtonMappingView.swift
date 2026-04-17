@@ -23,11 +23,12 @@ import SwiftUI
 
 struct ButtonMappingView: View {
     @ObservedObject var settings: TabletSettings
-    @ObservedObject var tool: ToolSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
     var productID: Int?
-    
+
+    private var tool: ToolSettings { settings.activeTool }
+
     private var spec: WacomDeviceSpec? {
         productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
@@ -37,12 +38,12 @@ struct ButtonMappingView: View {
         return WacomToolCatalog.spec(forToolCode: ctx.activeToolCode)
     }
 
-    private var hasTouchRing:   Bool { spec?.hasTouchRing   == true }
-    private var hasDualRings:   Bool { spec?.hasDualRings   == true }
+    private var hasTouchRing: Bool { spec?.hasTouchRing == true }
+    private var hasDualRings: Bool { spec?.hasDualRings == true }
     private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
-    
+
     // MARK: - Recording Binding Helper
-    
+
     /// Creates a binding that automatically registers undo for any change.
     /// The `owner` should be the object that has the undoManager (tool or settings).
     private func recordingBinding<T>(
@@ -64,12 +65,13 @@ struct ButtonMappingView: View {
             }
         )
     }
-    
+
     // MARK: - Body
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.buttonKeys, productID: productID)
+            AppOverrideBar(
+                settings: settings, domainKeys: AppOverrideBar.buttonKeys, productID: productID)
             Form {
                 let lb = tabletManager.liveButtons
                 penButtonsSection(lb: lb)
@@ -81,10 +83,12 @@ struct ButtonMappingView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
-            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
+            DeviceStatusBar(
+                settings: settings, tabletManager: tabletManager, registry: registry,
+                productID: productID ?? 0)
         }
     }
-    
+
     // MARK: - Pen buttons section
 
     @ViewBuilder
@@ -100,7 +104,8 @@ struct ButtonMappingView: View {
             // Tip — only for non-mouse tools
             if !isMouse {
                 buttonRow(
-                    String(localized: "Tip", comment: "Pen tip button row label in Buttons tab"), isActive: lb.tipDown,
+                    String(localized: "Tip", comment: "Pen tip button row label in Buttons tab"),
+                    isActive: lb.tipDown,
                     binding: recordingBinding(
                         "Tip Button", owner: tool,
                         get: { tool.tipBinding },
@@ -110,7 +115,8 @@ struct ButtonMappingView: View {
             // Eraser — only for non-mouse tools
             if !isMouse {
                 buttonRow(
-                    String(localized: "Eraser", comment: "Eraser button row label in Buttons tab"), isActive: lb.eraserDown,
+                    String(localized: "Eraser", comment: "Eraser button row label in Buttons tab"),
+                    isActive: lb.eraserDown,
                     binding: recordingBinding(
                         "Eraser Button", owner: tool,
                         get: { tool.eraserBinding },
@@ -122,11 +128,17 @@ struct ButtonMappingView: View {
             // For mice: "Button 1", "Button 2", etc.
             let buttonLabel: (Int) -> String = { i in
                 if isMouse {
-                    return String(localized: "Button \(i + 1)", comment: "Mouse button N label, e.g. 'Button 1'")
+                    return String(
+                        localized: "Button \(i + 1)",
+                        comment: "Mouse button N label, e.g. 'Button 1'")
                 } else {
                     return btnCount == 1
-                        ? String(localized: "Side button", comment: "Single side button label on airbrush")
-                        : String(localized: "Side button \(i + 1)", comment: "Side button N label, e.g. 'Side button 1'")
+                        ? String(
+                            localized: "Side button",
+                            comment: "Single side button label on airbrush")
+                        : String(
+                            localized: "Side button \(i + 1)",
+                            comment: "Side button N label, e.g. 'Side button 1'")
                 }
             }
 
@@ -182,7 +194,8 @@ struct ButtonMappingView: View {
 
             // Wheel row — airbrush fingerwheel or scroll wheel
             if hasWheel {
-                let wheelLabel = toolSpec?.toolType == .airbrush
+                let wheelLabel =
+                    toolSpec?.toolType == .airbrush
                     ? String(localized: "Fingerwheel", comment: "Airbrush fingerwheel row label")
                     : String(localized: "Scroll Wheel", comment: "Mouse scroll wheel row label")
                 buttonRow(
@@ -206,16 +219,20 @@ struct ButtonMappingView: View {
             }
         }
     }
-    
+
     // MARK: - Single-sided layout (most tablets)
-    
+
     @ViewBuilder
     private func singleSidedSection(lb: LiveButtonState) -> some View {
         // DeviceNameLabel heads this section so it sits between the pen section
         // and the hardware button rows, matching the original visual intent.
         Section {
             ForEach(0..<8, id: \.self) { i in
-                expressKeyRow(index: i, label: String(localized: "Key \(i + 1)", comment: "Express key N label, e.g. 'Key 1'"), lb: lb)
+                expressKeyRow(
+                    index: i,
+                    label: String(
+                        localized: "Key \(i + 1)", comment: "Express key N label, e.g. 'Key 1'"),
+                    lb: lb)
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
@@ -223,17 +240,21 @@ struct ButtonMappingView: View {
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
-        
+
         if hasTouchRing {
             Section(LocalizedStringKey("Touch Ring")) {
                 buttonRow(
-                    String(localized: "Center", comment: "Touch ring center button row label"), isActive: lb.touchRingButtonDown,
+                    String(localized: "Center", comment: "Touch ring center button row label"),
+                    isActive: lb.touchRingButtonDown,
                     binding: recordingBinding(
                         "Touch Ring Button", owner: settings,
                         get: { settings.touchRingButtonBinding },
                         set: { settings.touchRingButtonBinding = $0 }))
                 touchRingRow(
-                    String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRingActive,
+                    String(
+                        localized: "Touch Ring",
+                        comment: "Section header / row label for touch ring"),
+                    isActive: lb.touchRingActive,
                     mode: recordingBinding(
                         "Touch Ring Mode", owner: settings,
                         get: { settings.touchRingMode },
@@ -244,13 +265,15 @@ struct ButtonMappingView: View {
         if hasTouchStrips {
             Section(LocalizedStringKey("Touch Strips")) {
                 touchRingRow(
-                    String(localized: "Left", comment: "Left touch strip row label"), isActive: lb.touchStrip1Active,
+                    String(localized: "Left", comment: "Left touch strip row label"),
+                    isActive: lb.touchStrip1Active,
                     mode: recordingBinding(
                         "Touch Strip 1 Mode", owner: settings,
                         get: { settings.touchStrip1Mode },
                         set: { settings.touchStrip1Mode = $0 }))
                 touchRingRow(
-                    String(localized: "Right", comment: "Right touch strip row label"), isActive: lb.touchStrip2Active,
+                    String(localized: "Right", comment: "Right touch strip row label"),
+                    isActive: lb.touchStrip2Active,
                     mode: recordingBinding(
                         "Touch Strip 2 Mode", owner: settings,
                         get: { settings.touchStrip2Mode },
@@ -258,19 +281,23 @@ struct ButtonMappingView: View {
             }
         }
     }
-    
+
     // MARK: - Dual-sided layout (Cintiq 24HD and similar)
     // Indices  0– 2 = left toggle buttons (near ring)
     // Indices  3– 7 = left express keys
     // Indices  8–10 = right toggle buttons (near ring, mirror)
     // Indices 11–15 = right express keys (mirror)
     // Both rings share the same mode setting (mirrored behavior).
-    
+
     @ViewBuilder
     private func dualSidedSection(lb: LiveButtonState) -> some View {
         Section {
             ForEach(0..<3, id: \.self) { i in
-                expressKeyRow(index: i, label: String(localized: "Button \(i + 1)", comment: "Toggle button N label, e.g. 'Button 1'"), lb: lb)
+                expressKeyRow(
+                    index: i,
+                    label: String(
+                        localized: "Button \(i + 1)",
+                        comment: "Toggle button N label, e.g. 'Button 1'"), lb: lb)
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
@@ -278,16 +305,22 @@ struct ButtonMappingView: View {
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
-        
+
         Section(LocalizedStringKey("Express Keys — Left")) {
             ForEach(3..<8, id: \.self) { i in
-                expressKeyRow(index: i, label: String(localized: "Key \(i - 2)", comment: "Express key N label, e.g. 'Key 1'"), lb: lb)
+                expressKeyRow(
+                    index: i,
+                    label: String(
+                        localized: "Key \(i - 2)", comment: "Express key N label, e.g. 'Key 1'"),
+                    lb: lb)
             }
         }
 
         Section(LocalizedStringKey("Touch Ring — Left")) {
             touchRingRow(
-                String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRingActive,
+                String(
+                    localized: "Touch Ring", comment: "Section header / row label for touch ring"),
+                isActive: lb.touchRingActive,
                 mode: recordingBinding(
                     "Touch Ring Mode", owner: settings,
                     get: { settings.touchRingMode },
@@ -296,28 +329,38 @@ struct ButtonMappingView: View {
 
         Section(LocalizedStringKey("Toggle Buttons — Right")) {
             ForEach(8..<11, id: \.self) { i in
-                expressKeyRow(index: i, label: String(localized: "Button \(i - 7)", comment: "Toggle button N label, e.g. 'Button 1'"), lb: lb)
+                expressKeyRow(
+                    index: i,
+                    label: String(
+                        localized: "Button \(i - 7)",
+                        comment: "Toggle button N label, e.g. 'Button 1'"), lb: lb)
             }
         }
 
         Section(LocalizedStringKey("Express Keys — Right")) {
             ForEach(11..<16, id: \.self) { i in
-                expressKeyRow(index: i, label: String(localized: "Key \(i - 10)", comment: "Express key N label, e.g. 'Key 1'"), lb: lb)
+                expressKeyRow(
+                    index: i,
+                    label: String(
+                        localized: "Key \(i - 10)", comment: "Express key N label, e.g. 'Key 1'"),
+                    lb: lb)
             }
         }
 
         Section(LocalizedStringKey("Touch Ring — Right")) {
             touchRingRow(
-                String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRing2Active,
+                String(
+                    localized: "Touch Ring", comment: "Section header / row label for touch ring"),
+                isActive: lb.touchRing2Active,
                 mode: recordingBinding(
                     "Touch Ring Mode", owner: settings,
                     get: { settings.touchRingMode },
                     set: { settings.touchRingMode = $0 }))
         }
     }
-    
+
     // MARK: - Express key row helper
-    
+
     @ViewBuilder
     private func expressKeyRow(index: Int, label: String, lb: LiveButtonState) -> some View {
         buttonRow(
@@ -334,9 +377,9 @@ struct ButtonMappingView: View {
             )
         )
     }
-    
+
     // MARK: - Touch ring / strip row
-    
+
     @ViewBuilder
     private func touchRingRow(
         _ label: String, isActive: Bool,
@@ -344,8 +387,8 @@ struct ButtonMappingView: View {
     ) -> some View {
         HStack(spacing: 10) {
             activeIndicator(isActive)
-            labelText(label, isActive: isActive)   // ← pass isActive
-            
+            labelText(label, isActive: isActive)  // ← pass isActive
+
             // Force a pop-up menu to look like a fucking menu
             Picker("", selection: mode) {
                 ForEach(TouchRingMode.allCases, id: \.self) { m in
@@ -355,8 +398,10 @@ struct ButtonMappingView: View {
             // .pickerStyle(.menu)
             .labelsHidden()
             .padding(1)
-            .help(LocalizedStringKey("Action performed when sliding a finger around the touch ring."))
-            
+            .help(
+                LocalizedStringKey("Action performed when sliding a finger around the touch ring.")
+            )
+
             .controlSize(.regular)
             .background(
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -365,14 +410,14 @@ struct ButtonMappingView: View {
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
                             .strokeBorder(Color(NSColor.separatorColor), lineWidth: 0.5)
                     )
-                    .shadow(radius:0.25)
+                    .shadow(radius: 0.25)
             )
-            
+
         }
     }
-    
+
     // MARK: - Button binding row
-    
+
     @ViewBuilder
     private func buttonRow(
         _ label: String, isActive: Bool,
@@ -380,17 +425,16 @@ struct ButtonMappingView: View {
     ) -> some View {
         HStack(spacing: 0) {
             activeIndicator(isActive)
-            labelText(label, isActive: isActive)   // ← pass isActive
+            labelText(label, isActive: isActive)  // ← pass isActive
             ButtonBindingControl(binding: binding)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
         // Row-level background removed — highlight lives on the label now.
     }
-    
-    
+
     // MARK: - Shared row subviews
-    
+
     /// Green checkmark when a hardware button is currently held; invisible
     /// when idle so the label column stays stable without a ghost shape.
     @ViewBuilder
@@ -400,7 +444,7 @@ struct ButtonMappingView: View {
             .imageScale(.small)
             .opacity(isActive ? 1 : 0)
     }
-    
+
     /// Renders label text right-aligned in a fixed-width column so all control
     /// fields start at the same horizontal position regardless of which Section
     /// they live in.  100 pt comfortably fits the longest label ("Side button 1",
@@ -419,9 +463,9 @@ struct ButtonMappingView: View {
             .animation(.easeOut(duration: 0.07), value: isActive)
             .frame(minWidth: 60, alignment: .trailing)
     }
-    
+
 }
-    
+
 // MARK: - ButtonBindingControl
 
 /// A Bloom-style shortcut recorder control.
@@ -452,7 +496,10 @@ struct ButtonBindingControl: View {
             }
             .buttonStyle(.plain)
             .background(fieldBackground)
-            .help(LocalizedStringKey("Click to record a keyboard shortcut. Press Escape to cancel or Delete to clear. Use the ▾ menu to assign a click action."))
+            .help(
+                LocalizedStringKey(
+                    "Click to record a keyboard shortcut. Press Escape to cancel or Delete to clear. Use the ▾ menu to assign a click action."
+                ))
 
             // Clear button
             if binding.kind != .none && !isRecording {
@@ -469,19 +516,27 @@ struct ButtonBindingControl: View {
 
             // Click-action picker
             Menu {
-                Button(LocalizedStringKey("Left Click"))   { set(.leftClick)   }
-                Button(LocalizedStringKey("Right Click"))  { set(.rightClick)  }
+                Button(LocalizedStringKey("Left Click")) { set(.leftClick) }
+                Button(LocalizedStringKey("Right Click")) { set(.rightClick) }
                 Button(LocalizedStringKey("Middle Click")) { set(.middleClick) }
                 Button(LocalizedStringKey("Double Click")) { set(.doubleClick) }
-                Button(LocalizedStringKey("Eraser"))       { set(.eraser)      }
+                Button(LocalizedStringKey("Eraser")) { set(.eraser) }
                 Divider()
-                Button(LocalizedStringKey("Spacebar"))       { set(.spacebar)      }
+                Button(LocalizedStringKey("Spacebar")) { set(.spacebar) }
                 Button(LocalizedStringKey("Toggle Display")) { set(.displayToggle) }
                 Divider()
-                Button(LocalizedStringKey("⌘ Command")) { binding = ButtonBinding(modifierOnly: .command) }
-                Button(LocalizedStringKey("⌥ Option"))  { binding = ButtonBinding(modifierOnly: .option)  }
-                Button(LocalizedStringKey("⇧ Shift"))   { binding = ButtonBinding(modifierOnly: .shift)   }
-                Button(LocalizedStringKey("⌃ Control")) { binding = ButtonBinding(modifierOnly: .control) }
+                Button(LocalizedStringKey("⌘ Command")) {
+                    binding = ButtonBinding(modifierOnly: .command)
+                }
+                Button(LocalizedStringKey("⌥ Option")) {
+                    binding = ButtonBinding(modifierOnly: .option)
+                }
+                Button(LocalizedStringKey("⇧ Shift")) {
+                    binding = ButtonBinding(modifierOnly: .shift)
+                }
+                Button(LocalizedStringKey("⌃ Control")) {
+                    binding = ButtonBinding(modifierOnly: .control)
+                }
                 Divider()
                 Button(LocalizedStringKey("None")) { set(.none) }
             } label: {
@@ -493,7 +548,10 @@ struct ButtonBindingControl: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .frame(width: 20)
-            .help(LocalizedStringKey("Assign a click action: left-click, right-click, middle-click, modifier keys, or display toggle."))
+            .help(
+                LocalizedStringKey(
+                    "Assign a click action: left-click, right-click, middle-click, modifier keys, or display toggle."
+                ))
 
         }
         .onDisappear { stopRecording() }
@@ -504,10 +562,16 @@ struct ButtonBindingControl: View {
     private var fieldText: String {
         if isRecording {
             return pendingModifiers.isEmpty
-                ? String(localized: "Type shortcut\u{2026}", comment: "Placeholder in shortcut recorder field while recording")
+                ? String(
+                    localized: "Type shortcut\u{2026}",
+                    comment: "Placeholder in shortcut recorder field while recording")
                 : modifierGlyphs(pendingModifiers) + "…"
         }
-        if binding.kind == .none { return String(localized: "Record Shortcut", comment: "Placeholder in shortcut recorder field when empty") }
+        if binding.kind == .none {
+            return String(
+                localized: "Record Shortcut",
+                comment: "Placeholder in shortcut recorder field when empty")
+        }
         return binding.displayLabel
     }
 
@@ -515,15 +579,15 @@ struct ButtonBindingControl: View {
     private func modifierGlyphs(_ flags: NSEvent.ModifierFlags) -> String {
         var s = ""
         if flags.contains(.control) { s += "⌃" }
-        if flags.contains(.option)  { s += "⌥" }
-        if flags.contains(.shift)   { s += "⇧" }
+        if flags.contains(.option) { s += "⌥" }
+        if flags.contains(.shift) { s += "⇧" }
         if flags.contains(.command) { s += "⌘" }
         return s
     }
 
     private var fieldTextColor: Color {
-        if isRecording           { return .accentColor }
-        if binding.kind == .none { return .secondary   }
+        if isRecording { return .accentColor }
+        if binding.kind == .none { return .secondary }
         return .primary
     }
 
@@ -561,7 +625,7 @@ struct ButtonBindingControl: View {
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
             switch event.type {
             case .flagsChanged: self.handleFlagsChanged(event)
-            default:            self.handleKey(event)
+            default: self.handleKey(event)
             }
             return nil  // consume — prevents the key from reaching any other responder
         }

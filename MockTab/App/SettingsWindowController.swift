@@ -146,7 +146,9 @@ final class SettingsWindowController: NSWindowController {
 
     static let tabLabels = [
         String(localized: "Tablet Area", comment: "Tab name: tablet active area configuration"),
-        String(localized: "Pen Feel", comment: "Tab name: pen pressure, smoothing, double-click settings"),
+        String(
+            localized: "Pen Feel",
+            comment: "Tab name: pen pressure, smoothing, double-click settings"),
         String(localized: "Buttons", comment: "Tab name: button and key mapping"),
         String(localized: "Display", comment: "Tab name: display mapping and preview"),
         String(localized: "Devices", comment: "Tab name: tablet and tool registry"),
@@ -197,7 +199,9 @@ final class SettingsWindowController: NSWindowController {
             guard let self else { return }
             let label =
                 self.tabVC.tabViewItems[safe: self.tabVC.selectedTabViewItemIndex]?.label ?? ""
-            let isInfoTab = (label == "Info" || label == "Buttons")
+            // Use tabLabels indices to match localized strings regardless of locale:
+            // [2] = Buttons, [7] = Info
+            let isInfoTab = (label == Self.tabLabels[7] || label == Self.tabLabels[2])
             let isKeyWindow = window?.isKeyWindow ?? false
             Task { @MainActor in
                 TabletManager.shared.infoViewVisible = isInfoTab && isKeyWindow
@@ -242,40 +246,41 @@ final class SettingsWindowController: NSWindowController {
             PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
         }
 
-        addTab(label: String(localized: "Tablet Area", comment: "Tab name: tablet active area configuration"), symbol: "rectangle.dashed", height: 790) {
+        addTab(label: Self.tabLabels[0], symbol: "rectangle.dashed", height: 790) {
             TabletAreaView(
                 settings: s, tabletManager: tm, registry: dr,
                 onDeviceSelected: onDevice, boundProductID: productID)
         }
-        addTab(label: String(localized: "Pen Feel", comment: "Tab name: pen pressure, smoothing, double-click settings"), symbol: "scribble.variable", height: 480) {
-            PenFeel(settings: s, tool: s.activeTool, tabletManager: tm, registry: dr, productID: productID)
+        addTab(label: Self.tabLabels[1], symbol: "scribble.variable", height: 480) {
+            PenFeel(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: String(localized: "Buttons", comment: "Tab name: button and key mapping"), symbol: "square.grid.2x2.fill", height: 575) {
+        addTab(label: Self.tabLabels[2], symbol: "square.grid.2x2.fill", height: 575) {
             ButtonMappingView(
-                settings: s, tool: s.activeTool, tabletManager: tm, registry: dr,
+                settings: s, tabletManager: tm, registry: dr,
                 productID: productID)
         }
-        addTab(label: String(localized: "Display", comment: "Tab name: display mapping and preview"), symbol: "display", height: 370) {
+        addTab(label: Self.tabLabels[3], symbol: "display", height: 370) {
             DisplayMappingView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: String(localized: "Devices", comment: "Tab name: tablet and tool registry"), symbol: "rectangle.on.rectangle", height: 480, width: 620) {
+        addTab(label: Self.tabLabels[4], symbol: "rectangle.on.rectangle", height: 480, width: 620)
+        {
             DevicesView(tabletManager: tm, registry: dr, undoManager: um)
         }
-        addTab(label: String(localized: "Profiles", comment: "Tab name: profile management"), symbol: "star.circle", height: 450) {
+        addTab(label: Self.tabLabels[5], symbol: "star.circle", height: 450) {
             ProfilesView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: String(localized: "Scratchpad", comment: "Tab name: test area for pen input"), symbol: "pencil.and.outline", height: 360) {
+        addTab(label: Self.tabLabels[6], symbol: "pencil.and.outline", height: 360) {
             ScratchpadView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: String(localized: "Info", comment: "Tab name: live pen coordinates and device info"), symbol: "info.circle", height: 430) {
+        addTab(label: Self.tabLabels[7], symbol: "info.circle", height: 430) {
             InfoView(tabletManager: tm, settings: s, productID: productID)
         }
 
         // Set minimum window size to accommodate all tabs without truncation.
         // Use 1:1 aspect ratio (minWidth = minHeight) for compact square window.
-        let tabLabels = Self.tabLabels
+        let tabLabelsArr = Self.tabLabels
         let font = NSFont.systemFont(ofSize: 13)
-        let tabWidths = tabLabels.map { label -> CGFloat in
+        let tabWidths = tabLabelsArr.map { label -> CGFloat in
             let textSize = (label as NSString).size(withAttributes: [.font: font])
             // Icon (~18) + label + padding (~20) + tab spacing
             return textSize.width + 65
@@ -298,7 +303,8 @@ final class SettingsWindowController: NSWindowController {
         // Only set true if the window is key (in focus) and tab is Info or Buttons.
         let label = tabVC.tabViewItems[safe: tabVC.selectedTabViewItemIndex]?.label
         TabletManager.shared.infoViewVisible =
-            (label == "Info" || label == "Buttons") && window?.isKeyWindow == true
+            (label == Self.tabLabels[7] || label == Self.tabLabels[2])
+            && window?.isKeyWindow == true
     }
 
     func showTab(at index: Int) {

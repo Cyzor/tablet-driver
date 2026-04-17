@@ -262,6 +262,7 @@ final class TabletManager: ObservableObject {
             let toolID = DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
             let toolSets = context.settings.toolSettings(forID: toolID, isMouse: identity.isMouse)
             context.activeTool = toolSets
+            context.settings.activeTool = toolSets
             context.injector.activeToolSettings = toolSets
             context.injector.activeToolIsMouse = identity.isMouse
             context.injector.activeToolIsEraser = identity.isEraser
