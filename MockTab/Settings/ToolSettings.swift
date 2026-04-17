@@ -64,11 +64,17 @@ final class ToolSettings: ObservableObject {
     }
 
     @Published private var tipRaw: String = "" {
-        didSet { persist("tipBinding", tipRaw); _tipBinding = ButtonBinding.decode(tipRaw) ?? .leftClick }
+        didSet {
+            persist("tipBinding", tipRaw)
+            _tipBinding = ButtonBinding.decode(tipRaw) ?? .leftClick
+        }
     }
 
     @Published private var eraserRaw: String = "" {
-        didSet { persist("eraserBinding", eraserRaw); _eraserBinding = ButtonBinding.decode(eraserRaw) ?? .rightClick }
+        didSet {
+            persist("eraserBinding", eraserRaw)
+            _eraserBinding = ButtonBinding.decode(eraserRaw) ?? .rightClick
+        }
     }
 
     private var _tipBinding: ButtonBinding = .leftClick
@@ -85,11 +91,17 @@ final class ToolSettings: ObservableObject {
     }
 
     @Published private var pen1Raw: String = "" {
-        didSet { persist("penButton1Binding", pen1Raw); _pen1Binding = ButtonBinding.decode(pen1Raw) ?? .rightClick }
+        didSet {
+            persist("penButton1Binding", pen1Raw)
+            _pen1Binding = ButtonBinding.decode(pen1Raw) ?? .rightClick
+        }
     }
 
     @Published private var pen2Raw: String = "" {
-        didSet { persist("penButton2Binding", pen2Raw); _pen2Binding = ButtonBinding.decode(pen2Raw) ?? (isMouse ? .rightClick : .middleClick) }
+        didSet {
+            persist("penButton2Binding", pen2Raw)
+            _pen2Binding = ButtonBinding.decode(pen2Raw) ?? (isMouse ? .rightClick : .middleClick)
+        }
     }
 
     private var _pen1Binding: ButtonBinding = .rightClick
@@ -106,19 +118,31 @@ final class ToolSettings: ObservableObject {
     }
 
     @Published private var pen3Raw: String = "" {
-        didSet { persist("penButton3Binding", pen3Raw); _pen3Binding = ButtonBinding.decode(pen3Raw) ?? (isMouse ? .middleClick : .none) }
+        didSet {
+            persist("penButton3Binding", pen3Raw)
+            _pen3Binding = ButtonBinding.decode(pen3Raw) ?? (isMouse ? .middleClick : .none)
+        }
     }
 
     @Published private var pen4Raw: String = "" {
-        didSet { persist("penButton4Binding", pen4Raw); _pen4Binding = ButtonBinding.decode(pen4Raw) ?? .none }
+        didSet {
+            persist("penButton4Binding", pen4Raw)
+            _pen4Binding = ButtonBinding.decode(pen4Raw) ?? .none
+        }
     }
 
     @Published private var pen5Raw: String = "" {
-        didSet { persist("penButton5Binding", pen5Raw); _pen5Binding = ButtonBinding.decode(pen5Raw) ?? .none }
+        didSet {
+            persist("penButton5Binding", pen5Raw)
+            _pen5Binding = ButtonBinding.decode(pen5Raw) ?? .none
+        }
     }
 
     @Published private var wheelRaw: String = "" {
-        didSet { persist("wheelBinding", wheelRaw); _wheelBinding = ButtonBinding.decode(wheelRaw) ?? .none }
+        didSet {
+            persist("wheelBinding", wheelRaw)
+            _wheelBinding = ButtonBinding.decode(wheelRaw) ?? .none
+        }
     }
 
     private var _pen3Binding: ButtonBinding = .none
@@ -214,6 +238,9 @@ final class ToolSettings: ObservableObject {
     }
 
     private func loadDouble(_ key: String, default d: Double) -> Double {
+        if let op = overridePrefix, ud.object(forKey: op + key) != nil {
+            return ud.double(forKey: op + key)
+        }
         if ud.object(forKey: prefix + key) != nil { return ud.double(forKey: prefix + key) }
         if let fb = fallbackPrefix,
             ud.object(forKey: fb + key) != nil
@@ -224,13 +251,7 @@ final class ToolSettings: ObservableObject {
     }
 
     private func loadString(_ key: String, default d: String) -> String {
-        if let v = ud.string(forKey: prefix + key) { return v }
-        if let fb = fallbackPrefix,
-            let v = ud.string(forKey: fb + key)
-        {
-            return v
-        }
-        return d
+        return freshString(key) ?? d
     }
 
     /// Applies externally-resolved values (from a profile or app override) without
@@ -256,7 +277,8 @@ final class ToolSettings: ObservableObject {
 
     private func loadPressureCurve() {
         let data =
-            ud.data(forKey: prefix + "pressureCurve")
+            overridePrefix.flatMap { ud.data(forKey: $0 + "pressureCurve") }
+            ?? ud.data(forKey: prefix + "pressureCurve")
             ?? fallbackPrefix.flatMap { ud.data(forKey: $0 + "pressureCurve") }
             ?? ud.data(forKey: "pressureCurve")  // legacy unprefixed key
         guard let data,

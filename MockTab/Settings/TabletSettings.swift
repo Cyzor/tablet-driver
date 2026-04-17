@@ -60,6 +60,10 @@ final class TabletSettings: ObservableObject {
     @Published var activeTool: ToolSettings = ToolSettings(prefix: "device-default.") {
         didSet {
             activeTool.undoManager = undoManager
+            // Sync current override to the newly active tool
+            activeTool.overridePrefix = activeAppOverride.map { appOverrideKeyPrefix($0) }
+            activeTool.reload()
+
             activeTool.onOverrideKeyWritten = { [weak self] key in
                 guard let self, var override = self.activeAppOverride else { return }
                 guard !override.overriddenKeys.contains(key) else { return }
@@ -786,13 +790,20 @@ final class TabletSettings: ObservableObject {
         invertRotation = loadBool("invertRotation", default: false)
         relativeCursorMovement = loadBool("relativeCursorMovement", default: false)
         loadPressureCurve()
-        // Sync resolved pressure values into activeTool so PenFeel —
-        // which observes tool.pressureCurve — reflects the active override or profile.
+
+        // Sync resolved pressure values and app overrides into activeTool so PenFeel
+        // and ButtonMappingView reflect the active override or profile.
+        let op = activeAppOverride.map { appOverrideKeyPrefix($0) }
+        activeTool.overridePrefix = op
+        activeTool.reload()
         activeTool.applyExternalValues(
             pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
+
         // Also propagate to all cached per-tool instances so the injector (which uses
         // activeToolSettings — a cached ToolSettings — not activeTool) picks up the change.
         for tool in toolCache.values where tool !== activeTool {
+            tool.overridePrefix = op
+            tool.reload()
             tool.applyExternalValues(
                 pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
         }
