@@ -1230,7 +1230,7 @@ enum TabletOrientation: Int, CaseIterable {
 struct ButtonBinding: Codable, Equatable {
 
     enum Kind: String, Codable {
-        case none, leftClick, rightClick, middleClick, eraser, keyCombo, displayToggle
+        case none, leftClick, rightClick, middleClick, eraser, keyCombo, displayToggle, doubleClick, spacebar
     }
 
     var kind: Kind = .none
@@ -1244,7 +1244,9 @@ struct ButtonBinding: Codable, Equatable {
     static let leftClick = ButtonBinding(kind: .leftClick)
     static let rightClick = ButtonBinding(kind: .rightClick)
     static let middleClick = ButtonBinding(kind: .middleClick)
-    static let eraser = ButtonBinding(kind: .eraser)
+    static let eraser      = ButtonBinding(kind: .eraser)
+    static let doubleClick = ButtonBinding(kind: .doubleClick)
+    static let spacebar    = ButtonBinding(kind: .spacebar)
 
     // MARK: Init
 
@@ -1329,6 +1331,8 @@ struct ButtonBinding: Codable, Equatable {
         case .middleClick: return "Middle Click"
         case .eraser: return "Eraser"
         case .displayToggle: return "Toggle Display"
+        case .doubleClick:   return "Double Click"
+        case .spacebar:      return "Spacebar"
         case .keyCombo:
             let f = CGEventFlags(rawValue: modifierFlags)
             var s = ""

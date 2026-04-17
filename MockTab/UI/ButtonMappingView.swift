@@ -472,8 +472,10 @@ struct ButtonBindingControl: View {
                 Button(LocalizedStringKey("Left Click"))   { set(.leftClick)   }
                 Button(LocalizedStringKey("Right Click"))  { set(.rightClick)  }
                 Button(LocalizedStringKey("Middle Click")) { set(.middleClick) }
+                Button(LocalizedStringKey("Double Click")) { set(.doubleClick) }
                 Button(LocalizedStringKey("Eraser"))       { set(.eraser)      }
                 Divider()
+                Button(LocalizedStringKey("Spacebar"))       { set(.spacebar)      }
                 Button(LocalizedStringKey("Toggle Display")) { set(.displayToggle) }
                 Divider()
                 Button(LocalizedStringKey("⌘ Command")) { binding = ButtonBinding(modifierOnly: .command) }

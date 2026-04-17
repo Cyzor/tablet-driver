@@ -982,6 +982,25 @@ final class InputInjector {
             guard down, let s = settings else { break }
             s.targetDisplayIndex = TabletSettings.displayModeToggle
             cycleToggleDisplay(settings: s)
+        case .doubleClick:
+            guard down else { break }
+            for clickState in [1, 2] {
+                for isDown in [true, false] {
+                    let type: CGEventType = isDown ? .leftMouseDown : .leftMouseUp
+                    if let e = CGEvent(
+                        mouseEventSource: sessionSource, mouseType: type,
+                        mouseCursorPosition: location, mouseButton: .left) {
+                        e.flags = currentEventFlags
+                        e.setIntegerValueField(.mouseEventClickState, value: Int64(clickState))
+                        e.post(tap: .cghidEventTap)
+                    }
+                }
+            }
+        case .spacebar:
+            if let e = CGEvent(keyboardEventSource: sessionSource, virtualKey: 49, keyDown: down) {
+                e.flags = currentEventFlags
+                e.post(tap: .cghidEventTap)
+            }
         }
     }
 
