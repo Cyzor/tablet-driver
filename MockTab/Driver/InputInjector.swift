@@ -270,7 +270,7 @@ final class InputInjector {
                             mouseCursorPosition: smoothedPoint, mouseButton: .center)
                         {
                             e.flags = currentEventFlags
-                            e.post(tap: .cghidEventTap)
+                            finalizeAndPost(e)
                         }
                     }
                     lastUSBMouseMask = 0
@@ -281,7 +281,7 @@ final class InputInjector {
                         mouseCursorPosition: smoothedPoint, mouseButton: .center)
                     {
                         e.flags = currentEventFlags
-                        e.post(tap: .cghidEventTap)
+                        finalizeAndPost(e)
                     }
                     lastMiddleDown = false
                 }
@@ -289,20 +289,23 @@ final class InputInjector {
                 // release event (e.g. BT packet drop leaving lastBTPadKeys non-zero).
                 // Per-transport fixes (Defect A/B) prevent accumulation; this ensures
                 // proximity exit is always a clean slate regardless.
-                if !activeSyntheticFlags.isEmpty {
-                    let syntheticToRelease = activeSyntheticFlags
-                    activeSyntheticFlags = []
-                    // Clear ref-counts
+                if !groundTruthSyntheticFlags.isEmpty {
+                    let syntheticToRelease = groundTruthSyntheticFlags
+                    groundTruthSyntheticFlags = []
+                    // Clear ref-counts and history
                     for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
+                    syntheticHistory = [CGEventFlags](repeating: [], count: 60)
+                    historyIndex = 0
 
                     if let e = CGEvent(source: sessionSource) {
                         e.type = .flagsChanged
                         e.setIntegerValueField(.keyboardEventKeycode, value: 0)
                         // Preserve physical modifiers the user may be holding; strip only ours.
+                        // We use the same reconstruction logic as currentEventFlags here.
                         let systemRaw = CGEventSource.flagsState(.hidSystemState).rawValue
                         let physicalRaw = systemRaw & ~syntheticToRelease.rawValue
                         e.flags = CGEventFlags(rawValue: physicalRaw)
-                        e.post(tap: .cghidEventTap)
+                        finalizeAndPost(e)
                     }
                 }
 
@@ -438,7 +441,7 @@ final class InputInjector {
                 mouseCursorPosition: screenPoint, mouseButton: .center)
             {
                 e.flags = currentEventFlags
-                e.post(tap: .cghidEventTap)
+                finalizeAndPost(e)
             }
             lastMiddleDown = point.mouseMiddleButton
         }
@@ -670,9 +673,14 @@ final class InputInjector {
 
     // MARK: - Mouse event helpers
 
-    /// Tracks modifier flags synthesized by tablet button bindings.
-    /// Updated atomically in fireButtonAction before any event is posted.
-    private var activeSyntheticFlags: CGEventFlags = []
+    /// Rolling buffer of recent ground-truth synthetic states (approx. 200ms of history).
+    /// Used to identify and suppress "stale" synthetic bits that are still lingering in
+    /// the asynchronous hidSystemState buffer.
+    private var syntheticHistory = [CGEventFlags](repeating: [], count: 60)
+    private var historyIndex = 0
+
+    /// Ground-truth of what synthetic modifiers should be active based on tablet button state.
+    private var groundTruthSyntheticFlags: CGEventFlags = []
 
     /// Reference counts for each modifier bit to support multiple buttons mapped to the same key.
     private var modifierRefCounts: [UInt64: Int] = [
@@ -682,18 +690,45 @@ final class InputInjector {
         CGEventFlags.maskControl.rawValue: 0,
     ]
 
-    /// The definitive modifier state stamped on every outbound CGEvent.
-    /// Merges physical-keyboard-only state (hidSystemState) with any flags
-    /// this driver has pressed via button bindings.  hidSystemState is used
-    /// instead of combinedSessionState so that previously injected synthetic
-    /// modifiers never feed back into new events — the root cause of the
-    /// sticky-modifier bug shared with OpenTabletDriver and Adobe software.
+    /// Bits that this driver "owns" when active.
+    private let managedModifierMask: UInt64 =
+        CGEventFlags.maskCommand.rawValue | CGEventFlags.maskShift.rawValue
+        | CGEventFlags.maskAlternate.rawValue | CGEventFlags.maskControl.rawValue
+
+    /// The definitive modifier state for the NEXT outbound CGEvent.
+    /// Merges physical-keyboard-only state with any flags this driver has pressed
+    /// via button bindings.
+    ///
+    /// Feedback Loop Fix: We identify "stale" synthetic bits—those that were recently
+    /// sent but are no longer in our ground-truth—and explicitly strip them from the
+    /// system state. This prevents re-injecting our own flags during OS processing lag.
     private var currentEventFlags: CGEventFlags {
         let systemRaw = CGEventSource.flagsState(.hidSystemState).rawValue
-        // Reconstruction: Physical state is whatever bits are set in the system that
-        // WE haven't set ourselves. This ensures stuck synthetic flags are stripped.
-        let physicalRaw = systemRaw & ~activeSyntheticFlags.rawValue
-        return CGEventFlags(rawValue: physicalRaw | activeSyntheticFlags.rawValue)
+
+        // Find bits that were recently synthetic but are no longer requested.
+        // These are the only candidates for "stale synthetic pollution" in hidSystemState.
+        let recentSyntheticUnion = syntheticHistory.reduce(CGEventFlags()) { $0.union($1) }
+        let staleSyntheticMask =
+            (recentSyntheticUnion.rawValue & ~groundTruthSyntheticFlags.rawValue)
+            & managedModifierMask
+
+        // Physical state is the system state minus any stale synthetic pollution.
+        // Note: we don't subtract groundTruthSyntheticFlags from systemRaw because
+        // if a key is both physical and ground-truth synthetic, we want it to stay 1.
+        let physicalRaw = systemRaw & ~staleSyntheticMask
+
+        return CGEventFlags(rawValue: physicalRaw | groundTruthSyntheticFlags.rawValue)
+    }
+
+    /// Stamps an event with reconstructed flags and posts it, then advances history.
+    /// ALL outbound events must go through this helper to maintain state synchronization.
+    private func finalizeAndPost(_ event: CGEvent) {
+        event.flags = currentEventFlags
+        event.post(tap: .cghidEventTap)
+
+        // Advance history buffer.
+        syntheticHistory[historyIndex] = groundTruthSyntheticFlags
+        historyIndex = (historyIndex + 1) % syntheticHistory.count
     }
 
     /// CGEventSource backed by privateState so posted events do not write back into
@@ -737,7 +772,7 @@ final class InputInjector {
             e.setDoubleValueField(.tabletEventRotation, value: p.rotation)
         }
         e.flags = currentEventFlags
-        e.post(tap: .cghidEventTap)
+        finalizeAndPost(e)
     }
 
     private func postMouseUp(
@@ -767,7 +802,7 @@ final class InputInjector {
             e.setDoubleValueField(.tabletEventRotation, value: p.rotation)
         }
         e.flags = currentEventFlags
-        e.post(tap: .cghidEventTap)
+        finalizeAndPost(e)
     }
 
     private func postMouseDrag(
@@ -804,7 +839,7 @@ final class InputInjector {
         e.setIntegerValueField(
             .mouseEventDeltaY, value: Int64((location.y - lastPostedPoint.y).rounded()))
         e.flags = currentEventFlags
-        e.post(tap: .cghidEventTap)
+        finalizeAndPost(e)
     }
 
     private func postMouseMoved(at location: CGPoint, point: TabletPoint? = nil) {
@@ -825,7 +860,7 @@ final class InputInjector {
         e.setIntegerValueField(
             .mouseEventDeltaY, value: Int64((location.y - lastPostedPoint.y).rounded()))
         e.flags = currentEventFlags
-        e.post(tap: .cghidEventTap)
+        finalizeAndPost(e)
     }
 
     // MARK: - Raw tablet pointer event
@@ -851,7 +886,7 @@ final class InputInjector {
             | (activeToolIsEraser && pressure > 0.004 ? 8 : 0)
         e.setIntegerValueField(.tabletEventPointButtons, value: buttons)
         e.flags = currentEventFlags
-        e.post(tap: .cghidEventTap)
+        finalizeAndPost(e)
     }
 
     // MARK: - Proximity event
@@ -924,7 +959,7 @@ final class InputInjector {
         e.setIntegerValueField(.tabletProximityEventCapabilityMask, value: 0x05C7)
         e.setIntegerValueField(.tabletProximityEventEnterProximity, value: entering ? 1 : 0)
         e.flags = currentEventFlags
-        e.post(tap: .cghidEventTap)
+        finalizeAndPost(e)
     }
 
     // MARK: - Button binding execution
@@ -944,7 +979,7 @@ final class InputInjector {
                 mouseCursorPosition: location, mouseButton: .left)
             {
                 e.flags = currentEventFlags
-                e.post(tap: .cghidEventTap)
+                finalizeAndPost(e)
             }
         case .rightClick, .eraser:
             let type: CGEventType = down ? .rightMouseDown : .rightMouseUp
@@ -953,7 +988,7 @@ final class InputInjector {
                 mouseCursorPosition: location, mouseButton: .right)
             {
                 e.flags = currentEventFlags
-                e.post(tap: .cghidEventTap)
+                finalizeAndPost(e)
             }
         case .middleClick:
             let type: CGEventType = down ? .otherMouseDown : .otherMouseUp
@@ -962,7 +997,7 @@ final class InputInjector {
                 mouseCursorPosition: location, mouseButton: .center)
             {
                 e.flags = currentEventFlags
-                e.post(tap: .cghidEventTap)
+                finalizeAndPost(e)
             }
         case .keyCombo:
             // Update internal synthetic state atomically before posting anything,
@@ -977,12 +1012,12 @@ final class InputInjector {
                     let currentCount = modifierRefCounts[raw] ?? 0
                     if down {
                         modifierRefCounts[raw] = currentCount + 1
-                        activeSyntheticFlags.insert(bit)
+                        groundTruthSyntheticFlags.insert(bit)
                     } else {
                         let newCount = Swift.max(0, currentCount - 1)
                         modifierRefCounts[raw] = newCount
                         if newCount == 0 {
-                            activeSyntheticFlags.remove(bit)
+                            groundTruthSyntheticFlags.remove(bit)
                         }
                     }
                 }
@@ -996,7 +1031,7 @@ final class InputInjector {
                 // Stamp with our newly updated combined state. Reconstruction in
                 // currentEventFlags ensures this is a clean 'physical + synthetic' merge.
                 e.flags = currentEventFlags
-                e.post(tap: .cghidEventTap)
+                finalizeAndPost(e)
             } else {
                 // Regular key combo: post keyDown/Up.
                 guard
@@ -1006,7 +1041,7 @@ final class InputInjector {
                         keyDown: down)
                 else { return }
                 e.flags = currentEventFlags
-                e.post(tap: .cghidEventTap)
+                finalizeAndPost(e)
             }
 
         case .displayToggle:
@@ -1024,14 +1059,14 @@ final class InputInjector {
                     {
                         e.flags = currentEventFlags
                         e.setIntegerValueField(.mouseEventClickState, value: Int64(clickState))
-                        e.post(tap: .cghidEventTap)
+                        finalizeAndPost(e)
                     }
                 }
             }
         case .spacebar:
             if let e = CGEvent(keyboardEventSource: sessionSource, virtualKey: 49, keyDown: down) {
                 e.flags = currentEventFlags
-                e.post(tap: .cghidEventTap)
+                finalizeAndPost(e)
             }
         }
     }
@@ -1047,7 +1082,7 @@ final class InputInjector {
         else { return }
         e.location = location
         e.flags = currentEventFlags
-        e.post(tap: .cghidEventTap)
+        finalizeAndPost(e)
     }
 
     // MARK: - Screen mapping
