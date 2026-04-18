@@ -1,0 +1,69 @@
+2026-04-18
+
+
+Observations about how a Wacom Art Pen behaves by default in various painting applications.
+
+Wacom's native driver:
+
+Photoshop:
+- twist clockwise, cursor rotates clockwise
+- cursor doesn't update while painting, but twist continues to honor correct direction
+- no apparent preference for direction inversion
+
+Illustrator:
+- twist clockwise, cursor remains stationary
+- cursor doesn't update while painting, but twist continues to honor correct direction
+- no apparent preference for direction inversion
+
+Krita:
+- twist clockwise, cursor rotates clockwise
+- cursor updates while painting, with twist honoring correct direction
+- no apparent preference for direction inversion
+
+Rebelle:
+- twist clockwise, cursor rotates counter-clockwise
+- cursor updates while painting, with twist honoring reverse correct direction 
+- correctable globally in app preferences
+
+
+Mocktab custom driver (2026-04-18):
+
+
+Photoshop:
+- no rotation without driver's tilt-to-rotation hack
+- twist clockwise, cursor rotates counter-clockwise
+- hack enabled: cursor stationary while painting, with twist honoring reverse correct direction 
+
+Krita:
+- twist clockwise, cursor rotates counter-clockwise
+- cursor updates while painting, with twist honoring reversed rotation direction
+
+
+Rebelle:
+- twist clockwise, cursor rotates counter-clockwise
+- cursor updates while painting, with twist honoring reverse rotation direction 
+
+
+Illustrator:
+- twist clockwise, cursor remains stationary
+- cursor doesn't update while painting, but twist honors reverse direction
+
+
+Overall:
+- Mocktab's Info pane features a rotation visualizer that rotates in the reverse direction as the pen's physical motion; probably OK if it represents the ground truth about what the driver is actually doing
+- Using Mocktab's built-in toggles, all of these apps operate correctly
+- UI theory: A good user interface requires no configuration at all.  If users have to change a setting, that means the interface design or its defaults are inadequate.
+
+
+Fix (2026-04-18):
+
+Root cause identified: the reversed behavior in all apps was caused by a decoder formula error,
+not app-specific conventions. The formula `(rawRot + 900) / 5` produced the wrong direction for
+macOS's kCGTabletEventRotation convention. Development had been calibrated against a Rebelle
+instance with its built-in inversion already enabled, masking the bug.
+
+Fix applied in IntuosV2Decoder (USB + BT paths): negated the formula so clockwise twist produces
+clockwise output. The invertRotation toggle remains as an edge-case opt-out.
+
+After fix: all apps work correctly with zero configuration. The Info pane visualizer now also
+rotates clockwise on clockwise twist.

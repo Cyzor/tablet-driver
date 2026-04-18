@@ -305,9 +305,10 @@ struct IntuosV2Decoder: WacomDecoder {
         let isArtPen = state.currentToolCode == 0x0804 || state.currentToolCode == 0x1108
         let toolIsEraser = !isArtPen && (state.currentToolCode & 0x0008) != 0
         let rawRot = Int16(bitPattern: UInt16(report[12]) | UInt16(report[13]) << 8)
-        // Rotation: signed Int16 with +\-900 range. Wacom maps +\-900 to 0-360:
-        //   degrees = (rawSigned + 900) / 5. Full 0-360 sweep.
-        var rotation = isArtPen ? (Double(rawRot) + 900.0) / 5.0 : 0.0
+        // Rotation: signed Int16 with +/-900 range. Kernel formula: (raw + 900) / 5.
+        // Negated here so clockwise twist produces increasing degrees, matching what
+        // macOS apps (Photoshop, Krita, Illustrator) expect from a native Wacom driver.
+        var rotation = isArtPen ? (900.0 - Double(rawRot)) / 5.0 : 0.0
         if rotation < 0 { rotation += 360.0 }
         if rotation >= 360 { rotation -= 360.0 }
         if isArtPen {
@@ -620,11 +621,10 @@ struct IntuosV2Decoder: WacomDecoder {
             if isArtPen {
                 if inRange {
                     let rawRot = Int(Int16(bitPattern: UInt16(f[9]) | UInt16(f[10]) << 8))
-                    // Negate so clockwise twist increases angle, matching USB path.
-                    // No centering offset — 0° = natural grip on both BT and USB.
+                    // Invert direction to match USB path: clockwise twist → increasing degrees.
                     var r = rawRot
                     if r < 0 { r += 3600 }
-                    state.lastRotation = Double(r) / 10.0  // degrees [0, 360)
+                    state.lastRotation = Double((3600 - r) % 3600) / 10.0  // degrees [0, 360)
                 }
                 rotation = state.lastRotation
             }
