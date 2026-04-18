@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // MockTab — native macOS driver for supported drawing tablets
 //
-// Copyright (C) 2026  This file is part of MockTab.
+// Copyright (C) 2026 This file is part of MockTab.
 //
 // MockTab is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -10,11 +10,11 @@
 //
 // MockTab is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
+// along with MockTab. If not, see <https://www.gnu.org/licenses/>.
 
 import SwiftUI
 import AppKit
@@ -22,18 +22,27 @@ import AppKit
 // MARK: - SwiftUI wrapper
 
 struct ScratchpadView: View {
-    @ObservedObject var settings:      TabletSettings
+    @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
-    @ObservedObject var registry:      DeviceRegistry
+    @ObservedObject var registry: DeviceRegistry
     var productID: Int?
+
     @State private var currentPressure: Double = 0
-    @State private var clearID = 0  // toggle to trigger a clear
+    @State private var clearID = 0
 
     var body: some View {
         VStack(spacing: 0) {
             mainContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
             Spacer(minLength: 0)
-            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
+
+            DeviceStatusBar(
+                settings: settings,
+                tabletManager: tabletManager,
+                registry: registry,
+                productID: productID ?? 0
+            )
         }
     }
 
@@ -42,53 +51,66 @@ struct ScratchpadView: View {
             Text(LocalizedStringKey("Test Area"))
                 .font(.headline)
 
-            Text(String(localized: "Draw on the canvas to verify pressure and click behavior.", comment: "Description of the scratchpad drawing area"))
-                .font(.settingsLabel)
-                .foregroundStyle(.secondary)
+            Text(
+                String(
+                    localized: "Draw on the canvas to verify pressure and click behavior.",
+                    comment: "Description of the scratchpad drawing area"
+                )
+            )
+            .font(.settingsLabel)
+            .foregroundStyle(.secondary)
 
             ScratchpadCanvas(currentPressure: $currentPressure, clearID: clearID)
-                .frame(maxWidth: .infinity)
-                .frame(height: 200)
-                .background(Color.white)
-                .cornerRadius(6)
-                .overlay(RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1))
-
-            HStack(spacing: 10) {
-                Text(LocalizedStringKey("Pressure"))
-                    .font(.settingsLabel)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 58, alignment: .leading)
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.secondary.opacity(0.12))
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(pressureColor)
-                            .frame(width: geo.size.width * currentPressure)
-                            .animation(.linear(duration: 0.05), value: currentPressure)
-                    }
+                .frame(maxWidth: .infinity, minHeight: 260, maxHeight: .infinity)
+                .background(.background)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(Color(nsColor: .separatorColor).opacity(0.85), lineWidth: 1)
                 }
-                .frame(height: 8)
 
-                Text(String(format: "%.0f%%", currentPressure * 100))
-                    .font(.monospaced)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 36, alignment: .trailing)
-
-                Spacer()
-
-                Button(LocalizedStringKey("Clear")) { clearID += 1 }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
-            }
+            pressureRow
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var pressureRow: some View {
+        HStack(spacing: 10) {
+            Text(LocalizedStringKey("Pressure"))
+                .font(.settingsLabel)
+                .foregroundStyle(.secondary)
+                .frame(width: 58, alignment: .leading)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(.quaternary)
+
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(pressureColor)
+                        .frame(width: geo.size.width * currentPressure)
+                        .animation(.linear(duration: 0.05), value: currentPressure)
+                }
+            }
+            .frame(height: 8)
+
+            Text(String(format: "%.0f%%", currentPressure * 100))
+                .font(.system(.body, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(width: 44, alignment: .trailing)
+
+            Spacer()
+
+            Button(LocalizedStringKey("Clear")) {
+                clearID += 1
+            }
+//            .buttonStyle(.borderless)
+            .controlSize(.small)
+        }
     }
 
     private var pressureColor: Color {
-        // Shift from accent (light) toward red at full pressure.
         currentPressure < 0.5
             ? .accentColor
             : Color(hue: 0.05, saturation: 0.8, brightness: 0.85)
@@ -103,7 +125,9 @@ private struct ScratchpadCanvas: NSViewRepresentable {
 
     func makeNSView(context: Context) -> ScratchpadNSView {
         let view = ScratchpadNSView()
-        view.onPressureChange = { p in currentPressure = p }
+        view.onPressureChange = { pressure in
+            currentPressure = pressure
+        }
         return view
     }
 
@@ -114,11 +138,16 @@ private struct ScratchpadCanvas: NSViewRepresentable {
         }
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(clearID: clearID) }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(clearID: clearID)
+    }
 
     final class Coordinator {
         var lastClearID: Int
-        init(clearID: Int) { self.lastClearID = clearID }
+
+        init(clearID: Int) {
+            self.lastClearID = clearID
+        }
     }
 }
 
@@ -127,31 +156,45 @@ private struct ScratchpadCanvas: NSViewRepresentable {
 final class ScratchpadNSView: NSView {
     var onPressureChange: ((Double) -> Void)?
 
-    // Each stroke is a sequence of (position, pressure) samples.
     private var strokes: [[(NSPoint, CGFloat)]] = []
     private var currentStroke: [(NSPoint, CGFloat)] = []
 
-    override var isOpaque: Bool { true }
+    override var isOpaque: Bool { false }
     override var acceptsFirstResponder: Bool { true }
 
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        wantsLayer = true
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        commonInit()
     }
-    required init?(coder: NSCoder) { super.init(coder: coder) }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        commonInit()
+    }
+
+    private func commonInit() {
+        wantsLayer = true
+        layer?.cornerRadius = 6
+        layer?.masksToBounds = true
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
+    }
 
     // MARK: - Mouse events
 
     override func mouseDown(with event: NSEvent) {
-        let p = convert(event.locationInWindow, from: nil)
-        currentStroke = [(p, CGFloat(event.pressure))]
+        let point = convert(event.locationInWindow, from: nil)
+        currentStroke = [(point, CGFloat(event.pressure))]
         onPressureChange?(Double(event.pressure))
         needsDisplay = true
     }
 
     override func mouseDragged(with event: NSEvent) {
-        let p = convert(event.locationInWindow, from: nil)
-        currentStroke.append((p, CGFloat(event.pressure)))
+        let point = convert(event.locationInWindow, from: nil)
+        currentStroke.append((point, CGFloat(event.pressure)))
         onPressureChange?(Double(event.pressure))
         needsDisplay = true
     }
@@ -161,13 +204,14 @@ final class ScratchpadNSView: NSView {
             strokes.append(currentStroke)
             currentStroke = []
         }
+
         onPressureChange?(0)
         needsDisplay = true
     }
 
     func clear() {
-        strokes = []
-        currentStroke = []
+        strokes.removeAll()
+        currentStroke.removeAll()
         onPressureChange?(0)
         needsDisplay = true
     }
@@ -175,47 +219,61 @@ final class ScratchpadNSView: NSView {
     // MARK: - Drawing
 
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.white.setFill()
+        NSColor.textBackgroundColor.setFill()
         bounds.fill()
 
-        // Subtle dot-grid background
-        let gridColor = NSColor.black.withAlphaComponent(0.04)
+        drawDotGrid()
+        for stroke in strokes {
+            drawStroke(stroke)
+        }
+        drawStroke(currentStroke)
+    }
+
+    private func drawDotGrid() {
+        let gridColor = NSColor.gridColor.withAlphaComponent(0.20)
         gridColor.setFill()
+
         let spacing: CGFloat = 16
+        let radius: CGFloat = 0.75
+
         var x: CGFloat = spacing
         while x < bounds.width {
             var y: CGFloat = spacing
             while y < bounds.height {
-                let dot = CGRect(x: x - 0.75, y: y - 0.75, width: 1.5, height: 1.5)
-                NSBezierPath(ovalIn: dot).fill()
+                let dotRect = CGRect(
+                    x: x - radius,
+                    y: y - radius,
+                    width: radius * 2,
+                    height: radius * 2
+                )
+                NSBezierPath(ovalIn: dotRect).fill()
                 y += spacing
             }
             x += spacing
         }
-
-        for stroke in strokes { drawStroke(stroke) }
-        drawStroke(currentStroke)
     }
 
     private func drawStroke(_ points: [(NSPoint, CGFloat)]) {
         guard points.count >= 2 else {
-            // Single tap: draw a dot proportional to pressure.
-            if let (p, pressure) = points.first {
-                let r = Swift.max(1.0, pressure * 10)
-                let dot = CGRect(x: p.x - r / 2, y: p.y - r / 2, width: r, height: r)
-                NSColor.black.withAlphaComponent(0.85).setFill()
-                NSBezierPath(ovalIn: dot).fill()
+            if let (point, pressure) = points.first {
+                let radius = Swift.max(1.0, pressure * 10)
+                let dotRect = CGRect(
+                    x: point.x - radius / 2,
+                    y: point.y - radius / 2,
+                    width: radius,
+                    height: radius
+                )
+                NSColor.labelColor.withAlphaComponent(0.90).setFill()
+                NSBezierPath(ovalIn: dotRect).fill()
             }
             return
         }
 
-        // Draw each segment as a round-capped line with width ∝ pressure.
-        // Average adjacent pressure samples for smoother width transitions.
-        for i in 1..<points.count {
-            let (p0, pr0) = points[i - 1]
-            let (p1, pr1) = points[i]
-            let avgPressure = (pr0 + pr1) / 2
-            let width = Swift.max(0.5, avgPressure * 20.0)
+        for index in 1 ..< points.count {
+            let (p0, pressure0) = points[index - 1]
+            let (p1, pressure1) = points[index]
+            let averagePressure = (pressure0 + pressure1) / 2
+            let width = Swift.max(0.5, averagePressure * 20.0)
 
             let segment = NSBezierPath()
             segment.lineWidth = width
@@ -223,7 +281,8 @@ final class ScratchpadNSView: NSView {
             segment.lineJoinStyle = .round
             segment.move(to: p0)
             segment.line(to: p1)
-            NSColor.black.withAlphaComponent(0.82).setStroke()
+
+            NSColor.labelColor.withAlphaComponent(0.85).setStroke()
             segment.stroke()
         }
     }

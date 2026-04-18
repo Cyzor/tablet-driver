@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - ProfilesView
 
@@ -484,12 +485,14 @@ struct ProfilesView: View {
         return lines
     }
 
+
     // MARK: - Export Section
 
     private var exportSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(LocalizedStringKey("Backup & Restore"))
                 .fontWeight(.medium)
+
             Text(
                 String(
                     localized:
@@ -501,11 +504,13 @@ struct ProfilesView: View {
             .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 12) {
-                ExportDragWell(
+                BackupRestoreWell(
                     generateJSON: {
                         PresetExporter(registry: registry, tabletManager: tabletManager).export()
                     },
-                    onImport: handleImportData
+                    onExport: saveExportToFile,
+                    onImportData: handleImportData,
+                    onImportPicker: openImportPanel
                 )
                 .frame(width: 80, height: 80)
 
@@ -523,6 +528,7 @@ struct ProfilesView: View {
                         Button(LocalizedStringKey("Export as JSON…")) { saveExportToFile() }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
+
                         Button(LocalizedStringKey("Import from File…")) { openImportPanel() }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
@@ -548,6 +554,120 @@ struct ProfilesView: View {
                     pendingImport = nil
                 }
             }
+        }
+    }
+
+    private struct BackupRestoreWell: View {
+        let generateJSON: () -> Data?
+        let onExport: () -> Void
+        let onImportData: (Data) -> Void
+        let onImportPicker: () -> Void
+
+        @State private var isDropTargeted = false
+        @State private var isHovering = false
+
+        var body: some View {
+            VStack(spacing: 0) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color(NSColor.controlBackgroundColor))
+
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(
+                            isDropTargeted
+                                ? Color.accentColor
+                                : Color(NSColor.separatorColor),
+                            lineWidth: isDropTargeted ? 2 : 1
+                        )
+
+                    VStack(spacing: 6) {
+                        Image(systemName: "document.badge.gearshape.fill")
+                            .font(.system(size: 26, weight: .semibold))
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(isDropTargeted ? Color.accentColor : Color.primary)
+
+                        Text(
+                            String(
+                                localized: "JSON",
+                                comment: "Short label inside backup/restore tile")
+                        )
+                        .font(.settingsBadge)
+                        .foregroundStyle(.secondary)
+                    }
+                    .padding(10)
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .onHover { hovering in
+                    isHovering = hovering
+                }
+                .onDrop(of: [.json], isTargeted: $isDropTargeted) { providers in
+                    guard let provider = providers.first else { return false }
+
+                    provider.loadDataRepresentation(forTypeIdentifier: UTType.json.identifier) { data, _ in
+                        guard let data else { return }
+                        DispatchQueue.main.async {
+                            onImportData(data)
+                        }
+                    }
+
+                    return true
+                }
+                .onDrag {
+                    guard let data = generateJSON() else {
+                        return NSItemProvider()
+                    }
+
+                    let provider = NSItemProvider()
+                    provider.registerDataRepresentation(
+                        forTypeIdentifier: UTType.json.identifier,
+                        visibility: .all
+                    ) { completion in
+                        completion(data, nil)
+                        return nil
+                    }
+                    provider.suggestedName = defaultFilename
+                    return provider
+                }
+                .contextMenu {
+                    Button {
+                        onExport()
+                    } label: {
+                        Label(
+                            String(
+                                localized: "Export as JSON…",
+                                comment: "Context menu action for exporting backup"),
+                            systemImage: "square.and.arrow.up")
+                    }
+
+                    Button {
+                        onImportPicker()
+                    } label: {
+                        Label(
+                            String(
+                                localized: "Import from File…",
+                                comment: "Context menu action for importing backup"),
+                            systemImage: "square.and.arrow.down")
+                    }
+                }
+                .help(
+                    String(
+                        localized: "Drag out to export a backup, drag in a JSON file to import, or Control-click for actions.",
+                        comment: "Help text for backup/restore tile")
+                )
+//                .overlay(alignment: .topTrailing) {
+//                    Image(systemName: "arrow.up.right")
+//                        .font(.system(size: 10, weight: .bold))
+//                        .foregroundStyle(.tertiary)
+//                        .padding(8)
+//                        .opacity(isHovering ? 1 : 0.7)
+//                }
+            }
+        }
+
+        private var defaultFilename: String {
+            let fmt = DateFormatter()
+            fmt.dateFormat = "yyyy-MM-dd"
+            return "MockTab-\(fmt.string(from: Date())).json"
         }
     }
 
