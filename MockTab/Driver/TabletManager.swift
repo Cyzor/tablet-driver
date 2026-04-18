@@ -422,7 +422,7 @@ final class TabletManager: ObservableObject {
         // for each interface (digitizer, wireless status, touch, etc). We create one driver
         // for the product and reuse it for all interfaces. Each IOHIDDevice still registers
         // independently for its own reports.
-        if let existingDriver = context.tabletDevice as? WacomUniversalDevice {
+        if let existingDriver = context.tabletDevice as? WacomKnownDevice {
             // Already have a driver for this product; register this interface for reports.
             hidDeviceMap[device] = context
             existingDriver.registerDevice(device)
@@ -446,15 +446,15 @@ final class TabletManager: ObservableObject {
                 maxX: dMaxX, maxY: dMaxY, maxPressure: dMaxP,
                 buttonCount: 8, hasTouchRing: true, hasEraser: true,
                 featureInit: [0x02, 0x02], seizeUSB: false)
-            wacomDevice = WacomUniversalDevice(
+            wacomDevice = WacomKnownDevice(
                 device: device, deviceSpec: dongleSpec, isWireless: true,
                 onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
                 onHardwareSerial: onHardwareSerial)
 
         default:
             // For any recognised PID with a live decoder and a valid spec, use
-            // WacomUniversalDevice.  Stub families (Graphire, Bamboo) and truly
-            // unrecognised PIDs fall through to WacomGenericDevice.
+            // WacomKnownDevice.  Stub families (Graphire, Bamboo) and truly
+            // unrecognised PIDs fall through to WacomFallbackDevice.
             if let deviceSpec = WacomDeviceRegistry.spec(for: productID),
                 WacomDeviceRegistry.hasLiveDecoder(for: productID),
                 deviceSpec.maxX > 0
@@ -463,7 +463,7 @@ final class TabletManager: ObservableObject {
                 print(
                     "TabletManager: \(deviceSpec.name) connected via universal driver"
                         + (shouldSeize ? " (mouse interface, seized)" : ""))
-                wacomDevice = WacomUniversalDevice(
+                wacomDevice = WacomKnownDevice(
                     device: device, deviceSpec: deviceSpec, seize: shouldSeize,
                     onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
                     onMouseButton: shouldSeize ? onMouseButton : nil,
@@ -471,7 +471,7 @@ final class TabletManager: ObservableObject {
             } else {
                 let pid = String(productID, radix: 16, uppercase: true)
                 print("TabletManager: unknown Wacom 0x\(pid) — attaching generic driver")
-                wacomDevice = WacomGenericDevice(
+                wacomDevice = WacomFallbackDevice(
                     device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
             }
         }

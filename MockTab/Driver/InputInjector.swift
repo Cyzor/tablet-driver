@@ -495,7 +495,7 @@ final class InputInjector {
 
     // MARK: - USB HID mouse button injection (KC-100 cordless mouse)
     //
-    // Called by WacomUniversalDevice when a 4-byte Report ID 0x01 arrives from the
+    // Called by WacomKnownDevice when a 4-byte Report ID 0x01 arrives from the
     // standard mouse interface (usagePage=0x01).  Fires left/right/middle down/up
     // CGEvents at the current cursor location; sets usbMouseLeftHeld so inject()
     // promotes subsequent mouseMoved events to leftMouseDragged while left is held.

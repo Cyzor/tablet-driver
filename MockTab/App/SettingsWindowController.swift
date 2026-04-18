@@ -252,7 +252,7 @@ final class SettingsWindowController: NSWindowController {
                 onDeviceSelected: onDevice, boundProductID: productID)
         }
         addTab(label: Self.tabLabels[1], symbol: "scribble.variable", height: 480) {
-            PenFeel(settings: s, tabletManager: tm, registry: dr, productID: productID)
+            PenFeelView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
         addTab(label: Self.tabLabels[2], symbol: "square.grid.2x2.fill", height: 575) {
             ButtonMappingView(
