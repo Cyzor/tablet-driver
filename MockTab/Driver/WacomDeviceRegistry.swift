@@ -69,7 +69,7 @@ enum ReportParser: String {
 ///
 /// This table is the single source of truth for device names, coordinate
 /// ranges, pressure depth, and initialisation requirements.  It drives
-/// device-name display today and will route `WacomUniversalDevice` once
+/// device-name display today and will route `WacomKnownDevice` once
 /// Phase 3 decoders are in place.
 ///
 /// Coordinate-range sources:
@@ -821,10 +821,10 @@ enum WacomDeviceRegistry {
 
         // ── Wireless dongle ───────────────────────────────────────────────────
         // ACK-40401 RF dongle (PID 0x0084) presents the same HID interfaces as
-        // the paired tablet.  WacomGenericDevice auto-detects the report family.
+        // the paired tablet.  WacomFallbackDevice auto-detects the report family.
         // Report 0x80 carries wireless status (byte[1]: 0x02=active, 0x05=lost,
         // 0x06=battery low).  maxX/maxY/maxPressure are 0 — queried via HID
-        // descriptor on first connection by WacomGenericDevice.querySpec().
+        // descriptor on first connection by WacomFallbackDevice.querySpec().
         .init(
             productID: 0x0084, name: "ACK-40401 Wireless Dongle",
             parser: .intuosV1, maxX: 0, maxY: 0, maxPressure: 0,

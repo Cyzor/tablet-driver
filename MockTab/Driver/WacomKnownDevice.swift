@@ -24,7 +24,7 @@ import IOKit.hid
 /// Replaces per-device Swift classes for any product in `WacomDeviceRegistry`
 /// whose parser family has a live decoder (IntuosV1, IntuosV2, Intuos3).
 /// Supports both USB and Bluetooth transports; BLE/BT skips USB feature inits.
-final class WacomUniversalDevice: TabletDevice {
+final class WacomKnownDevice: TabletDevice {
 
     var spec: DigitizerSpec
 
@@ -169,7 +169,7 @@ final class WacomUniversalDevice: TabletDevice {
         let ctx = Unmanaged.passRetained(self).toOpaque()
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count,
-            WacomUniversalDevice.reportCallback, ctx)
+            WacomKnownDevice.reportCallback, ctx)
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
     }
@@ -181,7 +181,7 @@ final class WacomUniversalDevice: TabletDevice {
         let ctx = Unmanaged.passRetained(self).toOpaque()
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count,
-            WacomUniversalDevice.reportCallback, ctx)
+            WacomKnownDevice.reportCallback, ctx)
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
         let transport =
@@ -254,7 +254,7 @@ final class WacomUniversalDevice: TabletDevice {
 
     private static let reportCallback: IOHIDReportCallback = { ctx, _, _, _, _, report, length in
         guard let ctx else { return }
-        Unmanaged<WacomUniversalDevice>.fromOpaque(ctx).takeUnretainedValue()
+        Unmanaged<WacomKnownDevice>.fromOpaque(ctx).takeUnretainedValue()
             .handleReport(report: report, length: length)
     }
 

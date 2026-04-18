@@ -38,7 +38,7 @@ import IOKit.hid
 /// Does NOT provide:  EA/E0 button debounce (DTK-2400 specific), Art Pen
 /// rotation, touch ring, or device seizure.  For full-fidelity support,
 /// create a dedicated `*Device.swift`.
-final class WacomGenericDevice: TabletDevice {
+final class WacomFallbackDevice: TabletDevice {
 
     // Populated at init from HID descriptor query.
     let spec: DigitizerSpec
@@ -193,7 +193,7 @@ final class WacomGenericDevice: TabletDevice {
         let ctx = Unmanaged.passRetained(self).toOpaque()
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count,
-            WacomGenericDevice.reportCallback, ctx)
+            WacomFallbackDevice.reportCallback, ctx)
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
 
@@ -219,7 +219,7 @@ final class WacomGenericDevice: TabletDevice {
 
     private static let reportCallback: IOHIDReportCallback = { ctx, _, _, _, _, report, length in
         guard let ctx else { return }
-        Unmanaged<WacomGenericDevice>.fromOpaque(ctx).takeUnretainedValue()
+        Unmanaged<WacomFallbackDevice>.fromOpaque(ctx).takeUnretainedValue()
             .handleReport(report: report, length: length)
     }
 
