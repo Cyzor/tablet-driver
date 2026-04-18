@@ -91,7 +91,8 @@ final class WacomUniversalDevice: TabletDevice {
             maxY: deviceSpec.maxY,
             maxPressure: deviceSpec.maxPressure,
             buttonCount: deviceSpec.buttonCount,
-            hasTilt: deviceSpec.hasTilt)
+            hasTilt: deviceSpec.hasTilt,
+            hasDualRings: deviceSpec.hasDualRings)
 
         switch deviceSpec.parser {
         case .intuosV2:
@@ -100,6 +101,8 @@ final class WacomUniversalDevice: TabletDevice {
             self.decoder = Intuos3Decoder()
         case .bamboo:
             self.decoder = BambooDecoder()
+        case .cintiqV1:
+            self.decoder = CintiqV1Decoder()
         case .intuosV1, .graphire:
             // graphire should not reach here — caller checks hasLiveDecoder.
             self.decoder = IntuosV1Decoder()

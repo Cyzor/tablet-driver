@@ -53,6 +53,14 @@ enum ReportParser: String {
     /// (vs. bit 5 in IntuosV1).  Aux reports use IDs 0x03/0x0C, not 0x11.
     /// No BLE support.  Two-stage feature init (see `WacomDeviceSpec.featureInit2`).
     case intuos3
+
+    /// CintiqV1 — Wacom Cintiq pen-display family using the IntuosV1 10-byte pen
+    /// report layout (same as PTH-851) plus a 0x0C aux report for touch rings and
+    /// express keys, and a 0x01 tip-switch report that requires device seizure.
+    /// Decoded by `CintiqV1Decoder` which handles the WACOM_24HD typeNibble dispatch,
+    /// ABS_Z Art Pen rotation, barrel-button debounce, dual-ring 0x0C layout,
+    /// tip-switch synthetic pressure, and incompatible-tool suppression.
+    case cintiqV1
 }
 
 // MARK: - Per-device spec
@@ -139,8 +147,10 @@ struct WacomDeviceSpec {
             return "bamboo2"
         case .intuos3:
             return "intuos3"
+        case .cintiqV1:
+            return "cintiq"
         case .intuosV1:
-            // Intuos 1-5 and Cintiq pen displays
+            // Intuos 1-5 and any non-Cintiq pen displays that haven't been migrated.
             if name.contains("Cintiq") || name.contains("DTK") || name.contains("DTH") {
                 return "cintiq"
             }
@@ -155,8 +165,6 @@ struct WacomDeviceSpec {
             return "intuosProGen2"
         case .bamboo:
             return "bamboo"
-        
-            return "universal"
         }
     }
 }
@@ -511,47 +519,51 @@ enum WacomDeviceRegistry {
             buttonCount: 2, hasTouchRing: false, hasEraser: false,
             featureInit: nil, seizeUSB: false),
 
-        // ── Cintiq pen-display line — intuosV1 parser ────────────────────────
+        // ── Cintiq pen-display line — cintiqV1 parser ────────────────────────
         // seizeUSB=true: Cintiq pen-displays appear as USB HID devices and
         // require seizure to prevent kernel handling of their pen interface.
+        // All old Cintiqs use the WACOM_24HD report layout handled by CintiqV1Decoder:
+        //   Report 0x02 — pen (10-byte IntuosV1, WACOM_24HD typeNibble dispatch)
+        //   Report 0x0C — express keys + touch rings
+        //   Report 0x01 — tip-switch (requires device seizure)
         .init(
             productID: 0x00C0, name: "Cintiq 20WSX",  // ⚠ estimated
-            parser: .intuosV1, maxX: 86680, maxY: 54180, maxPressure: 1023,
+            parser: .cintiqV1, maxX: 86680, maxY: 54180, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00C4, name: "Cintiq 13HD (DTK-1300)",  // ⚠ estimated
-            parser: .intuosV1, maxX: 59152, maxY: 33448, maxPressure: 2047,
+            parser: .cintiqV1, maxX: 59152, maxY: 33448, maxPressure: 2047,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00C6, name: "Cintiq 12WX",  // ⚠ estimated
-            parser: .intuosV1, maxX: 53020, maxY: 33440, maxPressure: 1023,
+            parser: .cintiqV1, maxX: 53020, maxY: 33440, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00CC, name: "Cintiq 21UX (DTZ-2100)",  // ⚠ estimated
-            parser: .intuosV1, maxX: 87200, maxY: 65600, maxPressure: 1023,
+            parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00F4, name: "Cintiq 24HD (DTK-2400)",  // ✓ confirmed live
-            parser: .intuosV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
+            parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasDualRings: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00F8, name: "Cintiq 24HD Touch (DTH-2400)",  // ⚠ estimated
-            parser: .intuosV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
+            parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasDualRings: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00FA, name: "Cintiq 22HD (DTK-2200)",  // ⚠ estimated
-            parser: .intuosV1, maxX: 95840, maxY: 54090, maxPressure: 2047,
+            parser: .cintiqV1, maxX: 95840, maxY: 54090, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00FB, name: "Cintiq 21UX 2 (DTZ-2100B)",  // ⚠ estimated
-            parser: .intuosV1, maxX: 87200, maxY: 65600, maxPressure: 1023,
+            parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
 
@@ -768,12 +780,12 @@ enum WacomDeviceRegistry {
         // ── Cintiq pen-display additional models ──────────────────────────────
         .init(
             productID: 0x0304, name: "Wacom Cintiq 13HD (DTK-1300)",  // ⚠ from OTD
-            parser: .intuosV1, maxX: 59800, maxY: 34200, maxPressure: 2048,
+            parser: .cintiqV1, maxX: 59800, maxY: 34200, maxPressure: 2048,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x00F9, name: "Wacom Cintiq 22HD (DTK-2200)",  // ⚠ from OTD
-            parser: .intuosV1, maxX: 95040, maxY: 54260, maxPressure: 2048,
+            parser: .cintiqV1, maxX: 95040, maxY: 54260, maxPressure: 2048,
             buttonCount: 20, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
@@ -891,7 +903,7 @@ enum WacomDeviceRegistry {
     /// graphire is the only remaining stub.
     static func hasLiveDecoder(for productID: Int) -> Bool {
         guard let s = spec(for: productID) else { return false }
-        return s.parser != .graphire
+        return s.parser != .graphire && s.parser != .bamboo
     }
 
     /// Returns the canonical (USB) product ID for any transport variant of a tablet.

@@ -432,11 +432,6 @@ final class TabletManager: ObservableObject {
         let wacomDevice: (any TabletDevice)?
 
         switch productID {
-        case 0x00F4:
-            print("TabletManager: DTK-2400 (Cintiq 24HD) connected")
-            wacomDevice = DTK2400Device(
-                device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
-
         case 0x0084:
             // ACK-40401 RF wireless dongle — presents the same HID interfaces and
             // descriptor as the paired tablet (PTH-x50/x51 family, IntuosV1 format).

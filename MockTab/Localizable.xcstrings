@@ -2814,6 +2814,9 @@
         }
       }
     },
+    "Drag out to export a backup, drag in a JSON file to import, or Control-click for actions." : {
+      "comment" : "Help text for backup/restore tile"
+    },
     "Drag out to save a backup. Drag a .json file in to import." : {
       "comment" : "Description of export/import drag-and-drop functionality",
       "localizations" : {
@@ -3061,7 +3064,7 @@
       }
     },
     "Export as JSON…" : {
-      "comment" : "Button to save a backup JSON file",
+      "comment" : "Context menu action for exporting backup",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3919,7 +3922,7 @@
       }
     },
     "Import from File…" : {
-      "comment" : "Button to open a file picker for importing a backup",
+      "comment" : "Context menu action for importing backup",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4111,6 +4114,9 @@
           }
         }
       }
+    },
+    "JSON" : {
+      "comment" : "Short label inside backup/restore tile"
     },
     "Key %lld" : {
       "comment" : "Express key N label, e.g. 'Key 1'",
