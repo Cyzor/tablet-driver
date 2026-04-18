@@ -30,7 +30,7 @@
 		AA000035 /* AppWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* AppWatcher.swift */; };
 		AA000036 /* AppMenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000036 /* AppMenuController.swift */; };
 		AA000037 /* WacomProbeDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* WacomProbeDevice.swift */; };
-		AA000038 /* DTK2400Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000038 /* DTK2400Device.swift */; };
+		AA00C1D1 /* CintiqV1Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00C1D1 /* CintiqV1Decoder.swift */; };
 		AA000039 /* DeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000039 /* DeviceRegistry.swift */; };
 		AA000040 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* DevicesView.swift */; };
 		AA000041 /* TabStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000041 /* TabStatusBar.swift */; };
@@ -95,7 +95,7 @@
 		AB000035 /* AppWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWatcher.swift; sourceTree = "<group>"; };
 		AB000036 /* AppMenuController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMenuController.swift; sourceTree = "<group>"; };
 		AB000037 /* WacomProbeDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomProbeDevice.swift; sourceTree = "<group>"; };
-		AB000038 /* DTK2400Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTK2400Device.swift; sourceTree = "<group>"; };
+		AB00C1D1 /* CintiqV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CintiqV1Decoder.swift; sourceTree = "<group>"; };
 		AB000039 /* DeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRegistry.swift; sourceTree = "<group>"; };
 		AB000040 /* DevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesView.swift; sourceTree = "<group>"; };
 		AB000041 /* TabStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabStatusBar.swift; sourceTree = "<group>"; };
@@ -170,7 +170,6 @@
 				AB000003 /* TabletPoint.swift */,
 				AB000004 /* TabletDevice.swift */,
 				AB000037 /* WacomProbeDevice.swift */,
-				AB000038 /* DTK2400Device.swift */,
 				AB000045 /* WacomGenericDevice.swift */,
 				AB000046 /* WacomDeviceRegistry.swift */,
 				AB000070 /* HIDCapture.swift */,
@@ -236,6 +235,7 @@
 				AB000048 /* IntuosV1Decoder.swift */,
 				AB000050 /* Intuos3Decoder.swift */,
 				AB000051 /* BambooDecoder.swift */,
+				AB00C1D1 /* CintiqV1Decoder.swift */,
 			);
 			path = Decoders;
 			sourceTree = "<group>";
@@ -338,7 +338,6 @@
 				AA000004 /* TabletDevice.swift in Sources */,
 				057B24D82F899E3A0032B29E /* Path+SVGData.swift in Sources */,
 				AA000037 /* WacomProbeDevice.swift in Sources */,
-				AA000038 /* DTK2400Device.swift in Sources */,
 				05D7EB7B2F79E6E30086E03F /* AboutApp.swift in Sources */,
 				AA000045 /* WacomGenericDevice.swift in Sources */,
 				AA000046 /* WacomDeviceRegistry.swift in Sources */,
@@ -352,6 +351,7 @@
 				AA000048 /* IntuosV1Decoder.swift in Sources */,
 				AA000050 /* Intuos3Decoder.swift in Sources */,
 				AA000051 /* BambooDecoder.swift in Sources */,
+				AA00C1D1 /* CintiqV1Decoder.swift in Sources */,
 				AA000039 /* DeviceRegistry.swift in Sources */,
 				053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */,
 				AA000042 /* DeviceContext.swift in Sources */,
