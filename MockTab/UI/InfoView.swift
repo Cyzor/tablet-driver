@@ -457,26 +457,6 @@ struct InfoView: View {
     }
 }
 
-// MARK: - RotationTracker
-/// Tracks Art Pen angle across calls, adding 360 deg after each wrap to prevent
-/// SwiftUI from animating backwards across the 0/360 boundary.
-private class RotationTracker {
-    private var lastAngle: Double? = nil
-
-    func getDisplayAngle(for rawDegrees: Double) -> Double {
-        var a = rawDegrees.truncatingRemainder(dividingBy: 360)
-        if a < 0 { a += 360 }
-        if let last = lastAngle {
-            let delta = a - last
-            if delta < -180 { a += 360 }
-        }
-        lastAngle = a
-        return a
-    }
-
-    func reset() { lastAngle = nil }
-}
-
 // MARK: - LiveInputView
 //
 // Isolated from InfoView so SwiftUI only diffs and re-renders this section
@@ -489,26 +469,34 @@ private struct LiveInputView: View {
     let registry: DeviceRegistry
     var hasDualRings: Bool = false
 
-    // Rotation tracker — class so it survives across calls without mutation issues
-    private let rotationTracker = RotationTracker()
-
     // MARK: - Rotation gauge
 
+    /// Accumulated rotation for monotonic sweep. If new angle is >180 less than
+    /// the previous, we've wrapped 0/360 and should add 360 to keep motion forward.
+    @State private var accumAngle: Double = 0
+
     /// Clock-face rotation gauge: thin line pivots from center like a clock hand.
-    /// Tracks previous angle to suppress backwards wrap jumps (e.g. 359 -> 1 deg) in
-    /// SwiftUI animation. SwiftUI always interpolates the shortest angular path.
+    /// Negates the accumulated angle so clockwise physical twist = clockwise sweep.
     @ViewBuilder
     private func rotationGauge(degrees: Double?) -> some View {
         ZStack {
             Circle().stroke(Color.secondary.opacity(0.3), lineWidth: 1.5)
             Rectangle().fill(Color.secondary.opacity(0.4)).frame(width: 2, height: 6).offset(y: -14)
-            if let d = degrees {
-                let displayAngle = rotationTracker.getDisplayAngle(for: d)
-                Rectangle().fill(Color.accentColor).frame(width: 2, height: 14).offset(y: -7)
-                    .rotationEffect(.radians(displayAngle * .pi / 180), anchor: .center)
-            }
+            Rectangle().fill(Color.accentColor).frame(width: 2, height: 14).offset(y: -7)
+                .rotationEffect(.radians(-accumAngle * .pi / 180), anchor: .center)
         }
         .frame(width: 36, height: 36)
+        .onChange(of: degrees) { newDeg in
+            if let d = newDeg {
+                if accumAngle > 0 && (d - accumAngle) < -180 {
+                    accumAngle = d + 360
+                } else {
+                    accumAngle = d
+                }
+            } else {
+                accumAngle = 0
+            }
+        }
     }
 
     var body: some View {

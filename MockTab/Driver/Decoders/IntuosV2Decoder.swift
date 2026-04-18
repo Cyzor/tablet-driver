@@ -305,10 +305,11 @@ struct IntuosV2Decoder: WacomDecoder {
         let isArtPen = state.currentToolCode == 0x0804 || state.currentToolCode == 0x1108
         let toolIsEraser = !isArtPen && (state.currentToolCode & 0x0008) != 0
         let rawRot = Int16(bitPattern: UInt16(report[12]) | UInt16(report[13]) << 8)
-        // Negate raw rotation so clockwise barrel twist produces an increasing angle,
-        // matching the geometric convention apps expect (0°=natural grip, CW=positive).
-        var rotation = isArtPen ? Double(rawRot) / 10.0 : 0.0
+        // Rotation: signed Int16 with +\-900 range. Wacom maps +\-900 to 0-360:
+        //   degrees = (rawSigned + 900) / 5. Full 0-360 sweep.
+        var rotation = isArtPen ? (Double(rawRot) + 900.0) / 5.0 : 0.0
         if rotation < 0 { rotation += 360.0 }
+        if rotation >= 360 { rotation -= 360.0 }
         if isArtPen {
             state.lastRotation = rotation
             state.hasValidRotationFrame = true
