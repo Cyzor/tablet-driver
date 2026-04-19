@@ -1543,7 +1543,7 @@
       }
     },
     "Button %lld" : {
-      "comment" : "Mouse button N label, e.g. 'Button 1'\nToggle button N label, e.g. 'Button 1'",
+      "comment" : "Toggle button N label, e.g. 'Button 1'",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2874,6 +2874,7 @@
     },
     "Editing **%@** settings" : {
       "comment" : "Label showing which app's settings are being edited",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2894,6 +2895,9 @@
           }
         }
       }
+    },
+    "Editing %@ settings" : {
+      "comment" : "Label showing which app's settings are being edited"
     },
     "Enable MockTab to start automatically when you log in." : {
       "comment" : "Tooltip on Fix button for Launch at Login",
@@ -7161,6 +7165,7 @@
     },
     "Side button" : {
       "comment" : "Single side button label on airbrush",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7184,6 +7189,7 @@
     },
     "Side button %lld" : {
       "comment" : "Side button N label, e.g. 'Side button 1'",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
