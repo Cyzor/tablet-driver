@@ -63,6 +63,13 @@ struct CintiqV1Decoder: WacomDecoder {
     private var tipPressureOverride: Int = 0
     private static let tipContactThreshold = 81
 
+    // ── Pressure cache ────────────────────────────────────────────────────────
+    // Rotation sub-frames (typeNibble 5) and airbrush wheel frames (typeNibble 0x0A)
+    // do not carry pressure data.  Cache the last general-packet pressure so these
+    // frames forward it unchanged — without this, every rotation frame emits pressure=0,
+    // causing rapid mouseUp/mouseDown and a "dots instead of line" appearance.
+    private var lastPressure: Int = 0
+
     mutating func decode(
         report: UnsafePointer<UInt8>,
         length: CFIndex,
@@ -189,15 +196,18 @@ struct CintiqV1Decoder: WacomDecoder {
         // typeNibble 0x0A (airbrush wheel): not yet decoded; falls through with cached state.
 
         // Pressure: kernel (wacom_intuos_general): (d6<<3) | ((d7&0xC0)>>5) | (d1&1) — 11-bit.
-        // Only valid for general pen packets (typeNibble 0–3); rotation frames don't carry pressure.
+        // Only valid for general pen packets (typeNibble 0–3); rotation/airbrush frames don't
+        // carry pressure data, so forward the last cached value to avoid pressure=0 spikes that
+        // would cause rapid mouseUp/mouseDown ("dots instead of line" symptom).
         // Apply tip-switch override: if raw pressure is 0 but tip-switch fired, use the
         // minimum contact threshold so apps register the click.
         let pressure: Int
         if typeNibble <= 0x03 {
             let raw = (Int(report[6]) << 3) | ((Int(report[7]) & 0xC0) >> 5) | (Int(status) & 1)
-            pressure = (raw == 0 && tipPressureOverride > 0) ? tipPressureOverride : raw
+            lastPressure = (raw == 0 && tipPressureOverride > 0) ? tipPressureOverride : raw
+            pressure = lastPressure
         } else {
-            pressure = 0
+            pressure = lastPressure
         }
 
         // Fallback onToolEnter on first proximity entry (no prior tool-change packet).
@@ -330,5 +340,6 @@ struct CintiqV1Decoder: WacomDecoder {
         btn2ClearCount = 0
         tipSwitchActive = false
         tipPressureOverride = 0
+        lastPressure = 0
     }
 }
