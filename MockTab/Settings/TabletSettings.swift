@@ -194,8 +194,12 @@ final class TabletSettings: ObservableObject {
     @Published private var pen1Raw: String = "" { didSet { persist("penButton1Binding", pen1Raw) } }
     @Published private var pen2Raw: String = "" { didSet { persist("penButton2Binding", pen2Raw) } }
     @Published private var expressKeyRaw: String = "" {
-        didSet { persist("expressKeyBindings", expressKeyRaw) }
+        didSet {
+            persist("expressKeyBindings", expressKeyRaw)
+            _expressKeyCache = nil
+        }
     }
+    private var _expressKeyCache: [ButtonBinding]?
     @Published private var touchRingButtonRaw: String = "" {
         didSet { persist("touchRingButtonBinding", touchRingButtonRaw) }
     }
@@ -217,13 +221,20 @@ final class TabletSettings: ObservableObject {
 
     var expressKeyBindings: [ButtonBinding] {
         get {
-            guard !expressKeyRaw.isEmpty,
+            if let cached = _expressKeyCache { return cached }
+            let result: [ButtonBinding]
+            if !expressKeyRaw.isEmpty,
                 let data = expressKeyRaw.data(using: .utf8),
                 let arr = try? JSONDecoder().decode([ButtonBinding].self, from: data)
-            else { return Array(repeating: .none, count: 16) }
-            var res = arr
-            while res.count < 16 { res.append(.none) }
-            return Array(res.prefix(16))
+            {
+                var r = arr
+                while r.count < 16 { r.append(.none) }
+                result = Array(r.prefix(16))
+            } else {
+                result = Array(repeating: .none, count: 16)
+            }
+            _expressKeyCache = result
+            return result
         }
         set {
             guard let data = try? JSONEncoder().encode(newValue),

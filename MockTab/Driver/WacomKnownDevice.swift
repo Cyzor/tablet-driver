@@ -234,7 +234,8 @@ final class WacomKnownDevice: TabletDevice {
         }
 
         // Extract serial from bytes 4–7 (LE uint32)
-        let serial = UInt32(buf[4])
+        let serial =
+            UInt32(buf[4])
             | UInt32(buf[5]) << 8
             | UInt32(buf[6]) << 16
             | UInt32(buf[7]) << 24
@@ -246,7 +247,8 @@ final class WacomKnownDevice: TabletDevice {
         }
 
         let pidHex = String(deviceSpec.productID, radix: 16, uppercase: true)
-        print("\(deviceSpec.name) (0x\(pidHex)): hardware serial 0x\(String(format: "%08X", serial))")
+        print(
+            "\(deviceSpec.name) (0x\(pidHex)): hardware serial 0x\(String(format: "%08X", serial))")
         onHardwareSerial?(serial)
     }
 
@@ -268,7 +270,8 @@ final class WacomKnownDevice: TabletDevice {
             var bytes = [UInt8](UnsafeBufferPointer(start: report, count: length))
             Task { @MainActor in
                 bytes.withUnsafeBufferPointer {
-                    CaptureEngine.shared.recordSample(reportID: r0, report: $0.baseAddress!, length: length)
+                    CaptureEngine.shared.recordSample(
+                        reportID: r0, report: $0.baseAddress!, length: length)
                 }
             }
         }

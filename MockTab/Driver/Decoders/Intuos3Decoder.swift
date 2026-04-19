@@ -105,7 +105,8 @@ struct Intuos3Decoder: WacomDecoder {
         }
 
         guard (id == 0x02 || id == 0x10) && length >= 10 else { return [] }
-        return decodeUSBPen(report: report, length: length, spec: spec, state: &state, deviceFamily: deviceFamily)
+        return decodeUSBPen(
+            report: report, length: length, spec: spec, state: &state, deviceFamily: deviceFamily)
     }
 
     // MARK: - USB pen report (10-byte IntuosV1 format, Intuos3 status layout)
@@ -208,8 +209,9 @@ struct Intuos3Decoder: WacomDecoder {
 
         // Pen path — same pressure/tilt encoding as IntuosV1.
         // 11-bit pressure; right-shift for 10-bit (maxPressure ≤ 1023) devices per kernel spec.
-        // Intuos5 devices (PTH-850, maxPressure=2047) include status bit 0 as 11th bit.
-        let statusBit = (spec.maxPressure == 2047) ? (Int(status) & 1) : 0
+        // Intuos3 devices (PTZ-xxx) max out at 2046 — below the 2047 Intuos5 threshold,
+        // so status bit 0 is never part of the 11-bit pressure field for this family.
+        let statusBit = (spec.maxPressure > 1023) ? (Int(status) & 1) : 0
         let rawPressure = (Int(report[6]) << 3) | ((Int(report[7] & 0xC0)) >> 5) | statusBit
         let pressure = spec.maxPressure <= 1023 ? rawPressure >> 1 : rawPressure
         let tiltXRaw = (((Int(report[7]) << 1) & 0x7E) | (Int(report[8]) >> 7)) - 64

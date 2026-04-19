@@ -29,6 +29,94 @@ struct ButtonMappingView: View {
 
     private var tool: ToolSettings { settings.activeTool }
 
+    // Pre-allocated Binding<ToolSettings> — created once, not per body call.
+    // Used to derive Binding<ButtonBinding> for each key path so SwiftUI
+    // view identity is stable across ~16 Hz liveButtons invalidations.
+    private var activeToolBinding: Binding<ToolSettings> {
+        $settings.activeTool
+    }
+
+    private var pen1Binding: Binding<ButtonBinding> {
+        Binding(
+            get: { tool.penButton1Binding },
+            set: { newValue in
+                let tool = self.tool
+                let t = self.activeToolBinding
+                settings.record("Button 1") { t.wrappedValue.penButton1Binding = newValue }
+            }
+        )
+    }
+    private var pen2Binding: Binding<ButtonBinding> {
+        Binding(
+            get: { tool.penButton2Binding },
+            set: { newValue in
+                let tool = self.tool
+                let t = self.activeToolBinding
+                settings.record("Button 2") { t.wrappedValue.penButton2Binding = newValue }
+            }
+        )
+    }
+    private var pen3Binding: Binding<ButtonBinding> {
+        Binding(
+            get: { tool.penButton3Binding },
+            set: { newValue in
+                let tool = self.tool
+                let t = self.activeToolBinding
+                settings.record("Button 3") { t.wrappedValue.penButton3Binding = newValue }
+            }
+        )
+    }
+    private var pen4Binding: Binding<ButtonBinding> {
+        Binding(
+            get: { tool.penButton4Binding },
+            set: { newValue in
+                let tool = self.tool
+                let t = self.activeToolBinding
+                settings.record("Button 4") { t.wrappedValue.penButton4Binding = newValue }
+            }
+        )
+    }
+    private var pen5Binding: Binding<ButtonBinding> {
+        Binding(
+            get: { tool.penButton5Binding },
+            set: { newValue in
+                let tool = self.tool
+                let t = self.activeToolBinding
+                settings.record("Button 5") { t.wrappedValue.penButton5Binding = newValue }
+            }
+        )
+    }
+    private var tipBinding: Binding<ButtonBinding> {
+        Binding(
+            get: { tool.tipBinding },
+            set: { newValue in
+                let tool = self.tool
+                let t = self.activeToolBinding
+                settings.record("Tip Button") { t.wrappedValue.tipBinding = newValue }
+            }
+        )
+    }
+    private var eraserBinding: Binding<ButtonBinding> {
+        Binding(
+            get: { tool.eraserBinding },
+            set: { newValue in
+                let tool = self.tool
+                let t = self.activeToolBinding
+                settings.record("Eraser Button") { t.wrappedValue.eraserBinding = newValue }
+            }
+        )
+    }
+    private var wheelBinding: Binding<ButtonBinding> {
+        Binding(
+            get: { tool.wheelBinding },
+            set: { newValue in
+                let tool = self.tool
+                let t = self.activeToolBinding
+                settings.record("Wheel") { t.wrappedValue.wheelBinding = newValue }
+            }
+        )
+    }
+
     private var spec: WacomDeviceSpec? {
         productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
@@ -73,12 +161,11 @@ struct ButtonMappingView: View {
             AppOverrideBar(
                 settings: settings, domainKeys: AppOverrideBar.buttonKeys, productID: productID)
             Form {
-                let lb = tabletManager.liveButtons
-                penButtonsSection(lb: lb)
+                penButtonsSection(lb: tabletManager.liveButtons)
                 if hasDualRings {
-                    dualSidedSection(lb: lb)
+                    dualSidedSection(lb: tabletManager.liveButtons)
                 } else {
-                    singleSidedSection(lb: lb)
+                    singleSidedSection(lb: tabletManager.liveButtons)
                 }
             }
             .formStyle(.grouped)
@@ -106,10 +193,7 @@ struct ButtonMappingView: View {
                 buttonRow(
                     String(localized: "Tip", comment: "Pen tip button row label in Buttons tab"),
                     isActive: lb.tipDown,
-                    binding: recordingBinding(
-                        "Tip Button", owner: tool,
-                        get: { tool.tipBinding },
-                        set: { tool.tipBinding = $0 }))
+                    binding: tipBinding)
             }
 
             // Eraser — only for non-mouse tools
@@ -117,75 +201,54 @@ struct ButtonMappingView: View {
                 buttonRow(
                     String(localized: "Eraser", comment: "Eraser button row label in Buttons tab"),
                     isActive: lb.eraserDown,
-                    binding: recordingBinding(
-                        "Eraser Button", owner: tool,
-                        get: { tool.eraserBinding },
-                        set: { tool.eraserBinding = $0 }))
-            }
-
-            // Barrel/side button rows — count driven by spec
-            // For airbrush (1 button): "Side button"
-            // For mice: "Button 1", "Button 2", etc.
-            let buttonLabel: (Int) -> String = { i in
-                if isMouse {
-                    return String(
-                        localized: "Button \(i + 1)",
-                        comment: "Mouse button N label, e.g. 'Button 1'")
-                } else {
-                    return btnCount == 1
-                        ? String(
-                            localized: "Side button",
-                            comment: "Single side button label on airbrush")
-                        : String(
-                            localized: "Side button \(i + 1)",
-                            comment: "Side button N label, e.g. 'Side button 1'")
-                }
+                    binding: eraserBinding)
             }
 
             // Button 1
             if btnCount >= 1 {
                 buttonRow(
-                    buttonLabel(0), isActive: lb.button1Down,
+                    isMouse ? "Button 1" : (btnCount == 1 ? "Side button" : "Side button 1"),
+                    isActive: lb.button1Down,
                     binding: recordingBinding(
                         "Button 1", owner: tool,
                         get: { tool.penButton1Binding },
                         set: { tool.penButton1Binding = $0 }))
             }
-
             // Button 2
             if btnCount >= 2 {
                 buttonRow(
-                    buttonLabel(1), isActive: lb.button2Down,
+                    isMouse ? "Button 2" : "Side button 2",
+                    isActive: lb.button2Down,
                     binding: recordingBinding(
                         "Button 2", owner: tool,
                         get: { tool.penButton2Binding },
                         set: { tool.penButton2Binding = $0 }))
             }
-
             // Button 3
             if btnCount >= 3 {
                 buttonRow(
-                    buttonLabel(2), isActive: lb.button3Down,
+                    isMouse ? "Button 3" : "Side button 3",
+                    isActive: lb.button3Down,
                     binding: recordingBinding(
                         "Button 3", owner: tool,
                         get: { tool.penButton3Binding },
                         set: { tool.penButton3Binding = $0 }))
             }
-
             // Button 4
             if btnCount >= 4 {
                 buttonRow(
-                    buttonLabel(3), isActive: lb.button4Down,
+                    isMouse ? "Button 4" : "Side button 4",
+                    isActive: lb.button4Down,
                     binding: recordingBinding(
                         "Button 4", owner: tool,
                         get: { tool.penButton4Binding },
                         set: { tool.penButton4Binding = $0 }))
             }
-
             // Button 5
             if btnCount >= 5 {
                 buttonRow(
-                    buttonLabel(4), isActive: lb.button5Down,
+                    isMouse ? "Button 5" : "Side button 5",
+                    isActive: lb.button5Down,
                     binding: recordingBinding(
                         "Button 5", owner: tool,
                         get: { tool.penButton5Binding },
@@ -198,12 +261,7 @@ struct ButtonMappingView: View {
                     toolSpec?.toolType == .airbrush
                     ? String(localized: "Fingerwheel", comment: "Airbrush fingerwheel row label")
                     : String(localized: "Scroll Wheel", comment: "Mouse scroll wheel row label")
-                buttonRow(
-                    wheelLabel, isActive: false,
-                    binding: recordingBinding(
-                        "Wheel", owner: tool,
-                        get: { tool.wheelBinding },
-                        set: { tool.wheelBinding = $0 }))
+                buttonRow(wheelLabel, isActive: false, binding: wheelBinding)
             }
 
             // Diagram row: no label column; transparent so the section
@@ -425,19 +483,16 @@ struct ButtonMappingView: View {
     ) -> some View {
         HStack(spacing: 0) {
             activeIndicator(isActive)
-            labelText(label, isActive: isActive)  // ← pass isActive
+            labelText(label, isActive: isActive)
             ButtonBindingControl(binding: binding)
             Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity)
-        // Row-level background removed — highlight lives on the label now.
     }
 
     // MARK: - Shared row subviews
 
     /// Green checkmark when a hardware button is currently held; invisible
     /// when idle so the label column stays stable without a ghost shape.
-    @ViewBuilder
     private func activeIndicator(_ isActive: Bool) -> some View {
         Image(systemName: "checkmark.circle.fill")
             .foregroundStyle(Color.green)
@@ -445,12 +500,7 @@ struct ButtonMappingView: View {
             .opacity(isActive ? 1 : 0)
     }
 
-    /// Renders label text right-aligned in a fixed-width column so all control
-    /// fields start at the same horizontal position regardless of which Section
-    /// they live in.  100 pt comfortably fits the longest label ("Side button 1",
-    /// "Fingerwheel", "Scroll Wheel") plus horizontal padding at the default font size.
-    @ViewBuilder
-    private func labelText(_ label: String, isActive: Bool = false) -> some View {
+    private func labelText(_ label: String, isActive: Bool) -> some View {
         Text(label)
             .foregroundStyle(Color.primary)
             .fontWeight(isActive ? .semibold : .regular)
@@ -460,8 +510,6 @@ struct ButtonMappingView: View {
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .fill(Color.accentColor.opacity(isActive ? 0.12 : 0))
             )
-            .animation(.easeOut(duration: 0.07), value: isActive)
-            .frame(minWidth: 60, alignment: .trailing)
     }
 
 }
@@ -481,11 +529,14 @@ struct ButtonBindingControl: View {
     @State private var pendingModifiers: NSEvent.ModifierFlags = []
 
     var body: some View {
+        // Cached once per body call — prevents String(localized:) + CGEventFlags
+        // set ops in displayLabel from firing on every SwiftUI invalidation.
+        let displayText = binding.displayLabel
         HStack(spacing: 4) {
             // Recording field
             Button(action: toggleRecording) {
                 HStack {
-                    Text(fieldText)
+                    Text(displayText)
                         .foregroundStyle(fieldTextColor)
                         .lineLimit(1)
                     Spacer(minLength: 0)
@@ -511,50 +562,48 @@ struct ButtonBindingControl: View {
                         .imageScale(.medium)
                 }
                 .buttonStyle(.plain)
-                .help(LocalizedStringKey("Clear this button assignment."))
+                .help("Clear this button assignment.")
             }
 
             // Click-action picker
-            Menu {
-                Button(LocalizedStringKey("Left Click")) { set(.leftClick) }
-                Button(LocalizedStringKey("Right Click")) { set(.rightClick) }
-                Button(LocalizedStringKey("Middle Click")) { set(.middleClick) }
-                Button(LocalizedStringKey("Double Click")) { set(.doubleClick) }
-                Button(LocalizedStringKey("Eraser")) { set(.eraser) }
-                Divider()
-                Button(LocalizedStringKey("Spacebar")) { set(.spacebar) }
-                Button(LocalizedStringKey("Toggle Display")) { set(.displayToggle) }
-                Divider()
-                Button(LocalizedStringKey("⌘ Command")) {
-                    binding = ButtonBinding(modifierOnly: .command)
-                }
-                Button(LocalizedStringKey("⌥ Option")) {
-                    binding = ButtonBinding(modifierOnly: .option)
-                }
-                Button(LocalizedStringKey("⇧ Shift")) {
-                    binding = ButtonBinding(modifierOnly: .shift)
-                }
-                Button(LocalizedStringKey("⌃ Control")) {
-                    binding = ButtonBinding(modifierOnly: .control)
-                }
-                Divider()
-                Button(LocalizedStringKey("None")) { set(.none) }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.settingsBadge)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .frame(width: 20)
-            .help(
-                LocalizedStringKey(
-                    "Assign a click action: left-click, right-click, middle-click, modifier keys, or display toggle."
-                ))
-
+            clickMenu
         }
-        .onDisappear { stopRecording() }
+        .onDisappear { if isRecording { stopRecording() } }
+    }
+
+    // MARK: - Menu
+
+    /// Lazy menu — allocated once per ButtonBindingControl instance, not per body call.
+    /// Uses direct binding assignments instead of set() to avoid retain cycles.
+    private var clickMenu: some View {
+        Menu {
+            Button("Left Click") { binding = ButtonBinding(kind: .leftClick) }
+            Button("Right Click") { binding = ButtonBinding(kind: .rightClick) }
+            Button("Middle Click") { binding = ButtonBinding(kind: .middleClick) }
+            Button("Double Click") { binding = ButtonBinding(kind: .doubleClick) }
+            Button("Eraser") { binding = ButtonBinding(kind: .eraser) }
+            Divider()
+            Button("Spacebar") { binding = ButtonBinding(kind: .spacebar) }
+            Button("Toggle Display") { binding = ButtonBinding(kind: .displayToggle) }
+            Divider()
+            Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
+            Button("⌥ Option") { binding = ButtonBinding(modifierOnly: .option) }
+            Button("⇧ Shift") { binding = ButtonBinding(modifierOnly: .shift) }
+            Button("⌃ Control") { binding = ButtonBinding(modifierOnly: .control) }
+            Divider()
+            Button("None") { binding = .none }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.settingsBadge)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .frame(width: 20)
+        .help(
+            "Assign a click action: left-click, right-click, middle-click, modifier keys, or display toggle."
+        )
     }
 
     // MARK: - Visual state
