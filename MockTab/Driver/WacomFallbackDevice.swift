@@ -227,13 +227,15 @@ final class WacomFallbackDevice: TabletDevice {
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
         HIDCapture.shared.record(tag: tag, report: report, length: length)
-    // Delta capture — only fires when CaptureEngine.isRunning is true.
-    Task { @MainActor in
-        if CaptureEngine.shared.isRunning {
-            CaptureEngine.shared.recordSample(reportID: report[0], report: report, length: length)
+        // Delta capture — only fires when CaptureEngine.isRunning is true.
+        // Use _isRunningNonisolated to avoid MainActor hop on every HID report.
+        if CaptureEngine.shared._isRunningNonisolated {
+            Task { @MainActor in
+                CaptureEngine.shared.recordSample(
+                    reportID: report[0], report: report, length: length)
+            }
         }
-    }
- guard length >= 2 else { return }
+        guard length >= 2 else { return }
         let id = report[0]
 
         // ── BLE HOGP pen report (Report ID 0x01, ≥11 bytes) ────────────
@@ -255,7 +257,8 @@ final class WacomFallbackDevice: TabletDevice {
                 let status = report[1]
                 switch status {
                 case 0x02:
-                    print("\(tag): wireless link active — clearing state and re-sending feature init")
+                    print(
+                        "\(tag): wireless link active — clearing state and re-sending feature init")
                     // Reset decoder state to sync with wireless link-up
                     lastX = 0
                     lastY = 0
@@ -270,7 +273,8 @@ final class WacomFallbackDevice: TabletDevice {
                     // Send feature init safely from main thread (not from HID callback)
                     Task { @MainActor in
                         var init1: [UInt8] = [0x02, 0x02]
-                        IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
+                        IOHIDDeviceSetReport(
+                            device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
                     }
                 case 0x05: print("\(tag): wireless link lost (tablet out of range or off)")
                 case 0x06: print("\(tag): battery critically low")
