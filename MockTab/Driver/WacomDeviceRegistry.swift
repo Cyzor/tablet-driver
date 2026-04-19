@@ -93,6 +93,9 @@ struct WacomDeviceSpec {
     let hasDualRings: Bool
     /// True if this model has dual capacitive touch strips (Intuos3 WS).
     let hasTouchStrips: Bool
+    /// Number of ring mode slots to expose in the UI.
+    /// Defaults to 4, matching Wacom's standard 4-LED toggle ring layout.
+    let ringSlotCount: Int
     /// True if the pen family includes an eraser tool type.
     let hasEraser: Bool
     /// True if this device's pen reports include tilt data (Bamboo 4-bit format).
@@ -116,7 +119,7 @@ struct WacomDeviceSpec {
         productID: Int, name: String, parser: ReportParser,
         maxX: Int, maxY: Int, maxPressure: Int,
         buttonCount: Int, hasTouchRing: Bool, hasDualRings: Bool = false,
-        hasTouchStrips: Bool = false, hasEraser: Bool, hasTilt: Bool = false,
+        hasTouchStrips: Bool = false, ringSlotCount: Int = 4, hasEraser: Bool, hasTilt: Bool = false,
         featureInit: [UInt8]?, seizeUSB: Bool,
         featureInit2: [UInt8]? = nil,
         featureInit2Delay: Double = 0.15
@@ -131,6 +134,7 @@ struct WacomDeviceSpec {
         self.hasTouchRing = hasTouchRing
         self.hasDualRings = hasDualRings
         self.hasTouchStrips = hasTouchStrips
+        self.ringSlotCount = ringSlotCount
         self.hasEraser = hasEraser
         self.hasTilt = hasTilt
         self.featureInit = featureInit

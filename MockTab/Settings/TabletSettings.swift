@@ -179,14 +179,39 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Touch ring & strips
 
-    @Published var touchRingMode: TouchRingMode = .scroll {
-        didSet { persist("touchRingMode", touchRingMode.rawValue) }
+    @Published var touchRingSlots: [ControlSlot] = ControlSlot.defaults {
+        didSet { saveTouchRingSlots() }
     }
-    @Published var touchStrip1Mode: TouchRingMode = .scroll {
-        didSet { persist("touchStrip1Mode", touchStrip1Mode.rawValue) }
+    @Published var touchRingActiveSlotIndex: Int = 0 {
+        didSet { persist("touchRingActiveSlotIndex", touchRingActiveSlotIndex) }
     }
-    @Published var touchStrip2Mode: TouchRingMode = .scroll {
-        didSet { persist("touchStrip2Mode", touchStrip2Mode.rawValue) }
+
+    // MARK: - Temporary compatibility shim
+    // Binds to the active slot action. Used by ButtonMappingView during Phase 3 UI work.
+    // Remove once all callsites are updated to use touchRingSlots.
+    var touchRingMode: TouchRingMode {
+        get {
+            guard touchRingSlots.indices.contains(touchRingActiveSlotIndex) else { return .scroll }
+            switch touchRingSlots[touchRingActiveSlotIndex].action {
+            case .scroll: return .scroll
+            case .off: return .off
+            case .keyPress: return .scroll
+            }
+        }
+        set {
+            touchRingSlots = ControlSlot.defaults
+            touchRingActiveSlotIndex = 0
+        }
+    }
+
+    // Backward compat for strip modes - redirects to ring active slot.
+    var touchStrip1Mode: TouchRingMode {
+        get { touchRingMode }
+        set { touchRingMode = newValue }
+    }
+    var touchStrip2Mode: TouchRingMode {
+        get { touchRingMode }
+        set { touchRingMode = newValue }
     }
 
     // MARK: - Button bindings (JSON-encoded ButtonBinding)
@@ -381,9 +406,10 @@ final class TabletSettings: ObservableObject {
         ud.set(pen2Raw, forKey: prefix + "penButton2Binding")
         ud.set(expressKeyRaw, forKey: prefix + "expressKeyBindings")
         ud.set(touchRingButtonRaw, forKey: prefix + "touchRingButtonBinding")
-        ud.set(touchRingMode.rawValue, forKey: prefix + "touchRingMode")
-        ud.set(touchStrip1Mode.rawValue, forKey: prefix + "touchStrip1Mode")
-        ud.set(touchStrip2Mode.rawValue, forKey: prefix + "touchStrip2Mode")
+        if let data = try? JSONEncoder().encode(touchRingSlots) {
+            ud.set(data, forKey: prefix + "touchRingSlotsJSON")
+        }
+        ud.set(touchRingActiveSlotIndex, forKey: prefix + "touchRingActiveSlotIndex")
         if let data = try? JSONEncoder().encode(pressureCurve) {
             ud.set(data, forKey: prefix + "pressureCurve")
         }
@@ -392,8 +418,8 @@ final class TabletSettings: ObservableObject {
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
             "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
             "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
-            "expressKeyBindings", "touchRingButtonBinding", "touchRingMode",
-            "touchStrip1Mode", "touchStrip2Mode", "pressureCurve",
+            "expressKeyBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
+            "touchRingActiveSlotIndex", "pressureCurve",
         ]
 
         profiles.append(profile)
@@ -446,8 +472,8 @@ final class TabletSettings: ObservableObject {
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
             "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
             "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
-            "expressKeyBindings", "touchRingButtonBinding", "touchRingMode",
-            "touchStrip1Mode", "touchStrip2Mode", "pressureCurve",
+            "expressKeyBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
+            "touchRingActiveSlotIndex", "pressureCurve",
         ]
         for key in allKeys { ud.removeObject(forKey: prefix + key) }
         profiles.removeAll { $0.id == profile.id }
@@ -785,18 +811,8 @@ final class TabletSettings: ObservableObject {
         pen2Raw = loadString("penButton2Binding", default: "")
         expressKeyRaw = loadString("expressKeyBindings", default: "")
         touchRingButtonRaw = loadString("touchRingButtonBinding", default: "")
-        touchRingMode =
-            TouchRingMode(
-                rawValue: loadString("touchRingMode", default: TouchRingMode.scroll.rawValue))
-            ?? .scroll
-        touchStrip1Mode =
-            TouchRingMode(
-                rawValue: loadString("touchStrip1Mode", default: TouchRingMode.scroll.rawValue))
-            ?? .scroll
-        touchStrip2Mode =
-            TouchRingMode(
-                rawValue: loadString("touchStrip2Mode", default: TouchRingMode.scroll.rawValue))
-            ?? .scroll
+        loadTouchRingSlots()
+        touchRingActiveSlotIndex = loadInt("touchRingActiveSlotIndex", default: 0)
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
         invertRotation = loadBool("invertRotation", default: false)
         relativeCursorMovement = loadBool("relativeCursorMovement", default: false)
@@ -998,6 +1014,68 @@ final class TabletSettings: ObservableObject {
         pressureCurve = curve
     }
 
+    // MARK: - Touch Ring Slot persistence
+
+    /// Saves touchRingSlots using the same override/preset/device prefix logic as other fields.
+    private func saveTouchRingSlots() {
+        guard !isLoading else { return }
+        guard let data = try? JSONEncoder().encode(touchRingSlots) else { return }
+        if var override = activeAppOverride {
+            ud.set(data, forKey: appOverrideKeyPrefix(override) + "touchRingSlotsJSON")
+            guard !override.overriddenKeys.contains("touchRingSlotsJSON") else { return }
+            override.overriddenKeys.insert("touchRingSlotsJSON")
+            activeAppOverride = override
+            if let idx = appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
+                appOverrides[idx] = override
+            }
+            saveAppOverrides()
+        } else if var preset = activeProfile {
+            ud.set(data, forKey: profileKeyPrefix(preset) + "touchRingSlotsJSON")
+            guard !preset.overriddenKeys.contains("touchRingSlotsJSON") else { return }
+            preset.overriddenKeys.insert("touchRingSlotsJSON")
+            activeProfile = preset
+            if let idx = profiles.firstIndex(where: { $0.id == preset.id }) {
+                profiles[idx] = preset
+            }
+            saveProfileList()
+        } else {
+            ud.set(data, forKey: devicePrefix + "touchRingSlotsJSON")
+        }
+    }
+
+    /// Loads touchRingSlots with migration from legacy touchRingMode/touchStrip*Mode keys.
+    private func loadTouchRingSlots() {
+        // Try override, then preset, then device, then legacy keys.
+        let sourceOverride =
+            (activeAppOverride?.bundleID != driverOverride?.bundleID)
+            ? activeAppOverride
+            : driverOverride
+        var data: Data?
+        if let override = sourceOverride, override.overriddenKeys.contains("touchRingSlotsJSON") {
+            data = ud.data(forKey: appOverrideKeyPrefix(override) + "touchRingSlotsJSON")
+        } else if let preset = activeProfile, preset.overriddenKeys.contains("touchRingSlotsJSON") {
+            data = ud.data(forKey: profileKeyPrefix(preset) + "touchRingSlotsJSON")
+        } else {
+            data = ud.data(forKey: devicePrefix + "touchRingSlotsJSON")
+        }
+
+        if let data, let slots = try? JSONDecoder().decode([ControlSlot].self, from: data) {
+            touchRingSlots = slots
+            return
+        }
+
+        // Migration: synthesize slots from legacy touchRingMode.
+        // touchStrip1Mode and touchStrip2Mode are ignored — strips share the ring's mode.
+        let legacyMode =
+            TouchRingMode(
+                rawValue: loadString("touchRingMode", default: TouchRingMode.scroll.rawValue))
+            ?? .scroll
+        switch legacyMode {
+        default:
+            touchRingSlots = ControlSlot.defaults
+        }
+    }
+
     // MARK: - Reset
 
     func resetToDefaults() {
@@ -1016,7 +1094,8 @@ final class TabletSettings: ObservableObject {
         pen2Raw = ""
         expressKeyRaw = ""
         touchRingButtonRaw = ""
-        touchRingMode = .scroll
+        touchRingSlots = ControlSlot.defaults
+        touchRingActiveSlotIndex = 0
     }
 
     // MARK: - Full state snapshots (for preset activation undo)
@@ -1039,9 +1118,8 @@ final class TabletSettings: ObservableObject {
         var pen2Raw: String
         var expressKeyRaw: String
         var touchRingButtonRaw: String
-        var touchRingMode: TouchRingMode
-        var touchStrip1Mode: TouchRingMode
-        var touchStrip2Mode: TouchRingMode
+        var touchRingSlots: [ControlSlot]
+        var touchRingActiveSlotIndex: Int
         var autoSwitchEnabled: Bool
     }
 
@@ -1063,11 +1141,9 @@ final class TabletSettings: ObservableObject {
             pen2Raw: pen2Raw,
             expressKeyRaw: expressKeyRaw,
             touchRingButtonRaw: touchRingButtonRaw,
-            touchRingMode: touchRingMode,
-            touchStrip1Mode: touchStrip1Mode,
-            touchStrip2Mode: touchStrip2Mode,
-            autoSwitchEnabled: autoSwitchEnabled
-        )
+            touchRingSlots: touchRingSlots,
+            touchRingActiveSlotIndex: touchRingActiveSlotIndex,
+            autoSwitchEnabled: autoSwitchEnabled)
     }
 
     /// Applies a previously captured snapshot, registering undo for the prior state.
@@ -1083,7 +1159,7 @@ final class TabletSettings: ObservableObject {
 
     /// Restores all settings from a snapshot without triggering undo registration.
     /// This is the actual work function called during undo/redo replay.
-    private func applySnapshot(_ snap: FullSnapshot) {
+    func applySnapshot(_ snap: FullSnapshot) {
         activeAreaX = snap.activeAreaX
         activeAreaY = snap.activeAreaY
         activeAreaWidth = snap.activeAreaWidth
@@ -1099,9 +1175,8 @@ final class TabletSettings: ObservableObject {
         pen2Raw = snap.pen2Raw
         expressKeyRaw = snap.expressKeyRaw
         touchRingButtonRaw = snap.touchRingButtonRaw
-        touchRingMode = snap.touchRingMode
-        touchStrip1Mode = snap.touchStrip1Mode
-        touchStrip2Mode = snap.touchStrip2Mode
+        touchRingSlots = snap.touchRingSlots
+        touchRingActiveSlotIndex = snap.touchRingActiveSlotIndex
         autoSwitchEnabled = snap.autoSwitchEnabled
     }
 
@@ -1164,7 +1239,8 @@ final class TabletSettings: ObservableObject {
             penButton2: activeTool.penButton2Binding,
             tipBinding: activeTool.tipBinding,
             eraserBinding: activeTool.eraserBinding,
-            touchRingMode: touchRingMode.rawValue,
+            touchRingMode: touchRingSlots.indices.contains(touchRingActiveSlotIndex)
+                ? touchRingSlots[touchRingActiveSlotIndex].action.rawValue : "scroll",
             touchRingButtonBinding: touchRingButtonBinding
         )
     }
@@ -1187,8 +1263,9 @@ final class TabletSettings: ObservableObject {
         activeTool.penButton2Binding = profile.penButton2
         activeTool.tipBinding = profile.tipBinding
         activeTool.eraserBinding = profile.eraserBinding
-        if let mode = TouchRingMode(rawValue: profile.touchRingMode) {
-            touchRingMode = mode
+        if TouchRingMode(rawValue: profile.touchRingMode) != nil {
+            touchRingSlots = ControlSlot.defaults
+            touchRingActiveSlotIndex = 0
         }
         touchRingButtonBinding = profile.touchRingButtonBinding
     }
@@ -1229,6 +1306,46 @@ enum TouchRingMode: String, Codable, CaseIterable {
         case .scroll:
             return String(localized: "Scroll", comment: "Touch ring mode: scroll wheel output")
         case .off: return String(localized: "Off", comment: "Touch ring mode: disabled")
+        }
+    }
+}
+
+// MARK: - ControlSlot
+
+/// A named configuration for the touch ring (or shared strip controls).
+/// Rings and strips share a single active slot index, so they always move together.
+/// Stored as a JSON array under the key "touchRingSlotsJSON".
+struct ControlSlot: Codable, Equatable, Identifiable {
+    var id: UUID = UUID()
+    /// Human-readable label shown in the UI (e.g. "Scroll", "Zoom", "Brush Size").
+    var label: String = ""
+    /// What the ring/strip does when rotated.
+    var action: Action = .scroll
+    /// Key binding for clockwise rotation (used when action == .keyPress).
+    var cwBinding: ButtonBinding = .none
+    /// Key binding for counter-clockwise rotation (used when action == .keyPress).
+    var ccwBinding: ButtonBinding = .none
+
+    /// Four-slot default used on init, reset, and legacy migration.
+    /// Matches Wacom's standard 4-LED toggle ring layout; unused slots default to Off.
+    static let defaults: [ControlSlot] = [
+        ControlSlot(label: String(localized: "Scroll", comment: "Default ring slot label"), action: .scroll),
+        ControlSlot(label: String(localized: "Off",    comment: "Default ring slot label"), action: .off),
+        ControlSlot(label: String(localized: "Off",    comment: "Default ring slot label"), action: .off),
+        ControlSlot(label: String(localized: "Off",    comment: "Default ring slot label"), action: .off),
+    ]
+
+    enum Action: String, Codable, CaseIterable {
+        case scroll
+        case keyPress
+        case off
+
+        var displayLabel: String {
+            switch self {
+            case .scroll: return String(localized: "Scroll", comment: "Ring/strip action: scroll")
+            case .keyPress: return String(localized: "Key", comment: "Ring/strip action: key press")
+            case .off: return String(localized: "Off", comment: "Ring/strip action: disabled")
+            }
         }
     }
 }
@@ -1279,7 +1396,7 @@ struct ButtonBinding: Codable, Equatable {
 
     enum Kind: String, Codable {
         case none, leftClick, rightClick, middleClick, eraser, keyCombo, displayToggle, doubleClick,
-            spacebar
+            spacebar, ringCycle, ringSelectSlot
     }
 
     var kind: Kind = .none
@@ -1389,6 +1506,11 @@ struct ButtonBinding: Codable, Equatable {
         case .doubleClick:
             return String(localized: "Double Click", comment: "Button action: double-click")
         case .spacebar: return String(localized: "Spacebar", comment: "Button action: spacebar key")
+        case .ringCycle:
+            return String(localized: "Ring: Cycle", comment: "Button action: cycle ring mode")
+        case .ringSelectSlot:
+            return String(
+                localized: "Ring: Mode \(keyCode + 1)", comment: "Button action: jump to ring slot")
         case .keyCombo:
             let f = CGEventFlags(rawValue: modifierFlags)
             var s = ""
@@ -1426,7 +1548,14 @@ struct ButtonBinding: Codable, Equatable {
         case "Middle Click": return .middleClick
         case "Eraser": return .eraser
         case "Toggle Display": return ButtonBinding(kind: .displayToggle)
+        case "Ring: Cycle": return ButtonBinding(kind: .ringCycle)
         default:
+            if label.hasPrefix("Ring: Mode ") {
+                let numStr = label.dropFirst("Ring: Mode ".count)
+                if let num = Int(numStr), num > 0 {
+                    return ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(num - 1))
+                }
+            }
             return parseKeyComboLabel(label) ?? .none
         }
     }

@@ -104,8 +104,8 @@ struct AppOverrideBar: View {
         "penButton1Binding", "penButton2Binding",
         "tipBinding", "eraserBinding",
         "expressKeyBindings",
-        "touchRingButtonBinding", "touchRingMode",
-        "touchStrip1Mode", "touchStrip2Mode",
+        "touchRingButtonBinding",
+        "touchRingSlotsJSON", "touchRingActiveSlotIndex",
     ]
 
     // MARK: - Properties

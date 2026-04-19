@@ -34,6 +34,10 @@ struct DigitizerSpec {
     /// True if this model has two touch rings (one per bezel), e.g. Cintiq 24HD.
     /// Used by CintiqV1Decoder to gate decoding of the second ring byte in 0x0C reports.
     var hasDualRings: Bool = false
+    /// Number of ring mode slots this device supports.
+    /// Matches the number of physical toggle positions (e.g. 4 LED positions on Intuos Pro).
+    /// The UI shows this many slots; the model always stores 4 (same pattern as expressKeyBindings).
+    var ringSlotCount: Int = 4
 }
 
 protocol TabletDevice: AnyObject {
