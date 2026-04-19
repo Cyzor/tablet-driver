@@ -601,32 +601,44 @@ final class InputInjector {
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
             if delta != 0 {
-                switch s.touchRingMode {
-                case .scroll:
-                    postScrollWheelEvent(delta: delta, at: cursorPos)
-                case .off:
-                    break
+                if let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex) ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil {
+                    switch slot.action {
+                    case .scroll:
+                        postScrollWheelEvent(delta: delta, at: cursorPos)
+                    case .keyPress:
+                        let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
+                        fireButtonAction(binding, down: true, at: cursorPos, settings: s)
+                    case .off:
+                        break
+                    }
                 }
             }
         }
         lastRingPos = buttons.touchRingActive ? ringPos : 0x7F
 
-        // ── Touch ring 2 (DTK-2400 right bezel) — shares touchRingMode setting ──
+        // ── Touch ring 2 (DTK-2400 right bezel) — shares touchRingSlots ──
         let ring2Pos = buttons.touchRing2Position
         if buttons.touchRing2Active, lastRing2Pos != 0x7F {
             var delta = Int(ring2Pos) - Int(lastRing2Pos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
             if delta != 0 {
-                switch s.touchRingMode {
-                case .scroll: postScrollWheelEvent(delta: delta, at: cursorPos)
-                case .off: break
+                if let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex) ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil {
+                    switch slot.action {
+                    case .scroll:
+                        postScrollWheelEvent(delta: delta, at: cursorPos)
+                    case .keyPress:
+                        let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
+                        fireButtonAction(binding, down: true, at: cursorPos, settings: s)
+                    case .off:
+                        break
+                    }
                 }
             }
         }
         lastRing2Pos = buttons.touchRing2Active ? ring2Pos : 0x7F
 
-        // ── Touch strips (Intuos3 WS) ──────────────────────────────────────────
+        // ── Touch strips (Intuos3 WS) — share touchRingSlots ───────────────────
         // Strips are linear (no wrap); each zone step maps 1:1 to a scroll event.
 
         // Strip 1 (left).
@@ -634,9 +646,16 @@ final class InputInjector {
         if buttons.touchStrip1Active, lastStrip1Pos != 0xFF {
             let delta = Int(s1pos) - Int(lastStrip1Pos)
             if delta != 0 {
-                switch s.touchStrip1Mode {
-                case .scroll: postScrollWheelEvent(delta: delta, at: cursorPos)
-                case .off: break
+                if let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex) ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil {
+                    switch slot.action {
+                    case .scroll:
+                        postScrollWheelEvent(delta: delta, at: cursorPos)
+                    case .keyPress:
+                        let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
+                        fireButtonAction(binding, down: true, at: cursorPos, settings: s)
+                    case .off:
+                        break
+                    }
                 }
             }
         }
@@ -647,9 +666,16 @@ final class InputInjector {
         if buttons.touchStrip2Active, lastStrip2Pos != 0xFF {
             let delta = Int(s2pos) - Int(lastStrip2Pos)
             if delta != 0 {
-                switch s.touchStrip2Mode {
-                case .scroll: postScrollWheelEvent(delta: delta, at: cursorPos)
-                case .off: break
+                if let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex) ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil {
+                    switch slot.action {
+                    case .scroll:
+                        postScrollWheelEvent(delta: delta, at: cursorPos)
+                    case .keyPress:
+                        let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
+                        fireButtonAction(binding, down: true, at: cursorPos, settings: s)
+                    case .off:
+                        break
+                    }
                 }
             }
         }
@@ -1108,6 +1134,12 @@ final class InputInjector {
             guard down, let s = settings else { break }
             s.targetDisplayIndex = TabletSettings.displayModeToggle
             cycleToggleDisplay(settings: s)
+        case .ringCycle:
+            guard down, let s = settings else { break }
+            s.touchRingActiveSlotIndex = (s.touchRingActiveSlotIndex + 1) % max(1, s.touchRingSlots.count)
+        case .ringSelectSlot:
+            guard down, let s = settings else { break }
+            s.touchRingActiveSlotIndex = min(Int(binding.keyCode), max(0, s.touchRingSlots.count - 1))
         case .doubleClick:
             guard down else { break }
             for clickState in [1, 2] {

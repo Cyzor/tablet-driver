@@ -117,6 +117,68 @@ struct ButtonMappingView: View {
         )
     }
 
+    // MARK: - Touch ring slot helpers
+
+    /// Array index → slot action binding.
+    private func slotBinding(at index: Int) -> Binding<ControlSlot.Action> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(index) else { return .scroll }
+                return self.settings.touchRingSlots[index].action
+            },
+            set: { newAction in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(index) else { return }
+                var newSlots = oldSlots
+                newSlots[index].action = newAction
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot \(index + 1) Action") {
+                    self.settings.touchRingSlots = oldSlots
+                }
+            }
+        )
+    }
+
+    /// Array index → CW rotation binding (used when action == .keyPress).
+    private func slotCWBinding(at index: Int) -> Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(index) else { return .none }
+                return self.settings.touchRingSlots[index].cwBinding
+            },
+            set: { newBinding in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(index) else { return }
+                var newSlots = oldSlots
+                newSlots[index].cwBinding = newBinding
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot \(index + 1) CW") {
+                    self.settings.touchRingSlots = oldSlots
+                }
+            }
+        )
+    }
+
+    /// Array index → CCW rotation binding (used when action == .keyPress).
+    private func slotCCWBinding(at index: Int) -> Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(index) else { return .none }
+                return self.settings.touchRingSlots[index].ccwBinding
+            },
+            set: { newBinding in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(index) else { return }
+                var newSlots = oldSlots
+                newSlots[index].ccwBinding = newBinding
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot \(index + 1) CCW") {
+                    self.settings.touchRingSlots = oldSlots
+                }
+            }
+        )
+    }
+
     private var spec: WacomDeviceSpec? {
         productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
@@ -308,34 +370,22 @@ struct ButtonMappingView: View {
                         "Touch Ring Button", owner: settings,
                         get: { settings.touchRingButtonBinding },
                         set: { settings.touchRingButtonBinding = $0 }))
-                touchRingRow(
+                touchRingSlotsSection(
                     String(
                         localized: "Touch Ring",
                         comment: "Section header / row label for touch ring"),
-                    isActive: lb.touchRingActive,
-                    mode: recordingBinding(
-                        "Touch Ring Mode", owner: settings,
-                        get: { settings.touchRingMode },
-                        set: { settings.touchRingMode = $0 }))
+                    isActive: lb.touchRingActive)
             }
         }
 
         if hasTouchStrips {
             Section(LocalizedStringKey("Touch Strips")) {
-                touchRingRow(
+                touchRingSlotsSection(
                     String(localized: "Left", comment: "Left touch strip row label"),
-                    isActive: lb.touchStrip1Active,
-                    mode: recordingBinding(
-                        "Touch Strip 1 Mode", owner: settings,
-                        get: { settings.touchStrip1Mode },
-                        set: { settings.touchStrip1Mode = $0 }))
-                touchRingRow(
+                    isActive: lb.touchStrip1Active)
+                touchRingSlotsSection(
                     String(localized: "Right", comment: "Right touch strip row label"),
-                    isActive: lb.touchStrip2Active,
-                    mode: recordingBinding(
-                        "Touch Strip 2 Mode", owner: settings,
-                        get: { settings.touchStrip2Mode },
-                        set: { settings.touchStrip2Mode = $0 }))
+                    isActive: lb.touchStrip2Active)
             }
         }
     }
@@ -375,14 +425,10 @@ struct ButtonMappingView: View {
         }
 
         Section(LocalizedStringKey("Touch Ring — Left")) {
-            touchRingRow(
+            touchRingSlotsSection(
                 String(
                     localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-                isActive: lb.touchRingActive,
-                mode: recordingBinding(
-                    "Touch Ring Mode", owner: settings,
-                    get: { settings.touchRingMode },
-                    set: { settings.touchRingMode = $0 }))
+                isActive: lb.touchRingActive)
         }
 
         Section(LocalizedStringKey("Toggle Buttons — Right")) {
@@ -406,14 +452,10 @@ struct ButtonMappingView: View {
         }
 
         Section(LocalizedStringKey("Touch Ring — Right")) {
-            touchRingRow(
+            touchRingSlotsSection(
                 String(
                     localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-                isActive: lb.touchRing2Active,
-                mode: recordingBinding(
-                    "Touch Ring Mode", owner: settings,
-                    get: { settings.touchRingMode },
-                    set: { settings.touchRingMode = $0 }))
+                isActive: lb.touchRing2Active)
         }
     }
 
@@ -436,41 +478,67 @@ struct ButtonMappingView: View {
         )
     }
 
-    // MARK: - Touch ring / strip row
+    // MARK: - Touch ring / strip slots section
 
+    /// A compact slot list for the touch ring and both touch strips.
+    /// All three controls share the same slot list and active index, so they always
+    /// Renders the ring/strip slot rows.
+    /// The section header and live-active indicator come from the caller;
+    /// only the slot rows and the cycling hint differ between ring and strip.
     @ViewBuilder
-    private func touchRingRow(
-        _ label: String, isActive: Bool,
-        mode: Binding<TouchRingMode>
+    private func touchRingSlotsSection(
+        _ label: String, isActive: Bool
     ) -> some View {
-        HStack(spacing: 10) {
-            activeIndicator(isActive)
-            labelText(label, isActive: isActive)  // ← pass isActive
-
-            // Force a pop-up menu to look like a fucking menu
-            Picker("", selection: mode) {
-                ForEach(TouchRingMode.allCases, id: \.self) { m in
-                    Text(m.displayLabel).tag(m)
-                }
+        VStack(alignment: .leading, spacing: 6) {
+            // Section header
+            HStack(spacing: 6) {
+                activeIndicator(isActive)
+                labelText(label, isActive: isActive)
+                Spacer(minLength: 0)
             }
-            // .pickerStyle(.menu)
-            .labelsHidden()
-            .padding(1)
-            .help(
-                LocalizedStringKey("Action performed when sliding a finger around the touch ring.")
-            )
 
-            .controlSize(.regular)
-            .background(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(Color(NSColor.controlColor))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .strokeBorder(Color(NSColor.separatorColor), lineWidth: 0.5)
-                    )
-                    .shadow(radius: 0.25)
-            )
+            // Slot rows — one per mode position.
+            // Show only as many slots as the spec declares (default 4); model always stores 4.
+            let slotCount = min(settings.touchRingSlots.count, spec?.ringSlotCount ?? 4)
+            ForEach(Array(settings.touchRingSlots.prefix(slotCount).enumerated()), id: \.element.id) { idx, slot in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "\(idx + 1).circle")
+                            .foregroundStyle(.secondary)
 
+                        Spacer(minLength: 0)
+
+                        Picker("", selection: slotBinding(at: idx)) {
+                            ForEach(ControlSlot.Action.allCases, id: \.self) { action in
+                                Text(action.displayLabel).tag(action)
+                            }
+                        }
+                        .labelsHidden()
+                        .controlSize(.small)
+                        .help(LocalizedStringKey("What the ring does when rotated in this mode."))
+                    }
+
+                    if slot.action == .keyPress {
+                        HStack(spacing: 16) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                ButtonBindingControl(binding: slotCWBinding(at: idx), compact: true)
+                            }
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.counterclockwise")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                ButtonBindingControl(binding: slotCCWBinding(at: idx), compact: true)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.leading, 20)
+                    }
+                }
+                .padding(.vertical, 3)
+            }
         }
     }
 
@@ -523,6 +591,7 @@ struct ButtonMappingView: View {
 /// • The ✕ button clears any existing assignment.
 struct ButtonBindingControl: View {
     @Binding var binding: ButtonBinding
+    var compact: Bool = false
     @State private var isRecording = false
     @State private var monitor: Any?
     /// Modifier keys accumulated while recording (before any base key is pressed).
@@ -541,7 +610,7 @@ struct ButtonBindingControl: View {
                         .lineLimit(1)
                     Spacer(minLength: 0)
                 }
-                .frame(minWidth: 140, maxWidth: .infinity)
+                .frame(minWidth: compact ? 60 : 140, maxWidth: compact ? 120 : .infinity)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
             }
@@ -585,6 +654,7 @@ struct ButtonBindingControl: View {
             Divider()
             Button("Spacebar") { binding = ButtonBinding(kind: .spacebar) }
             Button("Toggle Display") { binding = ButtonBinding(kind: .displayToggle) }
+            Button("Touch Ring Mode") { binding = ButtonBinding(kind: .ringCycle) }
             Divider()
             Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
             Button("⌥ Option") { binding = ButtonBinding(modifierOnly: .option) }

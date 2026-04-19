@@ -92,7 +92,8 @@ final class WacomKnownDevice: TabletDevice {
             maxPressure: deviceSpec.maxPressure,
             buttonCount: deviceSpec.buttonCount,
             hasTilt: deviceSpec.hasTilt,
-            hasDualRings: deviceSpec.hasDualRings)
+            hasDualRings: deviceSpec.hasDualRings,
+            ringSlotCount: deviceSpec.ringSlotCount)
 
         switch deviceSpec.parser {
         case .intuosV2:

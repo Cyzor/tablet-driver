@@ -76,10 +76,10 @@ final class PresetExporter {
         d["relativeCursorMovement"] = s.relativeCursorMovement
         d["penButton1"] = s.penButton1Binding.displayLabel
         d["penButton2"] = s.penButton2Binding.displayLabel
-        d["touchRing"] = s.touchRingMode.displayLabel
+        d["touchRing"] = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex) ? s.touchRingSlots[s.touchRingActiveSlotIndex].action.displayLabel : "Scroll"
         d["touchRingButton"] = s.touchRingButtonBinding.displayLabel
-        d["touchStrip1"] = s.touchStrip1Mode.displayLabel
-        d["touchStrip2"] = s.touchStrip2Mode.displayLabel
+        d["touchStrip1"] = d["touchRing"]
+        d["touchStrip2"] = d["touchRing"]
         let expressKeys = s.expressKeyBindings.map(\.displayLabel)
         if expressKeys.contains(where: { $0 != "None" }) {
             d["expressKeys"] = expressKeys
