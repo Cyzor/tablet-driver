@@ -87,6 +87,16 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Subscriptions managed by this context (e.g., to TabletManager for change propagation).
     var cancellables: Set<AnyCancellable> = []
 
+    /// Subscribe to ring slot changes so the physical LED tracks the active mode.
+    /// Call this once after `tabletDevice` is assigned.
+    func observeRingLED() {
+        settings.$touchRingActiveSlotIndex
+            .sink { [weak self] index in
+                self?.tabletDevice?.setRingLED(index: index)
+            }
+            .store(in: &cancellables)
+    }
+
     init(productID: Int, rawProductID: Int? = nil) {
         self.id = productID
         self.productID = productID

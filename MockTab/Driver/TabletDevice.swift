@@ -44,6 +44,13 @@ protocol TabletDevice: AnyObject {
     var spec: DigitizerSpec { get }
     func open()
     func close()
+    /// Update the physical ring LED to reflect the active mode slot (0-based).
+    /// No-op on devices that don't support LED control.
+    func setRingLED(index: Int)
+}
+
+extension TabletDevice {
+    func setRingLED(index: Int) {}
 }
 
 // Convenience: read an integer property from an IOHIDDevice.
