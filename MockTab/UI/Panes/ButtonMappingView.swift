@@ -44,6 +44,217 @@ struct ButtonMappingView: View {
         $settings.activeTool
     }
 
+    // Pre-allocated touch ring slot bindings — one Binding per slot per direction.
+    // Eliminates per-call closure allocation in touchRingSlotsSection during
+    // ~16 Hz liveButtons invalidations (same pattern as penNBinding / tipBinding).
+    private var slot0CWBinding: Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(0) else { return .none }
+                return self.settings.touchRingSlots[0].cwBinding
+            },
+            set: { newBinding in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(0) else { return }
+                var newSlots = oldSlots
+                newSlots[0].cwBinding = newBinding
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 1 CW") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+    private var slot0CCWBinding: Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(0) else { return .none }
+                return self.settings.touchRingSlots[0].ccwBinding
+            },
+            set: { newBinding in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(0) else { return }
+                var newSlots = oldSlots
+                newSlots[0].ccwBinding = newBinding
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 1 CCW") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+    private var slot1CWBinding: Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(1) else { return .none }
+                return self.settings.touchRingSlots[1].cwBinding
+            },
+            set: { newBinding in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(1) else { return }
+                var newSlots = oldSlots
+                newSlots[1].cwBinding = newBinding
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 2 CW") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+    private var slot1CCWBinding: Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(1) else { return .none }
+                return self.settings.touchRingSlots[1].ccwBinding
+            },
+            set: { newBinding in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(1) else { return }
+                var newSlots = oldSlots
+                newSlots[1].ccwBinding = newBinding
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 2 CCW") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+    private var slot2CWBinding: Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(2) else { return .none }
+                return self.settings.touchRingSlots[2].cwBinding
+            },
+            set: { newBinding in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(2) else { return }
+                var newSlots = oldSlots
+                newSlots[2].cwBinding = newBinding
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 3 CW") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+    private var slot2CCWBinding: Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(2) else { return .none }
+                return self.settings.touchRingSlots[2].ccwBinding
+            },
+            set: { newBinding in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(2) else { return }
+                var newSlots = oldSlots
+                newSlots[2].ccwBinding = newBinding
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 3 CCW") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+    private var slot3CWBinding: Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(3) else { return .none }
+                return self.settings.touchRingSlots[3].cwBinding
+            },
+            set: { newBinding in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(3) else { return }
+                var newSlots = oldSlots
+                newSlots[3].cwBinding = newBinding
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 4 CW") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+    private var slot3CCWBinding: Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(3) else { return .none }
+                return self.settings.touchRingSlots[3].ccwBinding
+            },
+            set: { newBinding in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(3) else { return }
+                var newSlots = oldSlots
+                newSlots[3].ccwBinding = newBinding
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 4 CCW") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+
+    /// Direction for slotBinding(for:direction:).
+    private enum SlotDirection { case cw, ccw }
+
+    // Pre-allocated touch ring slot action bindings — one Binding per slot.
+    // Eliminates per-call closure allocation in touchRingSlotsSection during
+    // ~16 Hz liveButtons invalidations (same pattern as slot0CWBinding etc.).
+    private var slot0ActionBinding: Binding<ControlSlot.Action> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(0) else { return .scroll }
+                return self.settings.touchRingSlots[0].action
+            },
+            set: { newAction in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(0) else { return }
+                var newSlots = oldSlots
+                newSlots[0].action = newAction
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 1 Action") {
+                    self.settings.touchRingSlots = oldSlots
+                }
+            }
+        )
+    }
+    private var slot1ActionBinding: Binding<ControlSlot.Action> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(1) else { return .scroll }
+                return self.settings.touchRingSlots[1].action
+            },
+            set: { newAction in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(1) else { return }
+                var newSlots = oldSlots
+                newSlots[1].action = newAction
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 2 Action") {
+                    self.settings.touchRingSlots = oldSlots
+                }
+            }
+        )
+    }
+    private var slot2ActionBinding: Binding<ControlSlot.Action> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(2) else { return .scroll }
+                return self.settings.touchRingSlots[2].action
+            },
+            set: { newAction in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(2) else { return }
+                var newSlots = oldSlots
+                newSlots[2].action = newAction
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 3 Action") {
+                    self.settings.touchRingSlots = oldSlots
+                }
+            }
+        )
+    }
+    private var slot3ActionBinding: Binding<ControlSlot.Action> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(3) else { return .scroll }
+                return self.settings.touchRingSlots[3].action
+            },
+            set: { newAction in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(3) else { return }
+                var newSlots = oldSlots
+                newSlots[3].action = newAction
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 4 Action") {
+                    self.settings.touchRingSlots = oldSlots
+                }
+            }
+        )
+    }
+
     private var pen1Binding: Binding<ButtonBinding> {
         Binding(
             get: { tool.penButton1Binding },
@@ -127,24 +338,33 @@ struct ButtonMappingView: View {
 
     // MARK: - Touch ring slot helpers
 
-    /// Array index → slot action binding.
+    /// Array index → slot action binding (pre-allocated stored properties survive
+    /// ~16 Hz liveButtons invalidations in touchRingSlotsSection).
     private func slotBinding(at index: Int) -> Binding<ControlSlot.Action> {
-        Binding(
-            get: {
-                guard self.settings.touchRingSlots.indices.contains(index) else { return .scroll }
-                return self.settings.touchRingSlots[index].action
-            },
-            set: { newAction in
-                let oldSlots = self.settings.touchRingSlots
-                guard oldSlots.indices.contains(index) else { return }
-                var newSlots = oldSlots
-                newSlots[index].action = newAction
-                self.settings.touchRingSlots = newSlots
-                self.settings.record("Ring Slot \(index + 1) Action") {
-                    self.settings.touchRingSlots = oldSlots
-                }
-            }
-        )
+        switch index {
+        case 0: return slot0ActionBinding
+        case 1: return slot1ActionBinding
+        case 2: return slot2ActionBinding
+        case 3: return slot3ActionBinding
+        default: return Binding(get: { .scroll }, set: { _ in })
+        }
+    }
+
+    /// Index → pre-allocated CW/CCW binding for touch ring slot.
+    /// Called from touchRingSlotsSection only; the pre-allocated stored
+    /// properties (slot0CWBinding etc.) survive ~16 Hz liveButtons invalidations.
+    private func slotBinding(for index: Int, direction: SlotDirection) -> Binding<ButtonBinding> {
+        switch (index, direction) {
+        case (0, .cw): return slot0CWBinding
+        case (0, .ccw): return slot0CCWBinding
+        case (1, .cw): return slot1CWBinding
+        case (1, .ccw): return slot1CCWBinding
+        case (2, .cw): return slot2CWBinding
+        case (2, .ccw): return slot2CCWBinding
+        case (3, .cw): return slot3CWBinding
+        case (3, .ccw): return slot3CCWBinding
+        default: return Binding(get: { .none }, set: { _ in })
+        }
     }
 
     /// Array index → CW rotation binding (used when action == .keyPress).
@@ -510,13 +730,13 @@ struct ButtonMappingView: View {
             // Slot rows — one per mode position.
             // Show only as many slots as the spec declares (default 4); model always stores 4.
             let slotCount = min(settings.touchRingSlots.count, spec?.ringSlotCount ?? 4)
-            ForEach(Array(settings.touchRingSlots.prefix(slotCount).enumerated()), id: \.element.id) { idx, slot in
+            ForEach(Array(settings.touchRingSlots.prefix(slotCount).enumerated()), id: \.element.id)
+            { idx, slot in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
-                        Image(systemName: "\(idx + 1).circle")
+                        Text("Mode \(idx + 1)")
                             .foregroundStyle(.secondary)
-
-                        Spacer(minLength: 0)
+                            .frame(minWidth: 50, alignment: .trailing)
 
                         Picker("", selection: slotBinding(at: idx)) {
                             ForEach(ControlSlot.Action.allCases, id: \.self) { action in
@@ -525,6 +745,7 @@ struct ButtonMappingView: View {
                         }
                         .labelsHidden()
                         .controlSize(.small)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .help(LocalizedStringKey("What the ring does when rotated in this mode."))
                     }
 
@@ -534,13 +755,17 @@ struct ButtonMappingView: View {
                                 Image(systemName: "arrow.clockwise")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
-                                ButtonBindingControl(binding: slotCWBinding(at: idx), compact: true, ringSlotCount: spec?.ringSlotCount ?? 4)
+                                ButtonBindingControl(
+                                    binding: slotBinding(for: idx, direction: .cw), compact: true,
+                                    ringSlotCount: spec?.ringSlotCount ?? 4)
                             }
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.counterclockwise")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
-                                ButtonBindingControl(binding: slotCCWBinding(at: idx), compact: true, ringSlotCount: spec?.ringSlotCount ?? 4)
+                                ButtonBindingControl(
+                                    binding: slotBinding(for: idx, direction: .ccw), compact: true,
+                                    ringSlotCount: spec?.ringSlotCount ?? 4)
                             }
                             Spacer(minLength: 0)
                         }
