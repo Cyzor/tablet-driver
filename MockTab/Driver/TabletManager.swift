@@ -470,9 +470,34 @@ final class TabletManager: ObservableObject {
                     onBattery: onBattery, onHardwareSerial: onHardwareSerial)
             } else {
                 let pid = String(productID, radix: 16, uppercase: true)
-                print("TabletManager: unknown Wacom 0x\(pid) — attaching generic driver")
-                wacomDevice = WacomFallbackDevice(
-                    device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+                // Probe HID descriptor before attaching a fallback driver.
+                // If the device has no X/Y digitizer elements (maxX == 0), it is
+                // a non-input interface (e.g. LED controller, status interface) and
+                // should not receive feature-init reports or be treated as a tablet.
+                let (probeX, _, _, _) = queryHIDDigitizerSpec(device)
+                if probeX > 0 {
+                    print("TabletManager: unknown Wacom 0x\(pid) — attaching generic driver")
+                    wacomDevice = WacomFallbackDevice(
+                        device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
+                } else {
+                    // No digitizer — check if this is a known LED companion interface.
+                    // If a WacomKnownDevice for the parent tablet is already running,
+                    // hand the device off for LED control rather than skipping it entirely.
+                    let matched = contexts.values.first {
+                        guard let driver = $0.tabletDevice as? WacomKnownDevice,
+                              let companionPID = WacomDeviceRegistry.spec(for: $0.productID)?.ledCompanionPID
+                        else { return false }
+                        return companionPID == productID
+                    }
+                    if let ctx = matched, let driver = ctx.tabletDevice as? WacomKnownDevice {
+                        print("TabletManager: Wacom 0x\(pid) — LED companion for \(ctx.productID == 0 ? "unknown" : String(ctx.productID, radix: 16, uppercase: true))")
+                        driver.registerLEDDevice(device)
+                        hidDeviceMap[device] = ctx
+                    } else {
+                        print("TabletManager: Wacom 0x\(pid) — no digitizer elements, skipping")
+                    }
+                    wacomDevice = nil
+                }
             }
         }
 
@@ -480,6 +505,7 @@ final class TabletManager: ObservableObject {
             context.tabletDevice = wacomDevice
             hidDeviceMap[device] = context
             wacomDevice.open()
+            context.observeRingLED()  // after open() so initial LED sync reaches the device
             context.settings.applyExpressKeyDefaults()
             refreshConnectedIDs(mostRecent: productID)
 

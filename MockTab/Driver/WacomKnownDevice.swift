@@ -52,6 +52,15 @@ final class WacomKnownDevice: TabletDevice {
     private var reportBuffer: [UInt8]
     private var isBluetooth = false
 
+    // ── LED companion interface ───────────────────────────────────────────────
+    // Some composite devices (e.g. DTK-2400) expose LED control on a separate
+    // USB interface with its own PID. That IOHIDDevice is handed to us via
+    // registerLEDDevice() once TabletManager enumerates it.
+    private var ledDevice: IOHIDDevice?
+    /// Last index requested via setRingLED. Applied immediately when ledDevice
+    /// is registered so the LED syncs even if the companion connects after init.
+    private var pendingLEDIndex: Int = 0
+
     // ── Wireless dongle (ACK-40401) support ──────────────────────────────────
     // When isWireless is true, pen events are suppressed until the RF link is
     // confirmed by a 0x80 wireless status report (d[1] bit 0 set = connected).
@@ -196,6 +205,58 @@ final class WacomKnownDevice: TabletDevice {
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        if let led = ledDevice {
+            IOHIDDeviceClose(led, IOOptionBits(kIOHIDOptionsTypeNone))
+            ledDevice = nil
+        }
+    }
+
+    // MARK: - LED control
+
+    /// Update the ring LED to reflect the active slot index.
+    /// IntuosV2 only — other families are no-ops via the protocol default.
+    func setRingLED(index: Int) {
+        pendingLEDIndex = index
+        switch deviceSpec.parser {
+        case .intuosV2 where !isBluetooth:
+            // Linux wacom_sys.c wacom_led_control(), INTUOS5S..INTUOSPL wired path:
+            //   led_bits = (crop_lum << 4) | (ring_lum << 2) | ring_led
+            //   crop_lum = 0 (hardcoded), ring_lum = 1 (Medium), ring_led = select & 0x03
+            //   buf[0] = 0x11, buf[1] = led_bits, rest 0
+            // BT Intuos Pro uses a separate 51-byte report (WAC_CMD_WL_INTUOSP2); skip.
+            let ledBits = (UInt8(1) << 2) | UInt8(index & 0x03)
+            var buf = [UInt8](repeating: 0, count: 9)
+            buf[0] = 0x11
+            buf[1] = ledBits
+            IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
+
+        case .cintiqV1:
+            // LED control targets the companion interface (ledDevice), not the digitizer.
+            // Linux wacom_sys.c else branch, WACOM_24HD path:
+            //   buf[1] = (group0.select | 0x4) | ((group1.select << 4) | 0x40)
+            //   buf[2] = llv, buf[3] = hlv, buf[4] = img_lum
+            // Ring 2 (group 1) independent index not yet tracked; stays at slot 0.
+            guard let led = ledDevice else { break }
+            let ledByte = UInt8(index & 0x03) | 0x44  // 0x04 = group0 enable, 0x40 = group1 at slot 0
+            var buf = [UInt8](repeating: 0, count: 9)
+            buf[0] = 0x11
+            buf[1] = ledByte
+            buf[2] = 0x40  // llv: moderate brightness
+            IOHIDDeviceSetReport(led, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
+
+        default:
+            break
+        }
+    }
+
+    /// Register the companion LED controller interface for this device.
+    /// Called by TabletManager when a no-digitizer Wacom interface is matched
+    /// to this device via `WacomDeviceSpec.ledCompanionPID`.
+    func registerLEDDevice(_ device: IOHIDDevice) {
+        IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        ledDevice = device
+        // Apply any pending LED index that was requested before this interface arrived.
+        setRingLED(index: pendingLEDIndex)
     }
 
     /// Send feature init to activate the digitizer endpoint.

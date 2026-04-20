@@ -89,7 +89,7 @@ struct WacomDeviceSpec {
     /// True if this model has a capacitive touch ring (Intuos Pro).
     let hasTouchRing: Bool
     /// True if this model has two touch rings (one per bezel), e.g. Cintiq 24HD.
-    /// Implies hasTouchRing.  The two rings share the same mode setting.
+    /// Implies hasTouchRing.  The two rings are independently assignable.
     let hasDualRings: Bool
     /// True if this model has dual capacitive touch strips (Intuos3 WS).
     let hasTouchStrips: Bool
@@ -114,6 +114,12 @@ struct WacomDeviceSpec {
     /// True if this interface must be seized (kIOHIDOptionsTypeSeizeDevice)
     /// to prevent macOS's built-in HID mouse driver from consuming reports.
     let seizeUSB: Bool
+    /// Product ID of a companion USB interface that handles LED control separately.
+    /// When a Wacom device with this PID is enumerated but has no digitizer elements,
+    /// TabletManager routes it to this device's WacomKnownDevice as an LED target
+    /// rather than attaching a fallback driver or skipping it entirely.
+    /// nil = LED control uses the main digitizer interface (single-interface devices).
+    let ledCompanionPID: Int?
 
     init(
         productID: Int, name: String, parser: ReportParser,
@@ -122,7 +128,8 @@ struct WacomDeviceSpec {
         hasTouchStrips: Bool = false, ringSlotCount: Int = 4, hasEraser: Bool, hasTilt: Bool = false,
         featureInit: [UInt8]?, seizeUSB: Bool,
         featureInit2: [UInt8]? = nil,
-        featureInit2Delay: Double = 0.15
+        featureInit2Delay: Double = 0.15,
+        ledCompanionPID: Int? = nil
     ) {
         self.productID = productID
         self.name = name
@@ -141,6 +148,7 @@ struct WacomDeviceSpec {
         self.seizeUSB = seizeUSB
         self.featureInit2 = featureInit2
         self.featureInit2Delay = featureInit2Delay
+        self.ledCompanionPID = ledCompanionPID
     }
 
     /// Derives the device family identifier from parser and name.
@@ -553,13 +561,13 @@ enum WacomDeviceRegistry {
         .init(
             productID: 0x00F4, name: "Cintiq 24HD (DTK-2400)",  // ✓ confirmed live
             parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
-            buttonCount: 8, hasTouchRing: true, hasDualRings: true, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: true),
+            buttonCount: 8, hasTouchRing: true, hasDualRings: true, ringSlotCount: 3, hasEraser: true,
+            featureInit: [0x02, 0x02], seizeUSB: true, ledCompanionPID: 0x0056),
         .init(
             productID: 0x00F8, name: "Cintiq 24HD Touch (DTH-2400)",  // ⚠ estimated
             parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
-            buttonCount: 8, hasTouchRing: true, hasDualRings: true, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: true),
+            buttonCount: 8, hasTouchRing: true, hasDualRings: true, ringSlotCount: 3, hasEraser: true,
+            featureInit: [0x02, 0x02], seizeUSB: true, ledCompanionPID: 0x0056),
         .init(
             productID: 0x00FA, name: "Cintiq 22HD (DTK-2200)",  // ⚠ estimated
             parser: .cintiqV1, maxX: 95840, maxY: 54090, maxPressure: 2047,

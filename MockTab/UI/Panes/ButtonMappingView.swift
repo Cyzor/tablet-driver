@@ -27,6 +27,14 @@ struct ButtonMappingView: View {
     @ObservedObject var registry: DeviceRegistry
     var productID: Int?
 
+    @Environment(\.controlActiveState) private var controlActiveState
+
+    /// Live button state, zeroed when this window is not key so highlights
+    /// don't bleed into background windows.
+    private var liveButtons: LiveButtonState {
+        controlActiveState == .key ? tabletManager.liveButtons : LiveButtonState()
+    }
+
     private var tool: ToolSettings { settings.activeTool }
 
     // Pre-allocated Binding<ToolSettings> — created once, not per body call.
@@ -223,11 +231,11 @@ struct ButtonMappingView: View {
             AppOverrideBar(
                 settings: settings, domainKeys: AppOverrideBar.buttonKeys, productID: productID)
             Form {
-                penButtonsSection(lb: tabletManager.liveButtons)
+                penButtonsSection(lb: liveButtons)
                 if hasDualRings {
-                    dualSidedSection(lb: tabletManager.liveButtons)
+                    dualSidedSection(lb: liveButtons)
                 } else {
-                    singleSidedSection(lb: tabletManager.liveButtons)
+                    singleSidedSection(lb: liveButtons)
                 }
             }
             .formStyle(.grouped)
@@ -369,7 +377,8 @@ struct ButtonMappingView: View {
                     binding: recordingBinding(
                         "Touch Ring Button", owner: settings,
                         get: { settings.touchRingButtonBinding },
-                        set: { settings.touchRingButtonBinding = $0 }))
+                        set: { settings.touchRingButtonBinding = $0 }),
+                    ringSlotCount: spec?.ringSlotCount ?? 4)
                 touchRingSlotsSection(
                     String(
                         localized: "Touch Ring",
@@ -474,7 +483,8 @@ struct ButtonMappingView: View {
                     updated[index] = newValue
                     settings.expressKeyBindings = updated
                 }
-            )
+            ),
+            ringSlotCount: spec?.ringSlotCount ?? 4
         )
     }
 
@@ -524,13 +534,13 @@ struct ButtonMappingView: View {
                                 Image(systemName: "arrow.clockwise")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
-                                ButtonBindingControl(binding: slotCWBinding(at: idx), compact: true)
+                                ButtonBindingControl(binding: slotCWBinding(at: idx), compact: true, ringSlotCount: spec?.ringSlotCount ?? 4)
                             }
                             HStack(spacing: 4) {
                                 Image(systemName: "arrow.counterclockwise")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
-                                ButtonBindingControl(binding: slotCCWBinding(at: idx), compact: true)
+                                ButtonBindingControl(binding: slotCCWBinding(at: idx), compact: true, ringSlotCount: spec?.ringSlotCount ?? 4)
                             }
                             Spacer(minLength: 0)
                         }
@@ -547,12 +557,13 @@ struct ButtonMappingView: View {
     @ViewBuilder
     private func buttonRow(
         _ label: String, isActive: Bool,
-        binding: Binding<ButtonBinding>
+        binding: Binding<ButtonBinding>,
+        ringSlotCount: Int = 4
     ) -> some View {
         HStack(spacing: 0) {
             activeIndicator(isActive)
             labelText(label, isActive: isActive)
-            ButtonBindingControl(binding: binding)
+            ButtonBindingControl(binding: binding, ringSlotCount: ringSlotCount)
             Spacer(minLength: 0)
         }
     }
@@ -592,6 +603,7 @@ struct ButtonMappingView: View {
 struct ButtonBindingControl: View {
     @Binding var binding: ButtonBinding
     var compact: Bool = false
+    var ringSlotCount: Int = 4
     @State private var isRecording = false
     @State private var monitor: Any?
     /// Modifier keys accumulated while recording (before any base key is pressed).
@@ -654,7 +666,15 @@ struct ButtonBindingControl: View {
             Divider()
             Button("Spacebar") { binding = ButtonBinding(kind: .spacebar) }
             Button("Toggle Display") { binding = ButtonBinding(kind: .displayToggle) }
-            Button("Touch Ring Mode") { binding = ButtonBinding(kind: .ringCycle) }
+            Menu("Touch Ring Mode") {
+                Button("Cycle") { binding = ButtonBinding(kind: .ringCycle) }
+                Divider()
+                ForEach(0..<ringSlotCount, id: \.self) { i in
+                    Button("Jump to Mode \(i + 1)") {
+                        binding = ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i))
+                    }
+                }
+            }
             Divider()
             Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
             Button("⌥ Option") { binding = ButtonBinding(modifierOnly: .option) }
