@@ -135,25 +135,33 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     // re-insert them immediately after SwiftUI's rebuild pass settles.
 
     private var rebuildScheduled = false
+    private var mainMenuObserver: NSObjectProtocol?
 
     private func watchMainMenuForRebuild() {
+        if let obs = mainMenuObserver {
+            NotificationCenter.default.removeObserver(obs)
+            mainMenuObserver = nil
+        }
         guard let mainMenu = NSApp.mainMenu else { return }
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(mainMenuDidRemoveItem),
-            name: NSMenu.didRemoveItemNotification,
-            object: mainMenu)
+        mainMenuObserver = NotificationCenter.default.addObserver(
+            forName: NSMenu.didRemoveItemNotification,
+            object: mainMenu,
+            queue: .main
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.mainMenuDidRemoveItem() } }
     }
 
     @objc private func mainMenuDidRemoveItem() {
         guard !rebuildScheduled else { return }
         rebuildScheduled = true
         DispatchQueue.main.async { [self] in
-            rebuildScheduled = false
             insertTabletMenu()
             insertPresetsMenu()
             removeEmptyViewMenu()
             hookWindowMenu()
+            // Reset only after all work is done so that notifications fired by our
+            // own remove/insert calls (hookWindowMenu removes the old Window item)
+            // are suppressed by the still-true guard and don't re-enter this handler.
+            rebuildScheduled = false
         }
     }
 
@@ -193,6 +201,8 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     // MARK: - Factory Reset (Option-key hidden item)
 
+    private weak var hideDockIconItem: NSMenuItem?
+
     private func hookAppMenu() {
         guard let menu = NSApp.mainMenu?.items.first?.submenu else { return }
 
@@ -208,17 +218,55 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         else { return }
         let quitIndex = menu.items.firstIndex(of: quitItem)!
 
-        let item = NSMenuItem(
+        let factoryReset = NSMenuItem(
             title: String(
                 localized: "Factory Reset\u{2026}",
                 comment: "Menu item: factory reset (Option-key hidden)"),
             action: #selector(confirmFactoryReset),
             keyEquivalent: quitItem.keyEquivalent)
-        item.keyEquivalentModifierMask = quitItem.keyEquivalentModifierMask.union(.option)
-        item.isAlternate = true
-        item.target = self
-        menu.insertItem(item, at: quitIndex + 1)
+        factoryReset.keyEquivalentModifierMask = quitItem.keyEquivalentModifierMask.union(.option)
+        factoryReset.isAlternate = true
+        factoryReset.target = self
+        menu.insertItem(factoryReset, at: quitIndex + 1)
+
+        // "Hide Dock Icon…" — only meaningful when the Dock icon is visible.
+        // Hidden automatically in menuNeedsUpdate when in accessory mode.
+        let hideItem = NSMenuItem(
+            title: String(
+                localized: "Hide Dock Icon\u{2026}",
+                comment: "Menu item: hide the app's Dock icon"),
+            action: #selector(confirmHideDockIcon),
+            keyEquivalent: "")
+        hideItem.target = self
+        // Insert before the separator that precedes Quit.
+        let separatorIndex = (quitIndex > 0 && menu.items[quitIndex - 1].isSeparatorItem)
+            ? quitIndex - 1
+            : quitIndex
+        menu.insertItem(NSMenuItem.separator(), at: separatorIndex)
+        menu.insertItem(hideItem, at: separatorIndex)
+        hideDockIconItem = hideItem
+
         menu.delegate = self
+    }
+
+    @objc private func confirmHideDockIcon() {
+        let alert = NSAlert()
+        alert.messageText = String(
+            localized: "Hide MockTab's Dock Icon?",
+            comment: "Alert title: hide Dock icon confirmation")
+        alert.informativeText = String(
+            localized: "MockTab will no longer appear in the Dock or as an active app in the menu bar. You can still access all controls from its menu bar icon. To bring the Dock icon back, click the MockTab menu bar icon and choose \u{201C}Show in Dock\u{201D}.",
+            comment: "Alert body: explaining consequences of hiding Dock icon")
+        alert.alertStyle = .informational
+        let hideButton = alert.addButton(
+            withTitle: String(localized: "Hide Dock Icon", comment: "Button label: confirm hide Dock icon"))
+        alert.addButton(
+            withTitle: String(localized: "Cancel", comment: "Button label: cancel hide Dock icon"))
+        hideButton.keyEquivalent = "\r"
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        UserDefaults.standard.set(false, forKey: "showInDock")
+        NSApp.setActivationPolicy(.accessory)
     }
 
     @objc private func confirmFactoryReset() {
@@ -468,6 +516,24 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             rebuildPresetsMenu(menu)
         } else if menu === windowMenu {
             rebuildWindowMenu(menu)
+        }
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        guard menu === NSApp.mainMenu?.items.first?.submenu,
+              let item = hideDockIconItem
+        else { return }
+
+        // Hide "Hide Dock Icon…" when already running as an accessory (no Dock icon).
+        let showingInDock = UserDefaults.standard.object(forKey: "showInDock") == nil
+            || UserDefaults.standard.bool(forKey: "showInDock")
+        item.isHidden = !showingInDock
+        // Hide the separator that sits immediately after the item.
+        if let idx = menu.items.firstIndex(of: item),
+           idx + 1 < menu.items.count,
+           menu.items[idx + 1].isSeparatorItem
+        {
+            menu.items[idx + 1].isHidden = !showingInDock
         }
     }
 

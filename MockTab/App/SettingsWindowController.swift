@@ -99,6 +99,17 @@ final class ResizableTabViewController: NSTabViewController {
             selector: #selector(windowDidResize(_:)),
             name: NSWindow.didResizeNotification,
             object: view.window)
+
+        // Minimum width varies by locale (tab labels differ in length).
+        // The value lives in Localizable.xcstrings so it stays co-located
+        // with translations and needs no code changes when labels are updated.
+        if let window = view.window {
+            let minWidth = CGFloat(
+                Double(String(localized: "settings-window-min-width",
+                              comment: "Minimum window width (pts) that keeps all toolbar tabs visible without overflow. Update this when translations change significantly."))
+                ?? 560)
+            window.minSize = NSSize(width: minWidth, height: 500)
+        }
     }
 
     @objc private func windowDidResize(_ notification: Notification) {
@@ -120,8 +131,7 @@ final class ResizableTabViewController: NSTabViewController {
 
     private func updateWindowTitle(for item: NSTabViewItem?) {
         guard let window = view.window else { return }
-        // hosting.title was set to "Label — DeviceName" for device-specific tabs
-        // and plain "Label" for shared tabs in SettingsWindowController.addTab.
+        // hosting.title was set to "Label — DeviceName" for all tabs in addTab.
         if let title = item?.viewController?.title, !title.isEmpty {
             window.title = title
         }
@@ -157,7 +167,7 @@ final class SettingsWindowController: NSWindowController {
         String(localized: "Info", comment: "Tab name: live pen coordinates and device info"),
     ]
 
-    private static let deviceSpecificTabIndices: Set<Int> = [0, 1, 2, 3]
+    private static let deviceSpecificTabIndices: Set<Int> = [0, 1, 2, 3, 4, 5, 6, 7]
 
     init(settings: TabletSettings, deviceLabel: String, productID: Int?) {
         self.settings = settings
@@ -167,7 +177,7 @@ final class SettingsWindowController: NSWindowController {
         tabVC.tabStyle = .toolbar
 
         let window = ResizableWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 790),
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 790),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -264,7 +274,7 @@ final class SettingsWindowController: NSWindowController {
         }
         addTab(label: Self.tabLabels[4], symbol: "rectangle.on.rectangle", height: 480, width: 620)
         {
-            DevicesView(tabletManager: tm, registry: dr, undoManager: um)
+            DevicesView(settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
         }
         addTab(label: Self.tabLabels[5], symbol: "star.circle", height: 450) {
             ProfilesView(settings: s, tabletManager: tm, registry: dr, productID: productID)
@@ -276,17 +286,6 @@ final class SettingsWindowController: NSWindowController {
             InfoView(tabletManager: tm, settings: s, productID: productID)
         }
 
-        // Set minimum window size to accommodate all tabs without truncation.
-        // Use 1:1 aspect ratio (minWidth = minHeight) for compact square window.
-        let tabLabelsArr = Self.tabLabels
-        let font = NSFont.systemFont(ofSize: 13)
-        let tabWidths = tabLabelsArr.map { label -> CGFloat in
-            let textSize = (label as NSString).size(withAttributes: [.font: font])
-            // Icon (~18) + label + padding (~20) + tab spacing
-            return textSize.width + 65
-        }
-        let minWidth = tabWidths.reduce(0, +) + 60  // sum + window margins/borders
-        //        window.minSize = NSSize(width: minWidth, height: minWidth)
     }
 
     required init?(coder: NSCoder) { fatalError() }

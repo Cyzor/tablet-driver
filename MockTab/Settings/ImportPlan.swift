@@ -1,7 +1,8 @@
 import Foundation
 
 /// The result of parsing a v2 JSON backup: one entry per tablet found in the file.
-struct ImportPlan {
+struct ImportPlan: Identifiable {
+    let id = UUID()
     struct TabletEntry {
         let productID: Int
         let modelName: String
