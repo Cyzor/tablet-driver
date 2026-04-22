@@ -905,7 +905,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle Tablets, Werkzeuge, Voreinstellungen und Tastenbelegungen werden gelöscht. MockTab wird neu gestartet."
+            "value": "Alle Tablets, Tools, Presets und Tastenbelegungen werden gelöscht. MockTab startet neu."
           }
         },
         "es": {
@@ -1044,7 +1044,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Weisen Sie eine Klickaktion zu: Linksklick, Rechtsklick, Mittelklick, Modifiziertasten oder Anzeige-Umschalter."
+            "value": "Klickaktion festlegen: Links-, Rechts-, Mittelklick, Modifiziertasten oder Display-Umschaltung."
           }
         },
         "es": {
@@ -1303,7 +1303,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Erfasst Diagnosedaten, um bei der Untersuchung eines Problems mit Ihrem Gerät zu helfen."
+            "value": "Erfasst Diagnosedaten, um einem Problem mit deinem Gerät auf die Spur zu kommen."
           }
         },
         "es": {
@@ -1349,7 +1349,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie eine MockTab-Sicherungsdatei zum Importieren aus"
+            "value": "Wähle eine MockTab-Backup-Datei zum Importieren"
           }
         },
         "es": {
@@ -1466,7 +1466,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Klicken Sie auf eine Anzeige, um das Tablet auf diese abzubilden. ⌘+Klick zum Hinzufügen zur Rotationsumschaltung. ⇧+Klick zum Überspannen aller Anzeigen."
+            "value": "Klick auf ein Display, um das Tablet darauf zu mappen. ⌘+Klick fügt es zur Umschalt-Rotation hinzu. ⇧+Klick spannt alle Displays auf."
           }
         },
         "es": {
@@ -1490,7 +1490,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Klicken Sie auf eine Miniaturansicht, um diese Anzeige in die Rotation ein- oder auszuschalten. ⌘+Klick zum Hinzufügen einzelner Anzeigen; ⇧+Klick zum Auswählen eines Bereichs."
+            "value": "Klick auf ein Vorschaubild, um das Display zur Rotation hinzuzufügen oder zu entfernen. ⌘+Klick für einzelne Displays, ⇧+Klick für Bereiche."
           }
         },
         "es": {
@@ -1514,7 +1514,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Klicken Sie, um eine Tastenkombination aufzuzeichnen. Drücken Sie Escape zum Abbrechen oder Delete zum Löschen. Verwenden Sie das ▾-Menü, um eine Klickaktion zuzuweisen."
+            "value": "Klick, um einen Tastaturkurzbefehl aufzunehmen. Escape zum Abbrechen, Entf zum Löschen. Über das ▾-Menü kannst du auch eine Klickaktion zuweisen."
           }
         },
         "es": {
@@ -1977,7 +1977,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verzögert kurz die Strichfreigabe, wenn der Stift mitten in der Bewegung abgehoben wird, um unbeabsichtigte kurze Striche zu verhindern."
+            "value": "Verzögert das Loslassen kurz, wenn der Stift mitten in der Bewegung abgehoben wird – verhindert versehentlich kurze Striche."
           }
         },
         "es": {
@@ -2415,7 +2415,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Herausziehen zum Exportieren, JSON-Datei hineinziehen zum Importieren, oder Control-Klick für Aktionen."
+            "value": "Nach außen ziehen zum Exportieren, JSON-Datei hineinziehen zum Importieren, oder Control-Klick für weitere Aktionen."
           }
         },
         "es": {
@@ -2467,7 +2467,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zeichnen Sie auf der Leinwand, um das Druck- und Klickverhalten zu überprüfen."
+            "value": "Zeichne auf der Leinwand, um Druck- und Klickverhalten zu prüfen."
           }
         },
         "es": {
@@ -2536,7 +2536,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "MockTab so einstellen, dass es beim Anmelden automatisch gestartet wird."
+            "value": "MockTab automatisch starten lassen, wenn du dich anmeldest."
           }
         },
         "es": {
@@ -3100,7 +3100,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gehen Sie zur Registerkarte \"Tasten\", um eine Schaltfläche zuzuweisen, die die Anzeigenumschaltung auslöst."
+            "value": "Zum Tab „Tasten\" wechseln, um eine Taste für die Display-Umschaltung zu belegen."
           }
         },
         "es": {
@@ -3169,7 +3169,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Führt Sie durch einige kurze Aktionen, um die Kommunikation Ihres Geräts zu erfassen. Erstellt eine kleine JSON-Datei, die Sie teilen können, um die Geräteunterstützung hinzuzufügen oder zu reparieren."
+            "value": "Führt dich durch einige Aktionen, um die Kommunikation deines Geräts zu erfassen. Erzeugt eine kleine JSON-Datei, die du teilen kannst, um die Geräteunterstützung zu ergänzen oder zu verbessern."
           }
         },
         "es": {
@@ -3261,7 +3261,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hilft bei der Hinzufügung der Unterstützung für Ihr Gerät, indem das HID-Berichtslayout erfasst wird."
+            "value": "Hilft dabei, Unterstützung für dein Gerät hinzuzufügen, indem das HID-Berichtslayout erfasst wird."
           }
         },
         "es": {
@@ -3331,7 +3331,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wie nah ein zweiter Tap zum ersten liegen muss, um als Doppelklick zu zählen. Ziehen Sie auf Aus, um die Positionsanpassung zu deaktivieren."
+            "value": "Wie nah ein zweiter Tipp am ersten liegen muss, um als Doppelklick zu gelten. Auf „Aus\" ziehen, um die Positionskorrektur zu deaktivieren."
           }
         },
         "es": {
@@ -3473,7 +3473,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Im absoluten Modus wird jeder Punkt des Tablets einem festen Punkt auf dem Bildschirm zugeordnet. Im relativen Modus bewegt sich der Cursor um die Entfernung, die Sie den Stift bewegen, wie bei einer Maus."
+            "value": "Im absoluten Modus entspricht jeder Punkt auf dem Tablet einem festen Punkt auf dem Bildschirm. Im relativen Modus bewegt sich der Cursor relativ zur letzten Position – wie eine Maus."
           }
         },
         "es": {
@@ -3867,7 +3867,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sperren Sie das Tablet-zu-Bildschirm-Abbildungsverhältnis, um dem Anzeigeformat zu entsprechen, damit sich der Cursor nie gestreckt oder komprimiert anfühlt."
+            "value": "Tablet-zu-Bildschirm-Verhältnis sperren, damit der Cursor nie gestreckt oder gestaucht wirkt."
           }
         },
         "es": {
@@ -4675,7 +4675,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nicht in Ihrer Registrierung — Profil ist verfügbar, wenn dieses Tablett verbunden wird."
+            "value": "Nicht in deiner Registrierung — Profil ist verfügbar, sobald dieses Tablet verbunden wird."
           }
         },
         "es": {
@@ -4744,7 +4744,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Öffnen Sie die Systemeinstellungen, um MockTab die Berechtigung zu erteilen, Tastatur- und Mausereignisse in andere Apps zu injizieren."
+            "value": "Systemeinstellungen öffnen, um MockTab die Berechtigung zu erteilen, Tastatur- und Mausereignisse in andere Apps zu senden."
           }
         },
         "es": {
@@ -4906,7 +4906,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Führen Sie jede dieser Aktionen aus und klicken Sie dann auf Fertig:"
+            "value": "Führe jede dieser Aktionen aus und klick dann auf „Fertig\":"
           }
         },
         "es": {
@@ -5044,7 +5044,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Halten Sie jede Seitentaste am Stift gedrückt"
+            "value": "Jede Seitentaste am Stift gedrückt halten"
           }
         },
         "es": {
@@ -5067,7 +5067,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Drücken Sie jede Taste am Tablettgehäuse (falls vorhanden)"
+            "value": "Jede Taste am Tablet-Gehäuse drücken (falls vorhanden)"
           }
         },
         "es": {
@@ -5090,7 +5090,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Drücken Sie das Radierer-Ende auf die Oberfläche (falls vorhanden)"
+            "value": "Das Radierende auf die Fläche drücken (falls vorhanden)"
           }
         },
         "es": {
@@ -5441,7 +5441,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Empfehlung: Beenden oder deaktivieren Sie die aufgelisteten Prozesse und starten Sie MockTab neu. Bei Wacom-Treibern überprüfen Sie Systemeinstellungen → Allgemein → Anmeldeobjekte, um deren Start zu verhindern. Bei RF-Jitter versuchen Sie, drahtlose Empfänger (Mäuse, Tastaturen, WLAN-Dongles) vom Tablett wegzubewegen."
+            "value": "Empfehlung: Die aufgelisteten Prozesse beenden oder deaktivieren, dann MockTab neu starten. Für Wacom-Treiber das Wacom Tablet Utility verwenden, um den Treiber vollständig zu entfernen."
           }
         },
         "es": {
@@ -5649,7 +5649,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle Überschreibungen von %@ für diesen Tab entfernen"
+            "value": "Alle %@-Einstellungen für diesen Tab entfernen"
           }
         },
         "es": {
@@ -5673,7 +5673,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dieses Werkzeug aus dem Register entfernen. Es wird mit seinem Standardnamen erneut angezeigt, wenn es das nächste Mal erkannt wird."
+            "value": "Dieses Tool aus der Registrierung entfernen. Beim nächsten Erkennen erscheint es wieder mit seinem Standardnamen."
           }
         },
         "es": {
@@ -5858,7 +5858,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Setzen Sie den aktiven Bereich auf die gesamte Tablettenoberfläche zurück (rückgängig machbar)."
+            "value": "Aktiven Bereich auf die gesamte Tablet-Oberfläche zurücksetzen (widerrufbar)."
           }
         },
         "es": {
@@ -5928,7 +5928,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kehrt die Drehrichtung des Stifts um. Aktivieren Sie pro App für Apps, die die Rotation rückwärts interpretieren (z. B. Krita)."
+            "value": "Drehrichtung des Stifts umkehren. Pro App aktivieren, wenn eine App die Rotation rückwärts interpretiert (z. B. Krita)."
           }
         },
         "es": {
@@ -6273,7 +6273,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie ein Werkzeug aus, das erzwungen werden soll (oder lassen Sie es leer, um das erkannte Werkzeug zu verwenden):"
+            "value": "Tool zum Erzwingen auswählen (oder leer lassen, um das erkannte Tool zu verwenden):"
           }
         },
         "es": {
@@ -6342,7 +6342,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Teilen Sie diese Datei mit den MockTab-Entwicklern für eine mögliche Funktionsunterstützung."
+            "value": "Diese Datei an die MockTab-Entwickler senden, um mögliche Unterstützung zu erhalten."
           }
         },
         "es": {
@@ -6411,7 +6411,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Details zu erkannten Konflikten mit anderen Tablett-Treibern und deren Behebung anzeigen."
+            "value": "Details zu erkannten Konflikten mit anderen Tablet-Treibern anzeigen und erfahren, wie du sie beheben kannst."
           }
         },
         "es": {
@@ -6480,7 +6480,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gleiten oder berühren Sie alle Ringe oder Streifen am Tablett (falls vorhanden)"
+            "value": "Alle Ringe oder Streifen am Tablet gleiten oder antippen (falls vorhanden)"
           }
         },
         "es": {
@@ -6950,7 +6950,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der aktive Tablet-Bereich wird auf die ausgewählte Anzeige abgebildet."
+            "value": "Der aktive Tablet-Bereich wird dem ausgewählten Display zugeordnet."
           }
         },
         "es": {
@@ -7433,7 +7433,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Berühren Sie mit der Stiftspitze die Oberfläche und heben Sie sie dann an"
+            "value": "Stiftspitze auf die Fläche aufsetzen und wieder abheben"
           }
         },
         "es": {
@@ -7550,7 +7550,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verwenden Sie einen Tastendruck, um die aktive Zuordnung des Tablets zwischen ausgewählten Anzeigen zu wechseln."
+            "value": "Über einen Tastendruck die aktive Tablet-Zuordnung zwischen ausgewählten Displays wechseln."
           }
         },
         "es": {
@@ -7573,7 +7573,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verwenden Sie dies, wenn Ihr Gerät nicht erkannt wird oder eine Funktion nicht wie erwartet funktioniert. Die Sammlung dauert etwa eine Minute."
+            "value": "Diese Funktion verwenden, wenn dein Gerät nicht erkannt wird oder etwas nicht wie erwartet funktioniert. Die Erfassung dauert etwa eine Minute."
           }
         },
         "es": {
@@ -7666,7 +7666,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Was der Ring tut, wenn er in diesem Modus gedreht wird."
+            "value": "Was der Ring in diesem Modus beim Drehen macht."
           }
         },
         "es": {
@@ -7688,7 +7688,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wenn aktiviert, bleibt der Stiftklick nach dem Abheben der Spitze bei schneller Bewegung für ca. 80 ms offen. Dies verhindert unbeabsichtigte Strichunterbrechungen beim schnellen Zeichnen."
+            "value": "Wenn aktiviert, bleibt der Stift-Klick nach dem Abheben bei schneller Bewegung für ca. 80 ms gehalten. Das verhindert ungewollte Strichunterbrechungen beim schnellen Zeichnen."
           }
         },
         "es": {
@@ -7780,7 +7780,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sie haben %lld Apps abgelegt. Alle als Überschreibungen hinzufügen?"
+            "value": "Du hast %lld Apps abgelegt. Alle als individuelle Einstellungen hinzufügen?"
           }
         },
         "es": {
@@ -7803,7 +7803,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihr Bildschirm ist gedreht. In Kombination mit einem gedrehten Tablett ist möglicherweise eine Anpassung erforderlich. Testen Sie Ihre Stifteingabe, um sicherzustellen, dass die Zuordnung korrekt ist."
+            "value": "Dein Display ist gedreht. In Kombination mit einem gedrehten Tablet kann eine Anpassung nötig sein. Teste die Stifteingabe, um die Zuordnung zu prüfen."
           }
         },
         "es": {
