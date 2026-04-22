@@ -187,6 +187,25 @@ struct PenFeelView: View {
                             "In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse."
                         ))
                 }
+
+                Section(LocalizedStringKey("Click Behavior")) {
+                    Toggle(isOn: tipUpAssistBinding) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(LocalizedStringKey("Tip-up Assist"))
+                            Text(
+                                LocalizedStringKey(
+                                    "Delays the stroke release briefly when the pen is lifted mid-motion, preventing accidental short strokes."
+                                )
+                            )
+                            .font(.settingsLabel)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .help(
+                        LocalizedStringKey(
+                            "When enabled, the pen click is held open for ~80 ms after the tip lifts if you are moving quickly. This helps prevent unintended stroke breaks during fast drawing."
+                        ))
+                }
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -291,6 +310,17 @@ struct PenFeelView: View {
                 settings.record("Relative Cursor Movement") {
                     settings.relativeCursorMovement = old
                 }
+            }
+        )
+    }
+
+    private var tipUpAssistBinding: Binding<Bool> {
+        Binding(
+            get: { settings.tipUpAssist },
+            set: { newVal in
+                let old = settings.tipUpAssist
+                settings.tipUpAssist = newVal
+                settings.record("Tip-up Assist") { settings.tipUpAssist = old }
             }
         )
     }
