@@ -27,8 +27,10 @@ import SwiftUI
 /// Lower section: tools and peripherals seen on the selected tablet
 /// (stylus, eraser, etc.).  Names are also user-editable.
 struct DevicesView: View {
+    @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
+    var productID: Int?
     var undoManager: UndoManager?
 
     @State private var editingTabletID: Int? = nil
@@ -55,15 +57,23 @@ struct DevicesView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                tabletsSection
-                Divider()
-                toolsSection
-                Divider()
-                allToolsSection
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    tabletsSection
+                    Divider()
+                    toolsSection
+                    Divider()
+                    allToolsSection
+                }
+                .padding()
             }
-            .padding()
+            DeviceStatusBar(
+                settings: settings,
+                tabletManager: tabletManager,
+                registry: registry,
+                productID: productID ?? 0
+            )
         }
         .onAppear { syncTools() }
         .onChange(of: tabletManager.connectedProductID) { _ in

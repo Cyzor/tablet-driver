@@ -69,16 +69,16 @@ struct PresetImporter {
 
     static func decodeDeviceSettings(_ s: [String: Any], into values: inout [String: Any]) {
         if let area = s["tabletArea"] as? [String: Any] {
-            if let v = area["x"] as? Double { values["activeAreaX"] = v }
-            if let v = area["y"] as? Double { values["activeAreaY"] = v }
-            if let v = area["width"] as? Double { values["activeAreaWidth"] = v }
-            if let v = area["height"] as? Double { values["activeAreaHeight"] = v }
+            if let v = area["x"] as? Double, v.isFinite, v >= 0, v <= 1 { values["activeAreaX"] = v }
+            if let v = area["y"] as? Double, v.isFinite, v >= 0, v <= 1 { values["activeAreaY"] = v }
+            if let v = area["width"] as? Double, v.isFinite, v > 0, v <= 1 { values["activeAreaWidth"] = v }
+            if let v = area["height"] as? Double, v.isFinite, v > 0, v <= 1 { values["activeAreaHeight"] = v }
             if let v = area["proportionalMapping"] as? Bool { values["proportionalMapping"] = v }
             if let v = area["orientation"] as? String { values["tabletOrientation"] = decodeOrientation(v) }
         }
         if let v = s["display"] { values["targetDisplayIndex"] = decodeDisplay(v) }
-        if let v = s["smoothing"] as? Double { values["smoothingStrength"] = v }
-        if let v = s["doubleClickDistance"] as? Double { values["doubleClickDistance"] = v }
+        if let v = s["smoothing"] as? Double, v.isFinite, v >= 0, v <= 1 { values["smoothingStrength"] = v }
+        if let v = s["doubleClickDistance"] as? Double, v.isFinite, v > 0, v <= 200 { values["doubleClickDistance"] = v }
         if let v = s["invertRotation"] as? Bool { values["invertRotation"] = v }
         if let v = s["relativeCursorMovement"] as? Bool { values["relativeCursorMovement"] = v }
         if let v = s["penButton1"] as? String { values["penButton1Binding"] = ButtonBinding.fromDisplayLabel(v).encoded }

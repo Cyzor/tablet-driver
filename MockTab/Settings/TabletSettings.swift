@@ -799,10 +799,10 @@ final class TabletSettings: ObservableObject {
     /// compile-time defaults.
     private func reloadAll() {
         isLoading = true
-        activeAreaX = loadDouble("activeAreaX", default: 0.0)
-        activeAreaY = loadDouble("activeAreaY", default: 0.0)
-        activeAreaWidth = loadDouble("activeAreaWidth", default: 1.0)
-        activeAreaHeight = loadDouble("activeAreaHeight", default: 1.0)
+        activeAreaX      = Swift.max(0.0,  Swift.min(loadDouble("activeAreaX",      default: 0.0), 1.0))
+        activeAreaY      = Swift.max(0.0,  Swift.min(loadDouble("activeAreaY",      default: 0.0), 1.0))
+        activeAreaWidth  = Swift.max(0.01, Swift.min(loadDouble("activeAreaWidth",  default: 1.0), 1.0))
+        activeAreaHeight = Swift.max(0.01, Swift.min(loadDouble("activeAreaHeight", default: 1.0), 1.0))
         proportionalMapping = loadBool("proportionalMapping", default: true)
         tabletOrientation =
             TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape

@@ -333,7 +333,7 @@ final class InputInjector {
                 lastRelativeNorm = nil
                 lastPostedPressure = -1.0
                 clearHoverDeltas()
-                recentDeltas = ContiguousArray<CGFloat>(repeating: 0, count: recentDeltas.count)
+                for i in recentDeltas.indices { recentDeltas[i] = 0 }
                 recentDeltaHead = 0
             }
             lastProximity = point.inProximity
@@ -817,7 +817,7 @@ final class InputInjector {
         let toRelease = groundTruthSyntheticFlags
         groundTruthSyntheticFlags = []
         for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
-        syntheticHistory = [CGEventFlags](repeating: [], count: 60)
+        for i in syntheticHistory.indices { syntheticHistory[i] = [] }
         historyIndex = 0
         guard let e = CGEvent(source: sessionSource) else { return }
         e.type = .flagsChanged

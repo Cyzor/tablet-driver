@@ -26,7 +26,6 @@ struct ProfilesView: View {
 
     // Import state
     @State private var pendingImport: ImportPlan?
-    @State private var showImportSheet = false
     @State private var importError: String?
 
     // MARK: - Recording Binding Helper
@@ -553,17 +552,14 @@ struct ProfilesView: View {
                 }
             }
         }
-        .sheet(isPresented: $showImportSheet) {
-            if let plan = pendingImport {
-                ImportPreviewSheet(
-                    plan: plan,
-                    registry: registry,
-                    tabletManager: tabletManager,
-                    offlineSettings: offlineSettings
-                ) {
-                    showImportSheet = false
-                    pendingImport = nil
-                }
+        .sheet(item: $pendingImport) { plan in
+            ImportPreviewSheet(
+                plan: plan,
+                registry: registry,
+                tabletManager: tabletManager,
+                offlineSettings: offlineSettings
+            ) {
+                pendingImport = nil
             }
         }
     }
@@ -704,7 +700,6 @@ struct ProfilesView: View {
         do {
             let plan = try PresetImporter.parse(data, registry: registry)
             pendingImport = plan
-            showImportSheet = true
         } catch let e as PresetImporter.ParseError {
             importError = e.localizedDescription
         } catch {

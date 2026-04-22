@@ -29,6 +29,6 @@
     <string>MockTab needs Accessibility access to move the cursor and send tablet events.</string>
     <!-- Human-readable app name -->
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2026. MIT License.</string>
+    <string>Copyright © 2026 MockTab contributors. Licensed under GPL-3.0-or-later.</string>
 </dict>
 </plist>
