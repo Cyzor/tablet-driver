@@ -309,9 +309,14 @@ struct ButtonMappingView: View {
         Binding(
             get: { tool.tipBinding },
             set: { newValue in
-                let tool = self.tool
                 let t = self.activeToolBinding
-                settings.record("Tip Button") { t.wrappedValue.tipBinding = newValue }
+                let oldValue = t.wrappedValue.tipBinding
+                t.wrappedValue.tipBinding = newValue
+                self.settings.objectWillChange.send()
+                self.settings.record("Tip Button") {
+                    t.wrappedValue.tipBinding = oldValue
+                    self.settings.objectWillChange.send()
+                }
             }
         )
     }
@@ -319,9 +324,14 @@ struct ButtonMappingView: View {
         Binding(
             get: { tool.eraserBinding },
             set: { newValue in
-                let tool = self.tool
                 let t = self.activeToolBinding
-                settings.record("Eraser Button") { t.wrappedValue.eraserBinding = newValue }
+                let oldValue = t.wrappedValue.eraserBinding
+                t.wrappedValue.eraserBinding = newValue
+                self.settings.objectWillChange.send()
+                self.settings.record("Eraser Button") {
+                    t.wrappedValue.eraserBinding = oldValue
+                    self.settings.objectWillChange.send()
+                }
             }
         )
     }
@@ -329,9 +339,14 @@ struct ButtonMappingView: View {
         Binding(
             get: { tool.wheelBinding },
             set: { newValue in
-                let tool = self.tool
                 let t = self.activeToolBinding
-                settings.record("Wheel") { t.wrappedValue.wheelBinding = newValue }
+                let oldValue = t.wrappedValue.wheelBinding
+                t.wrappedValue.wheelBinding = newValue
+                self.settings.objectWillChange.send()
+                self.settings.record("Wheel") {
+                    t.wrappedValue.wheelBinding = oldValue
+                    self.settings.objectWillChange.send()
+                }
             }
         )
     }
@@ -430,7 +445,10 @@ struct ButtonMappingView: View {
         get: @escaping () -> T,
         set: @escaping (T) -> Void
     ) -> Binding<T> {
-        Binding(
+        // Capture settings reference so tool-owned mutations can trigger a re-render.
+        // TabletSettings-owned mutations already fire objectWillChange via @Published didSet.
+        let settings = self.settings
+        return Binding(
             get: get,
             set: { newValue in
                 let oldValue = get()
@@ -438,7 +456,14 @@ struct ButtonMappingView: View {
                 if let settingsOwner = owner as? TabletSettings {
                     settingsOwner.record(name) { set(oldValue) }
                 } else if let toolOwner = owner as? ToolSettings {
-                    toolOwner.record(name) { set(oldValue) }
+                    // ToolSettings mutations don't propagate to settings.objectWillChange
+                    // automatically (reference-type @Published only fires on reassignment).
+                    // Send explicitly so the view reflects the change immediately.
+                    settings.objectWillChange.send()
+                    toolOwner.record(name) {
+                        set(oldValue)
+                        settings.objectWillChange.send()
+                    }
                 }
             }
         )
@@ -787,7 +812,10 @@ struct ButtonMappingView: View {
     ) -> some View {
         HStack(spacing: 0) {
             activeIndicator(isActive)
+            // Fixed minimum width with trailing alignment so the binding control
+            // starts at a consistent x position regardless of label length.
             labelText(label, isActive: isActive)
+                .frame(minWidth: 100, alignment: .trailing)
             ButtonBindingControl(binding: binding, ringSlotCount: ringSlotCount)
             Spacer(minLength: 0)
         }
