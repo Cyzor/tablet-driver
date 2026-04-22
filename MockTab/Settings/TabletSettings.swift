@@ -176,6 +176,9 @@ final class TabletSettings: ObservableObject {
     @Published var relativeCursorMovement: Bool = false {
         didSet { persist("relativeCursorMovement", relativeCursorMovement) }
     }
+    @Published var tipUpAssist: Bool = false {
+        didSet { persist("tipUpAssist", tipUpAssist) }
+    }
 
     // MARK: - Touch ring & strips
 
@@ -816,6 +819,7 @@ final class TabletSettings: ObservableObject {
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
         invertRotation = loadBool("invertRotation", default: false)
         relativeCursorMovement = loadBool("relativeCursorMovement", default: false)
+        tipUpAssist = loadBool("tipUpAssist", default: false)
         loadPressureCurve()
 
         // Sync resolved pressure values and app overrides into activeTool so PenFeel
@@ -1395,8 +1399,8 @@ enum TabletOrientation: Int, CaseIterable {
 struct ButtonBinding: Codable, Equatable {
 
     enum Kind: String, Codable {
-        case none, leftClick, rightClick, middleClick, eraser, keyCombo, displayToggle, doubleClick,
-            spacebar, ringCycle, ringSelectSlot
+        case none, leftClick, rightClick, middleClick, middleClickWithTip, eraser, keyCombo,
+            displayToggle, doubleClick, spacebar, ringCycle, ringSelectSlot
     }
 
     var kind: Kind = .none
@@ -1482,7 +1486,7 @@ struct ButtonBinding: Codable, Equatable {
         switch kind {
         case .leftClick: return .left
         case .rightClick: return .right
-        case .middleClick: return .center
+        case .middleClick, .middleClickWithTip: return .center
         default: return nil
         }
     }
@@ -1498,6 +1502,11 @@ struct ButtonBinding: Codable, Equatable {
             return String(localized: "Right Click", comment: "Button action: right mouse click")
         case .middleClick:
             return String(localized: "Middle Click", comment: "Button action: middle mouse click")
+        case .middleClickWithTip:
+            return String(
+                localized: "Middle Click + Tip",
+                comment: "Button action: middle click with simulated tip pressure, for apps like SketchUp"
+            )
         case .eraser:
             return String(localized: "Eraser", comment: "Button action: switch to eraser tool")
         case .displayToggle:
@@ -1546,6 +1555,7 @@ struct ButtonBinding: Codable, Equatable {
         case "Left Click": return .leftClick
         case "Right Click": return .rightClick
         case "Middle Click": return .middleClick
+        case "Middle Click + Tip": return ButtonBinding(kind: .middleClickWithTip)
         case "Eraser": return .eraser
         case "Toggle Display": return ButtonBinding(kind: .displayToggle)
         case "Ring: Cycle": return ButtonBinding(kind: .ringCycle)

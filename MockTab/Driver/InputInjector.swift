@@ -160,6 +160,32 @@ final class InputInjector {
     private static let positionEpsilon: CGFloat = 0.5  // sub-pixel, not worth posting
     private static let pressureEpsilon: Double = 0.002
 
+    // MARK: - Tip-up assist
+    //
+    // When enabled, delays the mouseUp briefly after the tip lifts if the pen is still
+    // in motion. This prevents accidental stroke termination from light tip-release
+    // during fast strokes. The pending mouseUp is cancelled if the tip comes back down.
+
+    private static let tipUpAssistDelay: Double = 0.08  // seconds
+    private static let tipUpAssistVelocityThreshold: CGFloat = 2.0  // pts/sample
+    private var pendingMouseUp: DispatchWorkItem? = nil
+    /// Rolling short-window velocity estimate (last 4 position deltas, screen pts/sample).
+    private var recentDeltas = ContiguousArray<CGFloat>(repeating: 0, count: 4)
+    private var recentDeltaHead = 0
+
+    private func recordMoveDelta(_ delta: CGFloat) {
+        recentDeltas[recentDeltaHead] = delta
+        recentDeltaHead = (recentDeltaHead + 1) % recentDeltas.count
+    }
+
+    private var recentVelocity: CGFloat {
+        recentDeltas.reduce(0, +) / CGFloat(recentDeltas.count)
+    }
+
+    /// Set while a barrel-button click binding is held, so the movement path posts
+    /// otherMouseDragged / rightMouseDragged instead of mouseMoved.
+    private var hoverDragButton: CGMouseButton? = nil
+
     private var lastPostedPoint: CGPoint = .zero
     private var lastPostedPressure: Double = -1.0
     private var hasPostedPoint = false
@@ -314,6 +340,9 @@ final class InputInjector {
                 }
 
                 // Reset aux state so the next injectAux fires fresh transitions.
+                pendingMouseUp?.cancel()
+                pendingMouseUp = nil
+                hoverDragButton = nil
                 lastAuxButtons = [Bool](repeating: false, count: 16)
                 lastRingButtonDown = false
                 hasSmoothedPoint = false
@@ -322,6 +351,8 @@ final class InputInjector {
                 lastRelativeNorm = nil
                 lastPostedPressure = -1.0
                 clearHoverDeltas()
+                recentDeltas = ContiguousArray<CGFloat>(repeating: 0, count: recentDeltas.count)
+                recentDeltaHead = 0
             }
             lastProximity = point.inProximity
         }
@@ -376,6 +407,9 @@ final class InputInjector {
                     at: screenPoint, pressure: pressure, point: point, settings: settings)
             }
             if tipDown {
+                // Cancel any pending deferred mouseUp — tip is back down.
+                pendingMouseUp?.cancel()
+                pendingMouseUp = nil
                 let tipAction = activeToolIsEraser ? tool.eraserBinding : tool.tipBinding
                 activeButton = tipAction.mouseButton ?? .left
                 let (clickPt, count) = resolveClick(screenPoint, settings: settings)
@@ -386,10 +420,28 @@ final class InputInjector {
                     point: point,
                     settings: settings)
             } else {
-                postMouseUp(
-                    button: activeButton, at: screenPoint,
-                    clickCount: activeClickCount, point: point,
-                    settings: settings)
+                let btn = activeButton
+                let count = activeClickCount
+                let pt = point
+                let sp = screenPoint
+
+                if settings.tipUpAssist && recentVelocity > Self.tipUpAssistVelocityThreshold {
+                    // Defer the mouseUp briefly so fast strokes aren't cut short.
+                    let work = DispatchWorkItem { [weak self] in
+                        guard let self, self.pendingMouseUp != nil else { return }
+                        self.pendingMouseUp = nil
+                        self.postMouseUp(
+                            button: btn, at: sp, clickCount: count, point: pt, settings: settings)
+                    }
+                    pendingMouseUp = work
+                    DispatchQueue.main.asyncAfter(
+                        deadline: .now() + Self.tipUpAssistDelay, execute: work)
+                } else {
+                    postMouseUp(
+                        button: activeButton, at: screenPoint,
+                        clickCount: activeClickCount, point: point,
+                        settings: settings)
+                }
             }
             lastPostedPoint = screenPoint
             lastPostedPressure = pressure
@@ -404,6 +456,13 @@ final class InputInjector {
                 || (tipDown && abs(pressure - lastPostedPressure) > Self.pressureEpsilon)
 
             if moved {
+                // Track velocity for tip-up assist.
+                if hasPostedPoint {
+                    let delta = hypot(
+                        screenPoint.x - lastPostedPoint.x,
+                        screenPoint.y - lastPostedPoint.y)
+                    recordMoveDelta(delta)
+                }
                 if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
                     postTabletPointerEvent(
                         at: screenPoint, pressure: pressure, point: point, settings: settings)
@@ -414,6 +473,12 @@ final class InputInjector {
                 if dragging {
                     postMouseDrag(
                         button: activeButton, at: screenPoint, pressure: pressure, point: point,
+                        settings: settings)
+                } else if let dragBtn = hoverDragButton {
+                    // Barrel button held while hovering — send otherMouseDragged /
+                    // rightMouseDragged so apps like SketchUp receive a proper drag stream.
+                    postMouseDrag(
+                        button: dragBtn, at: screenPoint, pressure: 0, point: point,
                         settings: settings)
                 } else {
                     postMouseMoved(
@@ -932,14 +997,6 @@ final class InputInjector {
                 mouseEventSource: sessionSource, mouseType: .mouseMoved,
                 mouseCursorPosition: location, mouseButton: .left)
         else { return }
-        if let p = point {
-            let pose = resolveEffectivePose(point: p, settings: settings)
-            e.setIntegerValueField(.mouseEventSubtype, value: 1)
-            e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
-            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
-            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
-        }
         e.setIntegerValueField(
             .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
         e.setIntegerValueField(
@@ -1059,6 +1116,7 @@ final class InputInjector {
         case .none:
             break
         case .leftClick:
+            hoverDragButton = down ? .left : nil
             let type: CGEventType = down ? .leftMouseDown : .leftMouseUp
             if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
@@ -1068,6 +1126,7 @@ final class InputInjector {
                 finalizeAndPost(e)
             }
         case .rightClick, .eraser:
+            hoverDragButton = down ? .right : nil
             let type: CGEventType = down ? .rightMouseDown : .rightMouseUp
             if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
@@ -1077,11 +1136,37 @@ final class InputInjector {
                 finalizeAndPost(e)
             }
         case .middleClick:
+            hoverDragButton = down ? .center : nil
             let type: CGEventType = down ? .otherMouseDown : .otherMouseUp
             if let e = CGEvent(
                 mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: .center)
             {
+                // Match OTD's event format: subtype=1 + devID + ptBtns, pressure explicitly 0.
+                // CGEvent auto-sets mouseEventPressure=1.0 on mouseDown; zeroing it prevents
+                // apps like SketchUp from treating the button press as a tip contact.
+                e.setIntegerValueField(.mouseEventSubtype, value: 1)
+                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                e.setIntegerValueField(.tabletEventPointButtons, value: down ? 4 : 0)
+                e.setDoubleValueField(.tabletEventPointPressure, value: 0.0)
+                e.setDoubleValueField(.mouseEventPressure, value: 0.0)
+                e.flags = currentEventFlags
+                finalizeAndPost(e)
+            }
+        case .middleClickWithTip:
+            hoverDragButton = down ? .center : nil
+            // Like middleClick, but stamps tablet tip-down fields so apps that gate
+            // on tip contact (SketchUp, some CAD tools) accept the event.
+            let type: CGEventType = down ? .otherMouseDown : .otherMouseUp
+            if let e = CGEvent(
+                mouseEventSource: sessionSource, mouseType: type,
+                mouseCursorPosition: location, mouseButton: .center)
+            {
+                e.setIntegerValueField(.mouseEventSubtype, value: 1)
+                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                e.setIntegerValueField(.tabletEventPointButtons, value: down ? 4 : 0)  // bit 2 = middle
+                e.setDoubleValueField(.tabletEventPointPressure, value: down ? 1.0 : 0.0)
+                e.setDoubleValueField(.mouseEventPressure, value: down ? 1.0 : 0.0)
                 e.flags = currentEventFlags
                 finalizeAndPost(e)
             }

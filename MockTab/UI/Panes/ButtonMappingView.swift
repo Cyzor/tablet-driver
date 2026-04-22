@@ -886,6 +886,7 @@ struct ButtonBindingControl: View {
             Button("Left Click") { binding = ButtonBinding(kind: .leftClick) }
             Button("Right Click") { binding = ButtonBinding(kind: .rightClick) }
             Button("Middle Click") { binding = ButtonBinding(kind: .middleClick) }
+            Button("Middle Click + Tip") { binding = ButtonBinding(kind: .middleClickWithTip) }
             Button("Double Click") { binding = ButtonBinding(kind: .doubleClick) }
             Button("Eraser") { binding = ButtonBinding(kind: .eraser) }
             Divider()
