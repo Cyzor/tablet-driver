@@ -1355,7 +1355,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elija un archivo de copia de seguridad de MockTab para importar"
+            "value": "Elige un archivo de copia de seguridad de MockTab para importar"
           }
         },
         "ja": {
@@ -1472,7 +1472,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Haga clic en una pantalla para asignar la tableta a ella. ⌘+clic para agregarla a la rotación de alternancia. ⇧+clic para abarcar todas las pantallas."
+            "value": "Haz clic en una pantalla para asignar la tableta. ⌘+clic para añadirla a la rotación de alternancia. ⇧+clic para abarcar todas las pantallas."
           }
         },
         "ja": {
@@ -1496,7 +1496,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Haga clic en una miniatura para incluir o excluir esa pantalla de la rotación. ⌘+clic para agregar pantallas individuales; ⇧+clic para seleccionar un rango."
+            "value": "Haz clic en una miniatura para incluir o excluir esa pantalla de la rotación. ⌘+clic para pantallas individuales; ⇧+clic para seleccionar un rango."
           }
         },
         "ja": {
@@ -1520,7 +1520,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Haga clic para grabar un atajo de teclado. Presione Escape para cancelar o Delete para borrar. Use el menú ▾ para asignar una acción de clic."
+            "value": "Haz clic para grabar un atajo de teclado. Pulsa Escape para cancelar o Supr para borrar. Usa el menú ▾ para asignar una acción de clic."
           }
         },
         "ja": {
@@ -2421,7 +2421,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arrastre hacia fuera para exportar, arrastre un archivo JSON para importar, o haga Control-clic para más opciones."
+            "value": "Arrastra hacia fuera para exportar, arrastra un archivo JSON para importar, o haz Control-clic para más opciones."
           }
         },
         "ja": {
@@ -3106,7 +3106,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vaya a la pestaña Botones para asignar un botón que active el cambio de pantalla."
+            "value": "Ve a la pestaña Botones para asignar un botón que active el cambio de pantalla."
           }
         },
         "ja": {
@@ -3337,7 +3337,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Qué tan cerca debe estar un segundo toque del primero para contar como doble clic. Arrastre a Desactivado para deshabilitar el ajuste de posición."
+            "value": "Qué tan cerca debe estar un segundo toque del primero para contar como doble clic. Arrastra hasta Desactivado para deshabilitar el ajuste de posición."
           }
         },
         "ja": {
@@ -4750,7 +4750,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abra Configuración del sistema para conceder a MockTab permiso para inyectar eventos de teclado y ratón en otras aplicaciones."
+            "value": "Abre Configuración del sistema para dar a MockTab permiso para inyectar eventos de teclado y ratón en otras apps."
           }
         },
         "ja": {
@@ -4912,7 +4912,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Realice cada una de estas acciones, luego haga clic en Listo:"
+            "value": "Realiza cada una de estas acciones y luego haz clic en Listo:"
           }
         },
         "ja": {
@@ -5073,7 +5073,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Presione cada botón en el cuerpo de la tableta (si los hay)"
+            "value": "Pulsa cada botón del cuerpo de la tableta (si los hay)"
           }
         },
         "ja": {
@@ -5096,7 +5096,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Presione el extremo del borrador sobre la superficie (si está presente)"
+            "value": "Presiona el extremo del borrador sobre la superficie (si está presente)"
           }
         },
         "ja": {
@@ -6279,7 +6279,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Seleccione una herramienta para forzar (o deje en blanco para usar la herramienta detectada):"
+            "value": "Elige una herramienta para forzar (o deja en blanco para usar la detectada):"
           }
         },
         "ja": {
@@ -6348,7 +6348,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Comparta este archivo con los desarrolladores de MockTab para un posible soporte de funciones."
+            "value": "Comparte este archivo con los desarrolladores de MockTab para posible soporte de funciones."
           }
         },
         "ja": {
@@ -7439,7 +7439,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toque la superficie con la punta del lápiz, luego levántela"
+            "value": "Toca la superficie con la punta del lápiz y luego levántala"
           }
         },
         "ja": {
@@ -7556,7 +7556,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Use un botón para cambiar entre los mapeos activos de la tableta en las pantallas seleccionadas."
+            "value": "Usa un botón para cambiar el mapeo activo de la tableta entre las pantallas seleccionadas."
           }
         },
         "ja": {
