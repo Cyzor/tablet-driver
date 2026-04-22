@@ -157,12 +157,14 @@ struct ProfilesView: View {
                 Button(LocalizedStringKey("Save")) { commitRename() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    .help(LocalizedStringKey("Save the profile name"))
 
                 Button(LocalizedStringKey("Cancel")) {
                     editingPreset = nil
                     editingName = ""
                 }
                 .controlSize(.small)
+                .help(LocalizedStringKey("Cancel renaming"))
             } else {
                 // Preset name + activate button
                 VStack(alignment: .leading, spacing: 2) {
@@ -189,6 +191,7 @@ struct ProfilesView: View {
                         settings.activate(preset)
                     }
                     .controlSize(.small)
+                    .help(LocalizedStringKey("Switch to this profile immediately"))
                 } else {
                     Text(String(localized: "Active", comment: "Badge label when profile is active"))
                         .font(.settingsBadge)
@@ -206,6 +209,7 @@ struct ProfilesView: View {
                         editingPreset = preset
                         editingName = preset.name
                     }
+                    .help(LocalizedStringKey("Edit the profile name"))
                     Divider()
                     Button(LocalizedStringKey("Delete"), role: .destructive) {
                         if settings.activeProfile?.id == preset.id {
@@ -214,6 +218,7 @@ struct ProfilesView: View {
                         settings.deletePreset(preset)
                     }
                     .disabled(preset.name == "Default")
+                    .help(LocalizedStringKey("Permanently delete this profile (cannot be undone)"))
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .font(.settingsLabel)
@@ -286,12 +291,14 @@ struct ProfilesView: View {
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                         .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .help(LocalizedStringKey("Save this new profile with the current settings"))
 
                     Button(LocalizedStringKey("Cancel")) {
                         isCreating = false
                         newName = ""
                     }
                     .controlSize(.small)
+                    .help(LocalizedStringKey("Cancel creating a new profile"))
                 }
             } else {
                 Button {
@@ -307,6 +314,7 @@ struct ProfilesView: View {
                     }
                 }
                 .buttonStyle(.bordered)
+                .help(LocalizedStringKey("Save the current settings as a new profile"))
             }
         }
     }
@@ -332,6 +340,7 @@ struct ProfilesView: View {
                 )
             )
             .font(.settingsLabel)
+            .help(LocalizedStringKey("Restore the active profile automatically when this tablet is connected"))
         }
     }
 
@@ -528,10 +537,12 @@ struct ProfilesView: View {
                         Button(LocalizedStringKey("Export as JSON…")) { saveExportToFile() }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
+                            .help(LocalizedStringKey("Save all profiles and settings to a JSON backup file"))
 
                         Button(LocalizedStringKey("Import from File…")) { openImportPanel() }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
+                            .help(LocalizedStringKey("Restore settings from a previously saved JSON backup"))
                     }
 
                     if let err = importError {

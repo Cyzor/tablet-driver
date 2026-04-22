@@ -912,30 +912,45 @@ struct ButtonBindingControl: View {
     private var clickMenu: some View {
         Menu {
             Button("Left Click") { binding = ButtonBinding(kind: .leftClick) }
+                .help("Primary mouse button (used for drawing and selecting)")
             Button("Right Click") { binding = ButtonBinding(kind: .rightClick) }
+                .help("Secondary mouse button (context menus)")
             Button("Middle Click") { binding = ButtonBinding(kind: .middleClick) }
+                .help("Middle mouse button (panning in many apps)")
             Button("Middle Click + Tip") { binding = ButtonBinding(kind: .middleClickWithTip) }
+                .help("Middle click only when pen tip is in contact")
             Button("Double Click") { binding = ButtonBinding(kind: .doubleClick) }
+                .help("Two rapid clicks in succession")
             Button("Eraser") { binding = ButtonBinding(kind: .eraser) }
+                .help("Eraser tool (pressure-sensitive in drawing apps)")
             Divider()
             Button("Spacebar") { binding = ButtonBinding(kind: .spacebar) }
+                .help("Spacebar key (hand-tool in many design apps)")
             Button("Toggle Display") { binding = ButtonBinding(kind: .displayToggle) }
+                .help("Switch tablet mapping between displays")
             Menu("Touch Ring Mode") {
                 Button("Cycle") { binding = ButtonBinding(kind: .ringCycle) }
+                    .help("Cycle through ring modes")
                 Divider()
                 ForEach(0..<ringSlotCount, id: \.self) { i in
                     Button("Jump to Mode \(i + 1)") {
                         binding = ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i))
                     }
+                    .help("Switch ring directly to mode \(i + 1)")
                 }
             }
             Divider()
             Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
+                .help("Hold Command modifier (⌘)")
             Button("⌥ Option") { binding = ButtonBinding(modifierOnly: .option) }
+                .help("Hold Option modifier (⌥)")
             Button("⇧ Shift") { binding = ButtonBinding(modifierOnly: .shift) }
+                .help("Hold Shift modifier (⇧)")
             Button("⌃ Control") { binding = ButtonBinding(modifierOnly: .control) }
+                .help("Hold Control modifier (⌃)")
             Divider()
             Button("None") { binding = .none }
+                .help("Disable this button")
         } label: {
             Image(systemName: "ellipsis")
                 .font(.settingsBadge)

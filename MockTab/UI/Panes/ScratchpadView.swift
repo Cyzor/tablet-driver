@@ -105,6 +105,7 @@ struct ScratchpadView: View {
             Button(LocalizedStringKey("Clear")) {
                 clearID += 1
             }
+            .help(LocalizedStringKey("Erase all strokes from the test canvas"))
 //            .buttonStyle(.borderless)
             .controlSize(.small)
         }
