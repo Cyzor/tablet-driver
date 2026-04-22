@@ -48,6 +48,112 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             removeEmptyViewMenu()
             hookAboutMenuItem()
             hookAppMenu()
+            hookWindowMenu()
+            watchMainMenuForRebuild()
+        }
+    }
+
+    // MARK: - Window menu
+
+    private var windowMenu: NSMenu?
+
+    private func hookWindowMenu() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        let windowTitle = String(localized: "Window", comment: "Menu header: window management")
+
+        // Remove any existing Window menu items (including SwiftUI's auto-generated stub,
+        // which often has a nil submenu and can't be used as windowsMenu).
+        for item in mainMenu.items where item.title == windowTitle {
+            mainMenu.removeItem(item)
+        }
+
+        let menu = NSMenu(title: windowTitle)
+        menu.delegate = self
+        windowMenu = menu
+
+        let menuItem = NSMenuItem(title: windowTitle, action: nil, keyEquivalent: "")
+        menuItem.submenu = menu
+
+        // Insert after the View menu.
+        let viewTitle = String(localized: "View", comment: "Menu header: view/navigate tabs")
+        if let idx = mainMenu.items.firstIndex(where: { $0.title == viewTitle }) {
+            mainMenu.insertItem(menuItem, at: idx + 1)
+        } else {
+            mainMenu.addItem(menuItem)
+        }
+    }
+
+    private func rebuildWindowMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+
+        // Standard system entries — target:nil routes through the first-responder chain
+        // so each item acts on whichever window is currently key.
+        func addItem(_ title: String, action: Selector, key: String = "", modifiers: NSEvent.ModifierFlags = .command) {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+            item.keyEquivalentModifierMask = modifiers
+            item.target = nil
+            menu.addItem(item)
+        }
+
+        addItem(String(localized: "Minimize",       comment: "Window menu"), action: #selector(NSWindow.performMiniaturize(_:)), key: "m")
+        addItem(String(localized: "Zoom",           comment: "Window menu"), action: #selector(NSWindow.performZoom(_:)),        key: "", modifiers: [])
+        addItem(String(localized: "Full Screen",    comment: "Window menu"), action: #selector(NSWindow.toggleFullScreen(_:)),   key: "f", modifiers: [.control, .command])
+        menu.addItem(.separator())
+        addItem(String(localized: "Bring All to Front", comment: "Window menu"), action: #selector(NSApplication.arrangeInFront(_:)), key: "", modifiers: [])
+
+        // Open app windows — filter SwiftUI internals (title "Item-0") and titleless utility windows.
+        let appWindows = NSApp.windows.filter {
+            !$0.isExcludedFromWindowsMenu
+                && !$0.title.isEmpty
+                && $0.title != "Item-0"
+                && ($0.isVisible || $0.isMiniaturized)
+        }
+        if !appWindows.isEmpty {
+            menu.addItem(.separator())
+            for win in appWindows {
+                let item = NSMenuItem(title: win.title, action: #selector(focusWindow(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = win
+                item.state = win.isKeyWindow ? .on : .off
+                menu.addItem(item)
+            }
+        }
+    }
+
+    @objc private func focusWindow(_ sender: NSMenuItem) {
+        guard let win = sender.representedObject as? NSWindow else { return }
+        if win.isMiniaturized { win.deminiaturize(nil) }
+        win.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    // MARK: - Rebuild guard
+
+    // SwiftUI can rebuild NSApp.mainMenu any time a scene re-evaluates (e.g.,
+    // when TabletManager publishes during startup), silently removing menus that
+    // were inserted via AppKit.  Observing didRemoveItemNotification lets us
+    // re-insert them immediately after SwiftUI's rebuild pass settles.
+
+    private var rebuildScheduled = false
+
+    private func watchMainMenuForRebuild() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(mainMenuDidRemoveItem),
+            name: NSMenu.didRemoveItemNotification,
+            object: mainMenu)
+    }
+
+    @objc private func mainMenuDidRemoveItem() {
+        guard !rebuildScheduled else { return }
+        rebuildScheduled = true
+        DispatchQueue.main.async { [self] in
+            rebuildScheduled = false
+            insertTabletMenu()
+            insertPresetsMenu()
+            removeEmptyViewMenu()
+            hookWindowMenu()
         }
     }
 
@@ -360,6 +466,8 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             rebuildTabletMenu(menu)
         } else if menu === presetsMenu {
             rebuildPresetsMenu(menu)
+        } else if menu === windowMenu {
+            rebuildWindowMenu(menu)
         }
     }
 
