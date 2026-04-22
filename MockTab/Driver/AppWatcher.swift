@@ -86,6 +86,7 @@ final class AppWatcher {
             ctx.settings.handleAppActivation(bundleID: bundleID, appName: name)
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
             ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
+            ctx.injector.releaseOnAppSwitch()
         }
     }
 }

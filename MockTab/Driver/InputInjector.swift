@@ -319,25 +319,7 @@ final class InputInjector {
                 // release event (e.g. BT packet drop leaving lastBTPadKeys non-zero).
                 // Per-transport fixes (Defect A/B) prevent accumulation; this ensures
                 // proximity exit is always a clean slate regardless.
-                if !groundTruthSyntheticFlags.isEmpty {
-                    let syntheticToRelease = groundTruthSyntheticFlags
-                    groundTruthSyntheticFlags = []
-                    // Clear ref-counts and history
-                    for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
-                    syntheticHistory = [CGEventFlags](repeating: [], count: 60)
-                    historyIndex = 0
-
-                    if let e = CGEvent(source: sessionSource) {
-                        e.type = .flagsChanged
-                        e.setIntegerValueField(.keyboardEventKeycode, value: 0)
-                        // Preserve physical modifiers the user may be holding; strip only ours.
-                        // We use the same reconstruction logic as currentEventFlags here.
-                        let systemRaw = CGEventSource.flagsState(.hidSystemState).rawValue
-                        let physicalRaw = systemRaw & ~syntheticToRelease.rawValue
-                        e.flags = CGEventFlags(rawValue: physicalRaw)
-                        finalizeAndPost(e)
-                    }
-                }
+                releaseAllSyntheticModifiers()
 
                 // Reset aux state so the next injectAux fires fresh transitions.
                 pendingMouseUp?.cancel()
@@ -825,6 +807,35 @@ final class InputInjector {
         let physicalRaw = systemRaw & ~staleSyntheticMask
 
         return CGEventFlags(rawValue: physicalRaw | groundTruthSyntheticFlags.rawValue)
+    }
+
+    /// Releases any synthetic modifier keys currently held by tablet button bindings.
+    /// Posts a `.flagsChanged` event that strips our bits while preserving physical keys.
+    /// Safe to call when `groundTruthSyntheticFlags` is already empty (no-op).
+    private func releaseAllSyntheticModifiers() {
+        guard !groundTruthSyntheticFlags.isEmpty else { return }
+        let toRelease = groundTruthSyntheticFlags
+        groundTruthSyntheticFlags = []
+        for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
+        syntheticHistory = [CGEventFlags](repeating: [], count: 60)
+        historyIndex = 0
+        guard let e = CGEvent(source: sessionSource) else { return }
+        e.type = .flagsChanged
+        e.setIntegerValueField(.keyboardEventKeycode, value: 0)
+        let systemRaw = CGEventSource.flagsState(.hidSystemState).rawValue
+        let physicalRaw = systemRaw & ~toRelease.rawValue
+        e.flags = CGEventFlags(rawValue: physicalRaw)
+        finalizeAndPost(e)
+    }
+
+    /// Called when the frontmost application changes. Releases any synthetic modifier
+    /// keys so the new app receives a clean keyboard state.
+    ///
+    /// To disable this behavior, remove the call in AppWatcher.appDidActivate — the
+    /// proximity-exit safety valve (which calls releaseAllSyntheticModifiers) is
+    /// unaffected and continues to operate independently.
+    func releaseOnAppSwitch() {
+        releaseAllSyntheticModifiers()
     }
 
     /// Stamps an event with reconstructed flags and posts it, then advances history.
