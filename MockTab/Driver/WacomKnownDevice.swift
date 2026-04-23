@@ -18,6 +18,9 @@
 
 import Foundation
 import IOKit.hid
+import OSLog
+
+private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 
 /// Data-driven tablet driver backed by a `WacomDecoder` selected at init time.
 ///
@@ -130,6 +133,7 @@ final class WacomKnownDevice: TabletDevice {
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
         isBluetooth = transport.lowercased().contains("bluetooth")
+        let name = deviceSpec.name
 
         let options =
             seize
@@ -138,13 +142,12 @@ final class WacomKnownDevice: TabletDevice {
         let ret = IOHIDDeviceOpen(device, options)
         guard ret == kIOReturnSuccess else {
             let pid = String(deviceSpec.productID, radix: 16, uppercase: true)
-            print(
-                "\(deviceSpec.name) (0x\(pid)): failed to open (seize=\(seize)) — \(ret). "
-                    + "Is another tablet driver running?")
+            let didSeize = seize
+            logger.error("\(name, privacy: .public) (0x\(pid, privacy: .public)): failed to open (seize=\(didSeize, privacy: .public)) — \(ret, privacy: .public). Is another tablet driver running?")
             return
         }
 
-        print("\(deviceSpec.name): opened (transport=\(transport))")
+        logger.info("\(name, privacy: .public): opened (transport=\(transport, privacy: .public))")
 
         // IntuosV2 USB: mode-switch activates full tablet mode.
         // BLE: GATT is always active; writing InputMode suppresses pen data — skip.
@@ -196,7 +199,8 @@ final class WacomKnownDevice: TabletDevice {
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
-        print("\(deviceSpec.name): registered interface (transport=\(transport))")
+        let name = deviceSpec.name
+        logger.info("\(name, privacy: .public): registered interface (transport=\(transport, privacy: .public))")
     }
 
     func close() {
@@ -309,8 +313,8 @@ final class WacomKnownDevice: TabletDevice {
         }
 
         let pidHex = String(deviceSpec.productID, radix: 16, uppercase: true)
-        print(
-            "\(deviceSpec.name) (0x\(pidHex)): hardware serial 0x\(String(format: "%08X", serial))")
+        let name = deviceSpec.name
+        logger.info("\(name, privacy: .public) (0x\(pidHex, privacy: .public)): hardware serial received")
         onHardwareSerial?(serial)
     }
 
@@ -325,7 +329,8 @@ final class WacomKnownDevice: TabletDevice {
     // MARK: - Report dispatch
 
     private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
-        HIDCapture.shared.record(tag: deviceSpec.name, report: report, length: length)
+        let name = deviceSpec.name
+        HIDCapture.shared.record(tag: name, report: report, length: length)
         // Delta capture — only fires when CaptureEngine.isRunning is true.
         if CaptureEngine.shared._isRunningNonisolated {
             let r0 = report[0]
@@ -378,7 +383,7 @@ final class WacomKnownDevice: TabletDevice {
                     // are normal (dongle may send status reports frequently); don't resend
                     // feature init or reset state on every one, as that disrupts the link.
                     if !wirelessLinkConfirmed {
-                        print("\(deviceSpec.name): wireless link active")
+                        logger.info("\(name, privacy: .public): wireless link active")
                         // Reset decoder state so stale coordinates/tool identity from
                         // before link-up are not forwarded on the first live report.
                         state = DecoderState()
@@ -392,13 +397,13 @@ final class WacomKnownDevice: TabletDevice {
                     }
                 case .lost:
                     if wirelessLinkConfirmed {
-                        print("\(deviceSpec.name): wireless link lost")
+                        logger.info("\(name, privacy: .public): wireless link lost")
                         wirelessLinkConfirmed = false
                     }
                     wirelessReady = false
                     state = DecoderState()
                 case .lowBattery:
-                    print("\(deviceSpec.name): battery critically low")
+                    logger.warning("\(name, privacy: .public): battery critically low")
                 case .unknown:
                     break
                 }
@@ -407,7 +412,7 @@ final class WacomKnownDevice: TabletDevice {
             case .mouseButton(let mask):
                 onMouseButton?(mask)
             case .toolCompatibility(let message):
-                print("\(deviceSpec.name): \(message)")
+                logger.info("\(name, privacy: .public): \(message, privacy: .public)")
             }
         }
     }

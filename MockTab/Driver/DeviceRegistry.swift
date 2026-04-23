@@ -17,6 +17,9 @@
 // along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "registry")
 
 /// Persistent registry of tablets and tools the user has ever connected.
 ///
@@ -215,15 +218,12 @@ final class DeviceRegistry: ObservableObject {
 
         // Check if this serial is already mapped to a different PID (shouldn't happen).
         if let existingPID = serialMap[serialHex], existingPID != canonicalProductID {
-            print(
-                "DeviceRegistry: hardware serial 0x\(serialHex) remapped: "
-                    + "was 0x\(String(existingPID, radix: 16, uppercase: true)) "
-                    + "now 0x\(pidHex)")
+            logger.warning("DeviceRegistry: hardware serial remapped from 0x\(String(existingPID, radix: 16, uppercase: true), privacy: .public) to 0x\(pidHex, privacy: .public)")
         }
 
         serialMap[serialHex] = canonicalProductID
         saveHardwareSerialMap(serialMap)
-        print("DeviceRegistry: stored hardware serial 0x\(serialHex) → canonical PID 0x\(pidHex)")
+        logger.info("DeviceRegistry: stored hardware serial → canonical PID 0x\(pidHex, privacy: .public)")
     }
 
     /// Looks up the canonical product ID for a given hardware serial, if known.

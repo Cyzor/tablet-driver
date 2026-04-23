@@ -18,6 +18,9 @@
 
 import Foundation
 import IOKit.hid
+import OSLog
+
+private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "device")
 
 /// Digitizer dimensions in device units for a given tablet model.
 struct DigitizerSpec {
@@ -125,7 +128,7 @@ func sendWacomInputModeInit(_ device: IOHIDDevice, tag: String) {
         CFArrayGetCount(cfArr) > 0,
         let rawPtr = CFArrayGetValueAtIndex(cfArr, 0)
     else {
-        print("\(tag): no InputMode element on this interface — skipping init")
+        logger.debug("\(tag, privacy: .public): no InputMode element on this interface — skipping init")
         return
     }
 
@@ -133,9 +136,7 @@ func sendWacomInputModeInit(_ device: IOHIDDevice, tag: String) {
     let elem = Unmanaged<IOHIDElement>.fromOpaque(rawPtr).takeUnretainedValue()
     let reportID = IOHIDElementGetReportID(elem)
     let reportBits = IOHIDElementGetReportSize(elem) * IOHIDElementGetReportCount(elem)
-    print(
-        "\(tag): InputMode element found — reportID=\(reportID) size=\(reportBits) bits (\((reportBits + 7) / 8) bytes payload)"
-    )
+    logger.debug("\(tag, privacy: .public): InputMode element found — reportID=\(reportID, privacy: .public) size=\(reportBits, privacy: .public) bits (\((reportBits + 7) / 8, privacy: .public) bytes payload)")
 
     // Use IOHIDDeviceSetValue rather than IOHIDDeviceSetReport with a raw byte array.
     // IOHIDDeviceSetReport([reportID, 2]) only sends 2 bytes; if the feature report is
@@ -144,9 +145,9 @@ func sendWacomInputModeInit(_ device: IOHIDDevice, tag: String) {
     let value = IOHIDValueCreateWithIntegerValue(kCFAllocatorDefault, elem, 0, 2)
     let ret = IOHIDDeviceSetValue(device, elem, value)
     if ret == kIOReturnSuccess {
-        print("\(tag): InputMode init OK (reportID=\(reportID))")
+        logger.debug("\(tag, privacy: .public): InputMode init OK (reportID=\(reportID, privacy: .public))")
     } else {
-        print("\(tag): InputMode init FAILED (0x\(String(ret, radix: 16, uppercase: true)))")
+        logger.error("\(tag, privacy: .public): InputMode init FAILED (0x\(String(ret, radix: 16, uppercase: true), privacy: .public))")
     }
 }
 

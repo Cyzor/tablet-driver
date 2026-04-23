@@ -19,6 +19,9 @@
 import AppKit
 import Foundation
 import IOKit.hid
+import OSLog
+
+private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "manager")
 
 /// Manages IOHIDManager lifecycle, per-device contexts, and proximity-based
 /// activation for multi-tablet support.
@@ -151,9 +154,7 @@ final class TabletManager: ObservableObject {
         let ret = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         hidManagerOpen = (ret == kIOReturnSuccess)
         if !hidManagerOpen {
-            print(
-                "TabletManager: failed to open HID manager (\(ret)). "
-                    + "Check Input Monitoring permission or uninstall any existing tablet driver.")
+            logger.error("TabletManager: failed to open HID manager (\(ret, privacy: .public)). Check Input Monitoring permission or uninstall any existing tablet driver.")
         }
     }
 
@@ -206,15 +207,11 @@ final class TabletManager: ObservableObject {
             rawProductID == productID
             ? "0x\(String(productID, radix:16))"
             : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
-        print(
-            "TabletManager: device pid=\(pidStr) usagePage=0x\(String(usagePage, radix:16)) usage=0x\(String(usage, radix:16)) maxRptSize=\(maxRptSize) transport=\(transport)"
-        )
+        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public)")
 
         // BLE tablets expose multiple interfaces. Log all of them; skip ghost mouse only.
         if isBLE && usagePage == 0x01 {
-            print(
-                "TabletManager: BLE usagePage=0x01 interface — maxRptSize=\(maxRptSize) usage=0x\(String(usage, radix:16)) — skipping ghost mouse"
-            )
+            logger.debug("TabletManager: BLE usagePage=0x01 interface — maxRptSize=\(maxRptSize, privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) — skipping ghost mouse")
             return
         }
 
@@ -437,7 +434,7 @@ final class TabletManager: ObservableObject {
             // descriptor as the paired tablet (PTH-x50/x51 family, IntuosV1 format).
             // Query the descriptor now; the RF link may not be established yet so
             // pen events are gated until the 0x80 wireless status report with d[1] bit 0 set.
-            print("TabletManager: ACK-40401 wireless dongle connected")
+            logger.info("TabletManager: ACK-40401 wireless dongle connected")
             let (dMaxX, dMaxY, dMaxP, _) = queryHIDDigitizerSpec(device)
             let dongleSpec = WacomDeviceSpec(
                 productID: 0x0084,
@@ -460,9 +457,7 @@ final class TabletManager: ObservableObject {
                 deviceSpec.maxX > 0
             {
                 let shouldSeize = !isBLE && deviceSpec.seizeUSB && usagePage == 0x01
-                print(
-                    "TabletManager: \(deviceSpec.name) connected via universal driver"
-                        + (shouldSeize ? " (mouse interface, seized)" : ""))
+                logger.info("TabletManager: \(deviceSpec.name, privacy: .public) connected via universal driver\(shouldSeize ? " (mouse interface, seized)" : "", privacy: .public)")
                 wacomDevice = WacomKnownDevice(
                     device: device, deviceSpec: deviceSpec, seize: shouldSeize,
                     onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
@@ -476,7 +471,7 @@ final class TabletManager: ObservableObject {
                 // should not receive feature-init reports or be treated as a tablet.
                 let (probeX, _, _, _) = queryHIDDigitizerSpec(device)
                 if probeX > 0 {
-                    print("TabletManager: unknown Wacom 0x\(pid) — attaching generic driver")
+                    logger.info("TabletManager: unknown Wacom 0x\(pid, privacy: .public) — attaching generic driver")
                     wacomDevice = WacomFallbackDevice(
                         device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
                 } else {
@@ -490,11 +485,11 @@ final class TabletManager: ObservableObject {
                         return companionPID == productID
                     }
                     if let ctx = matched, let driver = ctx.tabletDevice as? WacomKnownDevice {
-                        print("TabletManager: Wacom 0x\(pid) — LED companion for \(ctx.productID == 0 ? "unknown" : String(ctx.productID, radix: 16, uppercase: true))")
+                        logger.info("TabletManager: Wacom 0x\(pid, privacy: .public) — LED companion for \(ctx.productID == 0 ? "unknown" : String(ctx.productID, radix: 16, uppercase: true), privacy: .public)")
                         driver.registerLEDDevice(device)
                         hidDeviceMap[device] = ctx
                     } else {
-                        print("TabletManager: Wacom 0x\(pid) — no digitizer elements, skipping")
+                        logger.debug("TabletManager: Wacom 0x\(pid, privacy: .public) — no digitizer elements, skipping")
                     }
                     wacomDevice = nil
                 }
@@ -539,7 +534,7 @@ final class TabletManager: ObservableObject {
         context.activeToolCode = 0
         context.livePoint = nil
         context.liveButtons = LiveButtonState()
-        print("TabletManager: \(Self.deviceName(forProductID: context.productID)) disconnected")
+        logger.info("TabletManager: \(Self.deviceName(forProductID: context.productID), privacy: .public) disconnected")
         refreshConnectedIDs(mostRecent: nil)
         if activeContext === context {
             activeContext = hidDeviceMap.values.first

@@ -138,6 +138,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         TabletManager.shared.appIsFrontmost = false
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        // Release any held synthetic modifiers before exit. Prevents Shift/Cmd/Opt/Ctrl
+        // appearing stuck system-wide after a force-quit or crash-then-relaunch cycle.
+        for ctx in TabletManager.shared.contexts.values {
+            ctx.injector.releaseOnAppSwitch()
+        }
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }

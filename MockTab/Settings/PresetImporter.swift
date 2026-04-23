@@ -1,6 +1,9 @@
 
 import AppKit
 import CoreGraphics
+import OSLog
+
+private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "importer")
 
 /// Parses and decodes JSON backup data into structured ImportPlan.
 struct PresetImporter {
@@ -81,9 +84,9 @@ struct PresetImporter {
         if let v = s["doubleClickDistance"] as? Double, v.isFinite, v > 0, v <= 200 { values["doubleClickDistance"] = v }
         if let v = s["invertRotation"] as? Bool { values["invertRotation"] = v }
         if let v = s["relativeCursorMovement"] as? Bool { values["relativeCursorMovement"] = v }
-        if let v = s["penButton1"] as? String { values["penButton1Binding"] = ButtonBinding.fromDisplayLabel(v).encoded }
-        if let v = s["penButton2"] as? String { values["penButton2Binding"] = ButtonBinding.fromDisplayLabel(v).encoded }
-        if let v = s["touchRingButton"] as? String { values["touchRingButtonBinding"] = ButtonBinding.fromDisplayLabel(v).encoded }
+        if let v = s["penButton1"] as? String, !v.isEmpty { values["penButton1Binding"] = ButtonBinding.fromDisplayLabel(v).encoded }
+        if let v = s["penButton2"] as? String, !v.isEmpty { values["penButton2Binding"] = ButtonBinding.fromDisplayLabel(v).encoded }
+        if let v = s["touchRingButton"] as? String, !v.isEmpty { values["touchRingButtonBinding"] = ButtonBinding.fromDisplayLabel(v).encoded }
         if let v = s["touchRing"] as? String { values["touchRingMode"] = decodeTouchRingMode(v) }
         if let v = s["touchStrip1"] as? String { values["touchStrip1Mode"] = decodeTouchRingMode(v) }
         if let v = s["touchStrip2"] as? String { values["touchStrip2Mode"] = decodeTouchRingMode(v) }
@@ -127,7 +130,7 @@ struct PresetImporter {
     }
 
     static func decodeExpressKeys(_ labels: [String]) -> String {
-        var bindings = labels.map { ButtonBinding.fromDisplayLabel($0) }
+        var bindings = labels.map { $0.isEmpty ? ButtonBinding.none : ButtonBinding.fromDisplayLabel($0) }
         while bindings.count < 16 { bindings.append(.none) }
         let arr = Array(bindings.prefix(16))
         guard let data = try? JSONEncoder().encode(arr), let s = String(data: data, encoding: .utf8) else {
