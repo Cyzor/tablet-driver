@@ -52,6 +52,13 @@ struct MockTabApp: App {
                     .keyboardShortcut("7", modifiers: .command)
                 Button(String(localized: "Info", comment: "Menu item: open Info tab")) { PreferencesWindowController.shared.showTab(at: 7) }
                     .keyboardShortcut("8", modifiers: .command)
+
+                Divider()
+
+                Button(String(localized: "Show Tab Bar", comment: "View menu: toggle the window tab bar")) {
+                    NSApp.sendAction(#selector(NSWindow.toggleTabBar(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
             }
 
             CommandGroup(replacing: .undoRedo) {
