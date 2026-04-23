@@ -98,6 +98,15 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             // entries (Cycle Through Windows, Merge All Windows, Show Next/Previous Tab,
             // Move Tab to New Window, Center, Move & Resize) and manages the window list.
             NSApp.windowsMenu = menu
+
+            // AppKit only auto-adds a window to windowsMenu when it is first ordered
+            // front. Windows restored from UserDefaults on launch are already visible
+            // before windowsMenu is set, so they are never retroactively picked up.
+            // Explicitly register all eligible existing windows now.
+            for win in NSApp.windows
+            where !win.isExcludedFromWindowsMenu && !win.title.isEmpty && win.title != "Item-0" {
+                NSApp.addWindowsItem(win, title: win.title, filename: false)
+            }
         }
 
         let menuItem = NSMenuItem(title: windowTitle, action: nil, keyEquivalent: "")
