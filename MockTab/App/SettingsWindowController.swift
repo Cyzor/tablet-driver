@@ -188,7 +188,8 @@ final class SettingsWindowController: NSWindowController {
         window.contentViewController = tabVC
         window.title = "MockTab"
         window.isReleasedWhenClosed = false
-        window.collectionBehavior = [.managed]
+        window.collectionBehavior = [.managed, .fullScreenAllowsTiling]
+        window.tabbingMode = .automatic
         // Don't auto-save frame for device-specific windows — PreferencesWindowController
         // handles manual persistence to support per-device window positions.
         if productID == nil {

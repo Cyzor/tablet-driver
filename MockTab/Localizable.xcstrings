@@ -10512,6 +10512,9 @@
         }
       }
     },
+    "Show Tab Bar" : {
+      "comment" : "View menu: toggle the window tab bar"
+    },
     "Side button" : {
       "comment" : "Pen button label when tool has exactly 1 side button",
       "extractionState" : "stale",

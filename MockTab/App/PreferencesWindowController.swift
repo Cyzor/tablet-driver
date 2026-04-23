@@ -155,8 +155,14 @@ final class PreferencesWindowController {
 
     func saveWindowState() {
         guard !skipWindowSave else { return }
+
+        // Assign a stable integer ID to each tab group so windows can be
+        // reunited into the same group on restore.
+        var tabGroupMap: [ObjectIdentifier: Int] = [:]
+        var nextGroupID = 0
+
         let entries = windows.compactMap { wc -> [String: Any]? in
-            guard let frame = wc.window?.frame else { return nil }
+            guard let win = wc.window, let frame = win.frame as NSRect? else { return nil }
             var entry: [String: Any] = [
                 "tabIndex": wc.selectedTabIndex,
                 "x": frame.origin.x,
@@ -165,9 +171,17 @@ final class PreferencesWindowController {
                 "h": frame.size.height,
             ]
             if let pid = wc.productID { entry["productID"] = pid }
+            if let tg = win.tabGroup {
+                let key = ObjectIdentifier(tg)
+                if tabGroupMap[key] == nil {
+                    tabGroupMap[key] = nextGroupID
+                    nextGroupID += 1
+                }
+                entry["tabGroupID"] = tabGroupMap[key]!
+                entry["tabGroupSelected"] = tg.selectedWindow === win
+            }
             return entry
         }
-        //        print("MockTab saveWindowState: \(entries.count) windows → \(entries)")
         UserDefaults.standard.set(entries, forKey: Self.restorationKey)
     }
 
@@ -176,30 +190,49 @@ final class PreferencesWindowController {
             let entries = UserDefaults.standard.array(forKey: Self.restorationKey)
                 as? [[String: Any]],
             !entries.isEmpty
-        else {
-            //            print("MockTab restoreWindows: no saved state found")
-            return
-        }
-        //        print("MockTab restoreWindows: found \(entries.count) entries → \(entries)")
+        else { return }
+
+        var created: [(wc: SettingsWindowController, entry: [String: Any])] = []
 
         for (index, entry) in entries.enumerated() {
             let productID = entry["productID"] as? Int
-            let tabIndex = entry["tabIndex"] as? Int ?? 0
-
+            let tabIndex  = entry["tabIndex"]  as? Int ?? 0
             let frame: NSRect? = {
                 guard let x = entry["x"] as? CGFloat,
-                    let y = entry["y"] as? CGFloat,
-                    let w = entry["w"] as? CGFloat,
-                    let h = entry["h"] as? CGFloat
+                      let y = entry["y"] as? CGFloat,
+                      let w = entry["w"] as? CGFloat,
+                      let h = entry["h"] as? CGFloat
                 else { return nil }
                 return NSRect(x: x, y: y, width: w, height: h)
             }()
 
             let wc = makeWindow(productID: productID, tabIndex: tabIndex, frame: frame)
             if index == 0 { defaultWindow = wc }
-
             wc.show()
             wc.showTab(at: tabIndex)
+            created.append((wc, entry))
+        }
+
+        // Reconstruct tab groups. Collect windows by saved tabGroupID, preserving
+        // the order they were saved in (which matches the original tab order).
+        var groups: [Int: [(wc: SettingsWindowController, selected: Bool)]] = [:]
+        for (wc, entry) in created {
+            guard let gid = entry["tabGroupID"] as? Int else { continue }
+            let selected = entry["tabGroupSelected"] as? Bool ?? false
+            groups[gid, default: []].append((wc, selected))
+        }
+
+        for (_, members) in groups.sorted(by: { $0.key < $1.key }) {
+            guard members.count > 1, let first = members.first?.wc else { continue }
+            for member in members.dropFirst() {
+                if let win = member.wc.window {
+                    first.window?.addTabbedWindow(win, ordered: .above)
+                }
+            }
+            // Restore which tab was selected when the user quit.
+            if let selectedWC = members.first(where: { $0.selected })?.wc {
+                selectedWC.window?.makeKeyAndOrderFront(nil)
+            }
         }
     }
 

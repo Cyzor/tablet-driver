@@ -370,8 +370,8 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         let menuItem = NSMenuItem(title: tabletTitle, action: nil, keyEquivalent: "")
         menuItem.submenu = menu
 
-        // Insert immediately after the application menu (index 0).
-        mainMenu.insertItem(menuItem, at: 1)
+        // Insert after the application menu (index 1 = MockTab app menu).
+        mainMenu.insertItem(menuItem, at: 2)
     }
 
     private func rebuildTabletMenu(_ menu: NSMenu) {
