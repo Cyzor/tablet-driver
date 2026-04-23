@@ -116,7 +116,7 @@ struct TabletAreaView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(LocalizedStringKey("Calibrated"))
                                         .font(.body)
-                                    Text(cal.calibratedAt, style: .relative)
+                                    Text(cal.calibratedAt, format: .dateTime.month(.abbreviated).day().year())
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
