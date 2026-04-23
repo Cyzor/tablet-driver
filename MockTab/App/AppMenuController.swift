@@ -157,6 +157,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             insertTabletMenu()
             insertPresetsMenu()
             removeEmptyViewMenu()
+            hookAppMenu()
             hookWindowMenu()
             // Reset only after all work is done so that notifications fired by our
             // own remove/insert calls (hookWindowMenu removes the old Window item)
@@ -206,11 +207,14 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     private func hookAppMenu() {
         guard let menu = NSApp.mainMenu?.items.first?.submenu else { return }
 
+        // Always re-assign the delegate — SwiftUI rebuilds can clear it, which
+        // breaks isAlternate recognition.  The rest of the function is idempotent:
+        // items are only inserted when not already present.
+        menu.delegate = self
+
         // Find the Quit item. Factory Reset is inserted immediately after it as
         // an isAlternate — the same mechanism Finder uses for "Secure Empty Trash".
         // AppKit's NSMenuView handles the live Option-key toggle natively.
-        // Setting self as the menu's delegate is required to trigger the alternate
-        // recognition; without it, the item is inserted but never shown.
         guard
             let quitItem = menu.items.last(where: {
                 $0.action == #selector(NSApplication.terminate(_:))
@@ -218,35 +222,47 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         else { return }
         let quitIndex = menu.items.firstIndex(of: quitItem)!
 
-        let factoryReset = NSMenuItem(
-            title: String(
-                localized: "Factory Reset\u{2026}",
-                comment: "Menu item: factory reset (Option-key hidden)"),
-            action: #selector(confirmFactoryReset),
-            keyEquivalent: quitItem.keyEquivalent)
-        factoryReset.keyEquivalentModifierMask = quitItem.keyEquivalentModifierMask.union(.option)
-        factoryReset.isAlternate = true
-        factoryReset.target = self
-        menu.insertItem(factoryReset, at: quitIndex + 1)
+        // Only insert Factory Reset if it isn't already there.
+        let alreadyHasReset = menu.items.contains {
+            $0.action == #selector(confirmFactoryReset)
+        }
+        if !alreadyHasReset {
+            let factoryReset = NSMenuItem(
+                title: String(
+                    localized: "Factory Reset\u{2026}",
+                    comment: "Menu item: factory reset (Option-key hidden)"),
+                action: #selector(confirmFactoryReset),
+                keyEquivalent: quitItem.keyEquivalent)
+            factoryReset.keyEquivalentModifierMask = quitItem.keyEquivalentModifierMask.union(.option)
+            factoryReset.isAlternate = true
+            factoryReset.target = self
+            menu.insertItem(factoryReset, at: quitIndex + 1)
+        }
 
-        // "Hide Dock Icon…" — only meaningful when the Dock icon is visible.
-        // Hidden automatically in menuNeedsUpdate when in accessory mode.
-        let hideItem = NSMenuItem(
-            title: String(
-                localized: "Hide Dock Icon\u{2026}",
-                comment: "Menu item: hide the app's Dock icon"),
-            action: #selector(confirmHideDockIcon),
-            keyEquivalent: "")
-        hideItem.target = self
-        // Insert before the separator that precedes Quit.
-        let separatorIndex = (quitIndex > 0 && menu.items[quitIndex - 1].isSeparatorItem)
-            ? quitIndex - 1
-            : quitIndex
-        menu.insertItem(NSMenuItem.separator(), at: separatorIndex)
-        menu.insertItem(hideItem, at: separatorIndex)
-        hideDockIconItem = hideItem
-
-        menu.delegate = self
+        // Only insert "Hide Dock Icon…" if it isn't already there.
+        // Hidden automatically in menuWillOpen when in accessory mode.
+        let alreadyHasHide = menu.items.contains {
+            $0.action == #selector(confirmHideDockIcon)
+        }
+        if !alreadyHasHide {
+            let hideItem = NSMenuItem(
+                title: String(
+                    localized: "Hide Dock Icon\u{2026}",
+                    comment: "Menu item: hide the app's Dock icon"),
+                action: #selector(confirmHideDockIcon),
+                keyEquivalent: "")
+            hideItem.target = self
+            // Insert before the separator that precedes Quit.
+            let separatorIndex = (quitIndex > 0 && menu.items[quitIndex - 1].isSeparatorItem)
+                ? quitIndex - 1
+                : quitIndex
+            menu.insertItem(NSMenuItem.separator(), at: separatorIndex)
+            menu.insertItem(hideItem, at: separatorIndex)
+            hideDockIconItem = hideItem
+        } else if hideDockIconItem == nil {
+            // Item survived the rebuild; re-acquire the weak reference.
+            hideDockIconItem = menu.items.first { $0.action == #selector(confirmHideDockIcon) }
+        }
     }
 
     @objc private func confirmHideDockIcon() {
@@ -331,8 +347,13 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
         // Relaunch so the new instance reads factory defaults rather than the
         // stale in-memory @Published / @AppStorage state from this session.
-        let url = Bundle.main.bundleURL
-        NSWorkspace.shared.open(url)
+        // NSWorkspace.open() won't spawn a second instance while this one is
+        // still alive, so we delegate the open to a detached shell that polls
+        // until our PID exits and then calls `open`.
+        let bundlePath = Bundle.main.bundleURL.path
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let script = "while kill -0 \(pid) 2>/dev/null; do sleep 0.1; done; open \"\(bundlePath)\""
+        Process.launchedProcess(launchPath: "/bin/sh", arguments: ["-c", script])
         NSApp.terminate(nil)
     }
 
