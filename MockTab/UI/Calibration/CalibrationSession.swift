@@ -71,6 +71,10 @@ final class CalibrationSession: ObservableObject {
 
     // MARK: - Target advancement
 
+    /// True while we're waiting for the pen to lift before accepting the next tap.
+    /// Prevents a held tap from bleeding straight into the next target's collection.
+    private var waitingForLift = false
+
     private func advanceToTarget(_ index: Int) {
         guard index < targets.count else {
             finishCalibration()
@@ -79,6 +83,7 @@ final class CalibrationSession: ObservableObject {
         currentSamples = []
         let (tx, ty) = targets[index]
         currentTargetPosition = CGPoint(x: tx, y: ty)
+        waitingForLift = true   // require pen lift before next collection starts
         state = .awaitingTap(pointIndex: index)
     }
 
@@ -86,6 +91,12 @@ final class CalibrationSession: ObservableObject {
 
     private func handleRawPoint(_ point: TabletPoint) {
         guard point.inProximity else { return }
+
+        // Gate: if we just finished a point, block collection until pen lifts.
+        if waitingForLift {
+            if point.pressure == 0 { waitingForLift = false }
+            return
+        }
 
         let pointIndex: Int
         switch state {
