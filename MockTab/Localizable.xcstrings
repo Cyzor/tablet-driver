@@ -2394,6 +2394,9 @@
         }
       }
     },
+    "Close" : {
+      "comment" : "Window menu"
+    },
     "Collect Device Data" : {
       "comment" : "Sheet title: device data collection",
       "localizations" : {
