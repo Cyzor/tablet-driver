@@ -1867,6 +1867,21 @@
         }
       }
     },
+    "Button 1" : {
+      "comment" : "Pen button row label: mouse button 1"
+    },
+    "Button 2" : {
+      "comment" : "Pen button row label: mouse button 2"
+    },
+    "Button 3" : {
+      "comment" : "Pen button row label: mouse button 3"
+    },
+    "Button 4" : {
+      "comment" : "Pen button row label: mouse button 4"
+    },
+    "Button 5" : {
+      "comment" : "Pen button row label: mouse button 5"
+    },
     "Buttons" : {
       "comment" : "Live Input table row label\nMenu item: open Button Mapping tab\nTab name: button and key mapping",
       "localizations" : {
@@ -10516,8 +10531,7 @@
       "comment" : "View menu: toggle the window tab bar"
     },
     "Side button" : {
-      "comment" : "Pen button label when tool has exactly 1 side button",
-      "extractionState" : "stale",
+      "comment" : "Pen button row label: single side button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10546,8 +10560,7 @@
       }
     },
     "Side button 1" : {
-      "comment" : "Pen button label: first side button on stylus",
-      "extractionState" : "stale",
+      "comment" : "Pen button row label: first side button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10576,8 +10589,7 @@
       }
     },
     "Side button 2" : {
-      "comment" : "Pen button label: second side button on stylus",
-      "extractionState" : "stale",
+      "comment" : "Pen button row label: second side button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10606,8 +10618,7 @@
       }
     },
     "Side button 3" : {
-      "comment" : "Pen button label: third side button on stylus",
-      "extractionState" : "stale",
+      "comment" : "Pen button row label: third side button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10636,8 +10647,7 @@
       }
     },
     "Side button 4" : {
-      "comment" : "Pen button label: fourth side button on stylus",
-      "extractionState" : "stale",
+      "comment" : "Pen button row label: fourth side button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10666,8 +10676,7 @@
       }
     },
     "Side button 5" : {
-      "comment" : "Pen button label: fifth side button on stylus",
-      "extractionState" : "stale",
+      "comment" : "Pen button row label: fifth side button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
