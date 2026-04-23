@@ -86,6 +86,10 @@ final class TabletManager: ObservableObject {
     /// background or a different tab is active.
     var infoViewVisible: Bool = false
 
+    /// Optional raw-data callback for calibration. When set, every active-context
+    /// TabletPoint is forwarded here *in addition to* the normal injection path.
+    var calibrationPointHandler: ((TabletPoint) -> Void)?
+
     private var uiUpdateCounter = 0
     private static let uiUpdateInterval = 8  // every 8th report ≈ 16 Hz at 133 Hz
 
@@ -296,6 +300,9 @@ final class TabletManager: ObservableObject {
 
             // Only the active context posts normal events.
             guard self.activeContext === context else { return }
+
+            // Forward raw data to calibration session if active.
+            self.calibrationPointHandler?(point)
 
             // ── CGEvent injection — never throttled ──────────────────────────
             context.injector.inject(point: point, settings: context.settings)

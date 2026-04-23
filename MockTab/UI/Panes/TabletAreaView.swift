@@ -107,44 +107,80 @@ struct TabletAreaView: View {
                 }
 
                 if activeDeviceIsPenDisplay {
-                    Section(LocalizedStringKey("Pen Display Offset")) {
-                        HStack(spacing: 16) {
-                            HStack(spacing: 4) {
-                                Text(LocalizedStringKey("Horizontal:"))
-                                    .foregroundStyle(.secondary)
-                                TextField("", value: parallaxXBinding,
-                                          format: .number.precision(.fractionLength(1)))
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 60)
-                                    .multilineTextAlignment(.trailing)
-                                Text("pt").foregroundStyle(.secondary)
-                            }
-                            HStack(spacing: 4) {
-                                Text(LocalizedStringKey("Vertical:"))
-                                    .foregroundStyle(.secondary)
-                                TextField("", value: parallaxYBinding,
-                                          format: .number.precision(.fractionLength(1)))
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 60)
-                                    .multilineTextAlignment(.trailing)
-                                Text("pt").foregroundStyle(.secondary)
+                    Section(LocalizedStringKey("Pen Display Calibration")) {
+                        // Calibration status + actions
+                        HStack {
+                            if let cal = activeCalibration {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(LocalizedStringKey("Calibrated"))
+                                        .font(.body)
+                                    Text(cal.calibratedAt, style: .relative)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } else {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .foregroundStyle(.orange)
+                                Text(LocalizedStringKey("Not calibrated"))
                             }
                             Spacer()
-                            Button(LocalizedStringKey("Reset Offset")) {
-                                let oldX = settings.parallaxOffsetX
-                                let oldY = settings.parallaxOffsetY
-                                settings.parallaxOffsetX = 0
-                                settings.parallaxOffsetY = 0
-                                settings.record("Reset Offset") {
-                                    settings.parallaxOffsetX = oldX
-                                    settings.parallaxOffsetY = oldY
-                                }
+                            Button(LocalizedStringKey("Calibrate…")) {
+                                startCalibration()
                             }
                             .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .disabled(settings.parallaxOffsetX == 0 && settings.parallaxOffsetY == 0)
+                            .disabled(settings.targetDisplayIndex == TabletSettings.displayModeAll)
+                            .help(LocalizedStringKey("Open the calibration overlay to tap crosshair targets on your pen display."))
+                            if activeCalibration != nil {
+                                Button(LocalizedStringKey("Reset")) {
+                                    resetCalibration()
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
                         }
-                        .help(LocalizedStringKey("Shift the cursor position to compensate for parallax on pen displays with thick glass."))
+
+                        // Manual fine-tune offset
+                        DisclosureGroup(LocalizedStringKey("Manual Fine-Tune")) {
+                            HStack(spacing: 16) {
+                                HStack(spacing: 4) {
+                                    Text(LocalizedStringKey("Horizontal:"))
+                                        .foregroundStyle(.secondary)
+                                    TextField("", value: parallaxXBinding,
+                                              format: .number.precision(.fractionLength(1)))
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(width: 60)
+                                        .multilineTextAlignment(.trailing)
+                                    Text("pt").foregroundStyle(.secondary)
+                                }
+                                HStack(spacing: 4) {
+                                    Text(LocalizedStringKey("Vertical:"))
+                                        .foregroundStyle(.secondary)
+                                    TextField("", value: parallaxYBinding,
+                                              format: .number.precision(.fractionLength(1)))
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(width: 60)
+                                        .multilineTextAlignment(.trailing)
+                                    Text("pt").foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button(LocalizedStringKey("Reset Offset")) {
+                                    let oldX = settings.parallaxOffsetX
+                                    let oldY = settings.parallaxOffsetY
+                                    settings.parallaxOffsetX = 0
+                                    settings.parallaxOffsetY = 0
+                                    settings.record("Reset Offset") {
+                                        settings.parallaxOffsetX = oldX
+                                        settings.parallaxOffsetY = oldY
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .disabled(settings.parallaxOffsetX == 0 && settings.parallaxOffsetY == 0)
+                            }
+                        }
+                        .help(LocalizedStringKey("Apply a small constant offset on top of calibration for sub-pixel fine-tuning."))
                     }
                 }
 
@@ -187,6 +223,64 @@ struct TabletAreaView: View {
             Text(LocalizedStringKey("Active Surface Area")).font(.headline)
             DeviceNameLabel(tabletManager: tabletManager, registry: registry)
         }
+    }
+
+    // MARK: - Calibration
+
+    /// The active calibration entry for the current orientation and display, if any.
+    private var activeCalibration: CalibrationEntry? {
+        let displayID = resolveCurrentDisplayID()
+        return settings.calibration(for: settings.tabletOrientation, displayID: displayID)
+    }
+
+    /// Resolve the CGDirectDisplayID for the current target display setting.
+    private func resolveCurrentDisplayID() -> UInt32 {
+        let idx = settings.targetDisplayIndex
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
+            return CGMainDisplayID()
+        }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else {
+            return CGMainDisplayID()
+        }
+        if idx == TabletSettings.displayModeAll { return 0 }
+        if idx > 0, idx <= ids.count { return ids[idx - 1] }
+        return CGMainDisplayID()
+    }
+
+    @State private var calibrationWindow: CalibrationOverlayWindow?
+
+    /// Launch the calibration overlay on the target display.
+    private func startCalibration() {
+        let displayID = resolveCurrentDisplayID()
+        guard displayID != 0 else { return }  // can't calibrate "All Displays"
+        let bounds = CGDisplayBounds(displayID)
+
+        let session = CalibrationSession(
+            settings: settings,
+            tabletManager: tabletManager,
+            displayID: displayID,
+            displayBounds: bounds,
+            orientation: settings.tabletOrientation)
+
+        let window = CalibrationOverlayWindow(session: session)
+        calibrationWindow = window
+        window.beginCalibration()
+    }
+
+    /// Clear calibration data for the current orientation and display.
+    private func resetCalibration() {
+        let displayID = resolveCurrentDisplayID()
+        let key = CalibrationKey(orientation: settings.tabletOrientation.rawValue, displayID: displayID)
+        let oldJSON = settings.calibrationJSON
+        var entries = settings.calibrationEntries
+        entries.removeAll { $0.key == key }
+        settings.calibrationEntries = entries
+        settings.record("Reset Calibration") {
+            settings.calibrationJSON = oldJSON
+        }
+        tabletManager.activeContext?.injector.invalidateCalibrationCache()
     }
 
     /// Binding that clamps and registers undo for horizontal parallax offset.

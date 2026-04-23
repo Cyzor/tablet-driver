@@ -135,6 +135,34 @@ final class TabletSettings: ObservableObject {
         didSet { persist("parallaxOffsetY", parallaxOffsetY) }
     }
 
+    /// JSON-encoded `[CalibrationEntry]` for multi-point parallax calibration.
+    /// Keyed by (orientation, displayID); empty string = no calibration.
+    @Published var calibrationJSON: String = "" {
+        didSet { persist("calibrationJSON", calibrationJSON) }
+    }
+
+    /// Decoded calibration entries from `calibrationJSON`.
+    var calibrationEntries: [CalibrationEntry] {
+        get {
+            guard !calibrationJSON.isEmpty,
+                  let data = calibrationJSON.data(using: .utf8) else { return [] }
+            return (try? JSONDecoder().decode([CalibrationEntry].self, from: data)) ?? []
+        }
+        set {
+            if newValue.isEmpty {
+                calibrationJSON = ""
+            } else if let data = try? JSONEncoder().encode(newValue),
+                      let str = String(data: data, encoding: .utf8) {
+                calibrationJSON = str
+            }
+        }
+    }
+
+    /// Look up the calibration entry for a specific orientation and display.
+    func calibration(for orientation: TabletOrientation, displayID: UInt32) -> CalibrationEntry? {
+        calibrationEntries.first { $0.key.orientation == orientation.rawValue && $0.key.displayID == displayID }
+    }
+
     /// Physical tablet orientation — clockwise rotation from the default landscape position.
     @Published var tabletOrientation: TabletOrientation = .landscape {
         didSet { persist("tabletOrientation", tabletOrientation.rawValue) }
@@ -432,13 +460,14 @@ final class TabletSettings: ObservableObject {
         if let data = try? JSONEncoder().encode(pressureCurve) {
             ud.set(data, forKey: prefix + "pressureCurve")
         }
+        ud.set(calibrationJSON, forKey: prefix + "calibrationJSON")
 
         profile.overriddenKeys = [
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
             "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
             "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
             "expressKeyBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
-            "touchRingActiveSlotIndex", "pressureCurve",
+            "touchRingActiveSlotIndex", "pressureCurve", "calibrationJSON",
         ]
 
         profiles.append(profile)
@@ -822,6 +851,7 @@ final class TabletSettings: ObservableObject {
         proportionalMapping = loadBool("proportionalMapping", default: true)
         parallaxOffsetX = Swift.max(-20, Swift.min(loadDouble("parallaxOffsetX", default: 0.0), 20))
         parallaxOffsetY = Swift.max(-20, Swift.min(loadDouble("parallaxOffsetY", default: 0.0), 20))
+        calibrationJSON = loadString("calibrationJSON", default: "")
         tabletOrientation =
             TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape
         targetDisplayIndex = loadInt("targetDisplayIndex", default: 0)
@@ -1106,6 +1136,9 @@ final class TabletSettings: ObservableObject {
         activeAreaWidth = 1
         activeAreaHeight = 1
         proportionalMapping = true
+        parallaxOffsetX = 0
+        parallaxOffsetY = 0
+        calibrationJSON = ""
         tabletOrientation = .landscape
         targetDisplayIndex = 0
         toggleDisplayIDs = ""
@@ -1132,6 +1165,7 @@ final class TabletSettings: ObservableObject {
         var proportionalMapping: Bool
         var parallaxOffsetX: Double
         var parallaxOffsetY: Double
+        var calibrationJSON: String
         var tabletOrientation: TabletOrientation
         var targetDisplayIndex: Int
         var toggleDisplayIDs: String
@@ -1157,6 +1191,7 @@ final class TabletSettings: ObservableObject {
             proportionalMapping: proportionalMapping,
             parallaxOffsetX: parallaxOffsetX,
             parallaxOffsetY: parallaxOffsetY,
+            calibrationJSON: calibrationJSON,
             tabletOrientation: tabletOrientation,
             targetDisplayIndex: targetDisplayIndex,
             toggleDisplayIDs: toggleDisplayIDs,
@@ -1193,6 +1228,7 @@ final class TabletSettings: ObservableObject {
         proportionalMapping = snap.proportionalMapping
         parallaxOffsetX = snap.parallaxOffsetX
         parallaxOffsetY = snap.parallaxOffsetY
+        calibrationJSON = snap.calibrationJSON
         tabletOrientation = snap.tabletOrientation
         targetDisplayIndex = snap.targetDisplayIndex
         toggleDisplayIDs = snap.toggleDisplayIDs
