@@ -69,7 +69,10 @@ final class InputInjector {
         displayObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.cachedDisplayIndex = Int.min } }
+        ) { [weak self] _ in MainActor.assumeIsolated {
+            self?.cachedDisplayIndex = Int.min
+            self?.cachedCalibrationOrientation = -1
+        } }
     }
 
     deinit {
@@ -260,6 +263,9 @@ final class InputInjector {
 
     private var cachedDisplayBounds: CGRect = .zero
     private var cachedDisplayIndex: Int = Int.min
+    private var cachedDisplayID: CGDirectDisplayID = 0
+    private var cachedCalibration: CalibrationEntry?
+    private var cachedCalibrationOrientation: Int = -1
     private var currentToggleIndex: Int = 0
     private var displayObserver: NSObjectProtocol?
 
@@ -1421,8 +1427,12 @@ final class InputInjector {
     private func mapToScreen(_ point: TabletPoint, settings: TabletSettings) -> CGPoint? {
         let idx = settings.targetDisplayIndex
         if cachedDisplayIndex != idx {
-            cachedDisplayBounds = resolveDisplayBounds(settings: settings)
+            let (bounds, displayID) = resolveDisplayBoundsAndID(settings: settings)
+            cachedDisplayBounds = bounds
+            cachedDisplayID = displayID
             cachedDisplayIndex = idx
+            // Invalidate calibration cache when display changes.
+            cachedCalibrationOrientation = -1
         }
         let displayBounds = cachedDisplayBounds
 
@@ -1487,10 +1497,22 @@ final class InputInjector {
         // Outside active area — deadzone
         guard relX >= 0, relX <= 1, relY >= 0, relY <= 1 else { return nil }
 
-        var sx = displayBounds.minX + relX * displayBounds.width
-        var sy = displayBounds.minY + relY * displayBounds.height
+        // Apply multi-point calibration transform in normalized space (if available).
+        var calX = relX, calY = relY
+        let orientRaw = settings.tabletOrientation.rawValue
+        if cachedCalibrationOrientation != orientRaw {
+            cachedCalibration = settings.calibration(for: settings.tabletOrientation,
+                                                      displayID: cachedDisplayID)
+            cachedCalibrationOrientation = orientRaw
+        }
+        if let cal = cachedCalibration {
+            (calX, calY) = cal.apply(to: (relX, relY))
+        }
 
-        // Apply pen-display parallax offset (points, user-configured).
+        var sx = displayBounds.minX + calX * displayBounds.width
+        var sy = displayBounds.minY + calY * displayBounds.height
+
+        // Additive fine-tune offset (points, user-configured) — stacks on top of calibration.
         sx += settings.parallaxOffsetX
         sy += settings.parallaxOffsetY
 
@@ -1499,34 +1521,39 @@ final class InputInjector {
         return CGPoint(x: sx, y: sy)
     }
 
-    /// Queries the OS display list and returns the target display's bounds.
-    /// Only called on cache miss; result stored in cachedDisplayBounds.
-    private func resolveDisplayBounds(settings: TabletSettings) -> CGRect {
+    /// Queries the OS display list and returns the target display's bounds and ID.
+    /// Only called on cache miss; results stored in cachedDisplayBounds/cachedDisplayID.
+    private func resolveDisplayBoundsAndID(settings: TabletSettings) -> (CGRect, CGDirectDisplayID) {
+        let mainID = CGMainDisplayID()
         let fallback = CGRect(
             x: 0, y: 0,
-            width: CGFloat(CGDisplayPixelsWide(CGMainDisplayID())),
-            height: CGFloat(CGDisplayPixelsHigh(CGMainDisplayID()))
+            width: CGFloat(CGDisplayPixelsWide(mainID)),
+            height: CGFloat(CGDisplayPixelsHigh(mainID))
         )
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
-            return fallback
+            return (fallback, mainID)
         }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else {
-            return fallback
+            return (fallback, mainID)
         }
         let idx = settings.targetDisplayIndex
         if idx == TabletSettings.displayModeAll {
-            // Union bounding rect spanning every active display.
-            return ids.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }
+            // Union bounding rect spanning every active display — no single display ID.
+            return (ids.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }, 0)
         }
         if idx == TabletSettings.displayModeToggle {
             let rotation = toggleRotation(settings: settings, allIDs: ids)
-            guard !rotation.isEmpty else { return CGDisplayBounds(CGMainDisplayID()) }
-            return CGDisplayBounds(rotation[currentToggleIndex % rotation.count])
+            guard !rotation.isEmpty else { return (CGDisplayBounds(mainID), mainID) }
+            let toggleID = rotation[currentToggleIndex % rotation.count]
+            return (CGDisplayBounds(toggleID), toggleID)
         }
-        if idx > 0, idx <= ids.count { return CGDisplayBounds(ids[idx - 1]) }
-        return CGDisplayBounds(CGMainDisplayID())
+        if idx > 0, idx <= ids.count {
+            let targetID = ids[idx - 1]
+            return (CGDisplayBounds(targetID), targetID)
+        }
+        return (CGDisplayBounds(mainID), mainID)
     }
 
     /// Returns the ordered list of display IDs in the toggle rotation,
@@ -1551,5 +1578,12 @@ final class InputInjector {
         guard rotation.count > 1 else { return }
         currentToggleIndex = (currentToggleIndex + 1) % rotation.count
         cachedDisplayIndex = Int.min  // force cache miss on next inject
+        cachedCalibrationOrientation = -1
+    }
+
+    /// Force re-read of calibration data on next inject.
+    /// Call after calibration data is stored or cleared.
+    func invalidateCalibrationCache() {
+        cachedCalibrationOrientation = -1
     }
 }
