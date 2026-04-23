@@ -54,34 +54,37 @@ struct MockTabApp: App {
                     .keyboardShortcut("8", modifiers: .command)
             }
 
-            // Edit menu - use CommandGroup to replace the default Edit menu
-            // and add proper undo/redo with enablement checking
             CommandGroup(replacing: .undoRedo) {
-                Button("Undo") {
+                Button(String(localized: "Undo", comment: "Edit menu: undo last action")) {
                     PreferencesWindowController.shared.getUndoManager()?.undo()
                 }
                 .keyboardShortcut("z", modifiers: .command)
 
-                Button("Redo") {
+                Button(String(localized: "Redo", comment: "Edit menu: redo last undone action")) {
                     PreferencesWindowController.shared.getUndoManager()?.redo()
                 }
                 .keyboardShortcut("z", modifiers: [.command, .shift])
 
                 Divider()
 
-                Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
-                    .keyboardShortcut("x", modifiers: .command)
-                Button("Copy") { NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil) }
-                    .keyboardShortcut("c", modifiers: .command)
-                Button("Paste") {
+                Button(String(localized: "Cut", comment: "Edit menu: cut selection")) {
+                    NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("x", modifiers: .command)
+                Button(String(localized: "Copy", comment: "Edit menu: copy selection")) {
+                    NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
+                }
+                .keyboardShortcut("c", modifiers: .command)
+                Button(String(localized: "Paste", comment: "Edit menu: paste from clipboard")) {
                     NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
                 }
                 .keyboardShortcut("v", modifiers: .command)
-                Button("Select All") {
+                Button(String(localized: "Select All", comment: "Edit menu: select all text")) {
                     NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
                 }
                 .keyboardShortcut("a", modifiers: .command)
             }
+
         }
     }
 }

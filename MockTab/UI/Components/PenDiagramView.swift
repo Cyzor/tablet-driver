@@ -96,6 +96,5 @@ struct PenDiagramView: View {
                 stroke: liveButtons.tipDown ? accent : strokeDim)
         }
         .shadow(color: Color.black.opacity(0.10), radius: 8, x: 0, y: 1)
-        .animation(.easeOut(duration: 0.07), value: liveButtons)
     }
 }

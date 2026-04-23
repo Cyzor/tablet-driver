@@ -42,10 +42,10 @@ final class CaptureEngine: ObservableObject {
     // MARK: - Published UI State
 
     @Published private(set) var isRunning = false {
-        didSet { _isRunningNonisolated = isRunning }
+        didSet { CaptureEngine._isRunningNonisolated = isRunning }
     }
     /// Nonisolated mirror of `isRunning` for use in HID callbacks (main run loop, no data race).
-    nonisolated(unsafe) private(set) var _isRunningNonisolated = false
+    nonisolated(unsafe) static private(set) var _isRunningNonisolated = false
     @Published private(set) var currentStepIndex = 0
     @Published private(set) var armedStep: CalibrationStep?
     @Published private(set) var lastError: String?
@@ -533,7 +533,7 @@ private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryRes
             )
         }
 
-        var toolCodesDescription = observedToolCodes.isEmpty ? "none" : observedToolCodes.map { String(format: "0x%04X", $0) }.sorted().joined(separator: ", ")
+        let toolCodesDescription = observedToolCodes.isEmpty ? "none" : observedToolCodes.map { String(format: "0x%04X", $0) }.sorted().joined(separator: ", ")
         var notes = "Observed tool codes: \(toolCodesDescription)"
         if observedToolCodes.contains(0x080A) {
             notes += " (eraser capable)"

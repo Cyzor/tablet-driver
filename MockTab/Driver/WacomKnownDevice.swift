@@ -333,9 +333,9 @@ final class WacomKnownDevice: TabletDevice {
         let name = deviceSpec.name
         HIDCapture.shared.record(tag: name, report: report, length: length)
         // Delta capture — only fires when CaptureEngine.isRunning is true.
-        if CaptureEngine.shared._isRunningNonisolated {
+        if CaptureEngine._isRunningNonisolated {
             let r0 = report[0]
-            var bytes = [UInt8](UnsafeBufferPointer(start: report, count: length))
+            let bytes = [UInt8](UnsafeBufferPointer(start: report, count: length))
             Task { @MainActor in
                 bytes.withUnsafeBufferPointer {
                     CaptureEngine.shared.recordSample(

@@ -69,7 +69,7 @@ final class InputInjector {
         displayObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil, queue: .main
-        ) { @MainActor [weak self] _ in self?.cachedDisplayIndex = Int.min }
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.cachedDisplayIndex = Int.min } }
     }
 
     deinit {
@@ -557,7 +557,6 @@ final class InputInjector {
     func replayPointerEvent(settings: TabletSettings? = nil) {
         guard let point = shimLastPoint else { return }
         let s = settings ?? TabletSettings()
-        let tool = activeToolSettings ?? s.activeTool
         postTabletPointerEvent(
             at: shimLastScreen, pressure: shimLastPressure, point: point, settings: s)
         let dragging = lastTipDown || (activeToolIsMouse && usbMouseLeftHeld)

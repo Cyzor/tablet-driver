@@ -284,7 +284,9 @@ struct DisplayMappingView: View {
                         ids.insert(displays[i].id)
                     }
                     // Simplify back to empty (= all) when every display is included
+                    let oldIDs = settings.toggleDisplayIDSet
                     settings.toggleDisplayIDSet = (ids == Set(displays.map(\.id))) ? [] : ids
+                    settings.record("Toggle Display Set") { settings.toggleDisplayIDSet = oldIDs }
                     rangeStart = -1
                 }
             } else if flags.contains(.command) {

@@ -182,7 +182,7 @@ struct CapturedSample: Identifiable {
     /// Bit positions (within a byte) that changed, for each changed byte index.
     /// Useful for identifying individual button bits.
     func changedBits(byteIndex: Int) -> [Int] {
-        guard let idx = changedIndices.firstIndex(of: byteIndex),
+        guard changedIndices.contains(byteIndex),
               baseline.count > byteIndex,
               action.count > byteIndex else { return [] }
         let oldVal = baseline[byteIndex]
@@ -254,7 +254,7 @@ struct CapturedReportSummary: Identifiable {
 
 /// Complete output of a calibration session — ready for JSON export.
 struct CalibrationResult: Codable {
-    let captureVersion: Int = 1
+    var captureVersion: Int = 1
     let capturedAt: Date
     let deviceInfo: DeviceInfo
     let reports: [String: ReportInfo]
@@ -294,7 +294,7 @@ struct CalibrationResult: Codable {
 /// Output of a discovery session — for unknown devices.
 /// Records all report IDs seen and which bytes vary vs constant.
 struct DiscoveryResult: Codable {
-    let captureVersion: Int = 2
+    var captureVersion: Int = 2
     let capturedAt: Date
     let mode: String  // always "discovery"
     let duration: TimeInterval

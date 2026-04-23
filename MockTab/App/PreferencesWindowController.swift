@@ -35,16 +35,17 @@ final class PreferencesWindowController {
 
     private static let restorationKey = "MockTab_OpenWindows"
 
-    /// Returns the undo manager from the default window's SettingsWindowController.
+    /// Returns the undo manager for the currently key settings window.
     /// Used by the Edit menu to wire Cmd+Z / Cmd+Shift+Z.
     func getUndoManager() -> UndoManager? {
+        // Prefer the key window — correct when multiple tablet windows are open.
+        if let keyWC = windows.first(where: { $0.window?.isKeyWindow == true }) {
+            return keyWC.settingsUndoManager
+        }
         if let dw = self.defaultWindow {
             return dw.settingsUndoManager
         }
-        if let first = self.windows.first {
-            return first.settingsUndoManager
-        }
-        return nil
+        return windows.first?.settingsUndoManager
     }
 
     private init() {
@@ -75,10 +76,12 @@ final class PreferencesWindowController {
             forName: NSApplication.willTerminateNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            // Set flag first — prevents the window close cascade that
-            // AppKit triggers during termination from wiping the saved list.
-            self?.isTerminating = true
-            self?.saveWindowState()
+            MainActor.assumeIsolated {
+                // Set flag first — prevents the window close cascade that
+                // AppKit triggers during termination from wiping the saved list.
+                self?.isTerminating = true
+                self?.saveWindowState()
+            }
         }
     }
 
@@ -312,14 +315,16 @@ final class PreferencesWindowController {
             object: wc.window,
             queue: .main
         ) { [weak self, weak wc] _ in
-            guard let self, let wc else { return }
-            self.windows.removeAll(where: { $0 === wc })
-            if self.defaultWindow === wc { self.defaultWindow = nil }
-            // Skip saving during termination — AppKit closes all windows
-            // as part of shutdown, which would zero out the saved list
-            // before willTerminateNotification fires.
-            guard !self.isTerminating else { return }
-            self.saveWindowState()
+            MainActor.assumeIsolated {
+                guard let self, let wc else { return }
+                self.windows.removeAll(where: { $0 === wc })
+                if self.defaultWindow === wc { self.defaultWindow = nil }
+                // Skip saving during termination — AppKit closes all windows
+                // as part of shutdown, which would zero out the saved list
+                // before willTerminateNotification fires.
+                guard !self.isTerminating else { return }
+                self.saveWindowState()
+            }
         }
     }
 }

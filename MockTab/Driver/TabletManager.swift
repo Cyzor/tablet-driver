@@ -168,13 +168,13 @@ final class TabletManager: ObservableObject {
             forName: NSNotification.Name("com.cyzor.mocktab.shim.replayPointer"),
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.activeContext?.injector.replayPointerEvent()
+            MainActor.assumeIsolated { self?.activeContext?.injector.replayPointerEvent() }
         }
         let proximity = dn.addObserver(
             forName: NSNotification.Name("com.cyzor.mocktab.shim.replayProximity"),
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.activeContext?.injector.replayProximityEvent()
+            MainActor.assumeIsolated { self?.activeContext?.injector.replayProximityEvent() }
         }
         shimObservers = [pointer, proximity]
     }
@@ -479,7 +479,7 @@ final class TabletManager: ObservableObject {
                     // If a WacomKnownDevice for the parent tablet is already running,
                     // hand the device off for LED control rather than skipping it entirely.
                     let matched = contexts.values.first {
-                        guard let driver = $0.tabletDevice as? WacomKnownDevice,
+                        guard $0.tabletDevice is WacomKnownDevice,
                               let companionPID = WacomDeviceRegistry.spec(for: $0.productID)?.ledCompanionPID
                         else { return false }
                         return companionPID == productID

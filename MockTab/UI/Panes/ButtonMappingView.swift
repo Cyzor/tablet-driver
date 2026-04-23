@@ -259,9 +259,14 @@ struct ButtonMappingView: View {
         Binding(
             get: { tool.penButton1Binding },
             set: { newValue in
-                let tool = self.tool
                 let t = self.activeToolBinding
-                settings.record("Button 1") { t.wrappedValue.penButton1Binding = newValue }
+                let oldValue = t.wrappedValue.penButton1Binding
+                t.wrappedValue.penButton1Binding = newValue
+                self.settings.objectWillChange.send()
+                self.settings.record("Button 1") {
+                    t.wrappedValue.penButton1Binding = oldValue
+                    self.settings.objectWillChange.send()
+                }
             }
         )
     }
@@ -269,9 +274,14 @@ struct ButtonMappingView: View {
         Binding(
             get: { tool.penButton2Binding },
             set: { newValue in
-                let tool = self.tool
                 let t = self.activeToolBinding
-                settings.record("Button 2") { t.wrappedValue.penButton2Binding = newValue }
+                let oldValue = t.wrappedValue.penButton2Binding
+                t.wrappedValue.penButton2Binding = newValue
+                self.settings.objectWillChange.send()
+                self.settings.record("Button 2") {
+                    t.wrappedValue.penButton2Binding = oldValue
+                    self.settings.objectWillChange.send()
+                }
             }
         )
     }
@@ -279,9 +289,14 @@ struct ButtonMappingView: View {
         Binding(
             get: { tool.penButton3Binding },
             set: { newValue in
-                let tool = self.tool
                 let t = self.activeToolBinding
-                settings.record("Button 3") { t.wrappedValue.penButton3Binding = newValue }
+                let oldValue = t.wrappedValue.penButton3Binding
+                t.wrappedValue.penButton3Binding = newValue
+                self.settings.objectWillChange.send()
+                self.settings.record("Button 3") {
+                    t.wrappedValue.penButton3Binding = oldValue
+                    self.settings.objectWillChange.send()
+                }
             }
         )
     }
@@ -289,9 +304,14 @@ struct ButtonMappingView: View {
         Binding(
             get: { tool.penButton4Binding },
             set: { newValue in
-                let tool = self.tool
                 let t = self.activeToolBinding
-                settings.record("Button 4") { t.wrappedValue.penButton4Binding = newValue }
+                let oldValue = t.wrappedValue.penButton4Binding
+                t.wrappedValue.penButton4Binding = newValue
+                self.settings.objectWillChange.send()
+                self.settings.record("Button 4") {
+                    t.wrappedValue.penButton4Binding = oldValue
+                    self.settings.objectWillChange.send()
+                }
             }
         )
     }
@@ -299,9 +319,14 @@ struct ButtonMappingView: View {
         Binding(
             get: { tool.penButton5Binding },
             set: { newValue in
-                let tool = self.tool
                 let t = self.activeToolBinding
-                settings.record("Button 5") { t.wrappedValue.penButton5Binding = newValue }
+                let oldValue = t.wrappedValue.penButton5Binding
+                t.wrappedValue.penButton5Binding = newValue
+                self.settings.objectWillChange.send()
+                self.settings.record("Button 5") {
+                    t.wrappedValue.penButton5Binding = oldValue
+                    self.settings.objectWillChange.send()
+                }
             }
         )
     }
@@ -445,25 +470,22 @@ struct ButtonMappingView: View {
         get: @escaping () -> T,
         set: @escaping (T) -> Void
     ) -> Binding<T> {
-        // Capture settings reference so tool-owned mutations can trigger a re-render.
-        // TabletSettings-owned mutations already fire objectWillChange via @Published didSet.
+        // Always register undo against settings — its undoManager is reliably wired
+        // by SettingsWindowController.  Routing through toolOwner.record() silently
+        // failed whenever tool.undoManager was nil (e.g. before proximity entry).
+        // ToolSettings mutations don't propagate to settings.objectWillChange
+        // automatically, so send explicitly for tool-owned bindings.
         let settings = self.settings
+        let isToolOwned = owner is ToolSettings
         return Binding(
             get: get,
             set: { newValue in
                 let oldValue = get()
                 set(newValue)
-                if let settingsOwner = owner as? TabletSettings {
-                    settingsOwner.record(name) { set(oldValue) }
-                } else if let toolOwner = owner as? ToolSettings {
-                    // ToolSettings mutations don't propagate to settings.objectWillChange
-                    // automatically (reference-type @Published only fires on reassignment).
-                    // Send explicitly so the view reflects the change immediately.
-                    settings.objectWillChange.send()
-                    toolOwner.record(name) {
-                        set(oldValue)
-                        settings.objectWillChange.send()
-                    }
+                if isToolOwned { settings.objectWillChange.send() }
+                settings.record(name) {
+                    set(oldValue)
+                    if isToolOwned { settings.objectWillChange.send() }
                 }
             }
         )
@@ -524,50 +546,35 @@ struct ButtonMappingView: View {
                 buttonRow(
                     isMouse ? "Button 1" : (btnCount == 1 ? "Side button" : "Side button 1"),
                     isActive: lb.button1Down,
-                    binding: recordingBinding(
-                        "Button 1", owner: tool,
-                        get: { tool.penButton1Binding },
-                        set: { tool.penButton1Binding = $0 }))
+                    binding: pen1Binding)
             }
             // Button 2
             if btnCount >= 2 {
                 buttonRow(
                     isMouse ? "Button 2" : "Side button 2",
                     isActive: lb.button2Down,
-                    binding: recordingBinding(
-                        "Button 2", owner: tool,
-                        get: { tool.penButton2Binding },
-                        set: { tool.penButton2Binding = $0 }))
+                    binding: pen2Binding)
             }
             // Button 3
             if btnCount >= 3 {
                 buttonRow(
                     isMouse ? "Button 3" : "Side button 3",
                     isActive: lb.button3Down,
-                    binding: recordingBinding(
-                        "Button 3", owner: tool,
-                        get: { tool.penButton3Binding },
-                        set: { tool.penButton3Binding = $0 }))
+                    binding: pen3Binding)
             }
             // Button 4
             if btnCount >= 4 {
                 buttonRow(
                     isMouse ? "Button 4" : "Side button 4",
                     isActive: lb.button4Down,
-                    binding: recordingBinding(
-                        "Button 4", owner: tool,
-                        get: { tool.penButton4Binding },
-                        set: { tool.penButton4Binding = $0 }))
+                    binding: pen4Binding)
             }
             // Button 5
             if btnCount >= 5 {
                 buttonRow(
                     isMouse ? "Button 5" : "Side button 5",
                     isActive: lb.button5Down,
-                    binding: recordingBinding(
-                        "Button 5", owner: tool,
-                        get: { tool.penButton5Binding },
-                        set: { tool.penButton5Binding = $0 }))
+                    binding: pen5Binding)
             }
 
             // Wheel row — airbrush fingerwheel or scroll wheel
@@ -817,6 +824,7 @@ struct ButtonMappingView: View {
             labelText(label, isActive: isActive)
                 .frame(minWidth: 100, alignment: .trailing)
             ButtonBindingControl(binding: binding, ringSlotCount: ringSlotCount)
+                .equatable()
             Spacer(minLength: 0)
         }
     }
@@ -853,7 +861,7 @@ struct ButtonMappingView: View {
 /// • ESC cancels; Delete alone clears the binding.
 /// • Use the ▾ menu to assign click actions instead of a key combo.
 /// • The ✕ button clears any existing assignment.
-struct ButtonBindingControl: View {
+struct ButtonBindingControl: View, Equatable {
     @Binding var binding: ButtonBinding
     var compact: Bool = false
     var ringSlotCount: Int = 4
@@ -861,6 +869,12 @@ struct ButtonBindingControl: View {
     @State private var monitor: Any?
     /// Modifier keys accumulated while recording (before any base key is pressed).
     @State private var pendingModifiers: NSEvent.ModifierFlags = []
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.binding == rhs.binding
+            && lhs.compact == rhs.compact
+            && lhs.ringSlotCount == rhs.ringSlotCount
+    }
 
     var body: some View {
         // Cached once per body call — prevents String(localized:) + CGEventFlags
