@@ -1488,14 +1488,15 @@ final class InputInjector {
         // Outside active area — deadzone
         guard relX >= 0, relX <= 1, relY >= 0, relY <= 1 else { return nil }
 
-        let sx = Swift.min(
-            Swift.max(
-                displayBounds.minX + relX * displayBounds.width,
-                displayBounds.minX), displayBounds.maxX)
-        let sy = Swift.min(
-            Swift.max(
-                displayBounds.minY + relY * displayBounds.height,
-                displayBounds.minY), displayBounds.maxY)
+        var sx = displayBounds.minX + relX * displayBounds.width
+        var sy = displayBounds.minY + relY * displayBounds.height
+
+        // Apply pen-display parallax offset (points, user-configured).
+        sx += settings.parallaxOffsetX
+        sy += settings.parallaxOffsetY
+
+        sx = Swift.min(Swift.max(sx, displayBounds.minX), displayBounds.maxX)
+        sy = Swift.min(Swift.max(sy, displayBounds.minY), displayBounds.maxY)
         return CGPoint(x: sx, y: sy)
     }
 

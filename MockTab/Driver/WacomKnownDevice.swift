@@ -105,6 +105,7 @@ final class WacomKnownDevice: TabletDevice {
             buttonCount: deviceSpec.buttonCount,
             hasTilt: deviceSpec.hasTilt,
             hasDualRings: deviceSpec.hasDualRings,
+            isPenDisplay: deviceSpec.isPenDisplay,
             ringSlotCount: deviceSpec.ringSlotCount)
 
         switch deviceSpec.parser {

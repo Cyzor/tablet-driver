@@ -36,6 +36,15 @@ struct TabletAreaView: View {
         return 29600
     }
 
+    /// True if the connected device is a pen display (Cintiq-class).
+    private var activeDeviceIsPenDisplay: Bool {
+        if let pid = boundProductID {
+            if let s = tabletManager.contexts[pid]?.tabletDevice?.spec { return s.isPenDisplay }
+            if let s = WacomDeviceRegistry.spec(for: pid) { return s.isPenDisplay }
+        }
+        return false
+    }
+
     private var activeAspectRatio: Double {
         let y = activeDeviceMaxY
         guard y > 0 else { return 44800.0 / 29600.0 }
@@ -97,6 +106,48 @@ struct TabletAreaView: View {
                     sectionHeading
                 }
 
+                if activeDeviceIsPenDisplay {
+                    Section(LocalizedStringKey("Pen Display Offset")) {
+                        HStack(spacing: 16) {
+                            HStack(spacing: 4) {
+                                Text(LocalizedStringKey("Horizontal:"))
+                                    .foregroundStyle(.secondary)
+                                TextField("", value: parallaxXBinding,
+                                          format: .number.precision(.fractionLength(1)))
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 60)
+                                    .multilineTextAlignment(.trailing)
+                                Text("pt").foregroundStyle(.secondary)
+                            }
+                            HStack(spacing: 4) {
+                                Text(LocalizedStringKey("Vertical:"))
+                                    .foregroundStyle(.secondary)
+                                TextField("", value: parallaxYBinding,
+                                          format: .number.precision(.fractionLength(1)))
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 60)
+                                    .multilineTextAlignment(.trailing)
+                                Text("pt").foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button(LocalizedStringKey("Reset Offset")) {
+                                let oldX = settings.parallaxOffsetX
+                                let oldY = settings.parallaxOffsetY
+                                settings.parallaxOffsetX = 0
+                                settings.parallaxOffsetY = 0
+                                settings.record("Reset Offset") {
+                                    settings.parallaxOffsetX = oldX
+                                    settings.parallaxOffsetY = oldY
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(settings.parallaxOffsetX == 0 && settings.parallaxOffsetY == 0)
+                        }
+                        .help(LocalizedStringKey("Shift the cursor position to compensate for parallax on pen displays with thick glass."))
+                    }
+                }
+
                 Section(LocalizedStringKey("Orientation")) {
                     OrientationPickerView(settings: settings)
                 }
@@ -136,6 +187,36 @@ struct TabletAreaView: View {
             Text(LocalizedStringKey("Active Surface Area")).font(.headline)
             DeviceNameLabel(tabletManager: tabletManager, registry: registry)
         }
+    }
+
+    /// Binding that clamps and registers undo for horizontal parallax offset.
+    private var parallaxXBinding: Binding<Double> {
+        Binding(
+            get: { settings.parallaxOffsetX },
+            set: { newValue in
+                let clamped = Swift.min(Swift.max(newValue, -20), 20)
+                let oldValue = settings.parallaxOffsetX
+                settings.parallaxOffsetX = clamped
+                settings.record("Parallax Offset") {
+                    settings.parallaxOffsetX = oldValue
+                }
+            }
+        )
+    }
+
+    /// Binding that clamps and registers undo for vertical parallax offset.
+    private var parallaxYBinding: Binding<Double> {
+        Binding(
+            get: { settings.parallaxOffsetY },
+            set: { newValue in
+                let clamped = Swift.min(Swift.max(newValue, -20), 20)
+                let oldValue = settings.parallaxOffsetY
+                settings.parallaxOffsetY = clamped
+                settings.record("Parallax Offset") {
+                    settings.parallaxOffsetY = oldValue
+                }
+            }
+        )
     }
 
     /// Binding that registers undo when proportional mapping is toggled.

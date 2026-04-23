@@ -122,6 +122,19 @@ final class TabletSettings: ObservableObject {
         didSet { persist("proportionalMapping", proportionalMapping) }
     }
 
+    // MARK: - Pen display parallax offset (points)
+
+    /// Horizontal cursor offset to compensate for parallax on pen displays (Cintiq-class).
+    /// Positive values shift the cursor rightward relative to the pen tip.
+    @Published var parallaxOffsetX: Double = 0.0 {
+        didSet { persist("parallaxOffsetX", parallaxOffsetX) }
+    }
+    /// Vertical cursor offset to compensate for parallax on pen displays (Cintiq-class).
+    /// Positive values shift the cursor downward relative to the pen tip.
+    @Published var parallaxOffsetY: Double = 0.0 {
+        didSet { persist("parallaxOffsetY", parallaxOffsetY) }
+    }
+
     /// Physical tablet orientation — clockwise rotation from the default landscape position.
     @Published var tabletOrientation: TabletOrientation = .landscape {
         didSet { persist("tabletOrientation", tabletOrientation.rawValue) }
@@ -807,6 +820,8 @@ final class TabletSettings: ObservableObject {
         activeAreaWidth  = Swift.max(0.01, Swift.min(loadDouble("activeAreaWidth",  default: 1.0), 1.0))
         activeAreaHeight = Swift.max(0.01, Swift.min(loadDouble("activeAreaHeight", default: 1.0), 1.0))
         proportionalMapping = loadBool("proportionalMapping", default: true)
+        parallaxOffsetX = Swift.max(-20, Swift.min(loadDouble("parallaxOffsetX", default: 0.0), 20))
+        parallaxOffsetY = Swift.max(-20, Swift.min(loadDouble("parallaxOffsetY", default: 0.0), 20))
         tabletOrientation =
             TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape
         targetDisplayIndex = loadInt("targetDisplayIndex", default: 0)
@@ -1115,6 +1130,8 @@ final class TabletSettings: ObservableObject {
         var activeAreaWidth: Double
         var activeAreaHeight: Double
         var proportionalMapping: Bool
+        var parallaxOffsetX: Double
+        var parallaxOffsetY: Double
         var tabletOrientation: TabletOrientation
         var targetDisplayIndex: Int
         var toggleDisplayIDs: String
@@ -1138,6 +1155,8 @@ final class TabletSettings: ObservableObject {
             activeAreaWidth: activeAreaWidth,
             activeAreaHeight: activeAreaHeight,
             proportionalMapping: proportionalMapping,
+            parallaxOffsetX: parallaxOffsetX,
+            parallaxOffsetY: parallaxOffsetY,
             tabletOrientation: tabletOrientation,
             targetDisplayIndex: targetDisplayIndex,
             toggleDisplayIDs: toggleDisplayIDs,
@@ -1172,6 +1191,8 @@ final class TabletSettings: ObservableObject {
         activeAreaWidth = snap.activeAreaWidth
         activeAreaHeight = snap.activeAreaHeight
         proportionalMapping = snap.proportionalMapping
+        parallaxOffsetX = snap.parallaxOffsetX
+        parallaxOffsetY = snap.parallaxOffsetY
         tabletOrientation = snap.tabletOrientation
         targetDisplayIndex = snap.targetDisplayIndex
         toggleDisplayIDs = snap.toggleDisplayIDs
