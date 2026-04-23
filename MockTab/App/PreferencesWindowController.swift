@@ -195,11 +195,11 @@ final class PreferencesWindowController {
                 return NSRect(x: x, y: y, width: w, height: h)
             }()
 
-            let wc = makeWindow(productID: productID, tabIndex: tabIndex, frame: nil)
+            let wc = makeWindow(productID: productID, tabIndex: tabIndex, frame: frame)
             if index == 0 { defaultWindow = wc }
 
+            wc.show()
             wc.showTab(at: tabIndex)
-            if let frame { wc.window?.setFrame(frame, display: true) }
         }
     }
 

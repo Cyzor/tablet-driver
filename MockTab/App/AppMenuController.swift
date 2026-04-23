@@ -67,12 +67,41 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             mainMenu.removeItem(item)
         }
 
-        let menu = NSMenu(title: windowTitle)
-        menu.delegate = self
-        windowMenu = menu
+        // Create the NSMenu only once. The rebuild guard calls this function repeatedly
+        // when SwiftUI rebuilds the main menu; recreating the NSMenu each time loses
+        // AppKit's window-tracking state — AppKit only adds existing windows to the
+        // windowsMenu when they are first ordered-front, so a fresh menu starts empty.
+        if windowMenu == nil {
+            let menu = NSMenu(title: windowTitle)
+            windowMenu = menu
+
+            func addItem(_ title: String, action: Selector, key: String = "", modifiers: NSEvent.ModifierFlags = .command) {
+                let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+                item.keyEquivalentModifierMask = modifiers
+                item.target = nil
+                menu.addItem(item)
+            }
+
+            addItem(String(localized: "Close",              comment: "Window menu"), action: #selector(NSWindow.performClose(_:)),       key: "w")
+            addItem(String(localized: "Minimize",           comment: "Window menu"), action: #selector(NSWindow.performMiniaturize(_:)), key: "m")
+            addItem(String(localized: "Zoom",               comment: "Window menu"), action: #selector(NSWindow.performZoom(_:)),        key: "", modifiers: [])
+            addItem(String(localized: "Full Screen",        comment: "Window menu"), action: #selector(NSWindow.toggleFullScreen(_:)),   key: "f", modifiers: [.control, .command])
+            menu.addItem(.separator())
+            addItem(String(localized: "Bring All to Front", comment: "Window menu"), action: #selector(NSApplication.arrangeInFront(_:)), key: "", modifiers: [])
+
+            // Suppress SwiftUI internal windows from AppKit's auto-managed window list.
+            for win in NSApp.windows where win.title.isEmpty || win.title == "Item-0" {
+                win.isExcludedFromWindowsMenu = true
+            }
+
+            // Register as the official windows menu so AppKit injects its standard
+            // entries (Cycle Through Windows, Merge All Windows, Show Next/Previous Tab,
+            // Move Tab to New Window, Center, Move & Resize) and manages the window list.
+            NSApp.windowsMenu = menu
+        }
 
         let menuItem = NSMenuItem(title: windowTitle, action: nil, keyEquivalent: "")
-        menuItem.submenu = menu
+        menuItem.submenu = windowMenu
 
         // Insert after the View menu.
         let viewTitle = String(localized: "View", comment: "Menu header: view/navigate tabs")
@@ -81,50 +110,6 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         } else {
             mainMenu.addItem(menuItem)
         }
-    }
-
-    private func rebuildWindowMenu(_ menu: NSMenu) {
-        menu.removeAllItems()
-
-        // Standard system entries — target:nil routes through the first-responder chain
-        // so each item acts on whichever window is currently key.
-        func addItem(_ title: String, action: Selector, key: String = "", modifiers: NSEvent.ModifierFlags = .command) {
-            let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
-            item.keyEquivalentModifierMask = modifiers
-            item.target = nil
-            menu.addItem(item)
-        }
-
-        addItem(String(localized: "Minimize",       comment: "Window menu"), action: #selector(NSWindow.performMiniaturize(_:)), key: "m")
-        addItem(String(localized: "Zoom",           comment: "Window menu"), action: #selector(NSWindow.performZoom(_:)),        key: "", modifiers: [])
-        addItem(String(localized: "Full Screen",    comment: "Window menu"), action: #selector(NSWindow.toggleFullScreen(_:)),   key: "f", modifiers: [.control, .command])
-        menu.addItem(.separator())
-        addItem(String(localized: "Bring All to Front", comment: "Window menu"), action: #selector(NSApplication.arrangeInFront(_:)), key: "", modifiers: [])
-
-        // Open app windows — filter SwiftUI internals (title "Item-0") and titleless utility windows.
-        let appWindows = NSApp.windows.filter {
-            !$0.isExcludedFromWindowsMenu
-                && !$0.title.isEmpty
-                && $0.title != "Item-0"
-                && ($0.isVisible || $0.isMiniaturized)
-        }
-        if !appWindows.isEmpty {
-            menu.addItem(.separator())
-            for win in appWindows {
-                let item = NSMenuItem(title: win.title, action: #selector(focusWindow(_:)), keyEquivalent: "")
-                item.target = self
-                item.representedObject = win
-                item.state = win.isKeyWindow ? .on : .off
-                menu.addItem(item)
-            }
-        }
-    }
-
-    @objc private func focusWindow(_ sender: NSMenuItem) {
-        guard let win = sender.representedObject as? NSWindow else { return }
-        if win.isMiniaturized { win.deminiaturize(nil) }
-        win.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
     }
 
     // MARK: - Rebuild guard
@@ -535,8 +520,6 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             rebuildTabletMenu(menu)
         } else if menu === presetsMenu {
             rebuildPresetsMenu(menu)
-        } else if menu === windowMenu {
-            rebuildWindowMenu(menu)
         }
     }
 
