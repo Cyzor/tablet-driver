@@ -101,6 +101,9 @@ struct WacomDeviceSpec {
     /// True if this device's pen reports include tilt data (Bamboo 4-bit format).
     /// Has no effect on IntuosV1/V2/Intuos3 decoders, which always decode tilt.
     let hasTilt: Bool
+    /// True if this device is a pen display (Cintiq-class) with a built-in screen.
+    /// Pen displays may need parallax offset calibration due to thick glass layers.
+    let isPenDisplay: Bool
     /// Feature report bytes to send once on open (first stage).
     /// nil = no feature init required.
     /// First byte is the HID report ID; remaining bytes are the payload.
@@ -126,6 +129,7 @@ struct WacomDeviceSpec {
         maxX: Int, maxY: Int, maxPressure: Int,
         buttonCount: Int, hasTouchRing: Bool, hasDualRings: Bool = false,
         hasTouchStrips: Bool = false, ringSlotCount: Int = 4, hasEraser: Bool, hasTilt: Bool = false,
+        isPenDisplay: Bool = false,
         featureInit: [UInt8]?, seizeUSB: Bool,
         featureInit2: [UInt8]? = nil,
         featureInit2Delay: Double = 0.15,
@@ -144,6 +148,7 @@ struct WacomDeviceSpec {
         self.ringSlotCount = ringSlotCount
         self.hasEraser = hasEraser
         self.hasTilt = hasTilt
+        self.isPenDisplay = isPenDisplay
         self.featureInit = featureInit
         self.seizeUSB = seizeUSB
         self.featureInit2 = featureInit2
@@ -269,6 +274,7 @@ enum WacomDeviceRegistry {
             productID: 0x003F, name: "Cintiq 21UX (DTZ-2100)",  // ⚠ estimated
             parser: .graphire, maxX: 87200, maxY: 65600, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: nil, seizeUSB: true),
 
         // ── Intuos 1 (1998–2002) — intuosV1 parser ───────────────────────────
@@ -542,41 +548,49 @@ enum WacomDeviceRegistry {
             productID: 0x00C0, name: "Cintiq 20WSX",  // ⚠ estimated
             parser: .cintiqV1, maxX: 86680, maxY: 54180, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00C4, name: "Cintiq 13HD (DTK-1300)",  // ⚠ estimated
             parser: .cintiqV1, maxX: 59152, maxY: 33448, maxPressure: 2047,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00C6, name: "Cintiq 12WX",  // ⚠ estimated
             parser: .cintiqV1, maxX: 53020, maxY: 33440, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00CC, name: "Cintiq 21UX (DTZ-2100)",  // ⚠ estimated
             parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00F4, name: "Cintiq 24HD (DTK-2400)",  // ✓ confirmed live
             parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasDualRings: true, ringSlotCount: 3, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true, ledCompanionPID: 0x0056),
         .init(
             productID: 0x00F8, name: "Cintiq 24HD Touch (DTH-2400)",  // ⚠ estimated
             parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasDualRings: true, ringSlotCount: 3, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true, ledCompanionPID: 0x0056),
         .init(
             productID: 0x00FA, name: "Cintiq 22HD (DTK-2200)",  // ⚠ estimated
             parser: .cintiqV1, maxX: 95840, maxY: 54090, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
             productID: 0x00FB, name: "Cintiq 21UX 2 (DTZ-2100B)",  // ⚠ estimated
             parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
 
         // ── Intuos4 (PTK) additional variants ────────────────────────────────
@@ -794,41 +808,49 @@ enum WacomDeviceRegistry {
             productID: 0x0304, name: "Wacom Cintiq 13HD (DTK-1300)",  // ⚠ from OTD
             parser: .cintiqV1, maxX: 59800, maxY: 34200, maxPressure: 2048,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x00F9, name: "Wacom Cintiq 22HD (DTK-2200)",  // ⚠ from OTD
             parser: .cintiqV1, maxX: 95040, maxY: 54260, maxPressure: 2048,
             buttonCount: 20, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x034F, name: "Wacom DTH-1320",  // ⚠ from OTD
             parser: .intuosV2, maxX: 59552, maxY: 33848, maxPressure: 8191,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x0390, name: "Wacom Cintiq 16 (DTK-1660)",  // ⚠ from OTD
             parser: .intuosV2, maxX: 69632, maxY: 39518, maxPressure: 8191,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x03AE, name: "Wacom Cintiq 16 (DTK-1660)",  // ⚠ from OTD
             parser: .intuosV2, maxX: 69632, maxY: 39518, maxPressure: 8191,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x03A6, name: "Wacom DTC-133",  // ⚠ from OTD
             parser: .intuosV2, maxX: 29434, maxY: 16556, maxPressure: 4095,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x03C0, name: "Wacom Cintiq Pro 27 (DTH-271)",  // ⚠ from OTD
             parser: .intuosV2, maxX: 120032, maxY: 67868, maxPressure: 8191,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x03F0, name: "Wacom Movink 13 (DTH-135)",  // ⚠ from OTD
             parser: .intuosV2, maxX: 59552, maxY: 33848, maxPressure: 8191,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
         // ── Wireless dongle ───────────────────────────────────────────────────
