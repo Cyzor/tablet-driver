@@ -122,7 +122,7 @@ struct DevicesView: View {
     private var tabletsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(LocalizedStringKey("Tablets")).font(.headline)
-            columnHeader("Name", "Kind", "Serial / ID")
+            columnHeader("Name", "Kind", "Identifier")
             if registry.knownTablets.isEmpty {
                 emptyState(String(localized: "No tablets have been connected yet.", comment: "Empty state message when no tablets have been detected"))
             } else {
@@ -219,7 +219,7 @@ struct DevicesView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            columnHeader("Name", "Kind", "Serial / ID")
+            columnHeader("Name", "Kind", "Identifier")
             if registry.knownTools.isEmpty {
                 emptyState(String(localized: "No tools detected yet.\nMove the pen over the tablet to register it.", comment: "Empty state message in tools list — singular tablet"))
             } else {
@@ -346,7 +346,7 @@ struct DevicesView: View {
     private var allToolsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(LocalizedStringKey("Tools (All Tablets)")).font(.headline)
-            columnHeader("Name", "Kind", "Serial / ID")
+            columnHeader("Name", "Kind", "Identifier")
             if registry.allKnownTools.isEmpty {
                 emptyState(String(localized: "No tools detected yet.\nMove the pen over a tablet to register it.", comment: "Empty state message in tools list — multiple tablets"))
             } else {
@@ -377,7 +377,7 @@ struct DevicesView: View {
         }
     }
 
-    private func columnHeader(_ nameCol: String, _ kindCol: String, _ idCol: String) -> some View {
+    private func columnHeader(_ nameCol: LocalizedStringKey, _ kindCol: LocalizedStringKey, _ idCol: LocalizedStringKey) -> some View {
         HStack {
             Text(nameCol)
                 .padding(.leading, 56)  // Room for kind icon + active indicator

@@ -98,15 +98,15 @@ struct DisplayMappingView: View {
                 .cornerRadius(6)
             }
 
-            radioRow("Primary display", tag: 0)
+            radioRow(LocalizedStringKey("Primary display"), tag: 0)
                 .help(LocalizedStringKey("Map the tablet to your main display."))
             ForEach(displays, id: \.listIndex) { info in
                 radioRow(info.pickerLabel, tag: info.listIndex)
                     .help(String(localized: "Map the tablet to \(info.name) only.", comment: "Help: specific display mapping"))
             }
-            radioRow("Toggle between displays", tag: modeToggle, disabled: displays.count <= 1)
+            radioRow(LocalizedStringKey("Toggle between displays"), tag: modeToggle, disabled: displays.count <= 1)
                 .help(LocalizedStringKey("Use a button press to cycle the tablet's active mapping between selected displays."))
-            radioRow("All — span across all displays", tag: modeAll, disabled: displays.count <= 1)
+            radioRow(LocalizedStringKey("All — span across all displays"), tag: modeAll, disabled: displays.count <= 1)
                 .help(LocalizedStringKey("Map the tablet across all displays as one continuous surface."))
 
             if settings.targetDisplayIndex == modeToggle {
@@ -135,7 +135,17 @@ struct DisplayMappingView: View {
     // MARK: - Radio row helper
 
     @ViewBuilder
+    private func radioRow(_ label: LocalizedStringKey, tag: Int, disabled: Bool = false) -> some View {
+        radioRowContent(Text(label), tag: tag, disabled: disabled)
+    }
+
+    @ViewBuilder
     private func radioRow(_ label: String, tag: Int, disabled: Bool = false) -> some View {
+        radioRowContent(Text(label), tag: tag, disabled: disabled)
+    }
+
+    @ViewBuilder
+    private func radioRowContent(_ labelView: Text, tag: Int, disabled: Bool) -> some View {
         Button {
             let old = settings.targetDisplayIndex
             guard old != tag else { return }
@@ -146,7 +156,7 @@ struct DisplayMappingView: View {
                 NativeRadioIndicator(isSelected: settings.targetDisplayIndex == tag)
                     .frame(width: 18, height: 18)
                     .allowsHitTesting(false)
-                Text(label)
+                labelView
                     .foregroundStyle(disabled ? Color.secondary : Color.primary)
                 Spacer()
             }
