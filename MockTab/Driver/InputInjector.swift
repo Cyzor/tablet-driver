@@ -209,6 +209,44 @@ final class InputInjector {
     private var lastStrip1Pos: UInt8 = 0xFF
     private var lastStrip2Pos: UInt8 = 0xFF
 
+    // MARK: - Synthetic-modifier safety valves
+
+    /// Idle watchdog. If the driver thinks a modifier is held but no tablet
+    /// activity arrives for `watchdogInterval`, release all synthetic flags.
+    /// Rearmed on every inject/injectAux/injectMouseButtons/fireButtonAction.
+    /// At 133 Hz pen reporting this never expires during legitimate holds —
+    /// the pen leaving the tablet is what stops the stream, at which point
+    /// any still-held synthetic flag is by definition a leak.
+    private var watchdogItem: DispatchWorkItem?
+    private let watchdogInterval: DispatchTimeInterval = .milliseconds(400)
+
+    /// True when no physical tablet control is held. If this holds and
+    /// `groundTruthSyntheticFlags` is non-empty, the flags are a leak.
+    private var tabletIsQuiescent: Bool {
+        !lastTipDown && !lastButton1Down && !lastButton2Down
+            && !lastRingButtonDown
+            && lastRingPos == 0x7F && lastRing2Pos == 0x7F
+            && lastStrip1Pos == 0xFF && lastStrip2Pos == 0xFF
+            && lastUSBMouseMask == 0
+            && !lastAuxButtons.contains(true)
+    }
+
+    private func rearmWatchdog() {
+        watchdogItem?.cancel()
+        guard !groundTruthSyntheticFlags.isEmpty else {
+            watchdogItem = nil
+            return
+        }
+        let item = DispatchWorkItem { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, !self.groundTruthSyntheticFlags.isEmpty else { return }
+                self.releaseAllSyntheticModifiers()
+            }
+        }
+        watchdogItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + watchdogInterval, execute: item)
+    }
+
     // MARK: - Adobe shim replay cache
     //
     // Populated on every inject() call so WacomShim can re-emit the last
@@ -228,6 +266,7 @@ final class InputInjector {
     // MARK: - Pen injection
 
     func inject(point: TabletPoint, settings: TabletSettings?) {
+        rearmWatchdog()
         let settings = settings ?? TabletSettings()
         let tool = activeToolSettings ?? settings.activeTool
         var point = point
@@ -548,6 +587,7 @@ final class InputInjector {
     // promotes subsequent mouseMoved events to leftMouseDragged while left is held.
 
     func injectMouseButtons(mask: UInt8, settings: TabletSettings?) {
+        rearmWatchdog()
         guard mask != lastUSBMouseMask else { return }
         let s = settings ?? TabletSettings()
         let loc = currentCursorPosition()
@@ -608,7 +648,18 @@ final class InputInjector {
 
     // MARK: - Express key injection
 
+    /// Ring/strip rotations are discrete pulses, not holds. Pairing down+up in a
+    /// single call prevents modifier bits in the binding from leaking into
+    /// `groundTruthSyntheticFlags` across rotation samples.
+    private func fireKeyTap(_ binding: ButtonBinding,
+                            at loc: CGPoint,
+                            settings: TabletSettings) {
+        fireButtonAction(binding, down: true, at: loc, settings: settings)
+        fireButtonAction(binding, down: false, at: loc, settings: settings)
+    }
+
     func injectAux(buttons: AuxButtons, settings: TabletSettings?) {
+        rearmWatchdog()
         let s = settings ?? TabletSettings()
         let bindings = s.expressKeyBindings
         let cursorPos = currentCursorPosition()
@@ -654,7 +705,7 @@ final class InputInjector {
                         postScrollWheelEvent(delta: delta, at: cursorPos)
                     case .keyPress:
                         let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
-                        fireButtonAction(binding, down: true, at: cursorPos, settings: s)
+                        fireKeyTap(binding, at: cursorPos, settings: s)
                     case .off:
                         break
                     }
@@ -676,7 +727,7 @@ final class InputInjector {
                         postScrollWheelEvent(delta: delta, at: cursorPos)
                     case .keyPress:
                         let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
-                        fireButtonAction(binding, down: true, at: cursorPos, settings: s)
+                        fireKeyTap(binding, at: cursorPos, settings: s)
                     case .off:
                         break
                     }
@@ -699,7 +750,7 @@ final class InputInjector {
                         postScrollWheelEvent(delta: delta, at: cursorPos)
                     case .keyPress:
                         let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
-                        fireButtonAction(binding, down: true, at: cursorPos, settings: s)
+                        fireKeyTap(binding, at: cursorPos, settings: s)
                     case .off:
                         break
                     }
@@ -719,7 +770,7 @@ final class InputInjector {
                         postScrollWheelEvent(delta: delta, at: cursorPos)
                     case .keyPress:
                         let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
-                        fireButtonAction(binding, down: true, at: cursorPos, settings: s)
+                        fireKeyTap(binding, at: cursorPos, settings: s)
                     case .off:
                         break
                     }
@@ -1257,6 +1308,13 @@ final class InputInjector {
                 finalizeAndPost(e)
             }
         }
+
+        // Safety valve: if nothing is physically held on the tablet but we still
+        // believe a synthetic modifier is pressed, it is by definition a leak.
+        if tabletIsQuiescent && !groundTruthSyntheticFlags.isEmpty {
+            releaseAllSyntheticModifiers()
+        }
+        rearmWatchdog()
     }
 
     // MARK: - Scroll wheel

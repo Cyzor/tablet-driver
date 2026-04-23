@@ -381,7 +381,6 @@ struct InfoView: View {
         let running = NSWorkspace.shared.runningApplications
         var liveNames = Set(running.compactMap { $0.localizedName })
         liveNames.formUnion(running.compactMap { $0.bundleIdentifier })
-        liveNames.formUnion(Self.runningProcessNames())
 
         var claimedNames = Set<String>()
         for (name, label) in Self.competingProcesses {
@@ -401,30 +400,6 @@ struct InfoView: View {
         }
 
         return found
-    }
-
-    private static func runningProcessNames() -> Set<String> {
-        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
-        var size: Int = 0
-        guard sysctl(&mib, UInt32(mib.count), nil, &size, nil, 0) == 0, size > 0 else { return [] }
-
-        let count = size / MemoryLayout<kinfo_proc>.stride
-        var procs = [kinfo_proc](repeating: kinfo_proc(), count: count)
-        guard sysctl(&mib, UInt32(mib.count), &procs, &size, nil, 0) == 0 else { return [] }
-
-        let actualCount = size / MemoryLayout<kinfo_proc>.stride
-        var names = Set<String>()
-        for i in 0..<actualCount {
-            let comm = procs[i].kp_proc.p_comm
-            let name = withUnsafeBytes(of: comm) { buf in
-                guard let base = buf.baseAddress?.assumingMemoryBound(to: CChar.self) else {
-                    return ""
-                }
-                return String(cString: base)
-            }
-            if !name.isEmpty { names.insert(name) }
-        }
-        return names
     }
 
     private func showConflictAlert() {

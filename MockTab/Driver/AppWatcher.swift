@@ -38,6 +38,7 @@ final class AppWatcher {
     ]
 
     private var observerToken: (any NSObjectProtocol)?
+    private var releaseTokens: [any NSObjectProtocol] = []
 
     /// Called once at launch to force the lazy singleton to initialize,
     /// register the NSWorkspace notification observer, and seed the initial
@@ -66,11 +67,39 @@ final class AppWatcher {
                 self?.appDidActivate(notification)
             }
         }
+
+        // Broader safety valves: release synthetic modifiers whenever this app
+        // loses focus or the system is about to lose our input context. The
+        // underlying release is idempotent, so overlapping signals are harmless.
+        let wsCenter = NSWorkspace.shared.notificationCenter
+        let nc = NotificationCenter.default
+        let releaseSources: [(NotificationCenter, Notification.Name)] = [
+            (nc, NSApplication.didResignActiveNotification),
+            (wsCenter, NSWorkspace.willSleepNotification),
+            (wsCenter, NSWorkspace.screensDidSleepNotification),
+            (wsCenter, NSWorkspace.sessionDidResignActiveNotification),
+        ]
+        for (center, name) in releaseSources {
+            let token = center.addObserver(forName: name, object: nil, queue: .main) { _ in
+                Task { @MainActor in
+                    for ctx in TabletManager.shared.contexts.values {
+                        ctx.injector.releaseOnAppSwitch()
+                    }
+                }
+            }
+            releaseTokens.append(token)
+        }
     }
 
     deinit {
         if let token = observerToken {
             NSWorkspace.shared.notificationCenter.removeObserver(token)
+        }
+        let wsCenter = NSWorkspace.shared.notificationCenter
+        let nc = NotificationCenter.default
+        for token in releaseTokens {
+            wsCenter.removeObserver(token)
+            nc.removeObserver(token)
         }
     }
 
