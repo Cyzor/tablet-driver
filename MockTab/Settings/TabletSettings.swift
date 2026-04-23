@@ -19,7 +19,10 @@
 import AppKit
 import Carbon
 import Foundation
+import OSLog
 import SwiftUI
+
+private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "settings")
 
 /// All user-configurable settings, persisted via UserDefaults with a per-device
 /// key prefix so that each tablet remembers its own configuration independently.

@@ -17,6 +17,9 @@
 // along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
 
 import Foundation
+import OSLog
+
+private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "capture")
 
 /// Lightweight raw-HID capture buffer.
 ///
@@ -117,7 +120,7 @@ final class HIDCapture {
             try content.write(to: url, atomically: true, encoding: .utf8)
             return url
         } catch {
-            print("HIDCapture: save failed — \(error)")
+            logger.error("HIDCapture: save failed — \(error, privacy: .public)")
             return nil
         }
     }

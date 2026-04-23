@@ -18,6 +18,9 @@
 
 import Foundation
 import IOKit.hid
+import OSLog
+
+private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 
 /// Generic fallback driver for any unrecognised Wacom tablet (vendor 0x056A).
 ///
@@ -168,10 +171,11 @@ final class WacomFallbackDevice: TabletDevice {
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
         let isBluetooth = transport.lowercased().contains("bluetooth")
+        let t = tag
 
         let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
         guard ret == kIOReturnSuccess else {
-            print("\(tag): failed to open — \(ret). Is another tablet driver running?")
+            logger.error("\(t, privacy: .public): failed to open — \(ret, privacy: .public). Is another tablet driver running?")
             return
         }
 
@@ -197,9 +201,9 @@ final class WacomFallbackDevice: TabletDevice {
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
 
-        print(
-            "\(tag): generic driver attached (\(family == .intuosV1 ? "IntuosV1" : "IntuosV2"), "
-                + "maxX=\(spec.maxX) maxY=\(spec.maxY) maxP=\(spec.maxPressure))")
+        let familyName = family == .intuosV1 ? "IntuosV1" : "IntuosV2"
+        let maxX = spec.maxX; let maxY = spec.maxY; let maxP = spec.maxPressure
+        logger.info("\(t, privacy: .public): generic driver attached (\(familyName, privacy: .public), maxX=\(maxX, privacy: .public) maxY=\(maxY, privacy: .public) maxP=\(maxP, privacy: .public))")
     }
 
     func close() {
@@ -209,9 +213,9 @@ final class WacomFallbackDevice: TabletDevice {
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
 
         if sampleCount > 0 {
-            print(
-                "\(tag): disconnected — observed peaks X=\(peakX) Y=\(peakY) P=\(peakP) (\(sampleCount) samples)"
-            )
+            let t = tag
+            let x = peakX; let y = peakY; let p = peakP; let n = sampleCount
+            logger.info("\(t, privacy: .public): disconnected — observed peaks X=\(x, privacy: .public) Y=\(y, privacy: .public) P=\(p, privacy: .public) (\(n, privacy: .public) samples)")
         }
     }
 
@@ -254,11 +258,11 @@ final class WacomFallbackDevice: TabletDevice {
         // confirmed established.
         if id == 0x80 {
             if length >= 2 {
+                let t = tag
                 let status = report[1]
                 switch status {
                 case 0x02:
-                    print(
-                        "\(tag): wireless link active — clearing state and re-sending feature init")
+                    logger.info("\(t, privacy: .public): wireless link active — clearing state and re-sending feature init")
                     // Reset decoder state to sync with wireless link-up
                     lastX = 0
                     lastY = 0
@@ -276,8 +280,8 @@ final class WacomFallbackDevice: TabletDevice {
                         IOHIDDeviceSetReport(
                             device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
                     }
-                case 0x05: print("\(tag): wireless link lost (tablet out of range or off)")
-                case 0x06: print("\(tag): battery critically low")
+                case 0x05: logger.info("\(t, privacy: .public): wireless link lost (tablet out of range or off)")
+                case 0x06: logger.warning("\(t, privacy: .public): battery critically low")
                 default: break
                 }
             }
@@ -699,10 +703,10 @@ final class WacomFallbackDevice: TabletDevice {
         }
 
         if updated {
-            print(
-                String(
-                    format: "%@: peak  X=%-6d  Y=%-6d  P=%-5d  (spec: %d × %d × %d)",
-                    tag, peakX, peakY, peakP, spec.maxX, spec.maxY, spec.maxPressure))
+            let t = tag
+            let px = peakX; let py = peakY; let pp = peakP
+            let sx = spec.maxX; let sy = spec.maxY; let sp = spec.maxPressure
+            logger.debug("\(t, privacy: .public): peak X=\(px, privacy: .public) Y=\(py, privacy: .public) P=\(pp, privacy: .public) (spec: \(sx, privacy: .public) × \(sy, privacy: .public) × \(sp, privacy: .public))")
         }
     }
 }

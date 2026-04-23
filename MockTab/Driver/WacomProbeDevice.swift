@@ -72,10 +72,8 @@ final class WacomProbeDevice: TabletDevice {
             device, CFRunLoopGetCurrent(),
             RunLoop.Mode.common.rawValue as CFString)
 
-        probeLog.notice("WacomProbe: listening — move pen to all four corners and press hard")
-        print(
-            "WacomProbe: listening on \(IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "unknown") — move pen to all four corners and press hard"
-        )
+        let productName = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "unknown"
+        probeLog.notice("WacomProbe: listening on \(productName, privacy: .public) — move pen to all four corners and press hard")
     }
 
     func close() {
@@ -84,12 +82,7 @@ final class WacomProbeDevice: TabletDevice {
             RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
-        probeLog.notice(
-            "WacomProbe: final maxima — X=\(self.maxX) Y=\(self.maxY) P=\(self.maxP) (from \(self.sampleCount) samples)"
-        )
-        print(
-            "WacomProbe: FINAL maxima — X=\(maxX)  Y=\(maxY)  P=\(maxP)  (from \(sampleCount) samples)"
-        )
+        probeLog.notice("WacomProbe: final maxima — X=\(self.maxX, privacy: .public) Y=\(self.maxY, privacy: .public) P=\(self.maxP, privacy: .public) (from \(self.sampleCount, privacy: .public) samples)")
     }
 
     // MARK: - C callback
@@ -129,8 +122,7 @@ final class WacomProbeDevice: TabletDevice {
         }
 
         if updated {
-            probeLog.notice("WacomProbe: new peak — X=\(self.maxX) Y=\(self.maxY) P=\(self.maxP)")
-            print(String(format: "WacomProbe: peak  X=%-6d  Y=%-6d  P=%-5d", maxX, maxY, maxP))
+            probeLog.notice("WacomProbe: new peak — X=\(self.maxX, privacy: .public) Y=\(self.maxY, privacy: .public) P=\(self.maxP, privacy: .public)")
         }
     }
 }
