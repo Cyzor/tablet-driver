@@ -544,35 +544,47 @@ struct ButtonMappingView: View {
             // Button 1
             if btnCount >= 1 {
                 buttonRow(
-                    isMouse ? "Button 1" : (btnCount == 1 ? "Side button" : "Side button 1"),
+                    isMouse
+                        ? String(localized: "Button 1", comment: "Pen button row label: mouse button 1")
+                        : (btnCount == 1
+                            ? String(localized: "Side button", comment: "Pen button row label: single side button")
+                            : String(localized: "Side button 1", comment: "Pen button row label: first side button")),
                     isActive: lb.button1Down,
                     binding: pen1Binding)
             }
             // Button 2
             if btnCount >= 2 {
                 buttonRow(
-                    isMouse ? "Button 2" : "Side button 2",
+                    isMouse
+                        ? String(localized: "Button 2", comment: "Pen button row label: mouse button 2")
+                        : String(localized: "Side button 2", comment: "Pen button row label: second side button"),
                     isActive: lb.button2Down,
                     binding: pen2Binding)
             }
             // Button 3
             if btnCount >= 3 {
                 buttonRow(
-                    isMouse ? "Button 3" : "Side button 3",
+                    isMouse
+                        ? String(localized: "Button 3", comment: "Pen button row label: mouse button 3")
+                        : String(localized: "Side button 3", comment: "Pen button row label: third side button"),
                     isActive: lb.button3Down,
                     binding: pen3Binding)
             }
             // Button 4
             if btnCount >= 4 {
                 buttonRow(
-                    isMouse ? "Button 4" : "Side button 4",
+                    isMouse
+                        ? String(localized: "Button 4", comment: "Pen button row label: mouse button 4")
+                        : String(localized: "Side button 4", comment: "Pen button row label: fourth side button"),
                     isActive: lb.button4Down,
                     binding: pen4Binding)
             }
             // Button 5
             if btnCount >= 5 {
                 buttonRow(
-                    isMouse ? "Button 5" : "Side button 5",
+                    isMouse
+                        ? String(localized: "Button 5", comment: "Pen button row label: mouse button 5")
+                        : String(localized: "Side button 5", comment: "Pen button row label: fifth side button"),
                     isActive: lb.button5Down,
                     binding: pen5Binding)
             }

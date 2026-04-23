@@ -357,21 +357,30 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     private func insertTabletMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
-        // "Tablet" is not currently in Localizable.xcstrings, but we'll use localized
-        // string lookup anyway to be future-proof.
         let tabletTitle = String(
             localized: "Tablet", comment: "Menu header: tablet-specific actions")
-        guard mainMenu.items.allSatisfy({ $0.title != tabletTitle }) else { return }
 
-        let menu = NSMenu(title: tabletTitle)
-        menu.delegate = self
-        tabletMenu = menu
+        // Always remove and reinsert so position is correct after any SwiftUI rebuild.
+        for item in mainMenu.items where item.title == tabletTitle {
+            mainMenu.removeItem(item)
+        }
+
+        // Create the NSMenu only once; reuse on subsequent calls to preserve delegate state.
+        if tabletMenu == nil {
+            let menu = NSMenu(title: tabletTitle)
+            menu.delegate = self
+            tabletMenu = menu
+        }
 
         let menuItem = NSMenuItem(title: tabletTitle, action: nil, keyEquivalent: "")
-        menuItem.submenu = menu
+        menuItem.submenu = tabletMenu
 
-        // Insert after the application menu (index 1 = MockTab app menu).
-        mainMenu.insertItem(menuItem, at: 2)
+        // Insert immediately after the app menu. Locate the app menu by its Quit action
+        // rather than by index — robust against SwiftUI inserting items before it.
+        let appMenuIdx = mainMenu.items.firstIndex {
+            $0.submenu?.items.contains { $0.action == #selector(NSApplication.terminate(_:)) } ?? false
+        } ?? 1
+        mainMenu.insertItem(menuItem, at: appMenuIdx + 1)
     }
 
     private func rebuildTabletMenu(_ menu: NSMenu) {
@@ -461,24 +470,36 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         guard let mainMenu = NSApp.mainMenu else { return }
         let profilesTitle = String(
             localized: "Profiles", comment: "Menu header: profile management")
-        guard mainMenu.items.allSatisfy({ $0.title != profilesTitle }) else { return }
 
-        let menu = NSMenu(title: profilesTitle)
-        menu.delegate = self
-        presetsMenu = menu
+        // Always remove and reinsert so position is correct after any SwiftUI rebuild.
+        for item in mainMenu.items where item.title == profilesTitle {
+            mainMenu.removeItem(item)
+        }
+
+        // Create the NSMenu only once; reuse on subsequent calls to preserve delegate state.
+        if presetsMenu == nil {
+            let menu = NSMenu(title: profilesTitle)
+            menu.delegate = self
+            presetsMenu = menu
+        }
 
         let menuItem = NSMenuItem(title: profilesTitle, action: nil, keyEquivalent: "")
-        menuItem.submenu = menu
+        menuItem.submenu = presetsMenu
 
-        // Insert after Edit menu. Finding by "undo:" action is localization-robust.
+        // Locate Edit by its ⌘Z shortcut — reliable regardless of locale or whether
+        // SwiftUI exposes an undo: selector on its Button-generated menu items.
         let editIndex = mainMenu.items.firstIndex { item in
-            item.submenu?.items.contains { $0.action == Selector(("undo:")) } ?? false
+            item.submenu?.items.contains {
+                $0.keyEquivalent == "z" && $0.keyEquivalentModifierMask == .command
+            } ?? false
         }
         if let editIndex {
             mainMenu.insertItem(menuItem, at: editIndex + 1)
         } else {
-            // Fallback: insert after app menu and tablet menu.
-            mainMenu.insertItem(menuItem, at: 2)
+            // Fallback: place after Tablet, before View.
+            let tabletTitle = String(localized: "Tablet", comment: "Menu header: tablet-specific actions")
+            let afterTablet = (mainMenu.items.firstIndex { $0.title == tabletTitle } ?? 2) + 2
+            mainMenu.insertItem(menuItem, at: min(afterTablet, mainMenu.items.count))
         }
     }
 
