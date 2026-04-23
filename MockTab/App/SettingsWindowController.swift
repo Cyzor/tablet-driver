@@ -148,8 +148,11 @@ final class SettingsWindowController: NSWindowController {
     let productID: Int?
     let docUndoManager = UndoManager()
 
-    /// Expose undoManager for PreferencesWindowController access
-    /// Named settingsUndoManager to avoid conflict with NSResponder.undoManager
+    /// Expose docUndoManager through the NSResponder chain so AppKit's standard
+    /// Cmd+Z / Cmd+Shift+Z handling reaches it when this window is key.
+    override var undoManager: UndoManager? { docUndoManager }
+
+    /// Alias for PreferencesWindowController access (kept for source compatibility).
     var settingsUndoManager: UndoManager? { docUndoManager }
 
     private let tabVC = ResizableTabViewController()
@@ -245,7 +248,7 @@ final class SettingsWindowController: NSWindowController {
         NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: window, queue: .main
-        ) { _ in TabletManager.shared.infoViewVisible = false }
+        ) { _ in MainActor.assumeIsolated { TabletManager.shared.infoViewVisible = false } }
 
         let s = settings
         let tm = TabletManager.shared

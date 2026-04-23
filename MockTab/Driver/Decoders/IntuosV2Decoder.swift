@@ -303,7 +303,6 @@ struct IntuosV2Decoder: WacomDecoder {
         // Only valid for Art Pen variants (0x0804, 0x1108); other pens report garbage/defaults.
         // Cache in state.lastRotation so boundary-noise frames can hold the last real value.
         let isArtPen = state.currentToolCode == 0x0804 || state.currentToolCode == 0x1108
-        let toolIsEraser = !isArtPen && (state.currentToolCode & 0x0008) != 0
         let rawRot = Int16(bitPattern: UInt16(report[12]) | UInt16(report[13]) << 8)
         // Rotation: signed Int16 with +/-900 range. Kernel formula: (raw + 900) / 5.
         // Negated here so clockwise twist produces increasing degrees, matching what
@@ -355,7 +354,6 @@ struct IntuosV2Decoder: WacomDecoder {
         // Hover distance: same absolute position as 0x10 per kernel spec.
         let hoverDistance = Int(report[16])
         let isArtPen = state.currentToolCode == 0x0804 || state.currentToolCode == 0x1108
-        let toolIsEraser = !isArtPen && (state.currentToolCode & 0x0008) != 0
 
         return [
             .pen(

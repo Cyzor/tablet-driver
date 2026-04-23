@@ -233,7 +233,7 @@ final class WacomFallbackDevice: TabletDevice {
         HIDCapture.shared.record(tag: tag, report: report, length: length)
         // Delta capture — only fires when CaptureEngine.isRunning is true.
         // Use _isRunningNonisolated to avoid MainActor hop on every HID report.
-        if CaptureEngine.shared._isRunningNonisolated {
+        if CaptureEngine._isRunningNonisolated {
             Task { @MainActor in
                 CaptureEngine.shared.recordSample(
                     reportID: report[0], report: report, length: length)

@@ -933,7 +933,6 @@ enum WacomToolCatalog {
         }
         // Fallback heuristics for unknown codes - be more specific
         let highNibble = (toolCode >> 8) & 0xFF
-        let lowByte = toolCode & 0xFF
 
         // Mouse tools (0x06, 0x07 family)
         if (toolCode & 0x000F) == 0x0006 {

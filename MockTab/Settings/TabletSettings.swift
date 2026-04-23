@@ -143,9 +143,9 @@ final class TabletSettings: ObservableObject {
     // MARK: - Display mapping
 
     /// Sentinel value for targetDisplayIndex: tablet area spans all displays.
-    static let displayModeAll = -1
+    nonisolated static let displayModeAll = -1
     /// Sentinel value for targetDisplayIndex: tablet cycles through selected displays.
-    static let displayModeToggle = -2
+    nonisolated static let displayModeToggle = -2
 
     /// 0 = primary display, 1..N = specific display (1-indexed CGGetActiveDisplayList order).
     /// -1 = all displays (span union rect), -2 = toggle rotation.

@@ -267,7 +267,7 @@ enum OTDImporter {
         -> OTDImportResult
     {
         var warnings: [String] = []
-        var errors: [String] = []
+        let errors: [String] = []
 
         // Validate vendor
         guard config.vendorID == wacomVendorID else {
@@ -417,7 +417,6 @@ enum OTDImporter {
         [UInt8]?, [UInt8]?, Double
     ) {
         var featureInit: [UInt8]?
-        var featureInit2: [UInt8]?
         var initDelay: Double = 0.15
 
         // Try digitizer identifiers for feature init
@@ -439,7 +438,7 @@ enum OTDImporter {
             initDelay = ms / 1000.0
         }
 
-        return (featureInit, featureInit2, initDelay)
+        return (featureInit, nil, initDelay)
     }
 
     private static func decodeBase64FeatureInit(_ encoded: String) -> [UInt8]? {
@@ -544,7 +543,7 @@ enum OTDImporter {
             lines.append("            hasEraser: \(spec.hasEraser),")
             lines.append("            featureInit: \(featureInitStr),")
             lines.append("            seizeUSB: \(spec.seizeUSB)")
-            if let fi2 = spec.featureInit2 {
+            if spec.featureInit2 != nil {
                 lines.append("            featureInit2: \(featureInit2Str)")
                 if spec.featureInit2Delay != 0.15 {
                     lines.append("            featureInit2Delay: \(spec.featureInit2Delay)")
