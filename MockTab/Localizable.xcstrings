@@ -2,26 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : ""
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : ""
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : ""
-          }
-        }
-      }
+
     },
     " — %@" : {
       "comment" : "A subtitle below the \"Tools\" header, showing which tablet's tools are currently displayed. The argument is the nickname of the currently selected tablet.",
@@ -30,6 +11,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : " — %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : " — %@"
           }
         },
@@ -56,6 +43,12 @@
             "value" : " (wird geladen)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " (charging)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -77,6 +70,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : " (HOCH)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " (HIGH)"
           }
         },
         "es" : {
@@ -102,6 +101,12 @@
             "value" : " Absolut, wie ein Stift"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " Absolute, like a stylus"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -123,6 +128,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : " Im Uhrzeigersinn"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " Clockwise"
           }
         },
         "es" : {
@@ -148,6 +159,12 @@
             "value" : " Gegen den Uhrzeigersinn"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " Counter-clockwise"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -171,6 +188,12 @@
             "value" : " Relativ, wie eine Maus"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : " Relative, like a mouse"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -190,6 +213,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "—"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "—"
           }
         },
@@ -216,6 +245,12 @@
             "value" : ", "
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : ", "
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -239,6 +274,12 @@
             "value" : "· Änderungen gelten nur, wenn %@ aktiv ist"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "· changes apply only when %@ is active"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -260,6 +301,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "\"%@\""
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "\"%@\""
           }
         },
@@ -287,6 +334,12 @@
             "value" : "»Einst,« sagte die falsche Schildkröte endlich mit einem tiefen Seufzer, »war ich eine wirkliche Schildkröte.«"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "“Once,” said the Mock Turtle at last, with a deep sigh, “I was a real Turtle.”"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -307,6 +360,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "(%@)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "(%@)"
           }
         },
@@ -331,6 +390,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(Automatisch erkennen)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "(Auto-detect)"
           }
         },
         "es" : {
@@ -385,6 +450,12 @@
             "value" : "(Lädt)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "(Charging)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -406,6 +477,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(Im Bereich)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "(In Range)"
           }
         },
         "es" : {
@@ -431,6 +508,12 @@
             "value" : "(Außerhalb)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "(Out)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -452,6 +535,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(umbenannt, um Konflikte zu vermeiden)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "(renamed to avoid conflict)"
           }
         },
         "es" : {
@@ -477,6 +566,12 @@
             "value" : "%@ verbunden"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@ connected"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -495,10 +590,28 @@
       "comment" : "A caption that describes the type of calibration transform used and the maximum pixel error observed during the calibration process.",
       "isCommentAutoGenerated" : true,
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ Transformation, max. Fehler %2$.1f px"
+          }
+        },
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
             "value" : "%1$@ transform, %2$.1f px max error"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transformación %1$@, error máximo %2$.1f px"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 変換、最大エラー %2$.1f px"
           }
         }
       }
@@ -508,6 +621,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "%lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "%lld"
           }
         },
@@ -562,6 +681,12 @@
             "value" : "%lld erkannt"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lld detected"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -583,6 +708,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld Ereignisse aufgezeichnet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lld events recorded"
           }
         },
         "es" : {
@@ -637,6 +768,12 @@
             "value" : "%lld Pt"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lld pt"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -688,6 +825,12 @@
             "value" : "%lld°"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lld°"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -712,6 +855,12 @@
             "value" : "→ Neues Profil:"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "→ New profile:"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -733,6 +882,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "⇧ Shift"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "⇧ Shift"
           }
         },
@@ -760,6 +915,12 @@
             "value" : "⌃ Control"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "⌃ Control"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -781,6 +942,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "⌘ Command"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "⌘ Command"
           }
         },
@@ -808,6 +975,12 @@
             "value" : "⌥ Option"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "⌥ Option"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -827,6 +1000,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "0"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "0"
           }
         },
@@ -853,6 +1032,12 @@
             "value" : "Über MockTab"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "About MockTab"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -873,6 +1058,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Accessibility  : %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Accessibility  : %@"
           }
         },
@@ -899,6 +1090,12 @@
             "value" : "Aktivieren"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Activate"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -920,6 +1117,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aktiv"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Active"
           }
         },
         "es" : {
@@ -945,6 +1148,12 @@
             "value" : "Aktives Profil:"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Active profile:"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -968,6 +1177,12 @@
             "value" : "Aktive Oberfläche"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Active Surface Area"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -989,6 +1204,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Alle hinzufügen (%lld)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add All (%lld)"
           }
         },
         "es" : {
@@ -1015,6 +1236,12 @@
             "value" : "Nur erste 3 hinzufügen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add First 3 Only"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1036,6 +1263,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mehrere Apps hinzufügen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add Multiple Apps?"
           }
         },
         "es" : {
@@ -1062,6 +1295,12 @@
             "value" : "App-spezifische Einstellung hinzufügen — oder App hierher aus Finder oder Dock ziehen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add per-app override — or drag an app here from Finder or the Dock"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1086,6 +1325,12 @@
             "value" : "Alice im Wunderland, Lewis Carroll"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Alice's Adventures in Wonderland, Lewis Carroll"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1100,6 +1345,35 @@
         }
       }
     },
+    "All — span across all displays" : {
+      "comment" : "Display mapping option: treat all displays as one continuous surface",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle — über alle Displays verteilt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "All — span across all displays"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todos — distribuido en todas las pantallas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのディスプレイに広がる"
+          }
+        }
+      }
+    },
     "All tablets, tools, presets, and button mappings will be erased. MockTab will restart." : {
       "comment" : "Alert body: explaining the consequences of factory reset",
       "localizations" : {
@@ -1107,6 +1381,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Alle Tablets, Tools, Presets und Tastenbelegungen werden gelöscht. MockTab startet neu."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "All tablets, tools, presets, and button mappings will be erased. MockTab will restart."
           }
         },
         "es" : {
@@ -1132,6 +1412,12 @@
             "value" : "Alle bisher gesammelten Daten werden verworfen."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Any data collected so far will be discarded."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1152,6 +1438,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "App       : MockTab %@ (build %@)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "App       : MockTab %@ (build %@)"
           }
         },
@@ -1178,6 +1470,12 @@
             "value" : "App-Name"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "App name"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1202,6 +1500,12 @@
             "value" : "Anwenden"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Apply"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1217,7 +1521,32 @@
       }
     },
     "Apply a small constant offset on top of calibration for sub-pixel fine-tuning." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wende einen kleinen konstanten Versatz auf die Kalibrierung für Subpixel-Feinabstimmung an."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Apply a small constant offset on top of calibration for sub-pixel fine-tuning."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplica un pequeño desplazamiento constante sobre la calibración para ajuste de subpíxeles."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャリブレーションの上に小さな一定のオフセットを適用して、サブピクセル微調整を行います。"
+          }
+        }
+      }
     },
     "area offset" : {
       "comment" : "Device summary: area offset",
@@ -1226,6 +1555,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bereichsversatz"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "area offset"
           }
         },
         "es" : {
@@ -1251,6 +1586,12 @@
             "value" : "Bereich skaliert"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "area scaled"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1271,6 +1612,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Art Pen: Neigung mit Rotation tauschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Art Pen: Swap Tilt with Rotation"
           }
         },
         "es" : {
@@ -1297,6 +1644,12 @@
             "value" : "Klickaktion festlegen: Links-, Rechts-, Mittelklick, Modifiziertasten oder Display-Umschaltung."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Assign a click action: left-click, right-click, middle-click, modifier keys, or display toggle."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1318,6 +1671,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Automatisches Umschalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Auto-Switch"
           }
         },
         "es" : {
@@ -1343,6 +1702,12 @@
             "value" : "Beim Verbinden dieses Tabletts automatisch zum passenden Profil wechseln"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Automatically switch to the matching profile when this tablet connects"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1366,6 +1731,12 @@
             "value" : "Sicherung & Wiederherstellung"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Backup & Restore"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1387,6 +1758,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Batterie"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Battery"
           }
         },
         "es" : {
@@ -1441,6 +1818,12 @@
             "value" : "Alle nach vorne"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Bring All to Front"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1462,6 +1845,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Taste %lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Button %lld"
           }
         },
         "es" : {
@@ -1487,6 +1876,12 @@
             "value" : "Tasten"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Buttons"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1502,14 +1897,90 @@
       }
     },
     "Calibrate…" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kalibrieren…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Calibrate…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calibrar…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャリブレーション…"
+          }
+        }
+      }
     },
     "Calibrated" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kalibriert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Calibrated"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calibrado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャリブレーション済み"
+          }
+        }
+      }
     },
     "Calibration complete" : {
       "comment" : "A message displayed when the calibration process is complete.",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kalibrierung abgeschlossen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Calibration complete"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calibración completada"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャリブレーション完了"
+          }
+        }
+      }
     },
     "Cancel" : {
       "comment" : "Button label: cancel factory reset\nButton label: cancel hide Dock icon",
@@ -1518,6 +1989,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abbrechen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cancel"
           }
         },
         "es" : {
@@ -1544,6 +2021,12 @@
             "value" : "Neues Profil verwerfen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cancel creating a new profile"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1565,6 +2048,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Datensammlung abbrechen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cancel Data Collection?"
           }
         },
         "es" : {
@@ -1591,6 +2080,12 @@
             "value" : "Umbenennen abbrechen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cancel renaming"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1612,6 +2107,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erfasst Diagnosedaten, um einem Problem mit deinem Gerät auf die Spur zu kommen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Captures diagnostic data to help investigate a problem with your device."
           }
         },
         "es" : {
@@ -1637,6 +2138,12 @@
             "value" : "Mitte"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Center"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1658,6 +2165,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wähle eine MockTab-Backup-Datei zum Importieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Choose a MockTab backup file to import"
           }
         },
         "es" : {
@@ -1684,6 +2197,12 @@
             "value" : "Löschen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Clear"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1706,6 +2225,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Überschreibung löschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Clear Override"
           }
         },
         "es" : {
@@ -1732,6 +2257,12 @@
             "value" : "Diese Schaltflächenzuordnung löschen."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Clear this button assignment."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1753,6 +2284,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Klick auf ein Display, um das Tablet darauf zu mappen. ⌘+Klick fügt es zur Umschalt-Rotation hinzu. ⇧+Klick spannt alle Displays auf."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays."
           }
         },
         "es" : {
@@ -1779,6 +2316,12 @@
             "value" : "Klick auf ein Vorschaubild, um das Display zur Rotation hinzuzufügen oder zu entfernen. ⌘+Klick für einzelne Displays, ⇧+Klick für Bereiche."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Click a thumbnail to toggle that display in or out of the rotation. ⌘+click to add individual displays; ⇧+click to select a range."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1799,6 +2342,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Klickverhalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Click Behavior"
           }
         },
         "es" : {
@@ -1825,6 +2374,12 @@
             "value" : "Klick, um einen Tastaturkurzbefehl aufzunehmen. Escape zum Abbrechen, Entf zum Löschen. Über das ▾-Menü kannst du auch eine Klickaktion zuweisen."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Click to record a keyboard shortcut. Press Escape to cancel or Delete to clear. Use the ▾ menu to assign a click action."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1846,6 +2401,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gerätedaten erfassen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Collect Device Data"
           }
         },
         "es" : {
@@ -1871,6 +2432,12 @@
             "value" : "Gerätedaten erfassen …"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Collect Device Data…"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1894,6 +2461,12 @@
             "value" : "Erfassung abgeschlossen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Collection Complete"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1910,7 +2483,33 @@
     },
     "Computing calibration…" : {
       "comment" : "A message displayed while the app is computing the user's eye tracking calibration.",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kalibrierung wird berechnet…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Computing calibration…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calculando calibración…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャリブレーションを計算中…"
+          }
+        }
+      }
     },
     "Conflicting driver: %@" : {
       "comment" : "Conflict detection: named process is running",
@@ -1919,6 +2518,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "In Konflikt stehender Treiber: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Conflicting driver: %@"
           }
         },
         "es" : {
@@ -1944,6 +2549,12 @@
             "value" : "Konflikte"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Conflicts"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1964,6 +2575,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Conflicts      : %lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Conflicts      : %lld"
           }
         },
@@ -1990,6 +2607,12 @@
             "value" : "Conflicts      : keine"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Conflicts      : none"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2013,6 +2636,12 @@
             "value" : "Verbunden"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Connected"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2034,6 +2663,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbindung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Connection"
           }
         },
         "es" : {
@@ -2060,6 +2695,12 @@
             "value" : "Erfassung fortsetzen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Continue Collecting"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2081,6 +2722,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Koordinate"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Coordinate"
           }
         },
         "es" : {
@@ -2106,6 +2753,12 @@
             "value" : "Kopieren"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Copy"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2127,6 +2780,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Copyright © %@ MockTab-Mitwirkende"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Copyright © %@ MockTab Contributors"
           }
         },
         "es" : {
@@ -2152,6 +2811,12 @@
             "value" : "Datei konnte nicht gelesen werden."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Could not read file."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2172,6 +2837,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "CPU       : Apple Silicon (arm64)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "CPU       : Apple Silicon (arm64)"
           }
         },
@@ -2198,6 +2869,12 @@
             "value" : "Erstellen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Create"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2219,6 +2896,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Profil erstellen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Create Profile"
           }
         },
         "es" : {
@@ -2244,6 +2927,12 @@
             "value" : "Aktuell: "
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Current: "
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2267,6 +2956,12 @@
             "value" : "Kurve"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "curve"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2288,6 +2983,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ausschneiden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cut"
           }
         },
         "es" : {
@@ -2314,6 +3015,12 @@
             "value" : "Wechseln"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cycle"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2338,6 +3045,12 @@
             "value" : "Ring-Modi durchschalten"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cycle through ring modes"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2358,6 +3071,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verzögert das Loslassen kurz, wenn der Stift mitten in der Bewegung abgehoben wird – verhindert versehentlich kurze Striche."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Delays the stroke release briefly when the pen is lifted mid-motion, preventing accidental short strokes."
           }
         },
         "es" : {
@@ -2383,6 +3102,12 @@
             "value" : "Löschen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Delete"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2404,6 +3129,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tablet erkennen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Detect Tablet"
           }
         },
         "es" : {
@@ -2429,6 +3160,12 @@
             "value" : "Gerät"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Device"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2450,6 +3187,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gerätestandards"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Device Defaults"
           }
         },
         "es" : {
@@ -2475,6 +3218,12 @@
             "value" : "Gerätename"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Device name"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2496,6 +3245,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gerätezusammenfassung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Device Summary"
           }
         },
         "es" : {
@@ -2521,6 +3276,12 @@
             "value" : "Geräte"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Devices"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2544,6 +3305,12 @@
             "value" : "Diagnosedetails"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Diagnostic Detail"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2565,6 +3332,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diagnose"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Diagnostics"
           }
         },
         "es" : {
@@ -2591,6 +3364,12 @@
             "value" : "Diese Taste deaktivieren"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Disable this button"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2612,6 +3391,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "deaktiviert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "disabled"
           }
         },
         "es" : {
@@ -2637,6 +3422,12 @@
             "value" : "Deaktiviert"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Disabled"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2658,6 +3449,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Anzeige"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Display"
           }
         },
         "es" : {
@@ -2683,6 +3480,12 @@
             "value" : "Anzeige != Primär"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "display != primary"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2704,6 +3507,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Anzeigezuordnung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Display Mapping"
           }
         },
         "es" : {
@@ -2729,6 +3538,12 @@
             "value" : "Displaydrehung erkannt"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Display Rotation Detected"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2752,6 +3567,12 @@
             "value" : "Displays in Rotation — ⌘+Klick einzeln, ⇧+Klick Bereiche"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Displays in rotation — ⌘+click individual, ⇧+click ranges"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2773,6 +3594,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abstand"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Distance"
           }
         },
         "es" : {
@@ -2799,6 +3626,12 @@
             "value" : "Fertig"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Done"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2820,6 +3653,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Doppelklick"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Double Click"
           }
         },
         "es" : {
@@ -2845,6 +3684,12 @@
             "value" : "Doppelklick-Abstand"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Double-Click Distance"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2866,6 +3711,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nach außen ziehen zum Exportieren, JSON-Datei hineinziehen zum Importieren, oder Control-Klick für weitere Aktionen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Drag out to export a backup, drag in a JSON file to import, or Control-click for actions."
           }
         },
         "es" : {
@@ -2920,6 +3771,12 @@
             "value" : "Zeichne auf der Leinwand, um Druck- und Klickverhalten zu prüfen."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Draw on the canvas to verify pressure and click behavior."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2941,6 +3798,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fenster duplizieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Duplicate Window"
           }
         },
         "es" : {
@@ -2967,6 +3830,12 @@
             "value" : "Profilnamen bearbeiten"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Edit the profile name"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2988,6 +3857,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@-Einstellungen bearbeiten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Editing %@ settings"
           }
         },
         "es" : {
@@ -3013,6 +3888,12 @@
             "value" : "MockTab automatisch starten lassen, wenn du dich anmeldest."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Enable MockTab to start automatically when you log in."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3036,6 +3917,12 @@
             "value" : "aktiviert"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "enabled"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3057,6 +3944,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aktiviert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Enabled"
           }
         },
         "es" : {
@@ -3083,6 +3976,12 @@
             "value" : "Alle Striche vom Testbereich löschen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Erase all strokes from the test canvas"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3104,6 +4003,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Radierer"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Eraser"
           }
         },
         "es" : {
@@ -3129,6 +4034,12 @@
             "value" : "Radierer ≠ Standard"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "eraser ≠ default"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3151,6 +4062,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Radiergummi (druckempfindlich in Zeichenapps)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Eraser tool (pressure-sensitive in drawing apps)"
           }
         },
         "es" : {
@@ -3205,6 +4122,12 @@
             "value" : "Als JSON exportieren…"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Export as JSON…"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3257,6 +4180,12 @@
             "value" : "%@ exportiert"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Exported %@"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3278,6 +4207,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Express-Tasten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Express Keys"
           }
         },
         "es" : {
@@ -3303,6 +4238,12 @@
             "value" : "Express-Tasten — Links"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Express Keys — Left"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3324,6 +4265,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Express-Tasten — Rechts"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Express Keys — Right"
           }
         },
         "es" : {
@@ -3349,6 +4296,12 @@
             "value" : "Zurücksetzen…"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Factory Reset…"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3370,6 +4323,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "konnte nicht öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "failed to open"
           }
         },
         "es" : {
@@ -3395,6 +4354,12 @@
             "value" : "Öffnen fehlgeschlagen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Failed to open"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3415,6 +4380,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Leitet die Barrel-Rotation in Photoshops Pen-Tilt-Steuerung um, indem es gefälschte Tilt-Daten sendet.  Echter Tilt wird deaktiviert, solange diese Option aktiv ist. Verwende sie unter Brush Dynamics → Shape Dynamics → Angle → Pen Tilt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Feeds barrel rotation into Photoshop's Pen Tilt control by sending fake tilt data. Real tilt is suppressed while this is on. Use in Brush Dynamics → Shape Dynamics → Angle → Pen Tilt."
           }
         },
         "es" : {
@@ -3440,6 +4411,12 @@
             "value" : "Der Datei fehlt ein Versionsfeld."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "File is missing a version field."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3463,6 +4440,12 @@
             "value" : "Fingerrad"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Fingerwheel"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3484,6 +4467,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fest"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Firm"
           }
         },
         "es" : {
@@ -3510,6 +4499,12 @@
             "value" : "Feste Reaktion — erfordert mehr Kraft, um maximale Ausgabe zu erreichen. Gut für präzise Detailarbeit."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Firm response — requires more force to reach full output. Good for precise detail work."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3533,6 +4528,12 @@
             "value" : "Beheben"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Fix"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3547,6 +4548,35 @@
         }
       }
     },
+    "Flip 180° — useful for left-handed use or reversed cable routing." : {
+      "comment" : "Tablet orientation help text",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um 180° umdrehen — praktisch für Linkshänder oder umgekehrte Kabelführung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Flip 180° — useful for left-handed use or reversed cable routing."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gira 180° — útil para usuarios zurdos o enrutamiento de cables invertido."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "180°回転 — 左利き用または逆ケーブル配線に便利です。"
+          }
+        }
+      }
+    },
     "Force as Grip Pen (0x0802)" : {
       "comment" : "A button that forces a tablet tool to be recognized as a Grip Pen.",
       "isCommentAutoGenerated" : true,
@@ -3555,6 +4585,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Als Grip Pen erzwingen (0x0802)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Force as Grip Pen (0x0802)"
           }
         },
         "es" : {
@@ -3581,6 +4617,12 @@
             "value" : "Als Pro Pen 2 erzwingen (0x0832)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Force as Pro Pen 2 (0x0832)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3603,6 +4645,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Als Pro Pen 3 erzwingen (0x0842)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Force as Pro Pen 3 (0x0842)"
           }
         },
         "es" : {
@@ -3629,6 +4677,12 @@
             "value" : "Werkzeugcode erzwingen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Force Tool Code"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3651,6 +4705,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vergessen…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Forget…"
           }
         },
         "es" : {
@@ -3676,6 +4736,12 @@
             "value" : "Vollbild"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Full Screen"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3699,6 +4765,12 @@
             "value" : "Generiert : %@"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Generated : %@"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3719,6 +4791,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Global"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Global"
           }
         },
@@ -3746,6 +4824,12 @@
             "value" : "Zum Tab „Tasten\" wechseln, um eine Taste für die Display-Umschaltung zu belegen."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Go to the Buttons tab to assign a button that triggers the display toggle."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3767,6 +4851,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "gewährt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "granted"
           }
         },
         "es" : {
@@ -3792,6 +4882,12 @@
             "value" : "Erteilt"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Granted"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3812,6 +4908,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Grip Pen (0x0802)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Grip Pen (0x0802)"
           }
         },
@@ -3838,6 +4940,12 @@
             "value" : "Führt dich durch einige Aktionen, um die Kommunikation deines Geräts zu erfassen. Erzeugt eine kleine JSON-Datei, die du teilen kannst, um die Geräteunterstützung zu ergänzen oder zu verbessern."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Guides you through a short set of actions to capture how your device communicates. Produces a small JSON file you can share to add or fix device support."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3859,6 +4967,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Höhe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Height"
           }
         },
         "es" : {
@@ -3884,6 +4998,12 @@
             "value" : "Hilft dabei, Unterstützung für dein Gerät hinzuzufügen, indem das HID-Berichtslayout erfasst wird."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Helps add support for your device by capturing its HID report layout."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3907,6 +5027,12 @@
             "value" : "HID-Manager"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "HID Manager"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3927,6 +5053,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "HID Manager    : %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "HID Manager    : %@"
           }
         },
@@ -3953,6 +5085,12 @@
             "value" : "Dock-Symbol ausblenden"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hide Dock Icon"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3974,6 +5112,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dock-Symbol ausblenden…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hide Dock Icon…"
           }
         },
         "es" : {
@@ -3999,6 +5143,12 @@
             "value" : "Ausblenden Dock-Symbol?"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hide MockTab's Dock Icon?"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4020,6 +5170,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hoch"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "High"
           }
         },
         "es" : {
@@ -4046,6 +5202,12 @@
             "value" : "Command-Taste gehalten (⌘)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hold Command modifier (⌘)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4068,6 +5230,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Control-Taste gehalten (⌃)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hold Control modifier (⌃)"
           }
         },
         "es" : {
@@ -4094,6 +5262,12 @@
             "value" : "Option-Taste gehalten (⌥)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hold Option modifier (⌥)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4118,6 +5292,12 @@
             "value" : "Shift-Taste gehalten (⇧)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hold Shift modifier (⇧)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4134,11 +5314,62 @@
     },
     "Hold steady… (%lld/16)" : {
       "comment" : "A label indicating that the user should hold their pen tip steady over a crosshair, with a count of how many taps have occurred so far. The argument is the number of taps that have occurred.",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Halten Sie an… (%1$lld/16)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hold steady… (%1$lld/16)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantente firme… (%1$lld/16)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "動かないようにしてください… (%1$lld/16)"
+          }
+        }
+      }
     },
     "Horizontal:" : {
-      "comment" : "Label for the horizontal parallax offset setting in the TabletAreaView.",
-      "isCommentAutoGenerated" : true
+      "comment" : "Label for horizontal parallax offset field in Manual Fine-Tune",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horizontal:"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Horizontal:"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horizontal:"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "横方向:"
+          }
+        }
+      }
     },
     "Hover" : {
       "comment" : "Live Input table row label — hover distance",
@@ -4147,6 +5378,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Schweben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hover"
           }
         },
         "es" : {
@@ -4173,6 +5410,12 @@
             "value" : "Wie nah ein zweiter Tipp am ersten liegen muss, um als Doppelklick zu gelten. Auf „Aus\" ziehen, um die Positionskorrektur zu deaktivieren."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "How close a second tap must land to the first to count as a double-click. Drag to Off to disable position snapping."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4187,6 +5430,35 @@
         }
       }
     },
+    "Identifier" : {
+      "comment" : "Column header in Devices tab table",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kennung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Identifier"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificador"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別子"
+          }
+        }
+      }
+    },
     "Idle" : {
       "comment" : "Driver status value — device is idle\nTouch ring idle state in Live Input",
       "localizations" : {
@@ -4194,6 +5466,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inaktiv"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Idle"
           }
         },
         "es" : {
@@ -4217,6 +5495,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Illustrator: John Tenniel, 1865"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Illustrator: John Tenniel, 1865"
           }
         },
@@ -4244,6 +5528,12 @@
             "value" : "Importieren"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Import"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4268,6 +5558,12 @@
             "value" : "Konfiguration importieren"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Import Configuration"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4289,6 +5585,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aus Datei importieren…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Import from File…"
           }
         },
         "es" : {
@@ -4315,6 +5617,12 @@
             "value" : "Im absoluten Modus entspricht jeder Punkt auf dem Tablet einem festen Punkt auf dem Bildschirm. Im relativen Modus bewegt sich der Cursor relativ zur letzten Position – wie eine Maus."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4335,6 +5643,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Info"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Info"
           }
         },
@@ -4361,6 +5675,12 @@
             "value" : "Drehrichtung umkehren"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Invert Rotation Direction"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4384,6 +5704,12 @@
             "value" : "Jitter level   : %@ pt/sample%@"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Jitter level   : %@ pt/sample%@"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4404,6 +5730,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "JSON"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "JSON"
           }
         },
@@ -4431,6 +5763,12 @@
             "value" : "Zu Modus %lld springen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Jump to Mode %lld"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4452,6 +5790,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Taste"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Key"
           }
         },
         "es" : {
@@ -4477,6 +5821,12 @@
             "value" : "Taste %lld"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Key %lld"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4491,6 +5841,35 @@
         }
       }
     },
+    "Kind" : {
+      "comment" : "Column header in Devices tab table (tablet/tool type)",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typ"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kind"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tipo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "種類"
+          }
+        }
+      }
+    },
     "Landscape" : {
       "comment" : "Tablet orientation: default landscape",
       "localizations" : {
@@ -4498,6 +5877,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Querformat"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Landscape"
           }
         },
         "es" : {
@@ -4523,6 +5908,12 @@
             "value" : "Querformat (gedreht)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Landscape Flipped"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4546,6 +5937,12 @@
             "value" : "Bei Anmeldung starten"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Launch at Login"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4566,6 +5963,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Launch at login: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Launch at login: %@"
           }
         },
@@ -4592,6 +5995,12 @@
             "value" : "Links"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Left"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4615,6 +6024,12 @@
             "value" : "Linksklick"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Left Click"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4635,6 +6050,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Linear"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Linear"
           }
         },
@@ -4662,6 +6083,12 @@
             "value" : "Lineare Reaktion — gleiche Stiftkraft erzeugt gleiche Druckausgabe. Am besten für die allgemeine Verwendung."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Linear response — equal pen force produces equal pressure output. Best for general use."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4683,6 +6110,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Liveeingabe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Live Input"
           }
         },
         "es" : {
@@ -4709,6 +6142,12 @@
             "value" : "Tablet-zu-Bildschirm-Verhältnis sperren, damit der Cursor nie gestreckt oder gestaucht wirkt."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4730,6 +6169,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Niedrig"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Low"
           }
         },
         "es" : {
@@ -4776,7 +6221,33 @@
       }
     },
     "Manual Fine-Tune" : {
-
+      "comment" : "Disclosure group label for manual parallax offset controls",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manuelle Feinkorrektur"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Manual Fine-Tune"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuste manual fino"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手動微調整"
+          }
+        }
+      }
     },
     "Map the tablet across all displays as one continuous surface." : {
       "comment" : "A radio button label that allows mapping the tablet across all displays.",
@@ -4786,6 +6257,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tablet über alle Anzeigen als eine durchgehende Oberfläche abbilden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Map the tablet across all displays as one continuous surface."
           }
         },
         "es" : {
@@ -4809,6 +6286,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tablet nur auf %@ abbilden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Map the tablet to %@ only."
           }
         },
         "es" : {
@@ -4835,6 +6318,12 @@
             "value" : "Tablet auf die Hauptanzeige abbilden."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Map the tablet to your main display."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4856,6 +6345,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Maximum"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Max"
           }
         },
         "es" : {
@@ -4881,6 +6376,12 @@
             "value" : "Mittel"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Medium"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4904,6 +6405,12 @@
             "value" : "Mittelklick"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Middle Click"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4925,6 +6432,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mittelklick + Spitze"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Middle Click + Tip"
           }
         },
         "es" : {
@@ -4951,6 +6464,12 @@
             "value" : "Mittelklick nur bei Stiftkontakt"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Middle click only when pen tip is in contact"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -4973,6 +6492,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mittlere Maustaste (Verschieben in vielen Apps)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Middle mouse button (panning in many apps)"
           }
         },
         "es" : {
@@ -4998,6 +6523,12 @@
             "value" : "Im Dock ablegen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Minimize"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5018,6 +6549,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "MockTab"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "MockTab"
           }
         },
@@ -5044,6 +6581,12 @@
             "value" : "MockTab hat die folgenden Probleme gefunden, die den Tablettbetrieb beeinträchtigen können:"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MockTab found the following issues that may interfere with tablet operation:"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5065,6 +6608,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MockTab ist freie Software, die unter der GNU General Public License v3.0 veröffentlicht wurde."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MockTab is free software released under the GNU General Public License v3.0."
           }
         },
         "es" : {
@@ -5120,6 +6669,12 @@
             "value" : "Modus %lld"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mode %lld"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5134,6 +6689,156 @@
         }
       }
     },
+    "Mode 1" : {
+      "comment" : "Touch ring mode label",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modus 1"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mode 1"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo 1"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モード 1"
+          }
+        }
+      }
+    },
+    "Mode 2" : {
+      "comment" : "Touch ring mode label",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modus 2"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mode 2"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo 2"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モード 2"
+          }
+        }
+      }
+    },
+    "Mode 3" : {
+      "comment" : "Touch ring mode label",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modus 3"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mode 3"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo 3"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モード 3"
+          }
+        }
+      }
+    },
+    "Mode 4" : {
+      "comment" : "Touch ring mode label",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modus 4"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mode 4"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo 4"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モード 4"
+          }
+        }
+      }
+    },
+    "Mouse Buttons" : {
+      "comment" : "Section header in Buttons tab when active tool is a mouse",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maustasten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mouse Buttons"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botones del ratón"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マウスボタン"
+          }
+        }
+      }
+    },
     "Movement" : {
       "comment" : "Section header in Pen Feel tab",
       "localizations" : {
@@ -5141,6 +6846,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bewegung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Movement"
           }
         },
         "es" : {
@@ -5157,6 +6868,35 @@
         }
       }
     },
+    "Name" : {
+      "comment" : "Column header in Devices tab table",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Name"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "名前"
+          }
+        }
+      }
+    },
     "Native macOS driver for a few legacy drawing tablets" : {
       "comment" : "App tagline in about view",
       "localizations" : {
@@ -5164,6 +6904,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nativer macOS-Treiber für einige ältere Zeichentabletts"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Native macOS driver for a few legacy drawing tablets"
           }
         },
         "es" : {
@@ -5189,6 +6935,12 @@
             "value" : "Neues Profil"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "New Profile"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5210,6 +6962,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Taste für den Wechsel zugewiesen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No button assigned to toggle"
           }
         },
         "es" : {
@@ -5235,6 +6993,12 @@
             "value" : "Kein Gerät"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No device"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5256,6 +7020,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kein Gerät verbunden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No device connected"
           }
         },
         "es" : {
@@ -5281,6 +7051,12 @@
             "value" : "Keine anderen Apps aktiv"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No other apps running"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5302,6 +7078,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Profile"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No profiles"
           }
         },
         "es" : {
@@ -5327,6 +7109,12 @@
             "value" : "Noch keine Profile. Unten erstellen."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No profiles yet. Create one below."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5348,6 +7136,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Tablettdaten in dieser Datei gefunden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No tablet data found in this file."
           }
         },
         "es" : {
@@ -5373,6 +7167,12 @@
             "value" : "Kein Tablett erkannt"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No tablet detected"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5394,6 +7194,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Noch keine Tablets verbunden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No tablets have been connected yet."
           }
         },
         "es" : {
@@ -5419,6 +7225,12 @@
             "value" : "Kein Werkzeug"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No tool"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5440,6 +7252,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kein Werkzeug in der Nähe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No tool in proximity"
           }
         },
         "es" : {
@@ -5465,6 +7283,12 @@
             "value" : "Noch keine Werkzeuge erkannt.\nBewege den Stift über ein Tablet, um ihn zu registrieren."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No tools detected yet.\nMove the pen over a tablet to register it."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5486,6 +7310,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Noch keine Werkzeuge erkannt.\nBewege den Stift über das Tablet, um ihn zu registrieren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No tools detected yet.\nMove the pen over the tablet to register it."
           }
         },
         "es" : {
@@ -5511,6 +7341,12 @@
             "value" : "Keine"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "None"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5532,6 +7368,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine (Gerätevorgaben)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "None (device defaults)"
           }
         },
         "es" : {
@@ -5557,6 +7399,12 @@
             "value" : "Keine erkannt"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "None detected"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5580,6 +7428,12 @@
             "value" : "Keine gültige JSON-Datei."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not a valid JSON file."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5595,7 +7449,33 @@
       }
     },
     "Not calibrated" : {
-
+      "comment" : "Calibration status when no calibration data exists",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht kalibriert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not calibrated"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin calibrar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未キャリブレーション"
+          }
+        }
+      }
     },
     "Not connected" : {
       "comment" : "Device connection status value",
@@ -5604,6 +7484,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nicht verbunden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not connected"
           }
         },
         "es" : {
@@ -5629,6 +7515,12 @@
             "value" : "nicht gewährt"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "not granted"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5650,6 +7542,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nicht erteilt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not granted"
           }
         },
         "es" : {
@@ -5675,6 +7573,12 @@
             "value" : "Nicht in deiner Registrierung — Profil ist verfügbar, sobald dieses Tablet verbunden wird."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not in your registry — profile will be available when this tablet connects."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5696,6 +7600,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aus"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Off"
           }
         },
         "es" : {
@@ -5721,6 +7631,12 @@
             "value" : "offen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "open"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5742,6 +7658,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Open-Source-Lizenz"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open Source License"
           }
         },
         "es" : {
@@ -5767,6 +7689,12 @@
             "value" : "Systemeinstellungen öffnen, um MockTab die Berechtigung zu erteilen, Tastatur- und Mausereignisse in andere Apps zu senden."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open System Settings to grant MockTab permission to inject keyboard and mouse events into other apps."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5782,7 +7710,33 @@
       }
     },
     "Open the calibration overlay to tap crosshair targets on your pen display." : {
-
+      "comment" : "Help text for Calibrate button in Pen Display Calibration section",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne das Kalibrierungsoverlay, um Fadenkreuzmarkierungen auf deinem Stiftdisplay anzutippen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open the calibration overlay to tap crosshair targets on your pen display."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre la superposición de calibración para tocar objetivos de cruz en tu display de lápiz."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャリブレーション オーバーレイを開いて、ペン ディスプレイの十字線目標をタップします。"
+          }
+        }
+      }
     },
     "Orientation" : {
       "comment" : "Section header in Tablet Area tab",
@@ -5791,6 +7745,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ausrichtung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Orientation"
           }
         },
         "es" : {
@@ -5816,6 +7776,12 @@
             "value" : "Sonstiges…"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Other…"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5837,6 +7803,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Einfügen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Paste"
           }
         },
         "es" : {
@@ -5862,6 +7834,12 @@
             "value" : "Stift"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pen"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5885,6 +7863,12 @@
             "value" : "Pen 4K (0x0852)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pen 4K (0x0852)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5899,8 +7883,64 @@
         }
       }
     },
+    "Pen Buttons" : {
+      "comment" : "Section header in Buttons tab when active tool is a pen",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stiftknöpfe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pen Buttons"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botones del lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンボタン"
+          }
+        }
+      }
+    },
     "Pen Display Calibration" : {
-
+      "comment" : "Section header for pen display parallax calibration",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stiftdisplay-Kalibrierung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pen Display Calibration"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calibración del display de lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンディスプレイ キャリブレーション"
+          }
+        }
+      }
     },
     "Pen Feel" : {
       "comment" : "Tab name: pen pressure, smoothing, double-click settings",
@@ -5909,6 +7949,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stifteigenschaften"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pen Feel"
           }
         },
         "es" : {
@@ -5932,6 +7978,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Führe jede dieser Aktionen aus und klick dann auf „Fertig\":"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Perform each of these actions, then click Done:"
           }
         },
         "es" : {
@@ -5958,6 +8010,12 @@
             "value" : "Dieses Profil dauerhaft löschen (nicht rückgängig machbar)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Permanently delete this profile (cannot be undone)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5981,6 +8039,12 @@
             "value" : "Berechtigung"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Permission"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5999,10 +8063,28 @@
       "comment" : "A step-by-step guide for a user calibrating their device. The first argument is the 1-based index of the current calibration point. The second argument is the total number of calibration points.",
       "isCommentAutoGenerated" : true,
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Punkt %1$lld von %2$lld"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Point %1$lld of %2$lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Punto %1$lld de %2$lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ポイント %1$lld / %2$lld"
           }
         }
       }
@@ -6014,6 +8096,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hochformat"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Portrait"
           }
         },
         "es" : {
@@ -6039,6 +8127,12 @@
             "value" : "Hochformat (gedreht)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Portrait Flipped"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6060,6 +8154,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mögliche Konflikte erkannt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Potential Conflicts Detected"
           }
         },
         "es" : {
@@ -6085,6 +8185,12 @@
             "value" : "Einstellungen…"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Preferences…"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6101,7 +8207,33 @@
     },
     "Preparing calibration…" : {
       "comment" : "A message in the calibration overlay indicating that it is preparing.",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kalibrierung wird vorbereitet…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Preparing calibration…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparando calibración…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャリブレーションを準備中…"
+          }
+        }
+      }
     },
     "Press and hold each side button on the pen" : {
       "comment" : "Device data collection instruction: pen buttons",
@@ -6110,6 +8242,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Jede Seitentaste am Stift gedrückt halten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Press and hold each side button on the pen"
           }
         },
         "es" : {
@@ -6135,6 +8273,12 @@
             "value" : "Jede Taste am Tablet-Gehäuse drücken (falls vorhanden)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Press each button on the tablet body (if any)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6156,6 +8300,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das Radierende auf die Fläche drücken (falls vorhanden)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Press the eraser end to the surface (if present)"
           }
         },
         "es" : {
@@ -6181,6 +8331,12 @@
             "value" : "Druck"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pressure"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6202,6 +8358,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Druckkurve"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "pressure curve"
           }
         },
         "es" : {
@@ -6227,6 +8389,12 @@
             "value" : "Druckkurve"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pressure Curve"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6250,6 +8418,12 @@
             "value" : "Vorschau"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Preview"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6264,6 +8438,35 @@
         }
       }
     },
+    "Primary display" : {
+      "comment" : "Display mapping option: map to main screen",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hauptdisplay"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Primary display"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantalla principal"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メインディスプレイ"
+          }
+        }
+      }
+    },
     "Primary mouse button (used for drawing and selecting)" : {
       "comment" : "A description of the primary mouse button, used for drawing and selecting.",
       "isCommentAutoGenerated" : true,
@@ -6272,6 +8475,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Primäre Maustaste (Zeichnen und Auswählen)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Primary mouse button (used for drawing and selecting)"
           }
         },
         "es" : {
@@ -6294,6 +8503,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Pro Pen 2 (0x0832)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Pro Pen 2 (0x0832)"
           }
         },
@@ -6320,6 +8535,12 @@
             "value" : "Pro Pen 3 (0x0842)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pro Pen 3 (0x0842)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6343,6 +8564,12 @@
             "value" : "Profil"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Profile"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6363,6 +8590,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Profile        : %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Profile        : %@"
           }
         },
@@ -6389,6 +8622,12 @@
             "value" : "Profilname"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Profile name"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6410,6 +8649,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Profil: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Profile: %@"
           }
         },
         "es" : {
@@ -6464,6 +8709,12 @@
             "value" : "Profile"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Profiles"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6485,6 +8736,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Proportional"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "proportional"
           }
         },
         "es" : {
@@ -6510,6 +8767,12 @@
             "value" : "Proportionale Projektion"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Proportional mapping"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6526,7 +8789,33 @@
     },
     "pt" : {
       "comment" : "A unit of measurement for tablet cursor offset.",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "pt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pt"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pt"
+          }
+        }
+      }
     },
     "Quit MockTab" : {
       "comment" : "Menu button: quit the application",
@@ -6535,6 +8824,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MockTab beenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Quit MockTab"
           }
         },
         "es" : {
@@ -6560,6 +8855,12 @@
             "value" : "Empfehlung: Die aufgelisteten Prozesse beenden oder deaktivieren, dann MockTab neu starten. Für Wacom-Treiber das Wacom Tablet Utility verwenden, um den Treiber vollständig zu entfernen."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Recommendation: Quit or disable the listed processes, then restart MockTab. For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6581,6 +8882,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tastenkürzel aufzeichnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Record Shortcut"
           }
         },
         "es" : {
@@ -6606,6 +8913,12 @@
             "value" : "Wiederherstellen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Redo"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6627,6 +8940,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reduziert das Zittern des Cursors. Höhere Werte erhöhen die Latenz."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reduces cursor jitter. Higher values add lag."
           }
         },
         "es" : {
@@ -6652,6 +8971,12 @@
             "value" : "Reduziert das Zittern des Cursors durch Handzittern. Höhere Werte glätten aggressiver, erhöhen aber die Eingabeverzögerung."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but add input lag."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6673,6 +8998,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Relative Cursorbewegung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Relative Cursor Movement"
           }
         },
         "es" : {
@@ -6698,6 +9029,12 @@
             "value" : "Veröffentlichungen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Releases"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6719,6 +9056,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entfernen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Remove"
           }
         },
         "es" : {
@@ -6744,6 +9087,12 @@
             "value" : "\"%@\" entfernen?"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Remove \"%@\"?"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6765,6 +9114,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Alle %@-Einstellungen für diesen Tab entfernen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Remove all %@ overrides for this tab"
           }
         },
         "es" : {
@@ -6791,6 +9146,12 @@
             "value" : "Dieses Tool aus der Registrierung entfernen. Beim nächsten Erkennen erscheint es wieder mit seinem Standardnamen."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Remove this tool from the registry. It will reappear with its default name next time it is detected."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6812,6 +9173,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Umbenennen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rename"
           }
         },
         "es" : {
@@ -6837,6 +9204,12 @@
             "value" : "App umbenennen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rename App"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6858,6 +9231,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tablett umbenennen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rename Tablet"
           }
         },
         "es" : {
@@ -6883,6 +9262,12 @@
             "value" : "Werkzeug umbenennen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rename Tool"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6904,6 +9289,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Umbenennen…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rename…"
           }
         },
         "es" : {
@@ -6929,6 +9320,12 @@
             "value" : "Zurücksetzen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reset"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6952,6 +9349,12 @@
             "value" : "MockTab auf Werkseinstellungen zurücksetzen?"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reset MockTab to Factory Settings?"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6968,7 +9371,33 @@
     },
     "Reset Offset" : {
       "comment" : "Button to reset the tablet offset to zero.",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versatz zurücksetzen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reset Offset"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer desplazamiento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オフセットをリセット"
+          }
+        }
+      }
     },
     "Reset the active area to the full tablet surface (undoable)." : {
       "comment" : "A button that resets the active area of a tablet to the full tablet surface, making it undoable.",
@@ -6978,6 +9407,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aktiven Bereich auf die gesamte Tablet-Oberfläche zurücksetzen (widerrufbar)."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reset the active area to the full tablet surface (undoable)."
           }
         },
         "es" : {
@@ -7001,6 +9436,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auf Vollbereich zurücksetzen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reset to Full Area"
           }
         },
         "es" : {
@@ -7027,6 +9468,12 @@
             "value" : "Einstellungen aus einer gespeicherten JSON-Sicherung wiederherstellen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Restore settings from a previously saved JSON backup"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7051,6 +9498,12 @@
             "value" : "Das aktive Profil beim Verbinden dieses Tablets automatisch wiederherstellen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Restore the active profile automatically when this tablet is connected"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7072,6 +9525,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Im Finder anzeigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reveal in Finder"
           }
         },
         "es" : {
@@ -7098,6 +9557,12 @@
             "value" : "Drehrichtung des Stifts umkehren. Pro App aktivieren, wenn eine App die Rotation rückwärts interpretiert (z. B. Krita)."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita)."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7119,6 +9584,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "RF-Interferenz: %@ Pkt/Sample"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "RF interference: %@ pt/sample"
           }
         },
         "es" : {
@@ -7144,6 +9615,12 @@
             "value" : "Rechts"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Right"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7165,6 +9642,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rechtsklick"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Right Click"
           }
         },
         "es" : {
@@ -7190,6 +9673,12 @@
             "value" : "Ring — Links"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Ring — Left"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7211,6 +9700,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ring — Rechts"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Ring — Right"
           }
         },
         "es" : {
@@ -7236,6 +9731,12 @@
             "value" : "Ring: Wechseln"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Ring: Cycle"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7259,6 +9760,12 @@
             "value" : "Ring: Modus %u"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Ring: Mode %u"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7273,6 +9780,64 @@
         }
       }
     },
+    "Rotate the active surface 90° clockwise. Hold the tablet in portrait orientation." : {
+      "comment" : "Tablet orientation help text",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drehen Sie die aktive Fläche um 90° im Uhrzeigersinn. Halten Sie das Tablet im Hochformat."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rotate the active surface 90° clockwise. Hold the tablet in portrait orientation."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gira la superficie activa 90° en sentido horario. Sostén la tableta en orientación vertical."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アクティブ面を時計回りに90°回転させます。タブレットを縦向きに持ちます。"
+          }
+        }
+      }
+    },
+    "Rotate the active surface 90° counter-clockwise." : {
+      "comment" : "Tablet orientation help text",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drehen Sie die aktive Fläche um 90° gegen den Uhrzeigersinn."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rotate the active surface 90° counter-clockwise."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gira la superficie activa 90° en sentido antihorario."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アクティブ面を反時計回りに90°回転させます。"
+          }
+        }
+      }
+    },
     "Rotation" : {
       "comment" : "Live Input table row label — pen rotation in degrees",
       "localizations" : {
@@ -7280,6 +9845,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Drehung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rotation"
           }
         },
         "es" : {
@@ -7305,6 +9876,12 @@
             "value" : "Drehung invertiert"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "rotation inverted"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7326,6 +9903,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aktiv"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Running"
           }
         },
         "es" : {
@@ -7350,6 +9933,12 @@
             "value" : "Deaktiviert das Neigungsverhalten des Art Pens, damit Apps wie Adobe Photoshop die echte Barrel-Rotation nutzen können."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Sacrifices an Art Pen's tilt behavior, allowing apps like Adobe Photoshop to harness true barrel rotation."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7371,6 +9960,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Speichern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Save"
           }
         },
         "es" : {
@@ -7397,6 +9992,12 @@
             "value" : "Alle Profile und Einstellungen in einer JSON-Sicherungsdatei speichern"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Save all profiles and settings to a JSON backup file"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7419,6 +10020,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aktuelle Einstellungen als neues Profil speichern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Save the current settings as a new profile"
           }
         },
         "es" : {
@@ -7445,6 +10052,12 @@
             "value" : "Profilnamen speichern"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Save the profile name"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7467,6 +10080,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieses neue Profil mit den aktuellen Einstellungen speichern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Save this new profile with the current settings"
           }
         },
         "es" : {
@@ -7492,6 +10111,12 @@
             "value" : "Testbereich"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scratchpad"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7515,6 +10140,12 @@
             "value" : "Scrollen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scroll"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7536,6 +10167,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Scrollrad"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scroll Wheel"
           }
         },
         "es" : {
@@ -7562,6 +10199,12 @@
             "value" : "Sekundäre Maustaste (Kontextmenüs)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Secondary mouse button (context menus)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7583,6 +10226,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tool zum Erzwingen auswählen (oder leer lassen, um das erkannte Tool zu verwenden):"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Select a tool to force (or leave blank to use detected tool):"
           }
         },
         "es" : {
@@ -7608,6 +10257,12 @@
             "value" : "Alles auswählen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Select All"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7629,6 +10284,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Seriennummer"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Serial"
           }
         },
         "es" : {
@@ -7654,6 +10315,12 @@
             "value" : "Einrichten"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Set Up"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7675,6 +10342,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "570"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "settings-window-min-width"
           }
         },
         "es" : {
@@ -7700,6 +10373,12 @@
             "value" : "Diese Datei an die MockTab-Entwickler senden, um mögliche Unterstützung zu erhalten."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Share this file with MockTab developers for potential feature support."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7721,6 +10400,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Details zu erkannten Konflikten mit anderen Tablet-Treibern anzeigen und erfahren, wie du sie beheben kannst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Show details about detected conflicts with other tablet drivers and how to resolve them."
           }
         },
         "es" : {
@@ -7746,6 +10431,12 @@
             "value" : "Datei im Finder anzeigen"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Show File in Finder"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7767,6 +10458,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Im Dock anzeigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Show in Dock"
           }
         },
         "es" : {
@@ -7792,6 +10489,12 @@
             "value" : "Gespeicherte Konfigurationen anzeigen…"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Show Saved Configurations…"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7806,6 +10509,186 @@
         }
       }
     },
+    "Side button" : {
+      "comment" : "Pen button label when tool has exactly 1 side button",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seitenknopf"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Side button"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botón lateral"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サイドボタン"
+          }
+        }
+      }
+    },
+    "Side button 1" : {
+      "comment" : "Pen button label: first side button on stylus",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seitenknopf 1"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Side button 1"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botón lateral 1"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サイドボタン 1"
+          }
+        }
+      }
+    },
+    "Side button 2" : {
+      "comment" : "Pen button label: second side button on stylus",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seitenknopf 2"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Side button 2"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botón lateral 2"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サイドボタン 2"
+          }
+        }
+      }
+    },
+    "Side button 3" : {
+      "comment" : "Pen button label: third side button on stylus",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seitenknopf 3"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Side button 3"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botón lateral 3"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サイドボタン 3"
+          }
+        }
+      }
+    },
+    "Side button 4" : {
+      "comment" : "Pen button label: fourth side button on stylus",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seitenknopf 4"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Side button 4"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botón lateral 4"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サイドボタン 4"
+          }
+        }
+      }
+    },
+    "Side button 5" : {
+      "comment" : "Pen button label: fifth side button on stylus",
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seitenknopf 5"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Side button 5"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botón lateral 5"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サイドボタン 5"
+          }
+        }
+      }
+    },
     "Skipped" : {
       "comment" : "Label when a tablet profile is excluded from import",
       "localizations" : {
@@ -7813,6 +10696,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Übersprungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Skipped"
           }
         },
         "es" : {
@@ -7836,6 +10725,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Alle Ringe oder Streifen am Tablet gleiten oder antippen (falls vorhanden)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Slide or touch any rings or strips on the tablet (if any)"
           }
         },
         "es" : {
@@ -7891,6 +10786,12 @@
             "value" : "Weich"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Soft"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7913,6 +10814,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Weiche Reaktion — leichter Druck erreicht schnell maximale Ausgabe. Gut für lockere, ausdrucksstarke Arbeiten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Soft response — light pressure reaches full output quickly. Good for loose, expressive work."
           }
         },
         "es" : {
@@ -7938,6 +10845,12 @@
             "value" : "Quellcode"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Source Code"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7959,6 +10872,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Leertaste"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Spacebar"
           }
         },
         "es" : {
@@ -7985,6 +10904,12 @@
             "value" : "Leertaste (Handwerkzeug in vielen Design-Apps)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Spacebar key (hand-tool in many design apps)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8008,6 +10933,12 @@
             "value" : "Geschwindigkeit"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Speed"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8028,6 +10959,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Speed     : %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Speed     : %@"
           }
         },
@@ -8054,6 +10991,12 @@
             "value" : "Stabilisierung"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Stabilization"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8068,6 +11011,35 @@
         }
       }
     },
+    "Standard orientation — tablet's long edge is horizontal." : {
+      "comment" : "Tablet orientation help text",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standardausrichtung — lange Kante des Tablets ist horizontal."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Standard orientation — tablet's long edge is horizontal."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orientación estándar — el borde largo de la tableta es horizontal."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "標準方向 — タブレットの長辺が水平です。"
+          }
+        }
+      }
+    },
     "Starting…" : {
       "comment" : "HID discovery: status indicator while discovery is starting",
       "localizations" : {
@@ -8075,6 +11047,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Starten…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Starting…"
           }
         },
         "es" : {
@@ -8097,6 +11075,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Status"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Status"
           }
         },
@@ -8123,6 +11107,12 @@
             "value" : "Stärke"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Strength"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8146,6 +11136,12 @@
             "value" : "Stiftname"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Stylus Name"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8167,6 +11163,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stifttyp"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Stylus Type"
           }
         },
         "es" : {
@@ -8193,6 +11195,12 @@
             "value" : "Ring direkt auf Modus %lld schalten"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Switch ring directly to mode %lld"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8215,6 +11223,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tablet-Zuordnung zwischen Displays wechseln"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Switch tablet mapping between displays"
           }
         },
         "es" : {
@@ -8241,6 +11255,12 @@
             "value" : "Sofort zu diesem Profil wechseln"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Switch to this profile immediately"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8261,6 +11281,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Tablet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Tablet"
           }
         },
@@ -8287,6 +11313,12 @@
             "value" : "Tablet-Bereich"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tablet Area"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8311,6 +11343,12 @@
             "value" : "Tabletten"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tablets"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8331,6 +11369,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Tablets   : %lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Tablets   : %lld"
           }
         },
@@ -8357,6 +11401,12 @@
             "value" : "Tablets   : keine"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tablets   : none"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8373,7 +11423,33 @@
     },
     "Tap and hold the crosshair with your pen tip" : {
       "comment" : "A description of what the user should do to initiate a calibration tap.",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippe auf das Fadenkreuz und halte es mit deiner Stiftspitze"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tap and hold the crosshair with your pen tip"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca y mantén el objetivo con la punta de tu lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンの先端で十字線をタップして押さえたままにします"
+          }
+        }
+      }
     },
     "Test Area" : {
       "comment" : "A label displayed above the scratchpad canvas.",
@@ -8383,6 +11459,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Testbereich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Test Area"
           }
         },
         "es" : {
@@ -8408,6 +11490,12 @@
             "value" : "Der aktive Tablet-Bereich wird dem ausgewählten Display zugeordnet."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The active tablet area maps to the selected display."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8429,6 +11517,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieses Tool wird mit seinem Standardnamen angezeigt, wenn das Tablet es das nächste Mal erkennt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This tool will reappear with its default name next time the tablet detects it."
           }
         },
         "es" : {
@@ -8454,6 +11548,12 @@
             "value" : "Neigung"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tilt"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8476,6 +11576,12 @@
             "value" : "Neigungsstärke"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tilt Magnitude"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8496,6 +11602,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neigungsversatz"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tilt Offset"
           }
         },
         "es" : {
@@ -8521,6 +11633,12 @@
             "value" : "Stiftspitze"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tip"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8542,6 +11660,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Spitze ≠ Standard"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "tip ≠ default"
           }
         },
         "es" : {
@@ -8566,6 +11690,12 @@
             "value" : "Aufhebehilfe"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tip-up Assist"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8580,6 +11710,35 @@
         }
       }
     },
+    "Toggle between displays" : {
+      "comment" : "Display mapping option: cycle through displays with button press",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwischen Displays wechseln"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Toggle between displays"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alternar entre pantallas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイ間を切り替え"
+          }
+        }
+      }
+    },
     "Toggle Buttons — Left" : {
       "comment" : "Section header in Buttons tab — Cintiq left-side toggle buttons",
       "localizations" : {
@@ -8587,6 +11746,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Umschalt-Tasten — Links"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Toggle Buttons — Left"
           }
         },
         "es" : {
@@ -8612,6 +11777,12 @@
             "value" : "Umschalttasten — Rechts"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Toggle Buttons — Right"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8633,6 +11804,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Anzeige umschalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Toggle Display"
           }
         },
         "es" : {
@@ -8658,6 +11835,12 @@
             "value" : "Werkzeug"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tool"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8681,6 +11864,12 @@
             "value" : "Werkzeugcode"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tool Code"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8702,6 +11891,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Werkzeugname"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tool name"
           }
         },
         "es" : {
@@ -8728,6 +11923,12 @@
             "value" : "Werkzeug wird auf diesem Gerät nicht vollständig unterstützt"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tool not fully supported on this device"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8749,6 +11950,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Werkzeuge"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tools"
           }
         },
         "es" : {
@@ -8775,6 +11982,12 @@
             "value" : "Werkzeuge (alle Tabletten)"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tools (All Tablets)"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8796,6 +12009,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Berührungsring"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Touch Ring"
           }
         },
         "es" : {
@@ -8821,6 +12040,12 @@
             "value" : "Berührungsring — Links"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Touch Ring — Left"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8842,6 +12067,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Berührungsring — Rechts"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Touch Ring — Right"
           }
         },
         "es" : {
@@ -8868,6 +12099,12 @@
             "value" : "Touch-Ring-Modus"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Touch Ring Mode"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8889,6 +12126,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Berührungsleisten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Touch Strips"
           }
         },
         "es" : {
@@ -8914,6 +12157,12 @@
             "value" : "Stiftspitze auf die Fläche aufsetzen und wieder abheben"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Touch the pen tip to the surface, then lift"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8934,6 +12183,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "Transport : %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "Transport : %@"
           }
         },
@@ -8960,6 +12215,12 @@
             "value" : "Ausgelöst durch %@"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Triggered by %@"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8982,6 +12243,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zwei schnelle Klicks hintereinander"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Two rapid clicks in succession"
           }
         },
         "es" : {
@@ -9007,6 +12274,12 @@
             "value" : "Tastenkürzel eingeben …"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Type shortcut…"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9028,6 +12301,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rückgängig"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Undo"
           }
         },
         "es" : {
@@ -9054,6 +12333,12 @@
             "value" : "Über einen Tastendruck die aktive Tablet-Zuordnung zwischen ausgewählten Displays wechseln."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Use a button press to cycle the tablet's active mapping between selected displays."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9075,6 +12360,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Funktion verwenden, wenn dein Gerät nicht erkannt wird oder etwas nicht wie erwartet funktioniert. Die Erfassung dauert etwa eine Minute."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Use this if your device is unrecognised or a feature isn't working as expected. The collection takes about one minute."
           }
         },
         "es" : {
@@ -9100,6 +12391,12 @@
             "value" : "Version %@"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %@"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9115,8 +12412,33 @@
       }
     },
     "Vertical:" : {
-      "comment" : "Label for the vertical parallax offset text field in the TabletAreaView.",
-      "isCommentAutoGenerated" : true
+      "comment" : "Label for vertical parallax offset field in Manual Fine-Tune",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertikal:"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Vertical:"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertical:"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "縦方向:"
+          }
+        }
+      }
     },
     "View" : {
       "comment" : "Menu header: view/navigate tabs",
@@ -9125,6 +12447,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ansicht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "View"
           }
         },
         "es" : {
@@ -9148,6 +12476,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lizenz anzeigen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "View License"
           }
         },
         "es" : {
@@ -9174,6 +12508,12 @@
             "value" : "Was der Ring in diesem Modus beim Drehen macht."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "What the ring does when rotated in this mode."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9194,6 +12534,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wenn aktiviert, bleibt der Stift-Klick nach dem Abheben bei schneller Bewegung für ca. 80 ms gehalten. Das verhindert ungewollte Strichunterbrechungen beim schnellen Zeichnen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "When enabled, the pen click is held open for ~80 ms after the tip lifts if you are moving quickly. This helps prevent unintended stroke breaks during fast drawing."
           }
         },
         "es" : {
@@ -9219,6 +12565,12 @@
             "value" : "Breite"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Width"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9242,6 +12594,12 @@
             "value" : "Fenster"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Window"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9262,6 +12620,12 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
+            "value" : "X: +0.00   Y: +0.00"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
             "value" : "X: +0.00   Y: +0.00"
           }
         },
@@ -9288,6 +12652,12 @@
             "value" : "X: 0   Y: 0"
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "X: 0   Y: 0"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9309,6 +12679,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Du hast %lld Apps abgelegt. Alle als individuelle Einstellungen hinzufügen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You dropped %lld apps. Add all of them as overrides?"
           }
         },
         "es" : {
@@ -9334,6 +12710,12 @@
             "value" : "Dein Display ist gedreht. In Kombination mit einem gedrehten Tablet kann eine Anpassung nötig sein. Teste die Stifteingabe, um die Zuordnung zu prüfen."
           }
         },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Your display is rotated. Combined with a rotated tablet, this may require adjustment. Test your pen input to verify the mapping is correct."
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9355,6 +12737,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zoomen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Zoom"
           }
         },
         "es" : {
