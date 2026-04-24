@@ -219,10 +219,13 @@ struct ProfilesView: View {
                     .disabled(preset.name == "Default")
                     .help(LocalizedStringKey("Permanently delete this profile (cannot be undone)"))
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.settingsLabel)
+                    Image(systemName: "ellipsis")
+                        .font(.settingsBadge)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
                 }
                 .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
                 .frame(width: 24)
             }
         }
