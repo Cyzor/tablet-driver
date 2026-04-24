@@ -173,10 +173,11 @@ struct ProfilesView: View {
 
                     if !preset.overriddenKeys.isEmpty {
                         Text(
-                            String(
-                                localized:
-                                    "\(preset.overriddenKeys.count) setting\(preset.overriddenKeys.count == 1 ? "" : "s")",
-                                comment: "Badge showing number of overridden settings in a profile")
+                            String(format:
+                                NSLocalizedString(
+                                    preset.overriddenKeys.count == 1 ? "%d setting" : "%d settings",
+                                    comment: "Count of overridden settings in a profile"),
+                                preset.overriddenKeys.count)
                         )
                         .font(.settingsBadge)
                         .foregroundStyle(.tertiary)
@@ -383,10 +384,11 @@ struct ProfilesView: View {
                         ? String(
                             localized: "No profiles",
                             comment: "Badge text when tablet has no profiles")
-                        : String(
-                            localized:
-                                "\(ts.profiles.count) profile\(ts.profiles.count == 1 ? "" : "s")",
-                            comment: "Badge showing profile count, plural handled by format string")
+                        : String(format:
+                            NSLocalizedString(
+                                ts.profiles.count == 1 ? "%d profile" : "%d profiles",
+                                comment: "Count of profiles for a tablet"),
+                            ts.profiles.count)
                 )
                 .font(.settingsBadge)
                 .foregroundStyle(.tertiary)

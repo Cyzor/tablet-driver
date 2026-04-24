@@ -11179,6 +11179,122 @@
           }
         }
       }
+    },
+    "%d profile": {
+      "comment": "Singular: count of profiles for a tablet",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d Profil"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%d profile"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d perfil"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d プロファイル"
+          }
+        }
+      }
+    },
+    "%d profiles": {
+      "comment": "Plural: count of profiles for a tablet",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d Profile"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%d profiles"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d perfiles"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d プロファイル"
+          }
+        }
+      }
+    },
+    "%d setting": {
+      "comment": "Singular: count of overridden settings in a profile",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d Einstellung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%d setting"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d configuración"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d 設定"
+          }
+        }
+      }
+    },
+    "%d settings": {
+      "comment": "Plural: count of overridden settings in a profile",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d Einstellungen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%d settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d configuraciones"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d 設定"
+          }
+        }
+      }
     }
   },
   "version": "1.1"
