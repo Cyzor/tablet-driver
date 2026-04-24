@@ -132,7 +132,7 @@ struct PenFeelView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(LocalizedStringKey("Art Pen: Swap Tilt with Rotation"))
                             Text(
-                                "Sacrifices an Art Pen's tilt behavior, allowing apps like Adobe Photoshop to harness true barrel rotation."
+                                "Sacrifices an Art Pen's tilt behavior, allowing apps like Adobe Photoshop to detect barrel rotation."
                             ).font(
                                 .settingsLabel
                             ).foregroundStyle(.secondary)

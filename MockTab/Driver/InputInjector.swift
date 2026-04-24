@@ -524,16 +524,18 @@ final class InputInjector {
         let btn2 = tool.penButton2Binding
 
         if point.penButton1 != lastButton1Down {
+            // Update tracking state first so the quiescent check inside
+            // fireButtonAction sees the current button state, not the pre-transition state.
+            lastButton1Down = point.penButton1
             // For mouse tools button1 drives the primary click (tipDown above);
             // dispatching it again as a button action would double-fire.
             if !activeToolIsMouse {
                 fireButtonAction(btn1, down: point.penButton1, at: screenPoint, settings: settings)
             }
-            lastButton1Down = point.penButton1
         }
         if point.penButton2 != lastButton2Down {
-            fireButtonAction(btn2, down: point.penButton2, at: screenPoint, settings: settings)
             lastButton2Down = point.penButton2
+            fireButtonAction(btn2, down: point.penButton2, at: screenPoint, settings: settings)
         }
 
         // ── Middle button (mouse tool only, always immediate) ──────────────────
@@ -674,8 +676,10 @@ final class InputInjector {
             let down = buttons[i]
             let hasMechanicalPulse = i < 8 && (buttons.mechanicalMask >> i) & 1 != 0
             if down != lastAuxButtons[i] {
-                fireButtonAction(bindings[i], down: down, at: cursorPos, settings: s)
+                // Update tracking state first so the quiescent check inside
+                // fireButtonAction sees the current button state, not the pre-transition state.
                 lastAuxButtons[i] = down
+                fireButtonAction(bindings[i], down: down, at: cursorPos, settings: s)
             } else if down && hasMechanicalPulse {
                 // Button is already tracked as down, but a new mechanical pulse arrived —
                 // the user re-pressed before the release event was seen. Force a complete
@@ -689,9 +693,9 @@ final class InputInjector {
         // ── Touch ring center button ───────────────────────────────────────────
         let ringButtonDown = buttons.touchRingButtonDown
         if ringButtonDown != lastRingButtonDown {
+            lastRingButtonDown = ringButtonDown
             fireButtonAction(
                 s.touchRingButtonBinding, down: ringButtonDown, at: cursorPos, settings: s)
-            lastRingButtonDown = ringButtonDown
         }
 
         // ── Touch ring ─────────────────────────────────────────────────────────
