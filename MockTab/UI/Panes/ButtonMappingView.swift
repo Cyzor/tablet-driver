@@ -754,70 +754,67 @@ struct ButtonMappingView: View {
 
     // MARK: - Touch ring / strip slots section
 
-    /// A compact slot list for the touch ring and both touch strips.
-    /// All three controls share the same slot list and active index, so they always
-    /// Renders the ring/strip slot rows.
-    /// The section header and live-active indicator come from the caller;
-    /// only the slot rows and the cycling hint differ between ring and strip.
+    /// Renders the ring/strip slot rows as individual list rows.
+    /// Each slot becomes a separate Form row, visually consistent with buttonRow().
     @ViewBuilder
     private func touchRingSlotsSection(
         _ label: String, isActive: Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Section header
-            HStack(spacing: 6) {
-                activeIndicator(isActive)
-                labelText(label, isActive: isActive)
-                Spacer(minLength: 0)
-            }
+        // Label row — shows "Touch Ring", "Left", or "Right" with live-active indicator.
+        HStack(spacing: 6) {
+            activeIndicator(isActive)
+            labelText(label, isActive: isActive)
+            Spacer(minLength: 0)
+        }
 
-            // Slot rows — one per mode position.
-            // Show only as many slots as the spec declares (default 4); model always stores 4.
-            let slotCount = min(settings.touchRingSlots.count, spec?.ringSlotCount ?? 4)
-            ForEach(Array(settings.touchRingSlots.prefix(slotCount).enumerated()), id: \.element.id)
-            { idx, slot in
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text("Mode \(idx + 1)")
-                            .foregroundStyle(.secondary)
-                            .frame(minWidth: 50, alignment: .trailing)
-
-                        Picker("", selection: slotBinding(at: idx)) {
-                            ForEach(ControlSlot.Action.allCases, id: \.self) { action in
-                                Text(action.displayLabel).tag(action)
-                            }
+        // One list row per slot — matches buttonRow() visual language.
+        // Show only as many slots as the spec declares (default 4); model always stores 4.
+        let slotCount = min(settings.touchRingSlots.count, spec?.ringSlotCount ?? 4)
+        ForEach(Array(settings.touchRingSlots.prefix(slotCount).enumerated()), id: \.element.id)
+        { idx, slot in
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 0) {
+                    // Indicator lights only on the currently active slot while the ring is touched.
+                    activeIndicator(isActive && settings.touchRingActiveSlotIndex == idx)
+                    Text("Mode \(idx + 1)")
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 100, alignment: .trailing)
+                        .padding(.horizontal, 5)
+                    Picker("", selection: slotBinding(at: idx)) {
+                        ForEach(ControlSlot.Action.allCases, id: \.self) { action in
+                            Text(action.displayLabel).tag(action)
                         }
-                        .labelsHidden()
-                        .controlSize(.small)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .help(LocalizedStringKey("What the ring does when rotated in this mode."))
                     }
-
-                    if slot.action == .keyPress {
-                        HStack(spacing: 16) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                ButtonBindingControl(
-                                    binding: slotBinding(for: idx, direction: .cw), compact: true,
-                                    ringSlotCount: spec?.ringSlotCount ?? 4)
-                            }
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.counterclockwise")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                ButtonBindingControl(
-                                    binding: slotBinding(for: idx, direction: .ccw), compact: true,
-                                    ringSlotCount: spec?.ringSlotCount ?? 4)
-                            }
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.leading, 20)
-                    }
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .help(LocalizedStringKey("What the ring does when rotated in this mode."))
+                    Spacer(minLength: 0)
                 }
-                .padding(.vertical, 3)
+
+                if slot.action == .keyPress {
+                    HStack(spacing: 16) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            ButtonBindingControl(
+                                binding: slotBinding(for: idx, direction: .cw), compact: true,
+                                ringSlotCount: spec?.ringSlotCount ?? 4)
+                        }
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            ButtonBindingControl(
+                                binding: slotBinding(for: idx, direction: .ccw), compact: true,
+                                ringSlotCount: spec?.ringSlotCount ?? 4)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.leading, 20)
+                }
             }
+            .padding(.vertical, 2)
         }
     }
 

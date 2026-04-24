@@ -81,6 +81,12 @@ final class ResizableTabViewController: NSTabViewController {
         defaultTabSizes[label] = defaultSize
     }
 
+    /// Suppress auto-sizing on tab switches — call this when restoring a
+    /// window whose size was explicitly saved by the user.
+    func suppressAutoResize() {
+        userHasResized = true
+    }
+
     override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         super.tabView(tabView, didSelect: tabViewItem)
         applyDefaultSize(for: tabViewItem)
@@ -295,6 +301,12 @@ final class SettingsWindowController: NSWindowController {
     required init?(coder: NSCoder) { fatalError() }
 
     // MARK: - Public
+
+    /// Call after setting an explicit window frame from saved state so that
+    /// tab switches don't override the restored size with per-tab defaults.
+    func suppressAutoResize() {
+        tabVC.suppressAutoResize()
+    }
 
     func show() {
         showWindow(nil)

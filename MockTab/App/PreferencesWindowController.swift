@@ -289,8 +289,11 @@ final class PreferencesWindowController {
             settings: s, deviceLabel: label, productID: productID)
 
         if let frame {
-            // Explicit frame passed (from restore or replace operations)
+            // Explicit frame passed (from restore or replace operations).
+            // Mark as user-resized so tab switches don't override the saved size
+            // with per-tab preset defaults.
             wc.window?.setFrame(frame, display: false)
+            wc.suppressAutoResize()
         } else {
             // Place new window: cascade from the previous window if one exists,
             // otherwise land in the upper-left area of the primary display.
