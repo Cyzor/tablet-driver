@@ -21,13 +21,19 @@ import Combine
 import SwiftUI
 
 @MainActor
-final class PreferencesWindowController {
+final class PreferencesWindowController: ObservableObject {
 
     static let shared = PreferencesWindowController()
 
     let settings = TabletSettings()
 
-    private var windows: [SettingsWindowController] = []
+    private var windows: [SettingsWindowController] = [] {
+        didSet { publishWindowDescriptors() }
+    }
+    /// Published list of open windows for the menu bar / dock menus.
+    /// Updated automatically whenever `windows` changes.
+    @Published private(set) var windowDescriptors: [WindowDescriptor] = []
+
     private var defaultWindow: SettingsWindowController?
     private var deviceObserver: AnyCancellable?
     private var isTerminating = false
@@ -233,6 +239,30 @@ final class PreferencesWindowController {
             if let selectedWC = members.first(where: { $0.selected })?.wc {
                 selectedWC.window?.makeKeyAndOrderFront(nil)
             }
+        }
+    }
+
+    // MARK: - Window list (for menu bar / dock menus)
+
+    struct WindowDescriptor: Identifiable {
+        let id: Int  // productID, or -1 for the generic window
+        let label: String
+    }
+
+    private func publishWindowDescriptors() {
+        windowDescriptors = windows.map { wc in
+            let pid = wc.productID
+            return WindowDescriptor(id: pid ?? -1, label: displayLabel(forProductID: pid))
+        }
+    }
+
+    /// Bring an open window to front by its productID (-1 = generic window).
+    func focusWindow(id: Int) {
+        if id == -1 {
+            ensureDefaultWindow().show()
+        } else if let wc = windows.first(where: { ($0.productID ?? -1) == id }) {
+            NSApp.activate(ignoringOtherApps: true)
+            wc.show()
         }
     }
 

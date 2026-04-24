@@ -622,8 +622,7 @@ struct ButtonMappingView: View {
             ForEach(0..<8, id: \.self) { i in
                 expressKeyRow(
                     index: i,
-                    label: String(
-                        localized: "Key \(i + 1)", comment: "Express key N label, e.g. 'Key 1'"),
+                    label: String(format: NSLocalizedString("Key %lld", comment: "Express key N label, e.g. 'Key 1'"), i + 1),
                     lb: lb)
             }
         } header: {
@@ -691,8 +690,7 @@ struct ButtonMappingView: View {
             ForEach(3..<8, id: \.self) { i in
                 expressKeyRow(
                     index: i,
-                    label: String(
-                        localized: "Key \(i - 2)", comment: "Express key N label, e.g. 'Key 1'"),
+                    label: String(format: NSLocalizedString("Key %lld", comment: "Express key N label, e.g. 'Key 1'"), i - 2),
                     lb: lb)
             }
         }
@@ -718,8 +716,7 @@ struct ButtonMappingView: View {
             ForEach(11..<16, id: \.self) { i in
                 expressKeyRow(
                     index: i,
-                    label: String(
-                        localized: "Key \(i - 10)", comment: "Express key N label, e.g. 'Key 1'"),
+                    label: String(format: NSLocalizedString("Key %lld", comment: "Express key N label, e.g. 'Key 1'"), i - 10),
                     lb: lb)
             }
         }

@@ -29,6 +29,7 @@ struct MockTabApp: App {
             MenuBarView()
                 .environmentObject(TabletManager.shared)
                 .environmentObject(PreferencesWindowController.shared.settings)
+                .environmentObject(PreferencesWindowController.shared)
         }
         .menuBarExtraStyle(.menu)
         .commands {
@@ -38,7 +39,7 @@ struct MockTabApp: App {
             CommandMenu(String(localized: "View", comment: "Menu header: view/navigate tabs")) {
                 Button(String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab")) { PreferencesWindowController.shared.showTab(at: 0) }
                     .keyboardShortcut("1", modifiers: .command)
-                Button(String(localized: "Pressure", comment: "Menu item: open Pen Feel tab")) { PreferencesWindowController.shared.showTab(at: 1) }
+                Button(String(localized: "Pen Feel", comment: "Menu item: open Pen Feel tab")) { PreferencesWindowController.shared.showTab(at: 1) }
                     .keyboardShortcut("2", modifiers: .command)
                 Button(String(localized: "Buttons", comment: "Menu item: open Button Mapping tab")) { PreferencesWindowController.shared.showTab(at: 2) }
                     .keyboardShortcut("3", modifiers: .command)
@@ -166,5 +167,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         return true
+    }
+
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        let tabletArea = NSMenuItem(
+            title: String(localized: "Tablet Area", comment: "Dock menu: open Tablet Area tab"),
+            action: #selector(dockShowTabletArea),
+            keyEquivalent: "")
+        tabletArea.target = self
+        menu.addItem(tabletArea)
+
+        let buttons = NSMenuItem(
+            title: String(localized: "Button Mapping", comment: "Dock menu: open Button Mapping tab"),
+            action: #selector(dockShowButtonMapping),
+            keyEquivalent: "")
+        buttons.target = self
+        menu.addItem(buttons)
+
+        menu.addItem(.separator())
+
+        let detect = NSMenuItem(
+            title: String(localized: "Detect Tablet", comment: "Dock menu: detect and focus active tablet"),
+            action: #selector(dockDetectTablet),
+            keyEquivalent: "")
+        detect.target = self
+        menu.addItem(detect)
+
+        return menu
+    }
+
+    @objc private func dockShowTabletArea() {
+        PreferencesWindowController.shared.showTab(at: 0)
+    }
+
+    @objc private func dockShowButtonMapping() {
+        PreferencesWindowController.shared.showTab(at: 2)
+    }
+
+    @objc private func dockDetectTablet() {
+        AppMenuController.activateBestDevice()
     }
 }

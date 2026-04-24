@@ -252,6 +252,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 : quitIndex
             menu.insertItem(NSMenuItem.separator(), at: separatorIndex)
             menu.insertItem(hideItem, at: separatorIndex)
+            menu.insertItem(NSMenuItem.separator(), at: separatorIndex)
             hideDockIconItem = hideItem
         } else if hideDockIconItem == nil {
             // Item survived the rebuild; re-acquire the weak reference.

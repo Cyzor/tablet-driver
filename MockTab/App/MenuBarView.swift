@@ -23,35 +23,55 @@ import SwiftUI
 struct MenuBarView: View {
     @EnvironmentObject var tabletManager: TabletManager
     @EnvironmentObject var settings: TabletSettings
+    @EnvironmentObject var pwc: PreferencesWindowController
 
     @AppStorage("showInDock") private var showInDock: Bool = true
     @State private var launchAtLogin: Bool = (SMAppService.mainApp.status == .enabled)
 
     var body: some View {
-        // Status indicator — disabled so it's informational only.
-        Button {
-        } label: {
-            Label(
-                tabletManager.isConnected
-                    ? String(localized: "\(tabletManager.connectedDeviceName) connected", comment: "Menu bar status: tablet connected with device name")
-                    : String(localized: "No tablet detected", comment: "Menu bar status: no tablet currently connected"),
-                systemImage: tabletManager.isConnected ? "circle.fill" : "circle"
-            )
+        Button(String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab")) {
+            pwc.showTab(at: 0)
         }
-        .disabled(true)
+
+        Button(String(localized: "Button Mapping", comment: "Menu item: open Button Mapping tab")) {
+            pwc.showTab(at: 2)
+        }
 
         Divider()
 
+        Button(String(localized: "Detect Tablet", comment: "Menu item: detect and focus active tablet")) {
+            AppMenuController.activateBestDevice()
+        }
+
+        // Window list — shown when more than one window is open so the user
+        // can jump directly to a specific tablet without opening the app first.
+        if pwc.windowDescriptors.count > 1 {
+            Divider()
+            ForEach(pwc.windowDescriptors) { descriptor in
+                Button(descriptor.label) {
+                    pwc.focusWindow(id: descriptor.id)
+                }
+            }
+        }
+
         // Profile submenu — shown only when at least one profile exists.
         if !settings.profiles.isEmpty {
+            Divider()
             Menu {
                 Button {
                     settings.activate(nil)
                 } label: {
                     if settings.activeProfile == nil {
-                        Label(String(localized: "Device Defaults", comment: "Profile option: use device's default settings"), systemImage: "checkmark")
+                        Label(
+                            String(
+                                localized: "Device Defaults",
+                                comment: "Profile option: use device's default settings"),
+                            systemImage: "checkmark")
                     } else {
-                        Text(String(localized: "Device Defaults", comment: "Profile option: use device's default settings"))
+                        Text(
+                            String(
+                                localized: "Device Defaults",
+                                comment: "Profile option: use device's default settings"))
                     }
                 }
 
@@ -71,37 +91,40 @@ struct MenuBarView: View {
             } label: {
                 switch settings.activationSource {
                 case .manual:
-                    Text(String(localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")", comment: "Menu label showing current active profile"))
+                    Text(
+                        String(
+                            localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")",
+                            comment: "Menu label showing current active profile"))
                 case .app(_, let appName):
                     Text(
-                        String(localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")  (\(appName))", comment: "Menu label showing current active profile and triggering app"))
+                        String(
+                            localized:
+                                "Profile: \(settings.activeProfile?.name ?? "Device Defaults")  (\(appName))",
+                            comment:
+                                "Menu label showing current active profile and triggering app"))
                 }
             }
-
-            Divider()
         }
 
         Divider()
 
-        Toggle(String(localized: "Launch at Login", comment: "Menu toggle: start app automatically on login"), isOn: $launchAtLogin)
-            .onChange(of: launchAtLogin) { enabled in
-                do {
-                    if enabled { try SMAppService.mainApp.register() }
-                    else       { try SMAppService.mainApp.unregister() }
-                } catch {
-                    launchAtLogin = !enabled
-                }
+        Toggle(
+            String(localized: "Launch at Login", comment: "Menu toggle: start app automatically on login"),
+            isOn: $launchAtLogin)
+        .onChange(of: launchAtLogin) { enabled in
+            do {
+                if enabled { try SMAppService.mainApp.register() }
+                else { try SMAppService.mainApp.unregister() }
+            } catch {
+                launchAtLogin = !enabled
             }
+        }
 
-        Toggle(String(localized: "Show in Dock", comment: "Menu toggle: show app icon in dock"), isOn: $showInDock)
-            .onChange(of: showInDock) { show in
-                NSApp.setActivationPolicy(show ? .regular : .accessory)
-            }
-
-        Divider()
-
-        Button(String(localized: "Preferences…", comment: "Menu button: open preferences window")) {
-            PreferencesWindowController.shared.show()
+        Toggle(
+            String(localized: "Show in Dock", comment: "Menu toggle: show app icon in dock"),
+            isOn: $showInDock)
+        .onChange(of: showInDock) { show in
+            NSApp.setActivationPolicy(show ? .regular : .accessory)
         }
 
         Divider()
