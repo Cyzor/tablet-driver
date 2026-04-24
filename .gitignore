@@ -21,3 +21,7 @@ xcuserdata/
 timeline.xctimeline
 playground.xcworkspace
 .claude
+
+# AI session files (local use only, not for public repo)
+CLAUDE.md
+progress.md
