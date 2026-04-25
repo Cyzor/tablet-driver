@@ -42,7 +42,9 @@ final class InputInjector {
 
     var deviceVendorID: Int
     var deviceProductID: Int
-    var activeToolSettings: ToolSettings? = nil
+    var activeToolSettings: ToolSettings? = nil {
+        didSet { reconcileSyntheticFlags() }
+    }
     /// When true the active tool is a cordless mouse.
     /// tipDown is driven by penButton1 instead of pressure, and button1 is
     /// not dispatched as a separate button action (it already fires the primary click).
@@ -73,10 +75,16 @@ final class InputInjector {
             self?.cachedDisplayIndex = Int.min
             self?.cachedCalibrationOrientation = -1
         } }
+        leakWatchdogTimer = Timer.scheduledTimer(
+            withTimeInterval: 1.0, repeats: true
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.checkLeakWatchdog() }
+        }
     }
 
     deinit {
         if let obs = displayObserver { NotificationCenter.default.removeObserver(obs) }
+        leakWatchdogTimer?.invalidate()
     }
 
     // MARK: - State
@@ -223,6 +231,20 @@ final class InputInjector {
     private var watchdogItem: DispatchWorkItem?
     private let watchdogInterval: DispatchTimeInterval = .milliseconds(400)
 
+    // MARK: - Time-based leak watchdog
+    //
+    // Second safety net that fires even when lastAuxButtons is stuck (e.g. USB
+    // disconnect mid-press). Unlike the DispatchWorkItem watchdog above, which
+    // is only armed while tablet activity is flowing, this 1 Hz timer runs
+    // continuously and does not depend on quiescence flags being correct.
+
+    private var leakWatchdogTimer: Timer?
+    /// Timestamp of the last groundTruthSyntheticFlags mutation.
+    private var lastSyntheticFlagChangeAt: Date = .distantPast
+    /// Timestamp of the last tablet HID report (inject / injectAux / injectMouseButtons).
+    /// Stamped inside rearmWatchdog(), which every entry point calls.
+    private var lastInjectCallAt: Date = .distantPast
+
     /// True when no physical tablet control is held. If this holds and
     /// `groundTruthSyntheticFlags` is non-empty, the flags are a leak.
     private var tabletIsQuiescent: Bool {
@@ -235,6 +257,7 @@ final class InputInjector {
     }
 
     private func rearmWatchdog() {
+        lastInjectCallAt = Date()
         watchdogItem?.cancel()
         guard !groundTruthSyntheticFlags.isEmpty else {
             watchdogItem = nil
@@ -248,6 +271,25 @@ final class InputInjector {
         }
         watchdogItem = item
         DispatchQueue.main.asyncAfter(deadline: .now() + watchdogInterval, execute: item)
+    }
+
+    /// 1 Hz time-based leak detection. Fires even when `lastAuxButtons` is corrupt
+    /// (e.g. USB disconnect mid-press), a scenario where the DispatchWorkItem watchdog
+    /// above is never rearmed and therefore never fires.
+    ///
+    /// Condition: synthetic flags have been stuck in the same state for > 3 s AND the
+    /// tablet has been completely idle for > 3 s. A legitimately held express-key keeps
+    /// resetting `lastInjectCallAt` via `rearmWatchdog`, so this never fires during real use.
+    private func checkLeakWatchdog() {
+        guard !groundTruthSyntheticFlags.isEmpty else { return }
+        let heldInterval = Date().timeIntervalSince(lastSyntheticFlagChangeAt)
+        let idleInterval = Date().timeIntervalSince(lastInjectCallAt)
+        if heldInterval > 3.0 && idleInterval > 3.0 {
+            #if DEBUG
+            print("[MockTab] leak-watchdog: releasing stuck synthetic flags 0x\(String(groundTruthSyntheticFlags.rawValue, radix: 16)) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
+            #endif
+            releaseAllSyntheticModifiers()
+        }
     }
 
     // MARK: - Adobe shim replay cache
@@ -844,6 +886,17 @@ final class InputInjector {
         CGEventFlags.maskCommand.rawValue | CGEventFlags.maskShift.rawValue
         | CGEventFlags.maskAlternate.rawValue | CGEventFlags.maskControl.rawValue
 
+    /// Left-hand canonical keycodes for each managed modifier bit.
+    /// Electron and AppKit text input only update their internal modifier state when
+    /// a flagsChanged event carries a keycode that matches the actual modifier key —
+    /// keycode 0 is silently ignored by many apps.
+    private static let modifierKeyCodes: [(CGEventFlags, CGKeyCode)] = [
+        (.maskCommand,   55),  // left ⌘
+        (.maskShift,     56),  // left ⇧
+        (.maskAlternate, 58),  // left ⌥
+        (.maskControl,   59),  // left ⌃
+    ]
+
     /// The definitive modifier state for the NEXT outbound CGEvent.
     /// Merges physical-keyboard-only state with any flags this driver has pressed
     /// via button bindings.
@@ -869,23 +922,84 @@ final class InputInjector {
         return CGEventFlags(rawValue: physicalRaw | groundTruthSyntheticFlags.rawValue)
     }
 
+    /// The union of modifier flags justified by currently-held pen barrel buttons.
+    /// Used by `reconcileSyntheticFlags` to identify orphaned bits after a tool change.
+    /// Express-key modifiers are excluded — they arrive via `injectAux` with their own
+    /// settings context and are handled by the DispatchWorkItem / time-based watchdogs.
+    private func expectedSyntheticFlagsForHeldPenButtons() -> CGEventFlags {
+        guard let tool = activeToolSettings else { return [] }
+        var flags = CGEventFlags()
+        if lastButton1Down {
+            flags.formUnion(CGEventFlags(rawValue: tool.penButton1Binding.modifierFlags))
+        }
+        if lastButton2Down {
+            flags.formUnion(CGEventFlags(rawValue: tool.penButton2Binding.modifierFlags))
+        }
+        return flags
+    }
+
+    /// Called whenever `activeToolSettings` changes. Releases any synthetic modifier bits
+    /// that are no longer justified by the current pen button bindings. This handles the
+    /// eraser-flip / tool-switch scenario: if the user held a barrel button mapped to ⌥
+    /// and the tool identity changed mid-hold, the up-edge fires against the new binding
+    /// and ⌥ would otherwise be orphaned in `groundTruthSyntheticFlags` forever.
+    private func reconcileSyntheticFlags() {
+        guard !groundTruthSyntheticFlags.isEmpty else { return }
+        let expected = expectedSyntheticFlagsForHeldPenButtons()
+        let excessRaw = groundTruthSyntheticFlags.rawValue & ~expected.rawValue & managedModifierMask
+        guard excessRaw != 0 else { return }
+        let excess = CGEventFlags(rawValue: excessRaw)
+
+        // Clear excess bits first (mirroring releaseAllSyntheticModifiers ordering):
+        // history stays intact so stale-bit detection strips them from outbound events.
+        for (bit, _) in Self.modifierKeyCodes where excess.contains(bit) {
+            modifierRefCounts[bit.rawValue] = 0
+            groundTruthSyntheticFlags.remove(bit)
+        }
+        lastSyntheticFlagChangeAt = Date()
+
+        for (bit, keyCode) in Self.modifierKeyCodes where excess.contains(bit) {
+            guard let e = CGEvent(source: sessionSource) else { continue }
+            e.type = .flagsChanged
+            e.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
+            finalizeAndPost(e)
+        }
+    }
+
     /// Releases any synthetic modifier keys currently held by tablet button bindings.
-    /// Posts a `.flagsChanged` event that strips our bits while preserving physical keys.
+    /// Posts one `.flagsChanged` event per held modifier bit, then clears all state.
     /// Safe to call when `groundTruthSyntheticFlags` is already empty (no-op).
     private func releaseAllSyntheticModifiers() {
         guard !groundTruthSyntheticFlags.isEmpty else { return }
         let toRelease = groundTruthSyntheticFlags
+
+        // Clear ground truth and ref counts BEFORE posting, but leave syntheticHistory
+        // intact for now. With groundTruth = [] but history still populated,
+        // currentEventFlags's stale-bit detector classifies the released bits as
+        // "recently synthetic, no longer requested" and strips them from hidSystemState.
+        // finalizeAndPost therefore delivers a clean, bit-free flags value to the OS.
+        // (The old code cleared history first, which destroyed the stale-bit detector
+        // at exactly the moment it was needed, causing the "release" to be a no-op.)
         groundTruthSyntheticFlags = []
         for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
+        lastSyntheticFlagChangeAt = Date()
+
+        // One flagsChanged per bit with its canonical keycode. Many apps (Electron,
+        // some Cocoa text inputs) silently discard flagsChanged events with keycode 0.
+        for (bit, keyCode) in Self.modifierKeyCodes where toRelease.contains(bit) {
+            guard let e = CGEvent(source: sessionSource) else { continue }
+            e.type = .flagsChanged
+            e.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
+            // finalizeAndPost stamps currentEventFlags (stale-bit detection strips the
+            // released bit) and advances syntheticHistory with the now-empty groundTruth.
+            finalizeAndPost(e)
+        }
+
+        // Wipe any remaining old history slots so physical keys that share bit patterns
+        // with our former synthetic flags are not incorrectly stripped as "stale" in
+        // subsequent events.
         for i in syntheticHistory.indices { syntheticHistory[i] = [] }
         historyIndex = 0
-        guard let e = CGEvent(source: sessionSource) else { return }
-        e.type = .flagsChanged
-        e.setIntegerValueField(.keyboardEventKeycode, value: 0)
-        let systemRaw = CGEventSource.flagsState(.hidSystemState).rawValue
-        let physicalRaw = systemRaw & ~toRelease.rawValue
-        e.flags = CGEventFlags(rawValue: physicalRaw)
-        finalizeAndPost(e)
     }
 
     /// Called when the frontmost application changes. Releases any synthetic modifier
@@ -901,6 +1015,13 @@ final class InputInjector {
     /// Stamps an event with reconstructed flags and posts it, then advances history.
     /// ALL outbound events must go through this helper to maintain state synchronization.
     private func finalizeAndPost(_ event: CGEvent) {
+        #if DEBUG
+        assert(
+            groundTruthSyntheticFlags.rawValue & managedModifierMask
+                == groundTruthSyntheticFlags.rawValue,
+            "groundTruthSyntheticFlags contains bits outside managedModifierMask"
+        )
+        #endif
         event.flags = currentEventFlags
         event.post(tap: .cghidEventTap)
 
@@ -1242,12 +1363,35 @@ final class InputInjector {
                 finalizeAndPost(e)
             }
         case .keyCombo:
-            // Update internal synthetic state atomically before posting anything,
-            // so currentEventFlags already reflects the new state when stamped.
             let bindingFlags = CGEventFlags(rawValue: binding.modifierFlags)
-
-            // Update reference counts for each individual modifier bit.
             let modBits: [CGEventFlags] = [.maskCommand, .maskShift, .maskAlternate, .maskControl]
+
+            // Build the CGEvent BEFORE mutating state. If construction fails (rare, but
+            // can happen under memory pressure or CoreGraphics saturation), we bail without
+            // touching groundTruthSyntheticFlags or modifierRefCounts. The old code mutated
+            // state first, leaving orphaned modifier bits when the event never reached the OS.
+            let event: CGEvent?
+            if binding.keyLabel.isEmpty && binding.modifierFlags != 0 {
+                let e = CGEvent(source: sessionSource)
+                e?.type = .flagsChanged
+                e?.setIntegerValueField(.keyboardEventKeycode, value: Int64(binding.keyCode))
+                event = e
+            } else {
+                event = CGEvent(
+                    keyboardEventSource: sessionSource,
+                    virtualKey: CGKeyCode(binding.keyCode),
+                    keyDown: down)
+            }
+
+            #if DEBUG
+            if event == nil {
+                print("[MockTab] CGEvent creation failed — keyCombo '\(binding.keyLabel)' down=\(down); state NOT mutated")
+            }
+            #endif
+            guard let e = event else { break }
+
+            // Event created successfully — now commit the state delta.
+            let flagsBefore = groundTruthSyntheticFlags
             for bit in modBits {
                 if bindingFlags.contains(bit) {
                     let raw = bit.rawValue
@@ -1258,33 +1402,12 @@ final class InputInjector {
                     } else {
                         let newCount = Swift.max(0, currentCount - 1)
                         modifierRefCounts[raw] = newCount
-                        if newCount == 0 {
-                            groundTruthSyntheticFlags.remove(bit)
-                        }
+                        if newCount == 0 { groundTruthSyntheticFlags.remove(bit) }
                     }
                 }
             }
-
-            if binding.keyLabel.isEmpty && binding.modifierFlags != 0 {
-                // Modifier-only binding: post a .flagsChanged event.
-                guard let e = CGEvent(source: sessionSource) else { return }
-                e.type = .flagsChanged
-                e.setIntegerValueField(.keyboardEventKeycode, value: Int64(binding.keyCode))
-                // Stamp with our newly updated combined state. Reconstruction in
-                // currentEventFlags ensures this is a clean 'physical + synthetic' merge.
-                e.flags = currentEventFlags
-                finalizeAndPost(e)
-            } else {
-                // Regular key combo: post keyDown/Up.
-                guard
-                    let e = CGEvent(
-                        keyboardEventSource: sessionSource,
-                        virtualKey: CGKeyCode(binding.keyCode),
-                        keyDown: down)
-                else { return }
-                e.flags = currentEventFlags
-                finalizeAndPost(e)
-            }
+            if groundTruthSyntheticFlags != flagsBefore { lastSyntheticFlagChangeAt = Date() }
+            finalizeAndPost(e)
 
         case .displayToggle:
             guard down, let s = settings else { break }
