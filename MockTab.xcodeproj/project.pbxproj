@@ -336,7 +336,7 @@
 					};
 				};
 			};
-			buildConfigurationList = AE000001 /* Build configuration list for PBXProject "Mocktab" */;
+			buildConfigurationList = AE000001 /* Build configuration list for PBXProject "MockTab" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -618,7 +618,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AE000001 /* Build configuration list for PBXProject "Mocktab" */ = {
+		AE000001 /* Build configuration list for PBXProject "MockTab" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AE000002 /* Debug */,
