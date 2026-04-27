@@ -1389,6 +1389,9 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     var cwBinding: ButtonBinding = .none
     /// Key binding for counter-clockwise rotation (used when action == .keyPress).
     var ccwBinding: ButtonBinding = .none
+    /// Speed multiplier applied to ring/strip delta before scroll/key dispatch.
+    /// 1.0 = native one-line-per-detent; 0.25 = slowest; 3.0 = fastest.
+    var speed: Double = 1.0
 
     /// Four-slot default used on init, reset, and legacy migration.
     /// Matches Wacom's standard 4-LED toggle ring layout; unused slots default to Off.
