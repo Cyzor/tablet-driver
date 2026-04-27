@@ -12,6 +12,9 @@
 		05BFE59C2F79FE5200782B9E /* AboutWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05BFE59B2F79FE5200782B9E /* AboutWindowController.swift */; };
 		05D7EB7B2F79E6E30086E03F /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D7EB7A2F79E6E30086E03F /* AboutView.swift */; };
 		05FE52CD2F99A5350084E37D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 05FE52CC2F99A5350084E37D /* PrivacyInfo.xcprivacy */; };
+		05FE52D12F9E8D730084E37D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 05FE52D02F9E8D730084E37D /* AppIcon.icon */; };
+		4BD0B8E0541D4BBB82F9A3BB /* CalibrationOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */; };
+		A62404859BAF4F58B6F4409D /* CalibrationOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */; };
 		AA000001 /* MockTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MockTabApp.swift */; };
 		AA000002 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* MenuBarView.swift */; };
 		AA000003 /* TabletPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000003 /* TabletPoint.swift */; };
@@ -64,10 +67,8 @@
 		AAAAAA10 /* ImportPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA09 /* ImportPreviewSheet.swift */; };
 		AB001001 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AB001000 /* Localizable.xcstrings */; };
 		AC000009 /* TabletColorTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000008 /* TabletColorTheme.swift */; };
-		E1888DF9E1DD43F0A7D96E82 /* CalibrationData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22D2FFEB9A0346788DD687D6 /* CalibrationData.swift */; };
 		B33B693E051F42C481B02431 /* CalibrationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA2A9E683E3436B8576AFFF /* CalibrationSession.swift */; };
-		4BD0B8E0541D4BBB82F9A3BB /* CalibrationOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */; };
-		A62404859BAF4F58B6F4409D /* CalibrationOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */; };
+		E1888DF9E1DD43F0A7D96E82 /* CalibrationData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22D2FFEB9A0346788DD687D6 /* CalibrationData.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -76,6 +77,9 @@
 		05BFE59B2F79FE5200782B9E /* AboutWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindowController.swift; sourceTree = "<group>"; };
 		05D7EB7A2F79E6E30086E03F /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		05FE52CC2F99A5350084E37D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		05FE52D02F9E8D730084E37D /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		0CA2A9E683E3436B8576AFFF /* CalibrationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationSession.swift; sourceTree = "<group>"; };
+		22D2FFEB9A0346788DD687D6 /* CalibrationData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationData.swift; sourceTree = "<group>"; };
 		AAAAAA01 /* PresetExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetExporter.swift; sourceTree = "<group>"; };
 		AAAAAA03 /* PresetImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetImporter.swift; sourceTree = "<group>"; };
 		AAAAAA05 /* ImportPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPlan.swift; sourceTree = "<group>"; };
@@ -131,10 +135,8 @@
 		AB001000 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		AB00C1D1 /* CintiqV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CintiqV1Decoder.swift; sourceTree = "<group>"; };
 		AC000008 /* TabletColorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletColorTheme.swift; sourceTree = "<group>"; };
-		22D2FFEB9A0346788DD687D6 /* CalibrationData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationData.swift; sourceTree = "<group>"; };
-		0CA2A9E683E3436B8576AFFF /* CalibrationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationSession.swift; sourceTree = "<group>"; };
-		F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationOverlayWindow.swift; sourceTree = "<group>"; };
 		BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationOverlayView.swift; sourceTree = "<group>"; };
+		F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationOverlayWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -148,6 +150,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		47A5AA2037FC42E2BFC54602 /* Calibration */ = {
+			isa = PBXGroup;
+			children = (
+				0CA2A9E683E3436B8576AFFF /* CalibrationSession.swift */,
+				F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */,
+				BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */,
+			);
+			path = Calibration;
+			sourceTree = "<group>";
+		};
 		AC000000 /* MockTab */ = {
 			isa = PBXGroup;
 			children = (
@@ -285,17 +297,8 @@
 			children = (
 				AC000000 /* MockTab */,
 				AC000010 /* Products */,
+				05FE52D02F9E8D730084E37D /* AppIcon.icon */,
 			);
-			sourceTree = "<group>";
-		};
-		47A5AA2037FC42E2BFC54602 /* Calibration */ = {
-			isa = PBXGroup;
-			children = (
-				0CA2A9E683E3436B8576AFFF /* CalibrationSession.swift */,
-				F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */,
-				BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */,
-			);
-			path = Calibration;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -333,7 +336,7 @@
 					};
 				};
 			};
-			buildConfigurationList = AE000001 /* Build configuration list for PBXProject "MockTab" */;
+			buildConfigurationList = AE000001 /* Build configuration list for PBXProject "Mocktab" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -362,6 +365,7 @@
 				05FE52CD2F99A5350084E37D /* PrivacyInfo.xcprivacy in Resources */,
 				AA000030 /* Assets.xcassets in Resources */,
 				AB001001 /* Localizable.xcstrings in Resources */,
+				05FE52D12F9E8D730084E37D /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -564,6 +568,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MockTab/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MockTab;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -594,6 +599,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MockTab/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MockTab;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -612,7 +618,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AE000001 /* Build configuration list for PBXProject "MockTab" */ = {
+		AE000001 /* Build configuration list for PBXProject "Mocktab" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AE000002 /* Debug */,
