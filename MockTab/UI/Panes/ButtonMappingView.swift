@@ -255,6 +255,73 @@ struct ButtonMappingView: View {
         )
     }
 
+    // Pre-allocated touch ring slot speed bindings — one Binding per slot.
+    // Eliminates per-call closure allocation during ~16 Hz liveButtons invalidations.
+    private var slot0SpeedBinding: Binding<Double> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(0) else { return 1.0 }
+                return self.settings.touchRingSlots[0].speed
+            },
+            set: { newSpeed in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(0) else { return }
+                var newSlots = oldSlots
+                newSlots[0].speed = newSpeed
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 1 Speed") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+    private var slot1SpeedBinding: Binding<Double> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(1) else { return 1.0 }
+                return self.settings.touchRingSlots[1].speed
+            },
+            set: { newSpeed in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(1) else { return }
+                var newSlots = oldSlots
+                newSlots[1].speed = newSpeed
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 2 Speed") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+    private var slot2SpeedBinding: Binding<Double> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(2) else { return 1.0 }
+                return self.settings.touchRingSlots[2].speed
+            },
+            set: { newSpeed in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(2) else { return }
+                var newSlots = oldSlots
+                newSlots[2].speed = newSpeed
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 3 Speed") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+    private var slot3SpeedBinding: Binding<Double> {
+        Binding(
+            get: {
+                guard self.settings.touchRingSlots.indices.contains(3) else { return 1.0 }
+                return self.settings.touchRingSlots[3].speed
+            },
+            set: { newSpeed in
+                let oldSlots = self.settings.touchRingSlots
+                guard oldSlots.indices.contains(3) else { return }
+                var newSlots = oldSlots
+                newSlots[3].speed = newSpeed
+                self.settings.touchRingSlots = newSlots
+                self.settings.record("Ring Slot 4 Speed") { self.settings.touchRingSlots = oldSlots }
+            }
+        )
+    }
+
     private var pen1Binding: Binding<ButtonBinding> {
         Binding(
             get: { tool.penButton1Binding },
@@ -387,6 +454,17 @@ struct ButtonMappingView: View {
         case 2: return slot2ActionBinding
         case 3: return slot3ActionBinding
         default: return Binding(get: { .scroll }, set: { _ in })
+        }
+    }
+
+    /// Array index → pre-allocated speed binding for touch ring slot.
+    private func slotSpeedBinding(at index: Int) -> Binding<Double> {
+        switch index {
+        case 0: return slot0SpeedBinding
+        case 1: return slot1SpeedBinding
+        case 2: return slot2SpeedBinding
+        case 3: return slot3SpeedBinding
+        default: return Binding(get: { 1.0 }, set: { _ in })
         }
     }
 
@@ -771,7 +849,6 @@ struct ButtonMappingView: View {
         { idx, slot in
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 0) {
-                    // Indicator lights only on the currently active slot while the ring is touched.
                     activeIndicator(isActive && settings.touchRingActiveSlotIndex == idx)
                     Text("Mode \(idx + 1)")
                         .foregroundStyle(.secondary)
@@ -784,8 +861,26 @@ struct ButtonMappingView: View {
                     }
                     .labelsHidden()
                     .controlSize(.small)
-                    .help(LocalizedStringKey("What the ring does when rotated in this mode."))
-                    Spacer(minLength: 0)
+                    .fixedSize()
+
+                    if slot.action != .off {
+                        let speedLabel = slot.speed < 0.01
+                            ? String(localized: "Off", comment: "Ring speed slider at minimum — rotation disabled")
+                            : String(format: "%.2g×", slot.speed)
+                        Text(speedLabel)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 36, alignment: .trailing)
+                            .monospacedDigit()
+                            .padding(.leading, 8)
+                        Slider(value: slotSpeedBinding(at: idx), in: 0...3.0, step: 0.25)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .layoutPriority(1)
+                            .help("Adjust how fast the ring scrolls or repeats key presses.")
+                            .padding(.trailing, 40)
+                    } else {
+                        Spacer(minLength: 10)   // fills the row when no slider is present
+                    }
                 }
 
                 if slot.action == .keyPress {
@@ -811,6 +906,7 @@ struct ButtonMappingView: View {
                     .padding(.leading, 20)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)   // force the row to fill the list/form cell
             .padding(.vertical, 2)
         }
     }

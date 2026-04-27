@@ -18,6 +18,9 @@
 
 import AppKit
 import CoreGraphics
+import os
+
+private let modLog = Logger(subsystem: "com.cyzor.mocktab", category: "modifiers")
 
 /// Converts raw TabletPoint reports into CGEvents and posts them to the HID event tap.
 ///
@@ -219,6 +222,12 @@ final class InputInjector {
     /// Last observed Intuos3 WS touch strip positions. 0xFF = no contact.
     private var lastStrip1Pos: UInt8 = 0xFF
     private var lastStrip2Pos: UInt8 = 0xFF
+    /// Fractional-delta accumulators for ring/strip speed scaling.
+    /// Carry sub-integer remainders across pulses so speed < 1.0 fires evenly.
+    private var ringAccum: Double = 0
+    private var ring2Accum: Double = 0
+    private var strip1Accum: Double = 0
+    private var strip2Accum: Double = 0
 
     // MARK: - Synthetic-modifier safety valves
 
@@ -285,9 +294,7 @@ final class InputInjector {
         let heldInterval = Date().timeIntervalSince(lastSyntheticFlagChangeAt)
         let idleInterval = Date().timeIntervalSince(lastInjectCallAt)
         if heldInterval > 3.0 && idleInterval > 3.0 {
-            #if DEBUG
-            print("[MockTab] leak-watchdog: releasing stuck synthetic flags 0x\(String(groundTruthSyntheticFlags.rawValue, radix: 16)) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
-            #endif
+            modLog.notice("leak-watchdog: releasing stuck synthetic flags 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
             releaseAllSyntheticModifiers()
         }
     }
@@ -407,6 +414,27 @@ final class InputInjector {
                 // Per-transport fixes (Defect A/B) prevent accumulation; this ensures
                 // proximity exit is always a clean slate regardless.
                 releaseAllSyntheticModifiers()
+
+                // Proximity-exit modifier sync: our last injected events may have carried
+                // physical modifier bits (e.g. ⌘=1 because the user held ⌘ while drawing).
+                // When inject() stops at proximity exit, apps that track modifier state from
+                // tablet event flags (Illustrator, Photoshop) retain that last value.  The
+                // physical keyboard's own flagsChanged(⌘=0) travels a separate path and may
+                // arrive before or after our final event — timing is non-deterministic.
+                // Explicitly post a flagsChanged for each managed bit that was in our last
+                // injected event, stamped with hidSystemState at this instant.  If the key
+                // is already physically released, apps are corrected to ⌘=0.  If still held,
+                // the event is a no-op (just confirms the physical state apps already know).
+                if lastLoggedManagedFlags != 0 {
+                    modLog.debug("proximity-exit: syncing managed flags (last=0x\(String(self.lastLoggedManagedFlags, radix: 16), privacy: .public))")
+                    let toSync = CGEventFlags(rawValue: lastLoggedManagedFlags)
+                    for (bit, keyCode) in Self.modifierKeyCodes where toSync.contains(bit) {
+                        guard let e = CGEvent(source: sessionSource) else { continue }
+                        e.type = .flagsChanged
+                        e.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
+                        finalizeAndPost(e)
+                    }
+                }
 
                 // Reset aux state so the next injectAux fires fresh transitions.
                 pendingMouseUp?.cancel()
@@ -749,20 +777,14 @@ final class InputInjector {
             var delta = Int(ringPos) - Int(lastRingPos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
-            if delta != 0 {
-                if let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex) ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil {
-                    switch slot.action {
-                    case .scroll:
-                        postScrollWheelEvent(delta: delta, at: cursorPos)
-                    case .keyPress:
-                        let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
-                        fireKeyTap(binding, at: cursorPos, settings: s)
-                    case .off:
-                        break
-                    }
-                }
+            if delta != 0,
+               let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex)
+                   ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil
+            {
+                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ringAccum, at: cursorPos, settings: s)
             }
         }
+        if !buttons.touchRingActive { ringAccum = 0 }
         lastRingPos = buttons.touchRingActive ? ringPos : 0x7F
 
         // ── Touch ring 2 (DTK-2400 right bezel) — shares touchRingSlots ──
@@ -771,20 +793,14 @@ final class InputInjector {
             var delta = Int(ring2Pos) - Int(lastRing2Pos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
-            if delta != 0 {
-                if let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex) ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil {
-                    switch slot.action {
-                    case .scroll:
-                        postScrollWheelEvent(delta: delta, at: cursorPos)
-                    case .keyPress:
-                        let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
-                        fireKeyTap(binding, at: cursorPos, settings: s)
-                    case .off:
-                        break
-                    }
-                }
+            if delta != 0,
+               let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex)
+                   ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil
+            {
+                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ring2Accum, at: cursorPos, settings: s)
             }
         }
+        if !buttons.touchRing2Active { ring2Accum = 0 }
         lastRing2Pos = buttons.touchRing2Active ? ring2Pos : 0x7F
 
         // ── Touch strips (Intuos3 WS) — share touchRingSlots ───────────────────
@@ -794,40 +810,28 @@ final class InputInjector {
         let s1pos = buttons.touchStrip1Position
         if buttons.touchStrip1Active, lastStrip1Pos != 0xFF {
             let delta = Int(s1pos) - Int(lastStrip1Pos)
-            if delta != 0 {
-                if let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex) ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil {
-                    switch slot.action {
-                    case .scroll:
-                        postScrollWheelEvent(delta: delta, at: cursorPos)
-                    case .keyPress:
-                        let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
-                        fireKeyTap(binding, at: cursorPos, settings: s)
-                    case .off:
-                        break
-                    }
-                }
+            if delta != 0,
+               let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex)
+                   ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil
+            {
+                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &strip1Accum, at: cursorPos, settings: s)
             }
         }
+        if !buttons.touchStrip1Active { strip1Accum = 0 }
         lastStrip1Pos = buttons.touchStrip1Active ? s1pos : 0xFF
 
         // Strip 2 (right).
         let s2pos = buttons.touchStrip2Position
         if buttons.touchStrip2Active, lastStrip2Pos != 0xFF {
             let delta = Int(s2pos) - Int(lastStrip2Pos)
-            if delta != 0 {
-                if let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex) ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil {
-                    switch slot.action {
-                    case .scroll:
-                        postScrollWheelEvent(delta: delta, at: cursorPos)
-                    case .keyPress:
-                        let binding = delta > 0 ? slot.cwBinding : slot.ccwBinding
-                        fireKeyTap(binding, at: cursorPos, settings: s)
-                    case .off:
-                        break
-                    }
-                }
+            if delta != 0,
+               let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex)
+                   ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil
+            {
+                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &strip2Accum, at: cursorPos, settings: s)
             }
         }
+        if !buttons.touchStrip2Active { strip2Accum = 0 }
         lastStrip2Pos = buttons.touchStrip2Active ? s2pos : 0xFF
     }
 
@@ -864,12 +868,6 @@ final class InputInjector {
 
     // MARK: - Mouse event helpers
 
-    /// Rolling buffer of recent ground-truth synthetic states (approx. 200ms of history).
-    /// Used to identify and suppress "stale" synthetic bits that are still lingering in
-    /// the asynchronous hidSystemState buffer.
-    private var syntheticHistory = [CGEventFlags](repeating: [], count: 60)
-    private var historyIndex = 0
-
     /// Ground-truth of what synthetic modifiers should be active based on tablet button state.
     private var groundTruthSyntheticFlags: CGEventFlags = []
 
@@ -897,29 +895,29 @@ final class InputInjector {
         (.maskControl,   59),  // left ⌃
     ]
 
+    /// Last managed-bit result returned by currentEventFlags — used to suppress duplicate log lines.
+    private var lastLoggedManagedFlags: UInt64 = 0
+
     /// The definitive modifier state for the NEXT outbound CGEvent.
-    /// Merges physical-keyboard-only state with any flags this driver has pressed
-    /// via button bindings.
     ///
-    /// Feedback Loop Fix: We identify "stale" synthetic bits—those that were recently
-    /// sent but are no longer in our ground-truth—and explicitly strip them from the
-    /// system state. This prevents re-injecting our own flags during OS processing lag.
+    /// Physical keyboard state from hidSystemState combined with whatever synthetic modifiers
+    /// are currently active from tablet button bindings.  Our privateState events do NOT write
+    /// back to hidSystemState, so there is no feedback loop.
+    ///
+    /// Logs every transition in managed modifier bits (info level) so stuck-modifier incidents
+    /// produce a precise timeline even when the synthetic machinery is not involved.
     private var currentEventFlags: CGEventFlags {
         let systemRaw = CGEventSource.flagsState(.hidSystemState).rawValue
-
-        // Find bits that were recently synthetic but are no longer requested.
-        // These are the only candidates for "stale synthetic pollution" in hidSystemState.
-        let recentSyntheticUnion = syntheticHistory.reduce(CGEventFlags()) { $0.union($1) }
-        let staleSyntheticMask =
-            (recentSyntheticUnion.rawValue & ~groundTruthSyntheticFlags.rawValue)
-            & managedModifierMask
-
-        // Physical state is the system state minus any stale synthetic pollution.
-        // Note: we don't subtract groundTruthSyntheticFlags from systemRaw because
-        // if a key is both physical and ground-truth synthetic, we want it to stay 1.
-        let physicalRaw = systemRaw & ~staleSyntheticMask
-
-        return CGEventFlags(rawValue: physicalRaw | groundTruthSyntheticFlags.rawValue)
+        let result = CGEventFlags(rawValue: systemRaw | groundTruthSyntheticFlags.rawValue)
+        let managedNow = result.rawValue & managedModifierMask
+        if managedNow != lastLoggedManagedFlags {
+            let hidManaged = systemRaw & managedModifierMask
+            let synth = groundTruthSyntheticFlags.rawValue & managedModifierMask
+            let prev = lastLoggedManagedFlags
+            modLog.info("flags: 0x\(String(prev, radix: 16), privacy: .public) → 0x\(String(managedNow, radix: 16), privacy: .public) [hid=0x\(String(hidManaged, radix: 16), privacy: .public) synth=0x\(String(synth, radix: 16), privacy: .public)]")
+            lastLoggedManagedFlags = managedNow
+        }
+        return result
     }
 
     /// The union of modifier flags justified by currently-held pen barrel buttons.
@@ -949,6 +947,7 @@ final class InputInjector {
         let excessRaw = groundTruthSyntheticFlags.rawValue & ~expected.rawValue & managedModifierMask
         guard excessRaw != 0 else { return }
         let excess = CGEventFlags(rawValue: excessRaw)
+        modLog.info("reconcile: tool change orphaned bits 0x\(String(excessRaw, radix: 16), privacy: .public)")
 
         // Clear excess bits first (mirroring releaseAllSyntheticModifiers ordering):
         // history stays intact so stale-bit detection strips them from outbound events.
@@ -972,34 +971,41 @@ final class InputInjector {
     private func releaseAllSyntheticModifiers() {
         guard !groundTruthSyntheticFlags.isEmpty else { return }
         let toRelease = groundTruthSyntheticFlags
+        let systemBefore = CGEventSource.flagsState(.hidSystemState).rawValue & managedModifierMask
+        modLog.info("releaseAll: clearing 0x\(String(toRelease.rawValue, radix: 16), privacy: .public) (system=0x\(String(systemBefore, radix: 16), privacy: .public))")
 
-        // Clear ground truth and ref counts BEFORE posting, but leave syntheticHistory
-        // intact for now. With groundTruth = [] but history still populated,
-        // currentEventFlags's stale-bit detector classifies the released bits as
-        // "recently synthetic, no longer requested" and strips them from hidSystemState.
-        // finalizeAndPost therefore delivers a clean, bit-free flags value to the OS.
-        // (The old code cleared history first, which destroyed the stale-bit detector
-        // at exactly the moment it was needed, causing the "release" to be a no-op.)
+        // Clear ground truth and ref counts before posting so currentEventFlags
+        // computes the correct post-release physical state for the flagsChanged events.
         groundTruthSyntheticFlags = []
         for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
         lastSyntheticFlagChangeAt = Date()
 
         // One flagsChanged per bit with its canonical keycode. Many apps (Electron,
         // some Cocoa text inputs) silently discard flagsChanged events with keycode 0.
+        // currentEventFlags now returns hidSystemState | groundTruth (= hidSystemState,
+        // since groundTruth is empty). If the physical keyboard still holds the bit,
+        // the event will correctly report it as still held rather than released.
         for (bit, keyCode) in Self.modifierKeyCodes where toRelease.contains(bit) {
             guard let e = CGEvent(source: sessionSource) else { continue }
             e.type = .flagsChanged
             e.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
-            // finalizeAndPost stamps currentEventFlags (stale-bit detection strips the
-            // released bit) and advances syntheticHistory with the now-empty groundTruth.
             finalizeAndPost(e)
         }
 
-        // Wipe any remaining old history slots so physical keys that share bit patterns
-        // with our former synthetic flags are not incorrectly stripped as "stale" in
-        // subsequent events.
-        for i in syntheticHistory.indices { syntheticHistory[i] = [] }
-        historyIndex = 0
+        // Audit: re-read hidSystemState shortly after, log if any "released" bit is
+        // still set there. Captures the case where the release events were posted but
+        // the OS still reports the modifier as held — points to event-tap interference
+        // or a state-source mismatch. Async so we sample after WindowServer settles.
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(50)) { [weak self] in
+            guard let self else { return }
+            let systemAfter = CGEventSource.flagsState(.hidSystemState).rawValue & self.managedModifierMask
+            let stillStuck = toRelease.rawValue & systemAfter
+            if stillStuck != 0 {
+                modLog.error("releaseAll: post-audit FAILED — bits 0x\(String(stillStuck, radix: 16), privacy: .public) STILL set in hidSystemState 50ms after release events posted")
+            } else {
+                modLog.debug("releaseAll: post-audit ok — hidSystemState clean")
+            }
+        }
     }
 
     /// Called when the frontmost application changes. Releases any synthetic modifier
@@ -1012,7 +1018,7 @@ final class InputInjector {
         releaseAllSyntheticModifiers()
     }
 
-    /// Stamps an event with reconstructed flags and posts it, then advances history.
+    /// Stamps an event with reconstructed flags and posts it.
     /// ALL outbound events must go through this helper to maintain state synchronization.
     private func finalizeAndPost(_ event: CGEvent) {
         #if DEBUG
@@ -1024,10 +1030,6 @@ final class InputInjector {
         #endif
         event.flags = currentEventFlags
         event.post(tap: .cghidEventTap)
-
-        // Advance history buffer.
-        syntheticHistory[historyIndex] = groundTruthSyntheticFlags
-        historyIndex = (historyIndex + 1) % syntheticHistory.count
     }
 
     /// CGEventSource backed by privateState so posted events do not write back into
@@ -1383,11 +1385,9 @@ final class InputInjector {
                     keyDown: down)
             }
 
-            #if DEBUG
             if event == nil {
-                print("[MockTab] CGEvent creation failed — keyCombo '\(binding.keyLabel)' down=\(down); state NOT mutated")
+                modLog.error("CGEvent creation failed — keyCombo '\(binding.keyLabel, privacy: .public)' down=\(down); state NOT mutated")
             }
-            #endif
             guard let e = event else { break }
 
             // Event created successfully — now commit the state delta.
@@ -1406,7 +1406,10 @@ final class InputInjector {
                     }
                 }
             }
-            if groundTruthSyntheticFlags != flagsBefore { lastSyntheticFlagChangeAt = Date() }
+            if groundTruthSyntheticFlags != flagsBefore {
+                lastSyntheticFlagChangeAt = Date()
+                modLog.debug("keyCombo \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) groundTruth: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public)")
+            }
             finalizeAndPost(e)
 
         case .displayToggle:
@@ -1450,6 +1453,29 @@ final class InputInjector {
     }
 
     // MARK: - Scroll wheel
+
+    /// Scales `rawDelta` by `slot.speed`, accumulates fractional remainder, then
+    /// fires scroll lines or key taps. Caps key repeat at 4 per pulse to prevent
+    /// runaway at high speed + large delta.
+    private func dispatchRingDelta(
+        rawDelta: Int, slot: ControlSlot, accum: inout Double,
+        at location: CGPoint, settings: TabletSettings
+    ) {
+        accum += Double(rawDelta) * slot.speed
+        let lines = Int(accum)
+        guard lines != 0 else { return }
+        accum -= Double(lines)
+        switch slot.action {
+        case .scroll:
+            postScrollWheelEvent(delta: lines, at: location)
+        case .keyPress:
+            let binding = lines > 0 ? slot.cwBinding : slot.ccwBinding
+            let count = min(abs(lines), 4)
+            for _ in 0..<count { fireKeyTap(binding, at: location, settings: settings) }
+        case .off:
+            break
+        }
+    }
 
     private func postScrollWheelEvent(delta: Int, at location: CGPoint) {
         // .line units: one detent = one scroll line, consistent with trackpad / Magic Mouse.
