@@ -1,36 +1,19 @@
 {
   "fill" : {
-    "solid" : "display-p3:0.97113,0.82752,0.44683,1.00000"
+    "solid" : "display-p3:0.45742,0.55292,0.62353,1.00000"
   },
   "groups" : [
     {
-      "blur-material" : 0.5,
       "layers" : [
         {
           "glass" : false,
-          "image-name" : "Obsidian-Antelope-Vector-2026-04-27.svg",
-          "name" : "Obsidian-Antelope-Vector-2026-04-27"
+          "hidden" : false,
+          "image-name" : "Bold-Jaguar-Vector-2026-04-26.svg",
+          "name" : "Bold-Jaguar-Vector-2026-04-26"
         }
       ],
-      "lighting" : "individual",
       "shadow" : {
         "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "specular" : true,
-      "translucency" : {
-        "enabled" : true,
-        "value" : 0.2
-      }
-    },
-    {
-      "blur-material" : 0.5,
-      "layers" : [
-
-      ],
-      "lighting" : "combined",
-      "shadow" : {
-        "kind" : "layer-color",
         "opacity" : 0.5
       },
       "translucency" : {
@@ -40,33 +23,49 @@
     },
     {
       "blend-mode" : "normal",
-      "blur-material" : 0.43,
-      "hidden" : false,
+      "blur-material" : 0.3,
       "layers" : [
         {
           "blend-mode" : "multiply",
-          "fill" : {
-            "solid" : "display-p3:0.00000,0.00000,0.00000,1.00000"
-          },
-          "glass" : false,
-          "image-name-specializations" : [
+          "fill-specializations" : [
             {
-              "value" : "shell-backdrop-svg"
+              "value" : {
+                "solid" : "display-p3:0.00000,0.00000,0.00000,1.00000"
+              }
+            },
+            {
+              "appearance" : "tinted",
+              "value" : {
+                "solid" : "extended-gray:1.00000,1.00000"
+              }
+            }
+          ],
+          "glass" : false,
+          "hidden" : false,
+          "image-name" : "shadow.svg",
+          "name" : "shadow",
+          "opacity" : 0.12,
+          "position-specializations" : [
+            {
+              "value" : {
+                "scale" : 1,
+                "translation-in-points" : [
+                  22.881919894202497,
+                  820
+                ]
+              }
             },
             {
               "idiom" : "square",
-              "value" : "shell-backdrop.svg"
+              "value" : {
+                "scale" : 2.07,
+                "translation-in-points" : [
+                  -0.0049999999999954525,
+                  659.419754550277
+                ]
+              }
             }
-          ],
-          "name" : "Shell Shadow",
-          "opacity" : 0.1,
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              273.54579005589517
-            ]
-          }
+          ]
         }
       ],
       "opacity-specializations" : [
@@ -82,7 +81,7 @@
         {
           "value" : {
             "kind" : "layer-color",
-            "opacity" : 0
+            "opacity" : 0.5
           }
         },
         {
@@ -102,7 +101,7 @@
       ],
       "translucency" : {
         "enabled" : true,
-        "value" : 1
+        "value" : 0.7
       }
     }
   ],

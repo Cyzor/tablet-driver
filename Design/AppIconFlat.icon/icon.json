@@ -4,23 +4,21 @@
   },
   "groups" : [
     {
-      "blur-material" : 0.5,
       "layers" : [
         {
           "glass" : false,
-          "image-name" : "Obsidian-Antelope-Vector-2026-04-27.svg",
-          "name" : "Obsidian-Antelope-Vector-2026-04-27"
+          "image-name" : "Image.svg",
+          "name" : "Image"
         }
       ],
-      "lighting" : "individual",
+      "lighting" : "combined",
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5
       },
-      "specular" : true,
       "translucency" : {
         "enabled" : true,
-        "value" : 0.2
+        "value" : 1
       }
     },
     {

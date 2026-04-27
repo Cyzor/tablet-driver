@@ -4,29 +4,78 @@
   },
   "groups" : [
     {
-      "blur-material" : 0.5,
       "layers" : [
         {
           "glass" : false,
-          "image-name" : "Obsidian-Antelope-Vector-2026-04-27.svg",
-          "name" : "Obsidian-Antelope-Vector-2026-04-27"
+          "image-name" : "pen.svg",
+          "name" : "Pen",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              37.79731189278243,
+              -53.79818097276046
+            ]
+          }
+        },
+        {
+          "glass" : false,
+          "image-name-specializations" : [
+            {
+              "value" : "pen-shadow"
+            },
+            {
+              "idiom" : "square",
+              "value" : "pen-shadow.svg"
+            }
+          ],
+          "name" : "Pen Shadow",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              37.80829798688251,
+              -53.81318097276056
+            ]
+          }
         }
       ],
-      "lighting" : "individual",
+      "lighting" : "combined",
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5
       },
-      "specular" : true,
       "translucency" : {
         "enabled" : true,
-        "value" : 0.2
+        "value" : 1
       }
     },
     {
       "blur-material" : 0.5,
       "layers" : [
-
+        {
+          "blend-mode" : "normal",
+          "glass" : false,
+          "image-name" : "shell.svg",
+          "name" : "Shell",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              9.952717537956914
+            ]
+          }
+        },
+        {
+          "glass" : false,
+          "image-name" : "shell-shadow.svg",
+          "name" : "Shell Shadow",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              9.952717537956914
+            ]
+          }
+        }
       ],
       "lighting" : "combined",
       "shadow" : {
@@ -41,7 +90,7 @@
     {
       "blend-mode" : "normal",
       "blur-material" : 0.43,
-      "hidden" : false,
+      "hidden" : true,
       "layers" : [
         {
           "blend-mode" : "multiply",
@@ -59,7 +108,7 @@
             }
           ],
           "name" : "Shell Shadow",
-          "opacity" : 0.1,
+          "opacity" : 0.2,
           "position" : {
             "scale" : 1,
             "translation-in-points" : [
