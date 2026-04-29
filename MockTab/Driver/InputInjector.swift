@@ -435,26 +435,18 @@ final class InputInjector {
                 // proximity exit is always a clean slate regardless.
                 releaseAllSyntheticModifiers()
 
-                // Proximity-exit modifier sync: our last injected events may have carried
-                // physical modifier bits (e.g. ⌘=1 because the user held ⌘ while drawing).
-                // When inject() stops at proximity exit, apps that track modifier state from
-                // tablet event flags (Illustrator, Photoshop) retain that last value.  The
-                // physical keyboard's own flagsChanged(⌘=0) travels a separate path and may
-                // arrive before or after our final event — timing is non-deterministic.
-                // Explicitly post a flagsChanged for each managed bit that was in our last
-                // injected event, stamped with hidSystemState at this instant.  If the key
-                // is already physically released, apps are corrected to ⌘=0.  If still held,
-                // the event is a no-op (just confirms the physical state apps already know).
-                if lastLoggedManagedFlags != 0 {
-                    modLog.debug("proximity-exit: syncing managed flags (last=0x\(String(self.lastLoggedManagedFlags, radix: 16), privacy: .public))")
-                    let toSync = CGEventFlags(rawValue: lastLoggedManagedFlags)
-                    for (bit, keyCode) in Self.modifierKeyCodes where toSync.contains(bit) {
-                        guard let e = CGEvent(source: sessionSource) else { continue }
-                        e.type = .flagsChanged
-                        e.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
-                        finalizeAndPost(e)
-                    }
-                }
+                // Do NOT post proximity-exit flagsChanged events for physical modifiers.
+                // flagsChanged events posted via cghidEventTap update the system keyboard
+                // state (Keyboard Viewer, hidSystemState), so posting one with a modifier
+                // bit SET because tapLastPhysicalFlags still reflects a held key causes the
+                // Keyboard Viewer to show it as stuck.  The physical keyboard's own
+                // flagsChanged events are the authoritative source for physical modifier
+                // state; apps receive them independently of our event stream.
+                // The race this sync tried to fix (our last move event arriving after the
+                // physical key-up, leaving apps with stale modifier state) is now handled
+                // by moveSafeEventFlags including tapLastPhysicalFlags, so the last move
+                // event already carries the correct physical state.
+                lastLoggedManagedFlags = 0  // reset for clean logging on next proximity entry
 
                 // Reset aux state so the next injectAux fires fresh transitions.
                 pendingMouseUp?.cancel()
