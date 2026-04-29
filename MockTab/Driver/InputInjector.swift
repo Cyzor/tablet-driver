@@ -962,16 +962,18 @@ final class InputInjector {
 
     /// Modifier flags for high-frequency move/drag events (mouseMoved, leftMouseDragged, etc.).
     ///
-    /// Uses `tapLastPhysicalFlags` for managed bits (same as `currentEventFlags`) so that
-    /// apps which read modifier state from the flags field of move events (e.g. Pages) see
-    /// the correct physical state at all times.  Using `tapLastPhysicalFlags` rather than
-    /// `hidSystemState` avoids the feedback loop where cghidEventTap echoes posted flags back
-    /// into hidSystemState — `tapLastPhysicalFlags` is only updated by our passive tap on real
-    /// physical flagsChanged delivery, not by our own injected events.
+    /// Carries only synthetic modifiers (express-key bindings), not physical keyboard state.
+    /// Including physical modifiers (tapLastPhysicalFlags) in 133 Hz move events creates a
+    /// race: if inject() runs in the same RunLoop cycle as the physical key-release
+    /// flagsChanged but before the tap callback updates tapLastPhysicalFlags, the outgoing
+    /// mouseMoved re-asserts the released modifier and apps re-latch it as held.
+    ///
+    /// Physical modifier state is authoritatively delivered via the keyboard's own
+    /// flagsChanged events.  Apps that properly track modifier state do not depend on
+    /// the flags field of continuous move events.  ⌘+click still works because
+    /// mouseDown/mouseUp use currentEventFlags which includes tapLastPhysicalFlags.
     private var moveSafeEventFlags: CGEventFlags {
-        let physManaged = tapLastPhysicalFlags
-        let physNonManaged = CGEventSource.flagsState(.hidSystemState).rawValue & ~managedModifierMask
-        return CGEventFlags(rawValue: physNonManaged | physManaged | groundTruthSyntheticFlags.rawValue)
+        CGEventFlags(rawValue: groundTruthSyntheticFlags.rawValue)
     }
 
     /// The union of modifier flags justified by currently-held pen barrel buttons.
