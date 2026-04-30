@@ -256,22 +256,23 @@ final class InputInjector {
     /// Stamped inside rearmWatchdog(), which every entry point calls.
     private var lastInjectCallAt: Date = .distantPast
 
-    // MARK: - Physical modifier release tap
+    // MARK: - Physical modifier state tap
     //
-    // Passive CGEvent tap that watches for flagsChanged events at the session level.
-    // When a managed modifier bit drops (physical key release), we immediately post
-    // per-bit reconciliation events regardless of whether any tablet event is in flight.
-    // This closes the race that `finalizeAndPost` detects only on the *next* tablet event:
-    // if the user releases ⌘ and then stops drawing (or switches apps via ⌘-Tab), no
-    // further tablet event would otherwise trigger reconciliation, leaving the new app stuck.
+    // Passive CGEvent tap that watches for flagsChanged events at the session level,
+    // filtered to hardware-originated events only (sourceStateID == hidSystemState).
+    // Keeps tapLastPhysicalFlags current so currentEventFlags can combine physical
+    // and synthetic modifier state for state-change events (mouseDown/mouseUp).
     //
-    // The tap is listen-only (passiveKeyDown mask) and fires only on flagsChanged events
-    // (~a few per second at human key speed) — zero impact on the 133 Hz tablet path.
+    // IMPORTANT: our own injected flagsChanged events (posted via .cghidEventTap from
+    // sessionSource = .privateState) DO write into hidSystemState — the earlier comment
+    // claiming otherwise was wrong.  Reading hidSystemState inside the callback would
+    // therefore reflect our own synthetic presses, poisoning tapLastPhysicalFlags.
+    // Filtering by sourceStateID and reading event.flags directly avoids this entirely.
 
     private var flagsChangedTap: CFMachPort?
-    /// Last physical managed-bit value observed by the flagsChanged tap.
-    /// Separate from `lastPhysicalManagedFlags` (which belongs to finalizeAndPost) to
-    /// avoid cross-contamination between the two detection paths.
+    /// Physical modifier bits (⌘⌥⇧⌃) last reported by a hardware flagsChanged event.
+    /// Updated only from events with sourceStateID == hidSystemState; immune to our own
+    /// synthetic flagsChanged posts.
     private var tapLastPhysicalFlags: UInt64 = 0
 
     /// True when no physical tablet control is held. If this holds and
@@ -928,10 +929,6 @@ final class InputInjector {
     /// Last managed-bit result returned by currentEventFlags — used to suppress duplicate log lines.
     private var lastLoggedManagedFlags: UInt64 = 0
 
-    /// Last physical (hid) managed-bit value seen by currentEventFlags.
-    /// Read by finalizeAndPost before each event to detect mid-event physical modifier releases.
-    private var lastPhysicalManagedFlags: UInt64 = 0
-
     /// Full modifier flags for state-change events (down/up/click/scroll/flagsChanged).
     ///
     /// Combines physical modifier state with synthetic modifiers from tablet button bindings.
@@ -956,7 +953,6 @@ final class InputInjector {
             modLog.info("flags: 0x\(String(prev, radix: 16), privacy: .public) → 0x\(String(managedNow, radix: 16), privacy: .public) [hid=0x\(String(physManaged, radix: 16), privacy: .public) synth=0x\(String(synth, radix: 16), privacy: .public)]")
             lastLoggedManagedFlags = managedNow
         }
-        lastPhysicalManagedFlags = physManaged
         return result
     }
 
@@ -1104,41 +1100,8 @@ final class InputInjector {
             "groundTruthSyntheticFlags contains bits outside managedModifierMask"
         )
         #endif
-        let physBefore = lastPhysicalManagedFlags
-        event.flags = currentEventFlags   // updates lastPhysicalManagedFlags
+        event.flags = currentEventFlags
         event.post(tap: .cghidEventTap)
-
-        // If a physical modifier bit cleared between two successive events, a previous
-        // tablet event may have carried the old (set) bit and arrived at an app AFTER
-        // the physical flagsChanged(key-up) — re-asserting the modifier in the app's
-        // internal state with no subsequent key-up to clear it.  Echo the release now
-        // so apps that processed stale flags recover.
-        let clearedBits = physBefore & ~lastPhysicalManagedFlags
-        if clearedBits != 0 {
-            postPhysicalModifierReconciliation(clearedBits: clearedBits)
-        }
-    }
-
-    /// Posts one flagsChanged per cleared modifier bit, each carrying the canonical keycode
-    /// for that modifier.  Bypasses finalizeAndPost to avoid re-stamping and recursion.
-    /// keycode=0 is silently ignored by many apps (Electron, Cocoa text input, AppKit menus);
-    /// per-bit events with real keycodes are required for reliable modifier-state propagation.
-    private func postPhysicalModifierReconciliation(clearedBits: UInt64) {
-        // Use tapLastPhysicalFlags for managed bits (already updated by the tap callback that
-        // triggered this call, so it reflects the current physical state).
-        let correctedRaw = (CGEventSource.flagsState(.hidSystemState).rawValue & ~managedModifierMask)
-            | tapLastPhysicalFlags
-            | groundTruthSyntheticFlags.rawValue
-        let correctedFlags = CGEventFlags(rawValue: correctedRaw)
-        for (modBit, keyCode) in Self.modifierKeyCodes {
-            guard clearedBits & modBit.rawValue != 0 else { continue }
-            guard let e = CGEvent(source: sessionSource) else { continue }
-            e.type = .flagsChanged
-            e.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
-            e.flags = correctedFlags
-            e.post(tap: .cghidEventTap)
-        }
-        modLog.debug("physical reconciliation: flagsChanged posted for 0x\(String(clearedBits & self.managedModifierMask, radix: 16), privacy: .public)")
     }
 
     private func installFlagsChangedTap() {
@@ -1153,16 +1116,20 @@ final class InputInjector {
             callback: { _, _, event, userInfo -> Unmanaged<CGEvent>? in
                 guard let userInfo else { return Unmanaged.passRetained(event) }
                 let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
-                let hidManaged = CGEventSource.flagsState(.hidSystemState).rawValue
-                    & injector.managedModifierMask
-                let prev = injector.tapLastPhysicalFlags
-                injector.tapLastPhysicalFlags = hidManaged
-                let clearedBits = prev & ~hidManaged
-                if clearedBits != 0 {
-                    Task { @MainActor [weak injector] in
-                        injector?.postPhysicalModifierReconciliation(clearedBits: clearedBits)
-                    }
+                // Only update tapLastPhysicalFlags for hardware keyboard events.
+                // Our own injected flagsChanged events use .privateState source and DO
+                // write into hidSystemState — reading hidSystemState here would reflect
+                // them and corrupt tapLastPhysicalFlags with phantom physical key state.
+                // Filter by sourceStateID: hardware events have .hidSystemState (raw=1);
+                // our events have a private state ID.  Read event.flags directly to get
+                // the exact post-event modifier state without hidSystemState lag/pollution.
+                let stateID = Int32(truncatingIfNeeded:
+                    event.getIntegerValueField(.eventSourceStateID))
+                guard stateID == CGEventSourceStateID.hidSystemState.rawValue else {
+                    return Unmanaged.passRetained(event)
                 }
+                injector.tapLastPhysicalFlags =
+                    event.flags.rawValue & injector.managedModifierMask
                 return Unmanaged.passRetained(event)
             },
             userInfo: selfPtr.toOpaque()
@@ -1179,10 +1146,10 @@ final class InputInjector {
         CGEvent.tapEnable(tap: tap, enable: true)
     }
 
-    /// CGEventSource backed by privateState so posted events do not write back into
-    /// hidSystemState.  Flags are stamped via currentEventFlags (which reads hidSystemState
-    /// directly), so physical keyboard state is still reflected on every outbound event —
-    /// but the feedback loop that causes sticky modifiers is broken.
+    /// CGEventSource backed by privateState.  Note: despite documentation implications,
+    /// events posted via .cghidEventTap from this source DO write into hidSystemState —
+    /// so we filter our own events out of the flagsChangedTap by sourceStateID rather
+    /// than relying on hidSystemState to reflect only physical keyboard state.
     ///
     /// Stored once at init — NOT a computed property.  Creating a new CGEventSource on
     /// every event (400+/s at 133 Hz) allocates a private-state slab in the WindowServer
