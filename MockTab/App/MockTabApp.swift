@@ -62,6 +62,13 @@ struct MockTabApp: App {
                 .keyboardShortcut("t", modifiers: [.command, .shift])
             }
 
+            CommandGroup(replacing: .help) {
+                Button(String(localized: "MockTab Help", comment: "Help menu: open help window")) {
+                    HelpWindowController.shared.show()
+                }
+                .keyboardShortcut("?", modifiers: .command)
+            }
+
             CommandGroup(replacing: .undoRedo) {
                 Button(String(localized: "Undo", comment: "Edit menu: undo last action")) {
                     PreferencesWindowController.shared.getUndoManager()?.undo()
@@ -123,6 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // restore their windows via PreferencesWindowController.restoreWindows().
         DispatchQueue.main.async {
             PreferencesWindowController.shared.showIfNoSavedSession()
+            HelpWindowController.shared.restoreIfWasOpen()
         }
 
         // Track app focus to gate live state updates.  When MockTab is backgrounded,
@@ -155,6 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for ctx in TabletManager.shared.contexts.values {
             ctx.injector.releaseOnAppSwitch()
         }
+        HelpWindowController.shared.saveState()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
