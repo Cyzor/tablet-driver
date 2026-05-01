@@ -107,6 +107,13 @@ struct MockTabApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Prevent AppKit from inserting a "Quit and Keep Windows" item at ⌘⌥Q.
+        // MockTab manages its own window restoration, so the system item is
+        // redundant and conflicts with the Factory Reset alternate menu item.
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Default to .regular (visible in Dock) on first run; user can toggle to .accessory
         let showInDock = UserDefaults.standard.object(forKey: "showInDock") == nil
