@@ -68,6 +68,10 @@ final class InputInjector {
     /// saving one WindowServer IPC round-trip per inject() call.
     var activeAppNeedsTabletPointerEvents: Bool = false
 
+    /// Per-app input profile, set by AppWatcher on every app switch.
+    enum AppInputProfile { case generic, pagesPlainMouse }
+    var activeAppProfile: AppInputProfile = .generic
+
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
         self.deviceProductID = productID
@@ -96,6 +100,9 @@ final class InputInjector {
 
     private(set) var lastProximity = false
     private var lastTipDown = false
+    /// True after the first leftMouseDragged is posted following a tip-down.
+    /// Used to guarantee Pages sees at least one drag event even when deltas are tiny.
+    private var didEmitDragSinceDown = false
     private var lastEraserMode = false  // Track eraser/tip flip while in proximity
     private var lastButton1Down = false
     private var lastButton2Down = false
@@ -376,9 +383,15 @@ final class InputInjector {
 
         // ── Proximity transitions (always immediate) ───────────────────────────
         if point.inProximity != lastProximity {
-            postProximityEvent(
-                entering: point.inProximity, at: rawPoint,
-                eraser: point.eraser)
+            // Suppress tabletProximity for plain-mouse profiles: receiving this event
+            // triggers NSTextView's tablet-tracking code path, causing it to route
+            // subsequent mouse events through pressure-selection logic that breaks
+            // normal text selection (drag doesn't extend, only Shift/Command drag works).
+            if activeAppProfile == .generic {
+                postProximityEvent(
+                    entering: point.inProximity, at: rawPoint,
+                    eraser: point.eraser)
+            }
             if point.inProximity {
                 activeToolIsEraser = point.eraser
                 lastEraserMode = point.eraser
@@ -520,6 +533,7 @@ final class InputInjector {
                 // Cancel any pending deferred mouseUp — tip is back down.
                 pendingMouseUp?.cancel()
                 pendingMouseUp = nil
+                didEmitDragSinceDown = false
                 let tipAction = activeToolIsEraser ? tool.eraserBinding : tool.tipBinding
                 activeButton = tipAction.mouseButton ?? .left
                 let (clickPt, count) = resolveClick(screenPoint, settings: settings)
@@ -535,7 +549,9 @@ final class InputInjector {
                 let pt = point
                 let sp = screenPoint
 
-                if settings.tipUpAssist && recentVelocity > Self.tipUpAssistVelocityThreshold {
+                if activeAppProfile == .generic
+                    && settings.tipUpAssist
+                    && recentVelocity > Self.tipUpAssistVelocityThreshold {
                     // Defer the mouseUp briefly so fast strokes aren't cut short.
                     let work = DispatchWorkItem { [weak self] in
                         guard let self, self.pendingMouseUp != nil else { return }
@@ -575,7 +591,17 @@ final class InputInjector {
                 || abs(screenPoint.y - lastPostedPoint.y) > Self.positionEpsilon
                 || (tipDown && abs(pressure - lastPostedPressure) > Self.pressureEpsilon)
 
-            if moved {
+            // USB mouse left button held (KC-100): injectMouseButtons() already sent
+            // leftMouseDown; use leftMouseDragged so apps receive proper drag events.
+            let dragging = tipDown || (activeToolIsMouse && usbMouseLeftHeld)
+
+            // Pages text engine requires a leftMouseDragged immediately after
+            // leftMouseDown to start selection; tiny sub-epsilon pen movement on
+            // the first contact frame can cause the gate to suppress that first drag
+            // event, leaving Pages in a state where selection never begins.
+            let forceFirstDrag = dragging && activeAppProfile == .pagesPlainMouse && !didEmitDragSinceDown
+
+            if moved || forceFirstDrag {
                 // Track velocity for tip-up assist.
                 if hasPostedPoint {
                     let delta = hypot(
@@ -587,13 +613,11 @@ final class InputInjector {
                     postTabletPointerEvent(
                         at: screenPoint, pressure: pressure, point: point, settings: settings)
                 }
-                // USB mouse left button held (KC-100): injectMouseButtons() already sent
-                // leftMouseDown; use leftMouseDragged so apps receive proper drag events.
-                let dragging = tipDown || (activeToolIsMouse && usbMouseLeftHeld)
                 if dragging {
                     postMouseDrag(
                         button: activeButton, at: screenPoint, pressure: pressure, point: point,
                         settings: settings)
+                    didEmitDragSinceDown = true
                 } else if let dragBtn = hoverDragButton {
                     // Barrel button held while hovering — send otherMouseDragged /
                     // rightMouseDragged so apps like SketchUp receive a proper drag stream.
@@ -1207,20 +1231,24 @@ final class InputInjector {
                 mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
-        // subtype must be set first — tabletEvent fields are stored in a union
-        // keyed by subtype; Photoshop reads tabletEventPointPressure (the tablet
-        // union), not mouseEventPressure; both must be set for full app coverage.
-        e.setIntegerValueField(.mouseEventSubtype, value: 1)
-        e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-        e.setIntegerValueField(.tabletEventPointButtons, value: 1)
-        e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
-        e.setDoubleValueField(.mouseEventPressure, value: pressure)
-        e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
-        if let p = point {
-            let pose = resolveEffectivePose(point: p, settings: settings)
-            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
-            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
-            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
+        if activeAppProfile != .pagesPlainMouse {
+            // subtype must be set first — tabletEvent fields are stored in a union
+            // keyed by subtype; Photoshop reads tabletEventPointPressure (the tablet
+            // union), not mouseEventPressure; both must be set for full app coverage.
+            // Pages text engine is confused by subtype=1 and treats the event as a
+            // tablet gesture rather than a plain mouse click, breaking text selection.
+            e.setIntegerValueField(.mouseEventSubtype, value: 1)
+            e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+            e.setIntegerValueField(.tabletEventPointButtons, value: 1)
+            e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
+            e.setDoubleValueField(.mouseEventPressure, value: pressure)
+            if let p = point {
+                let pose = resolveEffectivePose(point: p, settings: settings)
+                e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+                e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+                e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
+            }
+            e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
         }
         e.flags = currentEventFlags
         finalizeAndPost(e)
@@ -1242,17 +1270,19 @@ final class InputInjector {
                 mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
-        e.setIntegerValueField(.mouseEventSubtype, value: 1)
-        e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-        e.setIntegerValueField(.tabletEventPointButtons, value: 0)
-        e.setDoubleValueField(.tabletEventPointPressure, value: 0)
-        e.setDoubleValueField(.mouseEventPressure, value: 0)
-        e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
-        if let p = point {
-            let pose = resolveEffectivePose(point: p, settings: settings)
-            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
-            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
-            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
+        if activeAppProfile != .pagesPlainMouse {
+            e.setIntegerValueField(.mouseEventSubtype, value: 1)
+            e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+            e.setIntegerValueField(.tabletEventPointButtons, value: 0)
+            e.setDoubleValueField(.tabletEventPointPressure, value: 0)
+            e.setDoubleValueField(.mouseEventPressure, value: 0)
+            if let p = point {
+                let pose = resolveEffectivePose(point: p, settings: settings)
+                e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+                e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+                e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
+            }
+            e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
         }
         e.flags = currentEventFlags
         finalizeAndPost(e)
@@ -1274,16 +1304,18 @@ final class InputInjector {
                 mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
-        e.setIntegerValueField(.mouseEventSubtype, value: 1)
-        e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-        e.setIntegerValueField(.tabletEventPointButtons, value: pressure > 0.004 ? 1 : 0)
-        e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
-        e.setDoubleValueField(.mouseEventPressure, value: pressure)
-        if let p = point {
-            let pose = resolveEffectivePose(point: p, settings: settings)
-            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
-            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
-            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
+        if activeAppProfile != .pagesPlainMouse {
+            e.setIntegerValueField(.mouseEventSubtype, value: 1)
+            e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+            e.setIntegerValueField(.tabletEventPointButtons, value: pressure > 0.004 ? 1 : 0)
+            e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
+            e.setDoubleValueField(.mouseEventPressure, value: pressure)
+            if let p = point {
+                let pose = resolveEffectivePose(point: p, settings: settings)
+                e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+                e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+                e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
+            }
         }
         // Synthetic CGEvents default to zero deltas, breaking AppKit controls (e.g.
         // Xcode's minimap) that read event.deltaX/Y rather than diffing absolute
