@@ -30,8 +30,10 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "manager")
 /// driver).  Only the *active* context posts CGEvents — activation happens
 /// automatically when a pen enters proximity on a given tablet.
 ///
-/// @MainActor because all IOHIDManager callbacks are scheduled on
-/// CFRunLoopGetMain() = main thread.
+/// @MainActor because all mutable state and CGEvent posts require the main thread.
+/// IOHIDManager is scheduled on HIDThread (a dedicated background run loop) so
+/// HID report callbacks arrive immediately regardless of SwiftUI frame work on main.
+/// Device-lifecycle and inject() calls hop back to @MainActor via Task.
 @MainActor
 final class TabletManager: ObservableObject {
 
@@ -140,21 +142,24 @@ final class TabletManager: ObservableObject {
             manager,
             { ctx, _, _, device in
                 guard let ctx else { return }
-                Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
-                    .deviceConnected(device)
+                let mgr = Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
+                // Hop to main — TabletManager is @MainActor; HIDThread fires this callback.
+                Task { @MainActor in mgr.deviceConnected(device) }
             }, ctx)
 
         IOHIDManagerRegisterDeviceRemovalCallback(
             manager,
             { ctx, _, _, device in
                 guard let ctx else { return }
-                Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
-                    .deviceDisconnected(device)
+                let mgr = Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
+                Task { @MainActor in mgr.deviceDisconnected(device) }
             }, ctx)
 
         setupShimBridge()
+        // Schedule on the dedicated HID thread so report delivery is not gated
+        // on main-thread availability (e.g. during SwiftUI rendering passes).
         IOHIDManagerScheduleWithRunLoop(
-            manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
+            manager, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
         let ret = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         hidManagerOpen = (ret == kIOReturnSuccess)
         if !hidManagerOpen {
@@ -188,7 +193,7 @@ final class TabletManager: ObservableObject {
         for obs in shimObservers { dn.removeObserver(obs) }
         shimObservers.removeAll()
         IOHIDManagerUnscheduleFromRunLoop(
-            manager, CFRunLoopGetMain(), RunLoop.Mode.common.rawValue as CFString)
+            manager, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         for (_, ctx) in hidDeviceMap { ctx.tabletDevice?.close() }
         hidDeviceMap.removeAll()
@@ -276,7 +281,11 @@ final class TabletManager: ObservableObject {
         }
 
         // ── Tablet point closure ─────────────────────────────────────────────
+        // This closure is called on HIDThread. All properties accessed below are
+        // @MainActor, so we hop immediately. The Task overhead is ~microseconds;
+        // the benefit is that HID report delivery is never delayed by main-thread load.
         let onTablet: (TabletPoint) -> Void = { [weak self, weak context] point in
+            Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
 
             // Proximity-enter activates this device's context.
@@ -355,10 +364,13 @@ final class TabletManager: ObservableObject {
             if newButtons != context.liveButtons { context.liveButtons = newButtons }
             self.livePoint = point
             context.livePoint = point
+            } // end Task @MainActor
         }
 
         // ── Express key closure ──────────────────────────────────────────────
+        // Called on HIDThread — hop to main for @MainActor property access.
         let onAux: (AuxButtons) -> Void = { [weak self, weak context] aux in
+            Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
             // Inject immediately — no throttle on actual key events.
             context.injector.injectAux(buttons: aux, settings: context.settings)
@@ -389,12 +401,15 @@ final class TabletManager: ObservableObject {
                 self.liveButtons.touchStrip2Active = aux.touchStrip2Active
                 context.liveButtons.touchStrip2Active = aux.touchStrip2Active
             }
+            } // end Task @MainActor
         }
 
         // ── Battery status closure ───────────────────────────────────────────
         // Called when a BT device reports its battery state (INTUOSP2_BT family).
         // Only fires when the raw battery byte changes — not on every pen report.
+        // Called on HIDThread — hop to main.
         let onBattery: (Int, Bool) -> Void = { [weak self, weak context] percent, charging in
+            Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
             context.batteryPercent = percent
             context.batteryCharging = charging
@@ -403,15 +418,19 @@ final class TabletManager: ObservableObject {
                 self.batteryPercent = percent
                 self.batteryCharging = charging
             }
+            } // end Task @MainActor
         }
 
         // ── USB HID mouse button closure (KC-100 cordless mouse) ────────────────
         // Called when a 4-byte Report ID 0x01 arrives from the mouse interface
         // (usagePage=0x01, seized).  Routes directly to the injector so buttons
         // fire at the current screen cursor position without a position remap.
+        // Called on HIDThread — hop to main.
         let onMouseButton: (UInt8) -> Void = { [weak context] mask in
+            Task { @MainActor [weak context] in
             guard let context else { return }
             context.injector.injectMouseButtons(mask: mask, settings: context.settings)
+            } // end Task @MainActor
         }
 
         // ── Hardware serial closure (device unification) ─────────────────────
@@ -419,8 +438,11 @@ final class TabletManager: ObservableObject {
         // succeeds on USB or wireless dongle. Serial is 0 if the query fails or
         // the device does not support Report ID 0x03 (e.g. old models).
         // Used to unify multi-transport variants of the same physical tablet.
+        // Called on HIDThread — hop to main (DeviceRegistry is @MainActor).
         let onHardwareSerial: (UInt32) -> Void = { serial in
-            DeviceRegistry.shared.recordHardwareSerial(serial, forDevice: productID)
+            Task { @MainActor in
+                DeviceRegistry.shared.recordHardwareSerial(serial, forDevice: productID)
+            }
         }
 
         // ── Create the device driver ─────────────────────────────────────────

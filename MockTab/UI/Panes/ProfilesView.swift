@@ -30,7 +30,6 @@ struct ProfilesView: View {
 
     // MARK: - Recording Binding Helper
 
-    /// Creates a binding that automatically registers undo when the value changes.
     private func recordingBinding<T: Equatable>(
         _ name: String,
         get: @escaping () -> T,
@@ -53,13 +52,33 @@ struct ProfilesView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     activeBanner
                     Divider()
-                    presetList
+                    PresetListView(
+                        profiles: settings.profiles,
+                        activeProfile: settings.activeProfile,
+                        appOverrides: settings.appOverrides,
+                        editingPreset: $editingPreset,
+                        editingName: $editingName,
+                        onActivate: { settings.activate($0) },
+                        onDelete: {
+                            if settings.activeProfile?.id == $0.id { settings.activeProfile = nil }
+                            settings.deletePreset($0)
+                        },
+                        onRenameBegin: { editingPreset = $0; editingName = $0.name },
+                        onRenameCommit: commitRename,
+                        onRenameCancel: { editingPreset = nil; editingName = "" }
+                    )
                     Divider()
                     createRow
                     Divider()
                     autoSwitchSection
                     Divider()
-                    summarySection
+                    ConfigurationSummaryView(
+                        tablets: registry.knownTablets,
+                        tabletManager: tabletManager,
+                        offlineSettings: offlineSettings,
+                        toolsForDevice: registry.tools(forDevice:),
+                        isExpanded: $summaryExpanded
+                    )
                     Divider()
                     exportSection
                 }
@@ -111,171 +130,6 @@ struct ProfilesView: View {
             .frame(maxWidth: .infinity)
             .background(Color.green.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-    }
-
-    // MARK: - Preset List
-
-    private var presetList: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(LocalizedStringKey("Profiles"))
-                .font(.headline)
-                .foregroundStyle(.secondary)
-
-            if settings.profiles.isEmpty {
-                Text(
-                    String(
-                        localized: "No profiles yet. Create one below.",
-                        comment: "Empty state message when no profiles exist")
-                )
-                .font(.settingsLabel)
-                .foregroundStyle(.tertiary)
-                .padding(.vertical, 4)
-            } else {
-                ForEach(settings.profiles, id: \.id) { preset in
-                    presetRow(preset)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func presetRow(_ preset: TabletSettings.Profile) -> some View {
-        let isActive = settings.activeProfile?.id == preset.id
-        let isEditing = editingPreset?.id == preset.id
-
-        HStack(spacing: 10) {
-            // Active indicator
-            Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(isActive ? Color.green : Color.secondary)
-                .frame(width: 20)
-
-            if isEditing {
-                // Inline rename field
-                TextField("Profile name", text: $editingName)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 200)
-                    .onSubmit { commitRename() }
-
-                Button(LocalizedStringKey("Save")) { commitRename() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .help(LocalizedStringKey("Save the profile name"))
-
-                Button(LocalizedStringKey("Cancel")) {
-                    editingPreset = nil
-                    editingName = ""
-                }
-                .controlSize(.small)
-                .help(LocalizedStringKey("Cancel renaming"))
-            } else {
-                // Preset name + activate button
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(preset.name)
-                        .fontWeight(.medium)
-                        .foregroundStyle(isActive ? Color.primary : Color.primary)
-
-                    if !preset.overriddenKeys.isEmpty {
-                        Text(
-                            String(format:
-                                NSLocalizedString(
-                                    preset.overriddenKeys.count == 1 ? "%d setting" : "%d settings",
-                                    comment: "Count of overridden settings in a profile"),
-                                preset.overriddenKeys.count)
-                        )
-                        .font(.settingsBadge)
-                        .foregroundStyle(.tertiary)
-                    }
-                }
-
-                Spacer()
-
-                if !isActive {
-                    Button(LocalizedStringKey("Activate")) {
-                        settings.activate(preset)
-                    }
-                    .controlSize(.small)
-                    .help(LocalizedStringKey("Switch to this profile immediately"))
-                } else {
-                    Text(String(localized: "Active", comment: "Badge label when profile is active"))
-                        .font(.settingsBadge)
-                        .foregroundStyle(.green)
-                }
-
-                // App overrides summary
-                if !preset.overriddenKeys.isEmpty {
-                    appBindingsForPreset(preset)
-                }
-
-                // Edit / Delete
-                Menu {
-                    Button(LocalizedStringKey("Rename")) {
-                        editingPreset = preset
-                        editingName = preset.name
-                    }
-                    .help(LocalizedStringKey("Edit the profile name"))
-                    Divider()
-                    Button(LocalizedStringKey("Delete"), role: .destructive) {
-                        if settings.activeProfile?.id == preset.id {
-                            settings.activeProfile = nil
-                        }
-                        settings.deletePreset(preset)
-                    }
-                    .disabled(preset.name == "Default")
-                    .help(LocalizedStringKey("Permanently delete this profile (cannot be undone)"))
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.settingsBadge)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 4)
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .frame(width: 24)
-            }
-        }
-        .padding(10)
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
-        )
-    }
-
-    // MARK: - App Override Chips
-
-    @ViewBuilder
-    private func appBindingsForPreset(_ preset: TabletSettings.Profile) -> some View {
-        let overrideApps = settings.appOverrides.filter {
-            $0.overriddenKeys.intersection(preset.overriddenKeys).isEmpty == false
-        }
-
-        if !overrideApps.isEmpty {
-            HStack(spacing: 4) {
-                ForEach(overrideApps, id: \.bundleID) { override in
-                    appIcon(bundleID: override.bundleID)
-                        .help(override.appName)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func appIcon(bundleID: String) -> some View {
-        if let app = NSWorkspace.shared.runningApplications.first(where: {
-            $0.bundleIdentifier == bundleID
-        }),
-            let icon = app.icon
-        {
-            Image(nsImage: icon)
-                .resizable()
-                .frame(width: 16, height: 16)
-                .clipShape(RoundedRectangle(cornerRadius: 3))
-        } else {
-            Image(systemName: "app")
-                .font(.settingsBadge)
-                .frame(width: 16, height: 16)
         }
     }
 
@@ -350,158 +204,6 @@ struct ProfilesView: View {
             .help(LocalizedStringKey("Restore the active profile automatically when this tablet is connected"))
         }
     }
-
-    // MARK: - Summary Section
-
-    private var summarySection: some View {
-        DisclosureRow(
-            label: String(
-                localized: "Device Summary", comment: "Disclosure row label in Profiles tab"),
-            isExpanded: $summaryExpanded
-        ) {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(registry.knownTablets, id: \.id) { tablet in
-                    tabletSummaryCard(tablet)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func tabletSummaryCard(_ tablet: DeviceRegistry.KnownTablet) -> some View {
-        let ts: TabletSettings =
-            tabletManager.contexts[tablet.id]?.settings ?? offlineSettings[tablet.id]
-            ?? TabletSettings(productID: tablet.id)
-        let nonDefault = deviceNonDefaultLines(ts)
-
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text(tablet.nickname)
-                    .font(.settingsLabel)
-                    .fontWeight(.medium)
-                Text(tablet.modelName)
-                    .font(.settingsBadge)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(
-                    ts.profiles.count == 0
-                        ? String(
-                            localized: "No profiles",
-                            comment: "Badge text when tablet has no profiles")
-                        : String(format:
-                            NSLocalizedString(
-                                ts.profiles.count == 1 ? "%d profile" : "%d profiles",
-                                comment: "Count of profiles for a tablet"),
-                            ts.profiles.count)
-                )
-                .font(.settingsBadge)
-                .foregroundStyle(.tertiary)
-            }
-
-            if !nonDefault.isEmpty {
-                ForEach(nonDefault, id: \.self) { line in
-                    Text(line)
-                        .font(.settingsBadge)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            // Tools
-            let tools = registry.tools(forDevice: tablet.id)
-            if !tools.isEmpty {
-                ForEach(tools, id: \.id) { tool in
-                    toolSummaryRow(tool, deviceSettings: ts, isLast: tool.id == tools.last?.id)
-                }
-            }
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-    }
-
-    @ViewBuilder
-    private func toolSummaryRow(
-        _ tool: DeviceRegistry.KnownTool, deviceSettings: TabletSettings, isLast: Bool
-    ) -> some View {
-        let t = deviceSettings.toolSettings(forID: tool.id)
-        let nonDefault = toolNonDefaultLines(t)
-        let toolKind =
-            tool.kind.lowercased() == "pen"
-            ? String(localized: "Pen", comment: "Tool type: pen")
-            : (tool.kind.lowercased() == "eraser"
-                ? String(localized: "Eraser", comment: "Tool type: eraser")
-                : String(localized: "Tool", comment: "Tool type: generic"))
-
-        HStack(alignment: .top, spacing: 8) {
-            Text(toolKind)
-                .font(.settingsBadge)
-                .foregroundStyle(.secondary)
-                .frame(width: 50, alignment: .leading)
-            Text(tool.nickname.isEmpty ? tool.displayID : tool.nickname)
-                .font(.settingsBadge)
-                .foregroundStyle(.secondary)
-            if !nonDefault.isEmpty {
-                Text(
-                    "(\(nonDefault.joined(separator: String(localized: ", ", comment: "List separator"))))"
-                )
-                .font(.settingsBadge)
-                .foregroundStyle(.tertiary)
-            }
-        }
-        .padding(.leading, 8)
-        .padding(.bottom, isLast ? 0 : 4)
-    }
-
-    private func deviceNonDefaultLines(_ s: TabletSettings) -> [String] {
-        var lines: [String] = []
-        if s.activeAreaX != 0 || s.activeAreaY != 0 {
-            lines.append(String(localized: "area offset", comment: "Device summary: area offset"))
-        }
-        if s.activeAreaWidth != 1.0 || s.activeAreaHeight != 1.0 {
-            lines.append(String(localized: "area scaled", comment: "Device summary: area scaled"))
-        }
-        if s.targetDisplayIndex != 0 {
-            lines.append(
-                String(
-                    localized: "display != primary", comment: "Device summary: non-primary display")
-            )
-        }
-        if s.pressureCurve.p1 != CGPoint(x: 0, y: 0) || s.pressureCurve.p2 != CGPoint(x: 1, y: 1) {
-            lines.append(
-                String(localized: "pressure curve", comment: "Device summary: pressure curve"))
-        }
-        if s.proportionalMapping {
-            lines.append(
-                String(localized: "proportional", comment: "Device summary: proportional mapping"))
-        }
-        if s.invertRotation {
-            lines.append(
-                String(localized: "rotation inverted", comment: "Device summary: rotation inverted")
-            )
-        }
-        return lines
-    }
-
-    private func toolNonDefaultLines(_ t: ToolSettings) -> [String] {
-        var lines: [String] = []
-        if t.pressureCurve.p1 != CGPoint(x: 0, y: 0) || t.pressureCurve.p2 != CGPoint(x: 1, y: 1) {
-            lines.append(String(localized: "curve", comment: "Tool summary: pressure curve"))
-        }
-        if t.tipBinding != .leftClick {
-            lines.append(
-                String(localized: "tip ≠ default", comment: "Tool summary: non-default tip binding")
-            )
-        }
-        if t.eraserBinding != .eraser {
-            lines.append(
-                String(
-                    localized: "eraser ≠ default",
-                    comment: "Tool summary: non-default eraser binding"))
-        }
-        return lines
-    }
-
 
     // MARK: - Export Section
 
@@ -618,21 +320,14 @@ struct ProfilesView: View {
                 }
                 .onDrop(of: [.json], isTargeted: $isDropTargeted) { providers in
                     guard let provider = providers.first else { return false }
-
                     provider.loadDataRepresentation(forTypeIdentifier: UTType.json.identifier) { data, _ in
                         guard let data else { return }
-                        DispatchQueue.main.async {
-                            onImportData(data)
-                        }
+                        DispatchQueue.main.async { onImportData(data) }
                     }
-
                     return true
                 }
                 .onDrag {
-                    guard let data = generateJSON() else {
-                        return NSItemProvider()
-                    }
-
+                    guard let data = generateJSON() else { return NSItemProvider() }
                     let provider = NSItemProvider()
                     provider.registerDataRepresentation(
                         forTypeIdentifier: UTType.json.identifier,
@@ -654,7 +349,6 @@ struct ProfilesView: View {
                                 comment: "Context menu action for exporting backup"),
                             systemImage: "square.and.arrow.up")
                     }
-
                     Button {
                         onImportPicker()
                     } label: {
@@ -670,13 +364,6 @@ struct ProfilesView: View {
                         localized: "Drag out to export a backup, drag in a JSON file to import, or Control-click for actions.",
                         comment: "Help text for backup/restore tile")
                 )
-//                .overlay(alignment: .topTrailing) {
-//                    Image(systemName: "arrow.up.right")
-//                        .font(.system(size: 10, weight: .bold))
-//                        .foregroundStyle(.tertiary)
-//                        .padding(8)
-//                        .opacity(isHovering ? 1 : 0.7)
-//                }
             }
         }
 
@@ -703,7 +390,6 @@ struct ProfilesView: View {
 
     // MARK: - Import
 
-    /// Called by the drag well or file picker with raw JSON data.
     private func handleImportData(_ data: Data) {
         importError = nil
         do {
@@ -739,11 +425,9 @@ struct ProfilesView: View {
         let trimmed = newName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
 
-        // Capture snapshot before creating preset so we can undo
         let snap = settings.snapshot()
         settings.saveAsPreset(name: trimmed)
 
-        // Register undo that deletes the new preset
         if let newPreset = settings.profiles.last(where: { $0.name == trimmed }) {
             let presetToDelete = newPreset
             let snapshotForUndo = snap
@@ -763,8 +447,6 @@ struct ProfilesView: View {
         if !trimmed.isEmpty {
             let oldName = preset.name
             settings.renamePreset(preset, to: trimmed)
-
-            // Register undo for rename
             let presetForUndo = preset
             let nameForUndo = oldName
             settings.record("Rename Profile") {
@@ -772,5 +454,325 @@ struct ProfilesView: View {
             }
         }
         editingPreset = nil
+    }
+}
+
+// MARK: - PresetListView
+
+/// Isolated preset list: only re-evaluates body when profiles, activeProfile, or appOverrides
+/// change — insulated from 133 Hz driver updates and unrelated ProfilesView state changes.
+private struct PresetListView: View {
+    let profiles: [TabletSettings.Profile]
+    let activeProfile: TabletSettings.Profile?
+    let appOverrides: [TabletSettings.AppOverride]
+    @Binding var editingPreset: TabletSettings.Profile?
+    @Binding var editingName: String
+    let onActivate: (TabletSettings.Profile) -> Void
+    let onDelete: (TabletSettings.Profile) -> Void
+    let onRenameBegin: (TabletSettings.Profile) -> Void
+    let onRenameCommit: () -> Void
+    let onRenameCancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(LocalizedStringKey("Profiles"))
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            if profiles.isEmpty {
+                Text(
+                    String(
+                        localized: "No profiles yet. Create one below.",
+                        comment: "Empty state message when no profiles exist")
+                )
+                .font(.settingsLabel)
+                .foregroundStyle(.tertiary)
+                .padding(.vertical, 4)
+            } else {
+                ForEach(profiles, id: \.id) { preset in
+                    presetRow(preset)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func presetRow(_ preset: TabletSettings.Profile) -> some View {
+        let isActive = activeProfile?.id == preset.id
+        let isEditing = editingPreset?.id == preset.id
+
+        HStack(spacing: 10) {
+            Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isActive ? Color.green : Color.secondary)
+                .frame(width: 20)
+
+            if isEditing {
+                TextField("Profile name", text: $editingName)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 200)
+                    .onSubmit { onRenameCommit() }
+
+                Button(LocalizedStringKey("Save")) { onRenameCommit() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .help(LocalizedStringKey("Save the profile name"))
+
+                Button(LocalizedStringKey("Cancel")) { onRenameCancel() }
+                    .controlSize(.small)
+                    .help(LocalizedStringKey("Cancel renaming"))
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(preset.name)
+                        .fontWeight(.medium)
+                        .foregroundStyle(Color.primary)
+
+                    if !preset.overriddenKeys.isEmpty {
+                        Text(
+                            String(format:
+                                NSLocalizedString(
+                                    preset.overriddenKeys.count == 1 ? "%d setting" : "%d settings",
+                                    comment: "Count of overridden settings in a profile"),
+                                preset.overriddenKeys.count)
+                        )
+                        .font(.settingsBadge)
+                        .foregroundStyle(.tertiary)
+                    }
+                }
+
+                Spacer()
+
+                if !isActive {
+                    Button(LocalizedStringKey("Activate")) { onActivate(preset) }
+                        .controlSize(.small)
+                        .help(LocalizedStringKey("Switch to this profile immediately"))
+                } else {
+                    Text(String(localized: "Active", comment: "Badge label when profile is active"))
+                        .font(.settingsBadge)
+                        .foregroundStyle(.green)
+                }
+
+                if !preset.overriddenKeys.isEmpty {
+                    appBindingsForPreset(preset)
+                }
+
+                Menu {
+                    Button(LocalizedStringKey("Rename")) { onRenameBegin(preset) }
+                        .help(LocalizedStringKey("Edit the profile name"))
+                    Divider()
+                    Button(LocalizedStringKey("Delete"), role: .destructive) { onDelete(preset) }
+                        .disabled(preset.name == "Default")
+                        .help(LocalizedStringKey("Permanently delete this profile (cannot be undone)"))
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.settingsBadge)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .frame(width: 24)
+            }
+        }
+        .padding(10)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private func appBindingsForPreset(_ preset: TabletSettings.Profile) -> some View {
+        let overrideApps = appOverrides.filter {
+            $0.overriddenKeys.intersection(preset.overriddenKeys).isEmpty == false
+        }
+        if !overrideApps.isEmpty {
+            HStack(spacing: 4) {
+                ForEach(overrideApps, id: \.bundleID) { override in
+                    appIcon(bundleID: override.bundleID)
+                        .help(override.appName)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func appIcon(bundleID: String) -> some View {
+        if let app = NSWorkspace.shared.runningApplications.first(where: {
+            $0.bundleIdentifier == bundleID
+        }),
+            let icon = app.icon
+        {
+            Image(nsImage: icon)
+                .resizable()
+                .frame(width: 16, height: 16)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+        } else {
+            Image(systemName: "app")
+                .font(.settingsBadge)
+                .frame(width: 16, height: 16)
+        }
+    }
+}
+
+// MARK: - ConfigurationSummaryView
+
+/// Isolated device summary: re-evaluates only when the tablet list or offline settings change,
+/// not on every ProfilesView state change.
+private struct ConfigurationSummaryView: View {
+    let tablets: [DeviceRegistry.KnownTablet]
+    let tabletManager: TabletManager
+    let offlineSettings: [Int: TabletSettings]
+    let toolsForDevice: (Int) -> [DeviceRegistry.KnownTool]
+    @Binding var isExpanded: Bool
+
+    var body: some View {
+        DisclosureRow(
+            label: String(
+                localized: "Device Summary", comment: "Disclosure row label in Profiles tab"),
+            isExpanded: $isExpanded
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(tablets, id: \.id) { tablet in
+                    tabletSummaryCard(tablet)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tabletSummaryCard(_ tablet: DeviceRegistry.KnownTablet) -> some View {
+        let ts: TabletSettings =
+            tabletManager.contexts[tablet.id]?.settings
+            ?? offlineSettings[tablet.id]
+            ?? TabletSettings(productID: tablet.id)
+        let nonDefault = deviceNonDefaultLines(ts)
+
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(tablet.nickname)
+                    .font(.settingsLabel)
+                    .fontWeight(.medium)
+                Text(tablet.modelName)
+                    .font(.settingsBadge)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(
+                    ts.profiles.count == 0
+                        ? String(
+                            localized: "No profiles",
+                            comment: "Badge text when tablet has no profiles")
+                        : String(format:
+                            NSLocalizedString(
+                                ts.profiles.count == 1 ? "%d profile" : "%d profiles",
+                                comment: "Count of profiles for a tablet"),
+                            ts.profiles.count)
+                )
+                .font(.settingsBadge)
+                .foregroundStyle(.tertiary)
+            }
+
+            if !nonDefault.isEmpty {
+                ForEach(nonDefault, id: \.self) { line in
+                    Text(line)
+                        .font(.settingsBadge)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            let tools = toolsForDevice(tablet.id)
+            if !tools.isEmpty {
+                ForEach(tools, id: \.id) { tool in
+                    toolSummaryRow(tool, deviceSettings: ts, isLast: tool.id == tools.last?.id)
+                }
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    @ViewBuilder
+    private func toolSummaryRow(
+        _ tool: DeviceRegistry.KnownTool, deviceSettings: TabletSettings, isLast: Bool
+    ) -> some View {
+        let t = deviceSettings.toolSettings(forID: tool.id)
+        let nonDefault = toolNonDefaultLines(t)
+        let toolKind =
+            tool.kind.lowercased() == "pen"
+            ? String(localized: "Pen", comment: "Tool type: pen")
+            : (tool.kind.lowercased() == "eraser"
+                ? String(localized: "Eraser", comment: "Tool type: eraser")
+                : String(localized: "Tool", comment: "Tool type: generic"))
+
+        HStack(alignment: .top, spacing: 8) {
+            Text(toolKind)
+                .font(.settingsBadge)
+                .foregroundStyle(.secondary)
+                .frame(width: 50, alignment: .leading)
+            Text(tool.nickname.isEmpty ? tool.displayID : tool.nickname)
+                .font(.settingsBadge)
+                .foregroundStyle(.secondary)
+            if !nonDefault.isEmpty {
+                Text(
+                    "(\(nonDefault.joined(separator: String(localized: ", ", comment: "List separator"))))"
+                )
+                .font(.settingsBadge)
+                .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.leading, 8)
+        .padding(.bottom, isLast ? 0 : 4)
+    }
+
+    private func deviceNonDefaultLines(_ s: TabletSettings) -> [String] {
+        var lines: [String] = []
+        if s.activeAreaX != 0 || s.activeAreaY != 0 {
+            lines.append(String(localized: "area offset", comment: "Device summary: area offset"))
+        }
+        if s.activeAreaWidth != 1.0 || s.activeAreaHeight != 1.0 {
+            lines.append(String(localized: "area scaled", comment: "Device summary: area scaled"))
+        }
+        if s.targetDisplayIndex != 0 {
+            lines.append(
+                String(
+                    localized: "display != primary", comment: "Device summary: non-primary display")
+            )
+        }
+        if s.pressureCurve.p1 != CGPoint(x: 0, y: 0) || s.pressureCurve.p2 != CGPoint(x: 1, y: 1) {
+            lines.append(
+                String(localized: "pressure curve", comment: "Device summary: pressure curve"))
+        }
+        if s.proportionalMapping {
+            lines.append(
+                String(localized: "proportional", comment: "Device summary: proportional mapping"))
+        }
+        if s.invertRotation {
+            lines.append(
+                String(localized: "rotation inverted", comment: "Device summary: rotation inverted")
+            )
+        }
+        return lines
+    }
+
+    private func toolNonDefaultLines(_ t: ToolSettings) -> [String] {
+        var lines: [String] = []
+        if t.pressureCurve.p1 != CGPoint(x: 0, y: 0) || t.pressureCurve.p2 != CGPoint(x: 1, y: 1) {
+            lines.append(String(localized: "curve", comment: "Tool summary: pressure curve"))
+        }
+        if t.tipBinding != .leftClick {
+            lines.append(
+                String(localized: "tip ≠ default", comment: "Tool summary: non-default tip binding")
+            )
+        }
+        if t.eraserBinding != .eraser {
+            lines.append(
+                String(
+                    localized: "eraser ≠ default",
+                    comment: "Tool summary: non-default eraser binding"))
+        }
+        return lines
     }
 }

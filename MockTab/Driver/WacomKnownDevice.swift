@@ -185,7 +185,7 @@ final class WacomKnownDevice: TabletDevice {
             device, &reportBuffer, reportBuffer.count,
             WacomKnownDevice.reportCallback, ctx)
         IOHIDDeviceScheduleWithRunLoop(
-            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+            device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
     }
 
     /// Register an additional IOHIDDevice (interface) for report delivery.
@@ -197,7 +197,7 @@ final class WacomKnownDevice: TabletDevice {
             device, &reportBuffer, reportBuffer.count,
             WacomKnownDevice.reportCallback, ctx)
         IOHIDDeviceScheduleWithRunLoop(
-            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+            device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
         let name = deviceSpec.name
@@ -206,7 +206,7 @@ final class WacomKnownDevice: TabletDevice {
 
     func close() {
         IOHIDDeviceUnscheduleFromRunLoop(
-            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+            device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
