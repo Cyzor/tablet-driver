@@ -37,6 +37,12 @@ final class AppWatcher {
         "org.gimp.gimp",
     ]
 
+    /// Bundle IDs that need plain mouse events with no tablet-union metadata.
+    /// Pages text engine is confused by mouseEventSubtype=1 and ignores drags.
+    static let plainMouseBundleIDs: Set<String> = [
+        "com.apple.iWork.Pages",
+    ]
+
     private var observerToken: (any NSObjectProtocol)?
     private var releaseTokens: [any NSObjectProtocol] = []
 
@@ -49,9 +55,12 @@ final class AppWatcher {
         else { return }
         let name = app.localizedName ?? bundleID
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
+        let profile: InputInjector.AppInputProfile =
+            Self.plainMouseBundleIDs.contains(bundleID) ? .pagesPlainMouse : .generic
         for ctx in TabletManager.shared.contexts.values {
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
             ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
+            ctx.injector.activeAppProfile = profile
         }
     }
 
@@ -111,10 +120,13 @@ final class AppWatcher {
         else { return }
         let name = app.localizedName ?? bundleID
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
+        let profile: InputInjector.AppInputProfile =
+            Self.plainMouseBundleIDs.contains(bundleID) ? .pagesPlainMouse : .generic
         for ctx in TabletManager.shared.contexts.values {
             ctx.settings.handleAppActivation(bundleID: bundleID, appName: name)
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
             ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
+            ctx.injector.activeAppProfile = profile
             ctx.injector.releaseOnAppSwitch()
         }
     }
