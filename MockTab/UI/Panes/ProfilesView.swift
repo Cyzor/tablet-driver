@@ -74,6 +74,10 @@ struct ProfilesView: View {
         }
         .onAppear { populateOfflineSettings() }
         .onChange(of: registry.knownTablets.count) { _ in populateOfflineSettings() }
+        .onReceive(NotificationCenter.default.publisher(for: .mockTabImportData)) { note in
+            guard let data = note.userInfo?["data"] as? Data else { return }
+            handleImportData(data)
+        }
     }
 
     // MARK: - Offline Settings

@@ -17,6 +17,13 @@
 // along with MockTab.  If not, see <https://www.gnu.org/licenses/>.
 
 import AppKit
+import UniformTypeIdentifiers
+
+extension Notification.Name {
+    /// Posted by the Profiles menu "Import Configuration…" item after the user picks a file.
+    /// `userInfo["data"]` contains the raw `Data` to import.
+    static let mockTabImportData = Notification.Name("MockTab.importData")
+}
 
 /// Builds and maintains the application-menu contributions that cannot be
 /// expressed purely through SwiftUI's command system:
@@ -35,11 +42,11 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     static let shared = AppMenuController()
 
     private weak var settings: TabletSettings?
-
     // MARK: - Setup
 
     func setup(settings: TabletSettings) {
         self.settings = settings
+
         // Main menu is available by applicationDidFinishLaunching, but
         // defer one run-loop tick to let SwiftUI finish its menu scaffolding.
         DispatchQueue.main.async { [self] in
@@ -216,21 +223,37 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         else { return }
         let quitIndex = menu.items.firstIndex(of: quitItem)!
 
-        // Only insert Factory Reset if it isn't already there.
+        // Only insert Factory Reset alternates if not already present.
         let alreadyHasReset = menu.items.contains {
             $0.action == #selector(confirmFactoryReset)
         }
         if !alreadyHasReset {
-            let factoryReset = NSMenuItem(
-                title: String(
-                    localized: "Factory Reset\u{2026}",
-                    comment: "Menu item: factory reset (Option-key hidden)"),
-                action: #selector(confirmFactoryReset),
-                keyEquivalent: quitItem.keyEquivalent)
-            factoryReset.keyEquivalentModifierMask = quitItem.keyEquivalentModifierMask.union(.option)
-            factoryReset.isAlternate = true
-            factoryReset.target = self
-            menu.insertItem(factoryReset, at: quitIndex + 1)
+            // Three alternates so Factory Reset is reachable on every OS version:
+            //   ⌘⌥Q       — macOS 15 and earlier (Option alone)
+            //   ⌘⇧Q       — all versions (Shift alone)
+            //   ⌘⌥⇧Q     — all versions (Option+Shift)
+            // macOS 26 intercepts ⌘⌥Q at the system level before AppKit sees it,
+            // making the Shift-based shortcuts the reliable fallback there.
+            let key = quitItem.keyEquivalent
+            let alternates: [NSEvent.ModifierFlags] = [
+                [.command, .option],
+                [.command, .shift],
+                [.command, .option, .shift],
+            ]
+//            let resetIcon = NSImage(systemSymbolName: "trash.square", accessibilityDescription: nil)
+            for (i, modifiers) in alternates.enumerated() {
+                let item = NSMenuItem(
+                    title: String(
+                        localized: "Factory Reset\u{2026}",
+                        comment: "Menu item: factory reset (hidden alternate)"),
+                    action: #selector(confirmFactoryReset),
+                    keyEquivalent: key)
+                item.keyEquivalentModifierMask = modifiers
+                item.isAlternate = true
+//                item.image = resetIcon
+                item.target = self
+                menu.insertItem(item, at: quitIndex + 1 + i)
+            }
         }
 
         // Only insert "Hide Dock Icon…" if it isn't already there.
@@ -542,6 +565,76 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
+
+        menu.addItem(.separator())
+
+        let importItem = NSMenuItem(
+            title: String(localized: "Import Configuration\u{2026}", comment: "Profiles menu: import configuration from file"),
+            action: #selector(menuImportConfiguration),
+            keyEquivalent: "")
+        importItem.target = self
+        menu.addItem(importItem)
+
+        let exportItem = NSMenuItem(
+            title: String(localized: "Export Configuration\u{2026}", comment: "Profiles menu: export configuration to file"),
+            action: #selector(menuExportConfiguration),
+            keyEquivalent: "")
+        exportItem.target = self
+        menu.addItem(exportItem)
+
+        menu.addItem(.separator())
+
+        let revealItem = NSMenuItem(
+            title: String(localized: "Reveal MockTab Settings File\u{2026}", comment: "Profiles menu: reveal preferences plist in Finder"),
+            action: #selector(menuRevealSettingsFile),
+            keyEquivalent: "")
+        revealItem.target = self
+        menu.addItem(revealItem)
+    }
+
+    // MARK: - Configuration import / export / reveal
+
+    @objc private func menuImportConfiguration() {
+        PreferencesWindowController.shared.showTab(named: "Profiles")
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.message = String(
+            localized: "Choose a MockTab backup file to import",
+            comment: "File picker message for importing backup")
+        panel.begin { response in
+            guard response == .OK, let url = panel.url,
+                  let data = try? Data(contentsOf: url) else { return }
+            NotificationCenter.default.post(
+                name: .mockTabImportData,
+                object: nil,
+                userInfo: ["data": data])
+        }
+    }
+
+    @objc private func menuExportConfiguration() {
+        PreferencesWindowController.shared.showTab(named: "Profiles")
+        let exporter = PresetExporter(
+            registry: DeviceRegistry.shared,
+            tabletManager: TabletManager.shared)
+        guard let data = exporter.export() else { return }
+        let panel = NSSavePanel()
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        panel.nameFieldStringValue = "MockTab-\(fmt.string(from: Date())).json"
+        panel.allowedContentTypes = [.json]
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            try? data.write(to: url)
+        }
+    }
+
+    @objc private func menuRevealSettingsFile() {
+        guard let bundleID = Bundle.main.bundleIdentifier else { return }
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Preferences/\(bundleID).plist")
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     // MARK: - NSMenuDelegate
