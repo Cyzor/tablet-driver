@@ -51,6 +51,9 @@ final class TabletManager: ObservableObject {
 
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
     private var shimObservers: [NSObjectProtocol] = []
+    /// Interfaces deferred because they arrived before the control interface (0xFF00) for their PID.
+    /// Drained into registerDevice() once a WacomKnownDevice is created for that PID.
+    private var pendingInterfaces: [Int: [IOHIDDevice]] = [:]
 
     // MARK: - Legacy published state
 
@@ -260,7 +263,9 @@ final class TabletManager: ObservableObject {
         }
 
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
+        // Called on HIDThread — hop to main before touching @Published properties.
         let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
+            Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
             context.activeToolSerial = identity.serial
             context.activeToolIsMouse = identity.isMouse
@@ -278,6 +283,7 @@ final class TabletManager: ObservableObject {
             context.injector.activeToolCode = identity.toolCode
             context.activeToolID = toolID
             self.activeToolID = toolID  // Legacy: forward to global for backward compatibility
+            } // end Task @MainActor
         }
 
         // ── Tablet point closure ─────────────────────────────────────────────
@@ -487,12 +493,21 @@ final class TabletManager: ObservableObject {
                 WacomDeviceRegistry.hasLiveDecoder(for: productID),
                 deviceSpec.maxX > 0
             {
-                let shouldSeize = !isBLE && deviceSpec.seizeUSB && usagePage == 0x01
-                logger.info("TabletManager: \(deviceSpec.name, privacy: .public) connected via universal driver\(shouldSeize ? " (mouse interface, seized)" : "", privacy: .public)")
+                let isSeizableInterface = !isBLE && deviceSpec.seizeUSB && usagePage == 0x01
+                if isSeizableInterface {
+                    // Defer: this is the mouse/digitizer interface and the control interface
+                    // (0xFF00) has not yet arrived. Creating WacomKnownDevice here would seize
+                    // it as primary before the vendor interface is open, which breaks pen input.
+                    // Store it and drain once the control interface creates the driver.
+                    logger.info("TabletManager: \(deviceSpec.name, privacy: .public) — deferring 0x01 interface until control interface arrives")
+                    pendingInterfaces[productID, default: []].append(device)
+                    return
+                }
+                logger.info("TabletManager: \(deviceSpec.name, privacy: .public) connected via universal driver")
                 wacomDevice = WacomKnownDevice(
-                    device: device, deviceSpec: deviceSpec, seize: shouldSeize,
+                    device: device, deviceSpec: deviceSpec, seize: false,
                     onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
-                    onMouseButton: shouldSeize ? onMouseButton : nil,
+                    onMouseButton: onMouseButton,
                     onBattery: onBattery, onHardwareSerial: onHardwareSerial)
             } else {
                 let pid = String(productID, radix: 16, uppercase: true)
@@ -531,6 +546,11 @@ final class TabletManager: ObservableObject {
             context.tabletDevice = wacomDevice
             hidDeviceMap[device] = context
             wacomDevice.open()
+            // Drain any interfaces that arrived before this driver was created.
+            for pending in pendingInterfaces.removeValue(forKey: productID) ?? [] {
+                hidDeviceMap[pending] = context
+                (wacomDevice as? WacomKnownDevice)?.registerDevice(pending)
+            }
             context.observeRingLED()  // after open() so initial LED sync reaches the device
             context.settings.applyExpressKeyDefaults()
             refreshConnectedIDs(mostRecent: productID)

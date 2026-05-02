@@ -60,6 +60,10 @@ final class WacomKnownDevice: TabletDevice {
     // USB interface with its own PID. That IOHIDDevice is handed to us via
     // registerLEDDevice() once TabletManager enumerates it.
     private var ledDevice: IOHIDDevice?
+    /// Secondary interface (e.g. usagePage=0x01 digitizer on PTH-660/860).
+    /// Stored in registerDevice() so LED commands can be routed to it when
+    /// the primary (0xFF00) interface doesn't declare the control reports.
+    private var secondaryDevice: IOHIDDevice?
     /// Last index requested via setRingLED. Applied immediately when ledDevice
     /// is registered so the LED syncs even if the companion connects after init.
     private var pendingLEDIndex: Int = 0
@@ -202,6 +206,17 @@ final class WacomKnownDevice: TabletDevice {
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
         let name = deviceSpec.name
         logger.info("\(name, privacy: .public): registered interface (transport=\(transport, privacy: .public))")
+        if secondaryDevice == nil {
+            // Do NOT seize here — seizing 0x01 causes the PTH-660/860 firmware to stop
+            // sending pen reports entirely. The IOHIDManager already holds the device open
+            // for input delivery; that same open is sufficient for IOHIDDeviceSetReport.
+            secondaryDevice = device
+        }
+        // The InputMode element may be on either interface depending on arrival order.
+        // Attempt init on every registered interface; skips gracefully if not present.
+        if deviceSpec.parser == .intuosV2 && !isBluetooth {
+            sendWacomInputModeInit(device, tag: name)
+        }
     }
 
     func close() {
@@ -214,40 +229,65 @@ final class WacomKnownDevice: TabletDevice {
             IOHIDDeviceClose(led, IOOptionBits(kIOHIDOptionsTypeNone))
             ledDevice = nil
         }
+        if let sec = secondaryDevice {
+            IOHIDDeviceUnscheduleFromRunLoop(sec, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
+            IOHIDDeviceRegisterInputReportCallback(sec, &reportBuffer, reportBuffer.count, nil, nil)
+            IOHIDDeviceClose(sec, IOOptionBits(kIOHIDOptionsTypeNone))
+            secondaryDevice = nil
+        }
     }
 
     // MARK: - LED control
 
     /// Update the ring LED to reflect the active slot index.
-    /// IntuosV2 only — other families are no-ops via the protocol default.
+    /// IntuosV2 (USB) and CintiqV1 families only — other families are no-ops.
     func setRingLED(index: Int) {
         pendingLEDIndex = index
+        let name = deviceSpec.name
         switch deviceSpec.parser {
         case .intuosV2 where !isBluetooth:
-            // Linux wacom_sys.c wacom_led_control(), INTUOS5S..INTUOSPL wired path:
-            //   led_bits = (crop_lum << 4) | (ring_lum << 2) | ring_led
-            //   crop_lum = 0 (hardcoded), ring_lum = 1 (Medium), ring_led = select & 0x03
-            //   buf[0] = 0x11, buf[1] = led_bits, rest 0
-            // BT Intuos Pro uses a separate 51-byte report (WAC_CMD_WL_INTUOSP2); skip.
+            // LED report for PTH-660/860 USB is still under investigation.
+            // 0x11 is accepted by IOKit but silently ignored by firmware (harmless).
+            // 0xCC (WAC_CMD_LED_CONTROL_GENERIC) actively breaks pen input — do not use.
+            // 0x20 (WAC_CMD_LED_CONTROL) also silently ignored.
             let ledBits = (UInt8(1) << 2) | UInt8(index & 0x03)
             var buf = [UInt8](repeating: 0, count: 9)
             buf[0] = 0x11
             buf[1] = ledBits
-            IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
+            let ret = IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
+            logger.debug("\(name, privacy: .public): setRingLED USB slot=\(index) ledBits=0x\(String(ledBits, radix: 16)) ret=\(ret, privacy: .public)")
+
+        case .intuosV2 where isBluetooth:
+            // Linux wacom_sys.c wacom_led_control(), WAC_CMD_WL_INTUOSP2 BT path:
+            //   WAC_CMD_WL_INTUOSP2 = 0x82, 51-byte buffer
+            //   buf[9]  = llv (luminance)
+            //   buf[10] = ring_led (select & 0x03)
+            var buf = [UInt8](repeating: 0, count: 51)
+            buf[0] = 0x82  // WAC_CMD_WL_INTUOSP2
+            buf[9]  = 0x40  // llv: moderate brightness
+            buf[10] = UInt8(index & 0x03)
+            let ret = IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
+            logger.debug("\(name, privacy: .public): setRingLED BT slot=\(index) buf[10]=\(index) ret=\(ret, privacy: .public)")
 
         case .cintiqV1:
             // LED control targets the companion interface (ledDevice), not the digitizer.
-            // Linux wacom_sys.c else branch, WACOM_24HD path:
+            // Linux wacom_sys.c wacom_led_control(), WACOM_24HD path:
+            //   WAC_CMD_LED_CONTROL = 0x20
             //   buf[1] = (group0.select | 0x4) | ((group1.select << 4) | 0x40)
-            //   buf[2] = llv, buf[3] = hlv, buf[4] = img_lum
+            //   buf[2] = llv, buf[3] = hlv
             // Ring 2 (group 1) independent index not yet tracked; stays at slot 0.
-            guard let led = ledDevice else { break }
+            guard let led = ledDevice else {
+                logger.warning("\(name, privacy: .public): setRingLED CintiqV1 slot=\(index) — ledDevice is nil, skipping")
+                break
+            }
             let ledByte = UInt8(index & 0x03) | 0x44  // 0x04 = group0 enable, 0x40 = group1 at slot 0
             var buf = [UInt8](repeating: 0, count: 9)
-            buf[0] = 0x11
+            buf[0] = 0x20  // WAC_CMD_LED_CONTROL
             buf[1] = ledByte
             buf[2] = 0x40  // llv: moderate brightness
-            IOHIDDeviceSetReport(led, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
+            buf[3] = 0x40  // hlv: moderate brightness
+            let ret = IOHIDDeviceSetReport(led, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
+            logger.debug("\(name, privacy: .public): setRingLED CintiqV1 slot=\(index) ledByte=0x\(String(ledByte, radix: 16)) ret=\(ret, privacy: .public)")
 
         default:
             break
@@ -258,8 +298,9 @@ final class WacomKnownDevice: TabletDevice {
     /// Called by TabletManager when a no-digitizer Wacom interface is matched
     /// to this device via `WacomDeviceSpec.ledCompanionPID`.
     func registerLEDDevice(_ device: IOHIDDevice) {
-        IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
         ledDevice = device
+        logger.info("\(self.deviceSpec.name, privacy: .public): LED companion interface registered (open ret=\(ret, privacy: .public))")
         // Apply any pending LED index that was requested before this interface arrived.
         setRingLED(index: pendingLEDIndex)
     }
