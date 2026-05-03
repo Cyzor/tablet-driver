@@ -255,7 +255,7 @@ final class WacomKnownDevice: TabletDevice {
             buf[0] = 0x11
             buf[1] = ledBits
             let ret = IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
-            logger.debug("\(name, privacy: .public): setRingLED USB slot=\(index) ledBits=0x\(String(ledBits, radix: 16)) ret=\(ret, privacy: .public)")
+            // logger.debug("\(name, privacy: .public): setRingLED USB slot=\(index) ledBits=0x\(String(ledBits, radix: 16)) ret=\(ret, privacy: .public)")
 
         case .intuosV2 where isBluetooth:
             // Linux wacom_sys.c wacom_led_control(), WAC_CMD_WL_INTUOSP2 BT path:
@@ -267,7 +267,7 @@ final class WacomKnownDevice: TabletDevice {
             buf[9]  = 0x40  // llv: moderate brightness
             buf[10] = UInt8(index & 0x03)
             let ret = IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
-            logger.debug("\(name, privacy: .public): setRingLED BT slot=\(index) buf[10]=\(index) ret=\(ret, privacy: .public)")
+            // logger.debug("\(name, privacy: .public): setRingLED BT slot=\(index) buf[10]=\(index) ret=\(ret, privacy: .public)")
 
         case .cintiqV1:
             // LED control targets the companion interface (ledDevice), not the digitizer.
@@ -287,7 +287,7 @@ final class WacomKnownDevice: TabletDevice {
             buf[2] = 0x40  // llv: moderate brightness
             buf[3] = 0x40  // hlv: moderate brightness
             let ret = IOHIDDeviceSetReport(led, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
-            logger.debug("\(name, privacy: .public): setRingLED CintiqV1 slot=\(index) ledByte=0x\(String(ledByte, radix: 16)) ret=\(ret, privacy: .public)")
+            // logger.debug("\(name, privacy: .public): setRingLED CintiqV1 slot=\(index) ledByte=0x\(String(ledByte, radix: 16)) ret=\(ret, privacy: .public)")
 
         default:
             break
@@ -308,9 +308,13 @@ final class WacomKnownDevice: TabletDevice {
     /// Send feature init to activate the digitizer endpoint.
     /// Assumes caller is on the main thread (IOHIDDeviceSetReport is not thread-safe).
     private func sendFeatureInit() {
+        sendFeatureInit(to: device)
+    }
+
+    private func sendFeatureInit(to target: IOHIDDevice) {
         guard var bytes = deviceSpec.featureInit else { return }
         let reportID = CFIndex(bytes[0])
-        IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
+        IOHIDDeviceSetReport(target, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
     }
 
     /// Query the hardware serial number from WACOM_REPORT_USB (Report ID 0x03) feature report.

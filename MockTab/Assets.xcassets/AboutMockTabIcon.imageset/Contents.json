@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "AboutMockTabIcon.svg",
+      "filename" : "Vivid.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "AboutMockTabIcon@2x.png",
+      "filename" : "Vivid@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "AboutMockTabIcon@3x.png",
+      "filename" : "Vivid@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

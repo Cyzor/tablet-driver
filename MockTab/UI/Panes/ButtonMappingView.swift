@@ -28,11 +28,14 @@ struct ButtonMappingView: View {
     var productID: Int?
 
     @Environment(\.controlActiveState) private var controlActiveState
+    @State private var isLiveResizing = false
 
-    /// Live button state, zeroed when this window is not key so highlights
-    /// don't bleed into background windows.
+    /// Live button state, zeroed when this window is not key or is live-resizing.
+    /// Zeroing during resize stops ~100 Hz tablet events from compounding the
+    /// window-geometry invalidations that already occur every resize frame.
     private var liveButtons: LiveButtonState {
-        controlActiveState == .key ? tabletManager.liveButtons : LiveButtonState()
+        guard controlActiveState == .key, !isLiveResizing else { return LiveButtonState() }
+        return tabletManager.liveButtons
     }
 
     private var tool: ToolSettings { settings.activeTool }
@@ -589,6 +592,10 @@ struct ButtonMappingView: View {
                 settings: settings, tabletManager: tabletManager, registry: registry,
                 productID: productID ?? 0)
         }
+        .background(
+            LiveResizeDetector(isResizing: $isLiveResizing)
+                .allowsHitTesting(false)
+        )
     }
 
     // MARK: - Pen buttons section
@@ -679,6 +686,7 @@ struct ButtonMappingView: View {
             // Diagram row: no label column; transparent so the section
             // background shows through unchanged.
             PenDiagramView(liveButtons: lb)
+                .equatable()
                 .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 64)
                 .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
                 .listRowBackground(Color.clear)
@@ -845,69 +853,20 @@ struct ButtonMappingView: View {
         // One list row per slot — matches buttonRow() visual language.
         // Show only as many slots as the spec declares (default 4); model always stores 4.
         let slotCount = min(settings.touchRingSlots.count, spec?.ringSlotCount ?? 4)
+        let ringSlotCount = spec?.ringSlotCount ?? 4
         ForEach(Array(settings.touchRingSlots.prefix(slotCount).enumerated()), id: \.element.id)
         { idx, slot in
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 0) {
-                    activeIndicator(isActive && settings.touchRingActiveSlotIndex == idx)
-                    Text("Mode \(idx + 1)")
-                        .foregroundStyle(.secondary)
-                        .frame(minWidth: 100, alignment: .trailing)
-                        .padding(.horizontal, 5)
-                    Picker("", selection: slotBinding(at: idx)) {
-                        ForEach(ControlSlot.Action.allCases, id: \.self) { action in
-                            Text(action.displayLabel).tag(action)
-                        }
-                    }
-                    .labelsHidden()
-                    .controlSize(.small)
-                    .fixedSize()
-
-                    if slot.action != .off {
-                        let speedLabel = slot.speed < 0.01
-                            ? String(localized: "Off", comment: "Ring speed slider at minimum — rotation disabled")
-                            : String(format: "%.2g×", slot.speed)
-                        Text(speedLabel)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 36, alignment: .trailing)
-                            .monospacedDigit()
-                            .padding(.leading, 8)
-                        Slider(value: slotSpeedBinding(at: idx), in: 0...3.0, step: 0.25)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .layoutPriority(1)
-                            .help("Adjust how fast the ring scrolls or repeats key presses.")
-                            .padding(.trailing, 40)
-                    } else {
-                        Spacer(minLength: 10)   // fills the row when no slider is present
-                    }
-                }
-
-                if slot.action == .keyPress {
-                    HStack(spacing: 16) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            ButtonBindingControl(
-                                binding: slotBinding(for: idx, direction: .cw), compact: true,
-                                ringSlotCount: spec?.ringSlotCount ?? 4)
-                        }
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.counterclockwise")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            ButtonBindingControl(
-                                binding: slotBinding(for: idx, direction: .ccw), compact: true,
-                                ringSlotCount: spec?.ringSlotCount ?? 4)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.leading, 20)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)   // force the row to fill the list/form cell
-            .padding(.vertical, 2)
+            TouchRingSlotRowView(
+                slot: slot,
+                idx: idx,
+                isActiveSlot: isActive && settings.touchRingActiveSlotIndex == idx,
+                ringSlotCount: ringSlotCount,
+                actionBinding: slotBinding(at: idx),
+                speedBinding: slotSpeedBinding(at: idx),
+                cwBinding: slotBinding(for: idx, direction: .cw),
+                ccwBinding: slotBinding(for: idx, direction: .ccw)
+            )
+            .equatable()
         }
     }
 
@@ -954,6 +913,97 @@ struct ButtonMappingView: View {
             )
     }
 
+}
+
+// MARK: - Touch ring slot row
+
+/// One row in the touch-ring slot list. Extracted so `.equatable()` can short-circuit
+/// body evaluation on resize frames when neither slot data nor active state has changed.
+private struct TouchRingSlotRowView: View, Equatable {
+    let slot: ControlSlot
+    let idx: Int
+    let isActiveSlot: Bool
+    let ringSlotCount: Int
+    let actionBinding: Binding<ControlSlot.Action>
+    let speedBinding: Binding<Double>
+    let cwBinding: Binding<ButtonBinding>
+    let ccwBinding: Binding<ButtonBinding>
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.slot == rhs.slot
+            && lhs.idx == rhs.idx
+            && lhs.isActiveSlot == rhs.isActiveSlot
+            && lhs.ringSlotCount == rhs.ringSlotCount
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 0) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Color.green)
+                    .imageScale(.small)
+                    .opacity(isActiveSlot ? 1 : 0)
+                Text("Mode \(idx + 1)")
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 100, alignment: .trailing)
+                    .padding(.horizontal, 5)
+                Picker("", selection: actionBinding) {
+                    ForEach(ControlSlot.Action.allCases, id: \.self) { action in
+                        Text(action.displayLabel).tag(action)
+                    }
+                }
+                .labelsHidden()
+                .controlSize(.small)
+                .fixedSize()
+
+                if slot.action != .off {
+                    let speedLabel = slot.speed < 0.01
+                        ? String(
+                            localized: "Off",
+                            comment: "Ring speed slider at minimum — rotation disabled")
+                        : String(format: "%.2g×", slot.speed)
+                    Text(speedLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, alignment: .trailing)
+                        .monospacedDigit()
+                        .padding(.leading, 8)
+                    Slider(value: speedBinding, in: 0...3.0, step: 0.25)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
+                        .help("Adjust how fast the ring scrolls or repeats key presses.")
+                        .padding(.trailing, 40)
+                } else {
+                    Spacer(minLength: 10)
+                }
+            }
+
+            if slot.action == .keyPress {
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        ButtonBindingControl(
+                            binding: cwBinding, compact: true,
+                            ringSlotCount: ringSlotCount)
+                    }
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        ButtonBindingControl(
+                            binding: ccwBinding, compact: true,
+                            ringSlotCount: ringSlotCount)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.leading, 20)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 2)
+    }
 }
 
 // MARK: - ButtonBindingControl
@@ -1191,5 +1241,35 @@ struct ButtonBindingControl: View, Equatable {
             binding = ButtonBinding(fromKey: event)
         }
         stopRecording()
+    }
+}
+
+// MARK: - LiveResizeDetector
+
+/// Zero-size NSViewRepresentable that bridges NSView live-resize callbacks into
+/// SwiftUI @State. Scoped to the view's own window — fires only when that window
+/// is being resized, not when any other window resizes.
+private struct LiveResizeDetector: NSViewRepresentable {
+    @Binding var isResizing: Bool
+
+    func makeNSView(context: Context) -> TrackingView { TrackingView(binding: $isResizing) }
+    func updateNSView(_ nsView: TrackingView, context: Context) {}
+
+    final class TrackingView: NSView {
+        var binding: Binding<Bool>
+        init(binding: Binding<Bool>) {
+            self.binding = binding
+            super.init(frame: .zero)
+        }
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func viewWillStartLiveResize() {
+            super.viewWillStartLiveResize()
+            DispatchQueue.main.async { self.binding.wrappedValue = true }
+        }
+        override func viewDidEndLiveResize() {
+            super.viewDidEndLiveResize()
+            DispatchQueue.main.async { self.binding.wrappedValue = false }
+        }
     }
 }
