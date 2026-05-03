@@ -23,7 +23,7 @@ import SwiftUI
 /// Renders a schematic side-view of the stylus pen, rotated 90° so the tip
 /// faces right and the eraser faces left.  Segments illuminate in accent colour
 /// when the corresponding physical input is active.
-struct PenDiagramView: View {
+struct PenDiagramView: View, Equatable {
     let liveButtons: LiveButtonState
 
     // SVG viewBox origin and dimensions (tablet-generic-stylus.svg: 0 0 44.6 344.8)

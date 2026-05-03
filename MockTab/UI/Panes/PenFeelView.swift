@@ -399,8 +399,8 @@ private struct PressureCurveCanvas: View {
         let curve = tool.pressureCurve
         // Draw 64-point polyline approximation of the bezier.
         path.move(to: toCanvas(x: 0, y: 0, size: size))
-        for i in 1...64 {
-            let t = Double(i) / 64.0
+        for i in 1...32 {
+            let t = Double(i) / 32.0
             path.addLine(to: toCanvas(x: t, y: curve.evaluate(t), size: size))
         }
         ctx.stroke(

@@ -111,11 +111,11 @@ final class PreferencesWindowController: ObservableObject {
     }
 
     func showTab(at index: Int) {
-        ensureDefaultWindow().showTab(at: index)
+        frontmostSettingsWindow().showTab(at: index)
     }
 
     func showTab(named name: String) {
-        ensureDefaultWindow().showTab(named: name)
+        frontmostSettingsWindow().showTab(named: name)
     }
 
     // MARK: - Multi-window
@@ -295,6 +295,10 @@ final class PreferencesWindowController: ObservableObject {
         TabletManager.shared.activeContext?.productID
             ?? TabletManager.shared.connectedProductIDs.first
             ?? DeviceRegistry.shared.knownTablets.first?.id
+    }
+
+    private func frontmostSettingsWindow() -> SettingsWindowController {
+        windows.first(where: { $0.window?.isKeyWindow == true }) ?? ensureDefaultWindow()
     }
 
     private func ensureDefaultWindow() -> SettingsWindowController {

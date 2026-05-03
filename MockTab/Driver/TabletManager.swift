@@ -493,19 +493,37 @@ final class TabletManager: ObservableObject {
                 WacomDeviceRegistry.hasLiveDecoder(for: productID),
                 deviceSpec.maxX > 0
             {
-                let isSeizableInterface = !isBLE && deviceSpec.seizeUSB && usagePage == 0x01
-                if isSeizableInterface {
-                    // Defer: this is the mouse/digitizer interface and the control interface
-                    // (0xFF00) has not yet arrived. Creating WacomKnownDevice here would seize
-                    // it as primary before the vendor interface is open, which breaks pen input.
-                    // Store it and drain once the control interface creates the driver.
-                    logger.info("TabletManager: \(deviceSpec.name, privacy: .public) — deferring 0x01 interface until control interface arrives")
+                // Interface routing depends on parser family.
+                //
+                // IntuosV2 (PTH-x60/x80):  0xFF00 vendor interface is primary (featureInit
+                //   via InputMode element).  0x01 is deferred and registered as secondary without
+                //   seizure — seizing 0x01 stops the IntuosV2 firmware from sending pen reports.
+                //
+                // CintiqV1 (DTK-2400 etc): 0x01 is the pen digitizer (reports 0x02, 0x0C).
+                //   It must be seized so the OS doesn't interpret tip-switch as a native click,
+                //   and featureInit [0x02, 0x02] must be sent there to activate tablet mode.
+                //   0xFF00 only carries the periodic 0x80 status report; defer it until 0x01
+                //   has created the driver, then register it as secondary.
+                let isCintiqV1 = deviceSpec.parser == .cintiqV1
+                let deferrableInterface: Bool
+                if isCintiqV1 {
+                    // Defer the vendor interface; wait for the digitizer (0x01) to be primary.
+                    deferrableInterface = !isBLE && deviceSpec.seizeUSB && usagePage == 0xFF00
+                } else {
+                    // Defer the mouse interface; wait for the vendor interface (0xFF00) to be primary.
+                    deferrableInterface = !isBLE && deviceSpec.seizeUSB && usagePage == 0x01
+                }
+                if deferrableInterface {
+                    logger.info("TabletManager: \(deviceSpec.name, privacy: .public) — deferring 0x\(String(usagePage, radix: 16), privacy: .public) interface")
                     pendingInterfaces[productID, default: []].append(device)
                     return
                 }
-                logger.info("TabletManager: \(deviceSpec.name, privacy: .public) connected via universal driver")
+                // For CintiqV1 with 0x01 as primary: seize the interface so the OS cannot
+                // interpret tip-switch (report 0x01) as a native left-click alongside our events.
+                let shouldSeize = !isBLE && isCintiqV1 && deviceSpec.seizeUSB && usagePage == 0x01
+                logger.info("TabletManager: \(deviceSpec.name, privacy: .public) connected via universal driver\(shouldSeize ? " (seized)" : "", privacy: .public)")
                 wacomDevice = WacomKnownDevice(
-                    device: device, deviceSpec: deviceSpec, seize: false,
+                    device: device, deviceSpec: deviceSpec, seize: shouldSeize,
                     onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
                     onMouseButton: onMouseButton,
                     onBattery: onBattery, onHardwareSerial: onHardwareSerial)

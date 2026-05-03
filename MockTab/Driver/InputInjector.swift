@@ -974,7 +974,7 @@ final class InputInjector {
         if managedNow != lastLoggedManagedFlags {
             let synth = groundTruthSyntheticFlags.rawValue & managedModifierMask
             let prev = lastLoggedManagedFlags
-            modLog.info("flags: 0x\(String(prev, radix: 16), privacy: .public) → 0x\(String(managedNow, radix: 16), privacy: .public) [hid=0x\(String(physManaged, radix: 16), privacy: .public) synth=0x\(String(synth, radix: 16), privacy: .public)]")
+            // modLog.info("flags: 0x\(String(prev, radix: 16), privacy: .public) → 0x\(String(managedNow, radix: 16), privacy: .public) [hid=0x\(String(physManaged, radix: 16), privacy: .public) synth=0x\(String(synth, radix: 16), privacy: .public)]")
             lastLoggedManagedFlags = managedNow
         }
         return result

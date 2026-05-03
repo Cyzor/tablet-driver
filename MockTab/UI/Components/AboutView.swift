@@ -85,8 +85,8 @@ struct AboutView: View {
 
             // App Name + Icon
             HStack(spacing: 12) {
-                // Image(nsImage: NSApp.applicationIconImage)
-                Image("AboutMockTabIcon")
+                 Image(nsImage: NSApp.applicationIconImage)
+//                Image("AboutMockTabIcon")
                     .resizable()
                     .frame(width: 128, height: 128)
 

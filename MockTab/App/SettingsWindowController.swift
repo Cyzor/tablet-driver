@@ -144,6 +144,59 @@ final class ResizableTabViewController: NSTabViewController {
     }
 }
 
+// MARK: - LiveResizeFreezeView / LiveResizeFreezeViewController
+
+/// Container NSView that pins its content at its current size when live resize
+/// starts — the content is clipped to the shrinking window and shows empty space
+/// when the window grows — then snaps to the final size on mouse release.
+private final class LiveResizeFreezeView: NSView {
+    override func viewWillStartLiveResize() {
+        super.viewWillStartLiveResize()
+        subviews.first?.autoresizingMask = []   // freeze content frame
+        wantsLayer = true
+        layer?.masksToBounds = true             // clip overflow when window shrinks
+    }
+
+    override func viewDidEndLiveResize() {
+        if let content = subviews.first {
+            content.autoresizingMask = [.width, .height]
+            content.frame = bounds              // snap to final size
+        }
+        layer?.masksToBounds = false
+        super.viewDidEndLiveResize()
+    }
+}
+
+/// Thin NSViewController that hosts the pane's NSHostingController inside a
+/// LiveResizeFreezeView and forwards the properties NSTabViewController reads.
+private final class LiveResizeFreezeViewController: NSViewController {
+    private let inner: NSViewController
+
+    override var preferredContentSize: NSSize {
+        get { inner.preferredContentSize }
+        set { inner.preferredContentSize = newValue }
+    }
+
+    init(wrapping inner: NSViewController) {
+        self.inner = inner
+        super.init(nibName: nil, bundle: nil)
+        addChild(inner)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func loadView() {
+        view = LiveResizeFreezeView()
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        inner.view.autoresizingMask = [.width, .height]
+        inner.view.frame = view.bounds
+        view.addSubview(inner.view)
+    }
+}
+
 // MARK: - SettingsWindowController
 
 @MainActor
@@ -271,10 +324,10 @@ final class SettingsWindowController: NSWindowController {
                 settings: s, tabletManager: tm, registry: dr,
                 onDeviceSelected: onDevice, boundProductID: productID)
         }
-        addTab(label: Self.tabLabels[1], symbol: "scribble.variable", height: 480) {
+        addTab(label: Self.tabLabels[1], symbol: "scribble.variable", height: 480, freezeOnResize: true) {
             PenFeelView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: Self.tabLabels[2], symbol: "square.grid.2x2.fill", height: 575) {
+        addTab(label: Self.tabLabels[2], symbol: "square.grid.2x2.fill", height: 575, freezeOnResize: true) {
             ButtonMappingView(
                 settings: s, tabletManager: tm, registry: dr,
                 productID: productID)
@@ -344,6 +397,7 @@ final class SettingsWindowController: NSWindowController {
         symbol: String,
         height: CGFloat,
         width: CGFloat = 500,
+        freezeOnResize: Bool = false,
         @ViewBuilder content: () -> Content
     ) {
         let aligned = content()
@@ -363,7 +417,15 @@ final class SettingsWindowController: NSWindowController {
             defaultSize: NSSize(width: width, height: height),
             forTabLabeled: label)
 
-        let item = NSTabViewItem(viewController: hosting)
+        let vc: NSViewController
+        if freezeOnResize {
+            let frozen = LiveResizeFreezeViewController(wrapping: hosting)
+            frozen.title = hosting.title
+            vc = frozen
+        } else {
+            vc = hosting
+        }
+        let item = NSTabViewItem(viewController: vc)
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
         tabVC.addTabViewItem(item)
