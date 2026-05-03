@@ -1337,6 +1337,16 @@ final class InputInjector {
                 mouseEventSource: sessionSource, mouseType: .mouseMoved,
                 mouseCursorPosition: location, mouseButton: .left)
         else { return }
+        if activeAppProfile != .pagesPlainMouse {
+            if let p = point {
+                let pose = resolveEffectivePose(point: p, settings: settings)
+                e.setIntegerValueField(.mouseEventSubtype, value: 1)
+                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+                e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+                e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
+            }
+        }
         e.setIntegerValueField(
             .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
         e.setIntegerValueField(
