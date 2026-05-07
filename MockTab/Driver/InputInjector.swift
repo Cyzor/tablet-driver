@@ -37,8 +37,13 @@ private let modLog = Logger(subsystem: "com.cyzor.mocktab", category: "modifiers
 ///   coordinates; the gate suppresses all of them — zero Mach IPC, zero wakeups.
 ///   Tip/button/proximity transitions always post immediately regardless of delta.
 ///
-/// Must run on the main actor — IOHIDManager callbacks are on CFRunLoopGetMain().
-@MainActor
+/// Hot-path state owned by HIDThread; configuration writes from main are documented
+/// per-property below. `init`, `deinit`, `installFlagsChangedTap`, and the
+/// `recompute…` helpers run on main; `inject`, `injectAux`, `injectMouseButtons`,
+/// and everything they transitively call run on HIDThread (the dedicated CFRunLoop
+/// thread declared in HIDThread.swift). Snapshot updates from the @MainActor
+/// `TabletSettings` are pushed via CFRunLoopPerformBlock onto HIDThread so the
+/// hot path never needs to read @Published storage directly.
 final class InputInjector {
 
     // MARK: - Device identity
@@ -72,21 +77,34 @@ final class InputInjector {
     enum AppInputProfile { case generic, pagesPlainMouse }
     var activeAppProfile: AppInputProfile = .generic
 
+    /// True when this device is the active context (TabletManager.activeContext === me).
+    /// Set from main when active changes; read from HIDThread to gate the inline
+    /// inject path. Bool reads/writes are atomic on Apple Silicon, so no lock needed.
+    var isActive: Bool = false
+
+    @MainActor
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
         self.deviceProductID = productID
+        recomputeVirtualScreenBounds()
         displayObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated {
-            self?.cachedDisplayIndex = Int.min
-            self?.cachedCalibrationOrientation = -1
-        } }
+        ) { [weak self] _ in
+            // Recompute the virtual-screen union on main (NSScreen is AppKit-only),
+            // then push display-cache invalidation onto HIDThread where the cached
+            // fields are read by inject().
+            guard let self else { return }
+            MainActor.assumeIsolated { self.recomputeVirtualScreenBounds() }
+            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+                self.cachedDisplayIndex = Int.min
+                self.cachedCalibrationOrientation = -1
+            }
+            CFRunLoopWakeUp(HIDThread.shared.runLoop)
+        }
         leakWatchdogTimer = Timer.scheduledTimer(
             withTimeInterval: 1.0, repeats: true
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.checkLeakWatchdog() }
-        }
+        ) { [weak self] _ in self?.checkLeakWatchdog() }
         installFlagsChangedTap()
     }
 
@@ -94,6 +112,7 @@ final class InputInjector {
         if let obs = displayObserver { NotificationCenter.default.removeObserver(obs) }
         leakWatchdogTimer?.invalidate()
         if let tap = flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: false) }
+        watchdogTimer.map { CFRunLoopTimerInvalidate($0) }
     }
 
     // MARK: - State
@@ -246,8 +265,10 @@ final class InputInjector {
     /// At 133 Hz pen reporting this never expires during legitimate holds —
     /// the pen leaving the tablet is what stops the stream, at which point
     /// any still-held synthetic flag is by definition a leak.
-    private var watchdogItem: DispatchWorkItem?
-    private let watchdogInterval: DispatchTimeInterval = .milliseconds(400)
+    /// CFRunLoopTimer scheduled on HIDThread. The handler reads/writes
+    /// HIDThread-owned modifier state without crossing a thread boundary.
+    private var watchdogTimer: CFRunLoopTimer?
+    private let watchdogInterval: TimeInterval = 0.4
 
     // MARK: - Time-based leak watchdog
     //
@@ -293,21 +314,24 @@ final class InputInjector {
             && !lastAuxButtons.contains(true)
     }
 
+    /// Must run on HIDThread (where `watchdogTimer`, `lastInjectCallAt`, and
+    /// `groundTruthSyntheticFlags` are owned).
     private func rearmWatchdog() {
         lastInjectCallAt = Date()
-        watchdogItem?.cancel()
-        guard !groundTruthSyntheticFlags.isEmpty else {
-            watchdogItem = nil
-            return
+        if let t = watchdogTimer { CFRunLoopTimerInvalidate(t) }
+        watchdogTimer = nil
+        guard !groundTruthSyntheticFlags.isEmpty else { return }
+        let timer = CFRunLoopTimerCreateWithHandler(
+            kCFAllocatorDefault,
+            CFAbsoluteTimeGetCurrent() + watchdogInterval,
+            0,  // interval — one-shot
+            0, 0
+        ) { [weak self] _ in
+            guard let self, !self.groundTruthSyntheticFlags.isEmpty else { return }
+            self.releaseAllSyntheticModifiers()
         }
-        let item = DispatchWorkItem { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self, !self.groundTruthSyntheticFlags.isEmpty else { return }
-                self.releaseAllSyntheticModifiers()
-            }
-        }
-        watchdogItem = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + watchdogInterval, execute: item)
+        watchdogTimer = timer
+        if let timer { CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes) }
     }
 
     /// 1 Hz time-based leak detection. Fires even when `lastAuxButtons` is corrupt
@@ -317,14 +341,19 @@ final class InputInjector {
     /// Condition: synthetic flags have been stuck in the same state for > 3 s AND the
     /// tablet has been completely idle for > 3 s. A legitimately held express-key keeps
     /// resetting `lastInjectCallAt` via `rearmWatchdog`, so this never fires during real use.
+    /// Called from main (Timer fires on the runloop the timer was scheduled on).
+    /// Hops to HIDThread to read/mutate modifier state without races.
     private func checkLeakWatchdog() {
-        guard !groundTruthSyntheticFlags.isEmpty else { return }
-        let heldInterval = Date().timeIntervalSince(lastSyntheticFlagChangeAt)
-        let idleInterval = Date().timeIntervalSince(lastInjectCallAt)
-        if heldInterval > 3.0 && idleInterval > 3.0 {
-            modLog.notice("leak-watchdog: releasing stuck synthetic flags 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
-            releaseAllSyntheticModifiers()
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
+            guard let self, !self.groundTruthSyntheticFlags.isEmpty else { return }
+            let heldInterval = Date().timeIntervalSince(self.lastSyntheticFlagChangeAt)
+            let idleInterval = Date().timeIntervalSince(self.lastInjectCallAt)
+            if heldInterval > 3.0 && idleInterval > 3.0 {
+                modLog.notice("leak-watchdog: releasing stuck synthetic flags 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
+                self.releaseAllSyntheticModifiers()
+            }
         }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
     }
 
     // MARK: - Adobe shim replay cache
@@ -336,6 +365,15 @@ final class InputInjector {
     private(set) var shimLastScreen: CGPoint = .zero
     private(set) var shimLastPressure: Double = 0.0
 
+    // MARK: - Settings snapshot (Phase 2 — populated, not yet read)
+    //
+    // Owned by main actor for now. Refreshed by DeviceContext on every
+    // settings/tool change. Phase 3 will switch this to nonisolated(unsafe)
+    // and route writes through CFRunLoopPerformBlock(HIDThread.shared.runLoop)
+    // so inject() can read it inline on HIDThread without the @MainActor hop.
+
+    var injectionSnapshot: InjectionSnapshot?
+
     // MARK: - Display bounds cache
 
     private var cachedDisplayBounds: CGRect = .zero
@@ -346,21 +384,29 @@ final class InputInjector {
     private var currentToggleIndex: Int = 0
     private var displayObserver: NSObjectProtocol?
 
+    /// Union of all NSScreen frames in CG (top-left origin) coordinates, used by
+    /// relative-mode mapping. NSScreen is AppKit and main-thread-only; reading it
+    /// inside `resolveRelativePoint` blocks moving inject() off the main actor.
+    /// Recomputed on main when displays change (didChangeScreenParametersNotification).
+    private var cachedVirtualScreenBounds: CGRect = .zero
+
     // MARK: - Pen injection
 
     func inject(point: TabletPoint, settings: TabletSettings?) {
         rearmWatchdog()
-        let settings = settings ?? TabletSettings()
-        let tool = activeToolSettings ?? settings.activeTool
+        // The snapshot is seeded synchronously in DeviceContext.observeInjectionSnapshot()
+        // before any HID report can arrive, so this guard is defense-in-depth.
+        guard let snap = injectionSnapshot else { return }
+        let tool = snap.activeTool
         var point = point
-        if settings.invertRotation && point.rotation != 0.0 {
+        if snap.invertRotation && point.rotation != 0.0 {
             point.rotation = (360.0 - point.rotation).truncatingRemainder(dividingBy: 360.0)
         }
         let rawPoint: CGPoint
-        if settings.relativeCursorMovement {
-            rawPoint = resolveRelativePoint(point, settings: settings)
+        if snap.relativeCursorMovement {
+            rawPoint = resolveRelativePoint(point, snapshot: snap)
         } else {
-            guard let absPoint = mapToScreen(point, settings: settings) else {
+            guard let absPoint = mapToScreen(point, snapshot: snap) else {
                 // Pen outside active area — deadzone, no events
                 lastRelativeNorm = nil
                 return
@@ -404,7 +450,7 @@ final class InputInjector {
                     postMouseUp(
                         button: activeButton, at: smoothedPoint,
                         clickCount: activeClickCount,
-                        settings: settings)
+                        snapshot: snap)
                     lastTipDown = false
                 }
                 // Release any USB HID mouse buttons that were held when the tool left
@@ -414,13 +460,13 @@ final class InputInjector {
                         postMouseUp(
                             button: .left, at: smoothedPoint,
                             clickCount: activeClickCount,
-                            settings: settings)
+                            snapshot: snap)
                         usbMouseLeftHeld = false
                     }
                     if (lastUSBMouseMask & 0x02) != 0 {
                         postMouseUp(
                             button: .right, at: smoothedPoint, clickCount: 1,
-                            settings: settings)
+                            snapshot: snap)
                     }
                     if (lastUSBMouseMask & 0x04) != 0 {
                         if let e = CGEvent(
@@ -527,7 +573,7 @@ final class InputInjector {
         if tipDown != lastTipDown {
             if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
                 postTabletPointerEvent(
-                    at: screenPoint, pressure: pressure, point: point, settings: settings)
+                    at: screenPoint, pressure: pressure, point: point, snapshot: snap)
             }
             if tipDown {
                 // Cancel any pending deferred mouseUp — tip is back down.
@@ -536,38 +582,49 @@ final class InputInjector {
                 didEmitDragSinceDown = false
                 let tipAction = activeToolIsEraser ? tool.eraserBinding : tool.tipBinding
                 activeButton = tipAction.mouseButton ?? .left
-                let (clickPt, count) = resolveClick(screenPoint, settings: settings)
+                let (clickPt, count) = resolveClick(screenPoint, snapshot: snap)
                 activeClickCount = count
                 postMouseDown(
                     button: activeButton, at: clickPt,
                     pressure: pressure, clickCount: count,
                     point: point,
-                    settings: settings)
+                    snapshot: snap)
             } else {
                 let btn = activeButton
                 let count = activeClickCount
                 let pt = point
-                let sp = screenPoint
 
                 if activeAppProfile == .generic
-                    && settings.tipUpAssist
+                    && snap.tipUpAssist
                     && recentVelocity > Self.tipUpAssistVelocityThreshold {
                     // Defer the mouseUp briefly so fast strokes aren't cut short.
+                    // The deferred mouseUp captures `snap` so it has all the values it
+                    // needs; the live snapshot may have rolled over by the time it fires.
+                    let capturedSnap = snap
                     let work = DispatchWorkItem { [weak self] in
                         guard let self, self.pendingMouseUp != nil else { return }
                         self.pendingMouseUp = nil
-                        // Fire at lastPostedPoint, not the captured `sp`.
+                        // Fire at lastPostedPoint, not at the tip-lift position.
                         // By the time this fires (~80ms after physical tip-lift),
                         // mouseMoved events have advanced lastPostedPoint to wherever
-                        // the pen currently is.  Firing at `sp` warps the cursor back
-                        // to the lift-off position (e.g. a Dock icon) and immediately
-                        // snaps it forward on the next inject(), creating a visible
-                        // cursor zap and spurious drag.  For drawing strokes the pen
-                        // travels only a few pixels in 80ms, so stroke-end fidelity
-                        // is effectively unchanged.
-                        self.postMouseUp(
-                            button: btn, at: self.lastPostedPoint, clickCount: count,
-                            point: pt, settings: settings)
+                        // the pen currently is.  Firing at the original lift-off would
+                        // warp the cursor back, then snap forward on the next inject(),
+                        // creating a visible cursor zap and spurious drag.  For drawing
+                        // strokes the pen travels only a few pixels in 80ms, so
+                        // stroke-end fidelity is effectively unchanged.
+                        // Hop to HIDThread to keep all per-report state on its owning
+                        // run loop — this handler is scheduled via DispatchQueue.main
+                        // to honor the 80ms delay using the existing run-loop timer
+                        // semantics, but the state mutations belong to HIDThread.
+                        CFRunLoopPerformBlock(
+                            HIDThread.shared.runLoop,
+                            CFRunLoopMode.commonModes.rawValue
+                        ) {
+                            self.postMouseUp(
+                                button: btn, at: self.lastPostedPoint, clickCount: count,
+                                point: pt, snapshot: capturedSnap)
+                        }
+                        CFRunLoopWakeUp(HIDThread.shared.runLoop)
                     }
                     pendingMouseUp = work
                     DispatchQueue.main.asyncAfter(
@@ -576,7 +633,7 @@ final class InputInjector {
                     postMouseUp(
                         button: activeButton, at: screenPoint,
                         clickCount: activeClickCount, point: point,
-                        settings: settings)
+                        snapshot: snap)
                 }
             }
             lastPostedPoint = screenPoint
@@ -611,23 +668,23 @@ final class InputInjector {
                 }
                 if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
                     postTabletPointerEvent(
-                        at: screenPoint, pressure: pressure, point: point, settings: settings)
+                        at: screenPoint, pressure: pressure, point: point, snapshot: snap)
                 }
                 if dragging {
                     postMouseDrag(
                         button: activeButton, at: screenPoint, pressure: pressure, point: point,
-                        settings: settings)
+                        snapshot: snap)
                     didEmitDragSinceDown = true
                 } else if let dragBtn = hoverDragButton {
                     // Barrel button held while hovering — send otherMouseDragged /
                     // rightMouseDragged so apps like SketchUp receive a proper drag stream.
                     postMouseDrag(
                         button: dragBtn, at: screenPoint, pressure: 0, point: point,
-                        settings: settings)
+                        snapshot: snap)
                 } else {
                     postMouseMoved(
                         at: screenPoint, point: point,
-                        settings: settings)
+                        snapshot: snap)
                 }
                 lastPostedPoint = screenPoint
                 lastPostedPressure = pressure
@@ -647,12 +704,14 @@ final class InputInjector {
             // For mouse tools button1 drives the primary click (tipDown above);
             // dispatching it again as a button action would double-fire.
             if !activeToolIsMouse {
-                fireButtonAction(btn1, down: point.penButton1, at: screenPoint, settings: settings)
+                fireButtonAction(btn1, down: point.penButton1, at: screenPoint,
+                                 snapshot: snap, settings: settings)
             }
         }
         if point.penButton2 != lastButton2Down {
             lastButton2Down = point.penButton2
-            fireButtonAction(btn2, down: point.penButton2, at: screenPoint, settings: settings)
+            fireButtonAction(btn2, down: point.penButton2, at: screenPoint,
+                             snapshot: snap, settings: settings)
         }
 
         // ── Middle button (mouse tool only, always immediate) ──────────────────
@@ -680,17 +739,16 @@ final class InputInjector {
     /// Called by TabletManager when WacomShim receives an eSendTabletEvent(eEventPointer)
     /// Apple Event from Adobe Photoshop / Illustrator.
     func replayPointerEvent(settings: TabletSettings? = nil) {
-        guard let point = shimLastPoint else { return }
-        let s = settings ?? TabletSettings()
+        guard let point = shimLastPoint, let snap = injectionSnapshot else { return }
         postTabletPointerEvent(
-            at: shimLastScreen, pressure: shimLastPressure, point: point, settings: s)
+            at: shimLastScreen, pressure: shimLastPressure, point: point, snapshot: snap)
         let dragging = lastTipDown || (activeToolIsMouse && usbMouseLeftHeld)
         if dragging {
             postMouseDrag(
                 button: activeButton, at: shimLastScreen, pressure: shimLastPressure, point: point,
-                settings: s)
+                snapshot: snap)
         } else {
-            postMouseMoved(at: shimLastScreen, point: point, settings: s)
+            postMouseMoved(at: shimLastScreen, point: point, snapshot: snap)
         }
     }
 
@@ -713,7 +771,8 @@ final class InputInjector {
     func injectMouseButtons(mask: UInt8, settings: TabletSettings?) {
         rearmWatchdog()
         guard mask != lastUSBMouseMask else { return }
-        let s = settings ?? TabletSettings()
+        guard let snap = injectionSnapshot else { return }
+        let tool = snap.activeTool
         let loc = currentCursorPosition()
         let oldMask = lastUSBMouseMask
         lastUSBMouseMask = mask
@@ -729,44 +788,41 @@ final class InputInjector {
             usbMouseLeftHeld = leftNow
             activeButton = .left
             if leftNow {
-                let (clickPt, count) = resolveClick(loc, settings: s)
+                let (clickPt, count) = resolveClick(loc, snapshot: snap)
                 activeClickCount = count
                 postMouseDown(
-                    button: .left, at: clickPt, pressure: 1.0, clickCount: count, settings: s)
+                    button: .left, at: clickPt, pressure: 1.0, clickCount: count, snapshot: snap)
             } else {
-                postMouseUp(button: .left, at: loc, clickCount: activeClickCount, settings: s)
+                postMouseUp(button: .left, at: loc, clickCount: activeClickCount, snapshot: snap)
             }
             lastPostedPoint = loc
             hasPostedPoint = true
         }
         if rightNow != rightWas {
             if rightNow {
-                postMouseDown(button: .right, at: loc, pressure: 1.0, clickCount: 1, settings: s)
+                postMouseDown(button: .right, at: loc, pressure: 1.0, clickCount: 1, snapshot: snap)
             } else {
-                postMouseUp(button: .right, at: loc, clickCount: 1, settings: s)
+                postMouseUp(button: .right, at: loc, clickCount: 1, snapshot: snap)
             }
         }
         // Button 3 (bit 2) — routed through configured binding
         if midNow != midWas {
-            let tool = activeToolSettings
-            let binding = tool?.penButton3Binding ?? .middleClick
-            fireButtonAction(binding, down: midNow, at: loc, settings: s)
+            fireButtonAction(tool.penButton3Binding, down: midNow, at: loc,
+                             snapshot: snap, settings: settings)
         }
         // Button 4 (bit 3) — routed through configured binding
         let btn4Now = (mask & 0x08) != 0
         let btn4Was = (oldMask & 0x08) != 0
         if btn4Now != btn4Was {
-            let tool = activeToolSettings
-            let binding = tool?.penButton4Binding ?? .none
-            fireButtonAction(binding, down: btn4Now, at: loc, settings: s)
+            fireButtonAction(tool.penButton4Binding, down: btn4Now, at: loc,
+                             snapshot: snap, settings: settings)
         }
         // Button 5 (bit 4) — routed through configured binding
         let btn5Now = (mask & 0x10) != 0
         let btn5Was = (oldMask & 0x10) != 0
         if btn5Now != btn5Was {
-            let tool = activeToolSettings
-            let binding = tool?.penButton5Binding ?? .none
-            fireButtonAction(binding, down: btn5Now, at: loc, settings: s)
+            fireButtonAction(tool.penButton5Binding, down: btn5Now, at: loc,
+                             snapshot: snap, settings: settings)
         }
     }
 
@@ -777,15 +833,16 @@ final class InputInjector {
     /// `groundTruthSyntheticFlags` across rotation samples.
     private func fireKeyTap(_ binding: ButtonBinding,
                             at loc: CGPoint,
-                            settings: TabletSettings) {
-        fireButtonAction(binding, down: true, at: loc, settings: settings)
-        fireButtonAction(binding, down: false, at: loc, settings: settings)
+                            snapshot: InjectionSnapshot,
+                            settings: TabletSettings?) {
+        fireButtonAction(binding, down: true, at: loc, snapshot: snapshot, settings: settings)
+        fireButtonAction(binding, down: false, at: loc, snapshot: snapshot, settings: settings)
     }
 
     func injectAux(buttons: AuxButtons, settings: TabletSettings?) {
         rearmWatchdog()
-        let s = settings ?? TabletSettings()
-        let bindings = s.expressKeyBindings
+        guard let snap = injectionSnapshot else { return }
+        let bindings = snap.expressKeyBindings
         let cursorPos = currentCursorPosition()
 
         // ── Express keys ───────────────────────────────────────────────────────
@@ -796,13 +853,16 @@ final class InputInjector {
                 // Update tracking state first so the quiescent check inside
                 // fireButtonAction sees the current button state, not the pre-transition state.
                 lastAuxButtons[i] = down
-                fireButtonAction(bindings[i], down: down, at: cursorPos, settings: s)
+                fireButtonAction(bindings[i], down: down, at: cursorPos,
+                                 snapshot: snap, settings: settings)
             } else if down && hasMechanicalPulse {
                 // Button is already tracked as down, but a new mechanical pulse arrived —
                 // the user re-pressed before the release event was seen. Force a complete
                 // up→down cycle so the key fires correctly without getting swallowed.
-                fireButtonAction(bindings[i], down: false, at: cursorPos, settings: s)
-                fireButtonAction(bindings[i], down: true, at: cursorPos, settings: s)
+                fireButtonAction(bindings[i], down: false, at: cursorPos,
+                                 snapshot: snap, settings: settings)
+                fireButtonAction(bindings[i], down: true, at: cursorPos,
+                                 snapshot: snap, settings: settings)
                 // lastAuxButtons[i] stays true — the button is still down after this cycle
             }
         }
@@ -811,24 +871,25 @@ final class InputInjector {
         let ringButtonDown = buttons.touchRingButtonDown
         if ringButtonDown != lastRingButtonDown {
             lastRingButtonDown = ringButtonDown
-            fireButtonAction(
-                s.touchRingButtonBinding, down: ringButtonDown, at: cursorPos, settings: s)
+            fireButtonAction(snap.touchRingButtonBinding, down: ringButtonDown,
+                             at: cursorPos, snapshot: snap, settings: settings)
         }
 
         // ── Touch ring ─────────────────────────────────────────────────────────
         // Position 0x7F means no contact.  Compute a wrap-aware delta when a
         // finger is actively moving (both current and previous positions valid).
         // The ring has 72 steps (0–71, ~5° each); wrap threshold is 36.
+        let activeSlot: ControlSlot? = snap.touchRingSlots.indices.contains(snap.touchRingActiveSlotIndex)
+            ? snap.touchRingSlots[snap.touchRingActiveSlotIndex] : nil
+
         let ringPos = buttons.touchRingPosition
         if buttons.touchRingActive, lastRingPos != 0x7F {
             var delta = Int(ringPos) - Int(lastRingPos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
-            if delta != 0,
-               let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex)
-                   ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil
-            {
-                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ringAccum, at: cursorPos, settings: s)
+            if delta != 0, let slot = activeSlot {
+                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ringAccum,
+                                  at: cursorPos, snapshot: snap, settings: settings)
             }
         }
         if !buttons.touchRingActive { ringAccum = 0 }
@@ -840,11 +901,9 @@ final class InputInjector {
             var delta = Int(ring2Pos) - Int(lastRing2Pos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
-            if delta != 0,
-               let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex)
-                   ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil
-            {
-                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ring2Accum, at: cursorPos, settings: s)
+            if delta != 0, let slot = activeSlot {
+                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ring2Accum,
+                                  at: cursorPos, snapshot: snap, settings: settings)
             }
         }
         if !buttons.touchRing2Active { ring2Accum = 0 }
@@ -857,11 +916,9 @@ final class InputInjector {
         let s1pos = buttons.touchStrip1Position
         if buttons.touchStrip1Active, lastStrip1Pos != 0xFF {
             let delta = Int(s1pos) - Int(lastStrip1Pos)
-            if delta != 0,
-               let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex)
-                   ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil
-            {
-                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &strip1Accum, at: cursorPos, settings: s)
+            if delta != 0, let slot = activeSlot {
+                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &strip1Accum,
+                                  at: cursorPos, snapshot: snap, settings: settings)
             }
         }
         if !buttons.touchStrip1Active { strip1Accum = 0 }
@@ -871,11 +928,9 @@ final class InputInjector {
         let s2pos = buttons.touchStrip2Position
         if buttons.touchStrip2Active, lastStrip2Pos != 0xFF {
             let delta = Int(s2pos) - Int(lastStrip2Pos)
-            if delta != 0,
-               let slot = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex)
-                   ? s.touchRingSlots[s.touchRingActiveSlotIndex] : nil
-            {
-                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &strip2Accum, at: cursorPos, settings: s)
+            if delta != 0, let slot = activeSlot {
+                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &strip2Accum,
+                                  at: cursorPos, snapshot: snap, settings: settings)
             }
         }
         if !buttons.touchStrip2Active { strip2Accum = 0 }
@@ -892,14 +947,14 @@ final class InputInjector {
 
     private func resolveClick(
         _ candidate: CGPoint,
-        settings: TabletSettings
+        snapshot: InjectionSnapshot
     ) -> (CGPoint, Int) {
         let now = CFAbsoluteTimeGetCurrent()
         let dist = hypot(
             candidate.x - lastClickPosition.x,
             candidate.y - lastClickPosition.y)
 
-        let snapThreshold = settings.doubleClickDistance
+        let snapThreshold = snapshot.doubleClickDistance
         let countThreshold = snapThreshold > 0 ? snapThreshold : 8.0
         let withinTime = now - lastClickTime < NSEvent.doubleClickInterval
         let withinDist = dist < countThreshold
@@ -1001,13 +1056,17 @@ final class InputInjector {
     /// Express-key modifiers are excluded — they arrive via `injectAux` with their own
     /// settings context and are handled by the DispatchWorkItem / time-based watchdogs.
     private func expectedSyntheticFlagsForHeldPenButtons() -> CGEventFlags {
-        guard let tool = activeToolSettings else { return [] }
+        // Pen-button bindings live on the active tool's snapshot (refreshed on every
+        // ToolSettings change). When no snapshot has been seeded yet — e.g. during
+        // the brief window before DeviceContext.observeInjectionSnapshot() runs —
+        // there are no held pen buttons either, so an empty result is correct.
+        guard let snap = injectionSnapshot else { return [] }
         var flags = CGEventFlags()
         if lastButton1Down {
-            flags.formUnion(CGEventFlags(rawValue: tool.penButton1Binding.modifierFlags))
+            flags.formUnion(CGEventFlags(rawValue: snap.activeTool.penButton1Binding.modifierFlags))
         }
         if lastButton2Down {
-            flags.formUnion(CGEventFlags(rawValue: tool.penButton2Binding.modifierFlags))
+            flags.formUnion(CGEventFlags(rawValue: snap.activeTool.penButton2Binding.modifierFlags))
         }
         return flags
     }
@@ -1111,7 +1170,11 @@ final class InputInjector {
     /// proximity-exit safety valve (which calls releaseAllSyntheticModifiers) is
     /// unaffected and continues to operate independently.
     func releaseOnAppSwitch() {
-        releaseAllSyntheticModifiers()
+        // groundTruthSyntheticFlags / modifierRefCounts are HIDThread-owned.
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
+            self?.releaseAllSyntheticModifiers()
+        }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
     }
 
     /// Stamps an event with reconstructed flags and posts it.
@@ -1128,6 +1191,7 @@ final class InputInjector {
         event.post(tap: .cghidEventTap)
     }
 
+    @MainActor
     private func installFlagsChangedTap() {
         // Listen-only tap at the session level for .flagsChanged events only.
         // Passive: we never modify events, just observe them.
@@ -1186,9 +1250,9 @@ final class InputInjector {
     /// Photoshop's Pen Tilt brush dynamics respond to barrel twist.
     private func resolveEffectivePose(
         point: TabletPoint,
-        settings: TabletSettings
+        snapshot: InjectionSnapshot
     ) -> (tiltX: Double, tiltY: Double, rotation: Double) {
-        let tool = activeToolSettings ?? settings.activeTool
+        let tool = snapshot.activeTool
 
         var tiltX = point.tiltX
         var tiltY = point.tiltY
@@ -1197,7 +1261,7 @@ final class InputInjector {
         if tool.useRotationAsTilt && point.rotation != 0.0 {
             var degrees = point.rotation
 
-            if settings.invertRotation {
+            if snapshot.invertRotation {
                 degrees = (360.0 - degrees).truncatingRemainder(dividingBy: 360.0)
             }
 
@@ -1218,7 +1282,7 @@ final class InputInjector {
         button: CGMouseButton, at location: CGPoint,
         pressure: Double, clickCount: Int,
         point: TabletPoint? = nil,
-        settings: TabletSettings
+        snapshot: InjectionSnapshot
     ) {
         let type: CGEventType
         switch button {
@@ -1243,7 +1307,7 @@ final class InputInjector {
             e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
             e.setDoubleValueField(.mouseEventPressure, value: pressure)
             if let p = point {
-                let pose = resolveEffectivePose(point: p, settings: settings)
+                let pose = resolveEffectivePose(point: p, snapshot: snapshot)
                 e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
                 e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
                 e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
@@ -1257,7 +1321,7 @@ final class InputInjector {
     private func postMouseUp(
         button: CGMouseButton, at location: CGPoint,
         clickCount: Int, point: TabletPoint? = nil,
-        settings: TabletSettings
+        snapshot: InjectionSnapshot
     ) {
         let type: CGEventType
         switch button {
@@ -1277,7 +1341,7 @@ final class InputInjector {
             e.setDoubleValueField(.tabletEventPointPressure, value: 0)
             e.setDoubleValueField(.mouseEventPressure, value: 0)
             if let p = point {
-                let pose = resolveEffectivePose(point: p, settings: settings)
+                let pose = resolveEffectivePose(point: p, snapshot: snapshot)
                 e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
                 e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
                 e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
@@ -1291,7 +1355,7 @@ final class InputInjector {
     private func postMouseDrag(
         button: CGMouseButton, at location: CGPoint,
         pressure: Double, point: TabletPoint? = nil,
-        settings: TabletSettings
+        snapshot: InjectionSnapshot
     ) {
         let type: CGEventType
         switch button {
@@ -1311,7 +1375,7 @@ final class InputInjector {
             e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
             e.setDoubleValueField(.mouseEventPressure, value: pressure)
             if let p = point {
-                let pose = resolveEffectivePose(point: p, settings: settings)
+                let pose = resolveEffectivePose(point: p, snapshot: snapshot)
                 e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
                 e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
                 e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
@@ -1330,7 +1394,7 @@ final class InputInjector {
     }
 
     private func postMouseMoved(
-        at location: CGPoint, point: TabletPoint? = nil, settings: TabletSettings
+        at location: CGPoint, point: TabletPoint? = nil, snapshot: InjectionSnapshot
     ) {
         guard
             let e = CGEvent(
@@ -1339,7 +1403,7 @@ final class InputInjector {
         else { return }
         if activeAppProfile != .pagesPlainMouse {
             if let p = point {
-                let pose = resolveEffectivePose(point: p, settings: settings)
+                let pose = resolveEffectivePose(point: p, snapshot: snapshot)
                 e.setIntegerValueField(.mouseEventSubtype, value: 1)
                 e.setIntegerValueField(.tabletEventDeviceID, value: 1)
                 e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
@@ -1359,7 +1423,7 @@ final class InputInjector {
 
     private func postTabletPointerEvent(
         at location: CGPoint, pressure: Double,
-        point: TabletPoint, settings: TabletSettings
+        point: TabletPoint, snapshot: InjectionSnapshot
     ) {
         guard let e = CGEvent(source: sessionSource) else { return }
         e.type = .tabletPointer
@@ -1368,7 +1432,7 @@ final class InputInjector {
         e.setIntegerValueField(.tabletEventPointX, value: Int64(point.x))
         e.setIntegerValueField(.tabletEventPointY, value: Int64(point.y))
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
-        let pose = resolveEffectivePose(point: point, settings: settings)
+        let pose = resolveEffectivePose(point: point, snapshot: snapshot)
         e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
         e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
         e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
@@ -1457,9 +1521,13 @@ final class InputInjector {
 
     // MARK: - Button binding execution
 
+    /// Settings writes for `.displayToggle` / `.ringCycle` / `.ringSelectSlot` are
+    /// dispatched to main; everything else runs synchronously on the caller's thread
+    /// (HIDThread for inject/injectAux/injectMouseButtons).
     private func fireButtonAction(
         _ binding: ButtonBinding, down: Bool,
         at location: CGPoint,
+        snapshot: InjectionSnapshot,
         settings: TabletSettings? = nil
     ) {
         switch binding.kind {
@@ -1569,15 +1637,25 @@ final class InputInjector {
             finalizeAndPost(e)
 
         case .displayToggle:
-            guard down, let s = settings else { break }
-            s.targetDisplayIndex = TabletSettings.displayModeToggle
-            cycleToggleDisplay(settings: s)
+            guard down else { break }
+            // Cache invalidation is local to HIDThread; only the persisted
+            // index needs to round-trip through main.
+            cycleToggleDisplay(snapshot: snapshot)
+            if let s = settings {
+                Task { @MainActor in s.targetDisplayIndex = TabletSettings.displayModeToggle }
+            }
         case .ringCycle:
-            guard down, let s = settings else { break }
-            s.touchRingActiveSlotIndex = (s.touchRingActiveSlotIndex + 1) % max(1, s.touchRingSlots.count)
+            guard down else { break }
+            let nextIndex = (snapshot.touchRingActiveSlotIndex + 1) % max(1, snapshot.touchRingSlots.count)
+            if let s = settings {
+                Task { @MainActor in s.touchRingActiveSlotIndex = nextIndex }
+            }
         case .ringSelectSlot:
-            guard down, let s = settings else { break }
-            s.touchRingActiveSlotIndex = min(Int(binding.keyCode), max(0, s.touchRingSlots.count - 1))
+            guard down else { break }
+            let target = min(Int(binding.keyCode), max(0, snapshot.touchRingSlots.count - 1))
+            if let s = settings {
+                Task { @MainActor in s.touchRingActiveSlotIndex = target }
+            }
         case .doubleClick:
             guard down else { break }
             for clickState in [1, 2] {
@@ -1615,7 +1693,7 @@ final class InputInjector {
     /// runaway at high speed + large delta.
     private func dispatchRingDelta(
         rawDelta: Int, slot: ControlSlot, accum: inout Double,
-        at location: CGPoint, settings: TabletSettings
+        at location: CGPoint, snapshot: InjectionSnapshot, settings: TabletSettings?
     ) {
         accum += Double(rawDelta) * slot.speed
         let lines = Int(accum)
@@ -1627,7 +1705,9 @@ final class InputInjector {
         case .keyPress:
             let binding = lines > 0 ? slot.cwBinding : slot.ccwBinding
             let count = min(abs(lines), 4)
-            for _ in 0..<count { fireKeyTap(binding, at: location, settings: settings) }
+            for _ in 0..<count {
+                fireKeyTap(binding, at: location, snapshot: snapshot, settings: settings)
+            }
         case .off:
             break
         }
@@ -1656,20 +1736,12 @@ final class InputInjector {
     /// cursor is clamped to the same total bounds so it can reach any display.
     ///
     /// Active-area crop is still respected: a smaller crop = higher sensitivity.
-    private func resolveRelativePoint(_ point: TabletPoint, settings: TabletSettings) -> CGPoint {
-        // Total virtual screen: union of all display frames.
-        // NSScreen.frame is in AppKit coordinates (bottom-left origin); CGEvent uses
-        // top-left origin, so we convert.  We cache nothing here — display changes
-        // affect cachedDisplayBounds (absolute mode) via the existing observer.
-        let primaryH = CGFloat(CGDisplayPixelsHigh(CGMainDisplayID()))
-        let virtualBounds: CGRect = NSScreen.screens.reduce(CGRect.null) { acc, screen in
-            // Convert AppKit frame (bottom-left origin) → CG frame (top-left origin).
-            let f = screen.frame
-            let cgRect = CGRect(
-                x: f.minX, y: primaryH - f.maxY,
-                width: f.width, height: f.height)
-            return acc.union(cgRect)
-        }
+    private func resolveRelativePoint(_ point: TabletPoint, snapshot: InjectionSnapshot) -> CGPoint {
+        // Virtual screen bounds (union of all displays in CG coordinates) are cached
+        // on main and refreshed via didChangeScreenParametersNotification — see
+        // recomputeVirtualScreenBounds(). NSScreen.screens is AppKit and must not be
+        // touched on the HID thread.
+        let virtualBounds = cachedVirtualScreenBounds
         let screen =
             virtualBounds.isEmpty
             ? CGRect(
@@ -1688,7 +1760,7 @@ final class InputInjector {
         let oy: Double
         let effMaxX: Double
         let effMaxY: Double
-        let orientation = settings.tabletOrientation
+        let orientation = snapshot.tabletOrientation
         switch orientation {
         case .landscape:
             ox = rawX
@@ -1711,11 +1783,11 @@ final class InputInjector {
             effMaxX = rawMaxY
             effMaxY = rawMaxX
         }
-        let areaW = Swift.max(settings.activeAreaWidth, 0.001) * effMaxX
-        let areaH = Swift.max(settings.activeAreaHeight, 0.001) * effMaxY
+        let areaW = Swift.max(snapshot.activeAreaWidth, 0.001) * effMaxX
+        let areaH = Swift.max(snapshot.activeAreaHeight, 0.001) * effMaxY
         let norm = CGPoint(
-            x: (ox - settings.activeAreaX * effMaxX) / areaW,
-            y: (oy - settings.activeAreaY * effMaxY) / areaH)
+            x: (ox - snapshot.activeAreaX * effMaxX) / areaW,
+            y: (oy - snapshot.activeAreaY * effMaxY) / areaH)
 
         // First report after proximity entry: anchor without moving.
         guard let prev = lastRelativeNorm else {
@@ -1734,10 +1806,10 @@ final class InputInjector {
 
     /// Maps a tablet point to screen coordinates, accounting for orientation and active area cropping.
     /// Returns nil if the pen is outside the active area (deadzone).
-    private func mapToScreen(_ point: TabletPoint, settings: TabletSettings) -> CGPoint? {
-        let idx = settings.targetDisplayIndex
+    private func mapToScreen(_ point: TabletPoint, snapshot: InjectionSnapshot) -> CGPoint? {
+        let idx = snapshot.targetDisplayIndex
         if cachedDisplayIndex != idx {
-            let (bounds, displayID) = resolveDisplayBoundsAndID(settings: settings)
+            let (bounds, displayID) = resolveDisplayBoundsAndID(snapshot: snapshot)
             cachedDisplayBounds = bounds
             cachedDisplayID = displayID
             cachedDisplayIndex = idx
@@ -1759,7 +1831,7 @@ final class InputInjector {
         let effMaxX: Double  // range of oriented x axis
         let effMaxY: Double  // range of oriented y axis
 
-        let orientation = settings.tabletOrientation
+        let orientation = snapshot.tabletOrientation
         switch orientation {
         case .landscape:
             ox = rawX
@@ -1783,12 +1855,12 @@ final class InputInjector {
             effMaxY = rawMaxX
         }
 
-        var areaX = settings.activeAreaX * effMaxX
-        var areaY = settings.activeAreaY * effMaxY
-        var areaW = Swift.max(settings.activeAreaWidth, 0.001) * effMaxX
-        var areaH = Swift.max(settings.activeAreaHeight, 0.001) * effMaxY
+        var areaX = snapshot.activeAreaX * effMaxX
+        var areaY = snapshot.activeAreaY * effMaxY
+        var areaW = Swift.max(snapshot.activeAreaWidth, 0.001) * effMaxX
+        var areaH = Swift.max(snapshot.activeAreaHeight, 0.001) * effMaxY
 
-        if settings.proportionalMapping {
+        if snapshot.proportionalMapping {
             let tabletAspect = areaW / areaH
             let displayAspect = Double(displayBounds.width) / Double(displayBounds.height)
             if tabletAspect > displayAspect {
@@ -1812,8 +1884,8 @@ final class InputInjector {
         var calX = relX, calY = relY
         let orientRaw = orientation.rawValue
         if cachedCalibrationOrientation != orientRaw {
-            cachedCalibration = settings.calibration(for: orientation,
-                                                      displayID: cachedDisplayID)
+            cachedCalibration = snapshot.calibration(for: orientation,
+                                                     displayID: cachedDisplayID)
             cachedCalibrationOrientation = orientRaw
         }
         if let cal = cachedCalibration {
@@ -1824,8 +1896,8 @@ final class InputInjector {
         var sy = displayBounds.minY + calY * displayBounds.height
 
         // Additive fine-tune offset (points, user-configured) — stacks on top of calibration.
-        sx += settings.parallaxOffsetX
-        sy += settings.parallaxOffsetY
+        sx += snapshot.parallaxOffsetX
+        sy += snapshot.parallaxOffsetY
 
         sx = Swift.min(Swift.max(sx, displayBounds.minX), displayBounds.maxX)
         sy = Swift.min(Swift.max(sy, displayBounds.minY), displayBounds.maxY)
@@ -1834,7 +1906,7 @@ final class InputInjector {
 
     /// Queries the OS display list and returns the target display's bounds and ID.
     /// Only called on cache miss; results stored in cachedDisplayBounds/cachedDisplayID.
-    private func resolveDisplayBoundsAndID(settings: TabletSettings) -> (CGRect, CGDirectDisplayID) {
+    private func resolveDisplayBoundsAndID(snapshot: InjectionSnapshot) -> (CGRect, CGDirectDisplayID) {
         let mainID = CGMainDisplayID()
         let fallback = CGRect(
             x: 0, y: 0,
@@ -1849,13 +1921,13 @@ final class InputInjector {
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else {
             return (fallback, mainID)
         }
-        let idx = settings.targetDisplayIndex
+        let idx = snapshot.targetDisplayIndex
         if idx == TabletSettings.displayModeAll {
             // Union bounding rect spanning every active display — no single display ID.
             return (ids.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }, 0)
         }
         if idx == TabletSettings.displayModeToggle {
-            let rotation = toggleRotation(settings: settings, allIDs: ids)
+            let rotation = toggleRotation(snapshot: snapshot, allIDs: ids)
             guard !rotation.isEmpty else { return (CGDisplayBounds(mainID), mainID) }
             let toggleID = rotation[currentToggleIndex % rotation.count]
             return (CGDisplayBounds(toggleID), toggleID)
@@ -1870,22 +1942,23 @@ final class InputInjector {
     /// Returns the ordered list of display IDs in the toggle rotation,
     /// filtered by the IDs stored in settings (empty = all included).
     private func toggleRotation(
-        settings: TabletSettings,
+        snapshot: InjectionSnapshot,
         allIDs: [CGDirectDisplayID]
     ) -> [CGDirectDisplayID] {
-        let stored = settings.toggleDisplayIDSet
+        let stored = snapshot.toggleDisplayIDs
         if stored.isEmpty { return allIDs }
         return allIDs.filter { stored.contains($0) }
     }
 
     /// Advances the toggle rotation to the next display in the sequence.
     /// No-op when fewer than two displays are in the rotation.
-    func cycleToggleDisplay(settings: TabletSettings) {
+    /// Called from fireButtonAction (HIDThread) when a `.displayToggle` binding fires.
+    func cycleToggleDisplay(snapshot: InjectionSnapshot) {
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
-        let rotation = toggleRotation(settings: settings, allIDs: ids)
+        let rotation = toggleRotation(snapshot: snapshot, allIDs: ids)
         guard rotation.count > 1 else { return }
         currentToggleIndex = (currentToggleIndex + 1) % rotation.count
         cachedDisplayIndex = Int.min  // force cache miss on next inject
@@ -1893,8 +1966,29 @@ final class InputInjector {
     }
 
     /// Force re-read of calibration data on next inject.
-    /// Call after calibration data is stored or cleared.
+    /// Call after calibration data is stored or cleared. Hops to HIDThread because
+    /// `cachedCalibrationOrientation` is owned there.
     func invalidateCalibrationCache() {
-        cachedCalibrationOrientation = -1
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
+            self?.cachedCalibrationOrientation = -1
+        }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+    }
+
+    /// Recomputes `cachedVirtualScreenBounds` from `NSScreen.screens`.
+    /// Must be called on main. Invoked from init and from the
+    /// didChangeScreenParametersNotification observer.
+    @MainActor
+    private func recomputeVirtualScreenBounds() {
+        let primaryH = CGFloat(CGDisplayPixelsHigh(CGMainDisplayID()))
+        let union: CGRect = NSScreen.screens.reduce(CGRect.null) { acc, screen in
+            // Convert AppKit frame (bottom-left origin) → CG frame (top-left origin).
+            let f = screen.frame
+            let cgRect = CGRect(
+                x: f.minX, y: primaryH - f.maxY,
+                width: f.width, height: f.height)
+            return acc.union(cgRect)
+        }
+        cachedVirtualScreenBounds = union
     }
 }
