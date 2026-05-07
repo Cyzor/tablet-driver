@@ -44,7 +44,18 @@ final class TabletManager: ObservableObject {
     // MARK: - Per-device state
 
     @Published var contexts: [Int: DeviceContext] = [:]
-    @Published var activeContext: DeviceContext? = nil
+    /// The device whose injector is currently posting CGEvents.
+    /// `didSet` keeps `injector.isActive` in lockstep so the HIDThread fast path in
+    /// `onTablet` is gated by a flag that exactly mirrors `activeContext`. Without
+    /// this, `injector.isActive` would only flip on a context *change*; the very
+    /// first device (where `deviceConnected` does `if activeContext == nil` …)
+    /// would have its activation skipped and the cursor would never move.
+    @Published var activeContext: DeviceContext? = nil {
+        didSet {
+            if oldValue !== activeContext { oldValue?.injector.isActive = false }
+            activeContext?.injector.isActive = true
+        }
+    }
     @Published var activeToolID: String? = nil
     @Published var liveButtons = LiveButtonState()
     @Published var livePoint: TabletPoint? = nil
@@ -312,6 +323,8 @@ final class TabletManager: ObservableObject {
             let injector = context.injector
 
             // Proximity-enter activates this device's context.
+            // Note: `activeContext`'s `didSet` flips `injector.isActive` for both
+            // the outgoing and incoming contexts, so we don't touch it here.
             if point.inProximity && self.activeContext !== context {
                 if let old = self.activeContext, old.injector.lastProximity {
                     let exitPoint = TabletPoint(
@@ -320,11 +333,14 @@ final class TabletManager: ObservableObject {
                         tiltX: 0, tiltY: 0,
                         penButton1: false, penButton2: false,
                         eraser: false, inProximity: false, hoverDistance: 0)
-                    old.injector.isActive = false
+                    // The outgoing exit must be injected *before* the active-context
+                    // change flips `old.injector.isActive` off (didSet hasn't fired yet
+                    // because we're still on the prior assignment). Inject still works
+                    // because it doesn't gate on isActive — only the HIDThread fast
+                    // path does.
                     old.injector.inject(point: exitPoint, settings: old.settings)
                 }
                 self.activeContext = context
-                injector.isActive = true
                 // Inject this report from main (slow, one-time per switch). Cheap.
                 injector.inject(point: point, settings: context.settings)
             }
