@@ -106,16 +106,33 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Keep `injector.injectionSnapshot` in sync with the live TabletSettings/ToolSettings.
     ///
     /// `objectWillChange` fires *before* the new value is published, so we hop through
-    /// `RunLoop.main` and debounce so the rebuild reads the post-update state. The
-    /// inner ToolSettings subscription is replaced whenever `activeTool` swaps, so
-    /// per-tool field edits (pressure curve, smoothing, button bindings) are also
-    /// reflected.
+    /// `RunLoop.main` and debounce so the rebuild reads the post-update state. Each
+    /// rebuild is published onto HIDThread via `CFRunLoopPerformBlock`, so inject()
+    /// reads the snapshot from the same thread that wrote it (HIDThread is a serial
+    /// run-loop thread). The inner ToolSettings subscription is replaced whenever
+    /// `activeTool` swaps, so per-tool field edits (pressure curve, smoothing,
+    /// button bindings) are also reflected.
     func observeInjectionSnapshot() {
-        injector.injectionSnapshot = settings.makeInjectionSnapshot()
+        // Seed synchronously so the first inject() always sees a snapshot.
+        // Both the main-side property and the HIDThread-visible read path are written
+        // here; on the inject path, HIDThread reads what was last written via
+        // CFRunLoopPerformBlock.
+        let initial = settings.makeInjectionSnapshot()
+        injector.injectionSnapshot = initial
+        let injectorRef = injector
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            injectorRef.injectionSnapshot = initial
+        }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
 
         let rebuild: () -> Void = { [weak self] in
             guard let self else { return }
-            self.injector.injectionSnapshot = self.settings.makeInjectionSnapshot()
+            let snap = self.settings.makeInjectionSnapshot()
+            let injectorRef = self.injector
+            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+                injectorRef.injectionSnapshot = snap
+            }
+            CFRunLoopWakeUp(HIDThread.shared.runLoop)
         }
 
         settings.objectWillChange
