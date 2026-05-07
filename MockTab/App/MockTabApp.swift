@@ -67,6 +67,10 @@ struct MockTabApp: App {
                     HelpWindowController.shared.show()
                 }
                 .keyboardShortcut("?", modifiers: .command)
+
+                Button(String(localized: "MockTab Website\u{2026}", comment: "Help menu: open MockTab website")) {
+                    NSWorkspace.shared.open(URL(string: "https://mocktab.org")!)
+                }
             }
 
             CommandGroup(replacing: .undoRedo) {

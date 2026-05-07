@@ -1688,7 +1688,8 @@ final class InputInjector {
         let oy: Double
         let effMaxX: Double
         let effMaxY: Double
-        switch settings.tabletOrientation {
+        let orientation = settings.tabletOrientation
+        switch orientation {
         case .landscape:
             ox = rawX
             oy = rawY
@@ -1758,7 +1759,8 @@ final class InputInjector {
         let effMaxX: Double  // range of oriented x axis
         let effMaxY: Double  // range of oriented y axis
 
-        switch settings.tabletOrientation {
+        let orientation = settings.tabletOrientation
+        switch orientation {
         case .landscape:
             ox = rawX
             oy = rawY
@@ -1808,9 +1810,9 @@ final class InputInjector {
 
         // Apply multi-point calibration transform in normalized space (if available).
         var calX = relX, calY = relY
-        let orientRaw = settings.tabletOrientation.rawValue
+        let orientRaw = orientation.rawValue
         if cachedCalibrationOrientation != orientRaw {
-            cachedCalibration = settings.calibration(for: settings.tabletOrientation,
+            cachedCalibration = settings.calibration(for: orientation,
                                                       displayID: cachedDisplayID)
             cachedCalibrationOrientation = orientRaw
         }
