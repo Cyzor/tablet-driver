@@ -172,7 +172,7 @@ enum WacomToolCatalog {
         // Likely an OEM or limited-market variant; the primary Intuos4 Art Pen is 0x10804.)
         catalog[0x0804] = WacomToolSpec(
             toolCode: 0x0804,
-            name: "Marker Pen",
+            name: "Art Pen",
             toolType: .artPen,
             buttonCount: 2,
             maxPressure: nil,
@@ -187,7 +187,7 @@ enum WacomToolCatalog {
         // Marker Pen Eraser
         catalog[0x080C] = WacomToolSpec(
             toolCode: 0x080C,
-            name: "Marker Pen (Eraser)",
+            name: "Art Pen (Eraser)",
             toolType: .eraser,
             buttonCount: 2,
             maxPressure: nil,
