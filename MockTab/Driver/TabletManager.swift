@@ -570,6 +570,7 @@ final class TabletManager: ObservableObject {
                 (wacomDevice as? WacomKnownDevice)?.registerDevice(pending)
             }
             context.observeRingLED()  // after open() so initial LED sync reaches the device
+            context.observeInjectionSnapshot()
             context.settings.applyExpressKeyDefaults()
             refreshConnectedIDs(mostRecent: productID)
 

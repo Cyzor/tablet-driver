@@ -81,7 +81,9 @@ final class InputInjector {
         ) { [weak self] _ in MainActor.assumeIsolated {
             self?.cachedDisplayIndex = Int.min
             self?.cachedCalibrationOrientation = -1
+            self?.recomputeVirtualScreenBounds()
         } }
+        recomputeVirtualScreenBounds()
         leakWatchdogTimer = Timer.scheduledTimer(
             withTimeInterval: 1.0, repeats: true
         ) { [weak self] _ in
@@ -336,6 +338,15 @@ final class InputInjector {
     private(set) var shimLastScreen: CGPoint = .zero
     private(set) var shimLastPressure: Double = 0.0
 
+    // MARK: - Settings snapshot (Phase 2 — populated, not yet read)
+    //
+    // Owned by main actor for now. Refreshed by DeviceContext on every
+    // settings/tool change. Phase 3 will switch this to nonisolated(unsafe)
+    // and route writes through CFRunLoopPerformBlock(HIDThread.shared.runLoop)
+    // so inject() can read it inline on HIDThread without the @MainActor hop.
+
+    var injectionSnapshot: InjectionSnapshot?
+
     // MARK: - Display bounds cache
 
     private var cachedDisplayBounds: CGRect = .zero
@@ -345,6 +356,12 @@ final class InputInjector {
     private var cachedCalibrationOrientation: Int = -1
     private var currentToggleIndex: Int = 0
     private var displayObserver: NSObjectProtocol?
+
+    /// Union of all NSScreen frames in CG (top-left origin) coordinates, used by
+    /// relative-mode mapping. NSScreen is AppKit and main-thread-only; reading it
+    /// inside `resolveRelativePoint` blocks moving inject() off the main actor.
+    /// Recomputed on main when displays change (didChangeScreenParametersNotification).
+    private var cachedVirtualScreenBounds: CGRect = .zero
 
     // MARK: - Pen injection
 
@@ -1657,19 +1674,11 @@ final class InputInjector {
     ///
     /// Active-area crop is still respected: a smaller crop = higher sensitivity.
     private func resolveRelativePoint(_ point: TabletPoint, settings: TabletSettings) -> CGPoint {
-        // Total virtual screen: union of all display frames.
-        // NSScreen.frame is in AppKit coordinates (bottom-left origin); CGEvent uses
-        // top-left origin, so we convert.  We cache nothing here — display changes
-        // affect cachedDisplayBounds (absolute mode) via the existing observer.
-        let primaryH = CGFloat(CGDisplayPixelsHigh(CGMainDisplayID()))
-        let virtualBounds: CGRect = NSScreen.screens.reduce(CGRect.null) { acc, screen in
-            // Convert AppKit frame (bottom-left origin) → CG frame (top-left origin).
-            let f = screen.frame
-            let cgRect = CGRect(
-                x: f.minX, y: primaryH - f.maxY,
-                width: f.width, height: f.height)
-            return acc.union(cgRect)
-        }
+        // Virtual screen bounds (union of all displays in CG coordinates) are cached
+        // on main and refreshed via didChangeScreenParametersNotification — see
+        // recomputeVirtualScreenBounds(). NSScreen.screens is AppKit and must not be
+        // touched on the HID thread once Phase 3 lands.
+        let virtualBounds = cachedVirtualScreenBounds
         let screen =
             virtualBounds.isEmpty
             ? CGRect(
@@ -1896,5 +1905,21 @@ final class InputInjector {
     /// Call after calibration data is stored or cleared.
     func invalidateCalibrationCache() {
         cachedCalibrationOrientation = -1
+    }
+
+    /// Recomputes `cachedVirtualScreenBounds` from `NSScreen.screens`.
+    /// Must be called on main. Invoked from init and from the
+    /// didChangeScreenParametersNotification observer.
+    private func recomputeVirtualScreenBounds() {
+        let primaryH = CGFloat(CGDisplayPixelsHigh(CGMainDisplayID()))
+        let union: CGRect = NSScreen.screens.reduce(CGRect.null) { acc, screen in
+            // Convert AppKit frame (bottom-left origin) → CG frame (top-left origin).
+            let f = screen.frame
+            let cgRect = CGRect(
+                x: f.minX, y: primaryH - f.maxY,
+                width: f.width, height: f.height)
+            return acc.union(cgRect)
+        }
+        cachedVirtualScreenBounds = union
     }
 }

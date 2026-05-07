@@ -87,6 +87,12 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Subscriptions managed by this context (e.g., to TabletManager for change propagation).
     var cancellables: Set<AnyCancellable> = []
 
+    /// Subscriptions for the input-injection snapshot pipeline. Cleared and rebuilt
+    /// whenever `settings.activeTool` changes so the inner ToolSettings observer
+    /// always tracks the live tool.
+    private var snapshotCancellables: Set<AnyCancellable> = []
+    private var activeToolObserver: AnyCancellable?
+
     /// Subscribe to ring slot changes so the physical LED tracks the active mode.
     /// Call this once after `tabletDevice` is assigned.
     func observeRingLED() {
@@ -95,6 +101,42 @@ final class DeviceContext: ObservableObject, Identifiable {
                 self?.tabletDevice?.setRingLED(index: index)
             }
             .store(in: &cancellables)
+    }
+
+    /// Keep `injector.injectionSnapshot` in sync with the live TabletSettings/ToolSettings.
+    ///
+    /// `objectWillChange` fires *before* the new value is published, so we hop through
+    /// `RunLoop.main` and debounce so the rebuild reads the post-update state. The
+    /// inner ToolSettings subscription is replaced whenever `activeTool` swaps, so
+    /// per-tool field edits (pressure curve, smoothing, button bindings) are also
+    /// reflected.
+    func observeInjectionSnapshot() {
+        injector.injectionSnapshot = settings.makeInjectionSnapshot()
+
+        let rebuild: () -> Void = { [weak self] in
+            guard let self else { return }
+            self.injector.injectionSnapshot = self.settings.makeInjectionSnapshot()
+        }
+
+        settings.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { _ in rebuild() }
+            .store(in: &snapshotCancellables)
+
+        // Re-bind the inner tool observer whenever activeTool swaps.
+        let bindTool: (ToolSettings) -> Void = { [weak self] tool in
+            guard let self else { return }
+            self.activeToolObserver = tool.objectWillChange
+                .receive(on: RunLoop.main)
+                .sink { _ in rebuild() }
+        }
+        bindTool(settings.activeTool)
+        settings.$activeTool
+            .sink { tool in
+                bindTool(tool)
+                rebuild()  // tool reference itself changed — refresh immediately
+            }
+            .store(in: &snapshotCancellables)
     }
 
     init(productID: Int, rawProductID: Int? = nil) {
