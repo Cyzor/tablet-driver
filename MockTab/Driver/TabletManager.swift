@@ -44,7 +44,18 @@ final class TabletManager: ObservableObject {
     // MARK: - Per-device state
 
     @Published var contexts: [Int: DeviceContext] = [:]
-    @Published var activeContext: DeviceContext? = nil
+    /// The device whose injector is currently posting CGEvents.
+    /// `didSet` keeps `injector.isActive` in lockstep so the HIDThread fast path in
+    /// `onTablet` is gated by a flag that exactly mirrors `activeContext`. Without
+    /// this, `injector.isActive` would only flip on a context *change*; the very
+    /// first device (where `deviceConnected` does `if activeContext == nil` …)
+    /// would have its activation skipped and the cursor would never move.
+    @Published var activeContext: DeviceContext? = nil {
+        didSet {
+            if oldValue !== activeContext { oldValue?.injector.isActive = false }
+            activeContext?.injector.isActive = true
+        }
+    }
     @Published var activeToolID: String? = nil
     @Published var liveButtons = LiveButtonState()
     @Published var livePoint: TabletPoint? = nil
@@ -287,14 +298,33 @@ final class TabletManager: ObservableObject {
         }
 
         // ── Tablet point closure ─────────────────────────────────────────────
-        // This closure is called on HIDThread. All properties accessed below are
-        // @MainActor, so we hop immediately. The Task overhead is ~microseconds;
-        // the benefit is that HID report delivery is never delayed by main-thread load.
+        // Called on HIDThread (the dedicated CFRunLoop thread that drives IOHIDManager).
+        //
+        // Fast path: when this device's injector is the active one, inject() runs
+        // inline on HIDThread — no Task @MainActor hop, no scheduler wait. Inject
+        // reads everything it needs from `injectionSnapshot`, which the main side
+        // pushes via CFRunLoopPerformBlock whenever settings change.
+        //
+        // Slow path: active-context switching (proximity-enter from a non-active
+        // device) and per-report UI updates still hop to main. Throughput-critical
+        // CGEvent posting never waits on either.
         let onTablet: (TabletPoint) -> Void = { [weak self, weak context] point in
+            guard let context else { return }
+            let injector = context.injector
+
+            // ── Fast path: inject inline on HIDThread ─────────────────────────
+            if injector.isActive {
+                injector.inject(point: point, settings: context.settings)
+            }
+
+            // ── UI / context-switch path: throttled hop to main ───────────────
             Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
+            let injector = context.injector
 
             // Proximity-enter activates this device's context.
+            // Note: `activeContext`'s `didSet` flips `injector.isActive` for both
+            // the outgoing and incoming contexts, so we don't touch it here.
             if point.inProximity && self.activeContext !== context {
                 if let old = self.activeContext, old.injector.lastProximity {
                     let exitPoint = TabletPoint(
@@ -303,26 +333,29 @@ final class TabletManager: ObservableObject {
                         tiltX: 0, tiltY: 0,
                         penButton1: false, penButton2: false,
                         eraser: false, inProximity: false, hoverDistance: 0)
+                    // The outgoing exit must be injected *before* the active-context
+                    // change flips `old.injector.isActive` off (didSet hasn't fired yet
+                    // because we're still on the prior assignment). Inject still works
+                    // because it doesn't gate on isActive — only the HIDThread fast
+                    // path does.
                     old.injector.inject(point: exitPoint, settings: old.settings)
                 }
                 self.activeContext = context
+                // Inject this report from main (slow, one-time per switch). Cheap.
+                injector.inject(point: point, settings: context.settings)
             }
-
             // Proximity-exit from a non-active device: still post so apps
             // don't get stuck with a dangling proximity state.
-            if !point.inProximity && context.injector.lastProximity {
-                context.injector.inject(point: point, settings: context.settings)
+            else if !point.inProximity && injector.lastProximity && self.activeContext !== context {
+                injector.inject(point: point, settings: context.settings)
                 return
             }
 
-            // Only the active context posts normal events.
+            // Only the active context updates UI.
             guard self.activeContext === context else { return }
 
             // Forward raw data to calibration session if active.
             self.calibrationPointHandler?(point)
-
-            // ── CGEvent injection — never throttled ──────────────────────────
-            context.injector.inject(point: point, settings: context.settings)
 
             // ── UI state — gated + throttled ─────────────────────────────────
             // Proximity exit always clears state immediately, regardless of app foreground/tab visibility.
@@ -374,12 +407,13 @@ final class TabletManager: ObservableObject {
         }
 
         // ── Express key closure ──────────────────────────────────────────────
-        // Called on HIDThread — hop to main for @MainActor property access.
+        // Called on HIDThread. injectAux runs inline (it reads from injectionSnapshot
+        // and posts CGEvents — both thread-safe). UI state mutations hop to main.
         let onAux: (AuxButtons) -> Void = { [weak self, weak context] aux in
+            guard let context else { return }
+            context.injector.injectAux(buttons: aux, settings: context.settings)
             Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
-            // Inject immediately — no throttle on actual key events.
-            context.injector.injectAux(buttons: aux, settings: context.settings)
             // Update UI only when app is frontmost, state changed, and Info/Buttons tab is visible.
             guard appIsFrontmost && infoViewVisible else { return }
             let keys = (0..<16).map { aux[$0] }
@@ -431,12 +465,10 @@ final class TabletManager: ObservableObject {
         // Called when a 4-byte Report ID 0x01 arrives from the mouse interface
         // (usagePage=0x01, seized).  Routes directly to the injector so buttons
         // fire at the current screen cursor position without a position remap.
-        // Called on HIDThread — hop to main.
+        // Called on HIDThread; injectMouseButtons runs inline.
         let onMouseButton: (UInt8) -> Void = { [weak context] mask in
-            Task { @MainActor [weak context] in
             guard let context else { return }
             context.injector.injectMouseButtons(mask: mask, settings: context.settings)
-            } // end Task @MainActor
         }
 
         // ── Hardware serial closure (device unification) ─────────────────────
@@ -570,6 +602,7 @@ final class TabletManager: ObservableObject {
                 (wacomDevice as? WacomKnownDevice)?.registerDevice(pending)
             }
             context.observeRingLED()  // after open() so initial LED sync reaches the device
+            context.observeInjectionSnapshot()
             context.settings.applyExpressKeyDefaults()
             refreshConnectedIDs(mostRecent: productID)
 

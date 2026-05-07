@@ -87,6 +87,12 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Subscriptions managed by this context (e.g., to TabletManager for change propagation).
     var cancellables: Set<AnyCancellable> = []
 
+    /// Subscriptions for the input-injection snapshot pipeline. Cleared and rebuilt
+    /// whenever `settings.activeTool` changes so the inner ToolSettings observer
+    /// always tracks the live tool.
+    private var snapshotCancellables: Set<AnyCancellable> = []
+    private var activeToolObserver: AnyCancellable?
+
     /// Subscribe to ring slot changes so the physical LED tracks the active mode.
     /// Call this once after `tabletDevice` is assigned.
     func observeRingLED() {
@@ -95,6 +101,59 @@ final class DeviceContext: ObservableObject, Identifiable {
                 self?.tabletDevice?.setRingLED(index: index)
             }
             .store(in: &cancellables)
+    }
+
+    /// Keep `injector.injectionSnapshot` in sync with the live TabletSettings/ToolSettings.
+    ///
+    /// `objectWillChange` fires *before* the new value is published, so we hop through
+    /// `RunLoop.main` and debounce so the rebuild reads the post-update state. Each
+    /// rebuild is published onto HIDThread via `CFRunLoopPerformBlock`, so inject()
+    /// reads the snapshot from the same thread that wrote it (HIDThread is a serial
+    /// run-loop thread). The inner ToolSettings subscription is replaced whenever
+    /// `activeTool` swaps, so per-tool field edits (pressure curve, smoothing,
+    /// button bindings) are also reflected.
+    func observeInjectionSnapshot() {
+        // Seed synchronously so the first inject() always sees a snapshot.
+        // Both the main-side property and the HIDThread-visible read path are written
+        // here; on the inject path, HIDThread reads what was last written via
+        // CFRunLoopPerformBlock.
+        let initial = settings.makeInjectionSnapshot()
+        injector.injectionSnapshot = initial
+        let injectorRef = injector
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            injectorRef.injectionSnapshot = initial
+        }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+
+        let rebuild: () -> Void = { [weak self] in
+            guard let self else { return }
+            let snap = self.settings.makeInjectionSnapshot()
+            let injectorRef = self.injector
+            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+                injectorRef.injectionSnapshot = snap
+            }
+            CFRunLoopWakeUp(HIDThread.shared.runLoop)
+        }
+
+        settings.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { _ in rebuild() }
+            .store(in: &snapshotCancellables)
+
+        // Re-bind the inner tool observer whenever activeTool swaps.
+        let bindTool: (ToolSettings) -> Void = { [weak self] tool in
+            guard let self else { return }
+            self.activeToolObserver = tool.objectWillChange
+                .receive(on: RunLoop.main)
+                .sink { _ in rebuild() }
+        }
+        bindTool(settings.activeTool)
+        settings.$activeTool
+            .sink { tool in
+                bindTool(tool)
+                rebuild()  // tool reference itself changed — refresh immediately
+            }
+            .store(in: &snapshotCancellables)
     }
 
     init(productID: Int, rawProductID: Int? = nil) {
