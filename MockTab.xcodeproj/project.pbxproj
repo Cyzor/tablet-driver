@@ -47,6 +47,7 @@
 		AA000049 /* WacomKnownDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomKnownDevice.swift */; };
 		AA000050 /* Intuos3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* Intuos3Decoder.swift */; };
 		AA000051 /* BambooDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000051 /* BambooDecoder.swift */; };
+		AA000060 /* GraphireDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000060 /* GraphireDecoder.swift */; };
 		AA000052 /* AppOverrideBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* AppOverrideBar.swift */; };
 		AA000053 /* FontExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000053 /* FontExtensions.swift */; };
 		AA000054 /* PenDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000054 /* PenDiagramView.swift */; };
@@ -127,6 +128,7 @@
 		AB000049 /* WacomKnownDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomKnownDevice.swift; sourceTree = "<group>"; };
 		AB000050 /* Intuos3Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intuos3Decoder.swift; sourceTree = "<group>"; };
 		AB000051 /* BambooDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BambooDecoder.swift; sourceTree = "<group>"; };
+		AB000060 /* GraphireDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphireDecoder.swift; sourceTree = "<group>"; };
 		AB000052 /* AppOverrideBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverrideBar.swift; sourceTree = "<group>"; };
 		AB000053 /* FontExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontExtensions.swift; sourceTree = "<group>"; };
 		AB000054 /* PenDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenDiagramView.swift; sourceTree = "<group>"; };
@@ -266,6 +268,7 @@
 				AB000048 /* IntuosV1Decoder.swift */,
 				AB000050 /* Intuos3Decoder.swift */,
 				AB000051 /* BambooDecoder.swift */,
+				AB000060 /* GraphireDecoder.swift */,
 				AB00C1D1 /* CintiqV1Decoder.swift */,
 			);
 			path = Decoders;
@@ -443,6 +446,7 @@
 				AA000048 /* IntuosV1Decoder.swift in Sources */,
 				AA000050 /* Intuos3Decoder.swift in Sources */,
 				AA000051 /* BambooDecoder.swift in Sources */,
+				AA000060 /* GraphireDecoder.swift in Sources */,
 				AA00C1D1 /* CintiqV1Decoder.swift in Sources */,
 				AA000039 /* DeviceRegistry.swift in Sources */,
 				053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */,
@@ -615,6 +619,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 3R62GZR6Q2;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MockTab/Info.plist;
@@ -648,6 +653,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 3R62GZR6Q2;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MockTab/Info.plist;
