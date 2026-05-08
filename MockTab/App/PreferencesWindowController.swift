@@ -114,8 +114,8 @@ final class PreferencesWindowController: ObservableObject {
         frontmostSettingsWindow().showTab(at: index)
     }
 
-    func showTab(named name: String) {
-        frontmostSettingsWindow().showTab(named: name)
+    func showTab(_ tab: SettingsWindowController.Tab) {
+        frontmostSettingsWindow().showTab(tab)
     }
 
     // MARK: - Multi-window

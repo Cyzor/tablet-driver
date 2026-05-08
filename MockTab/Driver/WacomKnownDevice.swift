@@ -121,8 +121,9 @@ final class WacomKnownDevice: TabletDevice {
             self.decoder = BambooDecoder()
         case .cintiqV1:
             self.decoder = CintiqV1Decoder()
-        case .intuosV1, .graphire:
-            // graphire should not reach here — caller checks hasLiveDecoder.
+        case .graphire:
+            self.decoder = GraphireDecoder()
+        case .intuosV1:
             self.decoder = IntuosV1Decoder()
         }
 

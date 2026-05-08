@@ -152,7 +152,7 @@ final class ResizableTabViewController: NSTabViewController {
 private final class LiveResizeFreezeView: NSView {
     override func viewWillStartLiveResize() {
         super.viewWillStartLiveResize()
-        subviews.first?.autoresizingMask = []   // freeze content frame
+        subviews.first?.autoresizingMask = [.minYMargin, .maxXMargin]   // freeze size, anchor top-left
         wantsLayer = true
         layer?.masksToBounds = true             // clip overflow when window shrinks
     }
@@ -216,6 +216,10 @@ final class SettingsWindowController: NSWindowController {
 
     private let tabVC = ResizableTabViewController()
 
+    enum Tab: Int {
+        case tabletArea = 0, penFeel, buttons, display, devices, profiles, scratchpad, info
+    }
+
     static let tabLabels = [
         String(localized: "Tablet Area", comment: "Tab name: tablet active area configuration"),
         String(
@@ -274,7 +278,7 @@ final class SettingsWindowController: NSWindowController {
                 self.tabVC.tabViewItems[safe: self.tabVC.selectedTabViewItemIndex]?.label ?? ""
             // Use tabLabels indices to match localized strings regardless of locale:
             // [2] = Buttons, [7] = Info
-            let isInfoTab = (label == Self.tabLabels[7] || label == Self.tabLabels[2])
+            let isInfoTab = (label == Self.tabLabels[Tab.info.rawValue] || label == Self.tabLabels[Tab.buttons.rawValue])
             let isKeyWindow = window?.isKeyWindow ?? false
             Task { @MainActor in
                 TabletManager.shared.infoViewVisible = isInfoTab && isKeyWindow
@@ -371,7 +375,7 @@ final class SettingsWindowController: NSWindowController {
         // Only set true if the window is key (in focus) and tab is Info or Buttons.
         let label = tabVC.tabViewItems[safe: tabVC.selectedTabViewItemIndex]?.label
         TabletManager.shared.infoViewVisible =
-            (label == Self.tabLabels[7] || label == Self.tabLabels[2])
+            (label == Self.tabLabels[Tab.info.rawValue] || label == Self.tabLabels[Tab.buttons.rawValue])
             && window?.isKeyWindow == true
     }
 
@@ -381,9 +385,8 @@ final class SettingsWindowController: NSWindowController {
         tabVC.selectedTabViewItemIndex = index
     }
 
-    func showTab(named name: String) {
-        let idx = tabVC.tabViewItems.firstIndex(where: { $0.label == name })
-        showTab(at: idx ?? 0)
+    func showTab(_ tab: Tab) {
+        showTab(at: tab.rawValue)
     }
     //
     var selectedTabIndex: Int { tabVC.selectedTabViewItemIndex }

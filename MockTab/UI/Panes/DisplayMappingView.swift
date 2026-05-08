@@ -214,9 +214,9 @@ struct DisplayMappingView: View {
             if assignedLabel == nil {
                 Button(LocalizedStringKey("Set Up")) {
                     if let wc = NSApp.keyWindow?.windowController as? SettingsWindowController {
-                        wc.showTab(named: "Buttons")
+                        wc.showTab(.buttons)
                     } else {
-                        PreferencesWindowController.shared.showTab(named: "Buttons")
+                        PreferencesWindowController.shared.showTab(.buttons)
                     }
                 }
                 .buttonStyle(.bordered)
