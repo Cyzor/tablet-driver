@@ -519,8 +519,10 @@ final class TabletManager: ObservableObject {
 
         default:
             // For any recognised PID with a live decoder and a valid spec, use
-            // WacomKnownDevice.  Stub families (Graphire, Bamboo) and truly
-            // unrecognised PIDs fall through to WacomFallbackDevice.
+            // WacomKnownDevice.  Truly unrecognised PIDs fall through to
+            // WacomFallbackDevice.  All five parser families have real decoders
+            // as of 2026-05; Graphire is wired up but its registry entries carry
+            // confidence: .experimental until validated against real hardware.
             if let deviceSpec = WacomDeviceRegistry.spec(for: productID),
                 WacomDeviceRegistry.hasLiveDecoder(for: productID),
                 deviceSpec.maxX > 0

@@ -408,14 +408,22 @@ struct IntuosV2Decoder: WacomDecoder {
     // MARK: - BT Wireless pen (0x80, Bluetooth Classic/LE transport variant)
     //
     // Coordinates and pressure use the same LE uint16 layout as the BLE HOGP 0x01 report.
-    // report[1] flag byte differs from the HOGP spec:
-    // bit7 (0x80) = inProximity (confirmed: 0x00 = no pen, 0xC0 = hovering)
-    // bit6 (0x40) = frame-valid / "digitizer active" — always set during proximity,
-    //     NOT a button. Masking it out fixes spurious middle-click on hover.
-    // bit5 (0x20) = button assignment TBD — tentatively barrel1
-    // bit4 (0x10) = button assignment TBD — tentatively barrel2
-    // bit3 (0x08) = TBD (eraser?)
-    // TODO: confirm bit4–5 assignments from live capture with buttons pressed.
+    // Per-frame flag byte (frame[0]) — confirmed against kernel wacom_intuos_pro2_bt_pen()
+    // (drivers/hid/wacom_wac.c, INTUOSP2_BT branch):
+    //   0x80 = valid frame
+    //   0x40 = proximity
+    //   0x20 = range (in-range vs hover/contact distinction)
+    //   0x10 = invert (selects BTN_TOOL_RUBBER vs BTN_TOOL_PEN at first-in-range)
+    //   0x09 = BTN_TOUCH mask (kernel reports tip as bit0 OR bit3)
+    //   0x04 = BTN_STYLUS2 (barrel button 2)
+    //   0x02 = BTN_STYLUS (barrel button 1)
+    //
+    // Note: bits 4 and 5 are NOT additional buttons (earlier comment speculated they
+    // were — kernel confirms otherwise). Per-frame eraser detection below reads bit 3
+    // (0x08); this is empirically correct for IntuosV2 BT and consistent with the
+    // kernel's tip-mask logic, since the eraser end's contact bit lights up bit 3.
+    // The toolEnter event independently establishes eraser-ness from the tool code at
+    // bytes 103:104, so downstream consumers see the correct tool regardless.
 
     private func decodeBTPen(
         report: UnsafePointer<UInt8>,

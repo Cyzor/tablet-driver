@@ -595,7 +595,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     // MARK: - Configuration import / export / reveal
 
     @objc private func menuImportConfiguration() {
-        PreferencesWindowController.shared.showTab(named: "Profiles")
+        PreferencesWindowController.shared.showTab(.profiles)
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.allowsMultipleSelection = false
@@ -613,7 +613,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func menuExportConfiguration() {
-        PreferencesWindowController.shared.showTab(named: "Profiles")
+        PreferencesWindowController.shared.showTab(.profiles)
         let exporter = PresetExporter(
             registry: DeviceRegistry.shared,
             tabletManager: TabletManager.shared)
@@ -679,7 +679,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func showPresetsTab() {
-        PreferencesWindowController.shared.showTab(named: "Profiles")
+        PreferencesWindowController.shared.showTab(.profiles)
     }
 
 }

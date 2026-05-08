@@ -26,9 +26,12 @@ import Foundation
 /// The individual per-device Swift classes (PTH660Device, etc.) remain as
 /// the live code path during migration; decoders are introduced in Phase 2.
 enum ReportParser: String {
-    /// Graphire / early consumer line — Report ID 0x01, 8 bytes.
-    /// Covers PenPartner, Graphire 1–4, Volito, Bamboo One (CTF-430).
-    /// No tool-change packets; eraser detected via tool entry.
+    /// Graphire / early consumer line — Report ID 0x02
+    /// (kernel `WACOM_REPORT_PENABLED`), 8 bytes.
+    /// Covers PenPartner, Graphire 2–4, Volito, Bamboo One (CTF-430).
+    /// No tool-change packets; eraser/pen/mouse detected via the tool field
+    /// in status byte d[1] bits 5–6. Decoded by `GraphireDecoder`
+    /// (experimental — not yet hardware-validated).
     case graphire
 
     /// IntuosV1 — Report ID 0x02/0x10, 10 bytes, BE16 coordinates.
@@ -61,6 +64,25 @@ enum ReportParser: String {
     /// ABS_Z Art Pen rotation, barrel-button debounce, dual-ring 0x0C layout,
     /// tip-switch synthetic pressure, and incompatible-tool suppression.
     case cintiqV1
+}
+
+// MARK: - Confidence tier
+
+/// How well-vetted a registry entry is. Drives UI honesty (e.g. an
+/// "Experimental — please report issues" hint when the active device is
+/// `.experimental`) and informs which entries are safe to promote.
+///
+/// - `.verified`: Hand-tested on real hardware in this project.
+/// - `.crossReferenced`: Dimensions/parser agree between Linux input-wacom
+///   and OpenTabletDriver; not personally hardware-tested but two
+///   independent canonical sources concur.
+/// - `.experimental`: Imported from a single source (typically OTD JSON or
+///   kernel constants) without independent confirmation. May have wrong
+///   dimensions, missing init reports, or only partial protocol support.
+enum ConfidenceTier {
+    case verified
+    case crossReferenced
+    case experimental
 }
 
 // MARK: - Per-device spec
@@ -123,6 +145,9 @@ struct WacomDeviceSpec {
     /// rather than attaching a fallback driver or skipping it entirely.
     /// nil = LED control uses the main digitizer interface (single-interface devices).
     let ledCompanionPID: Int?
+    /// How well-vetted this entry is (see `ConfidenceTier`).
+    /// Defaults to `.experimental` — promote explicitly when verified.
+    let confidence: ConfidenceTier
 
     init(
         productID: Int, name: String, parser: ReportParser,
@@ -133,7 +158,8 @@ struct WacomDeviceSpec {
         featureInit: [UInt8]?, seizeUSB: Bool,
         featureInit2: [UInt8]? = nil,
         featureInit2Delay: Double = 0.15,
-        ledCompanionPID: Int? = nil
+        ledCompanionPID: Int? = nil,
+        confidence: ConfidenceTier = .experimental
     ) {
         self.productID = productID
         self.name = name
@@ -154,6 +180,7 @@ struct WacomDeviceSpec {
         self.featureInit2 = featureInit2
         self.featureInit2Delay = featureInit2Delay
         self.ledCompanionPID = ledCompanionPID
+        self.confidence = confidence
     }
 
     /// Derives the device family identifier from parser and name.
@@ -225,34 +252,40 @@ enum WacomDeviceRegistry {
             productID: 0x0013, name: "Graphire 3 (4×5)",  // ⚠ estimated
             parser: .graphire, maxX: 10208, maxY: 7424, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0014, name: "Graphire 3 (6×8)",  // ⚠ estimated
             parser: .graphire, maxX: 16704, maxY: 12064, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0015, name: "Graphire 4 (4×5)",  // ⚠ estimated
             parser: .graphire, maxX: 10208, maxY: 7424, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0016, name: "Graphire 4 (6×8)",  // ⚠ estimated
             parser: .graphire, maxX: 16704, maxY: 12064, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0017, name: "Bamboo Fun (MTE-450)",  // ⚠ estimated
             parser: .graphire, maxX: 14760, maxY: 9225, maxPressure: 511,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
 
         // ── Volito / PenStation ───────────────────────────────────────────────
         .init(
             productID: 0x0060, name: "Volito",  // ⚠ estimated
             parser: .graphire, maxX: 5104, maxY: 3712, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: false,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0061, name: "PenStation",  // ⚠ estimated
             parser: .graphire, maxX: 3540, maxY: 2468, maxPressure: 511,
@@ -267,7 +300,8 @@ enum WacomDeviceRegistry {
             productID: 0x0065, name: "Bamboo One (CTF-430)",  // ⚠ estimated
             parser: .graphire, maxX: 14760, maxY: 9225, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
 
         // ── Cintiq 21UX first-gen ─────────────────────────────────────────────
         .init(
@@ -373,7 +407,8 @@ enum WacomDeviceRegistry {
             parser: .intuos3, maxX: 54204, maxY: 31750, maxPressure: 2046,
             buttonCount: 8, hasTouchRing: false, hasTouchStrips: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false,
-            featureInit2: [0x04, 0x00]),
+            featureInit2: [0x04, 0x00],
+            confidence: .verified),
         .init(
             productID: 0x00B7, name: "Intuos3 4×6 (PTZ-431W)",  // ⚠ estimated
             parser: .intuos3, maxX: 31496, maxY: 19685, maxPressure: 1023,
@@ -387,12 +422,14 @@ enum WacomDeviceRegistry {
             productID: 0x00B8, name: "Intuos4 S (PTK-440)",  // ⚠ estimated
             parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00B9, name: "Intuos4 M (PTK-640)",  // ⚠ estimated
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00BA, name: "Intuos4 L (PTK-840)",  // ⚠ estimated
             parser: .intuosV1, maxX: 63494, maxY: 39370, maxPressure: 2047,
@@ -402,7 +439,8 @@ enum WacomDeviceRegistry {
             productID: 0x00BB, name: "Intuos4 XL (PTK-1240)",  // ⚠ estimated
             parser: .intuosV1, maxX: 97536, maxY: 60960, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00BC, name: "Intuos4 WL (PTK-540WL)",  // ⚠ estimated
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
@@ -429,17 +467,20 @@ enum WacomDeviceRegistry {
             productID: 0x0026, name: "Intuos5 S (PTH-450)",  // ⚠ estimated
             parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0027, name: "Intuos5 M (PTH-650)",  // ⚠ estimated
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0028, name: "Intuos5 L (PTH-850)",
             parser: .intuosV1, maxX: 65024, maxY: 40640, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
 
         // ── Intuos Pro first-gen (PTH-x51, 2013) — intuosV1 parser ───────────
         // Renamed from "Intuos5" to "Intuos Pro"; same HID format.
@@ -447,7 +488,8 @@ enum WacomDeviceRegistry {
             productID: 0x0314, name: "Intuos Pro S (PTH-451)",  // ⚠ estimated
             parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0316, name: "Intuos Pro M (PTH-651)",  // ⚠ estimated
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
@@ -457,7 +499,8 @@ enum WacomDeviceRegistry {
             productID: 0x0317, name: "Intuos Pro L (PTH-851)",  // ✓ confirmed live
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .verified),
 
         // ── Intuos Pro second-gen (PTH-x60/x80, 2017–present) — intuosV2 ─────
         // 192-byte reports, LE24 coordinates, 8192-level pressure (13-bit).
@@ -491,12 +534,14 @@ enum WacomDeviceRegistry {
             productID: 0x0357, name: "Intuos Pro M (PTH-660)",  // ✓ confirmed live
             parser: .intuosV2, maxX: 44800, maxY: 29600, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: nil, seizeUSB: true),
+            featureInit: nil, seizeUSB: true,
+            confidence: .verified),
         .init(
             productID: 0x0358, name: "Intuos Pro L (PTH-860)",  // ✓ confirmed live
             parser: .intuosV2, maxX: 62200, maxY: 43200, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: nil, seizeUSB: true),
+            featureInit: nil, seizeUSB: true,
+            confidence: .verified),
 
         // ── Bamboo / CTL consumer line — bamboo parser ────────────────────────
         // 20-byte Report ID 0x10. Decoder not yet implemented.
@@ -510,17 +555,20 @@ enum WacomDeviceRegistry {
             productID: 0x00D1, name: "Bamboo Pen & Touch (CTH-460)",  // ⚠ estimated
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: false,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00D4, name: "Bamboo Capture (CTH-470)",  // ⚠ estimated
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: false,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00D6, name: "Bamboo Pen (CTL-460)",  // ⚠ estimated
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 2, hasTouchRing: false, hasEraser: false,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00D7, name: "Bamboo Pen (CTL-660)",  // ⚠ estimated
             parser: .bamboo, maxX: 21648, maxY: 13530, maxPressure: 1023,
@@ -530,7 +578,8 @@ enum WacomDeviceRegistry {
             productID: 0x00DA, name: "Bamboo Pen & Touch 2 (CTH-461)",  // ⚠ estimated
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: false,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00DB, name: "Bamboo Connect (CTL-470)",  // ⚠ estimated
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
@@ -573,7 +622,8 @@ enum WacomDeviceRegistry {
             parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasDualRings: true, ringSlotCount: 3, hasEraser: true,
             isPenDisplay: true,
-            featureInit: [0x02, 0x02], seizeUSB: true, ledCompanionPID: 0x0056),
+            featureInit: [0x02, 0x02], seizeUSB: true, ledCompanionPID: 0x0056,
+            confidence: .verified),
         .init(
             productID: 0x00F8, name: "Cintiq 24HD Touch (DTH-2400)",  // ⚠ estimated
             parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
@@ -598,19 +648,22 @@ enum WacomDeviceRegistry {
             productID: 0x0029, name: "Wacom PTK-450",  // ⚠ from OTD
             parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 2047,
             buttonCount: 6, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x002A, name: "Wacom PTK-650",  // ⚠ from OTD
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
 
         // ── Intuos Pro first-gen additional variant ───────────────────────────
         .init(
             productID: 0x0315, name: "Wacom PTH-651",  // ⚠ from OTD
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
 
         // ── Intuos Pro second-gen Bluetooth Classic PIDs (PTH-460/660/860) ──────
         // These PIDs appear when the tablet connects over BT Classic (transport="Bluetooth").
@@ -624,7 +677,8 @@ enum WacomDeviceRegistry {
             productID: 0x0361, name: "Intuos Pro L (PTH-860) BT",  // ✓ confirmed live (BT Classic)
             parser: .intuosV2, maxX: 62200, maxY: 43200, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .verified),
         .init(
             productID: 0x035B, name: "Intuos Pro S (PTH-460) BT",  // ⚠ BT Classic PID (USB 0x0352 + 9)
             parser: .intuosV2, maxX: 31496, maxY: 19685, maxPressure: 8191,
@@ -657,12 +711,14 @@ enum WacomDeviceRegistry {
             productID: 0x0018, name: "Wacom CTE-650",  // ⚠ from OTD
             parser: .bamboo, maxX: 21648, maxY: 13530, maxPressure: 511,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0069, name: "Wacom CTF-430",  // ⚠ from OTD
             parser: .bamboo, maxX: 5104, maxY: 3712, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
 
         // ── Bamboo CTH (pen + touch) ──────────────────────────────────────────
         .init(
@@ -679,54 +735,64 @@ enum WacomDeviceRegistry {
             productID: 0x00D2, name: "Wacom CTH-461",  // ⚠ from OTD
             parser: .intuosV1, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00DE, name: "Wacom CTH-470",  // ⚠ from OTD
             parser: .intuosV1, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0302, name: "Wacom CTH-480",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x033C, name: "Wacom CTH-490",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 2047,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00D3, name: "Wacom CTH-661",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21648, maxY: 13700, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00D8, name: "Wacom CTH-661",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21648, maxY: 13700, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x00DF, name: "Wacom CTH-670",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21648, maxY: 13700, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0303, name: "Wacom CTH-680",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x033E, name: "Wacom CTH-690",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 2047,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
 
         // ── Wacom One / Intuos (CTL) pen-only line ────────────────────────────
         .init(
             productID: 0x00DD, name: "Wacom CTL-470",  // ⚠ from OTD
             parser: .intuosV1, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0300, name: "Wacom CTL-471",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 1023,
@@ -736,17 +802,20 @@ enum WacomDeviceRegistry {
             productID: 0x037A, name: "Wacom CTL-472",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 2047,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x030E, name: "Wacom CTL-480",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x033B, name: "Wacom CTL-490",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 2047,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0301, name: "Wacom CTL-671",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 1023,
@@ -756,17 +825,20 @@ enum WacomDeviceRegistry {
             productID: 0x037B, name: "Wacom CTL-672",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 2047,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0323, name: "Wacom CTL-680",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x033D, name: "Wacom CTL-690",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 2047,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: [0x02, 0x02], seizeUSB: false),
+            featureInit: [0x02, 0x02], seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x0374, name: "Wacom CTL-4100",  // ⚠ from OTD
             parser: .intuosV2, maxX: 15200, maxY: 9500, maxPressure: 4095,
@@ -781,7 +853,8 @@ enum WacomDeviceRegistry {
             productID: 0x0377, name: "Wacom CTL-4100WL",  // ⚠ from OTD
             parser: .intuosV2, maxX: 15200, maxY: 9500, maxPressure: 4095,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            featureInit: nil, seizeUSB: false),
+            featureInit: nil, seizeUSB: false,
+            confidence: .crossReferenced),
         .init(
             productID: 0x03C5, name: "Wacom CTL-4100WL",  // ⚠ from OTD
             parser: .intuosV2, maxX: 15200, maxY: 9500, maxPressure: 4095,
@@ -933,11 +1006,12 @@ enum WacomDeviceRegistry {
             ?? "Wacom 0x\(String(productID, radix: 16, uppercase: true))"
     }
 
-    /// True when a fully-tested decoder exists for this device.
-    /// graphire is the only remaining stub.
+    /// True when a real decoder exists for this device.
+    /// All five parser families have decoders as of Phase 4 (2026-05-07).
+    /// `.graphire` is wired up but routes carry `confidence: .experimental` —
+    /// the decoder is kernel-canonical but not yet hardware-validated.
     static func hasLiveDecoder(for productID: Int) -> Bool {
-        guard let s = spec(for: productID) else { return false }
-        return s.parser != .graphire && s.parser != .bamboo
+        spec(for: productID) != nil
     }
 
     /// Returns the canonical (USB) product ID for any transport variant of a tablet.
