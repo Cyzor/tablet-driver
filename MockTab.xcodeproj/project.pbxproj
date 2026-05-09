@@ -41,8 +41,10 @@
 		AA000043 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* SettingsWindowController.swift */; };
 		AA000044 /* ToolSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* ToolSettings.swift */; };
 		AA000045 /* WacomFallbackDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000045 /* WacomFallbackDevice.swift */; };
+		AA00DR01 /* DeviceRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DR01 /* DeviceRouter.swift */; };
 		AA000046 /* WacomDeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000046 /* WacomDeviceRegistry.swift */; };
 		AA000047 /* IntuosV2Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000047 /* IntuosV2Decoder.swift */; };
+		AA00C1E1 /* IntuosV2Decoder+BT.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00C1E1 /* IntuosV2Decoder+BT.swift */; };
 		AA000048 /* IntuosV1Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000048 /* IntuosV1Decoder.swift */; };
 		AA000049 /* WacomKnownDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomKnownDevice.swift */; };
 		AA000050 /* Intuos3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* Intuos3Decoder.swift */; };
@@ -122,8 +124,10 @@
 		AB000043 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		AB000044 /* ToolSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolSettings.swift; sourceTree = "<group>"; };
 		AB000045 /* WacomFallbackDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomFallbackDevice.swift; sourceTree = "<group>"; };
+		AB00DR01 /* DeviceRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRouter.swift; sourceTree = "<group>"; };
 		AB000046 /* WacomDeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomDeviceRegistry.swift; sourceTree = "<group>"; };
 		AB000047 /* IntuosV2Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV2Decoder.swift; sourceTree = "<group>"; };
+		AB00C1E1 /* IntuosV2Decoder+BT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IntuosV2Decoder+BT.swift"; sourceTree = "<group>"; };
 		AB000048 /* IntuosV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV1Decoder.swift; sourceTree = "<group>"; };
 		AB000049 /* WacomKnownDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomKnownDevice.swift; sourceTree = "<group>"; };
 		AB000050 /* Intuos3Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intuos3Decoder.swift; sourceTree = "<group>"; };
@@ -216,6 +220,7 @@
 				AB000004 /* TabletDevice.swift */,
 				AB000037 /* WacomProbeDevice.swift */,
 				AB000045 /* WacomFallbackDevice.swift */,
+				AB00DR01 /* DeviceRouter.swift */,
 				AB000046 /* WacomDeviceRegistry.swift */,
 				AB000070 /* HIDCapture.swift */,
 				AB000101 /* CaptureModels.swift */,
@@ -265,6 +270,7 @@
 			isa = PBXGroup;
 			children = (
 				AB000047 /* IntuosV2Decoder.swift */,
+				AB00C1E1 /* IntuosV2Decoder+BT.swift */,
 				AB000048 /* IntuosV1Decoder.swift */,
 				AB000050 /* Intuos3Decoder.swift */,
 				AB000051 /* BambooDecoder.swift */,
@@ -435,6 +441,7 @@
 				AA000037 /* WacomProbeDevice.swift in Sources */,
 				05D7EB7B2F79E6E30086E03F /* AboutView.swift in Sources */,
 				AA000045 /* WacomFallbackDevice.swift in Sources */,
+				AA00DR01 /* DeviceRouter.swift in Sources */,
 				AA000046 /* WacomDeviceRegistry.swift in Sources */,
 				AA000070 /* HIDCapture.swift in Sources */,
 				AA000101 /* CaptureModels.swift in Sources */,
@@ -443,6 +450,7 @@
 				AA000072 /* OTDImporter.swift in Sources */,
 				AA000049 /* WacomKnownDevice.swift in Sources */,
 				AA000047 /* IntuosV2Decoder.swift in Sources */,
+				AA00C1E1 /* IntuosV2Decoder+BT.swift in Sources */,
 				AA000048 /* IntuosV1Decoder.swift in Sources */,
 				AA000050 /* Intuos3Decoder.swift in Sources */,
 				AA000051 /* BambooDecoder.swift in Sources */,

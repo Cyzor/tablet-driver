@@ -484,117 +484,41 @@ final class TabletManager: ObservableObject {
         }
 
         // ── Create the device driver ─────────────────────────────────────────
-        // Multi-interface devices (e.g. ACK-40401 dongle) enumerate separate IOHIDDevices
-        // for each interface (digitizer, wireless status, touch, etc). We create one driver
-        // for the product and reuse it for all interfaces. Each IOHIDDevice still registers
-        // independently for its own reports.
+        // Multi-interface devices (e.g. ACK-40401 dongle) enumerate separate
+        // IOHIDDevices for each interface (digitizer, wireless status, touch,
+        // etc). We create one driver per product and reuse it across
+        // interfaces; each IOHIDDevice still registers independently for its
+        // own reports.
         if let existingDriver = context.tabletDevice as? WacomKnownDevice {
-            // Already have a driver for this product; register this interface for reports.
             hidDeviceMap[device] = context
             existingDriver.registerDevice(device)
             return
         }
 
-        let wacomDevice: (any TabletDevice)?
+        let callbacks = DeviceRouter.Callbacks(
+            onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
+            onMouseButton: onMouseButton, onBattery: onBattery,
+            onHardwareSerial: onHardwareSerial)
 
-        switch productID {
-        case 0x0084:
-            // ACK-40401 RF wireless dongle — presents the same HID interfaces and
-            // descriptor as the paired tablet (PTH-x50/x51 family, IntuosV1 format).
-            // Query the descriptor now; the RF link may not be established yet so
-            // pen events are gated until the 0x80 wireless status report with d[1] bit 0 set.
-            logger.info("TabletManager: ACK-40401 wireless dongle connected")
-            let (dMaxX, dMaxY, dMaxP, _) = queryHIDDigitizerSpec(device)
-            let dongleSpec = WacomDeviceSpec(
-                productID: 0x0084,
-                name: "ACK-40401 Wireless Dongle",
-                parser: .intuosV1,
-                maxX: dMaxX, maxY: dMaxY, maxPressure: dMaxP,
-                buttonCount: 8, hasTouchRing: true, hasEraser: true,
-                featureInit: [0x02, 0x02], seizeUSB: false)
-            wacomDevice = WacomKnownDevice(
-                device: device, deviceSpec: dongleSpec, isWireless: true,
-                onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
-                onHardwareSerial: onHardwareSerial)
+        switch DeviceRouter.route(
+            device: device, productID: productID, usagePage: usagePage,
+            isBLE: isBLE, contexts: contexts, callbacks: callbacks)
+        {
+        case .deferred:
+            pendingInterfaces[productID, default: []].append(device)
+            return
 
-        default:
-            // For any recognised PID with a live decoder and a valid spec, use
-            // WacomKnownDevice.  Truly unrecognised PIDs fall through to
-            // WacomFallbackDevice.  All five parser families have real decoders
-            // as of 2026-05; Graphire is wired up but its registry entries carry
-            // confidence: .experimental until validated against real hardware.
-            if let deviceSpec = WacomDeviceRegistry.spec(for: productID),
-                WacomDeviceRegistry.hasLiveDecoder(for: productID),
-                deviceSpec.maxX > 0
-            {
-                // Interface routing depends on parser family.
-                //
-                // IntuosV2 (PTH-x60/x80):  0xFF00 vendor interface is primary (featureInit
-                //   via InputMode element).  0x01 is deferred and registered as secondary without
-                //   seizure — seizing 0x01 stops the IntuosV2 firmware from sending pen reports.
-                //
-                // CintiqV1 (DTK-2400 etc): 0x01 is the pen digitizer (reports 0x02, 0x0C).
-                //   It must be seized so the OS doesn't interpret tip-switch as a native click,
-                //   and featureInit [0x02, 0x02] must be sent there to activate tablet mode.
-                //   0xFF00 only carries the periodic 0x80 status report; defer it until 0x01
-                //   has created the driver, then register it as secondary.
-                let isCintiqV1 = deviceSpec.parser == .cintiqV1
-                let deferrableInterface: Bool
-                if isCintiqV1 {
-                    // Defer the vendor interface; wait for the digitizer (0x01) to be primary.
-                    deferrableInterface = !isBLE && deviceSpec.seizeUSB && usagePage == 0xFF00
-                } else {
-                    // Defer the mouse interface; wait for the vendor interface (0xFF00) to be primary.
-                    deferrableInterface = !isBLE && deviceSpec.seizeUSB && usagePage == 0x01
-                }
-                if deferrableInterface {
-                    logger.info("TabletManager: \(deviceSpec.name, privacy: .public) — deferring 0x\(String(usagePage, radix: 16), privacy: .public) interface")
-                    pendingInterfaces[productID, default: []].append(device)
-                    return
-                }
-                // For CintiqV1 with 0x01 as primary: seize the interface so the OS cannot
-                // interpret tip-switch (report 0x01) as a native left-click alongside our events.
-                let shouldSeize = !isBLE && isCintiqV1 && deviceSpec.seizeUSB && usagePage == 0x01
-                logger.info("TabletManager: \(deviceSpec.name, privacy: .public) connected via universal driver\(shouldSeize ? " (seized)" : "", privacy: .public)")
-                wacomDevice = WacomKnownDevice(
-                    device: device, deviceSpec: deviceSpec, seize: shouldSeize,
-                    onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
-                    onMouseButton: onMouseButton,
-                    onBattery: onBattery, onHardwareSerial: onHardwareSerial)
-            } else {
-                let pid = String(productID, radix: 16, uppercase: true)
-                // Probe HID descriptor before attaching a fallback driver.
-                // If the device has no X/Y digitizer elements (maxX == 0), it is
-                // a non-input interface (e.g. LED controller, status interface) and
-                // should not receive feature-init reports or be treated as a tablet.
-                let (probeX, _, _, _) = queryHIDDigitizerSpec(device)
-                if probeX > 0 {
-                    logger.info("TabletManager: unknown Wacom 0x\(pid, privacy: .public) — attaching generic driver")
-                    wacomDevice = WacomFallbackDevice(
-                        device: device, onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter)
-                } else {
-                    // No digitizer — check if this is a known LED companion interface.
-                    // If a WacomKnownDevice for the parent tablet is already running,
-                    // hand the device off for LED control rather than skipping it entirely.
-                    let matched = contexts.values.first {
-                        guard $0.tabletDevice is WacomKnownDevice,
-                              let companionPID = WacomDeviceRegistry.spec(for: $0.productID)?.ledCompanionPID
-                        else { return false }
-                        return companionPID == productID
-                    }
-                    if let ctx = matched, let driver = ctx.tabletDevice as? WacomKnownDevice {
-                        logger.info("TabletManager: Wacom 0x\(pid, privacy: .public) — LED companion for \(ctx.productID == 0 ? "unknown" : String(ctx.productID, radix: 16, uppercase: true), privacy: .public)")
-                        driver.registerLEDDevice(device)
-                        hidDeviceMap[device] = ctx
-                    } else {
-                        logger.debug("TabletManager: Wacom 0x\(pid, privacy: .public) — no digitizer elements, skipping")
-                    }
-                    wacomDevice = nil
-                }
+        case .ledCompanion(let parentCtx):
+            if let driver = parentCtx.tabletDevice as? WacomKnownDevice {
+                driver.registerLEDDevice(device)
+                hidDeviceMap[device] = parentCtx
             }
-        }
+            return
 
-        if let wacomDevice {
+        case .skip:
+            return
+
+        case .driver(let wacomDevice, _):
             context.tabletDevice = wacomDevice
             hidDeviceMap[device] = context
             wacomDevice.open()

@@ -21,6 +21,7 @@ import CoreGraphics
 import os
 
 private let modLog = Logger(subsystem: "com.cyzor.mocktab", category: "modifiers")
+private let injectLog = Logger(subsystem: "com.cyzor.mocktab", category: "inject")
 
 /// Converts raw TabletPoint reports into CGEvents and posts them to the HID event tap.
 ///
@@ -1425,7 +1426,10 @@ final class InputInjector {
         at location: CGPoint, pressure: Double,
         point: TabletPoint, snapshot: InjectionSnapshot
     ) {
-        guard let e = CGEvent(source: sessionSource) else { return }
+        guard let e = CGEvent(source: sessionSource) else {
+            injectLog.error("postTabletPointerEvent: CGEvent creation failed — pen point dropped")
+            return
+        }
         e.type = .tabletPointer
         e.location = location
         e.setIntegerValueField(.tabletEventDeviceID, value: 1)
@@ -1452,7 +1456,10 @@ final class InputInjector {
         entering: Bool, at location: CGPoint,
         eraser: Bool
     ) {
-        guard let e = CGEvent(source: sessionSource) else { return }
+        guard let e = CGEvent(source: sessionSource) else {
+            injectLog.error("postProximityEvent: CGEvent creation failed — entering=\(entering) eraser=\(eraser)")
+            return
+        }
         e.type = .tabletProximity
         e.location = location
 
@@ -1915,10 +1922,12 @@ final class InputInjector {
         )
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
+            injectLog.error("displayUnion: CGGetActiveDisplayList(count) failed or zero displays — falling back to main display")
             return (fallback, mainID)
         }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else {
+            injectLog.error("displayUnion: CGGetActiveDisplayList(ids) failed — falling back to main display")
             return (fallback, mainID)
         }
         let idx = snapshot.targetDisplayIndex
