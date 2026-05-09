@@ -112,19 +112,19 @@ final class WacomKnownDevice: TabletDevice {
             isPenDisplay: deviceSpec.isPenDisplay,
             ringSlotCount: deviceSpec.ringSlotCount)
 
+        // Parser → decoder dispatch. Each parser family corresponds to a wire
+        // format (report ID, byte layout, coordinate encoding, pressure depth);
+        // see `ReportParser` in WacomDeviceRegistry.swift for per-family details.
+        // To add support for a new model: add an entry to `WacomDeviceRegistry`
+        // pointing at the matching parser — no change here unless the model
+        // introduces a genuinely new wire format.
         switch deviceSpec.parser {
-        case .intuosV2:
-            self.decoder = IntuosV2Decoder()
-        case .intuos3:
-            self.decoder = Intuos3Decoder()
-        case .bamboo:
-            self.decoder = BambooDecoder()
-        case .cintiqV1:
-            self.decoder = CintiqV1Decoder()
-        case .graphire:
-            self.decoder = GraphireDecoder()
-        case .intuosV1:
-            self.decoder = IntuosV1Decoder()
+        case .intuosV2:  self.decoder = IntuosV2Decoder()   // PTH-460/660/860, BLE HOGP
+        case .intuos3:   self.decoder = Intuos3Decoder()    // PTZ-xxx (2003–2006)
+        case .bamboo:    self.decoder = BambooDecoder()     // CTL/CTH-xxx (stub)
+        case .cintiqV1:  self.decoder = CintiqV1Decoder()   // Cintiq pen-displays
+        case .graphire:  self.decoder = GraphireDecoder()   // Graphire/PenPartner (experimental)
+        case .intuosV1:  self.decoder = IntuosV1Decoder()   // Intuos 1–5, PTK-xxx, PTH-851
         }
 
         // Use at least 192 bytes so both IntuosV1 (10-byte pen, 64-byte BLE)
@@ -247,10 +247,17 @@ final class WacomKnownDevice: TabletDevice {
         let name = deviceSpec.name
         switch deviceSpec.parser {
         case .intuosV2 where !isBluetooth:
-            // LED report for PTH-660/860 USB is still under investigation.
-            // 0x11 is accepted by IOKit but silently ignored by firmware (harmless).
+            // LED report for intuosV2 USB. Observed behavior:
+            //   PTH-660 USB: 0x11 works (LEDs track slot changes).
+            //   PTH-860 USB: 0x11 accepted by IOKit but firmware ignores it (LEDs static).
+            //   Both models work via the BT path below (report 0x82).
+            // Notably 0x11 is also PTH-860's pad *input* report ID — likely collision.
             // 0xCC (WAC_CMD_LED_CONTROL_GENERIC) actively breaks pen input — do not use.
             // 0x20 (WAC_CMD_LED_CONTROL) also silently ignored.
+            // TODO(PTH-860 USB LED): diagnose by (a) logging IOHIDDeviceSetReport ret here,
+            //   (b) checking Linux wacom_sys.c wacom_led_control() for the INTUOSP2 USB
+            //   report ID, (c) considering an LED-enable feature-init (report 0x0A) or a
+            //   companion-interface route (see ledCompanionPID / cintiqV1 branch).
             let ledBits = (UInt8(1) << 2) | UInt8(index & 0x03)
             var buf = [UInt8](repeating: 0, count: 9)
             buf[0] = 0x11

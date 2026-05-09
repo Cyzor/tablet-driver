@@ -20,7 +20,7 @@ import Foundation
 import IOKit.hid
 import OSLog
 
-private let probeLog = Logger(subsystem: "com.mocktab", category: "WacomProbe")
+private let probeLog = Logger(subsystem: "com.cyzor.mocktab", category: "probe")
 
 /// Temporary shim attached to any unrecognised Wacom device whose
 /// `MaxInputReportSize` is 10 (IntuosV1 wire format).
@@ -28,7 +28,8 @@ private let probeLog = Logger(subsystem: "com.mocktab", category: "WacomProbe")
 /// It applies the standard feature-init, decodes each 10-byte report with
 /// the same IntuosV1 formula used by PTH851Device, and continuously logs
 /// running maxima to the unified system log.  Open **Console.app**, filter
-/// on `com.mocktab`, then move the pen to all four corners and press hard —
+/// on `com.cyzor.mocktab` (category `probe`), then move the pen to all four
+/// corners and press hard —
 /// the resulting X / Y / pressure peaks appear as structured log entries and
 /// are also printed to stderr so they show in Xcode's debug console.
 ///

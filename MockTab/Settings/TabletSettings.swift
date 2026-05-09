@@ -25,15 +25,36 @@ import SwiftUI
 private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "settings")
 
 /// All user-configurable settings, persisted via UserDefaults with a per-device
-/// key prefix so that each tablet remembers its own configuration independently.
+/// key prefix so each tablet remembers its own configuration independently.
 ///
-/// On first load for a given device, the legacy unprefixed keys (from before
-/// per-device support) are used as a fallback, providing seamless migration.
+/// ── Inheritance model ──────────────────────────────────────────────────────
+/// A read for any setting walks the layers below in order; the first layer
+/// that has the key wins. A write goes to whichever layer is currently
+/// "selected" for editing (the device default unless an override is active).
 ///
-/// Layer 2 — Named Presets: an optional overlay on top of device settings.
-/// A preset stores only the keys it explicitly overrides; everything else falls
-/// through to the device default.  Activating/deactivating a preset republishes
-/// all @Published properties transparently to SwiftUI.
+///     ┌──────────────────────────────────────────────────────────────┐
+///     │ 4. Per-app override   keys: "device-0x0357.app-com.adobe.…" │  highest
+///     │    Activated automatically when the bound app is frontmost. │
+///     │    Stores only keys that diverge from the layer below.       │
+///     ├──────────────────────────────────────────────────────────────┤
+///     │ 3. Named preset       (overlay; optional)                    │
+///     │    User-saved profile, also stores only diffs. Manually      │
+///     │    selected or auto-activated by an app→profile binding.     │
+///     ├──────────────────────────────────────────────────────────────┤
+///     │ 2. Per-tool settings  keys: "device-0x0357.tool-<serial>.…" │
+///     │    One namespace per stylus serial (or "stylus"/"eraser"/    │
+///     │    "mouse" for the device-default tool, which shares prefix  │
+///     │    with layer 1 to avoid migration).                         │
+///     ├──────────────────────────────────────────────────────────────┤
+///     │ 1. Device defaults    keys: "device-0x0357.…"                │  lowest
+///     │    The baseline for this product ID.                         │
+///     └──────────────────────────────────────────────────────────────┘
+///
+/// Legacy unprefixed keys (from before per-device support) are read as a
+/// fallback on first load for a given device, providing seamless migration.
+///
+/// Activating/deactivating any overlay republishes all @Published properties
+/// so SwiftUI views re-render against the effective composed value.
 @MainActor
 final class TabletSettings: ObservableObject {
 
