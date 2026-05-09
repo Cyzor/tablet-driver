@@ -942,94 +942,67 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Load helpers
 
-    // Fallback chain: active app override (if key is overridden)
-    //                 → active profile (if key is overridden)
-    //                 → device prefix → legacy unprefixed key → compile-time default.
-
-    private func loadDouble(_ key: String, default d: Double) -> Double {
-        // When user is editing a non-active app, show that app's values in the UI.
-        // Otherwise show the driver's active values.
+    /// Returns the UserDefaults key-prefix of whichever inheritance layer "owns"
+    /// `key`, or `nil` if no layer has set it. This is the single source of
+    /// truth for the read-time precedence walk:
+    ///
+    ///   active app override (if key is in its `overriddenKeys`)
+    ///   → active profile  (if key is in its `overriddenKeys`)
+    ///   → device prefix
+    ///   → legacy unprefixed key (pre-per-device migration)
+    ///   → nil  (caller substitutes the compile-time default)
+    ///
+    /// The empty-string return ("") signals "use the unprefixed legacy key" —
+    /// `prefix + key` is then literally `key`.
+    ///
+    /// All `load*` helpers below MUST go through this function. Adding a new
+    /// inheritance layer requires editing this method and nowhere else.
+    private func resolveLayer(for key: String) -> String? {
+        // When the user is editing a non-active app, show that app's values in
+        // the UI. Otherwise show the driver's active values.
         let sourceOverride =
             (activeAppOverride?.bundleID != driverOverride?.bundleID)
             ? activeAppOverride
             : driverOverride
-        if let override = sourceOverride, override.overriddenKeys.contains(key),
+        if let override = sourceOverride,
+            override.overriddenKeys.contains(key),
             ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
         {
-            return ud.double(forKey: appOverrideKeyPrefix(override) + key)
+            return appOverrideKeyPrefix(override)
         }
-        if let preset = activeProfile, preset.overriddenKeys.contains(key),
+        if let preset = activeProfile,
+            preset.overriddenKeys.contains(key),
             ud.object(forKey: profileKeyPrefix(preset) + key) != nil
         {
-            return ud.double(forKey: profileKeyPrefix(preset) + key)
+            return profileKeyPrefix(preset)
         }
         if ud.object(forKey: devicePrefix + key) != nil {
-            return ud.double(forKey: devicePrefix + key)
+            return devicePrefix
         }
-        if ud.object(forKey: key) != nil { return ud.double(forKey: key) }
-        return d
+        if ud.object(forKey: key) != nil {
+            return ""
+        }
+        return nil
+    }
+
+    private func loadDouble(_ key: String, default d: Double) -> Double {
+        guard let prefix = resolveLayer(for: key) else { return d }
+        return ud.double(forKey: prefix + key)
     }
 
     private func loadBool(_ key: String, default d: Bool) -> Bool {
-        let sourceOverride =
-            (activeAppOverride?.bundleID != driverOverride?.bundleID)
-            ? activeAppOverride
-            : driverOverride
-        if let override = sourceOverride, override.overriddenKeys.contains(key),
-            ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
-        {
-            return ud.bool(forKey: appOverrideKeyPrefix(override) + key)
-        }
-        if let preset = activeProfile, preset.overriddenKeys.contains(key),
-            ud.object(forKey: profileKeyPrefix(preset) + key) != nil
-        {
-            return ud.bool(forKey: profileKeyPrefix(preset) + key)
-        }
-        if ud.object(forKey: devicePrefix + key) != nil {
-            return ud.bool(forKey: devicePrefix + key)
-        }
-        if ud.object(forKey: key) != nil { return ud.bool(forKey: key) }
-        return d
+        guard let prefix = resolveLayer(for: key) else { return d }
+        return ud.bool(forKey: prefix + key)
     }
 
     private func loadInt(_ key: String, default d: Int) -> Int {
-        let sourceOverride =
-            (activeAppOverride?.bundleID != driverOverride?.bundleID)
-            ? activeAppOverride
-            : driverOverride
-        if let override = sourceOverride, override.overriddenKeys.contains(key),
-            ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
-        {
-            return ud.integer(forKey: appOverrideKeyPrefix(override) + key)
-        }
-        if let preset = activeProfile, preset.overriddenKeys.contains(key),
-            ud.object(forKey: profileKeyPrefix(preset) + key) != nil
-        {
-            return ud.integer(forKey: profileKeyPrefix(preset) + key)
-        }
-        if ud.object(forKey: devicePrefix + key) != nil {
-            return ud.integer(forKey: devicePrefix + key)
-        }
-        if ud.object(forKey: key) != nil { return ud.integer(forKey: key) }
-        return d
+        guard let prefix = resolveLayer(for: key) else { return d }
+        return ud.integer(forKey: prefix + key)
     }
 
     private func loadString(_ key: String, default d: String) -> String {
-        let sourceOverride =
-            (activeAppOverride?.bundleID != driverOverride?.bundleID)
-            ? activeAppOverride
-            : driverOverride
-        if let override = sourceOverride, override.overriddenKeys.contains(key),
-            let v = ud.string(forKey: appOverrideKeyPrefix(override) + key)
-        {
-            return v
-        }
-        if let preset = activeProfile, preset.overriddenKeys.contains(key) {
-            if let v = ud.string(forKey: profileKeyPrefix(preset) + key) { return v }
-        }
-        if let v = ud.string(forKey: devicePrefix + key) { return v }
-        if let v = ud.string(forKey: key) { return v }
-        return d
+        guard let prefix = resolveLayer(for: key) else { return d }
+        return ud.string(forKey: prefix + key) ?? d
     }
 
     // MARK: - Pressure curve persistence
