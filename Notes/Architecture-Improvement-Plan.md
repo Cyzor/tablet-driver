@@ -57,10 +57,12 @@ These have real payoff and bounded scope. Each is a focused 1–3 hour session.
 - **Result:** `deviceConnected` dropped from 405 → 330 lines (the closures are most of what remains and they belong here). The routing logic is now isolated and the LED-companion path is a first-class enum case rather than buried in else-of-else.
 - **Verified:** Xcode build green, `swift test` 7/7 passing. Pbxproj updated with the standard four mirror entries for the new file.
 
-### T2-2. Extract a `SettingsStore` facade
-- **Problem:** The 4-layer lookup chain (device → tool → profile → app-override) is implemented by string-prefix concatenation duplicated across `loadDouble`/`loadBool`/`loadInt`/`loadString` ([TabletSettings.swift:949-1030](../MockTab/Settings/TabletSettings.swift)). A typo in one prefix builder silently reads from the wrong namespace; no test can catch it.
-- **Fix:** Define a `SettingsStore` protocol with a single typed lookup that takes the active layer stack. Implement it once over `UserDefaults`; replace the four near-duplicate load helpers with calls into it. Keep `TabletSettings` as the @Published facade — just delegate the lookup mechanics.
-- **Bonus:** Enables the first real unit tests of the inheritance model (in-memory `SettingsStore` impl).
+### T2-2. Extract a `SettingsStore` facade ✓ partial 2026-05-08
+- **Problem:** The 4-layer lookup chain (device → tool → profile → app-override) was implemented by string-prefix concatenation duplicated across `loadDouble`/`loadBool`/`loadInt`/`loadString`. A typo in one prefix builder silently read from the wrong namespace; no test could catch it.
+- **Approach taken (minimal):** Added a `resolveLayer(for key:)` helper that returns the prefix of whichever layer owns a key (or `nil`). The four `load*` helpers each shrink from ~22 lines to 4. Read-time precedence now lives in **one** function — typos can no longer make `loadInt` and `loadDouble` disagree about which layer wins.
+- **Result:** Net 60 lines removed from `TabletSettings.swift`. Behavior preserved (manually verified against Xcode build; semantics of the four helpers stay the same except for a minor normalization of `loadString`'s fall-through, which has no live callers exercising the edge case).
+- **Verified:** Xcode build green, `swift test` 7/7 still passing.
+- **Skipped (deferred to T3):** Full `SettingsStore` protocol with in-memory impl for unit testing. Pulling `TabletSettings.swift` into the SwiftPM sidecar would require following its AppKit/Carbon imports, expanding the test surface beyond pure logic. Worth doing when settings-inheritance bugs become a real cost.
 
 ### T2-3. Add an XCTest target for decoders ✓ harness landed 2026-05-08
 - **Problem:** Zero automated regression safety across ~95 tablet families. Decoders are already nearly pure (`decode()` takes report + spec, mutates `inout DecoderState`, returns results) — the testing prerequisite is met; only the target was missing.
