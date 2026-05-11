@@ -169,16 +169,34 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     // MARK: - Duplicate View menu removal
 
-    /// SwiftUI generates a default empty "View" menu; our `CommandMenu("View")`
-    /// creates a second one.  Walk the main menu and drop whichever "View" entry
-    /// has no items — that is always the SwiftUI-generated stub.
+    /// SwiftUI generates a redundant View menu alongside our `CommandMenu("View")`.
+    /// The stub's title varies by locale ("View" in English, "Darstellung" in German,
+    /// etc.), and AppKit may inject system items (Full Screen, Show All Tabs) into it
+    /// before our code runs, so we can't match by title alone or by emptiness alone.
+    ///
+    /// Strategy: skip menus whose titles are ones we own, then remove any remaining
+    /// menu item that is either empty or contains the system Full Screen action
+    /// (the reliable fingerprint of AppKit's auto-generated View stub).
     private func removeEmptyViewMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
-        let viewTitle = String(localized: "View", comment: "Menu header: view/navigate tabs")
-        for item in mainMenu.items where item.title == viewTitle {
-            if item.submenu?.items.isEmpty ?? true {
+
+        // Titles of menus we build ourselves — never remove these even if transiently empty.
+        let ours: Set<String> = [
+            String(localized: "View",     comment: "Menu header: view/navigate tabs"),
+            String(localized: "Tablet",   comment: "Menu header: tablet-specific actions"),
+            String(localized: "Profiles", comment: "Menu header: profile management"),
+            String(localized: "Window",   comment: "Menu header: window management"),
+        ]
+
+        for item in mainMenu.items.dropFirst() where !item.isSeparatorItem {
+            guard !ours.contains(item.title), let sub = item.submenu else { continue }
+            let isEmpty = sub.items.isEmpty
+            let isSystemStub = sub.items.contains {
+                $0.action == #selector(NSWindow.toggleFullScreen(_:))
+            }
+            if isEmpty || isSystemStub {
                 mainMenu.removeItem(item)
-                return  // only one stub expected
+                return
             }
         }
     }
@@ -223,37 +241,39 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         else { return }
         let quitIndex = menu.items.firstIndex(of: quitItem)!
 
-        // Only insert Factory Reset alternates if not already present.
-        let alreadyHasReset = menu.items.contains {
-            $0.action == #selector(confirmFactoryReset)
+        // Always remove and re-insert the Factory Reset alternates so they land
+        // directly after Quit regardless of any SwiftUI-driven menu reordering.
+        // Guarding with "already present" is not enough: if a rebuild shifts Quit
+        // relative to the existing alternates, isAlternate stops hiding them.
+        for item in menu.items.filter({ $0.action == #selector(confirmFactoryReset) }) {
+            menu.removeItem(item)
         }
-        if !alreadyHasReset {
-            // Three alternates so Factory Reset is reachable on every OS version:
-            //   ⌘⌥Q       — macOS 15 and earlier (Option alone)
-            //   ⌘⇧Q       — all versions (Shift alone)
-            //   ⌘⌥⇧Q     — all versions (Option+Shift)
-            // macOS 26 intercepts ⌘⌥Q at the system level before AppKit sees it,
-            // making the Shift-based shortcuts the reliable fallback there.
-            let key = quitItem.keyEquivalent
-            let alternates: [NSEvent.ModifierFlags] = [
-                [.command, .option],
-                [.command, .shift],
-                [.command, .option, .shift],
-            ]
+        // Three alternates so Factory Reset is reachable on every OS version:
+        //   ⌘⌥Q       — macOS 15 and earlier (Option alone)
+        //   ⌘⇧Q       — all versions (Shift alone)
+        //   ⌘⌥⇧Q     — all versions (Option+Shift)
+        // macOS 26 intercepts ⌘⌥Q at the system level before AppKit sees it,
+        // making the Shift-based shortcuts the reliable fallback there.
+        let key = quitItem.keyEquivalent
+        let alternates: [NSEvent.ModifierFlags] = [
+            [.command, .option],
+            [.command, .shift],
+            [.command, .option, .shift],
+        ]
 //            let resetIcon = NSImage(systemSymbolName: "trash.square", accessibilityDescription: nil)
-            for (i, modifiers) in alternates.enumerated() {
-                let item = NSMenuItem(
-                    title: String(
-                        localized: "Factory Reset\u{2026}",
-                        comment: "Menu item: factory reset (hidden alternate)"),
-                    action: #selector(confirmFactoryReset),
-                    keyEquivalent: key)
-                item.keyEquivalentModifierMask = modifiers
-                item.isAlternate = true
+        let freshQuitIndex = menu.items.firstIndex(of: quitItem)!
+        for (i, modifiers) in alternates.enumerated() {
+            let item = NSMenuItem(
+                title: String(
+                    localized: "Factory Reset\u{2026}",
+                    comment: "Menu item: factory reset (hidden alternate)"),
+                action: #selector(confirmFactoryReset),
+                keyEquivalent: key)
+            item.keyEquivalentModifierMask = modifiers
+            item.isAlternate = true
 //                item.image = resetIcon
-                item.target = self
-                menu.insertItem(item, at: quitIndex + 1 + i)
-            }
+            item.target = self
+            menu.insertItem(item, at: freshQuitIndex + 1 + i)
         }
 
         // Only insert "Hide Dock Icon…" if it isn't already there.
