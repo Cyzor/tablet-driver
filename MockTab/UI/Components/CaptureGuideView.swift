@@ -76,6 +76,7 @@ struct CaptureGuideView: View {
             Image(systemName: "square.and.arrow.up.on.square")
                 .font(.title2)
                 .foregroundStyle(.blue)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(String(localized: "Collect Device Data", comment: "Sheet title: device data collection"))
                     .font(.headline)
@@ -141,6 +142,7 @@ struct CaptureGuideView: View {
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .frame(width: 18)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.body)
         }
@@ -153,6 +155,7 @@ struct CaptureGuideView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 44))
                 .foregroundStyle(.green)
+                .accessibilityHidden(true)
 
             Text(String(localized: "Collection Complete", comment: "Data collection completion status"))
                 .font(.title3)

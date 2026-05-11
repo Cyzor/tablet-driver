@@ -122,6 +122,7 @@ struct DeviceStatusBar: View {
             Image(systemName: symbol)
                 .font(.settingsBadge)
                 .foregroundStyle(tint)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.settingsLabel)
                 .foregroundStyle(.secondary)

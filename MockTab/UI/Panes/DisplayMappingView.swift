@@ -84,6 +84,7 @@ struct DisplayMappingView: View {
                         .foregroundStyle(.orange)
                         .imageScale(.small)
                         .padding(.top, 2)
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(String(localized: "Display Rotation Detected", comment: "Warning title for rotated display"))
                             .font(.subheadline)
@@ -204,9 +205,11 @@ struct DisplayMappingView: View {
             if assignedLabel != nil {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
+                    .accessibilityHidden(true)
             } else {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.primary)
+                    .accessibilityHidden(true)
             }
             Text(assignedLabel.map { String(localized: "Triggered by \($0)", comment: "Label showing which button triggers the display toggle") } ?? String(localized: "No button assigned to toggle", comment: "Label when no button is assigned to display toggle"))
                 .foregroundStyle(assignedLabel != nil ? .secondary : .primary)
@@ -252,6 +255,7 @@ struct DisplayMappingView: View {
                 .font(.system(size: 18))
                 .foregroundStyle(included ? Color.green : Color.secondary)
                 .shadow(color: .black.opacity(0.4), radius: 1)
+                .accessibilityHidden(true)
 
             // Display name badge
             VStack(spacing: 0) {
@@ -277,6 +281,13 @@ struct DisplayMappingView: View {
                     lineWidth: included ? 1.5 : 1
                 )
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(included ? [.isButton, .isSelected] : .isButton)
+        .accessibilityLabel(Text(String(
+            localized: "Display \(info.name), \(included ? "included" : "excluded")",
+            comment: "Accessibility label for a display thumbnail in the toggle-display picker"
+        )))
+        .accessibilityHint(LocalizedStringKey("Double tap to toggle inclusion in the display rotation"))
         .onTapGesture {
             let flags = NSApplication.shared.currentEvent?.modifierFlags ?? []
 

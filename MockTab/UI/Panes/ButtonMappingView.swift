@@ -899,6 +899,7 @@ struct ButtonMappingView: View {
             .foregroundStyle(Color.green)
             .imageScale(.small)
             .opacity(isActive ? 1 : 0)
+            .accessibilityHidden(true)
     }
 
     private func labelText(_ label: String, isActive: Bool) -> some View {
@@ -943,6 +944,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                     .foregroundStyle(Color.green)
                     .imageScale(.small)
                     .opacity(isActiveSlot ? 1 : 0)
+                    .accessibilityHidden(true)
                 Text("Mode \(idx + 1)")
                     .foregroundStyle(.secondary)
                     .frame(minWidth: 100, alignment: .trailing)
@@ -984,6 +986,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                         Image(systemName: "arrow.clockwise")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
+                            .accessibilityLabel(LocalizedStringKey("Clockwise"))
                         ButtonBindingControl(
                             binding: cwBinding, compact: true,
                             ringSlotCount: ringSlotCount)
@@ -992,6 +995,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                         Image(systemName: "arrow.counterclockwise")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
+                            .accessibilityLabel(LocalizedStringKey("Counter-clockwise"))
                         ButtonBindingControl(
                             binding: ccwBinding, compact: true,
                             ringSlotCount: ringSlotCount)
@@ -1063,6 +1067,7 @@ struct ButtonBindingControl: View, Equatable {
                 }
                 .buttonStyle(.plain)
                 .help("Clear this button assignment.")
+                .accessibilityLabel(LocalizedStringKey("Clear button assignment"))
             }
 
             // Click-action picker
@@ -1122,6 +1127,7 @@ struct ButtonBindingControl: View, Equatable {
                 .font(.settingsBadge)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
+                .accessibilityHidden(true)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -1129,6 +1135,7 @@ struct ButtonBindingControl: View, Equatable {
         .help(
             "Assign a click action: left-click, right-click, middle-click, modifier keys, or display toggle."
         )
+        .accessibilityLabel(LocalizedStringKey("Click action menu"))
     }
 
     // MARK: - Visual state

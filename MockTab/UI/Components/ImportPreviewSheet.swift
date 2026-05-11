@@ -50,17 +50,40 @@ struct ImportPreviewSheet: View {
                     entryRow(entry)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            if excluded.contains(entry.productID) {
-                                excluded.remove(entry.productID)
-                            } else {
-                                excluded.insert(entry.productID)
-                            }
+                            toggleExclusion(entry.productID)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityLabel(rowAccessibilityLabel(for: entry))
+                        .accessibilityHint(LocalizedStringKey("Double tap to toggle whether this profile is imported"))
+                        .accessibilityAction {
+                            toggleExclusion(entry.productID)
                         }
                 }
             }
             .padding(16)
         }
         .frame(minHeight: 80, maxHeight: 300)
+    }
+
+    private func toggleExclusion(_ productID: Int) {
+        if excluded.contains(productID) {
+            excluded.remove(productID)
+        } else {
+            excluded.insert(productID)
+        }
+    }
+
+    private func rowAccessibilityLabel(for entry: ImportPlan.TabletEntry) -> String {
+        let state: String
+        if excluded.contains(entry.productID) {
+            state = String(localized: "Excluded", comment: "Accessibility state for an import entry the user has chosen to skip")
+        } else if entry.isKnown {
+            state = String(localized: "Known tablet", comment: "Accessibility state for a registered tablet entry in the import sheet")
+        } else {
+            state = String(localized: "Unknown tablet", comment: "Accessibility state for an unregistered tablet entry in the import sheet")
+        }
+        return "\(entry.nickname), \(entry.modelName), \(state)"
     }
 
     private var note: some View {
@@ -105,6 +128,7 @@ struct ImportPreviewSheet: View {
                 .foregroundStyle(isExcluded ? Color.secondary : (entry.isKnown ? Color.green : Color.orange))
                 .frame(width: 16)
                 .padding(.top, 1)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {

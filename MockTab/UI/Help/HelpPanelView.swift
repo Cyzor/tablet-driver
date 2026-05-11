@@ -50,6 +50,7 @@ struct HelpPanelView: View {
                         Image(systemName: "textformat.size.smaller")
                     }
                     .disabled(controller.fontSizeStep <= HelpWindowController.fontSizeStepRange.lowerBound)
+                    .accessibilityLabel(LocalizedStringKey("Decrease text size"))
 
                     Button {
                         controller.fontSizeStep = min(
@@ -59,6 +60,7 @@ struct HelpPanelView: View {
                         Image(systemName: "textformat.size.larger")
                     }
                     .disabled(controller.fontSizeStep >= HelpWindowController.fontSizeStepRange.upperBound)
+                    .accessibilityLabel(LocalizedStringKey("Increase text size"))
                 }
                 .help(String(localized: "Decrease or increase text size",
                              comment: "Help window toolbar: font size control tooltip"))

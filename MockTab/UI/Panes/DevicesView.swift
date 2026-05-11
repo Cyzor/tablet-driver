@@ -148,11 +148,13 @@ struct DevicesView: View {
             Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(isActive ? Color.green : Color.clear)
                 .frame(width: 20, alignment: .center)
+                .accessibilityHidden(true)
 
             // Kind icon
             Image(systemName: "rectangle")
                 .foregroundStyle(.secondary)
                 .frame(width: 20, alignment: .center)
+                .accessibilityHidden(true)
 
             // Editable name
             if editingTabletID == tablet.id {
@@ -189,8 +191,10 @@ struct DevicesView: View {
                     editingName = tablet.nickname
                 } label: {
                     Image(systemName: "pencil")
+                        .accessibilityHidden(true)
                 }
                 .buttonStyle(.plain).foregroundStyle(.secondary).help(LocalizedStringKey("Rename"))
+                .accessibilityLabel(LocalizedStringKey("Rename"))
             }
         }
         .padding(.horizontal, 12)
@@ -243,11 +247,13 @@ struct DevicesView: View {
             Image(systemName: isInProximity ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(isInProximity ? Color.green : Color.clear)
                 .frame(width: 20, alignment: .center)
+                .accessibilityHidden(true)
 
             // Kind icon
             Image(systemName: toolIcon(for: tool))
                 .foregroundStyle(.secondary)
                 .frame(width: 20, alignment: .center)
+                .accessibilityHidden(true)
 
             if editingToolID == tool.id {
                 TextField(String(localized: "Tool name", comment: "Placeholder text in rename tool field"), text: $editingName)
@@ -262,6 +268,7 @@ struct DevicesView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
                             .help(LocalizedStringKey("Tool not fully supported on this device"))
+                            .accessibilityLabel(LocalizedStringKey("Warning: tool not fully supported on this device"))
                     }
                 }
             }

@@ -21,6 +21,8 @@ import SwiftUI
 struct AboutView: View {
     @State private var isHovering = false
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?.?"
     }
@@ -43,6 +45,10 @@ struct AboutView: View {
                 .scaledToFit()
                 .frame(maxHeight: 800)
                 .border(Color.secondary, width: 1.5)
+                .accessibilityLabel(Text(String(
+                    localized: "Mock Turtle, illustration by John Tenniel, 1865",
+                    comment: "Accessibility label for the Mock Turtle illustration in the About view"
+                )))
                 .overlay(alignment: .bottom) {
                     if isHovering {
                         Link(
@@ -65,10 +71,10 @@ struct AboutView: View {
                         }
                         .buttonStyle(.plain)
                         .padding(.bottom, 12)
-                        .transition(.opacity)  // ← fades in/out
+                        .transition(.opacity)
                     }
                 }
-                .animation(.easeIn(duration: 0.1), value: isHovering)  // ← drives the transition
+                .animation(reduceMotion ? nil : .easeIn(duration: 0.1), value: isHovering)
                 .onHover { hovering in
                     isHovering = hovering
                 }
@@ -89,6 +95,7 @@ struct AboutView: View {
 //                Image("AboutMockTabIcon")
                     .resizable()
                     .frame(width: 128, height: 128)
+                    .accessibilityHidden(true)
 
                 Text(String(localized: "MockTab", comment: "Application name"))
                     .font(.system(size: 32, weight: .semibold))
