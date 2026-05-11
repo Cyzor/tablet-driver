@@ -25,6 +25,7 @@ import Foundation
 /// directly — no recompile needed. To add a language, add a matching `.md`
 /// file to the Help group and the Copy Bundle Resources build phase.
 enum HelpSection: String, CaseIterable, Identifiable {
+    case about
     case tabletArea
     case penFeel
     case buttons
@@ -33,6 +34,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
     case profiles
     case scratchpad
     case info
+    case website
 
     var id: String { rawValue }
 
@@ -41,6 +43,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .about:      String(localized: "About",        comment: "Help section title")
         case .tabletArea: String(localized: "Tablet Area",  comment: "Help section title")
         case .penFeel:    String(localized: "Pen Feel",     comment: "Help section title")
         case .buttons:    String(localized: "Buttons",      comment: "Help section title")
@@ -49,11 +52,13 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .profiles:   String(localized: "Profiles",     comment: "Help section title")
         case .scratchpad: String(localized: "Scratchpad",   comment: "Help section title")
         case .info:       String(localized: "Info",         comment: "Help section title")
+        case .website:    String(localized: "Website",      comment: "Help section title")
         }
     }
 
     var systemImage: String {
         switch self {
+        case .about:      "book"
         case .tabletArea: "rectangle.dashed"
         case .penFeel:    "scribble.variable"
         case .buttons:    "square.grid.2x2.fill"
@@ -62,6 +67,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .profiles:   "star.circle"
         case .scratchpad: "pencil.and.outline"
         case .info:       "info.circle"
+        case .website:    "globe"
         }
     }
 
