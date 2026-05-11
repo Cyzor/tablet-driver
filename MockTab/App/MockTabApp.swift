@@ -37,21 +37,21 @@ struct MockTabApp: App {
             // Declared here so SwiftUI owns the menu lifecycle and it is never
             // overwritten by SwiftUI's own menu-rebuild passes.
             CommandMenu(String(localized: "View", comment: "Menu header: view/navigate tabs")) {
-                Button(String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab")) { PreferencesWindowController.shared.showTab(at: 0) }
+                Button { PreferencesWindowController.shared.showTab(at: 0) } label: { Label(String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab"), systemImage: "rectangle.dashed") }
                     .keyboardShortcut("1", modifiers: .command)
-                Button(String(localized: "Pen Feel", comment: "Menu item: open Pen Feel tab")) { PreferencesWindowController.shared.showTab(at: 1) }
+                Button { PreferencesWindowController.shared.showTab(at: 1) } label: { Label(String(localized: "Pen Feel", comment: "Menu item: open Pen Feel tab"), systemImage: "scribble.variable") }
                     .keyboardShortcut("2", modifiers: .command)
-                Button(String(localized: "Buttons", comment: "Menu item: open Button Mapping tab")) { PreferencesWindowController.shared.showTab(at: 2) }
+                Button { PreferencesWindowController.shared.showTab(at: 2) } label: { Label(String(localized: "Buttons", comment: "Menu item: open Button Mapping tab"), systemImage: "square.grid.2x2.fill") }
                     .keyboardShortcut("3", modifiers: .command)
-                Button(String(localized: "Display", comment: "Menu item: open Display Mapping tab")) { PreferencesWindowController.shared.showTab(at: 3) }
+                Button { PreferencesWindowController.shared.showTab(at: 3) } label: { Label(String(localized: "Display", comment: "Menu item: open Display Mapping tab"), systemImage: "display") }
                     .keyboardShortcut("4", modifiers: .command)
-                Button(String(localized: "Devices", comment: "Menu item: open Devices tab")) { PreferencesWindowController.shared.showTab(at: 4) }
+                Button { PreferencesWindowController.shared.showTab(at: 4) } label: { Label(String(localized: "Devices", comment: "Menu item: open Devices tab"), systemImage: "rectangle.on.rectangle") }
                     .keyboardShortcut("5", modifiers: .command)
-                Button(String(localized: "Profiles", comment: "Menu item: open Profiles tab")) { PreferencesWindowController.shared.showTab(at: 5) }
+                Button { PreferencesWindowController.shared.showTab(at: 5) } label: { Label(String(localized: "Profiles", comment: "Menu item: open Profiles tab"), systemImage: "star.circle") }
                     .keyboardShortcut("6", modifiers: .command)
-                Button(String(localized: "Scratchpad", comment: "Menu item: open Scratchpad tab")) { PreferencesWindowController.shared.showTab(at: 6) }
+                Button { PreferencesWindowController.shared.showTab(at: 6) } label: { Label(String(localized: "Scratchpad", comment: "Menu item: open Scratchpad tab"), systemImage: "pencil.and.outline") }
                     .keyboardShortcut("7", modifiers: .command)
-                Button(String(localized: "Info", comment: "Menu item: open Info tab")) { PreferencesWindowController.shared.showTab(at: 7) }
+                Button { PreferencesWindowController.shared.showTab(at: 7) } label: { Label(String(localized: "Info", comment: "Menu item: open Info tab"), systemImage: "info.circle") }
                     .keyboardShortcut("8", modifiers: .command)
 
                 Divider()
