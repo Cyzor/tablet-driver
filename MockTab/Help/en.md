@@ -1,3 +1,15 @@
+[about]
+
+## Drawing Tablets
+
+A drawing tablet is an input device with a battery-free stylus that reports absolute position, pressure, tilt, and sometimes rotation. Unlike a mouse, the pen goes exactly where you place it, and drawing apps can respond to how hard you press — making digital work feel closer to working on paper.
+
+## MockTab
+
+MockTab is a native macOS driver for Wacom drawing tablets. It targets USB and Bluetooth tablets from the Intuos, Cintiq, Bamboo, and Intuos Pro families — hardware that Wacom's own driver has stopped supporting on modern macOS releases.
+
+MockTab runs entirely in user space with no kernel extension and no background daemon. Configure it once and it stays out of the way.
+
 [tabletArea]
 
 ## Active Area
@@ -128,3 +140,13 @@ The **Copy Diagnostics** button produces a text snapshot of the current driver s
 ## Collect Device Data
 
 **Collect Device Data** runs a guided capture session that records the raw HID reports your tablet sends. The result is a compact JSON file you can attach to a feature request to add or improve support for your device.
+
+[website]
+
+## mocktab.org
+
+The MockTab website at [mocktab.org](https://mocktab.org) has documentation, release notes, and the full list of supported hardware.
+
+## GitHub
+
+Bug reports and questions go to [github.com/Cyzor/mocktab-app](https://github.com/Cyzor/mocktab-app/issues). The **Copy Diagnostics** button in the Info pane produces a text snapshot of your driver state — include it with bug reports.

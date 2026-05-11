@@ -77,6 +77,9 @@
 		AB002007 /* MarkdownBodyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB002008 /* MarkdownBodyView.swift */; };
 		AB002009 /* HelpContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB002010 /* HelpContent.swift */; };
 		AB002011 /* en.md in Resources */ = {isa = PBXBuildFile; fileRef = AB002012 /* en.md */; };
+		AB002013 /* de.md in Resources */ = {isa = PBXBuildFile; fileRef = AB002014 /* de.md */; };
+		AB002015 /* es.md in Resources */ = {isa = PBXBuildFile; fileRef = AB002016 /* es.md */; };
+		AB002017 /* ja.md in Resources */ = {isa = PBXBuildFile; fileRef = AB002018 /* ja.md */; };
 		AC000009 /* TabletColorTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000008 /* TabletColorTheme.swift */; };
 		B33B693E051F42C481B02431 /* CalibrationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA2A9E683E3436B8576AFFF /* CalibrationSession.swift */; };
 		E1888DF9E1DD43F0A7D96E82 /* CalibrationData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22D2FFEB9A0346788DD687D6 /* CalibrationData.swift */; };
@@ -153,6 +156,9 @@
 		AB002008 /* MarkdownBodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownBodyView.swift; sourceTree = "<group>"; };
 		AB002010 /* HelpContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpContent.swift; sourceTree = "<group>"; };
 		AB002012 /* en.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = en.md; sourceTree = "<group>"; };
+		AB002014 /* de.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = de.md; sourceTree = "<group>"; };
+		AB002016 /* es.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = es.md; sourceTree = "<group>"; };
+		AB002018 /* ja.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ja.md; sourceTree = "<group>"; };
 		AB00C1D1 /* CintiqV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CintiqV1Decoder.swift; sourceTree = "<group>"; };
 		AB00HT01 /* HIDThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDThread.swift; sourceTree = "<group>"; };
 		AB00IS01 /* InjectionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjectionSnapshot.swift; sourceTree = "<group>"; };
@@ -337,6 +343,9 @@
 			isa = PBXGroup;
 			children = (
 				AB002012 /* en.md */,
+				AB002014 /* de.md */,
+				AB002016 /* es.md */,
+				AB002018 /* ja.md */,
 			);
 			path = Help;
 			sourceTree = "<group>";
@@ -416,6 +425,9 @@
 				AB001001 /* Localizable.xcstrings in Resources */,
 				05FE52D12F9E8D730084E37D /* AppIcon.icon in Resources */,
 				AB002011 /* en.md in Resources */,
+				AB002013 /* de.md in Resources */,
+				AB002015 /* es.md in Resources */,
+				AB002017 /* ja.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
