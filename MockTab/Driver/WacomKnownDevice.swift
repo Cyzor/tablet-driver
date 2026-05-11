@@ -247,23 +247,27 @@ final class WacomKnownDevice: TabletDevice {
         let name = deviceSpec.name
         switch deviceSpec.parser {
         case .intuosV2 where !isBluetooth:
-            // LED report for intuosV2 USB. Observed behavior:
-            //   PTH-660 USB: 0x11 works (LEDs track slot changes).
-            //   PTH-860 USB: 0x11 accepted by IOKit but firmware ignores it (LEDs static).
-            //   Both models work via the BT path below (report 0x82).
-            // Notably 0x11 is also PTH-860's pad *input* report ID — likely collision.
-            // 0xCC (WAC_CMD_LED_CONTROL_GENERIC) actively breaks pen input — do not use.
-            // 0x20 (WAC_CMD_LED_CONTROL) also silently ignored.
-            // TODO(PTH-860 USB LED): diagnose by (a) logging IOHIDDeviceSetReport ret here,
-            //   (b) checking Linux wacom_sys.c wacom_led_control() for the INTUOSP2 USB
-            //   report ID, (c) considering an LED-enable feature-init (report 0x0A) or a
-            //   companion-interface route (see ledCompanionPID / cintiqV1 branch).
+            // KNOWN LIMITATION — PTH-660/860 USB LED control does not work and we
+            // do not know the correct command. Diagnostic probe (session 2026-05-08)
+            // confirmed IOHIDDeviceSetReport returns kIOReturnSuccess for every
+            // candidate report ID (0x11, 0x0A, 0x20, 0x82) on both the primary
+            // 0xFF00 and secondary 0x01 interface — yet no LED responds. The
+            // firmware is silently discarding all of them. The same 0x82 payload
+            // works over BT Classic (see below), so the kernel/transport path is
+            // not the problem; we're missing either the right report ID or an
+            // LED-enable initialization step.
+            //
+            // Resolution requires a USB packet capture from the official Wacom
+            // driver — guessing further has been ruled out. LEDs over BT are the
+            // workaround. Pen, buttons, and ring scrolling all work over USB.
+            //
+            // The 0x11 write below is the historical baseline; left in place as a
+            // best-effort no-op (firmware ignores it but the call is harmless).
             let ledBits = (UInt8(1) << 2) | UInt8(index & 0x03)
             var buf = [UInt8](repeating: 0, count: 9)
             buf[0] = 0x11
             buf[1] = ledBits
-            let ret = IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
-            // logger.debug("\(name, privacy: .public): setRingLED USB slot=\(index) ledBits=0x\(String(ledBits, radix: 16)) ret=\(ret, privacy: .public)")
+            _ = IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
 
         case .intuosV2 where isBluetooth:
             // Linux wacom_sys.c wacom_led_control(), WAC_CMD_WL_INTUOSP2 BT path:
@@ -274,8 +278,7 @@ final class WacomKnownDevice: TabletDevice {
             buf[0] = 0x82  // WAC_CMD_WL_INTUOSP2
             buf[9]  = 0x40  // llv: moderate brightness
             buf[10] = UInt8(index & 0x03)
-            let ret = IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
-            // logger.debug("\(name, privacy: .public): setRingLED BT slot=\(index) buf[10]=\(index) ret=\(ret, privacy: .public)")
+            _ = IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
 
         case .cintiqV1:
             // LED control targets the companion interface (ledDevice), not the digitizer.
