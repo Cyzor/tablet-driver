@@ -187,4 +187,4 @@ These gaps exist because public reverse-engineering has not reached them:
 - **Touch decoding** for Movink 13, DTH-2200, and DTH-227 — present in hardware, absent in open documentation
 - **AES vs. EMR classification** for borderline devices (DTC-133, Wacom One 12) — inferred from pressure ceiling and price tier, not confirmed from descriptor captures
 
-The most reliable path to filling these gaps remains USB capture on live hardware, exactly as you've already done for the PTZ-631W. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/16788129/e0ab6dc0-857f-43c4-a5eb-25b6378285ae/mocktab_capture_20260327_205151.txt)
+The most reliable path to filling these gaps remains USB capture on live hardware, exactly as you've already done for the PTZ-631W.
