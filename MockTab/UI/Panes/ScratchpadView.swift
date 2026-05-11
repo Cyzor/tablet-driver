@@ -30,6 +30,8 @@ struct ScratchpadView: View {
     @State private var currentPressure: Double = 0
     @State private var clearID = 0
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         VStack(spacing: 0) {
             mainContent
@@ -90,7 +92,7 @@ struct ScratchpadView: View {
                     RoundedRectangle(cornerRadius: 3, style: .continuous)
                         .fill(pressureColor)
                         .frame(width: geo.size.width * currentPressure)
-                        .animation(.linear(duration: 0.05), value: currentPressure)
+                        .animation(reduceMotion ? nil : .linear(duration: 0.05), value: currentPressure)
                 }
             }
             .frame(height: 8)

@@ -119,6 +119,7 @@ struct ProfilesView: View {
             HStack(spacing: 10) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
+                    .accessibilityHidden(true)
                 Text(LocalizedStringKey("Active profile:"))
                     .font(.headline)
                 Text(active.name)
@@ -168,6 +169,7 @@ struct ProfilesView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "plus.circle.fill")
+                            .accessibilityHidden(true)
                         Text(
                             String(
                                 localized: "Create Profile",
@@ -303,6 +305,7 @@ struct ProfilesView: View {
                             .font(.system(size: 26, weight: .semibold))
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(isDropTargeted ? Color.accentColor : Color.primary)
+                            .accessibilityHidden(true)
 
                         Text(
                             String(
@@ -314,6 +317,8 @@ struct ProfilesView: View {
                     }
                     .padding(10)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(LocalizedStringKey("JSON backup tile — drag out to export, drop a JSON file in to import"))
                 .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .onHover { hovering in
                     isHovering = hovering
@@ -505,6 +510,7 @@ private struct PresetListView: View {
             Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(isActive ? Color.green : Color.secondary)
                 .frame(width: 20)
+                .accessibilityHidden(true)
 
             if isEditing {
                 TextField("Profile name", text: $editingName)
@@ -567,10 +573,12 @@ private struct PresetListView: View {
                         .font(.settingsBadge)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 4)
+                        .accessibilityHidden(true)
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .frame(width: 24)
+                .accessibilityLabel(LocalizedStringKey("Profile actions"))
             }
         }
         .padding(10)
@@ -612,6 +620,7 @@ private struct PresetListView: View {
             Image(systemName: "app")
                 .font(.settingsBadge)
                 .frame(width: 16, height: 16)
+                .accessibilityHidden(true)
         }
     }
 }

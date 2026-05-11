@@ -113,6 +113,7 @@ struct TabletAreaView: View {
                             if let cal = activeCalibration {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(.green)
+                                    .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(LocalizedStringKey("Calibrated"))
                                         .font(.body)
@@ -123,6 +124,7 @@ struct TabletAreaView: View {
                             } else {
                                 Image(systemName: "exclamationmark.triangle")
                                     .foregroundStyle(.orange)
+                                    .accessibilityHidden(true)
                                 Text(LocalizedStringKey("Not calibrated"))
                             }
                             Spacer()

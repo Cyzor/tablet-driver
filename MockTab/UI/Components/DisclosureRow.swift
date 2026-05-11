@@ -25,15 +25,18 @@ struct DisclosureRow<Content: View>: View {
     @Binding var isExpanded: Bool
     @ViewBuilder let content: () -> Content
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button { isExpanded.toggle() } label: {
                 HStack {
                     Image(systemName: "chevron.down")
                         .rotationEffect(.degrees(isExpanded ? -180 : 0))
-                        .animation(.easeInOut(duration: 0.25), value: isExpanded)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: isExpanded)
                         .font(.settingsLabel)
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                     Text(label)
                         .font(.headline)
                         .foregroundStyle(.secondary)
@@ -42,11 +45,16 @@ struct DisclosureRow<Content: View>: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityValue(
+                isExpanded
+                    ? Text(LocalizedStringKey("Expanded"))
+                    : Text(LocalizedStringKey("Collapsed"))
+            )
 
             if isExpanded {
                 content()
                     .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.25), value: isExpanded)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: isExpanded)
             }
         }
     }

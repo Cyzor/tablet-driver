@@ -8,6 +8,8 @@ struct CalibrationOverlayView: View {
     @ObservedObject var session: CalibrationSession
     var onDismiss: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         GeometryReader { geo in
             ZStack {
@@ -47,7 +49,7 @@ struct CalibrationOverlayView: View {
                 .frame(width: 40, height: 40)
                 .shadow(color: .black, radius: 2)
                 .position(x: x, y: y)
-                .animation(.easeInOut(duration: 0.3), value: pos)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: pos)
 
             // Collection ring
             if case .collecting(_, let count) = session.state {
@@ -90,6 +92,7 @@ struct CalibrationOverlayView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 36))
                     .foregroundStyle(.green)
+                    .accessibilityHidden(true)
                 Text("Calibration complete")
                     .font(.title3.bold())
                 let pixelError = maxRes * Swift.max(session.displayBounds.width, session.displayBounds.height)

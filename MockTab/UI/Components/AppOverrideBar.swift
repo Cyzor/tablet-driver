@@ -116,6 +116,7 @@ struct AppOverrideBar: View {
     let productID: Int?
 
     @Environment(\.controlActiveState) private var controlActiveState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var isDropTargeted = false
     @State private var dragEnabledID: String? = nil
@@ -362,7 +363,7 @@ struct AppOverrideBar: View {
                 )
                 .frame(width: fadeWidth)
                 .allowsHitTesting(false)
-                .animation(.easeInOut(duration: 0.15), value: canScrollLeading)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: canScrollLeading)
             }
         }
         .overlay(alignment: .trailing) {
@@ -374,7 +375,7 @@ struct AppOverrideBar: View {
                 )
                 .frame(width: fadeWidth)
                 .allowsHitTesting(false)
-                .animation(.easeInOut(duration: 0.15), value: canScrollTrailing)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: canScrollTrailing)
             }
         }
     }
@@ -413,9 +414,9 @@ struct AppOverrideBar: View {
                 }
             }
         }
-        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: dragHoverTargetID)
+        .animation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.75), value: dragHoverTargetID)
         .animation(
-            .spring(response: 0.3, dampingFraction: 0.8),
+            reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.8),
             value: settings.appOverrides.map(\.bundleID)
         )
     }
@@ -474,7 +475,9 @@ struct AppOverrideBar: View {
         }
         .buttonStyle(.plain)
         .scaleEffect(isDragLifted ? 1.06 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.65), value: isDragLifted)
+        .animation(reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.65), value: isDragLifted)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .contextMenu {
             if let bundleID {
                 Button(LocalizedStringKey("Rename…")) {
@@ -546,6 +549,7 @@ struct AppOverrideBar: View {
                             ? .white
                             : Color.secondary
                     )
+                    .accessibilityHidden(true)
             }
 
             Text(label)
@@ -627,10 +631,12 @@ struct AppOverrideBar: View {
                 .font(.system(size: 36, weight: .semibold))
                 .foregroundStyle(Color.accentColor)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityHidden(true)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .help(LocalizedStringKey("Add per-app override — or drag an app here from Finder or the Dock"))
+        .accessibilityLabel(LocalizedStringKey("Add app override"))
     }
 
     // MARK: - Drop handling

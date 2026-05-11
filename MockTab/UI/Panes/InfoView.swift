@@ -184,6 +184,7 @@ struct InfoView: View {
                 if let sym = leadingSymbol {
                     Image(systemName: sym)
                         .foregroundStyle(symbolColor ?? .primary)
+                        .accessibilityHidden(true)
                 } else {
                     statusIcon(ok)
                 }
@@ -202,11 +203,17 @@ struct InfoView: View {
     @ViewBuilder
     private func statusIcon(_ ok: Bool?) -> some View {
         if ok == true {
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+                .accessibilityLabel(LocalizedStringKey("OK"))
         } else if ok == false {
-            Image(systemName: "xmark.circle.fill").foregroundStyle(.primary)
+            Image(systemName: "xmark.circle.fill")
+                .foregroundStyle(.primary)
+                .accessibilityLabel(LocalizedStringKey("Failed"))
         } else {
-            Image(systemName: "minus.circle.fill").foregroundStyle(.tertiary)
+            Image(systemName: "minus.circle.fill")
+                .foregroundStyle(.tertiary)
+                .accessibilityLabel(LocalizedStringKey("Unknown"))
         }
     }
 
