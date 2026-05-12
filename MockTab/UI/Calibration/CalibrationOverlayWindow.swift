@@ -1,5 +1,8 @@
+// MockTab — native macOS driver for supported drawing tablets
+// SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 // CalibrationOverlayWindow.swift — Full-screen transparent window for calibration crosshairs
-// MockTab
 
 import AppKit
 import SwiftUI

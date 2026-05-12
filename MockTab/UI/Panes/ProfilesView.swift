@@ -1,3 +1,7 @@
+// MockTab — native macOS driver for supported drawing tablets
+// SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -305,6 +309,7 @@ struct ProfilesView: View {
                             .font(.system(size: 26, weight: .semibold))
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(isDropTargeted ? Color.accentColor : Color.primary)
+                            .offset(x: 4)
                             .accessibilityHidden(true)
 
                         Text(
