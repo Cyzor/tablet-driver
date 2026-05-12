@@ -1,12 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
 // MockTab — native macOS driver for supported drawing tablets
-//
-// Copyright (C) 2026 This file is part of MockTab.
-//
-// MockTab is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // Bluetooth-side decoders for the IntuosV2 family. Split out from
 // `IntuosV2Decoder.swift` to keep each file under ~500 lines and to group
