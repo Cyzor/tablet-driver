@@ -6,7 +6,7 @@ Native macOS driver for Wacom drawing tablets that no longer have official suppo
 
 ---
 
-Wacom hardware tends to outlast its driver support. MockTab aims to be a small, focused driver for Wacom tablets from the early 2000s up to roughly 2020, on macOS Ventura and later.
+Wacom hardware tends to outlast its driver support. MockTab aims to be a small, focused driver for Wacom tablets from the early 2000s up to roughly 2020, on macOS Ventura through Sequoia and later.
 
 ---
 
@@ -14,7 +14,7 @@ Wacom hardware tends to outlast its driver support. MockTab aims to be a small, 
 
 Several Wacom models across five families:
 
-- **Intuos** — every generation (Intuos 1 through Intuos Pro Gen 2)
+- **Intuos** — various generation (Intuos 1 through Intuos Pro Gen 1)
 - **Cintiq** pen displays (DTK-2400)
 - **Bamboo** and consumer CTL/CTH tablets
 - **Intuos Pro Gen 2** (PTH-460, PTH-660, PTH-860) — USB and Bluetooth
@@ -22,6 +22,12 @@ Several Wacom models across five families:
 Full list: [mocktab.org/hardware](https://mocktab.org/hardware.html)
 
 MockTab covers a small set of hardware so far and may not work with your configuration. Filing an issue with a diagnostic detail can help improve support.
+
+---
+
+## Requirements
+
+macOS 13 (Ventura) or later — tested through macOS 15 (Sequoia). The app launches on macOS 16 (Tahoe) but tablet connectivity on that release is untested.
 
 ---
 
@@ -39,9 +45,9 @@ MockTab covers a small set of hardware so far and may not work with your configu
 
 ## Screenshots
 
-<img src="https://github.com/Cyzor/mocktab-web/blob/main/images/ui/tablet-area-light.png" alt="Tablet area settings" width="480">
-<img src="https://github.com/Cyzor/mocktab-web/blob/main/images/ui/pen-feel-light.png" alt="Pressure curve editor" width="480">
-<img src="https://github.com/Cyzor/mocktab-web/blob/main/images/ui/buttons-light.png" alt="Button mapping" width="480">
+<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/tablet-area-light.png" alt="Tablet area settings" width="480">
+<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/pen-feel-light.png" alt="Pressure curve editor" width="480">
+<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/buttons-light.png" alt="Button mapping" width="480">
 
 ---
 
@@ -78,7 +84,7 @@ GPL-3. See `LICENSE`. Free to run, study, modify, and share — modifications mu
 
 ---
 
-## More
+## Resources
 
 - [mocktab.org](https://mocktab.org) — website and FAQ
 - [Hardware compatibility](https://mocktab.org/hardware.html) — full device list
