@@ -1,6 +1,20 @@
-// MockTab — native macOS driver for supported drawing tablets
-// SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
+// MockTab — native macOS driver for supported drawing tablets
+//
+// Copyright (C) 2026 This file is part of MockTab.
+//
+// MockTab is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// MockTab is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with MockTab. If not, see <https://www.gnu.org/licenses/>.
 //
 // Requires macOS 13+ for .draggable / .dropDestination.
 
@@ -633,7 +647,7 @@ struct AppOverrideBar: View {
 
         for provider in providers where provider.canLoadObject(ofClass: URL.self) {
             group.enter()
-            provider.loadObject(ofClass: URL.self) { url, _ in
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
                 if let url {
                     urls.append(url)
                 }
@@ -711,9 +725,12 @@ struct AppOverrideBar: View {
 
     private func appIconCached(bundleID: String) -> NSImage? {
         if let hit = iconCache[bundleID] { return hit }
-        let img = appIcon(bundleID: bundleID)
-        if let img { iconCache[bundleID] = img }
-        return img
+        Task { @MainActor in
+            if let img = appIcon(bundleID: bundleID) {
+                iconCache[bundleID] = img
+            }
+        }
+        return nil
     }
 
     private func refreshRunningApps() {

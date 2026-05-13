@@ -283,7 +283,7 @@ final class WacomKnownDevice: TabletDevice {
             buf[1] = ledByte
             buf[2] = 0x40  // llv: moderate brightness
             buf[3] = 0x40  // hlv: moderate brightness
-            let ret = IOHIDDeviceSetReport(led, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
+            _ = IOHIDDeviceSetReport(led, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
             // logger.debug("\(name, privacy: .public): setRingLED CintiqV1 slot=\(index) ledByte=0x\(String(ledByte, radix: 16)) ret=\(ret, privacy: .public)")
 
         default:

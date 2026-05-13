@@ -13,8 +13,53 @@ import CoreGraphics
 struct CalibrationKey: Codable, Hashable, Equatable {
     /// `TabletOrientation.rawValue` (0 = landscape, 1 = portrait, 2 = landscapeFlipped, 3 = portraitFlipped).
     let orientation: Int
-    /// `CGDirectDisplayID` of the target display.
-    let displayID: UInt32
+    /// Stable hardware identity for the target display: `"vendor-model-serial"` from
+    /// `CGDisplayVendorNumber`/`CGDisplayModelNumber`/`CGDisplaySerialNumber`.
+    /// Stable across reconnects and reboots, unlike `CGDirectDisplayID`.
+    let displayUUID: String
+
+    init(orientation: Int, displayUUID: String) {
+        self.orientation = orientation
+        self.displayUUID = displayUUID
+    }
+
+    // MARK: Codable — reads both new (displayUUID) and legacy (displayID) JSON.
+
+    private enum CodingKeys: String, CodingKey {
+        case orientation, displayUUID, displayID
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        orientation = try c.decode(Int.self, forKey: .orientation)
+        if let uuid = try c.decodeIfPresent(String.self, forKey: .displayUUID), !uuid.isEmpty {
+            displayUUID = uuid
+        } else if let legacyID = try c.decodeIfPresent(UInt32.self, forKey: .displayID) {
+            displayUUID = CalibrationKey.uuidString(for: legacyID)
+        } else {
+            displayUUID = ""
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(orientation, forKey: .orientation)
+        try c.encode(displayUUID, forKey: .displayUUID)
+    }
+
+    // MARK: Display UUID helpers
+
+    /// Returns a stable hardware-identity string for a display, or "" if unavailable.
+    /// Built from vendor/model/serial numbers — stable across reconnects and reboots,
+    /// unlike `CGDirectDisplayID` which macOS can reassign after a cable unplug.
+    static func uuidString(for displayID: CGDirectDisplayID) -> String {
+        guard displayID != 0 else { return "" }
+        let vendor = CGDisplayVendorNumber(displayID)
+        guard vendor != 0xFFFF_FFFF else { return "" }  // sentinel for invalid display
+        let model = CGDisplayModelNumber(displayID)
+        let serial = CGDisplaySerialNumber(displayID)
+        return "\(vendor)-\(model)-\(serial)"
+    }
 }
 
 /// A single calibration observation: where the crosshair was shown vs. where the pen actually tapped.

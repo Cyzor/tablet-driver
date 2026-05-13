@@ -8,6 +8,9 @@ build/
 DerivedData/
 *.xcarchive
 
+# Release artifacts (DMGs and staging; uploaded to GitHub Releases, not committed)
+dist/
+
 # Xcode user-specific settings (editor state, breakpoints, etc.)
 xcuserdata/
 *.xcuserstate

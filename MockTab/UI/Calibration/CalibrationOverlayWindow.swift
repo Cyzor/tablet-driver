@@ -33,7 +33,12 @@ final class CalibrationOverlayWindow: NSWindow {
         let overlayView = CalibrationOverlayView(session: session) { [weak self] in
             self?.dismiss()
         }
-        contentView = NSHostingView(rootView: overlayView)
+        let hostingView = NSHostingView(rootView: overlayView)
+        // The window always has a dark semi-transparent background, so force dark
+        // appearance on the hosting view so SwiftUI materials and text render correctly
+        // regardless of the system light/dark mode setting.
+        hostingView.appearance = NSAppearance(named: .darkAqua)
+        contentView = hostingView
     }
 
     /// Show the overlay and start the calibration session.

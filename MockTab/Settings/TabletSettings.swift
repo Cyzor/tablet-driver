@@ -165,9 +165,10 @@ final class TabletSettings: ObservableObject {
         }
     }
 
-    /// Look up the calibration entry for a specific orientation and display.
-    func calibration(for orientation: TabletOrientation, displayID: UInt32) -> CalibrationEntry? {
-        calibrationEntries.first { $0.key.orientation == orientation.rawValue && $0.key.displayID == displayID }
+    /// Look up the calibration entry for a specific orientation and display UUID.
+    func calibration(for orientation: TabletOrientation, displayUUID: String) -> CalibrationEntry? {
+        guard !displayUUID.isEmpty else { return nil }
+        return calibrationEntries.first { $0.key.orientation == orientation.rawValue && $0.key.displayUUID == displayUUID }
     }
 
     /// Physical tablet orientation — clockwise rotation from the default landscape position.

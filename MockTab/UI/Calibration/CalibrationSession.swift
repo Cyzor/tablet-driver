@@ -28,7 +28,7 @@ final class CalibrationSession: ObservableObject {
 
     /// Normalized target positions (0–1) for this session.
     let targets: [(Double, Double)]
-    let displayID: CGDirectDisplayID
+    let displayUUID: String
     let displayBounds: CGRect
     let orientation: TabletOrientation
     private let settings: TabletSettings
@@ -45,13 +45,13 @@ final class CalibrationSession: ObservableObject {
 
     init(settings: TabletSettings,
          tabletManager: TabletManager,
-         displayID: CGDirectDisplayID,
+         displayUUID: String,
          displayBounds: CGRect,
          orientation: TabletOrientation,
          advancedMode: Bool = false) {
         self.settings = settings
         self.tabletManager = tabletManager
-        self.displayID = displayID
+        self.displayUUID = displayUUID
         self.displayBounds = displayBounds
         self.orientation = orientation
         self.targets = advancedMode ? CalibrationEntry.ninePointTargets : CalibrationEntry.fourPointTargets
@@ -194,7 +194,7 @@ final class CalibrationSession: ObservableObject {
         let maxRes = CalibrationEntry.maxResidual(transform: transform, samples: completedSamples)
 
         let entry = CalibrationEntry(
-            key: CalibrationKey(orientation: orientation.rawValue, displayID: displayID),
+            key: CalibrationKey(orientation: orientation.rawValue, displayUUID: displayUUID),
             samples: completedSamples,
             transform: transform,
             calibratedAt: Date(),

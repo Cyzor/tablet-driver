@@ -365,7 +365,7 @@ final class InputInjector {
 
     private var cachedDisplayBounds: CGRect = .zero
     private var cachedDisplayIndex: Int = Int.min
-    private var cachedDisplayID: CGDirectDisplayID = 0
+    private var cachedDisplayUUID: String = ""
     private var cachedCalibration: CalibrationEntry?
     private var cachedCalibrationOrientation: Int = -1
     private var currentToggleIndex: Int = 0
@@ -1014,8 +1014,8 @@ final class InputInjector {
         let result = CGEventFlags(rawValue: physNonManaged | physManaged | groundTruthSyntheticFlags.rawValue)
         let managedNow = result.rawValue & managedModifierMask
         if managedNow != lastLoggedManagedFlags {
-            let synth = groundTruthSyntheticFlags.rawValue & managedModifierMask
-            let prev = lastLoggedManagedFlags
+            _ = groundTruthSyntheticFlags.rawValue & managedModifierMask
+            _ = lastLoggedManagedFlags
             // modLog.info("flags: 0x\(String(prev, radix: 16), privacy: .public) → 0x\(String(managedNow, radix: 16), privacy: .public) [hid=0x\(String(physManaged, radix: 16), privacy: .public) synth=0x\(String(synth, radix: 16), privacy: .public)]")
             lastLoggedManagedFlags = managedNow
         }
@@ -1299,6 +1299,15 @@ final class InputInjector {
                 e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
                 e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
             }
+        }
+        // Synthetic CGEvents default to click count 0. Always set it so that
+        // double-clicks are recognised (e.g. entering floating text-box edit mode
+        // in Pages/Keynote/Numbers requires clickState=2 even in plain-mouse mode).
+        //
+        // In plain-mouse mode only inject click state for multi-clicks: Quartz
+        // already tracks single-click state internally, and explicitly setting
+        // clickState=1 disrupts Pages' drag-selection state machine.
+        if activeAppProfile != .pagesPlainMouse || clickCount > 1 {
             e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
         }
         e.flags = currentEventFlags
@@ -1333,6 +1342,8 @@ final class InputInjector {
                 e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
                 e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
             }
+        }
+        if activeAppProfile != .pagesPlainMouse || clickCount > 1 {
             e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
         }
         e.flags = currentEventFlags
@@ -1804,7 +1815,7 @@ final class InputInjector {
         if cachedDisplayIndex != idx {
             let (bounds, displayID) = resolveDisplayBoundsAndID(snapshot: snapshot)
             cachedDisplayBounds = bounds
-            cachedDisplayID = displayID
+            cachedDisplayUUID = CalibrationKey.uuidString(for: displayID)
             cachedDisplayIndex = idx
             // Invalidate calibration cache when display changes.
             cachedCalibrationOrientation = -1
@@ -1878,7 +1889,7 @@ final class InputInjector {
         let orientRaw = orientation.rawValue
         if cachedCalibrationOrientation != orientRaw {
             cachedCalibration = snapshot.calibration(for: orientation,
-                                                     displayID: cachedDisplayID)
+                                                     displayUUID: cachedDisplayUUID)
             cachedCalibrationOrientation = orientRaw
         }
         if let cal = cachedCalibration {
@@ -1898,7 +1909,7 @@ final class InputInjector {
     }
 
     /// Queries the OS display list and returns the target display's bounds and ID.
-    /// Only called on cache miss; results stored in cachedDisplayBounds/cachedDisplayID.
+    /// Only called on cache miss; results stored in cachedDisplayBounds/cachedDisplayUUID.
     private func resolveDisplayBoundsAndID(snapshot: InjectionSnapshot) -> (CGRect, CGDirectDisplayID) {
         let mainID = CGMainDisplayID()
         let fallback = CGRect(

@@ -67,13 +67,14 @@ struct InjectionSnapshot: Sendable, Equatable {
         var rotationTiltMagnitude: Double
     }
 
-    /// Look up the calibration entry for a specific orientation and display.
-    /// Mirrors `TabletSettings.calibration(for:displayID:)` so off-thread mapping
+    /// Look up the calibration entry for a specific orientation and display UUID.
+    /// Mirrors `TabletSettings.calibration(for:displayUUID:)` so off-thread mapping
     /// can resolve calibration without touching the live settings object.
     func calibration(for orientation: TabletOrientation,
-                     displayID: UInt32) -> CalibrationEntry? {
-        calibrationEntries.first {
-            $0.key.orientation == orientation.rawValue && $0.key.displayID == displayID
+                     displayUUID: String) -> CalibrationEntry? {
+        guard !displayUUID.isEmpty else { return nil }
+        return calibrationEntries.first {
+            $0.key.orientation == orientation.rawValue && $0.key.displayUUID == displayUUID
         }
     }
 }

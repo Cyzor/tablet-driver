@@ -27,6 +27,11 @@ final class AppWatcher {
     /// Pages text engine is confused by mouseEventSubtype=1 and ignores drags.
     static let plainMouseBundleIDs: Set<String> = [
         "com.apple.iWork.Pages",
+        "com.apple.iWork.Keynote",
+        "com.apple.iWork.Numbers",
+        "com.apple.Pages", // macOS 26+
+        "com.apple.Keynote",
+        "com.apple.Numbers",
     ]
 
     private var observerToken: (any NSObjectProtocol)?

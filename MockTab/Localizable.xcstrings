@@ -3022,7 +3022,6 @@
     },
     "CPU       : Intel (x86_64)" : {
       "comment" : "Diagnostic: CPU architecture",
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3756,6 +3755,9 @@
           }
         }
       }
+    },
+    "Display not connected" : {
+
     },
     "Display Rotation Detected" : {
       "comment" : "Warning title for rotated display",

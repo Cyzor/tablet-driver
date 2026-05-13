@@ -49,6 +49,12 @@ struct TabletAreaView: View {
         return false
     }
 
+    /// True if the bound device is currently physically connected.
+    private var activeDeviceIsConnected: Bool {
+        guard let pid = boundProductID else { return false }
+        return tabletManager.contexts[pid]?.isConnected == true
+    }
+
     private var activeAspectRatio: Double {
         let y = activeDeviceMaxY
         guard y > 0 else { return 44800.0 / 29600.0 }
@@ -114,7 +120,13 @@ struct TabletAreaView: View {
                     Section(LocalizedStringKey("Pen Display Calibration")) {
                         // Calibration status + actions
                         HStack {
-                            if let cal = activeCalibration {
+                            if !activeDeviceIsConnected {
+                                Image(systemName: "display.slash")
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityHidden(true)
+                                Text(LocalizedStringKey("Display not connected"))
+                                    .foregroundStyle(.secondary)
+                            } else if let cal = activeCalibration {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(.green)
                                     .accessibilityHidden(true)
@@ -136,7 +148,7 @@ struct TabletAreaView: View {
                                 startCalibration()
                             }
                             .buttonStyle(.bordered)
-                            .disabled(settings.targetDisplayIndex == TabletSettings.displayModeAll)
+                            .disabled(!activeDeviceIsConnected || settings.targetDisplayIndex == TabletSettings.displayModeAll)
                             .help(LocalizedStringKey("Open the calibration overlay to tap crosshair targets on your pen display."))
                             if activeCalibration != nil {
                                 Button(LocalizedStringKey("Reset")) {
@@ -235,39 +247,51 @@ struct TabletAreaView: View {
 
     /// The active calibration entry for the current orientation and display, if any.
     private var activeCalibration: CalibrationEntry? {
-        let displayID = resolveCurrentDisplayID()
-        return settings.calibration(for: settings.tabletOrientation, displayID: displayID)
+        let uuid = resolveCurrentDisplayUUID()
+        return settings.calibration(for: settings.tabletOrientation, displayUUID: uuid)
     }
 
-    /// Resolve the CGDirectDisplayID for the current target display setting.
-    private func resolveCurrentDisplayID() -> UInt32 {
+    /// Resolve the persistent UUID string for the current target display.
+    /// Returns "" for the "All Displays" mode or when resolution fails.
+    private func resolveCurrentDisplayUUID() -> String {
         let idx = settings.targetDisplayIndex
+        if idx == TabletSettings.displayModeAll { return "" }
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
-            return CGMainDisplayID()
+            return CalibrationKey.uuidString(for: CGMainDisplayID())
         }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else {
-            return CGMainDisplayID()
+            return CalibrationKey.uuidString(for: CGMainDisplayID())
         }
-        if idx == TabletSettings.displayModeAll { return 0 }
-        if idx > 0, idx <= ids.count { return ids[idx - 1] }
-        return CGMainDisplayID()
+        if idx > 0, idx <= ids.count { return CalibrationKey.uuidString(for: ids[idx - 1]) }
+        return CalibrationKey.uuidString(for: CGMainDisplayID())
     }
 
     @State private var calibrationWindow: CalibrationOverlayWindow?
 
     /// Launch the calibration overlay on the target display.
     private func startCalibration() {
-        let displayID = resolveCurrentDisplayID()
-        guard displayID != 0 else { return }  // can't calibrate "All Displays"
-        let bounds = CGDisplayBounds(displayID)
+        let idx = settings.targetDisplayIndex
+        guard idx != TabletSettings.displayModeAll else { return }
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
+        let displayID: CGDirectDisplayID
+        if idx > 0, idx <= ids.count {
+            displayID = ids[idx - 1]
+        } else {
+            displayID = CGMainDisplayID()
+        }
+        let displayUUID = CalibrationKey.uuidString(for: displayID)
+        guard !displayUUID.isEmpty else { return }
 
         let session = CalibrationSession(
             settings: settings,
             tabletManager: tabletManager,
-            displayID: displayID,
-            displayBounds: bounds,
+            displayUUID: displayUUID,
+            displayBounds: CGDisplayBounds(displayID),
             orientation: settings.tabletOrientation)
 
         let window = CalibrationOverlayWindow(session: session)
@@ -277,8 +301,8 @@ struct TabletAreaView: View {
 
     /// Clear calibration data for the current orientation and display.
     private func resetCalibration() {
-        let displayID = resolveCurrentDisplayID()
-        let key = CalibrationKey(orientation: settings.tabletOrientation.rawValue, displayID: displayID)
+        let uuid = resolveCurrentDisplayUUID()
+        let key = CalibrationKey(orientation: settings.tabletOrientation.rawValue, displayUUID: uuid)
         let oldJSON = settings.calibrationJSON
         var entries = settings.calibrationEntries
         entries.removeAll { $0.key == key }
