@@ -149,4 +149,4 @@ MockTabのウェブサイト [mocktab.org](https://mocktab.org) にはドキュ�
 
 ## GitHub
 
-バグレポートや質問は [github.com/Cyzor/mocktab-app](https://github.com/Cyzor/mocktab-app/issues) へ。InfoペインのGitHub **Copy Diagnostics** ボタンでドライバー状態のテキストスナップショットを生成できます — バグレポートには必ず添付してください。
+バグレポートや質問は [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver/issues) へ。InfoペインのGitHub **Copy Diagnostics** ボタンでドライバー状態のテキストスナップショットを生成できます — バグレポートには必ず添付してください。

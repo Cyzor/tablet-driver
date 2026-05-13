@@ -149,4 +149,4 @@ El sitio web de MockTab en [mocktab.org](https://mocktab.org) tiene documentaci�
 
 ## GitHub
 
-Los informes de errores y preguntas van a [github.com/Cyzor/mocktab-app](https://github.com/Cyzor/mocktab-app/issues). El botón **Copy Diagnostics** en el panel Info genera una instantánea de texto del estado de tu driver — inclúyela con los informes de errores.
+Los informes de errores y preguntas van a [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver/issues). El botón **Copy Diagnostics** en el panel Info genera una instantánea de texto del estado de tu driver — inclúyela con los informes de errores.

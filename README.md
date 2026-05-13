@@ -33,7 +33,7 @@ macOS 13 (Ventura) or later — tested through macOS 15 (Sequoia). The app launc
 
 ## Install
 
-1. Download the latest `.dmg` from [Releases](https://github.com/Cyzor/mocktab-app/releases).
+1. Download the latest `.dmg` from [Releases](https://github.com/Cyzor/tablet-driver/releases).
 2. Drag `MockTab.app` to Applications and launch it.
 3. **Grant Accessibility** when prompted — click "Open System Settings", toggle MockTab on, relaunch. MockTab needs this to provide pen pressure.
 4. **Grant Input Monitoring** if prompted — same flow. Some configurations work without it; grant it to be safe.
@@ -88,4 +88,4 @@ GPL-3. See `LICENSE`. Free to run, study, modify, and share — modifications mu
 
 - [mocktab.org](https://mocktab.org) — website and FAQ
 - [Hardware compatibility](https://mocktab.org/hardware.html) — full device list
-- [Issues](https://github.com/Cyzor/mocktab-app/issues) — bug reports and feature requests
+- [Issues](https://github.com/Cyzor/tablet-driver/issues) — bug reports and feature requests
