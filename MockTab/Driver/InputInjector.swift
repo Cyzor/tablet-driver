@@ -976,11 +976,6 @@ final class InputInjector {
         CGEventFlags.maskControl.rawValue: 0,
     ]
 
-    /// Bits that this driver "owns" when active.
-    private let managedModifierMask: UInt64 =
-        CGEventFlags.maskCommand.rawValue | CGEventFlags.maskShift.rawValue
-        | CGEventFlags.maskAlternate.rawValue | CGEventFlags.maskControl.rawValue
-
     /// Left-hand canonical keycodes for each managed modifier bit.
     /// Electron and AppKit text input only update their internal modifier state when
     /// a flagsChanged event carries a keycode that matches the actual modifier key —
@@ -1007,14 +1002,13 @@ final class InputInjector {
     /// Non-managed bits (capslock, numlock, fn …) continue to come from `hidSystemState`.
     /// Logs every transition in managed bits for diagnostics.
     private var currentEventFlags: CGEventFlags {
-        let systemRaw = CGEventSource.flagsState(.hidSystemState).rawValue
-        // Managed bits: tap-cached (always current); non-managed bits: from hidSystemState.
-        let physManaged = tapLastPhysicalFlags  // already masked to managedModifierMask
-        let physNonManaged = systemRaw & ~managedModifierMask
-        let result = CGEventFlags(rawValue: physNonManaged | physManaged | groundTruthSyntheticFlags.rawValue)
-        let managedNow = result.rawValue & managedModifierMask
+        let result = CGEventFlags(rawValue: ModifierMath.currentEventFlags(
+            systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
+            tapPhysicalManaged: tapLastPhysicalFlags,
+            syntheticFlags: groundTruthSyntheticFlags.rawValue))
+        let managedNow = result.rawValue & ModifierMath.managedMask
         if managedNow != lastLoggedManagedFlags {
-            _ = groundTruthSyntheticFlags.rawValue & managedModifierMask
+            _ = groundTruthSyntheticFlags.rawValue & ModifierMath.managedMask
             _ = lastLoggedManagedFlags
             // modLog.info("flags: 0x\(String(prev, radix: 16), privacy: .public) → 0x\(String(managedNow, radix: 16), privacy: .public) [hid=0x\(String(physManaged, radix: 16), privacy: .public) synth=0x\(String(synth, radix: 16), privacy: .public)]")
             lastLoggedManagedFlags = managedNow
@@ -1066,7 +1060,9 @@ final class InputInjector {
     private func reconcileSyntheticFlags() {
         guard !groundTruthSyntheticFlags.isEmpty else { return }
         let expected = expectedSyntheticFlagsForHeldPenButtons()
-        let excessRaw = groundTruthSyntheticFlags.rawValue & ~expected.rawValue & managedModifierMask
+        let excessRaw = ModifierMath.excessSyntheticBits(
+            groundTruth: groundTruthSyntheticFlags.rawValue,
+            expected: expected.rawValue)
         guard excessRaw != 0 else { return }
         let excess = CGEventFlags(rawValue: excessRaw)
         modLog.info("reconcile: tool change orphaned bits 0x\(String(excessRaw, radix: 16), privacy: .public)")
@@ -1079,13 +1075,13 @@ final class InputInjector {
         }
         lastSyntheticFlagChangeAt = Date()
 
-        // Build explicit release flags: managed=0 for all excess bits, non-managed from
-        // system. Same rationale as releaseAllSyntheticModifiers — hidSystemState is
-        // contaminated with our earlier synthetic posts; don't let it re-assert the bits.
-        let nonManagedRaw = CGEventSource.flagsState(.hidSystemState).rawValue & ~managedModifierMask
-        // Remaining synthetic bits (those we're keeping, not releasing) belong in the event.
-        let remainingSynth = groundTruthSyntheticFlags.rawValue  // excess already removed above
-        let reconcileFlags = CGEventFlags(rawValue: nonManagedRaw | remainingSynth)
+        // Build explicit release flags: managed bits come from remaining-held synthetic
+        // bits (excess already cleared above); non-managed bits from system. Same
+        // rationale as releaseAllSyntheticModifiers — hidSystemState is contaminated
+        // with our earlier synthetic posts; don't let it re-assert the bits.
+        let reconcileFlags = CGEventFlags(rawValue: ModifierMath.releaseEventFlags(
+            systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
+            remainingSyntheticFlags: groundTruthSyntheticFlags.rawValue))
 
         for (bit, keyCode) in Self.modifierKeyCodes where excess.contains(bit) {
             guard let e = CGEvent(source: sessionSource) else { continue }
@@ -1102,7 +1098,7 @@ final class InputInjector {
     private func releaseAllSyntheticModifiers() {
         guard !groundTruthSyntheticFlags.isEmpty else { return }
         let toRelease = groundTruthSyntheticFlags
-        let systemBefore = CGEventSource.flagsState(.hidSystemState).rawValue & managedModifierMask
+        let systemBefore = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
         modLog.info("releaseAll: clearing 0x\(String(toRelease.rawValue, radix: 16), privacy: .public) (system=0x\(String(systemBefore, radix: 16), privacy: .public))")
 
         // Clear ground truth and ref counts BEFORE posting.
@@ -1120,8 +1116,10 @@ final class InputInjector {
         // If the user is simultaneously holding the same modifier physically on the
         // keyboard, the OS will re-assert it via its own flagsChanged as the key stays
         // held — we don't need to preserve it in this event.
-        let nonManagedRaw = CGEventSource.flagsState(.hidSystemState).rawValue & ~managedModifierMask
-        let releaseFlags = CGEventFlags(rawValue: nonManagedRaw)  // managed bits all clear
+        // Managed bits all clear; non-managed bits preserved from system.
+        let releaseFlags = CGEventFlags(rawValue: ModifierMath.releaseEventFlags(
+            systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
+            remainingSyntheticFlags: 0))
 
         // One flagsChanged per bit with its canonical keycode. Posted DIRECTLY (not via
         // finalizeAndPost) to avoid having currentEventFlags re-stamp the stale system value
@@ -1140,7 +1138,7 @@ final class InputInjector {
         // or a state-source mismatch. Async so we sample after WindowServer settles.
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(50)) { [weak self] in
             guard let self else { return }
-            let systemAfter = CGEventSource.flagsState(.hidSystemState).rawValue & self.managedModifierMask
+            let systemAfter = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
             let stillStuck = toRelease.rawValue & systemAfter
             if stillStuck != 0 {
                 modLog.error("releaseAll: post-audit FAILED — bits 0x\(String(stillStuck, radix: 16), privacy: .public) STILL set in hidSystemState 50ms after release events posted")
@@ -1169,9 +1167,9 @@ final class InputInjector {
     private func finalizeAndPost(_ event: CGEvent) {
         #if DEBUG
         assert(
-            groundTruthSyntheticFlags.rawValue & managedModifierMask
+            groundTruthSyntheticFlags.rawValue & ModifierMath.managedMask
                 == groundTruthSyntheticFlags.rawValue,
-            "groundTruthSyntheticFlags contains bits outside managedModifierMask"
+            "groundTruthSyntheticFlags contains bits outside ModifierMath.managedMask"
         )
         #endif
         event.flags = currentEventFlags
@@ -1200,11 +1198,11 @@ final class InputInjector {
                 // the exact post-event modifier state without hidSystemState lag/pollution.
                 let stateID = Int32(truncatingIfNeeded:
                     event.getIntegerValueField(.eventSourceStateID))
-                guard stateID == CGEventSourceStateID.hidSystemState.rawValue else {
+                guard ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) else {
                     return Unmanaged.passRetained(event)
                 }
                 injector.tapLastPhysicalFlags =
-                    event.flags.rawValue & injector.managedModifierMask
+                    event.flags.rawValue & ModifierMath.managedMask
                 return Unmanaged.passRetained(event)
             },
             userInfo: selfPtr.toOpaque()
@@ -1217,7 +1215,7 @@ final class InputInjector {
         let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         // Warm the cache before enabling so the first tap callback has a valid baseline.
-        tapLastPhysicalFlags = CGEventSource.flagsState(.hidSystemState).rawValue & managedModifierMask
+        tapLastPhysicalFlags = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
         CGEvent.tapEnable(tap: tap, enable: true)
     }
 

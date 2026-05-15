@@ -17,9 +17,7 @@ import Foundation
 enum ModifierMath {
 
     /// Bits this driver "owns" for synthetic-modifier injection: ⌘⌥⇧⌃.
-    /// Must stay in sync with `InputInjector.managedModifierMask` — both
-    /// definitions describe the same invariant and changing one without
-    /// the other will cause silent state-machine drift.
+    /// This is the canonical definition; `InputInjector` references it directly.
     static let managedMask: UInt64 =
         CGEventFlags.maskCommand.rawValue
         | CGEventFlags.maskShift.rawValue
