@@ -203,6 +203,9 @@ final class WacomKnownDevice: TabletDevice {
         // Attempt init on every registered interface; skips gracefully if not present.
         if deviceSpec.parser == .intuosV2 && !isBluetooth {
             sendWacomInputModeInit(device, tag: name)
+            // Secondary interface just arrived — apply any LED slot that was requested
+            // before it was available (mirrors the registerLEDDevice pattern).
+            setRingLED(index: pendingLEDIndex)
         }
     }
 
@@ -233,27 +236,18 @@ final class WacomKnownDevice: TabletDevice {
         let name = deviceSpec.name
         switch deviceSpec.parser {
         case .intuosV2 where !isBluetooth:
-            // KNOWN LIMITATION — PTH-660/860 USB LED control does not work and we
-            // do not know the correct command. Diagnostic probe (session 2026-05-08)
-            // confirmed IOHIDDeviceSetReport returns kIOReturnSuccess for every
-            // candidate report ID (0x11, 0x0A, 0x20, 0x82) on both the primary
-            // 0xFF00 and secondary 0x01 interface — yet no LED responds. The
-            // firmware is silently discarding all of them. The same 0x82 payload
-            // works over BT Classic (see below), so the kernel/transport path is
-            // not the problem; we're missing either the right report ID or an
-            // LED-enable initialization step.
-            //
-            // Resolution requires a USB packet capture from the official Wacom
-            // driver — guessing further has been ruled out. LEDs over BT are the
-            // workaround. Pen, buttons, and ring scrolling all work over USB.
-            //
-            // The 0x11 write below is the historical baseline; left in place as a
-            // best-effort no-op (firmware ignores it but the call is harmless).
-            let ledBits = (UInt8(1) << 2) | UInt8(index & 0x03)
-            var buf = [UInt8](repeating: 0, count: 9)
-            buf[0] = 0x11
-            buf[1] = ledBits
-            _ = IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
+            // USB ring LED: position is auto-tracked by firmware from ring hardware
+            // events — the host cannot control it. Brightness is host-controlled via
+            // report 0x82 (WAC_CMD_WL_INTUOSP2) sent to secondaryDevice (usagePage=0x01).
+            // buf[10]=0 = full brightness; higher values dim/disable the ring LED.
+            // Diagnostic notes (2026-05-14): 0x31/0x32 accepted but ineffective;
+            // 0xCC must not be written (bricked device until replug).
+            guard let sec = secondaryDevice else { break }
+            var buf = [UInt8](repeating: 0, count: 51)
+            buf[0]  = 0x82
+            buf[9]  = 0x64  // llv luminance: 100 = max (Linux max_llv)
+            buf[10] = 0x00  // 0 = brightest observed state
+            _ = IOHIDDeviceSetReport(sec, kIOHIDReportTypeFeature, CFIndex(0x82), &buf, buf.count)
 
         case .intuosV2 where isBluetooth:
             // Linux wacom_sys.c wacom_led_control(), WAC_CMD_WL_INTUOSP2 BT path:
@@ -314,6 +308,7 @@ final class WacomKnownDevice: TabletDevice {
         IOHIDDeviceSetReport(target, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
     }
 
+    // DIAGNOSTIC — remove after PTH-860 USB LED report IDs are identified.
     /// Query the hardware serial number from WACOM_REPORT_USB (Report ID 0x03) feature report.
     ///
     /// The serial is transport-agnostic (same physical tablet returns the same serial
