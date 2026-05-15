@@ -66,8 +66,14 @@ final class InputInjector {
 
     /// True when this device is the active context (TabletManager.activeContext === me).
     /// Set from main when active changes; read from HIDThread to gate the inline
-    /// inject path. Bool reads/writes are atomic on Apple Silicon, so no lock needed.
-    var isActive: Bool = false
+    /// inject path. Backed by `OSAllocatedUnfairLock` so cross-thread reads/writes
+    /// don't rely on incidental Bool atomicity, which the Swift language model
+    /// does not guarantee even on Apple Silicon.
+    private let _isActive = OSAllocatedUnfairLock<Bool>(initialState: false)
+    var isActive: Bool {
+        get { _isActive.withLock { $0 } }
+        set { _isActive.withLock { $0 = newValue } }
+    }
 
     @MainActor
     init(vendorID: Int = 0x056A, productID: Int = 0) {
