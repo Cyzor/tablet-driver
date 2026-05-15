@@ -185,6 +185,24 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 return
             }
         }
+
+        // macOS 26 may generate a system View stub that evades the fingerprint above
+        // (Full Screen moved to the Window menu; stub is no longer empty or ToggleFullScreen).
+        // If more than one menu is titled "View", keep the one with our ⌘1 pane shortcut
+        // and remove any others.
+        let viewTitle = String(localized: "View", comment: "Menu header: view/navigate tabs")
+        let viewItems = mainMenu.items.dropFirst().filter {
+            !$0.isSeparatorItem && $0.title == viewTitle
+        }
+        guard viewItems.count > 1 else { return }
+        for item in viewItems {
+            let hasOurContent = item.submenu?.items.contains {
+                $0.keyEquivalent == "1" && $0.keyEquivalentModifierMask == [.command]
+            } ?? false
+            if !hasOurContent {
+                mainMenu.removeItem(item)
+            }
+        }
     }
 
     // MARK: - About
@@ -257,6 +275,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 keyEquivalent: key)
             item.keyEquivalentModifierMask = modifiers
             item.isAlternate = true
+            item.isHidden = true  // explicit guard: macOS 26+ may not honour isAlternate hiding
 //                item.image = resetIcon
             item.target = self
             menu.insertItem(item, at: freshQuitIndex + 1 + i)
@@ -654,9 +673,17 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
-        guard menu === NSApp.mainMenu?.items.first?.submenu,
-              let item = hideDockIconItem
-        else { return }
+        guard menu === NSApp.mainMenu?.items.first?.submenu else { return }
+
+        // macOS 26+ may not honour isAlternate for hiding Factory Reset; manage explicitly.
+        // Show exactly the variant whose non-Command modifier mask matches what is held.
+        let relevantFlags = NSEvent.modifierFlags.intersection([.option, .shift])
+        for resetItem in menu.items where resetItem.action == #selector(confirmFactoryReset) {
+            let nonCommandMods = resetItem.keyEquivalentModifierMask.subtracting(.command)
+            resetItem.isHidden = (nonCommandMods != relevantFlags)
+        }
+
+        guard let item = hideDockIconItem else { return }
 
         // Hide "Hide Dock Icon…" when already running as an accessory (no Dock icon).
         let showingInDock = UserDefaults.standard.object(forKey: "showInDock") == nil
