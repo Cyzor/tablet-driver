@@ -6,7 +6,7 @@ Native macOS driver for Wacom drawing tablets that no longer have official suppo
 
 ---
 
-Wacom hardware tends to outlast its driver support. MockTab aims to be a small, focused driver for Wacom tablets from the early 2000s up to roughly 2020, on macOS Ventura through Sequoia and later.
+Wacom hardware tends to outlast its driver support. MockTab aims to be a small, focused driver for Wacom tablets from the early 2000s up to roughly 2020, on macOS Ventura and later.
 
 ---
 
@@ -14,7 +14,7 @@ Wacom hardware tends to outlast its driver support. MockTab aims to be a small, 
 
 Several Wacom models across five families:
 
-- **Intuos** — various generation (Intuos 1 through Intuos Pro Gen 1)
+- **Intuos** — various generation (PTH-850 - Intuos 1 through Intuos Pro Gen 1)
 - **Cintiq** pen displays (DTK-2400)
 - **Bamboo** and consumer CTL/CTH tablets
 - **Intuos Pro Gen 2** (PTH-460, PTH-660, PTH-860) — USB and Bluetooth
@@ -27,7 +27,7 @@ MockTab covers a small set of hardware so far and may not work with your configu
 
 ## Requirements
 
-macOS 13 (Ventura) or later — tested through macOS 15 (Sequoia). The app launches on macOS 16 (Tahoe) but tablet connectivity on that release is untested.
+macOS 13 (Ventura) or later — macOS (Tahoe) may need further verification.
 
 ---
 
@@ -36,7 +36,7 @@ macOS 13 (Ventura) or later — tested through macOS 15 (Sequoia). The app launc
 1. Download the latest `.dmg` from [Releases](https://github.com/Cyzor/tablet-driver/releases).
 2. Drag `MockTab.app` to Applications and launch it.
 3. **Grant Accessibility** when prompted — click "Open System Settings", toggle MockTab on, relaunch. MockTab needs this to provide pen pressure.
-4. **Grant Input Monitoring** if prompted — same flow. Some configurations work without it; grant it to be safe.
+4. **Grant Input Monitoring** if prompted.
 5. Plug in or pair your tablet. It appears in the menu bar.
 
 **If permissions don't seem to take effect:** remove MockTab from the pane and re-add it. Moving or reinstalling the app may invalidate previous approvals.
