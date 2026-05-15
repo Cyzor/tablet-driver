@@ -41,8 +41,34 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             removeEmptyViewMenu()
             hookAboutMenuItem()
             hookAppMenu()
+            hookViewMenu()
             hookWindowMenu()
             watchMainMenuForRebuild()
+        }
+    }
+
+    // MARK: - View menu
+
+    /// Holds a weak reference so `menuWillOpen` can mutate the Show/Hide Tab Bar
+    /// item title before each open. SwiftUI rebuilds the View menu periodically;
+    /// `hookViewMenu()` is re-run from `mainMenuDidRemoveItem` to refresh both
+    /// the weak ref and the delegate assignment.
+    private weak var viewMenu: NSMenu?
+
+    private func hookViewMenu() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        let viewTitle = String(localized: "View", comment: "Menu header: view/navigate tabs")
+        // Identify OUR View menu (the one carrying the ⌘1 pane shortcut) — there
+        // can be a system-generated View stub with the same title on macOS 26.
+        for item in mainMenu.items where item.title == viewTitle {
+            guard let sub = item.submenu,
+                  sub.items.contains(where: {
+                      $0.keyEquivalent == "1" && $0.keyEquivalentModifierMask == [.command]
+                  })
+            else { continue }
+            viewMenu = sub
+            sub.delegate = self
+            return
         }
     }
 
@@ -145,6 +171,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             insertPresetsMenu()
             removeEmptyViewMenu()
             hookAppMenu()
+            hookViewMenu()
             hookWindowMenu()
             // Reset only after all work is done so that notifications fired by our
             // own remove/insert calls (hookWindowMenu removes the old Window item)
@@ -673,6 +700,27 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        // View menu: swap the Tab Bar item label between "Show Tab Bar" and
+        // "Hide Tab Bar" based on the main window's current tab-bar visibility,
+        // matching Finder. The item is identified by its ⇧⌘T shortcut, which
+        // SwiftUI maps directly to NSMenuItem.keyEquivalent — stable across
+        // SwiftUI rebuilds even though the action is a closure (not a selector
+        // we could match on).
+        if menu === viewMenu {
+            let visible = NSApp.mainWindow?.tabGroup?.isTabBarVisible ?? false
+            let newTitle = visible
+                ? String(localized: "Hide Tab Bar",
+                         comment: "View menu: hide the window tab bar (shown when tab bar is visible)")
+                : String(localized: "Show Tab Bar",
+                         comment: "View menu: toggle the window tab bar")
+            for item in menu.items
+                where item.keyEquivalent == "t" && item.keyEquivalentModifierMask == [.command, .shift]
+            {
+                item.title = newTitle
+            }
+            return
+        }
+
         guard menu === NSApp.mainMenu?.items.first?.submenu else { return }
 
         // macOS 26+ may not honour isAlternate for hiding Factory Reset; manage explicitly.

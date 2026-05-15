@@ -3022,6 +3022,7 @@
     },
     "CPU       : Intel (x86_64)" : {
       "comment" : "Diagnostic: CPU architecture",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5294,6 +5295,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MockTabのDockアイコンを隠しますか？"
+          }
+        }
+      }
+    },
+    "Hide Tab Bar" : {
+      "comment" : "View menu: hide the window tab bar (shown when tab bar is visible)",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tab-Leiste ausblenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hide Tab Bar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar barra de pestañas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブバーを非表示"
           }
         }
       }
