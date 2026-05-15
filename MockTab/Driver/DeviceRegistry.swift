@@ -262,15 +262,35 @@ final class DeviceRegistry: ObservableObject {
         return tool.forcedToolCode
     }
 
-    /// Removes a tool from one tablet's persisted list.
-    func forgetTool(id: String, forDevice deviceID: Int) {
+    /// Captured state needed to reverse a tool removal. Opaque to callers;
+    /// pass back to `restoreTool(_:)` to undo.
+    struct ToolRemovalSnapshot {
+        let tool: KnownTool
+        let originDeviceID: Int  // device the user invoked removal from
+        let perDeviceBlobs: [Int: Data]  // toolsKey blob per affected device (pre-removal)
+    }
+
+    /// Removes a tool from one tablet's persisted list. Returns a snapshot
+    /// that callers can pass to `restoreTool(_:)` to undo.
+    @discardableResult
+    func forgetTool(id: String, forDevice deviceID: Int) -> ToolRemovalSnapshot? {
+        guard let tool = knownTools.first(where: { $0.id == id }) else { return nil }
+        let originalBlob = ud.data(forKey: toolsKey(deviceID))
         knownTools.removeAll { $0.id == id }
         saveTools(forDevice: deviceID)
         rebuildAllTools()
+        return ToolRemovalSnapshot(
+            tool: tool,
+            originDeviceID: deviceID,
+            perDeviceBlobs: originalBlob.map { [deviceID: $0] } ?? [:])
     }
 
-    /// Removes a tool from every tablet's persisted list.
-    func forgetToolEverywhere(id: String) {
+    /// Removes a tool from every tablet's persisted list. Returns a snapshot
+    /// that callers can pass to `restoreTool(_:)` to undo.
+    @discardableResult
+    func forgetToolEverywhere(id: String) -> ToolRemovalSnapshot? {
+        let tool = knownTools.first(where: { $0.id == id })
+        var blobs: [Int: Data] = [:]
         for tablet in knownTablets {
             guard let data = ud.data(forKey: toolsKey(tablet.id)),
                 var list = try? JSONDecoder().decode([KnownTool].self, from: data)
@@ -280,9 +300,106 @@ final class DeviceRegistry: ObservableObject {
             guard list.count != before,
                 let saved = try? JSONEncoder().encode(list)
             else { continue }
+            blobs[tablet.id] = data  // pre-removal blob
             ud.set(saved, forKey: toolsKey(tablet.id))
         }
         knownTools.removeAll { $0.id == id }
+        rebuildAllTools()
+        guard let tool, !blobs.isEmpty else { return nil }
+        return ToolRemovalSnapshot(tool: tool, originDeviceID: 0, perDeviceBlobs: blobs)
+    }
+
+    /// Reverses a prior `forgetTool` or `forgetToolEverywhere`.
+    func restoreTool(_ snapshot: ToolRemovalSnapshot) {
+        for (deviceID, blob) in snapshot.perDeviceBlobs {
+            ud.set(blob, forKey: toolsKey(deviceID))
+        }
+        // Refresh in-memory list if the origin device is currently loaded
+        loadTools(forDevice: snapshot.originDeviceID)
+        rebuildAllTools()
+    }
+
+    // MARK: - Tablet removal
+
+    /// Captured state needed to reverse a tablet removal.
+    struct TabletRemovalSnapshot {
+        let tablet: KnownTablet
+        let tabletIndex: Int
+        let snapshotKV: [String: Data]  // every UserDefaults key under "device-0x<HEX>." that held a value
+        let serialMapEntries: [String: Int]  // _hardwareSerials entries pointing at this id
+    }
+
+    /// Removes a tablet entry plus all device-scoped persisted state
+    /// (tool list, settings, profiles, app overrides). Returns a snapshot
+    /// suitable for `restoreTablet(_:)`. Caller must ensure the tablet is
+    /// not currently connected.
+    @discardableResult
+    func removeTablet(id: Int) -> TabletRemovalSnapshot? {
+        guard let idx = knownTablets.firstIndex(where: { $0.id == id }) else { return nil }
+        let tablet = knownTablets[idx]
+        let hex = String(id, radix: 16, uppercase: true)
+        let prefix = "device-0x\(hex)."
+
+        // Snapshot every device-scoped key
+        var kv: [String: Data] = [:]
+        for (k, v) in ud.dictionaryRepresentation() where k.hasPrefix(prefix) {
+            // We only persist via UserDefaults.set(Any) which stores plist-encodable values.
+            // Use propertyList encoding so we can round-trip arbitrary value types.
+            if let data = try? PropertyListSerialization.data(
+                fromPropertyList: v, format: .binary, options: 0)
+            {
+                kv[k] = data
+            }
+        }
+
+        // Snapshot serial-map entries pointing at this id
+        let serialEntries = hardwareSerialMap().filter { $0.value == id }
+
+        // Remove tablet entry
+        knownTablets.remove(at: idx)
+        saveTablets()
+
+        // Remove device-scoped keys
+        for k in kv.keys { ud.removeObject(forKey: k) }
+
+        // Remove serial-map entries
+        if !serialEntries.isEmpty {
+            var map = hardwareSerialMap()
+            for k in serialEntries.keys { map.removeValue(forKey: k) }
+            saveHardwareSerialMap(map)
+        }
+
+        // Clear in-memory tool list if it was showing this device
+        knownTools.removeAll()
+        rebuildAllTools()
+
+        return TabletRemovalSnapshot(
+            tablet: tablet, tabletIndex: idx, snapshotKV: kv, serialMapEntries: serialEntries)
+    }
+
+    /// Reverses a prior `removeTablet`.
+    func restoreTablet(_ snapshot: TabletRemovalSnapshot) {
+        // Restore tablet entry at its original position (clamp if list shrank elsewhere)
+        let idx = min(snapshot.tabletIndex, knownTablets.count)
+        knownTablets.insert(snapshot.tablet, at: idx)
+        saveTablets()
+
+        // Restore device-scoped keys
+        for (k, data) in snapshot.snapshotKV {
+            if let v = try? PropertyListSerialization.propertyList(
+                from: data, options: [], format: nil)
+            {
+                ud.set(v, forKey: k)
+            }
+        }
+
+        // Restore serial-map entries
+        if !snapshot.serialMapEntries.isEmpty {
+            var map = hardwareSerialMap()
+            for (k, v) in snapshot.serialMapEntries { map[k] = v }
+            saveHardwareSerialMap(map)
+        }
+
         rebuildAllTools()
     }
 

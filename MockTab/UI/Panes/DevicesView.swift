@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import AppKit
 import SwiftUI
 
 /// Devices tab — lists every tablet and pen the user has ever connected.
@@ -22,15 +23,11 @@ struct DevicesView: View {
     @State private var editingTabletID: Int? = nil
     @State private var editingToolID: String? = nil
     @State private var editingName = ""
+    @FocusState private var editFieldFocused: Bool
 
     @State private var pendingForgetTool: DeviceRegistry.KnownTool? = nil
     @State private var pendingForgetDeviceID: Int? = nil
-
-    /// Tool override picker state
-    @State private var showingToolOverridePicker: Bool = false
-    @State private var selectedOverrideToolCode: UInt16? = nil
-    @State private var toolOverrideToolID: String? = nil
-    @State private var toolOverrideDeviceID: Int? = nil
+    @State private var pendingRemoveTablet: DeviceRegistry.KnownTablet? = nil
 
     /// Tablet explicitly selected by the user to view its tools.
     /// Nil = auto-follow the currently active device.
@@ -61,6 +58,11 @@ struct DevicesView: View {
                 productID: productID ?? 0
             )
         }
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            editingTabletID = nil
+            editingToolID = nil
+        }
         .onAppear { syncTools() }
         .onChange(of: tabletManager.connectedProductID) { _ in
             if selectedTabletID == nil { syncTools() }
@@ -75,10 +77,17 @@ struct DevicesView: View {
             // No .destructive role so "Remove" is the default (blue) button — Enter confirms.
             Button(LocalizedStringKey("Remove")) {
                 guard let tool = pendingForgetTool else { return }
+                let snapshot: DeviceRegistry.ToolRemovalSnapshot?
                 if let did = pendingForgetDeviceID {
-                    registry.forgetTool(id: tool.id, forDevice: did)
+                    snapshot = registry.forgetTool(id: tool.id, forDevice: did)
                 } else {
-                    registry.forgetToolEverywhere(id: tool.id)
+                    snapshot = registry.forgetToolEverywhere(id: tool.id)
+                }
+                if let snapshot {
+                    undoManager?.registerUndo(withTarget: registry) { target in
+                        target.restoreTool(snapshot)
+                    }
+                    undoManager?.setActionName(String(localized: "Remove Tool", comment: "Undo action name when removing a tool"))
                 }
                 pendingForgetTool = nil
                 editingToolID = nil
@@ -87,19 +96,26 @@ struct DevicesView: View {
         } message: {
             Text(String(localized: "This tool will reappear with its default name next time the tablet detects it.", comment: "Message explaining that removed tool nicknames are temporary"))
         }
-        .sheet(isPresented: $showingToolOverridePicker) {
-            ToolOverridePickerSheet(
-                currentToolCode: $selectedOverrideToolCode,
-                onApply: { newCode in
-                    if let tid = toolOverrideToolID, let did = toolOverrideDeviceID {
-                        registry.setForcedToolCode(newCode, forToolID: tid, deviceID: did)
-                    }
-                    showingToolOverridePicker = false
-                },
-                onCancel: {
-                    showingToolOverridePicker = false
-                }
+        .alert(
+            String(localized: "Remove \"\(pendingRemoveTablet?.nickname ?? "")\"?", comment: "Confirmation alert when removing a tablet"),
+            isPresented: Binding(
+                get: { pendingRemoveTablet != nil },
+                set: { if !$0 { pendingRemoveTablet = nil } }
             )
+        ) {
+            Button(LocalizedStringKey("Remove")) {
+                guard let tablet = pendingRemoveTablet else { return }
+                if let snapshot = registry.removeTablet(id: tablet.id) {
+                    undoManager?.registerUndo(withTarget: registry) { target in
+                        target.restoreTablet(snapshot)
+                    }
+                    undoManager?.setActionName(String(localized: "Remove Tablet", comment: "Undo action name when removing a tablet"))
+                }
+                pendingRemoveTablet = nil
+            }
+            Button(LocalizedStringKey("Cancel"), role: .cancel) { pendingRemoveTablet = nil }
+        } message: {
+            Text(String(localized: "This will discard all settings, profiles, button mappings, and the saved tool list for this tablet. The tablet will be re-added with defaults the next time it connects.", comment: "Message explaining what gets wiped when removing a tablet"))
         }
     }
 
@@ -147,7 +163,9 @@ struct DevicesView: View {
                 TextField(String(localized: "Device name", comment: "Placeholder text in rename tablet field"), text: $editingName)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: .infinity)
+                    .focused($editFieldFocused)
                     .onSubmit { commitTabletRename() }
+                    .onAppear { focusAndSelectAll() }
             } else {
                 Text(tablet.nickname)
                     .fontWeight(isActive ? .semibold : .regular)
@@ -171,6 +189,7 @@ struct DevicesView: View {
                     .buttonStyle(.borderedProminent).controlSize(.small)
                 Button(LocalizedStringKey("Cancel")) { editingTabletID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
+                    .keyboardShortcut(.cancelAction)
             } else {
                 Button {
                     editingTabletID = tablet.id
@@ -187,11 +206,32 @@ struct DevicesView: View {
         .padding(.vertical, 8)
         .background(isSelected ? Color.accentColor.opacity(0.08) : Color.clear)
         .contentShape(Rectangle())
+        .onTapGesture(count: 2) { beginTabletEdit(tablet) }
         .onTapGesture {
             guard editingTabletID == nil else { return }
             selectedTabletID = tablet.id
             registry.loadTools(forDevice: tablet.id)
         }
+        .contextMenu {
+            Button(LocalizedStringKey("Rename…")) { beginTabletEdit(tablet) }
+            Divider()
+            Button(LocalizedStringKey("Remove from List…")) {
+                pendingRemoveTablet = tablet
+            }
+            .disabled(isActive)
+        }
+    }
+
+    private func beginTabletEdit(_ tablet: DeviceRegistry.KnownTablet) {
+        editingToolID = nil
+        editingTabletID = tablet.id
+        editingName = tablet.nickname
+    }
+
+    private func beginToolEdit(_ tool: DeviceRegistry.KnownTool) {
+        editingTabletID = nil
+        editingToolID = tool.id
+        editingName = tool.nickname
     }
 
     // MARK: - Tools
@@ -245,18 +285,12 @@ struct DevicesView: View {
                 TextField(String(localized: "Tool name", comment: "Placeholder text in rename tool field"), text: $editingName)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: .infinity)
+                    .focused($editFieldFocused)
                     .onSubmit { commitToolRename() }
+                    .onAppear { focusAndSelectAll() }
             } else {
-                HStack(spacing: 4) {
-                    Text(tool.nickname)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    if !tool.isSupported {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                            .help(LocalizedStringKey("Tool not fully supported on this device"))
-                            .accessibilityLabel(LocalizedStringKey("Warning: tool not fully supported on this device"))
-                    }
-                }
+                Text(tool.nickname)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Text(tool.kind)
@@ -280,56 +314,28 @@ struct DevicesView: View {
                 .help(LocalizedStringKey("Remove this tool from the registry. It will reappear with its default name next time it is detected."))
                 Button(LocalizedStringKey("Cancel")) { editingToolID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
+                    .keyboardShortcut(.cancelAction)
             } else {
-                HStack(spacing: 4) {
-                    Button {
-                        editingToolID = tool.id
-                        editingName = tool.nickname
-                    } label: {
-                        Image(systemName: "pencil")
-                    }
-                    .buttonStyle(.plain).foregroundStyle(.secondary).help(LocalizedStringKey("Rename"))
-
-                    // Tool override button
-                    // Button {
-                    //     selectedOverrideToolCode = tool.forcedToolCode
-                    //     toolOverrideToolID = tool.id
-                    //     toolOverrideDeviceID = deviceID
-                    //     showingToolOverridePicker = true
-                    // } label: {
-                    //     Image(
-                    //         systemName: tool.forcedToolCode != nil
-                    //             ? "arrow.triangle.2.circlepath"
-                    //             : "arrow.up.left.and.arrow.down.right")
-                    // }
-                    // .buttonStyle(.plain).foregroundStyle(
-                    //     tool.forcedToolCode != nil ? .orange : .secondary
-                    // )
-                    // .help(
-                    //     tool.forcedToolCode != nil
-                    //         ? "Tool override active: \(String(format: "0x%04X", tool.forcedToolCode!))"
-                    //         : "Force tool type")
+                Button {
+                    editingToolID = tool.id
+                    editingName = tool.nickname
+                } label: {
+                    Image(systemName: "pencil")
                 }
+                .buttonStyle(.plain).foregroundStyle(.secondary).help(LocalizedStringKey("Rename"))
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(isInProximity ? Color.accentColor.opacity(0.08) : Color.clear)
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) { beginToolEdit(tool) }
         .contextMenu {
-            if tool.forcedToolCode != nil {
-                Button(LocalizedStringKey("Clear Override")) {
-                    registry.setForcedToolCode(nil, forToolID: tool.id, deviceID: deviceID ?? 0)
-                }
-            }
+            Button(LocalizedStringKey("Rename…")) { beginToolEdit(tool) }
             Divider()
-            Button(LocalizedStringKey("Force as Grip Pen (0x0802)")) {
-                registry.setForcedToolCode(0x0802, forToolID: tool.id, deviceID: deviceID ?? 0)
-            }
-            Button(LocalizedStringKey("Force as Pro Pen 2 (0x0832)")) {
-                registry.setForcedToolCode(0x0832, forToolID: tool.id, deviceID: deviceID ?? 0)
-            }
-            Button(LocalizedStringKey("Force as Pro Pen 3 (0x0842)")) {
-                registry.setForcedToolCode(0x0842, forToolID: tool.id, deviceID: deviceID ?? 0)
+            Button(LocalizedStringKey("Remove from List…")) {
+                pendingForgetTool = tool
+                pendingForgetDeviceID = deviceID
             }
         }
     }
@@ -358,7 +364,7 @@ struct DevicesView: View {
     // MARK: - Shared layout helpers
 
     private func toolIcon(for tool: DeviceRegistry.KnownTool) -> String {
-        let toolCode = tool.forcedToolCode ?? tool.toolCode ?? 0
+        let toolCode = tool.toolCode ?? 0
         let type = WacomToolCatalog.toolType(forToolCode: toolCode)
         switch type {
         case .stylus, .eraser, .airbrush, .artPen, .inkingPen:
@@ -447,53 +453,14 @@ struct DevicesView: View {
         guard let id = effectiveTabletID else { return }
         registry.loadTools(forDevice: id)
     }
-}
 
-// MARK: - Tool Override Picker Sheet
-
-struct ToolOverridePickerSheet: View {
-    @Binding var currentToolCode: UInt16?
-    let onApply: (UInt16?) -> Void
-    let onCancel: () -> Void
-
-    @State private var selectedCode: String = ""
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Text(LocalizedStringKey("Force Tool Code")).font(.headline)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(String(localized: "Select a tool to force (or leave blank to use detected tool):", comment: "Instruction text for tool code override selection"))
-                    .font(.settingsLabel).foregroundStyle(.secondary)
-
-                Picker(String(localized: "Tool Code", comment: "Label for tool code selection picker"), selection: $selectedCode) {
-                    Text(String(localized: "(Auto-detect)", comment: "Placeholder: automatically detect tool code")).tag("")
-                    Text(String(localized: "Grip Pen (0x0802)", comment: "Tool code option: Grip Pen")).tag("0802")
-                    Text(String(localized: "Pro Pen 2 (0x0832)", comment: "Tool code option: Pro Pen 2")).tag("0832")
-                    Text(String(localized: "Pro Pen 3 (0x0842)", comment: "Tool code option: Pro Pen 3")).tag("0842")
-                    Text(String(localized: "Pen 4K (0x0852)", comment: "Tool code option: Pen 4K")).tag("0852")
-                }
-                .pickerStyle(.menu)
-            }
-
-            HStack(spacing: 12) {
-                Button(LocalizedStringKey("Cancel"), role: .cancel) { onCancel() }
-                    .buttonStyle(.bordered)
-                Button(LocalizedStringKey("Apply")) {
-                    let code = selectedCode.isEmpty ? nil : UInt16(selectedCode, radix: 16)
-                    onApply(code)
-                }
-                .buttonStyle(.borderedProminent)
-            }
-
-            Spacer()
-        }
-        .padding()
-        .frame(minWidth: 300, minHeight: 200)
-        .onAppear {
-            if let code = currentToolCode {
-                selectedCode = String(format: "%04X", code)
-            }
+    /// Focuses the rename text field and selects its full contents so the user
+    /// can immediately type a replacement. Called from the field's `.onAppear`.
+    private func focusAndSelectAll() {
+        editFieldFocused = true
+        DispatchQueue.main.async {
+            NSApp.keyWindow?.firstResponder?
+                .tryToPerform(#selector(NSText.selectAll(_:)), with: nil)
         }
     }
 }
