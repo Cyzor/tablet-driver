@@ -80,7 +80,12 @@ final class TabletManager: ObservableObject {
 
     /// True when MockTab is the frontmost application. Set by AppDelegate on
     /// didBecomeActive/willResignActive. Combined with infoViewVisible to gate updates.
-    @Published var appIsFrontmost: Bool = false
+    ///
+    /// Plain `Bool`, not `@Published`: this is read on the HID thread at ~200 Hz
+    /// inside the `onTablet` gate. `@Published`'s Combine-wrapped getter showed up
+    /// as ~13% of HID-thread time when this was published. No SwiftUI view binds
+    /// to this directly — only same-thread gate code and main-thread setters touch it.
+    var appIsFrontmost: Bool = false
 
     /// Set true by SettingsWindowController when the Info or Buttons tab is frontmost
     /// in the active window. Combined with appIsFrontmost: both must be true to update
@@ -90,7 +95,19 @@ final class TabletManager: ObservableObject {
 
     /// Optional raw-data callback for calibration. When set, every active-context
     /// TabletPoint is forwarded here *in addition to* the normal injection path.
-    var calibrationPointHandler: ((TabletPoint) -> Void)?
+    /// Always assign through `setCalibrationPointHandler(_:)` so the HID-thread
+    /// gate `calibrationActive` stays in sync.
+    private(set) var calibrationPointHandler: ((TabletPoint) -> Void)?
+
+    /// Single-word mirror of `calibrationPointHandler != nil`, safe to read from
+    /// HID thread. Reading the optional closure itself across threads is unsafe
+    /// (two-word load can tear); this Bool is the cheap gate used in `onTablet`.
+    private(set) var calibrationActive: Bool = false
+
+    func setCalibrationPointHandler(_ handler: ((TabletPoint) -> Void)?) {
+        calibrationPointHandler = handler
+        calibrationActive = handler != nil
+    }
 
     private var uiUpdateCounter = 0
     private static let uiUpdateInterval = 8  // every 8th report ≈ 16 Hz at 133 Hz
@@ -299,9 +316,25 @@ final class TabletManager: ObservableObject {
             let injector = context.injector
 
             // ── Fast path: inject inline on HIDThread ─────────────────────────
-            if injector.isActive {
+            let isActive = injector.isActive
+            if isActive {
                 injector.inject(point: point, settings: context.settings)
             }
+
+            // ── HID-thread gate: skip the Task hop when nothing needs to run.
+            // At 200 Hz USB report rate the active-pen-backgrounded case used to
+            // spawn a Task per report whose body did nothing; this short-circuit
+            // collapses that to zero allocations on the dominant idle path.
+            let needsHop: Bool
+            if isActive {
+                needsHop = !point.inProximity  // proximity-exit cleanup
+                    || self?.appIsFrontmost == true && self?.infoViewVisible == true  // UI update
+                    || self?.calibrationActive == true  // calibration sample
+            } else {
+                needsHop = point.inProximity  // proximity-enter → context switch
+                    || injector.lastProximity  // dangling-proximity cleanup
+            }
+            guard needsHop else { return }
 
             // ── UI / context-switch path: throttled hop to main ───────────────
             Task { @MainActor [weak self, weak context] in

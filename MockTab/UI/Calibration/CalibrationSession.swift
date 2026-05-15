@@ -61,14 +61,14 @@ final class CalibrationSession: ObservableObject {
 
     func start() {
         completedSamples = []
-        tabletManager.calibrationPointHandler = { [weak self] point in
+        tabletManager.setCalibrationPointHandler { [weak self] point in
             self?.handleRawPoint(point)
         }
         advanceToTarget(0)
     }
 
     func cancel() {
-        tabletManager.calibrationPointHandler = nil
+        tabletManager.setCalibrationPointHandler(nil)
         state = .cancelled
     }
 
@@ -187,7 +187,7 @@ final class CalibrationSession: ObservableObject {
     // MARK: - Finish
 
     private func finishCalibration() {
-        tabletManager.calibrationPointHandler = nil
+        tabletManager.setCalibrationPointHandler(nil)
         state = .computing
 
         let transform = CalibrationEntry.fitBest(samples: completedSamples)

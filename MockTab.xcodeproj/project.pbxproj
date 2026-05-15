@@ -54,8 +54,6 @@
 		AA000060 /* GraphireDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000060 /* GraphireDecoder.swift */; };
 		AA000070 /* HIDCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000070 /* HIDCapture.swift */; };
 		AA000071 /* WacomToolSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000071 /* WacomToolSpec.swift */; };
-		AA00MM01 /* ModifierMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00MM01 /* ModifierMath.swift */; };
-		AA00HH01 /* HIDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HH01 /* HIDHelpers.swift */; };
 		AA000072 /* OTDImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000072 /* OTDImporter.swift */; };
 		AA000073 /* OrientationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000073 /* OrientationPickerView.swift */; };
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
@@ -65,8 +63,10 @@
 		AA00C1D1 /* CintiqV1Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00C1D1 /* CintiqV1Decoder.swift */; };
 		AA00C1E1 /* IntuosV2Decoder+BT.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00C1E1 /* IntuosV2Decoder+BT.swift */; };
 		AA00DR01 /* DeviceRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DR01 /* DeviceRouter.swift */; };
+		AA00HH01 /* HIDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HH01 /* HIDHelpers.swift */; };
 		AA00HT01 /* HIDThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HT01 /* HIDThread.swift */; };
 		AA00IS01 /* InjectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00IS01 /* InjectionSnapshot.swift */; };
+		AA00MM01 /* ModifierMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00MM01 /* ModifierMath.swift */; };
 		AAAAAA02 /* PresetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA01 /* PresetExporter.swift */; };
 		AAAAAA04 /* PresetImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA03 /* PresetImporter.swift */; };
 		AAAAAA06 /* ImportPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA05 /* ImportPlan.swift */; };
@@ -142,8 +142,6 @@
 		AB000060 /* GraphireDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphireDecoder.swift; sourceTree = "<group>"; };
 		AB000070 /* HIDCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDCapture.swift; sourceTree = "<group>"; };
 		AB000071 /* WacomToolSpec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomToolSpec.swift; sourceTree = "<group>"; };
-		AB00MM01 /* ModifierMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierMath.swift; sourceTree = "<group>"; };
-		AB00HH01 /* HIDHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDHelpers.swift; sourceTree = "<group>"; };
 		AB000072 /* OTDImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTDImporter.swift; sourceTree = "<group>"; };
 		AB000073 /* OrientationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationPickerView.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -164,8 +162,10 @@
 		AB00C1D1 /* CintiqV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CintiqV1Decoder.swift; sourceTree = "<group>"; };
 		AB00C1E1 /* IntuosV2Decoder+BT.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IntuosV2Decoder+BT.swift"; sourceTree = "<group>"; };
 		AB00DR01 /* DeviceRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRouter.swift; sourceTree = "<group>"; };
+		AB00HH01 /* HIDHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDHelpers.swift; sourceTree = "<group>"; };
 		AB00HT01 /* HIDThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDThread.swift; sourceTree = "<group>"; };
 		AB00IS01 /* InjectionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjectionSnapshot.swift; sourceTree = "<group>"; };
+		AB00MM01 /* ModifierMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierMath.swift; sourceTree = "<group>"; };
 		AC000008 /* TabletColorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletColorTheme.swift; sourceTree = "<group>"; };
 		BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationOverlayView.swift; sourceTree = "<group>"; };
 		F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationOverlayWindow.swift; sourceTree = "<group>"; };
@@ -658,7 +658,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTS_MACCATALYST = NO;
@@ -692,7 +692,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTS_MACCATALYST = NO;
