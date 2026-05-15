@@ -46,7 +46,10 @@ final class HIDThread {
         thread.start()
 
         sema.wait()
-        runLoop = captured!
+        guard let rl = captured else {
+            fatalError("HIDThread: run loop capture failed — thread never started")
+        }
+        runLoop = rl
     }
 
     // A do-nothing CFRunLoopSourceContext used to keep the run loop alive.
