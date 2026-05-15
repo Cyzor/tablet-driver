@@ -567,12 +567,16 @@ private struct PresetListView: View {
                 }
 
                 Menu {
-                    Button(LocalizedStringKey("Rename")) { onRenameBegin(preset) }
-                        .help(LocalizedStringKey("Edit the profile name"))
+                    Button { onRenameBegin(preset) } label: {
+                        Label(LocalizedStringKey("Rename"), systemImage: "pencil")
+                    }
+                    .help(LocalizedStringKey("Edit the profile name"))
                     Divider()
-                    Button(LocalizedStringKey("Delete"), role: .destructive) { onDelete(preset) }
-                        .disabled(preset.name == "Default")
-                        .help(LocalizedStringKey("Permanently delete this profile (cannot be undone)"))
+                    Button(role: .destructive) { onDelete(preset) } label: {
+                        Label(LocalizedStringKey("Delete"), systemImage: "trash")
+                    }
+                    .disabled(preset.name == "Default")
+                    .help(LocalizedStringKey("Permanently delete this profile (cannot be undone)"))
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.settingsBadge)

@@ -480,19 +480,25 @@ struct AppOverrideBar: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .contextMenu {
             if let bundleID {
-                Button(LocalizedStringKey("Rename…")) {
+                Button {
                     renamingBundleID = bundleID
                     renameText = label
+                } label: {
+                    Label(LocalizedStringKey("Rename…"), systemImage: "pencil")
                 }
 
-                Button(LocalizedStringKey("Reveal in Finder")) {
+                Button {
                     revealInFinder(bundleID: bundleID)
+                } label: {
+                    Label(LocalizedStringKey("Reveal in Finder"), systemImage: "folder")
                 }
 
                 Divider()
 
-                Button(LocalizedStringKey("Remove"), role: .destructive) {
+                Button(role: .destructive) {
                     settings.removeAppOverride(bundleID: bundleID)
+                } label: {
+                    Label(LocalizedStringKey("Remove"), systemImage: "trash")
                 }
             }
         }
@@ -623,8 +629,10 @@ struct AppOverrideBar: View {
 
             Divider()
 
-            Button(LocalizedStringKey("Other…")) {
+            Button {
                 browseForApp()
+            } label: {
+                Label(LocalizedStringKey("Other…"), systemImage: "folder")
             }
         } label: {
             Image(systemName: "plus.app.fill")
