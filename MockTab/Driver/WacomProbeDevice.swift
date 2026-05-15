@@ -49,7 +49,7 @@ final class WacomProbeDevice: TabletDevice {
 
         // Same feature init as PTH-851 / PTZ-631W; activates the digitiser endpoint.
         var init1: [UInt8] = [0x02, 0x02]
-        IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
+        hidSetReport(device, reportID: 0x02, bytes: &init1, tag: "probe featureInit", log: probeLog)
 
         let ctx = Unmanaged.passRetained(self).toOpaque()
         IOHIDDeviceRegisterInputReportCallback(

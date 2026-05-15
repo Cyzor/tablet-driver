@@ -160,9 +160,9 @@ final class WacomKnownDevice: TabletDevice {
                 let reportID2 = CFIndex(bytes2[0])
                 let delay = deviceSpec.featureInit2Delay
                 let dev = device
+                let tag = "\(name) featureInit2"
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    IOHIDDeviceSetReport(
-                        dev, kIOHIDReportTypeFeature, reportID2, &bytes2, bytes2.count)
+                    hidSetReport(dev, reportID: reportID2, bytes: &bytes2, tag: tag, log: logger)
                 }
             }
 
@@ -247,7 +247,7 @@ final class WacomKnownDevice: TabletDevice {
             buf[0]  = 0x82
             buf[9]  = 0x64  // llv luminance: 100 = max (Linux max_llv)
             buf[10] = 0x00  // 0 = brightest observed state
-            _ = IOHIDDeviceSetReport(sec, kIOHIDReportTypeFeature, CFIndex(0x82), &buf, buf.count)
+            hidSetReport(sec, reportID: CFIndex(0x82), bytes: &buf, tag: "\(name) USB LED ring", severity: .bestEffort, log: logger)
 
         case .intuosV2 where isBluetooth:
             // Linux wacom_sys.c wacom_led_control(), WAC_CMD_WL_INTUOSP2 BT path:
@@ -258,7 +258,7 @@ final class WacomKnownDevice: TabletDevice {
             buf[0] = 0x82  // WAC_CMD_WL_INTUOSP2
             buf[9]  = 0x40  // llv: moderate brightness
             buf[10] = UInt8(index & 0x03)
-            _ = IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
+            hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf, tag: "\(name) BT LED ring", log: logger)
 
         case .cintiqV1:
             // LED control targets the companion interface (ledDevice), not the digitizer.
@@ -277,8 +277,7 @@ final class WacomKnownDevice: TabletDevice {
             buf[1] = ledByte
             buf[2] = 0x40  // llv: moderate brightness
             buf[3] = 0x40  // hlv: moderate brightness
-            _ = IOHIDDeviceSetReport(led, kIOHIDReportTypeFeature, CFIndex(buf[0]), &buf, buf.count)
-            // logger.debug("\(name, privacy: .public): setRingLED CintiqV1 slot=\(index) ledByte=0x\(String(ledByte, radix: 16)) ret=\(ret, privacy: .public)")
+            hidSetReport(led, reportID: CFIndex(buf[0]), bytes: &buf, tag: "\(name) CintiqV1 LED slot=\(index)", log: logger)
 
         default:
             break
@@ -305,7 +304,7 @@ final class WacomKnownDevice: TabletDevice {
     private func sendFeatureInit(to target: IOHIDDevice) {
         guard var bytes = deviceSpec.featureInit else { return }
         let reportID = CFIndex(bytes[0])
-        IOHIDDeviceSetReport(target, kIOHIDReportTypeFeature, reportID, &bytes, bytes.count)
+        hidSetReport(target, reportID: reportID, bytes: &bytes, tag: "\(deviceSpec.name) featureInit", log: logger)
     }
 
     // DIAGNOSTIC — remove after PTH-860 USB LED report IDs are identified.

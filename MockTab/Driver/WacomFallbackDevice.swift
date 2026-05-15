@@ -170,7 +170,7 @@ final class WacomFallbackDevice: TabletDevice {
         if !isBluetooth {
             // [0x02, 0x02]: feature init for IntuosV1-era digitiser endpoint.
             var init1: [UInt8] = [0x02, 0x02]
-            IOHIDDeviceSetReport(device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
+            hidSetReport(device, reportID: 0x02, bytes: &init1, tag: "\(tag) featureInit", log: logger)
 
             // IntuosV2 InputMode init (no-op if element not present).
             if family == .intuosV2 {
@@ -263,8 +263,7 @@ final class WacomFallbackDevice: TabletDevice {
                     // Send feature init safely from main thread (not from HID callback)
                     Task { @MainActor in
                         var init1: [UInt8] = [0x02, 0x02]
-                        IOHIDDeviceSetReport(
-                            device, kIOHIDReportTypeFeature, 0x02, &init1, init1.count)
+                        hidSetReport(device, reportID: 0x02, bytes: &init1, tag: "\(t) wireless re-init", log: logger)
                     }
                 case 0x05: logger.info("\(t, privacy: .public): wireless link lost (tablet out of range or off)")
                 case 0x06: logger.warning("\(t, privacy: .public): battery critically low")

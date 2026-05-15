@@ -55,6 +55,7 @@
 		AA000070 /* HIDCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000070 /* HIDCapture.swift */; };
 		AA000071 /* WacomToolSpec.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000071 /* WacomToolSpec.swift */; };
 		AA00MM01 /* ModifierMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00MM01 /* ModifierMath.swift */; };
+		AA00HH01 /* HIDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HH01 /* HIDHelpers.swift */; };
 		AA000072 /* OTDImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000072 /* OTDImporter.swift */; };
 		AA000073 /* OrientationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000073 /* OrientationPickerView.swift */; };
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
@@ -142,6 +143,7 @@
 		AB000070 /* HIDCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDCapture.swift; sourceTree = "<group>"; };
 		AB000071 /* WacomToolSpec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomToolSpec.swift; sourceTree = "<group>"; };
 		AB00MM01 /* ModifierMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierMath.swift; sourceTree = "<group>"; };
+		AB00HH01 /* HIDHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDHelpers.swift; sourceTree = "<group>"; };
 		AB000072 /* OTDImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OTDImporter.swift; sourceTree = "<group>"; };
 		AB000073 /* OrientationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationPickerView.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -242,6 +244,7 @@
 				AB000035 /* AppWatcher.swift */,
 				AB00HT01 /* HIDThread.swift */,
 				AB00MM01 /* ModifierMath.swift */,
+				AB00HH01 /* HIDHelpers.swift */,
 				AB000008 /* InputInjector.swift */,
 				AB00IS01 /* InjectionSnapshot.swift */,
 				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
@@ -463,6 +466,7 @@
 				AA000102 /* CaptureEngine.swift in Sources */,
 				AA000071 /* WacomToolSpec.swift in Sources */,
 				AA00MM01 /* ModifierMath.swift in Sources */,
+				AA00HH01 /* HIDHelpers.swift in Sources */,
 				AA000072 /* OTDImporter.swift in Sources */,
 				AA000049 /* WacomKnownDevice.swift in Sources */,
 				AA000047 /* IntuosV2Decoder.swift in Sources */,
