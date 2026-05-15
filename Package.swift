@@ -40,6 +40,7 @@ let package = Package(
                 "Driver/TabletPoint.swift",
                 "Driver/TabletDevice.swift",
                 "Driver/WacomToolSpec.swift",
+                "Driver/ModifierMath.swift",
                 "Driver/Decoders",
             ]
         ),
