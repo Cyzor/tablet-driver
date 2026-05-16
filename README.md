@@ -6,18 +6,20 @@ Native macOS driver for Wacom drawing tablets that no longer have official suppo
 
 ---
 
-Wacom hardware tends to outlast its driver support. MockTab aims to be a small, focused driver for Wacom tablets from the early 2000s up to roughly 2020, on macOS Ventura and later.
+Wacom hardware tends to outlast its driver support. MockTab aims to be a small, focused driver for Wacom tablets from the early 2000s through the early 2020s, on macOS Ventura and later.
 
 ---
 
 ## Supported hardware
 
-Several Wacom models across five families:
+Several Wacom models across multiple protocol families:
 
-- **Intuos** — various generation (PTH-850 - Intuos 1 through Intuos Pro Gen 1)
-- **Cintiq** pen displays (DTK-2400)
+- **Intuos 1–5 / Intuos Pro Gen 1** (PTH-x50/x51, PTZ, PTK series) — USB
+- **Intuos Pro Gen 2** (PTH-460, PTH-660, PTH-860) — USB and Bluetooth Classic
+- **Intuos Pro Gen 3** (PTK-470, PTK-670, PTK-870) — USB, experimental
+- **Cintiq** pen displays (CintiqV1 and IntuosV2-format models)
+- **DTU / DTUS** small pen displays — USB, experimental
 - **Bamboo** and consumer CTL/CTH tablets
-- **Intuos Pro Gen 2** (PTH-460, PTH-660, PTH-860) — USB and Bluetooth
 
 Full list: [mocktab.org/hardware](https://mocktab.org/hardware.html)
 
@@ -72,7 +74,7 @@ macOS 13 (Ventura) or later — macOS (Tahoe) may need further verification.
 ## What it doesn't do
 
 - Huion, XP-Pen, Xencelabs, or any non-Wacom hardware
-- Post-2020 Wacom tablets
+- Wacom tablets from recent product cycles not listed above (Cintiq Pro 2023 refresh, Intuos Pro with USB-C, etc.)
 - Windows, Linux, or iPad
 - Touch and gesture input (detected but not processed)
 
