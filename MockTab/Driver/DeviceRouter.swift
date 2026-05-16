@@ -31,6 +31,7 @@ enum DeviceRouter {
         let onMouseButton: (UInt8) -> Void
         let onBattery: (Int, Bool) -> Void
         let onHardwareSerial: (UInt32) -> Void
+        let onWheel: (Int, Int) -> Void
     }
 
     /// The decision made for a single HID interface.
@@ -94,7 +95,8 @@ enum DeviceRouter {
                 device: device, deviceSpec: dongleSpec, isWireless: true,
                 onTablet: callbacks.onTablet, onAux: callbacks.onAux,
                 onToolEnter: callbacks.onToolEnter,
-                onHardwareSerial: callbacks.onHardwareSerial)
+                onHardwareSerial: callbacks.onHardwareSerial,
+                onWheel: callbacks.onWheel)
             return .driver(drv, seized: false)
         }
 
@@ -133,7 +135,8 @@ enum DeviceRouter {
                 onToolEnter: callbacks.onToolEnter,
                 onMouseButton: callbacks.onMouseButton,
                 onBattery: callbacks.onBattery,
-                onHardwareSerial: callbacks.onHardwareSerial)
+                onHardwareSerial: callbacks.onHardwareSerial,
+                onWheel: callbacks.onWheel)
             return .driver(drv, seized: shouldSeize)
         }
 

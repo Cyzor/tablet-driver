@@ -298,6 +298,13 @@ enum DecodeResult {
     /// absolute position is delivered separately via the digitizer 0x10 stream.
     /// bit0 = left, bit1 = right, bit2 = middle.
     case mouseButton(UInt8)
+    /// Relative-encoder wheel step from a device with physical scroll wheels
+    /// (e.g. PTK-470/670/870 IntuosV3 side wheels).  `index` identifies the
+    /// wheel (0 = left, 1 = right); `delta` is the signed per-frame step count
+    /// (positive = clockwise / up, negative = counter-clockwise / down).
+    /// Routed through `touchRingSlots[index]` in InputInjector so the user can
+    /// configure scroll vs. key-press behaviour through the existing ring UI.
+    case wheel(index: Int, delta: Int)
 }
 
 protocol WacomDecoder {

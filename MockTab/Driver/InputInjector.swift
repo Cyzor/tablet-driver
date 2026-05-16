@@ -249,6 +249,9 @@ final class InputInjector {
     private var ring2Accum: Double = 0
     private var strip1Accum: Double = 0
     private var strip2Accum: Double = 0
+    /// Fractional-delta accumulators for IntuosV3 relative scroll wheels (index 0 and 1).
+    private var wheel0Accum: Double = 0
+    private var wheel1Accum: Double = 0
 
     // MARK: - Synthetic-modifier safety valves
 
@@ -928,6 +931,32 @@ final class InputInjector {
         }
         if !buttons.touchStrip2Active { strip2Accum = 0 }
         lastStrip2Pos = buttons.touchStrip2Active ? s2pos : 0xFF
+    }
+
+    // MARK: - Relative wheel (IntuosV3 PTK-x70 side scroll wheels)
+
+    /// Called on HIDThread for each non-zero wheel step from a device with
+    /// physical rotary encoders (e.g. PTK-470/670/870).  Routes through
+    /// `touchRingSlots[index]` so the user can configure scroll vs. key-press
+    /// behaviour through the ring settings UI.  Falls back to a direct scroll
+    /// event if no slot is defined for that index.
+    func injectWheel(index: Int, delta: Int, settings: TabletSettings?) {
+        rearmWatchdog()
+        guard let snap = injectionSnapshot else { return }
+        let cursorPos = currentCursorPosition()
+        let slot: ControlSlot? = snap.touchRingSlots.indices.contains(index)
+            ? snap.touchRingSlots[index] : nil
+        if let slot {
+            if index == 0 {
+                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &wheel0Accum,
+                                  at: cursorPos, snapshot: snap, settings: settings)
+            } else {
+                dispatchRingDelta(rawDelta: delta, slot: slot, accum: &wheel1Accum,
+                                  at: cursorPos, snapshot: snap, settings: settings)
+            }
+        } else {
+            postScrollWheelEvent(delta: delta, at: cursorPos)
+        }
     }
 
     private func currentCursorPosition() -> CGPoint {

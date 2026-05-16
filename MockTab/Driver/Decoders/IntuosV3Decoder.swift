@@ -210,8 +210,8 @@ struct IntuosV3Decoder: WacomDecoder {
     ///   [3]   = secondary express-key byte (bits 0 and 1 supply two
     ///           extra buttons, interleaved into OTD's 10-button array
     ///           at positions 4 and 9)
-    ///   [4]   = left wheel raw 7-bit signed delta
-    ///   [5]   = right wheel raw 7-bit signed delta
+    ///   [4]   = left wheel raw 7-bit signed delta  (bits 0–6; bit 7 ignored)
+    ///   [5]   = right wheel raw 7-bit signed delta (bits 0–6; bit 7 ignored)
     ///
     /// OTD's interleave order:
     ///   buttons[0..3] = primary bits 0..3
@@ -219,9 +219,14 @@ struct IntuosV3Decoder: WacomDecoder {
     ///   buttons[5..8] = primary bits 4..7
     ///   buttons[9]    = secondary bit 1
     ///
-    /// The two relative-step scroll wheels are still dropped — our aux
-    /// pipeline has no relative-encoder path, and routing the deltas
-    /// blind without a real PTK-x70 capture is more risk than value.
+    /// Wheel deltas are emitted as .wheel(index:delta:) results so
+    /// InputInjector can route them through touchRingSlots (scroll /
+    /// key-press / off) without further state in this decoder.
+    ///
+    /// mechanicalMask is UInt8 (8 bits); the two interleaved-from-
+    /// secondary bits at positions 4 and 9 cant be carried through.
+    /// Rapid re-press detection on those two buttons is the only thing
+    /// affected — normal up/down still works.
     private func decodeAuxReport(
         report: UnsafePointer<UInt8>,
         length: CFIndex
@@ -241,15 +246,19 @@ struct IntuosV3Decoder: WacomDecoder {
             (primary   & 0x80) != 0,
             (secondary & 0x02) != 0,
         ]
-        // mechanicalMask is UInt8 (8 bits); the two interleaved-from-
-        // secondary bits at positions 4 and 9 cant be carried through
-        // here. Rapid re-press detection on those two buttons is the
-        // only thing affected — normal up/down still works.
-        return [
-            .aux(
-                AuxButtons(
-                    buttons: buttons,
-                    mechanicalMask: primary))
+        var results: [DecodeResult] = [
+            .aux(AuxButtons(buttons: buttons, mechanicalMask: primary))
         ]
+        // Sign-extend 7-bit values: shift the sign bit into bit 7, then
+        // arithmetic-shift right to propagate it across the Int8 range.
+        if length >= 5 {
+            let leftDelta = Int((Int8(bitPattern: report[4]) << 1) >> 1)
+            if leftDelta != 0 { results.append(.wheel(index: 0, delta: leftDelta)) }
+        }
+        if length >= 6 {
+            let rightDelta = Int((Int8(bitPattern: report[5]) << 1) >> 1)
+            if rightDelta != 0 { results.append(.wheel(index: 1, delta: rightDelta)) }
+        }
+        return results
     }
 }

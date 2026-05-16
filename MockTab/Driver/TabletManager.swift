@@ -514,10 +514,18 @@ final class TabletManager: ObservableObject {
             return
         }
 
+        // ── Relative wheel closure (IntuosV3 PTK-x70 scroll wheels) ────────────
+        // Called on HIDThread; injectWheel runs inline (same threading contract
+        // as injectAux).
+        let onWheel: (Int, Int) -> Void = { [weak context] index, delta in
+            guard let context else { return }
+            context.injector.injectWheel(index: index, delta: delta, settings: context.settings)
+        }
+
         let callbacks = DeviceRouter.Callbacks(
             onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
             onMouseButton: onMouseButton, onBattery: onBattery,
-            onHardwareSerial: onHardwareSerial)
+            onHardwareSerial: onHardwareSerial, onWheel: onWheel)
 
         switch DeviceRouter.route(
             device: device, productID: productID, usagePage: usagePage,

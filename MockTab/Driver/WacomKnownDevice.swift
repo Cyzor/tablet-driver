@@ -31,6 +31,7 @@ final class WacomKnownDevice: TabletDevice {
     /// absolute position is routed separately through the digitizer interface.
     private let onMouseButton: ((UInt8) -> Void)?
     private let onBattery: ((Int, Bool) -> Void)?
+    private let onWheel: ((Int, Int) -> Void)?
     /// Called when the hardware serial is successfully queried from a WACOM_REPORT_USB
     /// (Report ID 0x03) feature report on USB/dongle connections. Serial is 0 if the
     /// query fails or the device does not support the feature report.
@@ -75,7 +76,8 @@ final class WacomKnownDevice: TabletDevice {
         onToolEnter: ((ToolIdentity) -> Void)? = nil,
         onMouseButton: ((UInt8) -> Void)? = nil,
         onBattery: ((Int, Bool) -> Void)? = nil,
-        onHardwareSerial: ((UInt32) -> Void)? = nil
+        onHardwareSerial: ((UInt32) -> Void)? = nil,
+        onWheel: ((Int, Int) -> Void)? = nil
     ) {
         self.isWireless = isWireless
         self.device = device
@@ -87,6 +89,7 @@ final class WacomKnownDevice: TabletDevice {
         self.onMouseButton = onMouseButton
         self.onBattery = onBattery
         self.onHardwareSerial = onHardwareSerial
+        self.onWheel = onWheel
 
         self.spec = DigitizerSpec(
             maxX: deviceSpec.maxX,
@@ -451,6 +454,8 @@ final class WacomKnownDevice: TabletDevice {
                 onBattery?(pct, chg)
             case .mouseButton(let mask):
                 onMouseButton?(mask)
+            case .wheel(let index, let delta):
+                onWheel?(index, delta)
             case .toolCompatibility(let message):
                 logger.info("\(name, privacy: .public): \(message, privacy: .public)")
             }
