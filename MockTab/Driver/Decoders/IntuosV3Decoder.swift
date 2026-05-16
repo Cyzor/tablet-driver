@@ -54,6 +54,23 @@ struct IntuosV3Decoder: WacomDecoder {
 
     // MARK: - 0x1F standard pen report (16-bit XY)
 
+    /// OTD IntuosV3Report.cs layout (14+ bytes):
+    ///   [0]     = 0x1F  report ID
+    ///   [1]     = 0x01  sub-type discriminator (other values are unknown)
+    ///   [2]     pen status: bit1=button1, bit2=button2, bit5=eraser, bit6=prox
+    ///   [3..4]  X coordinate, LE u16
+    ///   [5..6]  Y coordinate, LE u16
+    ///   [7..8]  pressure, LE u16
+    ///   [9]     tilt X, signed byte
+    ///   [10]    unused/padding
+    ///   [11]    tilt Y, signed byte
+    ///   [12]    unused/padding
+    ///   [13]    hover distance
+    ///
+    /// OTD does not document a tool-enter / serial field for this family, so
+    /// we cannot emit `.toolEnter` events — downstream tool compatibility
+    /// checks won't fire. The IntuosV3Decoder targets unverified hardware
+    /// (PTK-470/670/870); without a capture we can't fill that gap.
     private func decodePenReport(
         report: UnsafePointer<UInt8>,
         length: CFIndex,
@@ -61,8 +78,53 @@ struct IntuosV3Decoder: WacomDecoder {
         state: inout DecoderState,
         deviceFamily: String
     ) -> [DecodeResult] {
-        // TODO(task #3): implement per OTD IntuosV3Report.cs
-        return []
+        let status = report[2]
+        let prox = (status & 0x40) != 0
+
+        if !prox {
+            // Pen left proximity. Emit a synthetic exit frame so downstream
+            // doesn't leave a phantom in-proximity state.
+            guard state.prevInProximity else { return [] }
+            state.prevInProximity = false
+            return [
+                .pen(
+                    TabletPoint(
+                        x: state.lastX, y: state.lastY,
+                        maxX: spec.maxX, maxY: spec.maxY,
+                        pressure: 0, maxPressure: spec.maxPressure,
+                        tiltX: state.lastTiltX, tiltY: state.lastTiltY,
+                        rotation: 0.0,
+                        penButton1: false, penButton2: false,
+                        eraser: false, inProximity: false, hoverDistance: 0))
+            ]
+        }
+
+        let x = Int(UInt16(report[3]) | UInt16(report[4]) << 8)
+        let y = Int(UInt16(report[5]) | UInt16(report[6]) << 8)
+        let pressure = Int(UInt16(report[7]) | UInt16(report[8]) << 8)
+        let tiltX = Double(Int8(bitPattern: report[9])) / 127.0
+        let tiltY = Double(Int8(bitPattern: report[11])) / 127.0
+        let hoverDistance = Int(report[13])
+
+        state.prevInProximity = true
+        state.lastX = x
+        state.lastY = y
+        state.lastTiltX = tiltX
+        state.lastTiltY = tiltY
+        state.hasValidTiltFrame = true
+
+        return [
+            .pen(
+                TabletPoint(
+                    x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: pressure, maxPressure: spec.maxPressure,
+                    tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
+                    penButton1: (status & 0x02) != 0,
+                    penButton2: (status & 0x04) != 0,
+                    eraser: (status & 0x20) != 0,
+                    inProximity: true,
+                    hoverDistance: hoverDistance))
+        ]
     }
 
     // MARK: - 0x1E extended pen report (24-bit XY)
