@@ -180,8 +180,10 @@ enum OTDReportParser: String {
             .wacomDriverIntuosV1ReportParser, .cintiqV1ReportParser:
             return .intuosV1
         case .intuosV2, .wacomV2, .intuosV2ReportParser,
-            .wacomDriverIntuosV2ReportParser, .intuosV3ReportParser:
+            .wacomDriverIntuosV2ReportParser:
             return .intuosV2
+        case .intuosV3ReportParser:
+            return .intuosV3
         case .bamboo, .bambooV2, .bambooReportParser, .bambooPadReportParser:
             return .bamboo
         case .intuos3ReportParser, .wacomDriverIntuos3ReportParser,

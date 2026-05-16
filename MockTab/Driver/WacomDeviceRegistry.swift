@@ -32,6 +32,15 @@ enum ReportParser: String {
     /// Also used over BLE HOGP (Report ID 0x01 pen, 0x03 pad).
     case intuosV2
 
+    /// IntuosV3 — Report ID 0x1F (pen, 16-bit XY) or 0x1E (extended pen,
+    /// 24-bit XY), with 0x11 aux carrying 10 buttons and two relative
+    /// scroll wheels. Covers the PTK-470/670/870 Intuos Pro generation
+    /// (OTD's `IntuosV3ReportParser`). Distinct byte layout from intuosV2
+    /// — pen status byte at [2] not [1], pressure at [7..8] not [8..9],
+    /// and 0x1E here is a different shape than intuosV2's offset report
+    /// of the same ID. Experimental: no hardware verification yet.
+    case intuosV3
+
     /// Bamboo — Report ID 0x10, 20 bytes, BE16 coordinates.
     /// Covers Bamboo Pen & Touch, Bamboo Craft/Comic/Fun series (CTL/CTH-xxx).
     /// Decoder not yet implemented; entries present for routing completeness.
@@ -193,6 +202,8 @@ struct WacomDeviceSpec {
             return "intuosProGen1"
         case .intuosV2:
             return "intuosProGen2"
+        case .intuosV3:
+            return "intuosProGen3"
         case .bamboo:
             return "bamboo"
         }

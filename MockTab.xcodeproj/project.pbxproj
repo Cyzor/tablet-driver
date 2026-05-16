@@ -43,6 +43,7 @@
 		AA000045 /* WacomFallbackDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000045 /* WacomFallbackDevice.swift */; };
 		AA000046 /* WacomDeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000046 /* WacomDeviceRegistry.swift */; };
 		AA000047 /* IntuosV2Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000047 /* IntuosV2Decoder.swift */; };
+		AA00C1F0 /* IntuosV3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00C1F0 /* IntuosV3Decoder.swift */; };
 		AA000048 /* IntuosV1Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000048 /* IntuosV1Decoder.swift */; };
 		AA000049 /* WacomKnownDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomKnownDevice.swift */; };
 		AA000050 /* Intuos3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* Intuos3Decoder.swift */; };
@@ -131,6 +132,7 @@
 		AB000045 /* WacomFallbackDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomFallbackDevice.swift; sourceTree = "<group>"; };
 		AB000046 /* WacomDeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomDeviceRegistry.swift; sourceTree = "<group>"; };
 		AB000047 /* IntuosV2Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV2Decoder.swift; sourceTree = "<group>"; };
+		AB00C1F0 /* IntuosV3Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV3Decoder.swift; sourceTree = "<group>"; };
 		AB000048 /* IntuosV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV1Decoder.swift; sourceTree = "<group>"; };
 		AB000049 /* WacomKnownDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomKnownDevice.swift; sourceTree = "<group>"; };
 		AB000050 /* Intuos3Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intuos3Decoder.swift; sourceTree = "<group>"; };
@@ -283,6 +285,7 @@
 			children = (
 				AB000047 /* IntuosV2Decoder.swift */,
 				AB00C1E1 /* IntuosV2Decoder+BT.swift */,
+				AB00C1F0 /* IntuosV3Decoder.swift */,
 				AB000048 /* IntuosV1Decoder.swift */,
 				AB000050 /* Intuos3Decoder.swift */,
 				AB000051 /* BambooDecoder.swift */,
@@ -471,6 +474,7 @@
 				AA000049 /* WacomKnownDevice.swift in Sources */,
 				AA000047 /* IntuosV2Decoder.swift in Sources */,
 				AA00C1E1 /* IntuosV2Decoder+BT.swift in Sources */,
+				AA00C1F0 /* IntuosV3Decoder.swift in Sources */,
 				AA000048 /* IntuosV1Decoder.swift in Sources */,
 				AA000050 /* Intuos3Decoder.swift in Sources */,
 				AA000051 /* BambooDecoder.swift in Sources */,
