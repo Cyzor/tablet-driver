@@ -205,11 +205,34 @@ struct IntuosV3Decoder: WacomDecoder {
 
     // MARK: - 0x11 aux report (express keys + two relative wheels)
 
+    /// OTD IntuosV3AuxReport.cs layout:
+    ///   [0]   = 0x11 report ID
+    ///   [1]   = primary express-key byte (8 buttons)
+    ///   [3]   = secondary express-key byte (OTD reads bits 0 and 1 as
+    ///           buttons 4 and 9, interleaved into a 10-button array)
+    ///   [4]   = left wheel raw 7-bit signed delta
+    ///   [5]   = right wheel raw 7-bit signed delta
+    ///
+    /// We currently expose only the primary 8-button byte through
+    /// `AuxButtons.buttons` (which caps at 8). PTK-470 has 5 keys so this
+    /// covers it cleanly; PTK-670/870 (10 keys each) lose two buttons until
+    /// `AuxButtons` grows to fit. Wheel deltas are also dropped — there is
+    /// no relative-wheel routing path in our aux pipeline yet, and the
+    /// existing touch-ring slot model maps poorly to a relative encoder.
+    /// Both gaps are deferred follow-ups; without PTK hardware, mapping
+    /// them blind is more risk than value.
     private func decodeAuxReport(
         report: UnsafePointer<UInt8>,
         length: CFIndex
     ) -> [DecodeResult] {
-        // TODO(task #5): implement per OTD IntuosV3AuxReport.cs
-        return []
+        guard length >= 2 else { return [] }
+        let mechanicalByte = report[1]
+        let buttons = (0..<8).map { bit in (mechanicalByte & (1 << bit)) != 0 }
+        return [
+            .aux(
+                AuxButtons(
+                    buttons: buttons,
+                    mechanicalMask: mechanicalByte))
+        ]
     }
 }
