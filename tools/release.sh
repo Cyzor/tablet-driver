@@ -59,6 +59,19 @@ if [[ ! -d "$APP_PATH" ]]; then
     exit 1
 fi
 
+echo "==> Notarizing .app"
+# Notarize and staple the .app *before* packaging it. A ticket stapled to
+# the .app travels with it when users drag it out of the DMG, so first-launch
+# Gatekeeper checks succeed even offline. Stapling only the DMG would leave
+# the extracted .app dependent on an online check against Apple's CDN.
+APP_ZIP="$BUILD_DIR/MockTab-$VERSION.zip"
+ditto -c -k --keepParent "$APP_PATH" "$APP_ZIP"
+xcrun notarytool submit "$APP_ZIP" \
+    --keychain-profile "$KEYCHAIN_PROFILE" \
+    --wait
+xcrun stapler staple "$APP_PATH"
+xcrun stapler validate "$APP_PATH"
+
 echo "==> Building DMG"
 mkdir -p "$DMG_STAGING"
 cp -R "$APP_PATH" "$DMG_STAGING/"
@@ -68,12 +81,10 @@ hdiutil create -volname "MockTab $VERSION" \
     -ov -format UDZO \
     "$DMG_PATH"
 
-echo "==> Submitting to notary service (this can take several minutes)"
+echo "==> Notarizing DMG"
 xcrun notarytool submit "$DMG_PATH" \
     --keychain-profile "$KEYCHAIN_PROFILE" \
     --wait
-
-echo "==> Stapling ticket"
 xcrun stapler staple "$DMG_PATH"
 xcrun stapler validate "$DMG_PATH"
 
