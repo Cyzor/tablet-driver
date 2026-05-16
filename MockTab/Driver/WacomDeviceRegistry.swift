@@ -956,10 +956,16 @@ enum WacomDeviceRegistry {
         // (4.18 branch, April 2026). Pen-only; coordinates and pressure
         // extrapolated from OTD configs and unverified on hardware.
         //
-        // Four further OTD configs (PL-800-U + PTK-470/670/870) were
-        // intentionally NOT imported — their report formats (PLReportParser
-        // and IntuosV3ReportParser respectively) are incompatible with our
-        // existing decoders and would silently produce no pen events.
+        // PTK-470/670/870 require the IntuosV3 decoder (added in the same
+        // session as this comment); pen-side events decode but the two
+        // relative-step scroll wheels do not — our aux pipeline models
+        // absolute touch-ring positions, not encoder deltas. PTK-670/870
+        // also have 10 express keys; the first 8 of the primary byte are
+        // exposed, the two extras drop until AuxButtons grows past 8.
+        //
+        // PL-800-U was NOT imported — PLReportParser uses 8-byte reports
+        // with bit-6 in-range, incompatible with our IntuosV1 decoder and
+        // not worth a dedicated parser for hardware that's effectively gone.
         // See Notes/Scratch/Upstream-Sync-2026-05-15.md for the analysis.
         .init(
             productID: 0x03CE, name: "Wacom DTC-121",  // ⚠ from OTD
@@ -978,6 +984,21 @@ enum WacomDeviceRegistry {
             parser: .intuosV2, maxX: 96012, maxY: 54356, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x03F5, name: "Wacom PTK-470",  // ⚠ from OTD (IntuosV3)
+            parser: .intuosV3, maxX: 37400, maxY: 21000, maxPressure: 8191,
+            buttonCount: 5, hasTouchRing: false, hasEraser: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x03F7, name: "Wacom PTK-670",  // ⚠ from OTD (IntuosV3)
+            parser: .intuosV3, maxX: 52600, maxY: 29600, maxPressure: 8191,
+            buttonCount: 10, hasTouchRing: false, hasEraser: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x03F9, name: "Wacom PTK-870",  // ⚠ from OTD (IntuosV3)
+            parser: .intuosV3, maxX: 69800, maxY: 39000, maxPressure: 8191,
+            buttonCount: 10, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
         // ── Legacy Bluetooth devices (serial-port based, out-of-scope) ─────────

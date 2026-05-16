@@ -94,12 +94,11 @@ TYPE_TO_PARSER = {
     "WacomDriverIntuosV2ReportParser": "intuosV2",
     "BambooReportParser":              "bamboo",
     "BambooPadReportParser":           "bamboo",
+    "IntuosV3ReportParser":            "intuosV3",  # PTK-470/670/870 (experimental)
     # Parsers we deliberately do NOT map — MockTab has no compatible decoder
     # and an automatic fallback would produce silently-broken registry entries.
     # If you add a decoder here, also remove the corresponding `is None` warning
     # in extract_parser.
-    #   IntuosV3ReportParser  — newer Intuos Pro (PTK-x70); report IDs 0x1F/0x1E
-    #                           with different byte layout than IntuosV2 (0x10).
     #   PLReportParser        — old Cintiq PL series (8-byte reports, bit-6
     #                           in-range flag); incompatible with intuosV1.
     #   PTUReportParser, SkipByteTabletReportParser, TabletReportParser,
