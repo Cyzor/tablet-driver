@@ -598,8 +598,8 @@ enum WacomDeviceRegistry {
             featureInit: nil, seizeUSB: false,
             confidence: .crossReferenced),
         .init(
-            productID: 0x00D7, name: "Bamboo Pen (CTL-660)",  // ⚠ estimated
-            parser: .bamboo, maxX: 21648, maxY: 13530, maxPressure: 1023,
+            productID: 0x00D7, name: "Bamboo Pen (CTL-660)",  // ⚠ from kernel — dims from kernel 0xD7 (BambooPT 2FG Small); name attribution uncertain
+            parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 2, hasTouchRing: false, hasEraser: false,
             featureInit: nil, seizeUSB: false),
         .init(
@@ -609,8 +609,8 @@ enum WacomDeviceRegistry {
             featureInit: nil, seizeUSB: false,
             confidence: .crossReferenced),
         .init(
-            productID: 0x00DB, name: "Bamboo Connect (CTL-470)",  // ⚠ estimated
-            parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
+            productID: 0x00DB, name: "Bamboo Connect (CTL-470)",  // ⚠ from kernel — dims from kernel 0xDB (Bamboo 2FG 6x8 SE); name attribution uncertain
+            parser: .bamboo, maxX: 21648, maxY: 13700, maxPressure: 1023,
             buttonCount: 2, hasTouchRing: false, hasEraser: false,
             featureInit: nil, seizeUSB: false),
 
@@ -724,13 +724,13 @@ enum WacomDeviceRegistry {
         // ── Bamboo / Graphire-era CTE / CTF consumer line ─────────────────────
         // Graphire-era: intuosV1 8-byte format.
         .init(
-            productID: 0x006A, name: "Wacom CTE-460",  // ⚠ from OTD
-            parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 511,
+            productID: 0x006A, name: "Wacom CTE-460",  // ⚠ from kernel
+            parser: .intuosV1, maxX: 14760, maxY: 9225, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
-            productID: 0x006B, name: "Wacom CTE-660",  // ⚠ from OTD
-            parser: .bamboo, maxX: 21648, maxY: 13500, maxPressure: 511,
+            productID: 0x006B, name: "Wacom CTE-660",  // ⚠ from kernel
+            parser: .bamboo, maxX: 21648, maxY: 13530, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
@@ -820,8 +820,8 @@ enum WacomDeviceRegistry {
             featureInit: [0x02, 0x02], seizeUSB: false,
             confidence: .crossReferenced),
         .init(
-            productID: 0x0300, name: "Wacom CTL-471",  // ⚠ from OTD
-            parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 1023,
+            productID: 0x0300, name: "Wacom CTL-471",  // ⚠ from kernel
+            parser: .intuosV1, maxX: 14720, maxY: 9225, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
@@ -1006,8 +1006,8 @@ enum WacomDeviceRegistry {
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
-            productID: 0x005B, name: "Wacom Cintiq 22HD Touch (DTH-2200)",  // ⚠ from OTD
-            parser: .intuosV1, maxX: 95600, maxY: 54200, maxPressure: 2047,
+            productID: 0x005B, name: "Wacom Cintiq 22HD Touch (DTH-2200)",  // ⚠ from kernel
+            parser: .intuosV1, maxX: 95840, maxY: 54260, maxPressure: 2047,
             buttonCount: 20, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
