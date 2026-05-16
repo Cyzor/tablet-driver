@@ -41,6 +41,15 @@ enum ReportParser: String {
     /// of the same ID. Experimental: no hardware verification yet.
     case intuosV3
 
+    /// DTUS — small entry-level Cintiq / DTU pen displays. Pen report at
+    /// ID 0x11 (7 bytes, BE16 coordinates, 10-bit pressure split across
+    /// status byte and pressure byte); pad report at ID 0x15 (4 buttons in
+    /// the low nibble of one byte). No tilt, no rotation, no hover. Covers
+    /// DTK-1651 (0x0343), DTU-1031 (0x00FB), DTU-1031X (0x032F), DTU-1141
+    /// (0x0336). Note: report ID 0x11 collides with IntuosV2's aux ID; per-
+    /// decoder dispatch keeps them separate. Experimental.
+    case dtus
+
     /// Bamboo — Report ID 0x10, 20 bytes, BE16 coordinates.
     /// Covers Bamboo Pen & Touch, Bamboo Craft/Comic/Fun series (CTL/CTH-xxx).
     /// Decoder not yet implemented; entries present for routing completeness.
@@ -204,6 +213,8 @@ struct WacomDeviceSpec {
             return "intuosProGen2"
         case .intuosV3:
             return "intuosProGen3"
+        case .dtus:
+            return "dtus"
         case .bamboo:
             return "bamboo"
         }
