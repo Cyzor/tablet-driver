@@ -254,16 +254,17 @@ final class SettingsWindowController: NSWindowController {
 
         // Wire up the live-state visibility flag so TabletManager can skip
         // @Published UI writes when nobody is looking at live data.
-        // Both "Info" (pen coordinates/pressure) and "Buttons" (live indicators)
-        // consume livePoint/liveButtons, so either tab enables the updates.
+        // "Info" (pen coordinates/pressure), "Buttons" (live indicators), and
+        // "Scratchpad" (tilt visualizer) all consume livePoint/liveButtons, so
+        // any of those tabs enables the updates.
         // Also check window focus: only update when this window is key (active).
         let updateVisibility = { [weak self, weak window] in
             guard let self else { return }
             let label =
                 self.tabVC.tabViewItems[safe: self.tabVC.selectedTabViewItemIndex]?.label ?? ""
             // Use tabLabels indices to match localized strings regardless of locale:
-            // [2] = Buttons, [7] = Info
-            let isInfoTab = (label == Self.tabLabels[Tab.info.rawValue] || label == Self.tabLabels[Tab.buttons.rawValue])
+            // [2] = Buttons, [6] = Scratchpad, [7] = Info
+            let isInfoTab = (label == Self.tabLabels[Tab.info.rawValue] || label == Self.tabLabels[Tab.buttons.rawValue] || label == Self.tabLabels[Tab.scratchpad.rawValue])
             let isKeyWindow = window?.isKeyWindow ?? false
             Task { @MainActor in
                 TabletManager.shared.infoViewVisible = isInfoTab && isKeyWindow
@@ -360,7 +361,7 @@ final class SettingsWindowController: NSWindowController {
         // Only set true if the window is key (in focus) and tab is Info or Buttons.
         let label = tabVC.tabViewItems[safe: tabVC.selectedTabViewItemIndex]?.label
         TabletManager.shared.infoViewVisible =
-            (label == Self.tabLabels[Tab.info.rawValue] || label == Self.tabLabels[Tab.buttons.rawValue])
+            (label == Self.tabLabels[Tab.info.rawValue] || label == Self.tabLabels[Tab.buttons.rawValue] || label == Self.tabLabels[Tab.scratchpad.rawValue])
             && window?.isKeyWindow == true
     }
 

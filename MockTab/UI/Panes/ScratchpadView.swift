@@ -58,6 +58,8 @@ struct ScratchpadView: View {
                 }
 
             pressureRow
+
+            tiltRow
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -99,10 +101,115 @@ struct ScratchpadView: View {
         }
     }
 
+    private var tiltRow: some View {
+        HStack(spacing: 10) {
+            Text(LocalizedStringKey("Tilt"))
+                .font(.settingsLabel)
+                .foregroundStyle(.secondary)
+                .frame(width: 58, alignment: .leading)
+
+            TiltVisualizerCanvas(tabletManager: tabletManager)
+                .frame(width: 100, height: 100)
+                .help(LocalizedStringKey("Live tilt direction and magnitude from the active pen."))
+
+            Spacer()
+        }
+    }
+
     private var pressureColor: Color {
         currentPressure < 0.5
             ? .accentColor
             : Color(hue: 0.05, saturation: 0.8, brightness: 0.85)
+    }
+}
+
+// MARK: - Tilt Visualizer Canvas
+
+/// Top-down disc that shows the active pen's live tilt as a dot offset from
+/// center. Concentric reference rings give a magnitude scale; values are the
+/// raw `tiltX`/`tiltY` from `TabletPoint` (each clamped to ±1). When the pen
+/// leaves proximity the dot snaps back to center so the disc does not flicker
+/// each time the user rolls the pen off the surface.
+///
+/// Performance: this wrapper observes `tabletManager` and therefore invalidates
+/// whenever `livePoint` publishes (~16 Hz when the pane is frontmost). The
+/// inner `TiltDisc` is `Equatable` and keyed on a quantized (tiltX, tiltY)
+/// pair, so SwiftUI skips body evaluation and the Canvas redraw whenever tilt
+/// rounds to the same display position — sensor noise and unrelated X/Y
+/// movement are filtered out for free.
+struct TiltVisualizerCanvas: View {
+    @ObservedObject var tabletManager: TabletManager
+
+    var body: some View {
+        // Quantize to 0.01 (sub-pixel on a 100-pt disc) so micro-jitter and
+        // changes that wouldn't move the dot don't trigger redraws.
+        let raw = tabletManager.livePoint
+        let inProximity = raw?.inProximity == true
+        let tx: Double = inProximity ? quantize(raw!.tiltX) : 0.0
+        let ty: Double = inProximity ? quantize(raw!.tiltY) : 0.0
+        return TiltDisc(tiltX: tx, tiltY: ty).equatable()
+    }
+
+    private func quantize(_ value: Double) -> Double {
+        (max(-1.0, min(1.0, value)) * 100).rounded() / 100
+    }
+}
+
+private struct TiltDisc: View, Equatable {
+    let tiltX: Double
+    let tiltY: Double
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = geo.size
+            let radius = min(size.width, size.height) * 0.5 - 6
+            let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+            Canvas { ctx, _ in
+                drawReference(ctx: ctx, center: center, radius: radius)
+                drawDot(ctx: ctx, center: center, radius: radius)
+            }
+        }
+    }
+
+    private func drawReference(ctx: GraphicsContext, center: CGPoint, radius: CGFloat) {
+        var cross = Path()
+        cross.move(to: CGPoint(x: center.x - radius, y: center.y))
+        cross.addLine(to: CGPoint(x: center.x + radius, y: center.y))
+        cross.move(to: CGPoint(x: center.x, y: center.y - radius))
+        cross.addLine(to: CGPoint(x: center.x, y: center.y + radius))
+        ctx.stroke(cross, with: .color(.secondary.opacity(0.15)), lineWidth: 0.5)
+
+        for fraction in [0.25, 0.5, 0.75] {
+            let r = radius * fraction
+            let rect = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+            ctx.stroke(
+                Path(ellipseIn: rect),
+                with: .color(.secondary.opacity(0.2)), lineWidth: 0.5)
+        }
+
+        let outer = CGRect(
+            x: center.x - radius, y: center.y - radius,
+            width: radius * 2, height: radius * 2)
+        ctx.stroke(Path(ellipseIn: outer), with: .color(.secondary.opacity(0.45)), lineWidth: 1)
+    }
+
+    private func drawDot(ctx: GraphicsContext, center: CGPoint, radius: CGFloat) {
+        var tx = tiltX
+        var ty = tiltY
+        let magnitude = sqrt(tx * tx + ty * ty)
+        if magnitude > 1.0 {
+            tx /= magnitude
+            ty /= magnitude
+        }
+        let dotX = center.x + radius * tx
+        let dotY = center.y + radius * ty
+
+        let r: CGFloat = 4
+        let rect = CGRect(x: dotX - r, y: dotY - r, width: r * 2, height: r * 2)
+        ctx.fill(Path(ellipseIn: rect), with: .color(.accentColor))
+        ctx.stroke(
+            Path(ellipseIn: rect),
+            with: .color(.white.opacity(0.9)), lineWidth: 1)
     }
 }
 
