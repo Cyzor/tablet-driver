@@ -644,12 +644,10 @@ enum WacomDeviceRegistry {
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
-        .init(
-            productID: 0x00FB, name: "Cintiq 21UX 2 (DTZ-2100B)",  // ⚠ estimated
-            parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 1023,
-            buttonCount: 8, hasTouchRing: false, hasEraser: true,
-            isPenDisplay: true,
-            featureInit: [0x02, 0x02], seizeUSB: true),
+        // 0x00FB previously listed as "Cintiq 21UX 2 (DTZ-2100B)" but Linux
+        // input-wacom's `wacom_features_0xFB` identifies it as DTU-1031 (a
+        // small entry-level DTUS pen display). The DTZ-2100B name was an
+        // estimation error; corrected during the 2026-05-15 DTUS pass.
 
         // ── Intuos4 (PTK) additional variants ────────────────────────────────
         .init(
@@ -1010,6 +1008,38 @@ enum WacomDeviceRegistry {
             productID: 0x03F9, name: "Wacom PTK-870",  // ⚠ from OTD (IntuosV3)
             parser: .intuosV3, maxX: 69800, maxY: 39000, maxPressure: 8191,
             buttonCount: 10, hasTouchRing: false, hasEraser: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+
+        // ── DTUS family (Linux input-wacom DTUS / DTUSX) ──────────────────────
+        // Small entry-level pen displays sharing wacom_dtus_irq.  Dimensions
+        // and button counts from input-wacom 4.18 wacom_wac.c, decoded by
+        // DTUSDecoder.swift.  Experimental: pen events should decode but no
+        // hardware verification yet.  Feature init [0x02, 0x02] sent on the
+        // chance some firmware revisions require it; the kernel block does
+        // not specify a .feature_init array so it may be unnecessary.
+        .init(
+            productID: 0x0343, name: "Wacom DTK1651",  // ⚠ from kernel
+            parser: .dtus, maxX: 34816, maxY: 19759, maxPressure: 1023,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x00FB, name: "Wacom DTU-1031",  // ⚠ from kernel
+            parser: .dtus, maxX: 22096, maxY: 13960, maxPressure: 511,
+            buttonCount: 4, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x032F, name: "Wacom DTU-1031X",  // ⚠ from kernel
+            parser: .dtus, maxX: 22672, maxY: 12928, maxPressure: 511,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x0336, name: "Wacom DTU-1141",  // ⚠ from kernel
+            parser: .dtus, maxX: 23672, maxY: 13403, maxPressure: 1023,
+            buttonCount: 4, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
         // ── Legacy Bluetooth devices (serial-port based, out-of-scope) ─────────
