@@ -527,6 +527,15 @@ struct ButtonMappingView: View {
     private var hasDualRings: Bool { spec?.hasDualRings == true }
     private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
 
+    /// Number of express-key rows to display in the single-sided section.
+    /// Driven by the active device spec so PTK-670/870 (10 keys) and DTU
+    /// (4 keys) get the right row count instead of a hard-coded 8. Clamped
+    /// to the storage limit of `expressKeyBindings` (16) for safety.
+    private var expressKeyCount: Int {
+        let count = spec?.buttonCount ?? 8
+        return min(max(count, 0), 16)
+    }
+
     // MARK: - Recording Binding Helper
 
     /// Creates a binding that automatically registers undo for any change.
@@ -691,7 +700,7 @@ struct ButtonMappingView: View {
         // DeviceNameLabel heads this section so it sits between the pen section
         // and the hardware button rows, matching the original visual intent.
         Section {
-            ForEach(0..<8, id: \.self) { i in
+            ForEach(0..<expressKeyCount, id: \.self) { i in
                 expressKeyRow(
                     index: i,
                     label: String(format: NSLocalizedString("Key %lld", comment: "Express key N label, e.g. 'Key 1'"), i + 1),

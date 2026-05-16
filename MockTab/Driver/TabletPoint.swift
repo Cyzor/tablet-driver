@@ -100,7 +100,9 @@ struct LiveButtonState: Equatable {
     var button3Down: Bool = false
     var button4Down: Bool = false
     var button5Down: Bool = false
-    /// Express key states (up to 8).
+    /// Express-key live state. Sized to 16 (the storage cap shared with
+    /// `TabletSettings.expressKeyBindings`); per-device, only the first
+    /// `spec.buttonCount` entries are physically meaningful.
     var expressKeys: [Bool] = Array(repeating: false, count: 16)
     /// True while a finger is actively touching the touch ring.
     var touchRingActive: Bool = false

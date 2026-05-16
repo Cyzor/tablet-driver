@@ -208,31 +208,49 @@ struct IntuosV3Decoder: WacomDecoder {
     /// OTD IntuosV3AuxReport.cs layout:
     ///   [0]   = 0x11 report ID
     ///   [1]   = primary express-key byte (8 buttons)
-    ///   [3]   = secondary express-key byte (OTD reads bits 0 and 1 as
-    ///           buttons 4 and 9, interleaved into a 10-button array)
+    ///   [3]   = secondary express-key byte (bits 0 and 1 supply two
+    ///           extra buttons, interleaved into OTD's 10-button array
+    ///           at positions 4 and 9)
     ///   [4]   = left wheel raw 7-bit signed delta
     ///   [5]   = right wheel raw 7-bit signed delta
     ///
-    /// We currently expose only the primary 8-button byte through
-    /// `AuxButtons.buttons` (which caps at 8). PTK-470 has 5 keys so this
-    /// covers it cleanly; PTK-670/870 (10 keys each) lose two buttons until
-    /// `AuxButtons` grows to fit. Wheel deltas are also dropped — there is
-    /// no relative-wheel routing path in our aux pipeline yet, and the
-    /// existing touch-ring slot model maps poorly to a relative encoder.
-    /// Both gaps are deferred follow-ups; without PTK hardware, mapping
-    /// them blind is more risk than value.
+    /// OTD's interleave order:
+    ///   buttons[0..3] = primary bits 0..3
+    ///   buttons[4]    = secondary bit 0
+    ///   buttons[5..8] = primary bits 4..7
+    ///   buttons[9]    = secondary bit 1
+    ///
+    /// The two relative-step scroll wheels are still dropped — our aux
+    /// pipeline has no relative-encoder path, and routing the deltas
+    /// blind without a real PTK-x70 capture is more risk than value.
     private func decodeAuxReport(
         report: UnsafePointer<UInt8>,
         length: CFIndex
     ) -> [DecodeResult] {
         guard length >= 2 else { return [] }
-        let mechanicalByte = report[1]
-        let buttons = (0..<8).map { bit in (mechanicalByte & (1 << bit)) != 0 }
+        let primary = report[1]
+        let secondary: UInt8 = length >= 4 ? report[3] : 0
+        let buttons: [Bool] = [
+            (primary   & 0x01) != 0,
+            (primary   & 0x02) != 0,
+            (primary   & 0x04) != 0,
+            (primary   & 0x08) != 0,
+            (secondary & 0x01) != 0,
+            (primary   & 0x10) != 0,
+            (primary   & 0x20) != 0,
+            (primary   & 0x40) != 0,
+            (primary   & 0x80) != 0,
+            (secondary & 0x02) != 0,
+        ]
+        // mechanicalMask is UInt8 (8 bits); the two interleaved-from-
+        // secondary bits at positions 4 and 9 cant be carried through
+        // here. Rapid re-press detection on those two buttons is the
+        // only thing affected — normal up/down still works.
         return [
             .aux(
                 AuxButtons(
                     buttons: buttons,
-                    mechanicalMask: mechanicalByte))
+                    mechanicalMask: primary))
         ]
     }
 }
