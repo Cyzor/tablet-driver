@@ -142,8 +142,6 @@ struct IntuosV3Decoder: WacomDecoder {
     ///
     /// Same report ID as IntuosV2's "offset" report, but the byte layout is
     /// completely different. Per-decoder dispatch keeps the two separate.
-    /// We drop the third pen button — TabletPoint only carries two — until
-    /// the downstream model grows a slot for it.
     private func decodeExtendedPenReport(
         report: UnsafePointer<UInt8>,
         length: CFIndex,
@@ -189,18 +187,19 @@ struct IntuosV3Decoder: WacomDecoder {
         state.lastTiltY = tiltY
         state.hasValidTiltFrame = true
 
-        return [
-            .pen(
-                TabletPoint(
-                    x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
-                    pressure: pressure, maxPressure: spec.maxPressure,
-                    tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
-                    penButton1: (status & 0x02) != 0,
-                    penButton2: (status & 0x04) != 0,
-                    eraser: (status & 0x20) != 0,
-                    inProximity: true,
-                    hoverDistance: hoverDistance))
-        ]
+        var point = TabletPoint(
+            x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+            pressure: pressure, maxPressure: spec.maxPressure,
+            tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
+            penButton1: (status & 0x02) != 0,
+            penButton2: (status & 0x04) != 0,
+            eraser: (status & 0x20) != 0,
+            inProximity: true,
+            hoverDistance: hoverDistance)
+        // IntuosV3 extended reports carry a third pen barrel button at bit 3
+        // of the status byte. The 0x1F standard report has no equivalent.
+        point.penButton3 = (status & 0x08) != 0
+        return [.pen(point)]
     }
 
     // MARK: - 0x11 aux report (express keys + two relative wheels)
