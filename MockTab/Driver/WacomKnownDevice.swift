@@ -107,7 +107,8 @@ final class WacomKnownDevice: TabletDevice {
         switch deviceSpec.parser {
         case .intuosV2:  self.decoder = IntuosV2Decoder()   // PTH-460/660/860, BLE HOGP
         case .intuosV3:  self.decoder = IntuosV3Decoder()   // PTK-470/670/870 (experimental)
-        case .dtus:      self.decoder = DTUSDecoder()       // DTK-1651, DTU-1031/1141 (experimental)
+        case .dtus:      self.decoder = DTUSDecoder()        // DTK-1651, DTU-1031/1141 (experimental)
+        case .dtu:       self.decoder = DTUDecoder()         // DTU-1631, DTU-2231 (experimental)
         case .intuos3:   self.decoder = Intuos3Decoder()    // PTZ-xxx (2003–2006)
         case .bamboo:    self.decoder = BambooDecoder()     // CTL/CTH-xxx (stub)
         case .cintiqV1:  self.decoder = CintiqV1Decoder()   // Cintiq pen-displays

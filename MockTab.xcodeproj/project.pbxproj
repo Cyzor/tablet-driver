@@ -45,6 +45,7 @@
 		AA000047 /* IntuosV2Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000047 /* IntuosV2Decoder.swift */; };
 		AA00C1F0 /* IntuosV3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00C1F0 /* IntuosV3Decoder.swift */; };
 		AA00C1F1 /* DTUSDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00C1F1 /* DTUSDecoder.swift */; };
+		AA00C1F2 /* DTUDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00C1F2 /* DTUDecoder.swift */; };
 		AA000048 /* IntuosV1Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000048 /* IntuosV1Decoder.swift */; };
 		AA000049 /* WacomKnownDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomKnownDevice.swift */; };
 		AA000050 /* Intuos3Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000050 /* Intuos3Decoder.swift */; };
@@ -135,6 +136,7 @@
 		AB000047 /* IntuosV2Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV2Decoder.swift; sourceTree = "<group>"; };
 		AB00C1F0 /* IntuosV3Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV3Decoder.swift; sourceTree = "<group>"; };
 		AB00C1F1 /* DTUSDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTUSDecoder.swift; sourceTree = "<group>"; };
+		AB00C1F2 /* DTUDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTUDecoder.swift; sourceTree = "<group>"; };
 		AB000048 /* IntuosV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV1Decoder.swift; sourceTree = "<group>"; };
 		AB000049 /* WacomKnownDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomKnownDevice.swift; sourceTree = "<group>"; };
 		AB000050 /* Intuos3Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intuos3Decoder.swift; sourceTree = "<group>"; };
@@ -289,6 +291,7 @@
 				AB00C1E1 /* IntuosV2Decoder+BT.swift */,
 				AB00C1F0 /* IntuosV3Decoder.swift */,
 				AB00C1F1 /* DTUSDecoder.swift */,
+				AB00C1F2 /* DTUDecoder.swift */,
 				AB000048 /* IntuosV1Decoder.swift */,
 				AB000050 /* Intuos3Decoder.swift */,
 				AB000051 /* BambooDecoder.swift */,
@@ -479,6 +482,7 @@
 				AA00C1E1 /* IntuosV2Decoder+BT.swift in Sources */,
 				AA00C1F0 /* IntuosV3Decoder.swift in Sources */,
 				AA00C1F1 /* DTUSDecoder.swift in Sources */,
+				AA00C1F2 /* DTUDecoder.swift in Sources */,
 				AA000048 /* IntuosV1Decoder.swift in Sources */,
 				AA000050 /* Intuos3Decoder.swift in Sources */,
 				AA000051 /* BambooDecoder.swift in Sources */,

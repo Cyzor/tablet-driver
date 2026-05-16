@@ -50,6 +50,14 @@ enum ReportParser: String {
     /// decoder dispatch keeps them separate. Experimental.
     case dtus
 
+    /// DTU — Wacom DTU pen-display family using the WACOM_REPORT_PENABLED
+    /// (0x02) report format parsed by `wacom_dtu_irq`. Single pen report,
+    /// 8 bytes: LE16 X/Y, 9-bit pressure, eraser inferred from tool-type
+    /// bits. No pad buttons, no tilt. Covers DTU-1631 (0x00F0) and
+    /// DTU-2231 (0x00CE). Distinct from DTUS: little-endian coordinates,
+    /// 9-bit (not 10-bit) pressure, no pad report. Experimental.
+    case dtu
+
     /// Bamboo — Report ID 0x10, 20 bytes, BE16 coordinates.
     /// Covers Bamboo Pen & Touch, Bamboo Craft/Comic/Fun series (CTL/CTH-xxx).
     /// Decoder not yet implemented; entries present for routing completeness.
@@ -215,6 +223,8 @@ struct WacomDeviceSpec {
             return "intuosProGen3"
         case .dtus:
             return "dtus"
+        case .dtu:
+            return "dtu"
         case .bamboo:
             return "bamboo"
         }
@@ -1052,6 +1062,24 @@ enum WacomDeviceRegistry {
             productID: 0x0336, name: "Wacom DTU-1141",  // ⚠ from kernel
             parser: .dtus, maxX: 23672, maxY: 13403, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+
+        // ── DTU family (Linux input-wacom DTU type, wacom_dtu_irq) ────────────
+        // Older entry-level pen displays. Single pen report 0x02 (LE16 X/Y,
+        // 9-bit pressure). No pad buttons.  Decoded by DTUDecoder.swift.
+        // Dimensions and pressure from input-wacom 4.18 wacom_wac.c.
+        // Experimental: no hardware verification yet.
+        .init(
+            productID: 0x00CE, name: "Wacom DTU-2231",  // ⚠ from kernel
+            parser: .dtu, maxX: 47864, maxY: 27011, maxPressure: 511,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x00F0, name: "Wacom DTU-1631",  // ⚠ from kernel
+            parser: .dtu, maxX: 34623, maxY: 19553, maxPressure: 511,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
