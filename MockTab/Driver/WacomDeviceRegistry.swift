@@ -233,7 +233,10 @@ enum WacomDeviceRegistry {
         // graphire parser: 8-byte Report ID 0x01, ≤511 pressure levels.
         .init(
             productID: 0x0003, name: "PenPartner",
-            parser: .graphire, maxX: 5040, maxY: 3780, maxPressure: 255,
+            // Dimensions and pressure corrected to match kernel
+            // wacom_features_0x3 (input-wacom 4.18); previous values
+            // (5040×3780×255) were estimation drift.
+            parser: .graphire, maxX: 20480, maxY: 15360, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: false,
             featureInit: nil, seizeUSB: false),
         .init(
@@ -295,8 +298,9 @@ enum WacomDeviceRegistry {
             featureInit: nil, seizeUSB: false,
             confidence: .crossReferenced),
         .init(
-            productID: 0x0061, name: "PenStation",  // ⚠ estimated
-            parser: .graphire, maxX: 3540, maxY: 2468, maxPressure: 511,
+            // Kernel calls this PenStation2; dimensions/pressure corrected.
+            productID: 0x0061, name: "PenStation2",  // ⚠ from kernel
+            parser: .graphire, maxX: 3250, maxY: 2320, maxPressure: 255,
             buttonCount: 0, hasTouchRing: false, hasEraser: false,
             featureInit: nil, seizeUSB: false),
         .init(
@@ -313,11 +317,15 @@ enum WacomDeviceRegistry {
 
         // ── Cintiq 21UX first-gen ─────────────────────────────────────────────
         .init(
-            productID: 0x003F, name: "Cintiq 21UX (DTZ-2100)",  // ⚠ estimated
-            parser: .graphire, maxX: 87200, maxY: 65600, maxPressure: 1023,
-            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            // Kernel wacom_features_0x3F: Cintiq 21UX, 1023 pressure, 8 keys.
+            // Parser was .graphire (8-byte report) which would never decode a
+            // Cintiq pen-display report; corrected to .cintiqV1 in line with
+            // every other CINTIQ-family entry. Still ⚠ until hardware-verified.
+            productID: 0x003F, name: "Cintiq 21UX (DTZ-2100)",  // ⚠ from kernel
+            parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 1023,
+            buttonCount: 8, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            featureInit: nil, seizeUSB: true),
+            featureInit: [0x02, 0x02], seizeUSB: true),
 
         // ── Intuos 1 (1998–2002) — intuosV1 parser ───────────────────────────
         // 10-byte reports, BE16, 1024-level pressure (10-bit).
@@ -439,8 +447,9 @@ enum WacomDeviceRegistry {
             featureInit: [0x02, 0x02], seizeUSB: false,
             confidence: .crossReferenced),
         .init(
-            productID: 0x00BA, name: "Intuos4 L (PTK-840)",  // ⚠ estimated
-            parser: .intuosV1, maxX: 63494, maxY: 39370, maxPressure: 2047,
+            // Dimensions corrected to kernel wacom_features_0xBA (65024×40640).
+            productID: 0x00BA, name: "Intuos4 L (PTK-840)",  // ⚠ from kernel
+            parser: .intuosV1, maxX: 65024, maxY: 40640, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
@@ -450,8 +459,9 @@ enum WacomDeviceRegistry {
             featureInit: [0x02, 0x02], seizeUSB: false,
             confidence: .crossReferenced),
         .init(
-            productID: 0x00BC, name: "Intuos4 WL (PTK-540WL)",  // ⚠ estimated
-            parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
+            // Dimensions corrected to kernel wacom_features_0xBC (40640×25400).
+            productID: 0x00BC, name: "Intuos4 WL (PTK-540WL)",  // ⚠ from kernel
+            parser: .intuosV1, maxX: 40640, maxY: 25400, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
@@ -601,18 +611,15 @@ enum WacomDeviceRegistry {
         //   Report 0x02 — pen (10-byte IntuosV1, WACOM_24HD typeNibble dispatch)
         //   Report 0x0C — express keys + touch rings
         //   Report 0x01 — tip-switch (requires device seizure)
-        .init(
-            productID: 0x00C0, name: "Cintiq 20WSX",  // ⚠ estimated
-            parser: .cintiqV1, maxX: 86680, maxY: 54180, maxPressure: 1023,
-            buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            isPenDisplay: true,
-            featureInit: [0x02, 0x02], seizeUSB: true),
-        .init(
-            productID: 0x00C4, name: "Cintiq 13HD (DTK-1300)",  // ⚠ estimated
-            parser: .cintiqV1, maxX: 59152, maxY: 33448, maxPressure: 2047,
-            buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            isPenDisplay: true,
-            featureInit: [0x02, 0x02], seizeUSB: true),
+        // 0x00C0 previously listed as "Cintiq 20WSX" and 0x00C4 as "Cintiq
+        // 13HD (DTK-1300)"; both were estimation errors. Kernel identifies
+        // them as DTF-720 and DTF-521 respectively — small PL-family pen
+        // displays from the early 2000s. We have no PL decoder, so those
+        // PIDs would not have worked even with corrected dimensions. The
+        // real DTK-1300 lives at 0x0304 (an entry that already exists);
+        // there is no Cintiq 20WSX in the kernel ID table at all.
+        // Entries removed during 2026-05-15 audit; do not re-add under
+        // the wrong names.
         .init(
             productID: 0x00C6, name: "Cintiq 12WX",  // ⚠ estimated
             parser: .cintiqV1, maxX: 53020, maxY: 33440, maxPressure: 1023,
@@ -620,8 +627,11 @@ enum WacomDeviceRegistry {
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
-            productID: 0x00CC, name: "Cintiq 21UX (DTZ-2100)",  // ⚠ estimated
-            parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 1023,
+            // Kernel calls this "Cintiq 21UX2" (DTZ-2100B / second gen).
+            // Pressure corrected from 1023 to 2047. Renamed to disambiguate
+            // from the gen-1 21UX at 0x003F.
+            productID: 0x00CC, name: "Cintiq 21UX2 (DTZ-2100B)",  // ⚠ from kernel
+            parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
@@ -884,8 +894,11 @@ enum WacomDeviceRegistry {
 
         // ── Cintiq pen-display additional models ──────────────────────────────
         .init(
+            // Pressure corrected from 2048 to 1023 per kernel wacom_features_0x304.
+            // Dimensions are within ~0.4 % of kernel's 59552×33848; left as-is
+            // (sub-pixel difference, not worth disturbing on an unverified entry).
             productID: 0x0304, name: "Wacom Cintiq 13HD (DTK-1300)",  // ⚠ from OTD
-            parser: .cintiqV1, maxX: 59800, maxY: 34200, maxPressure: 2048,
+            parser: .cintiqV1, maxX: 59800, maxY: 34200, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
