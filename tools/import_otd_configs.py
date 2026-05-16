@@ -92,11 +92,18 @@ TYPE_TO_PARSER = {
     "CintiqV1ReportParser":            "intuosV1",  # Cintiq (DTK/DTZ) same 10-byte format
     "IntuosV2ReportParser":            "intuosV2",
     "WacomDriverIntuosV2ReportParser": "intuosV2",
-    "IntuosV3ReportParser":            "intuosV2",  # Newer Intuos Pro, same LE24 family
     "BambooReportParser":              "bamboo",
     "BambooPadReportParser":           "bamboo",
-    # PTUReportParser, SkipByteTabletReportParser, TabletReportParser, Wacom64bAuxReportParser:
-    # Aux-only or unknown format — handled by falling through to heuristic below.
+    # Parsers we deliberately do NOT map — MockTab has no compatible decoder
+    # and an automatic fallback would produce silently-broken registry entries.
+    # If you add a decoder here, also remove the corresponding `is None` warning
+    # in extract_parser.
+    #   IntuosV3ReportParser  — newer Intuos Pro (PTK-x70); report IDs 0x1F/0x1E
+    #                           with different byte layout than IntuosV2 (0x10).
+    #   PLReportParser        — old Cintiq PL series (8-byte reports, bit-6
+    #                           in-range flag); incompatible with intuosV1.
+    #   PTUReportParser, SkipByteTabletReportParser, TabletReportParser,
+    #   Wacom64bAuxReportParser — aux-only or otherwise out of scope.
 }
 
 WACOM_VENDOR_ID = 1386  # 0x056A
@@ -220,18 +227,16 @@ def pick_primary_ident(idents: list[DeviceIdent]) -> Optional[DeviceIdent]:
 
 def extract_parser(ident: DeviceIdent) -> Optional[str]:
     """
-    Resolve parser family from the identifier's ReportParser class name,
-    falling back to InputReportLength heuristic.
+    Resolve parser family from the identifier's ReportParser class name.
+    Returns None if the parser is unknown or known-incompatible — the
+    caller should skip those entries with a warning rather than guess.
+
+    The previous version of this function had an InputReportLength
+    heuristic (>64 → intuosV2, >0 → intuosV1) that silently produced
+    broken registry entries for IntuosV3 and PL devices. Don't bring
+    it back without first wiring up a decoder for the missing family.
     """
-    mapped = map_parser_name(ident.parser_name)
-    if mapped:
-        return mapped
-    # Heuristic: 192-byte reports are IntuosV2; shorter are IntuosV1
-    if ident.report_len > 64:
-        return "intuosV2"
-    if ident.report_len > 0:
-        return "intuosV1"
-    return None
+    return map_parser_name(ident.parser_name)
 
 
 def extract_dimensions(cfg: dict) -> tuple[int, int, int]:

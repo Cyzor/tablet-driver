@@ -940,6 +940,35 @@ enum WacomDeviceRegistry {
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
+        // ── Upstream OTD sync 2026-05-15 ──────────────────────────────────────
+        // Imported from OpenTabletDriver master, not yet in Linux input-wacom
+        // (4.18 branch, April 2026). Pen-only; coordinates and pressure
+        // extrapolated from OTD configs and unverified on hardware.
+        //
+        // Four further OTD configs (PL-800-U + PTK-470/670/870) were
+        // intentionally NOT imported — their report formats (PLReportParser
+        // and IntuosV3ReportParser respectively) are incompatible with our
+        // existing decoders and would silently produce no pen events.
+        // See Notes/Scratch/Upstream-Sync-2026-05-15.md for the analysis.
+        .init(
+            productID: 0x03CE, name: "Wacom DTC-121",  // ⚠ from OTD
+            parser: .intuosV2, maxX: 25632, maxY: 14418, maxPressure: 4095,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x005B, name: "Wacom Cintiq 22HD Touch (DTH-2200)",  // ⚠ from OTD
+            parser: .intuosV1, maxX: 95600, maxY: 54200, maxPressure: 2047,
+            buttonCount: 20, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x03D0, name: "Wacom Cintiq Pro 22 (DTH-227)",  // ⚠ from OTD
+            parser: .intuosV2, maxX: 96012, maxY: 54356, maxPressure: 8191,
+            buttonCount: 8, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+
         // ── Legacy Bluetooth devices (serial-port based, out-of-scope) ─────────
         // CTE-630BT (Graphire4 Bluetooth, PID 0x0081) and XD-0608-BT (Intuos2
         // Bluetooth, PID 0x0CA) use RFCOMM/SPP (serial port over Bluetooth)
