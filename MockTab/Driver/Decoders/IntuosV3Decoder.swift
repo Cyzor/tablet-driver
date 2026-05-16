@@ -129,6 +129,21 @@ struct IntuosV3Decoder: WacomDecoder {
 
     // MARK: - 0x1E extended pen report (24-bit XY)
 
+    /// OTD IntuosV3ExtendedReport.cs layout (20+ bytes):
+    ///   [0]       = 0x1E  report ID
+    ///   [2]       pen status: bit1=button1, bit2=button2, bit3=button3,
+    ///                        bit5=eraser, bit6=prox
+    ///   [3..5]    X coordinate, 24-bit (LE u16 at [3..4] | byte[5] << 16)
+    ///   [6..8]    Y coordinate, 24-bit (LE u16 at [6..7] | byte[8] << 16)
+    ///   [9..10]   pressure, LE u16
+    ///   [11..12]  tilt X, signed LE i16
+    ///   [13..14]  tilt Y, signed LE i16
+    ///   [19]      hover distance
+    ///
+    /// Same report ID as IntuosV2's "offset" report, but the byte layout is
+    /// completely different. Per-decoder dispatch keeps the two separate.
+    /// We drop the third pen button — TabletPoint only carries two — until
+    /// the downstream model grows a slot for it.
     private func decodeExtendedPenReport(
         report: UnsafePointer<UInt8>,
         length: CFIndex,
@@ -136,8 +151,56 @@ struct IntuosV3Decoder: WacomDecoder {
         state: inout DecoderState,
         deviceFamily: String
     ) -> [DecodeResult] {
-        // TODO(task #4): implement per OTD IntuosV3ExtendedReport.cs
-        return []
+        let status = report[2]
+        let prox = (status & 0x40) != 0
+
+        if !prox {
+            guard state.prevInProximity else { return [] }
+            state.prevInProximity = false
+            return [
+                .pen(
+                    TabletPoint(
+                        x: state.lastX, y: state.lastY,
+                        maxX: spec.maxX, maxY: spec.maxY,
+                        pressure: 0, maxPressure: spec.maxPressure,
+                        tiltX: state.lastTiltX, tiltY: state.lastTiltY,
+                        rotation: 0.0,
+                        penButton1: false, penButton2: false,
+                        eraser: false, inProximity: false, hoverDistance: 0))
+            ]
+        }
+
+        let x = Int(UInt16(report[3]) | UInt16(report[4]) << 8) | (Int(report[5]) << 16)
+        let y = Int(UInt16(report[6]) | UInt16(report[7]) << 8) | (Int(report[8]) << 16)
+        let pressure = Int(UInt16(report[9]) | UInt16(report[10]) << 8)
+        let rawTiltX = Int16(bitPattern: UInt16(report[11]) | UInt16(report[12]) << 8)
+        let rawTiltY = Int16(bitPattern: UInt16(report[13]) | UInt16(report[14]) << 8)
+        // Without a Wacom-published full-scale value for the 16-bit tilt range,
+        // normalize against Int16.max so apps see a consistent [-1, 1] scale.
+        // May need re-tuning once a real PTK-x70 capture is available.
+        let tiltX = Double(rawTiltX) / Double(Int16.max)
+        let tiltY = Double(rawTiltY) / Double(Int16.max)
+        let hoverDistance = Int(report[19])
+
+        state.prevInProximity = true
+        state.lastX = x
+        state.lastY = y
+        state.lastTiltX = tiltX
+        state.lastTiltY = tiltY
+        state.hasValidTiltFrame = true
+
+        return [
+            .pen(
+                TabletPoint(
+                    x: x, y: y, maxX: spec.maxX, maxY: spec.maxY,
+                    pressure: pressure, maxPressure: spec.maxPressure,
+                    tiltX: tiltX, tiltY: tiltY, rotation: 0.0,
+                    penButton1: (status & 0x02) != 0,
+                    penButton2: (status & 0x04) != 0,
+                    eraser: (status & 0x20) != 0,
+                    inProximity: true,
+                    hoverDistance: hoverDistance))
+        ]
     }
 
     // MARK: - 0x11 aux report (express keys + two relative wheels)
