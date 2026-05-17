@@ -267,15 +267,24 @@ struct CintiqV1Decoder: WacomDecoder {
         return results
     }
 
-    // MARK: - Report 0x0C: touch rings + express keys
+    // MARK: - Report 0x0C: touch rings + express keys + capacitive OSD buttons
     //
-    // Confirmed layout (live capture + Linux kernel wacom_wac.c WACOM_24HD):
-    //   byte[1] — left  touch ring: bit 7 = active (1 = finger present), bits [6:0] = position 0–71
-    //   byte[2] — right touch ring: same encoding (present on dual-ring models only)
-    //   byte[6] — left  express key bits 0–7
-    //   byte[8] — right express key bits 0–7  (kernel formula: (data[8]<<8)|data[6])
+    // Confirmed layout (live USB capture, Wacom driver 6.3.46-2, DTK-2400 / Cintiq 24HD):
+    //   byte[1] — left  touch ring: bit7=active, [6:0]=position 0–71
+    //   byte[2] — right touch ring: same encoding (dual-ring models only)
+    //   byte[3] — capacitive OSD touch buttons, group A  (bit4 = one of: i/keyboard/wrench)
+    //   byte[4] — capacitive OSD touch buttons, group B  (bit0, bit6 = the other two)
+    //   byte[5] — 0x00 (padding)
+    //   byte[6] — left  side buttons: bits 0–2 = ring-mode select 0/1/2; bits 3–7 = express keys 1–5
+    //   byte[7] — 0x00 (padding)
+    //   byte[8] — right side buttons: same layout as byte[6]
+    //   byte[9] — 0x00 (padding)
     //
-    // Right ring (byte[2]) is only decoded when spec.hasDualRings is true.
+    // buttons[] layout (AuxButtons):
+    //   [0..7]   = byte[6] left side (ring-mode 0/1/2, express keys 1–5)
+    //   [8..15]  = byte[8] right side (ring-mode 0/1/2, express keys 1–5)
+    //   [16..23] = byte[3] capacitive OSD group A
+    //   [24..31] = byte[4] capacitive OSD group B
 
     private func decodeExpressKeys(
         report: UnsafePointer<UInt8>,
@@ -296,11 +305,17 @@ struct CintiqV1Decoder: WacomDecoder {
             rightRingPos = rightRingActive ? (rightRingRaw & 0x7F) : UInt8(0x7F)
         }
 
-        let leftByte = report[6]
+        let leftByte  = report[6]
         let rightByte = length >= 9 ? report[8] : 0
-        let buttons =
-            (0..<8).map { bit in (leftByte & (1 << bit)) != 0 }
-            + (0..<8).map { bit in (rightByte & (1 << bit)) != 0 }
+        let capA      = length >= 4 ? report[3] : 0
+        let capB      = length >= 5 ? report[4] : 0
+
+        let leftBits:  [Bool] = (0..<8).map { bit in (leftByte  & (1 << bit)) != 0 }
+        let rightBits: [Bool] = (0..<8).map { bit in (rightByte & (1 << bit)) != 0 }
+        let capABits:  [Bool] = (0..<8).map { bit in (capA      & (1 << bit)) != 0 }
+        let capBBits:  [Bool] = (0..<8).map { bit in (capB      & (1 << bit)) != 0 }
+        // [0..7] left side  [8..15] right side  [16..23] OSD group A  [24..31] OSD group B
+        let buttons = leftBits + rightBits + capABits + capBBits
 
         return [
             .aux(

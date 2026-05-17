@@ -543,3 +543,91 @@ The source writes `buf [kernel](https://www.kernel.org/doc/html/v5.6/media/kapi/
 ## Likely implications for reverse engineering
 
 The Linux source suggests three separate reverse-engineering targets: the HID report layout used by `wacom_led_control()`, the sysfs contract for selection/brightness/image upload, and the per-model feature matrix that decides which fields are meaningful on which tablets. Any OpenTabletDriver work that wants parity with Linux would likely need to map tablet models to the same categories the kernel already uses, because the driver clearly does not treat LED support as uniform across Wacom devices. [github](https://github.com/torvalds/linux/blob/master/drivers/hid/wacom_sys.c)
+
+---
+
+## Live-capture addenda (macOS Wacom driver 6.3.46-2, confirmed 2026-05-17)
+
+> **Note on this document:** The byte indices throughout sections 1–8 above are corrupted
+> (hyperlinks replaced the `buf[N]` subscripts during creation). The structural descriptions
+> are accurate; use the confirmed byte tables below for authoritative values.
+
+Captures were taken via dtrace `IOHIDDeviceSetReport` probes with SIP disabled on macOS 15.7.7.
+
+### Cintiq 24HD / DTK-2400 — report 0x20 (WAC_CMD_LED_CONTROL), 9 bytes
+
+Matches the Linux "else / WACOM_24HD" path in `wacom_led_control()`.
+
+```
+buf[0] = 0x20
+buf[1] = 0x44 | (rightRingSlot & 0x03) | ((leftRingSlot & 0x03) << 4)
+          bit2 (0x04)  = right ring enable
+          bit6 (0x40)  = left  ring enable
+          bits[1:0]    = right ring LED slot (0–2)
+          bits[5:4]    = left  ring LED slot (0–2)
+buf[2..8] = 0x00
+```
+
+**Discrepancy vs Linux source:** Linux writes `buf[2]=llv` and `buf[3]=hlv`; the official
+macOS driver sends zeros for all bytes after buf[1]. Device functions correctly with zeros.
+
+Sent to the primary digitizer device. On DTK-2400, the companion PID 0x0056 does not
+enumerate on the bus — primary device only.
+
+### PTH-850 / Intuos5 L — report 0x20 (WAC_CMD_LED_CONTROL), 9 bytes
+
+Falls in the Linux "INTUOS5S..INTUOSPL" branch.
+
+```
+buf[0] = 0x20
+buf[1] = (llv & 0x1f) | ((slot & 0x07) << 5)
+          bits[4:0] = llv luminance (observed: 0x14 = 20)
+          bits[7:5] = ring LED slot (0–3)
+buf[2] = hlv & 0x1f   (observed: 0x01)
+buf[3..8] = 0x00
+```
+
+**Discrepancy vs Linux source:** Linux packs `led_bits = (crop_lum<<4)|(ring_lum<<2)|ring_led`
+into a single byte using a multi-field encoding. The official macOS driver uses a simpler direct
+encoding: raw llv in the low bits and slot index in the high bits of buf[1]. Both control the
+same ring LED; the firmware appears to accept either format.
+
+### PTH-660 / Intuos Pro M (USB) — reports 0x31 + 0x32
+
+**Not present in the Linux `wacom_led_control()` source at all.** The INTUOSP2 family uses
+a different USB LED mechanism in the official macOS driver that bypasses report 0x20 entirely.
+
+Two feature reports are sent as a pair every time the slot changes (including at init):
+
+```
+Report 0x31 (6 bytes): [0x31, 0x46, 0x46, 0x46, 0x46, 0x46]
+  — brightness for all ring LED channels; 0x46 = 70 (max observed value)
+
+Report 0x32 (3 bytes): [0x32, 0x46, slot]
+  — selects active ring LED slot (0–3); second byte 0x46 is a fixed preamble
+```
+
+Both sent to the **primary device**. An additional init-only report precedes the pair:
+
+```
+Report 0x34 (5 bytes): [0x34, 0x00, 0x01, 0x00, 0x00]
+  — purpose unknown; sent once on DeviceOpen before first 0x31/0x32 pair
+```
+
+### PTH-660 / Intuos Pro M (Bluetooth) — report 0x82 (WAC_CMD_WL_INTUOSP2), 51 bytes
+
+Matches the Linux `INTUOSP2_BT` path with corrections:
+
+```
+buf[0]    = 0x82
+buf[1]    = 0x02   ← fixed; Linux source leaves this 0x00
+buf[2..3] = 0x00
+buf[4..9] = 0x46   ← all six brightness channels set to the same value (70)
+             Linux source writes buf[4..8]=100 and buf[9]=llv separately;
+             macOS driver uses the same 0x46 for all six.
+buf[10]   = slot   ← ring LED slot (0–3)
+buf[11..] = 0x00   ← device's GetReport response fills buf[11..18] with serial,
+                      but write path clears them (official driver does the same)
+```
+
+Sent on BT connect (3× at init) and on every ring mode button press.

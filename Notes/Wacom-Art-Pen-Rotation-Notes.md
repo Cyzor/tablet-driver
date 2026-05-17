@@ -1,6 +1,6 @@
 2026-04-17
 
-# A Wacom PTH-660 reports an Art Pen's rotation in degrees, from 0° to 360°.  What does it use internally?  How does it go from its byte report to actionable axis data?  I think I'm running into an issue due to radian conversion, so things don't line up.
+# A Wacom PTH-660 reports an Art Pen Rotation Properties
 
 Internally the Art Pen’s barrel rotation is just another HID axis: the tablet sends a raw integer field in its pen report, and the driver scales that into 0–360° (or 0–2π) using a simple linear mapping. The conversion itself is not “special”; if your angles look wrong, it’s almost certainly an off‑by‑one or normalization/origin issue around that linear mapping rather than radians vs degrees.
 
