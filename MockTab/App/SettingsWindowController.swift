@@ -333,7 +333,7 @@ final class SettingsWindowController: NSWindowController {
             ProfilesView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
         addTab(label: Self.tabLabels[6], symbol: "pencil.and.outline", height: 360) {
-            ScratchpadView(settings: s, tabletManager: tm, registry: dr, productID: productID)
+            ScratchpadView(settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
         }
         addTab(label: Self.tabLabels[7], symbol: "info.circle", height: 430) {
             InfoView(tabletManager: tm, settings: s, productID: productID)

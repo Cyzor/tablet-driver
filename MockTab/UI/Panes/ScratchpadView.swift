@@ -12,6 +12,7 @@ struct ScratchpadView: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
     var productID: Int?
+    var undoManager: UndoManager?
 
     @State private var currentPressure: Double = 0
     @State private var clearID = 0
@@ -22,8 +23,7 @@ struct ScratchpadView: View {
         VStack(spacing: 0) {
             mainContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-            Spacer(minLength: 0)
+                .clipped()
 
             DeviceStatusBar(
                 settings: settings,
@@ -31,6 +31,7 @@ struct ScratchpadView: View {
                 registry: registry,
                 productID: productID ?? 0
             )
+            .layoutPriority(1)
         }
     }
 
@@ -48,8 +49,13 @@ struct ScratchpadView: View {
             .font(.settingsLabel)
             .foregroundStyle(.secondary)
 
-            ScratchpadCanvas(currentPressure: $currentPressure, clearID: clearID)
-                .frame(maxWidth: .infinity, minHeight: 260, maxHeight: .infinity)
+            ScratchpadCanvas(
+                currentPressure: $currentPressure,
+                clearID: clearID,
+                tabletManager: tabletManager,
+                undoManager: undoManager
+            )
+                .frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 .background(.background)
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .overlay {
@@ -218,16 +224,22 @@ private struct TiltDisc: View, Equatable {
 private struct ScratchpadCanvas: NSViewRepresentable {
     @Binding var currentPressure: Double
     let clearID: Int
+    let tabletManager: TabletManager
+    let undoManager: UndoManager?
 
     func makeNSView(context: Context) -> ScratchpadNSView {
         let view = ScratchpadNSView()
         view.onPressureChange = { pressure in
             currentPressure = pressure
         }
+        view.tabletManager = tabletManager
+        view.injectedUndoManager = undoManager
         return view
     }
 
     func updateNSView(_ nsView: ScratchpadNSView, context: Context) {
+        nsView.tabletManager = tabletManager
+        nsView.injectedUndoManager = undoManager
         if clearID != context.coordinator.lastClearID {
             nsView.clear()
             context.coordinator.lastClearID = clearID
@@ -251,9 +263,19 @@ private struct ScratchpadCanvas: NSViewRepresentable {
 
 final class ScratchpadNSView: NSView {
     var onPressureChange: ((Double) -> Void)?
+    weak var tabletManager: TabletManager?
+    var injectedUndoManager: UndoManager?
 
-    private var strokes: [[(NSPoint, CGFloat)]] = []
-    private var currentStroke: [(NSPoint, CGFloat)] = []
+    override var undoManager: UndoManager? { injectedUndoManager ?? super.undoManager }
+
+    private struct Stroke {
+        var points: [(NSPoint, CGFloat)]
+        var isEraser: Bool
+    }
+
+    private var strokes: [Stroke] = []
+    private var currentStroke: Stroke?
+    private var isErasingGesture = false
 
     override var isOpaque: Bool { false }
     override var acceptsFirstResponder: Bool { true }
@@ -272,6 +294,7 @@ final class ScratchpadNSView: NSView {
         wantsLayer = true
         layer?.cornerRadius = 6
         layer?.masksToBounds = true
+        NSEvent.isMouseCoalescingEnabled = false
     }
 
     override func viewDidChangeEffectiveAppearance() {
@@ -283,22 +306,54 @@ final class ScratchpadNSView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        currentStroke = [(point, CGFloat(event.pressure))]
+        let isEraser = tabletManager?.injector?.activeToolIsEraser == true
+            || tabletManager?.activeToolID?.hasPrefix("eraser") == true
+            || event.pointingDeviceType == .eraser
+            || tabletManager?.livePoint?.eraser == true
+            || tabletManager?.liveButtons.eraserDown == true
+        if isEraser {
+            currentStroke = nil
+            isErasingGesture = true
+            undoManager?.beginUndoGrouping()
+            eraseStrokes(crossing: point)
+        } else {
+            isErasingGesture = false
+            currentStroke = Stroke(points: [(point, CGFloat(event.pressure))], isEraser: false)
+        }
         onPressureChange?(Double(event.pressure))
         needsDisplay = true
     }
 
     override func mouseDragged(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        currentStroke.append((point, CGFloat(event.pressure)))
+        if isErasingGesture {
+            eraseStrokes(crossing: point)
+            onPressureChange?(Double(event.pressure))
+            return
+        }
+        guard let previous = currentStroke?.points.last?.0 else { return }
+        currentStroke?.points.append((point, CGFloat(event.pressure)))
         onPressureChange?(Double(event.pressure))
-        needsDisplay = true
+        let pad: CGFloat = Swift.max(2, CGFloat(event.pressure) * 20)
+        let minX = Swift.min(previous.x, point.x) - pad
+        let maxX = Swift.max(previous.x, point.x) + pad
+        let minY = Swift.min(previous.y, point.y) - pad
+        let maxY = Swift.max(previous.y, point.y) + pad
+        setNeedsDisplay(NSRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY))
     }
 
     override func mouseUp(with event: NSEvent) {
-        if !currentStroke.isEmpty {
-            strokes.append(currentStroke)
-            currentStroke = []
+        if isErasingGesture {
+            isErasingGesture = false
+            undoManager?.setActionName(
+                NSLocalizedString("Erase", comment: "Undo name for eraser stroke")
+            )
+            undoManager?.endUndoGrouping()
+        } else if let finished = currentStroke, !finished.points.isEmpty {
+            currentStroke = nil
+            commitStroke(finished)
+        } else {
+            currentStroke = nil
         }
 
         onPressureChange?(0)
@@ -306,9 +361,112 @@ final class ScratchpadNSView: NSView {
     }
 
     func clear() {
+        let previous = strokes
+        currentStroke = nil
+        guard !previous.isEmpty else {
+            onPressureChange?(0)
+            needsDisplay = true
+            return
+        }
         strokes.removeAll()
-        currentStroke.removeAll()
+        undoManager?.registerUndo(withTarget: self) { target in
+            target.restoreStrokes(previous)
+        }
+        undoManager?.setActionName(
+            NSLocalizedString("Clear Canvas", comment: "Undo name for clearing the scratchpad")
+        )
         onPressureChange?(0)
+        needsDisplay = true
+    }
+
+    // MARK: - Undo helpers
+
+    private func commitStroke(_ stroke: Stroke) {
+        let index = strokes.count
+        strokes.append(stroke)
+        undoManager?.registerUndo(withTarget: self) { target in
+            target.removeStroke(at: index)
+        }
+        undoManager?.setActionName(
+            stroke.isEraser
+                ? NSLocalizedString("Erase", comment: "Undo name for eraser stroke")
+                : NSLocalizedString("Draw", comment: "Undo name for ink stroke")
+        )
+        needsDisplay = true
+    }
+
+    private func removeStroke(at index: Int) {
+        guard strokes.indices.contains(index) else { return }
+        let removed = strokes.remove(at: index)
+        undoManager?.registerUndo(withTarget: self) { target in
+            target.insertStroke(removed, at: index)
+        }
+        needsDisplay = true
+    }
+
+    private func insertStroke(_ stroke: Stroke, at index: Int) {
+        let clamped = min(max(index, 0), strokes.count)
+        strokes.insert(stroke, at: clamped)
+        undoManager?.registerUndo(withTarget: self) { target in
+            target.removeStroke(at: clamped)
+        }
+        needsDisplay = true
+    }
+
+    private func eraseStrokes(crossing point: NSPoint) {
+        let radius: CGFloat = 12
+        var removed = false
+        var index = strokes.count - 1
+        while index >= 0 {
+            if strokeHitTest(strokes[index], near: point, radius: radius) {
+                removeStroke(at: index)
+                removed = true
+            }
+            index -= 1
+        }
+        if removed { needsDisplay = true }
+    }
+
+    private func strokeHitTest(_ stroke: Stroke, near point: NSPoint, radius: CGFloat) -> Bool {
+        let r2 = radius * radius
+        let pts = stroke.points
+        if pts.count == 1 {
+            let dx = pts[0].0.x - point.x
+            let dy = pts[0].0.y - point.y
+            return dx * dx + dy * dy <= r2
+        }
+        for index in 1 ..< pts.count {
+            if segmentDistanceSquared(point, pts[index - 1].0, pts[index].0) <= r2 {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func segmentDistanceSquared(_ p: NSPoint, _ a: NSPoint, _ b: NSPoint) -> CGFloat {
+        let dx = b.x - a.x
+        let dy = b.y - a.y
+        let len2 = dx * dx + dy * dy
+        if len2 == 0 {
+            let ex = p.x - a.x
+            let ey = p.y - a.y
+            return ex * ex + ey * ey
+        }
+        var t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2
+        t = Swift.max(0, Swift.min(1, t))
+        let cx = a.x + t * dx
+        let cy = a.y + t * dy
+        let ex = p.x - cx
+        let ey = p.y - cy
+        return ex * ex + ey * ey
+    }
+
+    private func restoreStrokes(_ previous: [Stroke]) {
+        let current = strokes
+        strokes = previous
+        undoManager?.registerUndo(withTarget: self) { target in
+            target.restoreStrokes(current)
+        }
         needsDisplay = true
     }
 
@@ -322,7 +480,9 @@ final class ScratchpadNSView: NSView {
         for stroke in strokes {
             drawStroke(stroke)
         }
-        drawStroke(currentStroke)
+        if let currentStroke {
+            drawStroke(currentStroke)
+        }
     }
 
     private func drawDotGrid() {
@@ -349,7 +509,15 @@ final class ScratchpadNSView: NSView {
         }
     }
 
-    private func drawStroke(_ points: [(NSPoint, CGFloat)]) {
+    private func drawStroke(_ stroke: Stroke) {
+        let points = stroke.points
+        let inkColor: NSColor = NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return isDark ? .white : .black
+        }
+        inkColor.setStroke()
+        inkColor.setFill()
+
         guard points.count >= 2 else {
             if let (point, pressure) = points.first {
                 let radius = Swift.max(1.0, pressure * 10)
@@ -359,7 +527,6 @@ final class ScratchpadNSView: NSView {
                     width: radius,
                     height: radius
                 )
-                NSColor.labelColor.withAlphaComponent(0.90).setFill()
                 NSBezierPath(ovalIn: dotRect).fill()
             }
             return
@@ -377,8 +544,6 @@ final class ScratchpadNSView: NSView {
             segment.lineJoinStyle = .round
             segment.move(to: p0)
             segment.line(to: p1)
-
-            NSColor.labelColor.withAlphaComponent(0.85).setStroke()
             segment.stroke()
         }
     }
