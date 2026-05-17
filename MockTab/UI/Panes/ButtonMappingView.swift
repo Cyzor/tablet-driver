@@ -728,6 +728,7 @@ struct ButtonMappingView: View {
                         localized: "Touch Ring",
                         comment: "Section header / row label for touch ring"),
                     isActive: lb.touchRingActive)
+                touchRingDiagramRow
             }
         }
 
@@ -781,6 +782,7 @@ struct ButtonMappingView: View {
                 String(
                     localized: "Touch Ring", comment: "Section header / row label for touch ring"),
                 isActive: lb.touchRingActive)
+            touchRingDiagramRow
         }
 
         Section(LocalizedStringKey("Toggle Buttons — Right")) {
@@ -807,6 +809,7 @@ struct ButtonMappingView: View {
                 String(
                     localized: "Touch Ring", comment: "Section header / row label for touch ring"),
                 isActive: lb.touchRing2Active)
+            touchRingDiagramRow
         }
     }
 
@@ -828,6 +831,23 @@ struct ButtonMappingView: View {
             ),
             ringSlotCount: spec?.ringSlotCount ?? 4
         )
+    }
+
+    // MARK: - Touch ring diagram row
+
+    /// Schematic ring graphic, mirrored visual treatment of PenDiagramView.
+    /// Equatable inputs (activeSlotIndex + centerDown + slotCount) ensure the
+    /// row short-circuits during ~16 Hz liveButtons invalidations.
+    private var touchRingDiagramRow: some View {
+        TouchRingDiagramView(
+            activeSlotIndex: settings.touchRingActiveSlotIndex,
+            centerDown: liveButtons.touchRingButtonDown,
+            slotCount: spec?.ringSlotCount ?? 4
+        )
+        .equatable()
+        .frame(maxWidth: .infinity, minHeight: 96, maxHeight: 140)
+        .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
+        .listRowBackground(Color.clear)
     }
 
     // MARK: - Touch ring / strip slots section

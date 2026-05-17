@@ -53,6 +53,7 @@
 		AA000052 /* AppOverrideBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* AppOverrideBar.swift */; };
 		AA000053 /* FontExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000053 /* FontExtensions.swift */; };
 		AA000054 /* PenDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000054 /* PenDiagramView.swift */; };
+		AA000154 /* TouchRingDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000154 /* TouchRingDiagramView.swift */; };
 		AA000055 /* DisclosureRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000055 /* DisclosureRow.swift */; };
 		AA000060 /* GraphireDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000060 /* GraphireDecoder.swift */; };
 		AA000070 /* HIDCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000070 /* HIDCapture.swift */; };
@@ -144,6 +145,7 @@
 		AB000052 /* AppOverrideBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverrideBar.swift; sourceTree = "<group>"; };
 		AB000053 /* FontExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontExtensions.swift; sourceTree = "<group>"; };
 		AB000054 /* PenDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenDiagramView.swift; sourceTree = "<group>"; };
+		AB000154 /* TouchRingDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchRingDiagramView.swift; sourceTree = "<group>"; };
 		AB000055 /* DisclosureRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisclosureRow.swift; sourceTree = "<group>"; };
 		AB000060 /* GraphireDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphireDecoder.swift; sourceTree = "<group>"; };
 		AB000070 /* HIDCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDCapture.swift; sourceTree = "<group>"; };
@@ -328,6 +330,7 @@
 				AAAAAA09 /* ImportPreviewSheet.swift */,
 				AB000073 /* OrientationPickerView.swift */,
 				AB000054 /* PenDiagramView.swift */,
+				AB000154 /* TouchRingDiagramView.swift */,
 				AC000008 /* TabletColorTheme.swift */,
 				AB000053 /* FontExtensions.swift */,
 				057B24D72F899E3A0032B29E /* Path+SVGData.swift */,
@@ -511,6 +514,7 @@
 				AA000034 /* ProfilesView.swift in Sources */,
 				AA000052 /* AppOverrideBar.swift in Sources */,
 				AA000054 /* PenDiagramView.swift in Sources */,
+				AA000154 /* TouchRingDiagramView.swift in Sources */,
 				AA000053 /* FontExtensions.swift in Sources */,
 				AA000055 /* DisclosureRow.swift in Sources */,
 				AA000040 /* DevicesView.swift in Sources */,
