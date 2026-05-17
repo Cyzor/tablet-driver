@@ -476,7 +476,7 @@ final class ScratchpadNSView: NSView {
         NSColor.textBackgroundColor.setFill()
         bounds.fill()
 
-        drawDotGrid()
+        drawDotGrid(in: dirtyRect)
         for stroke in strokes {
             drawStroke(stroke)
         }
@@ -485,28 +485,30 @@ final class ScratchpadNSView: NSView {
         }
     }
 
-    private func drawDotGrid() {
+    private func drawDotGrid(in dirtyRect: NSRect) {
         let gridColor = NSColor.gridColor.withAlphaComponent(0.20)
         gridColor.setFill()
 
         let spacing: CGFloat = 16
         let radius: CGFloat = 0.75
 
-        var x: CGFloat = spacing
-        while x < bounds.width {
-            var y: CGFloat = spacing
-            while y < bounds.height {
-                let dotRect = CGRect(
-                    x: x - radius,
-                    y: y - radius,
-                    width: radius * 2,
-                    height: radius * 2
-                )
-                NSBezierPath(ovalIn: dotRect).fill()
+        // Snap to the nearest grid line on or before the dirty rect, then
+        // iterate only within it. A single batched path avoids allocating one
+        // NSBezierPath per dot on every partial repaint.
+        let startX = ceil(max(spacing, dirtyRect.minX - radius) / spacing) * spacing
+        let startY = ceil(max(spacing, dirtyRect.minY - radius) / spacing) * spacing
+
+        let path = NSBezierPath()
+        var x = startX
+        while x < bounds.width && x <= dirtyRect.maxX + radius {
+            var y = startY
+            while y < bounds.height && y <= dirtyRect.maxY + radius {
+                path.appendOval(in: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
                 y += spacing
             }
             x += spacing
         }
+        path.fill()
     }
 
     private func drawStroke(_ stroke: Stroke) {
@@ -532,19 +534,72 @@ final class ScratchpadNSView: NSView {
             return
         }
 
-        for index in 1 ..< points.count {
-            let (p0, pressure0) = points[index - 1]
-            let (p1, pressure1) = points[index]
-            let averagePressure = (pressure0 + pressure1) / 2
-            let width = Swift.max(0.5, averagePressure * 20.0)
+        guard points.count >= 3 else {
+            // Only two raw points — straight segment, no smoothing needed.
+            let (p0, pressure0) = points[0]
+            let (p1, pressure1) = points[1]
+            let seg = NSBezierPath()
+            seg.lineWidth = Swift.max(0.5, ((pressure0 + pressure1) / 2) * 20.0)
+            seg.lineCapStyle = .round
+            seg.move(to: p0)
+            seg.line(to: p1)
+            seg.stroke()
+            return
+        }
 
-            let segment = NSBezierPath()
-            segment.lineWidth = width
-            segment.lineCapStyle = .round
-            segment.lineJoinStyle = .round
-            segment.move(to: p0)
-            segment.line(to: p1)
-            segment.stroke()
+        // Midpoint bezier smoothing: each segment spans from
+        // midpoint(p[i-1], p[i]) to midpoint(p[i], p[i+1]), using p[i] as a
+        // quadratic control point (converted to cubic for NSBezierPath).
+        // The first and last raw endpoints are preserved exactly.
+        // Stored sample data is unchanged — smoothing is render-only.
+
+        // First segment: raw start → midpoint(p[0], p[1]), straight.
+        let firstMid = NSPoint(
+            x: (points[0].0.x + points[1].0.x) / 2,
+            y: (points[0].0.y + points[1].0.y) / 2)
+        do {
+            let seg = NSBezierPath()
+            seg.lineWidth = Swift.max(0.5, ((points[0].1 + points[1].1) / 2) * 20.0)
+            seg.lineCapStyle = .round
+            seg.move(to: points[0].0)
+            seg.line(to: firstMid)
+            seg.stroke()
+        }
+
+        // Interior segments: smoothed arcs between consecutive midpoints.
+        for i in 1 ..< points.count - 1 {
+            let (p0, _) = points[i - 1]
+            let (ctrl, pressure) = points[i]
+            let (p2, _) = points[i + 1]
+
+            let segStart = NSPoint(x: (p0.x + ctrl.x) / 2, y: (p0.y + ctrl.y) / 2)
+            let segEnd   = NSPoint(x: (ctrl.x + p2.x) / 2, y: (ctrl.y + p2.y) / 2)
+
+            // Quadratic (segStart, ctrl, segEnd) → cubic control points.
+            let cp1 = NSPoint(x: (segStart.x + 2 * ctrl.x) / 3, y: (segStart.y + 2 * ctrl.y) / 3)
+            let cp2 = NSPoint(x: (2 * ctrl.x + segEnd.x) / 3,   y: (2 * ctrl.y + segEnd.y) / 3)
+
+            let seg = NSBezierPath()
+            seg.lineWidth = Swift.max(0.5, pressure * 20.0)
+            seg.lineCapStyle = .round
+            seg.lineJoinStyle = .round
+            seg.move(to: segStart)
+            seg.curve(to: segEnd, controlPoint1: cp1, controlPoint2: cp2)
+            seg.stroke()
+        }
+
+        // Last segment: midpoint(p[n-2], p[n-1]) → raw end, straight.
+        let n = points.count
+        let lastMid = NSPoint(
+            x: (points[n - 2].0.x + points[n - 1].0.x) / 2,
+            y: (points[n - 2].0.y + points[n - 1].0.y) / 2)
+        do {
+            let seg = NSBezierPath()
+            seg.lineWidth = Swift.max(0.5, ((points[n - 2].1 + points[n - 1].1) / 2) * 20.0)
+            seg.lineCapStyle = .round
+            seg.move(to: lastMid)
+            seg.line(to: points[n - 1].0)
+            seg.stroke()
         }
     }
 }
