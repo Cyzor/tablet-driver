@@ -244,7 +244,7 @@ final class WacomKnownDevice: TabletDevice {
         case .intuosV2 where !isBluetooth:
             // USB ring LED: reports 0x31 (brightness) + 0x32 (slot selection), both sent
             // to the primary device. Format confirmed by USB capture against official
-            // Wacom driver (6.3.46-2) on PTH-660 (Intuos Pro M, PID 0x0357):
+            // Wacom driver (6.3.46-2) on PTH-660 (PID 0x0357) and PTH-860 (PID 0x0356):
             //   Report 0x31 (6 bytes): [0x31, 0x46, 0x46, 0x46, 0x46, 0x46]
             //     — sets brightness for all ring LED channels (0x46 = 70, max observed)
             //   Report 0x32 (3 bytes): [0x32, 0x46, slot]
@@ -355,7 +355,6 @@ final class WacomKnownDevice: TabletDevice {
         hidSetReport(target, reportID: reportID, bytes: &bytes, tag: "\(deviceSpec.name) featureInit", log: logger)
     }
 
-    // DIAGNOSTIC — remove after PTH-860 USB LED report IDs are identified.
     /// Query the hardware serial number from WACOM_REPORT_USB (Report ID 0x03) feature report.
     ///
     /// The serial is transport-agnostic (same physical tablet returns the same serial

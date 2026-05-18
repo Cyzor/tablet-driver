@@ -592,10 +592,13 @@ into a single byte using a multi-field encoding. The official macOS driver uses 
 encoding: raw llv in the low bits and slot index in the high bits of buf[1]. Both control the
 same ring LED; the firmware appears to accept either format.
 
-### PTH-660 / Intuos Pro M (USB) — reports 0x31 + 0x32
+### PTH-660 / Intuos Pro M (USB) and PTH-860 / Intuos Pro L (USB) — reports 0x31 + 0x32
 
 **Not present in the Linux `wacom_led_control()` source at all.** The INTUOSP2 family uses
 a different USB LED mechanism in the official macOS driver that bypasses report 0x20 entirely.
+
+Confirmed independently on both PTH-660 (PID 0x0357, 2026-05-17) and PTH-860 (PID 0x0356,
+2026-05-18) — byte values and init sequence are identical on both devices.
 
 Two feature reports are sent as a pair every time the slot changes (including at init):
 
