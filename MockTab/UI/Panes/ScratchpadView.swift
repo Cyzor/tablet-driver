@@ -280,6 +280,28 @@ final class ScratchpadNSView: NSView {
     override var isOpaque: Bool { false }
     override var acceptsFirstResponder: Bool { true }
 
+    // Ring cursor: white halo + black stroke for visibility on any background colour.
+    private static let ringCursor: NSCursor = {
+        let size: CGFloat = 20
+        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
+            let center = NSPoint(x: size / 2, y: size / 2)
+            let path = NSBezierPath()
+            path.appendArc(withCenter: center, radius: 7, startAngle: 0, endAngle: 360)
+            NSColor.white.setStroke()
+            path.lineWidth = 3
+            path.stroke()
+            NSColor.black.setStroke()
+            path.lineWidth = 1.5
+            path.stroke()
+            return true
+        }
+        return NSCursor(image: image, hotSpot: NSPoint(x: size / 2, y: size / 2))
+    }()
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: Self.ringCursor)
+    }
+
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         commonInit()
