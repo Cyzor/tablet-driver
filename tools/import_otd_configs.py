@@ -61,7 +61,9 @@ EXISTING_PIDS = {
     0x0374, 0x0375, 0x0376, 0x0377, 0x0378, 0x03C5, 0x03C7,
     # Cintiq pen-displays
     0x00C0, 0x00C4, 0x00C6, 0x00CC, 0x00F4, 0x00F8, 0x00F9, 0x00FA, 0x00FB,
-    0x0304, 0x034F, 0x0390, 0x03A6, 0x03AE, 0x03C0, 0x03F0,
+    0x005B, 0x0304, 0x034F, 0x0390, 0x03A6, 0x03AE, 0x03C0, 0x03CE, 0x03D0, 0x03F0,
+    # IntuosV3 (PTK / CTC)
+    0x03F5, 0x03F7, 0x03F9, 0x0100, 0x0102, 0x0103,
     # Wireless dongle
     0x0084,
 }
@@ -89,7 +91,7 @@ TYPE_TO_PARSER = {
     "Intuos3ReportParser":             "intuos3",
     "WacomDriverIntuos3ReportParser":  "intuos3",
     "Intuos3ExtraAuxReportParser":     "intuos3",
-    "CintiqV1ReportParser":            "intuosV1",  # Cintiq (DTK/DTZ) same 10-byte format
+    "CintiqV1ReportParser":            "cintiqV1",  # Cintiq (DTK/DTZ/DTH) WACOM_24HD format
     "IntuosV2ReportParser":            "intuosV2",
     "WacomDriverIntuosV2ReportParser": "intuosV2",
     "BambooReportParser":              "bamboo",

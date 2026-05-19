@@ -83,7 +83,7 @@ struct MarkdownBodyView: View {
         case .paragraph(let text):
             inlineText(text)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 4)
+                .padding(.top, 8)
 
         case .bullet(let text):
             HStack(alignment: .top, spacing: 6) {
@@ -93,7 +93,7 @@ struct MarkdownBodyView: View {
                 inlineText(text)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.top, 3)
+            .padding(.top, 4)
         }
     }
 

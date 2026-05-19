@@ -181,7 +181,7 @@ The Movink 13 is an OLED pen display. Pen interface follows standard HID-generic
 
 These gaps exist because public reverse-engineering has not reached them:
 
-- **Feature init sequences** for Cintiq Pro 27, Cintiq Pro 24, Wacom One 12/13 — the `[0x02, 0x02]` pattern from legacy devices may not apply, and no confirmed capture exists in public sources
+- ~~**Feature init sequences** for Cintiq Pro 27 and Movink 13~~ — ✓ confirmed from OTD 2026-05-19: both DTH-271 and DTH-135 use `FeatureInitReport: ["AgI="]` which decodes to `[0x02, 0x02]`. **Cintiq Pro 24 (DTK-246) and Wacom One 12/13 remain unconfirmed** — no OTD config exists for DTK-246; DTC-121 and DTH-134 were added to input-wacom (v0.46/v0.49) without confirmed init sequences.
 - **Exact pad report IDs and byte offsets** for Cintiq Pro 27 pad (ring and button) — the HID-generic path means these must be read from the live descriptor
 - **Pro Pen 3 rotation tool IDs** — kernel added entries but exact IDs not surfaced in accessible changelogs
 - **Touch decoding** for Movink 13, DTH-2200, and DTH-227 — present in hardware, absent in open documentation

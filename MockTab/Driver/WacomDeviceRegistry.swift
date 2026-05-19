@@ -640,9 +640,9 @@ enum WacomDeviceRegistry {
             // Kernel calls this "Cintiq 21UX2" (DTZ-2100B / second gen).
             // Pressure corrected from 1023 to 2047. Renamed to disambiguate
             // from the gen-1 21UX at 0x003F.
-            productID: 0x00CC, name: "Cintiq 21UX2 (DTZ-2100B)",  // ⚠ from kernel
+            productID: 0x00CC, name: "Cintiq 21UX2 (DTZ-2100B)",  // ⚠ from kernel + OTD
             parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 2047,
-            buttonCount: 8, hasTouchRing: false, hasEraser: true,
+            buttonCount: 18, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true),
         .init(
@@ -659,11 +659,11 @@ enum WacomDeviceRegistry {
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true, ledCompanionPID: 0x0056),
         .init(
-            productID: 0x00FA, name: "Cintiq 22HD (DTK-2200)",  // ⚠ estimated
-            parser: .cintiqV1, maxX: 95840, maxY: 54090, maxPressure: 2047,
-            buttonCount: 8, hasTouchRing: true, hasEraser: true,
+            productID: 0x00FA, name: "Cintiq 22HD (DTK-2200)",  // ⚠ from OTD (dims/buttonCount corrected from ⚠ estimated)
+            parser: .cintiqV1, maxX: 95040, maxY: 54260, maxPressure: 2047,
+            buttonCount: 20, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            featureInit: [0x02, 0x02], seizeUSB: true),
+            featureInit: [0x02, 0x02], seizeUSB: false),
         // 0x00FB previously listed as "Cintiq 21UX 2 (DTZ-2100B)" but Linux
         // input-wacom's `wacom_features_0xFB` identifies it as DTU-1031 (a
         // small entry-level DTUS pen display). The DTZ-2100B name was an
@@ -902,6 +902,28 @@ enum WacomDeviceRegistry {
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
+        // ── Wacom One CTC (IntuosV3) consumer line ────────────────────────────
+        // CTC-4110WL / CTC-6110WL use the IntuosV3 report parser (same as
+        // PTK-470/670/870), not the IntuosV2 used by CTL-4100/6100.
+        // Confirmed from OTD Configurations/Wacom/CTC-4110WL.json and
+        // CTC-6110WL.json (FeatureInitReport "AgI=" = [0x02, 0x02]).
+        // No touch ring, no express keys, no eraser — pen-only AES devices.
+        .init(
+            productID: 0x0100, name: "Wacom CTC-4110WL",  // ⚠ from OTD
+            parser: .intuosV3, maxX: 15200, maxY: 9500, maxPressure: 4095,
+            buttonCount: 0, hasTouchRing: false, hasEraser: false,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x0102, name: "Wacom CTC-6110WL",  // ⚠ from OTD
+            parser: .intuosV3, maxX: 21600, maxY: 13500, maxPressure: 4095,
+            buttonCount: 0, hasTouchRing: false, hasEraser: false,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+        .init(
+            productID: 0x0103, name: "Wacom CTC-6110WL",  // ⚠ from OTD
+            parser: .intuosV3, maxX: 21600, maxY: 13500, maxPressure: 4095,
+            buttonCount: 0, hasTouchRing: false, hasEraser: false,
+            featureInit: [0x02, 0x02], seizeUSB: false),
+
         // ── Cintiq pen-display additional models ──────────────────────────────
         .init(
             // Pressure corrected from 2048 to 1023 per kernel wacom_features_0x304.
@@ -914,7 +936,7 @@ enum WacomDeviceRegistry {
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x00F9, name: "Wacom Cintiq 22HD (DTK-2200)",  // ⚠ from OTD
-            parser: .cintiqV1, maxX: 95040, maxY: 54260, maxPressure: 2048,
+            parser: .cintiqV1, maxX: 95040, maxY: 54260, maxPressure: 2047,
             buttonCount: 20, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
@@ -950,7 +972,7 @@ enum WacomDeviceRegistry {
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x03F0, name: "Wacom Movink 13 (DTH-135)",  // ⚠ from OTD
-            parser: .intuosV2, maxX: 59552, maxY: 33848, maxPressure: 8191,
+            parser: .intuosV3, maxX: 59552, maxY: 33848, maxPressure: 8191,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
@@ -1006,8 +1028,8 @@ enum WacomDeviceRegistry {
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
-            productID: 0x005B, name: "Wacom Cintiq 22HD Touch (DTH-2200)",  // ⚠ from kernel
-            parser: .intuosV1, maxX: 95840, maxY: 54260, maxPressure: 2047,
+            productID: 0x005B, name: "Wacom Cintiq 22HD Touch (DTH-2200)",  // ⚠ from OTD (parser corrected from ⚠ kernel)
+            parser: .cintiqV1, maxX: 95600, maxY: 54200, maxPressure: 2047,
             buttonCount: 20, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),

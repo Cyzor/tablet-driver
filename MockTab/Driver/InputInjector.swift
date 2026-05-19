@@ -104,6 +104,10 @@ final class InputInjector {
     deinit {
         if let obs = displayObserver { NotificationCenter.default.removeObserver(obs) }
         leakWatchdogTimer?.invalidate()
+        if let src = flagsChangedTapSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), src, .commonModes)
+            flagsChangedTapSource = nil
+        }
         if let tap = flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: false) }
         watchdogTimer.map { CFRunLoopTimerInvalidate($0) }
     }
@@ -294,6 +298,7 @@ final class InputInjector {
     // Filtering by sourceStateID and reading event.flags directly avoids this entirely.
 
     private var flagsChangedTap: CFMachPort?
+    private var flagsChangedTapSource: CFRunLoopSource?
     /// Physical modifier bits (⌘⌥⇧⌃) last reported by a hardware flagsChanged event.
     /// Updated only from events with sourceStateID == hidSystemState; immune to our own
     /// synthetic flagsChanged posts.
@@ -1249,6 +1254,7 @@ final class InputInjector {
         flagsChangedTap = tap
         let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+        flagsChangedTapSource = runLoopSource
         // Warm the cache before enabling so the first tap callback has a valid baseline.
         tapLastPhysicalFlags = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
         CGEvent.tapEnable(tap: tap, enable: true)

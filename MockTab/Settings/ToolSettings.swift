@@ -79,12 +79,12 @@ final class ToolSettings: ObservableObject {
     @Published private var eraserRaw: String = "" {
         didSet {
             persist("eraserBinding", eraserRaw)
-            _eraserBinding = ButtonBinding.decode(eraserRaw) ?? .rightClick
+            _eraserBinding = ButtonBinding.decode(eraserRaw) ?? .eraser
         }
     }
 
     private var _tipBinding: ButtonBinding = .leftClick
-    private var _eraserBinding: ButtonBinding = .rightClick
+    private var _eraserBinding: ButtonBinding = .eraser
 
     var tipBinding: ButtonBinding {
         get { _tipBinding }

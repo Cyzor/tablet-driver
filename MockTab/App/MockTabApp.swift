@@ -102,14 +102,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // MockTab manages its own window restoration, so the system item is
         // redundant and conflicts with the Factory Reset alternate menu item.
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
-    }
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Default to .regular (visible in Dock) on first run; user can toggle to .accessory
+        // Claim the delegate slot before SwiftUI's @NSApplicationDelegateAdaptor shim
+        // has a chance to install itself.  The Dock queries applicationDockMenu at
+        // process registration; if the shim is in place at that moment it responds nil
+        // and the Dock caches "no custom menu" for the lifetime of the process.
+        // Assigning here — the earliest delegate point in the AppKit lifecycle —
+        // ensures our real AppDelegate is the one the Dock sees.
+        // Note: this fix only matters for a Finder/conventional launch.  Xcode debug
+        // launches go through a different process-registration path and the Dock
+        // menu may not appear there regardless; that's an Xcode artifact, not a bug.
+        NSApp.delegate = self
+
+        // Set the activation policy here — before SwiftUI configures its
+        // MenuBarExtra scene — so the app registers with the Dock as a regular
+        // app from the start.  If we defer this to applicationDidFinishLaunching
+        // (after scene setup), the Dock sees the app launch as an accessory and
+        // never establishes the applicationDockMenu callback, even though the
+        // icon appears.
         let showInDock = UserDefaults.standard.object(forKey: "showInDock") == nil
             ? true
             : UserDefaults.standard.bool(forKey: "showInDock")
         NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
 
         if !AXIsProcessTrusted() {
             let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true]
@@ -142,6 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             selector: #selector(appDidResignActive),
             name: NSApplication.willResignActiveNotification,
             object: nil)
+
     }
 
     @objc

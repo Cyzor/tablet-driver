@@ -2,68 +2,68 @@
 
 ## Grafiktabletts
 
-Ein Grafiktablett ist ein Eingabegerät mit einem akkufreien Stift, der absolute Position, Druck, Neigung und manchmal Rotation überträgt. Anders als eine Maus landet der Stift genau dort, wo du ihn aufsetzt, und Zeichen-Apps können auf den Druckgrad reagieren — digitales Arbeiten fühlt sich damit näher am Papier an.
+Ein Grafiktablett ist ein Eingabegerät mit Stift, das absolute Position, Druck, Neigung und Rotation überträgt.
 
 ## MockTab
 
-MockTab ist ein nativer macOS-Treiber für Wacom-Grafiktabletts. Er unterstützt USB- und Bluetooth-Tabletts der Familien Intuos, Cintiq, Bamboo und Intuos Pro — Hardware, die Wacoms eigener Treiber auf modernen macOS-Versionen nicht mehr unterstützt.
-
-MockTab läuft vollständig im User Space, ohne Kernel-Erweiterung und ohne Hintergrunddienst. Einmal eingerichtet, hält er sich aus dem Weg.
+MockTab ist ein nativer macOS-Treiber für Wacom-Tabletts. USB- und Bluetooth-Unterstützung für Intuos, Cintiq, Bamboo und Intuos Pro — Hardware, die Wacoms Treiber nicht mehr unterstützt.
 
 [tabletArea]
 
 ## Aktiver Bereich
 
-Der aktive Bereich ist der Teil der Tablett-Oberfläche, der auf deinen Bildschirm abgebildet wird. Stifteingaben außerhalb dieses Rechtecks werden ignoriert.
+Der aktive Bereich ist der Teil der Oberfläche, der auf deinen Bildschirm abgebildet wird. Eingaben außerhalb werden ignoriert.
 
-**Größe ändern** — Ziehe einen Anfasser in der Vorschau, um den aktiven Bereich zu verschieben oder zu vergrößern/verkleinern. Halte **Shift** beim Ziehen einer Ecke, um das Seitenverhältnis an deinen Bildschirm anzupassen. Du kannst auch genaue Werte in die Felder Width und Height eingeben.
+**Größe ändern** — Ziehe einen Anfasser zum Verschieben oder Ändern. **Shift** + Eckenziehen sperrt Verhältnis. Gib genaue Werte in Breite und Höhe ein.
 
-**Lock Aspect Ratio** — Hält das Tablette-zu-Bildschirm-Verhältnis proportional, sodass der Zeiger horizontal und vertikal gleiche Strecken zurücklegt. Deaktiviere die Option, wenn du die Zuordnung bewusst strecken oder stauchen möchtest.
+**Seitenverhältnis sperren** — Hält Tablett-zu-Bildschirm-Seitenverhältnis proportional.
 
-**Reset to Full** — Stellt den aktiven Bereich auf die gesamte Tablett-Oberfläche zurück. Diese Aktion ist rückgängig machbar (⌘Z).
+**Vollständig zurücksetzen** — Stellt auf gesamte Oberfläche zurück. ⌘Z macht rückgängig.
 
 ## Kalibrierung (Pen-Displays)
 
-Der **Calibrate**-Button öffnet eine Vollbild-Überlagerung, in der du Fadenkreuz-Ziele mit deiner Stiftspitze antippst. Das korrigiert den Parallaxen-Versatz zwischen Stiftspitze und Bildschirmzeiger, der durch das Display-Glas entsteht.
+**Calibrate** öffnet eine Vollbild-Überlagerung zum Antipp von Fadenkreuz-Zielen. Korrigiert Parallaxen-Versatz vom Display-Glas.
 
-Nach der Kalibrierung nutze **Manual Fine-Tune**, falls ein kleiner konstanter Versatz verbleibt — zum Beispiel wenn sich die Parallaxe je nach Blickwinkel leicht verschiebt.
+Nach Kalibrierung **Manuelle Feinkorrektur** nutzen, falls Versatz verbleibt.
 
 [penFeel]
 
 ## Druckkurve
 
-Die Druckkurve steuert, wie der Stiftdruck auf den Ausgabedruck abgebildet wird. Eine konkave Kurve (nach oben gezogen) lässt leichte Striche stärker erscheinen; eine konvexe Kurve (nach unten gedrückt) erfordert mehr Kraft für denselben Effekt.
+Die Kurve steuert, wie Stiftdruck abgebildet wird. Konkav (oben) macht leichte Striche stärker; konvex (unten) braucht mehr Kraft.
 
-**Tip Feel-Voreinstellungen** — Soft, Medium, Firm und Custom. Eine Voreinstellung wählen setzt die Kurve; das manuelle Anpassen eines Kurvenpunkts wechselt automatisch zu Custom.
+**Tip Feel-Voreinstellungen** — Linear, Soft, Firm. Wähle eine zum Setzen; anpassen wechselt zu custom.
 
 ## Glättung
 
-Die Glättung reduziert hochfrequentes Zittern im Eingabesignal. Höhere Werte erzeugen sauberere Striche, aber mit einem kleinen Verzug am Anfang und Ende jedes Strichs. Für schnelles, gestisches Arbeiten fühlen sich niedrigere Werte direkter an.
+Reduziert hochfrequentes Zittern. Höhere Werte = saubere Striche mit Verzug; niedrig = direkt. Null für Präzision.
 
 ## Doppelklick-Abstand
 
-Legt fest, wie nah zwei Antipper beieinander sein müssen, um als Doppelklick zu gelten. Erhöhe den Wert, wenn Doppelklicks nicht erkannt werden; verringere ihn, wenn beim normalen Zeichnen versehentliche Doppelklicks auftreten.
+Legt fest, wie nah zwei Antipper sein müssen. Erhöhe, wenn nicht erkannt; senke, wenn zufällige auftreten.
 
 [buttons]
 
 ## Stift-Diagramm
 
-Das Diagramm oben zeigt die Tasten deines Stifts. Drücke eine Taste, während das Fenster geöffnet ist, um sie hervorgehoben zu sehen — nützlich, um herauszufinden, welche physische Taste welchem Zuordnungsslot entspricht.
+Das Diagramm zeigt die Tasten. Drücke eine zum Sehen der Hervorhebung — identifiziert physische Taste zu Zuordnung.
+
+**Hover Drag** — Taste 1 (untere Barrel) + Schwebeflug = Zeiger ohne Spitzenkontakt.
 
 ## Zuordnungstypen
 
 - **Maustasten** — Linksklick, Rechtsklick, Mittelklick oder Doppelklick
 - **Tastaturkürzel** — Klicke in das Kürzelfeld und drücke eine beliebige Tastenkombination
 - **Modifikator-Halten** — ⌘ ⌥ ⇧ ⌃ werden so lange gehalten, wie die Taste gedrückt ist
-- **Sonderaktionen** — Display Toggle, Eraser, Touch-Ring-Modusauswahl
+- **Sonderaktionen** — Bildschirm umschalten, Eraser, Touch-Ring-Modusauswahl
 
 ## Touch-Ring
 
-Der Ring unterstützt mehrere Modusslots. Jeder Slot hat seine eigene Aktion im und gegen den Uhrzeigersinn (Scrollen, Zoomen oder Tastenwiederholen). Weise **Ring Cycle** einer Taste zu, um die Modi durchzuschalten, oder **Ring: Slot N**, um direkt zu einem bestimmten Slot zu springen. Der **Geschwindigkeitsmultiplikator** steuert, wie schnell Aktionen pro Grad Drehung ausgelöst werden.
+Der Ring unterstützt mehrere Slots. Jeder hat Uhrzeiger- und gegen-Uhrzeiger-Aktionen — Scroll, Tastenkürzel, oder Aus.
 
 ## Radiergummi
 
-Die Radiergummispitze hat ihre eigene Belegung, die im Stift-Bereich konfiguriert wird. Die meisten Zeichen-Apps wechseln automatisch zum Radierwerkzeug, wenn sie Radiergummi-Näherungsereignisse empfangen — eine spezielle Belegung ist nur nötig, wenn du dieses Verhalten überschreiben möchtest.
+Radiergummispitze hat eigene Belegung (Stift-Bereich). Manche Apps wechseln automatisch.
 
 ## App-spezifische Overrides
 
@@ -73,80 +73,70 @@ Die Override-Leiste oben erlaubt es dir, für eine bestimmte App andere Tasten z
 
 ## Display-Zuordnung
 
-Die Display-Zuordnung steuert, auf welchen Bildschirm der aktive Bereich des Tabletts abgebildet wird.
+Steuert, auf welchen Bildschirm der aktive Bereich abgebildet wird.
 
-**All Displays** — Das Tablett spannt sich proportional über den gesamten Desktop. Verwende diese Option, wenn du über mehrere Monitore hinweg arbeitest.
+**Alle Bildschirme** — Tablett spannt sich proportional über Desktop. Für mehrere Monitore.
 
-**Single Display** — Der aktive Bereich wird einem bestimmten Display zugeordnet. Wähle ein Display aus der Liste; die Vorschau aktualisiert sich entsprechend.
+**Einzelner Bildschirm** — Ordnet einem bestimmten Display zu. Wähle aus Liste; Vorschau aktualisiert sich.
 
-**Display Toggle** — Weise die Display Toggle-Aktion einer Express-Taste oder Barrel-Taste zu, um ohne Öffnen der Einstellungen durch die angeschlossenen Displays zu wechseln.
+**Bildschirm umschalten** — Weise einer Express-Taste zu zum Wechseln ohne Öffnen.
 
 [devices]
 
 ## Verbundene Geräte
 
-Der Geräte-Bereich listet alle Tabletts und Stift-Tools auf, die MockTab erkannt hat. Jede Zeile zeigt Gerätename, Verbindungstyp (USB oder Bluetooth) und aktuellen Status.
-
-## Tool-Registrierung
-
-Wenn ein Stift erkannt wird, speichert MockTab seinen Tool-Code. Wird ein Tool-Code nicht erkannt, erscheint er in der Registrierung als „Unknown tool". Du kannst unbekannten Tools manuell einen Namen und eine Spitzenbelegung zuweisen.
+Der Bereich listet alle Tabletts und Stift-Tools. Jede Zeile zeigt Name, Verbindungstyp (USB/Bluetooth), Status.
 
 ## Konflikt-Erkennung
 
-Wenn ein anderer Tablett-Treiber (z. B. der offizielle Wacom-Treiber) läuft, erkennt MockTab den Konflikt und zeigt eine Warnung an. Wenn zwei Treiber um dasselbe HID-Gerät konkurrieren, kann es zu unvorhersehbarem Verhalten kommen; beende den konkurrierenden Treiber, bevor du MockTab verwendest.
+Wenn ein anderer Treiber läuft, zeigt MockTab Warnung. Beende konkurrierenden Treiber vor Verwendung.
 
 [profiles]
 
 ## Profile
 
-Ein Profil ist ein gespeicherter Schnappschuss aller Tablett-Einstellungen — aktiver Bereich, Druckkurve, Tasten-Zuordnungen und Display-Zuordnung. Das Wechseln von Profilen übernimmt alle Einstellungen sofort.
-
-**Auto-restore** — Aktiviere den Schalter an einem Profil, damit MockTab es automatisch aktiviert, wenn dieses Tablett angeschlossen wird.
+Ein Profil speichert alle Einstellungen — aktiver Bereich, Druckkurve, Tasten, Display. Wechsel ist sofort.
 
 ## Erstellen und Umbenennen
 
-Klicke auf **Save as New Profile**, um die aktuellen Einstellungen zu speichern. Doppelklicke auf einen Profilnamen, um ihn umzubenennen.
+**Profil erstellen** zum Speichern. Doppelklick auf Name zum Umbenennen.
 
 ## App-spezifische Overrides in Profilen
 
-App-spezifische Overrides werden als Teil des aktiven Profils gespeichert. Wenn du Profile wechselst, wechseln die Overrides mit.
+Overrides werden mit dem Profil gespeichert. Wechsel ändert sie zusammen.
 
-## Import / Export
+## Sicherung & Wiederherstellung
 
-Ziehe eine Profilkarte in den Finder, um sie als JSON-Datei zu exportieren. Ziehe eine JSON-Datei auf die Profilliste, um sie zu importieren. Exportierte Dateien können zwischen Geräten geteilt oder als Backup verwendet werden.
+Ziehe Karte in Finder zum Exportieren als JSON. Ziehe JSON auf Liste zum Importieren. Teile oder nutze als Backup.
 
 [scratchpad]
 
-## Scratchpad
+## Testbereich
 
-Das Scratchpad ist eine druckempfindliche Testfläche. Zeichne darauf, um zu überprüfen, dass dein Stift Druck, Neigung und Strichposition korrekt erfasst, bevor du eine Zeichen-App verwendest.
+Druckempfindliche Testfläche. Deckkraft und Breite reagieren auf Druck; Neigung beeinflusst Winkel (wenn unterstützt). Striche gehen beim Schließen verloren.
 
-Deckkraft und Breite der Striche reagieren beide auf den Spitzendruck. Die Neigung beeinflusst den Strichwinkel, wenn der Stift dies unterstützt.
-
-**Clear** — Entfernt alle Striche von der Fläche. Das lässt sich nicht rückgängig machen.
+**Löschen** — Entfernt alle Striche.
 
 [info]
 
 ## Live-Eingabe
 
-Der Info-Bereich zeigt Echtzeit-Werte deines Stifts: X/Y-Position, Druck, Neigung, Rotation, Schwebeabstand und Tastenzustand. Diese Werte aktualisieren sich laufend, solange der Stift in Reichweite ist.
-
-Das ist hilfreich beim Diagnostizieren von unerwartetem Verhalten — zum Beispiel, um zu prüfen, ob der Druck seinen Maximalwert erreicht oder ob Neigung überhaupt gemeldet wird.
+Der Bereich zeigt Echtzeit-Werte: X/Y, Druck, Neigung, Rotation, Schwebeabstand, Tasten. Diagnose für unerwartetes Verhalten.
 
 ## Diagnose
 
-Der **Copy Diagnostics**-Button erstellt einen Text-Schnappschuss des aktuellen Treiberzustands — App-Version, macOS-Version, verbundene Geräte und Eingabe-Statistiken. Füge ihn in einen Fehlerbericht oder eine Support-Anfrage ein.
+Der Bereich zeigt Echtzeit-Werte: X/Y, Druck, Neigung, Rotation, Schwebeabstand, Tasten. Diagnose für unerwartetes Verhalten.
 
-## Collect Device Data
+## Gerätedaten erfassen
 
-**Collect Device Data** führt eine angeleitete Aufzeichnungssitzung durch, die die rohen HID-Berichte deines Tabletts aufzeichnet. Das Ergebnis ist eine kompakte JSON-Datei, die du einer Feature-Anfrage anhängen kannst, um die Unterstützung für dein Gerät hinzuzufügen oder zu verbessern.
+**Gerätedaten erfassen** führt eine geleitete Aufzeichnung der rohen HID-Berichte durch. Ergebnis ist kompaktes JSON für Support-Anfragen.
 
 [website]
 
 ## mocktab.org
 
-Die MockTab-Website unter [mocktab.org](https://mocktab.org) enthält Dokumentation, Release Notes und die vollständige Liste unterstützter Hardware.
+[mocktab.org](https://mocktab.org) — Dokumentation, Release Notes, Hardware-Liste.
 
 ## GitHub
 
-Fehlerberichte und Fragen gehen an [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver/issues). Der **Copy Diagnostics**-Button im Info-Bereich erstellt einen Text-Schnappschuss deines Treiberzustands — füge ihn Fehlerberichten bei.
+Fehlerberichte und Fragen zu [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver/issues).
