@@ -1202,8 +1202,6 @@ final class InputInjector {
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
     }
 
-    /// Stamps an event with reconstructed flags and posts it.
-    /// ALL outbound events must go through this helper to maintain state synchronization.
     /// Post a completed CGEvent.
     ///
     /// The caller is responsible for setting `event.flags` before calling:
