@@ -645,9 +645,9 @@ final class InputInjector {
             // ── Continuous movement: delta gate ────────────────────────────────
             let moved =
                 !hasPostedPoint
-                || abs(screenPoint.x - lastPostedPoint.x) > Self.positionEpsilon
-                || abs(screenPoint.y - lastPostedPoint.y) > Self.positionEpsilon
-                || (tipDown && abs(pressure - lastPostedPressure) > Self.pressureEpsilon)
+                || (screenPoint.x - lastPostedPoint.x).magnitude > Self.positionEpsilon
+                || (screenPoint.y - lastPostedPoint.y).magnitude > Self.positionEpsilon
+                || (tipDown && (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon)
 
             // USB mouse left button held (KC-100): injectMouseButtons() already sent
             // leftMouseDown; use leftMouseDragged so apps receive proper drag events.
@@ -1204,6 +1204,14 @@ final class InputInjector {
 
     /// Stamps an event with reconstructed flags and posts it.
     /// ALL outbound events must go through this helper to maintain state synchronization.
+    /// Post a completed CGEvent.
+    ///
+    /// The caller is responsible for setting `event.flags` before calling:
+    /// use `currentEventFlags` for state-change events (mouseDown/Up, click,
+    /// scroll, flagsChanged) and `moveSafeEventFlags` for high-frequency
+    /// movement events (mouseMoved, leftMouseDragged, tabletPointer).
+    /// Keeping the flags decision at the call site avoids invoking
+    /// `CGEventSource.flagsState` — a kernel round-trip — on every pen report.
     private func finalizeAndPost(_ event: CGEvent) {
         #if DEBUG
         assert(
@@ -1212,7 +1220,6 @@ final class InputInjector {
             "groundTruthSyntheticFlags contains bits outside ModifierMath.managedMask"
         )
         #endif
-        event.flags = currentEventFlags
         event.post(tap: .cghidEventTap)
     }
 
@@ -1677,6 +1684,7 @@ final class InputInjector {
                 lastSyntheticFlagChangeAt = Date()
                 modLog.debug("keyCombo \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) groundTruth: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public)")
             }
+            e.flags = currentEventFlags
             finalizeAndPost(e)
 
         case .displayToggle:
