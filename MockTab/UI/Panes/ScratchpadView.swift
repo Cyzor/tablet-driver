@@ -277,6 +277,22 @@ final class ScratchpadNSView: NSView {
     private var currentStroke: Stroke?
     private var isErasingGesture = false
 
+    /// Cached rendering of all committed strokes. Rebuilt whenever the stroke
+    /// list changes or the view resizes. Lets draw(_:) composite a single image
+    /// blit + the live stroke rather than re-rendering every segment every frame.
+    private var strokeCache: NSImage?
+
+    /// Cumulative translation from canvas space to view space.
+    ///
+    /// Strokes are stored in canvas space (stable coordinates independent of
+    /// view size). On each resize, `contentOffset.y` is adjusted by the height
+    /// delta so that content stays anchored to the top-left corner: growing the
+    /// window reveals space at the bottom/right; shrinking clips there first.
+    ///
+    /// Drawing applies this offset as a transform; mouse events subtract it
+    /// before coordinates are stored.
+    private var contentOffset: CGPoint = .zero
+
     override var isOpaque: Bool { false }
     override var acceptsFirstResponder: Bool { true }
 
@@ -321,13 +337,38 @@ final class ScratchpadNSView: NSView {
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
+        strokeCache = nil
         needsDisplay = true
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        let oldSize = bounds.size
+        super.setFrameSize(newSize)
+        // Skip the initial layout pass (oldSize is zero before the first frame
+        // is set) so the offset doesn't pick up the full initial height.
+        if oldSize.height > 0 {
+            contentOffset.y += newSize.height - oldSize.height
+        }
+        strokeCache = nil
+        needsDisplay = true
+    }
+
+    // MARK: - Coordinate helpers
+
+    /// Converts a point in view space to canvas space (stable across resizes).
+    private func canvasPoint(_ viewPt: NSPoint) -> NSPoint {
+        NSPoint(x: viewPt.x - contentOffset.x, y: viewPt.y - contentOffset.y)
+    }
+
+    /// Converts a point in canvas space back to view space (for dirty-rect math).
+    private func viewPoint(_ canvasPt: NSPoint) -> NSPoint {
+        NSPoint(x: canvasPt.x + contentOffset.x, y: canvasPt.y + contentOffset.y)
     }
 
     // MARK: - Mouse events
 
     override func mouseDown(with event: NSEvent) {
-        let point = convert(event.locationInWindow, from: nil)
+        let pt = canvasPoint(convert(event.locationInWindow, from: nil))
         let isEraser = tabletManager?.injector?.activeToolIsEraser == true
             || tabletManager?.activeToolID?.hasPrefix("eraser") == true
             || event.pointingDeviceType == .eraser
@@ -337,30 +378,33 @@ final class ScratchpadNSView: NSView {
             currentStroke = nil
             isErasingGesture = true
             undoManager?.beginUndoGrouping()
-            eraseStrokes(crossing: point)
+            eraseStrokes(crossing: pt)
         } else {
             isErasingGesture = false
-            currentStroke = Stroke(points: [(point, CGFloat(event.pressure))], isEraser: false)
+            currentStroke = Stroke(points: [(pt, CGFloat(event.pressure))], isEraser: false)
         }
         onPressureChange?(Double(event.pressure))
         needsDisplay = true
     }
 
     override func mouseDragged(with event: NSEvent) {
-        let point = convert(event.locationInWindow, from: nil)
+        let viewPt = convert(event.locationInWindow, from: nil)
+        let pt = canvasPoint(viewPt)
         if isErasingGesture {
-            eraseStrokes(crossing: point)
+            eraseStrokes(crossing: pt)
             onPressureChange?(Double(event.pressure))
             return
         }
-        guard let previous = currentStroke?.points.last?.0 else { return }
-        currentStroke?.points.append((point, CGFloat(event.pressure)))
+        guard let previousCanvas = currentStroke?.points.last?.0 else { return }
+        currentStroke?.points.append((pt, CGFloat(event.pressure)))
         onPressureChange?(Double(event.pressure))
+        // Dirty rect is in view space; convert the previous canvas point back.
+        let previousView = viewPoint(previousCanvas)
         let pad: CGFloat = Swift.max(2, CGFloat(event.pressure) * 20)
-        let minX = Swift.min(previous.x, point.x) - pad
-        let maxX = Swift.max(previous.x, point.x) + pad
-        let minY = Swift.min(previous.y, point.y) - pad
-        let maxY = Swift.max(previous.y, point.y) + pad
+        let minX = Swift.min(previousView.x, viewPt.x) - pad
+        let maxX = Swift.max(previousView.x, viewPt.x) + pad
+        let minY = Swift.min(previousView.y, viewPt.y) - pad
+        let maxY = Swift.max(previousView.y, viewPt.y) + pad
         setNeedsDisplay(NSRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY))
     }
 
@@ -391,6 +435,7 @@ final class ScratchpadNSView: NSView {
             return
         }
         strokes.removeAll()
+        strokeCache = nil
         undoManager?.registerUndo(withTarget: self) { target in
             target.restoreStrokes(previous)
         }
@@ -406,6 +451,7 @@ final class ScratchpadNSView: NSView {
     private func commitStroke(_ stroke: Stroke) {
         let index = strokes.count
         strokes.append(stroke)
+        strokeCache = nil
         undoManager?.registerUndo(withTarget: self) { target in
             target.removeStroke(at: index)
         }
@@ -420,6 +466,7 @@ final class ScratchpadNSView: NSView {
     private func removeStroke(at index: Int) {
         guard strokes.indices.contains(index) else { return }
         let removed = strokes.remove(at: index)
+        strokeCache = nil
         undoManager?.registerUndo(withTarget: self) { target in
             target.insertStroke(removed, at: index)
         }
@@ -429,6 +476,7 @@ final class ScratchpadNSView: NSView {
     private func insertStroke(_ stroke: Stroke, at index: Int) {
         let clamped = min(max(index, 0), strokes.count)
         strokes.insert(stroke, at: clamped)
+        strokeCache = nil
         undoManager?.registerUndo(withTarget: self) { target in
             target.removeStroke(at: clamped)
         }
@@ -486,6 +534,7 @@ final class ScratchpadNSView: NSView {
     private func restoreStrokes(_ previous: [Stroke]) {
         let current = strokes
         strokes = previous
+        strokeCache = nil
         undoManager?.registerUndo(withTarget: self) { target in
             target.restoreStrokes(current)
         }
@@ -499,12 +548,40 @@ final class ScratchpadNSView: NSView {
         bounds.fill()
 
         drawDotGrid(in: dirtyRect)
+
+        // Composite the cached image of all committed strokes (a single blit),
+        // then draw only the live stroke on top. This keeps per-frame cost
+        // constant with respect to stroke history.
+        let cache = strokeCache ?? buildStrokeCache()
+        cache.draw(in: bounds, from: .zero, operation: .sourceOver, fraction: 1)
+
+        if let currentStroke {
+            NSGraphicsContext.saveGraphicsState()
+            applyContentOffset()
+            drawStroke(currentStroke)
+            NSGraphicsContext.restoreGraphicsState()
+        }
+    }
+
+    /// Pushes the canvas-to-view translation onto the current graphics context.
+    private func applyContentOffset() {
+        let xform = NSAffineTransform()
+        xform.translateX(by: contentOffset.x, yBy: contentOffset.y)
+        xform.concat()
+    }
+
+    /// Renders all committed strokes into an NSImage the same size as the view.
+    /// Called at most once per stroke-list mutation; result is reused every frame.
+    private func buildStrokeCache() -> NSImage {
+        let image = NSImage(size: bounds.size)
+        image.lockFocus()
+        applyContentOffset()
         for stroke in strokes {
             drawStroke(stroke)
         }
-        if let currentStroke {
-            drawStroke(currentStroke)
-        }
+        image.unlockFocus()
+        strokeCache = image
+        return image
     }
 
     private func drawDotGrid(in dirtyRect: NSRect) {

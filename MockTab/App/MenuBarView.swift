@@ -29,6 +29,33 @@ struct MenuBarView: View {
             AppMenuController.activateBestDevice()
         }
 
+        // Known-tablet list — mirrors the Tablet menu in the main menu bar.
+        // A filled checkmark marks currently connected devices; disconnected
+        // (but previously seen) devices are listed without an indicator so the
+        // user can still open their settings window.
+        let knownTablets = DeviceRegistry.shared.knownTablets
+        if !knownTablets.isEmpty {
+            Divider()
+            ForEach(knownTablets) { tablet in
+                // SwiftUI strips Label icons from top-level items in a
+                // `.menu`-style MenuBarExtra, so encode the connected indicator
+                // directly in the title text.  A two-space prefix on all entries
+                // pre-indents the block so the ✓/blank variation is visually
+                // contained within the section rather than shifting the name.
+                let name = pwc.menuLabel(forProductID: tablet.id)
+                // Use an em space (U+2003) as the gutter placeholder so the
+                // name column stays fixed regardless of checkmark presence.
+                // ✓ + regular space ≈ 1em in SF Pro at menu size, so both
+                // variants reach the name at the same horizontal position.
+                let title = tabletManager.connectedProductIDs.contains(tablet.id)
+                    ? "✓ \(name)"
+                    : "\u{2003}\(name)"
+                Button(title) {
+                    pwc.openWindow(forProductID: tablet.id)
+                }
+            }
+        }
+
         // Window list — shown when more than one window is open so the user
         // can jump directly to a specific tablet without opening the app first.
         if pwc.windowDescriptors.count > 1 {

@@ -103,17 +103,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // redundant and conflicts with the Factory Reset alternate menu item.
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
 
-        // Claim the delegate slot before SwiftUI's @NSApplicationDelegateAdaptor shim
-        // has a chance to install itself.  The Dock queries applicationDockMenu at
-        // process registration; if the shim is in place at that moment it responds nil
-        // and the Dock caches "no custom menu" for the lifetime of the process.
-        // Assigning here — the earliest delegate point in the AppKit lifecycle —
-        // ensures our real AppDelegate is the one the Dock sees.
-        // Note: this fix only matters for a Finder/conventional launch.  Xcode debug
-        // launches go through a different process-registration path and the Dock
-        // menu may not appear there regardless; that's an Xcode artifact, not a bug.
-        NSApp.delegate = self
-
         // Set the activation policy here — before SwiftUI configures its
         // MenuBarExtra scene — so the app registers with the Dock as a regular
         // app from the start.  If we defer this to applicationDidFinishLaunching
@@ -218,6 +207,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         detect.target = self
         menu.addItem(detect)
 
+        // List known tablets, matching the Tablet menu in the main menu bar.
+        // A filled checkmark icon marks currently connected devices.
+        let knownTablets = DeviceRegistry.shared.knownTablets
+        if !knownTablets.isEmpty {
+            menu.addItem(.separator())
+            let connectedIDs = TabletManager.shared.connectedProductIDs
+            let pwc = PreferencesWindowController.shared
+            for tablet in knownTablets {
+                let item = NSMenuItem(
+                    title: pwc.menuLabel(forProductID: tablet.id),
+                    action: #selector(dockOpenTablet(_:)),
+                    keyEquivalent: "")
+                item.target = self
+                item.tag = tablet.id
+                // Dock menus reliably honor NSMenuItem.state (left-gutter
+                // checkmark) but not all NSMenuItem.image values render in the
+                // Dock's restricted menu pipeline, so use the canonical
+                // selected-state indicator here rather than a custom image.
+                if connectedIDs.contains(tablet.id) {
+                    item.state = .on
+                }
+                menu.addItem(item)
+            }
+        }
+
         return menu
     }
 
@@ -231,5 +245,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func dockDetectTablet() {
         AppMenuController.activateBestDevice()
+    }
+
+    @objc private func dockOpenTablet(_ sender: NSMenuItem) {
+        PreferencesWindowController.shared.openWindow(forProductID: sender.tag)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
