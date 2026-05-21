@@ -32,6 +32,10 @@ final class WacomKnownDevice: TabletDevice {
     private let onMouseButton: ((UInt8) -> Void)?
     private let onBattery: ((Int, Bool) -> Void)?
     private let onWheel: ((Int, Int) -> Void)?
+    /// Called once per touch frame for devices that report capacitive finger
+    /// touch.  No decoder produces these yet — wired so the integration
+    /// surface is ready when a per-family touch decoder lands.
+    private let onTouch: (([TouchContact]) -> Void)?
     /// Called when the hardware serial is successfully queried from a WACOM_REPORT_USB
     /// (Report ID 0x03) feature report on USB/dongle connections. Serial is 0 if the
     /// query fails or the device does not support the feature report.
@@ -77,7 +81,8 @@ final class WacomKnownDevice: TabletDevice {
         onMouseButton: ((UInt8) -> Void)? = nil,
         onBattery: ((Int, Bool) -> Void)? = nil,
         onHardwareSerial: ((UInt32) -> Void)? = nil,
-        onWheel: ((Int, Int) -> Void)? = nil
+        onWheel: ((Int, Int) -> Void)? = nil,
+        onTouch: (([TouchContact]) -> Void)? = nil
     ) {
         self.isWireless = isWireless
         self.device = device
@@ -90,6 +95,7 @@ final class WacomKnownDevice: TabletDevice {
         self.onBattery = onBattery
         self.onHardwareSerial = onHardwareSerial
         self.onWheel = onWheel
+        self.onTouch = onTouch
 
         self.spec = DigitizerSpec(
             maxX: deviceSpec.maxX,
@@ -99,7 +105,9 @@ final class WacomKnownDevice: TabletDevice {
             hasTilt: deviceSpec.hasTilt,
             hasDualRings: deviceSpec.hasDualRings,
             isPenDisplay: deviceSpec.isPenDisplay,
-            ringSlotCount: deviceSpec.ringSlotCount)
+            ringSlotCount: deviceSpec.ringSlotCount,
+            hasFingerTouch: deviceSpec.hasFingerTouch,
+            maxTouchContacts: deviceSpec.maxTouchContacts)
 
         // Parser → decoder dispatch. Each parser family corresponds to a wire
         // format (report ID, byte layout, coordinate encoding, pressure depth);
@@ -332,6 +340,28 @@ final class WacomKnownDevice: TabletDevice {
         }
     }
 
+    /// Enable or disable capacitive finger touch on the hardware.
+    ///
+    /// Wacom touch-capable devices accept a feature report (Linux notes cite
+    /// Report ID 0x0A with `[0, 0, 0, 1]` to enable, `[0, 0, 0, 0]` to
+    /// disable), but the exact bytes have not been verified against a real
+    /// macOS-shipped DTH-* device.  Until a capture confirms the wire
+    /// format this method only logs the request — the in-app `touchEnabled`
+    /// setting still gates `InputInjector.injectTouch`, so users can turn
+    /// touch off without any hardware cooperation.
+    ///
+    /// TODO: once a real capture confirms the feature-report bytes for one
+    /// of DTH-271 / DTH-135 / DTH-1320 / DTH-2400 / DTH-2200, populate the
+    /// payload below and remove the early-return log.
+    func setTouchEnabled(_ enabled: Bool) {
+        guard deviceSpec.hasFingerTouch else { return }
+        logger.info("\(self.deviceSpec.name, privacy: .public): setTouchEnabled(\(enabled, privacy: .public)) requested — hardware feature-report unverified, in-app touchEnabled gate is authoritative")
+        // var payload: [UInt8] = [0x0A, 0x00, 0x00, 0x00, enabled ? 0x01 : 0x00]
+        // hidSetReport(device, reportID: CFIndex(0x0A), bytes: &payload,
+        //              tag: "\(deviceSpec.name) touchEnabled=\(enabled)",
+        //              severity: .bestEffort, log: logger)
+    }
+
     /// Register the companion LED controller interface for this device.
     /// Called by TabletManager when a no-digitizer Wacom interface is matched
     /// to this device via `WacomDeviceSpec.ledCompanionPID`.
@@ -439,7 +469,9 @@ final class WacomKnownDevice: TabletDevice {
                     maxX: pairedSpec.maxX,
                     maxY: pairedSpec.maxY,
                     maxPressure: pairedSpec.maxPressure,
-                    buttonCount: pairedSpec.buttonCount)
+                    buttonCount: pairedSpec.buttonCount,
+                    hasFingerTouch: pairedSpec.hasFingerTouch,
+                    maxTouchContacts: pairedSpec.maxTouchContacts)
                 //                print("\(deviceSpec.name): using paired tablet spec (PID 0x\(String(pairedTabletPID, radix: 16, uppercase: true))) — maxX=\(spec.maxX) maxY=\(spec.maxY) maxPressure=\(spec.maxPressure)")
             }
         }
@@ -497,6 +529,8 @@ final class WacomKnownDevice: TabletDevice {
                 onMouseButton?(mask)
             case .wheel(let index, let delta):
                 onWheel?(index, delta)
+            case .touch(let contacts):
+                onTouch?(contacts)
             case .toolCompatibility(let message):
                 logger.info("\(name, privacy: .public): \(message, privacy: .public)")
             }

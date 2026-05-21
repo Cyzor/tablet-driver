@@ -1,0 +1,188 @@
+// MockTab — native macOS driver for supported drawing tablets
+// SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import SwiftUI
+
+/// Capacitive finger-touch settings.
+///
+/// Only registered as a sidebar tab on devices whose `WacomDeviceSpec` has
+/// `hasFingerTouch == true`.  See `SettingsWindowController` for the gate.
+///
+/// What this pane *can* do via macOS-supported public APIs:
+///   • Cursor motion from a single finger
+///   • Smooth two-finger scrolling (with trackpad-style phase + rubber-band)
+///   • Optional tap-to-click
+///
+/// What it *cannot* do without Apple-issued private entitlements — and what
+/// users will reasonably expect from a tablet driver:
+///   • Mission Control / Spaces / Launchpad gestures
+///   • App Exposé three- and four-finger gestures
+///   • Native multi-touch `NSTouch` events that apps like Final Cut consume
+///
+/// Those last three require posting into the WindowServer MultitouchSupport
+/// pipeline, which is read-only for third-party processes.  The disclaimer
+/// at the bottom of the pane is the truthful description of the ceiling.
+struct TouchView: View {
+
+    @ObservedObject var settings: TabletSettings
+    @ObservedObject var tabletManager: TabletManager
+    @ObservedObject var registry: DeviceRegistry
+    var productID: Int?
+
+    private var spec: WacomDeviceSpec? {
+        productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
+    }
+
+    private var hasFingerTouch: Bool { spec?.hasFingerTouch == true }
+    private var maxTouchContacts: Int { spec?.maxTouchContacts ?? 0 }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Form {
+                if hasFingerTouch {
+                    enableSection
+                    pointerSection
+                    if maxTouchContacts > 1 {
+                        scrollSection
+                    }
+                    areaSection
+                    disclaimerSection
+                } else {
+                    Section {
+                        Text(LocalizedStringKey("The connected tablet does not have a capacitive touch surface."))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            DeviceStatusBar(
+                settings: settings, tabletManager: tabletManager,
+                registry: registry, productID: productID ?? 0)
+        }
+    }
+
+    // MARK: - Sections
+
+    private var enableSection: some View {
+        Section {
+            Toggle(
+                String(localized: "Enable finger touch",
+                       comment: "Touch pane: master toggle for capacitive touch input"),
+                isOn: $settings.touchEnabled)
+                .help(LocalizedStringKey("When off, the tablet's touch surface is ignored. Pen input is unaffected."))
+        } header: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(LocalizedStringKey("Touch"))
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+            }
+        }
+    }
+
+    private var pointerSection: some View {
+        Section {
+            Toggle(
+                String(localized: "Tap to click",
+                       comment: "Touch pane: brief tap posts a left click"),
+                isOn: $settings.tapToClick)
+                .disabled(!settings.touchEnabled)
+                .help(LocalizedStringKey("A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks."))
+
+            HStack {
+                Text(LocalizedStringKey("Cursor speed"))
+                Slider(value: $settings.touchSensitivity, in: 0.25...4.0)
+                    .disabled(!settings.touchEnabled)
+                Text(String(format: "%.2f×", settings.touchSensitivity))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .frame(width: 56, alignment: .trailing)
+            }
+            .help(LocalizedStringKey("Multiplier for cursor motion from finger drag. 1.00× is the natural mapping through the touch area; raise to move faster across the screen, lower for finer control."))
+        } header: {
+            Text(LocalizedStringKey("Pointer"))
+        }
+    }
+
+    private var scrollSection: some View {
+        Section {
+            Toggle(
+                String(localized: "Two-finger scroll",
+                       comment: "Touch pane: enable two-finger scroll-wheel emulation"),
+                isOn: $settings.twoFingerScroll)
+                .disabled(!settings.touchEnabled)
+                .help(LocalizedStringKey("Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview."))
+
+            Toggle(
+                String(localized: "Natural scrolling",
+                       comment: "Touch pane: scroll direction matches finger motion"),
+                isOn: $settings.naturalScrolling)
+                .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
+                .help(LocalizedStringKey("On (default): content follows your fingers, matching macOS's system-wide setting. Off: content moves opposite, like a classic mouse wheel."))
+        } header: {
+            Text(LocalizedStringKey("Scrolling"))
+        }
+    }
+
+    private var areaSection: some View {
+        Section {
+            Text(LocalizedStringKey("The touch area is separate from the pen's active area. By default the entire touch surface is used; crop it if you want finger input restricted to a portion of the tablet."))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            HStack {
+                Text(LocalizedStringKey("X"))
+                    .frame(width: 16, alignment: .leading)
+                Slider(value: $settings.touchAreaX, in: 0...1)
+                    .disabled(!settings.touchEnabled)
+            }
+            HStack {
+                Text(LocalizedStringKey("Y"))
+                    .frame(width: 16, alignment: .leading)
+                Slider(value: $settings.touchAreaY, in: 0...1)
+                    .disabled(!settings.touchEnabled)
+            }
+            HStack {
+                Text(LocalizedStringKey("Width"))
+                    .frame(width: 56, alignment: .leading)
+                Slider(value: $settings.touchAreaWidth, in: 0.01...1)
+                    .disabled(!settings.touchEnabled)
+            }
+            HStack {
+                Text(LocalizedStringKey("Height"))
+                    .frame(width: 56, alignment: .leading)
+                Slider(value: $settings.touchAreaHeight, in: 0.01...1)
+                    .disabled(!settings.touchEnabled)
+            }
+            Button(String(localized: "Reset to full surface",
+                          comment: "Touch pane: reset the touch area to cover the entire touch surface")) {
+                settings.touchAreaX = 0
+                settings.touchAreaY = 0
+                settings.touchAreaWidth = 1
+                settings.touchAreaHeight = 1
+            }
+            .disabled(!settings.touchEnabled)
+        } header: {
+            Text(LocalizedStringKey("Touch Area"))
+        }
+    }
+
+    private var disclaimerSection: some View {
+        Section {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "info.circle")
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 2)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedStringKey("System gestures not supported"))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text(LocalizedStringKey("Mission Control, Spaces, Launchpad, and other system-wide multi-touch gestures require Wacom's official driver. macOS does not let third-party apps post the native trackpad events those gestures depend on."))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+}

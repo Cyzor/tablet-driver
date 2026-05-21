@@ -232,6 +232,61 @@ final class TabletSettings: ObservableObject {
         didSet { persist("tipUpAssist", tipUpAssist) }
     }
 
+    // MARK: - Capacitive finger touch
+    //
+    // Only meaningful on devices whose WacomDeviceSpec has hasFingerTouch=true.
+    // The UI (TouchView) hides these on devices without finger touch.  No
+    // decoder produces touch reports yet — these settings exist so the path
+    // is wired the moment a real touch capture allows the decoder to land.
+
+    /// Master enable for finger-touch input.  When false, `InputInjector.injectTouch`
+    /// becomes a no-op regardless of incoming reports.  Defaults to true so that
+    /// a device that ships touch data is usable on first connect; users who don't
+    /// want it (Wacom's touch behaviour is widely disliked) can flip this off.
+    @Published var touchEnabled: Bool = true {
+        didSet { persist("touchEnabled", touchEnabled) }
+    }
+    /// Scalar applied to cursor movement from finger drag in pointer mode.
+    /// 0.25 (slow) – 4.0 (fast); 1.0 is "one tablet-unit per device-unit through
+    /// the touch-area mapping".
+    @Published var touchSensitivity: Double = 1.0 {
+        didSet { persist("touchSensitivity", touchSensitivity) }
+    }
+    /// When true, a brief single-finger touch (down→up without significant motion)
+    /// posts a left click.  Defaults to false because Wacom's tap-to-click is a
+    /// frequent source of phantom clicks; users opt in explicitly.
+    @Published var tapToClick: Bool = false {
+        didSet { persist("tapToClick", tapToClick) }
+    }
+    /// When true, two-finger motion is translated into a smooth scroll-wheel
+    /// CGEvent stream (with phase Began/Changed/Ended), which apps interpret as
+    /// trackpad scroll.  Disable to ignore second-finger contacts.
+    @Published var twoFingerScroll: Bool = true {
+        didSet { persist("twoFingerScroll", twoFingerScroll) }
+    }
+    /// When true, scroll direction follows finger motion (natural / "trackpad");
+    /// when false, scroll content moves opposite to finger (classic / "mouse wheel").
+    /// Matches macOS's system-wide "Natural scrolling" semantics; defaults to true.
+    @Published var naturalScrolling: Bool = true {
+        didSet { persist("naturalScrolling", naturalScrolling) }
+    }
+    /// Active-touch-area mapping — independent from the pen's active area because
+    /// users typically want the full surface for touch but a cropped area for pen
+    /// work.  Coordinates are normalised 0..1 over the device's full touch surface.
+    /// Defaults to the full surface.
+    @Published var touchAreaX: Double = 0.0 {
+        didSet { persist("touchAreaX", touchAreaX) }
+    }
+    @Published var touchAreaY: Double = 0.0 {
+        didSet { persist("touchAreaY", touchAreaY) }
+    }
+    @Published var touchAreaWidth: Double = 1.0 {
+        didSet { persist("touchAreaWidth", touchAreaWidth) }
+    }
+    @Published var touchAreaHeight: Double = 1.0 {
+        didSet { persist("touchAreaHeight", touchAreaHeight) }
+    }
+
     // MARK: - Touch ring & strips
 
     @Published var touchRingSlots: [ControlSlot] = ControlSlot.defaults {
@@ -876,6 +931,15 @@ final class TabletSettings: ObservableObject {
         invertRotation = loadBool("invertRotation", default: false)
         relativeCursorMovement = loadBool("relativeCursorMovement", default: false)
         tipUpAssist = loadBool("tipUpAssist", default: false)
+        touchEnabled = loadBool("touchEnabled", default: true)
+        touchSensitivity = Swift.max(0.25, Swift.min(loadDouble("touchSensitivity", default: 1.0), 4.0))
+        tapToClick = loadBool("tapToClick", default: false)
+        twoFingerScroll = loadBool("twoFingerScroll", default: true)
+        naturalScrolling = loadBool("naturalScrolling", default: true)
+        touchAreaX      = Swift.max(0.0,  Swift.min(loadDouble("touchAreaX",      default: 0.0), 1.0))
+        touchAreaY      = Swift.max(0.0,  Swift.min(loadDouble("touchAreaY",      default: 0.0), 1.0))
+        touchAreaWidth  = Swift.max(0.01, Swift.min(loadDouble("touchAreaWidth",  default: 1.0), 1.0))
+        touchAreaHeight = Swift.max(0.01, Swift.min(loadDouble("touchAreaHeight", default: 1.0), 1.0))
         loadPressureCurve()
 
         // Sync resolved pressure values and app overrides into activeTool so PenFeel

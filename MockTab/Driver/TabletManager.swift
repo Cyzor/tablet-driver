@@ -522,10 +522,20 @@ final class TabletManager: ObservableObject {
             context.injector.injectWheel(index: index, delta: delta, settings: context.settings)
         }
 
+        // ── Touch closure (capacitive finger input on touch-capable Cintiqs) ───
+        // Called on HIDThread when a decoder emits a `.touch` result.  No
+        // shipping decoder produces these yet — closure exists so the path
+        // is hot the moment a per-family touch decoder lands.
+        let onTouch: ([TouchContact]) -> Void = { [weak context] contacts in
+            guard let context else { return }
+            context.injector.injectTouch(contacts: contacts, settings: context.settings)
+        }
+
         let callbacks = DeviceRouter.Callbacks(
             onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
             onMouseButton: onMouseButton, onBattery: onBattery,
-            onHardwareSerial: onHardwareSerial, onWheel: onWheel)
+            onHardwareSerial: onHardwareSerial, onWheel: onWheel,
+            onTouch: onTouch)
 
         switch DeviceRouter.route(
             device: device, productID: productID, usagePage: usagePage,

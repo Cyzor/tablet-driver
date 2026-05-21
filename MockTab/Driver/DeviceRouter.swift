@@ -32,6 +32,10 @@ enum DeviceRouter {
         let onBattery: (Int, Bool) -> Void
         let onHardwareSerial: (UInt32) -> Void
         let onWheel: (Int, Int) -> Void
+        /// Per-frame finger-touch contact set.  Empty array signals all
+        /// fingers lifted.  No shipping decoder emits this yet; reserved
+        /// for the DTH-* touch-capable devices (Phase 1 plumbing).
+        let onTouch: ([TouchContact]) -> Void
     }
 
     /// The decision made for a single HID interface.
@@ -96,7 +100,8 @@ enum DeviceRouter {
                 onTablet: callbacks.onTablet, onAux: callbacks.onAux,
                 onToolEnter: callbacks.onToolEnter,
                 onHardwareSerial: callbacks.onHardwareSerial,
-                onWheel: callbacks.onWheel)
+                onWheel: callbacks.onWheel,
+                onTouch: callbacks.onTouch)
             return .driver(drv, seized: false)
         }
 
@@ -136,7 +141,8 @@ enum DeviceRouter {
                 onMouseButton: callbacks.onMouseButton,
                 onBattery: callbacks.onBattery,
                 onHardwareSerial: callbacks.onHardwareSerial,
-                onWheel: callbacks.onWheel)
+                onWheel: callbacks.onWheel,
+                onTouch: callbacks.onTouch)
             return .driver(drv, seized: shouldSeize)
         }
 

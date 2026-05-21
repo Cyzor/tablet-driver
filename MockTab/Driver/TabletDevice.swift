@@ -30,6 +30,13 @@ struct DigitizerSpec {
     /// Matches the number of physical toggle positions (e.g. 4 LED positions on Intuos Pro).
     /// The UI shows this many slots; the model always stores 4 (same pattern as expressKeyBindings).
     var ringSlotCount: Int = 4
+    /// True if this device has capacitive finger touch in addition to the pen.
+    /// Mirrors `WacomDeviceSpec.hasFingerTouch`; gates UI for the Touch pane
+    /// and the touch-enable feature report.  See `hasFingerTouch` doc there.
+    var hasFingerTouch: Bool = false
+    /// Maximum simultaneous touch contacts the device reports (1 for single-touch
+    /// Cintiqs like DTH-2400/DTH-2200; 10 for multi-touch DTH-271/DTH-135/DTH-1320).
+    var maxTouchContacts: Int = 0
 }
 
 protocol TabletDevice: AnyObject {
@@ -305,6 +312,27 @@ enum DecodeResult {
     /// Routed through `touchRingSlots[index]` in InputInjector so the user can
     /// configure scroll vs. key-press behaviour through the existing ring UI.
     case wheel(index: Int, delta: Int)
+    /// Capacitive finger-touch contact frame.  One emission carries the full
+    /// set of active contacts; an empty array signals "all fingers lifted".
+    /// Coordinates are in the same device-units space as `TabletPoint`
+    /// (decoder must scale to `spec.maxX`/`spec.maxY`).  See `TouchContact`.
+    ///
+    /// Currently emitted by no shipping decoder — Phase 1 plumbing for
+    /// Cintiq Pro 27 (DTH-271), Movink 13 (DTH-135), Cintiq 16 (DTH-1320),
+    /// Cintiq 24HD Touch (DTH-2400), Cintiq 22HD Touch (DTH-2200) once a
+    /// real capture confirms the per-family byte layout.
+    case touch([TouchContact])
+}
+
+/// A single capacitive contact point reported by a touch-capable Wacom display.
+/// `id` is a per-contact tracking identifier reused across frames for the same
+/// finger (typically 0–9 on 10-point devices).  `contactArea` is optional and
+/// only populated on devices that report contact-major.
+struct TouchContact: Equatable {
+    let id: Int
+    let x: Int
+    let y: Int
+    let contactArea: Int?
 }
 
 protocol WacomDecoder {

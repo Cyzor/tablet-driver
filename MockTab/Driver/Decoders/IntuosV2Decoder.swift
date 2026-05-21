@@ -16,6 +16,17 @@ import Foundation
 /// 0x1E Offset pen report (driver-compatibility mode)
 /// 0x11 Auxiliary (express key + touch ring) report
 /// 0x80 Wireless status report (ACK-40401 RF dongle)
+///
+/// TODO (finger touch): DTH-271, DTH-135, DTH-1320 (parser=.intuosV2 family)
+/// also expose a capacitive multi-touch surface.  The wire format is not yet
+/// known — touch reports likely arrive on a separate HID interface (different
+/// usagePage/usage from the pen digitizer) and may need a routing change in
+/// DeviceRouter so that interface lands on this decoder.  Once a real capture
+/// from one of those devices is available, add the appropriate report ID to
+/// the switch below and emit `.touch([TouchContact])` per frame.  Do not
+/// guess the layout from Notes/Wacom-HID-Touch-Reference.md without a live
+/// capture — those bytes are a generic HID multi-touch schema, not Wacom-
+/// specific, and the actual layout almost certainly differs.
 struct IntuosV2Decoder: WacomDecoder {
 
     func decode(

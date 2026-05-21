@@ -69,6 +69,8 @@
 		AA00DR01 /* DeviceRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DR01 /* DeviceRouter.swift */; };
 		AA00HD01 /* HIDDescriptorReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HD01 /* HIDDescriptorReader.swift */; };
 		AA00HH01 /* HIDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HH01 /* HIDHelpers.swift */; };
+		AA00TT01 /* TouchStateTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00TT01 /* TouchStateTracker.swift */; };
+		AA00TV01 /* TouchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00TV01 /* TouchView.swift */; };
 		AA00HT01 /* HIDThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HT01 /* HIDThread.swift */; };
 		AA00IS01 /* InjectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00IS01 /* InjectionSnapshot.swift */; };
 		AA00MM01 /* ModifierMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00MM01 /* ModifierMath.swift */; };
@@ -173,6 +175,8 @@
 		AB00DR01 /* DeviceRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRouter.swift; sourceTree = "<group>"; };
 		AB00HD01 /* HIDDescriptorReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDDescriptorReader.swift; sourceTree = "<group>"; };
 		AB00HH01 /* HIDHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDHelpers.swift; sourceTree = "<group>"; };
+		AB00TT01 /* TouchStateTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchStateTracker.swift; sourceTree = "<group>"; };
+		AB00TV01 /* TouchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchView.swift; sourceTree = "<group>"; };
 		AB00HT01 /* HIDThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDThread.swift; sourceTree = "<group>"; };
 		AB00IS01 /* InjectionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjectionSnapshot.swift; sourceTree = "<group>"; };
 		AB00MM01 /* ModifierMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierMath.swift; sourceTree = "<group>"; };
@@ -256,6 +260,7 @@
 				AB00MM01 /* ModifierMath.swift */,
 				AB00HD01 /* HIDDescriptorReader.swift */,
 				AB00HH01 /* HIDHelpers.swift */,
+				AB00TT01 /* TouchStateTracker.swift */,
 				AB000008 /* InputInjector.swift */,
 				AB00IS01 /* InjectionSnapshot.swift */,
 				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
@@ -317,6 +322,7 @@
 				AB000033 /* InfoView.swift */,
 				AB000034 /* ProfilesView.swift */,
 				AB000040 /* DevicesView.swift */,
+				AB00TV01 /* TouchView.swift */,
 			);
 			path = Panes;
 			sourceTree = "<group>";
@@ -483,6 +489,8 @@
 				AA00MM01 /* ModifierMath.swift in Sources */,
 				AA00HD01 /* HIDDescriptorReader.swift in Sources */,
 				AA00HH01 /* HIDHelpers.swift in Sources */,
+				AA00TT01 /* TouchStateTracker.swift in Sources */,
+				AA00TV01 /* TouchView.swift in Sources */,
 				AA000072 /* OTDImporter.swift in Sources */,
 				AA000049 /* WacomKnownDevice.swift in Sources */,
 				AA000047 /* IntuosV2Decoder.swift in Sources */,

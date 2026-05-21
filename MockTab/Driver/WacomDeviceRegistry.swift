@@ -127,6 +127,16 @@ struct WacomDeviceSpec {
     let hasDualRings: Bool
     /// True if this model has dual capacitive touch strips (Intuos3 WS).
     let hasTouchStrips: Bool
+    /// True if this model has a capacitive touch surface for finger input in
+    /// addition to the pen digitizer (Cintiq Pro 27, Movink 13, Cintiq 16
+    /// touch, Cintiq 24HD/22HD Touch).  Gates the Touch settings pane and
+    /// the touch-enable feature-report path.
+    let hasFingerTouch: Bool
+    /// Maximum simultaneous touch contacts the device reports.  1 for the
+    /// single-touch Cintiq 24HD/22HD Touch displays; 10 for the multi-touch
+    /// Cintiq Pro 27, Movink 13, and Cintiq 16 family.  Zero when
+    /// `hasFingerTouch == false`.
+    let maxTouchContacts: Int
     /// Number of ring mode slots to expose in the UI.
     /// Defaults to 4, matching Wacom's standard 4-LED toggle ring layout.
     let ringSlotCount: Int
@@ -166,6 +176,7 @@ struct WacomDeviceSpec {
         maxX: Int, maxY: Int, maxPressure: Int,
         buttonCount: Int, hasTouchRing: Bool, hasDualRings: Bool = false,
         hasTouchStrips: Bool = false, ringSlotCount: Int = 4, hasEraser: Bool, hasTilt: Bool = false,
+        hasFingerTouch: Bool = false, maxTouchContacts: Int = 0,
         isPenDisplay: Bool = false,
         featureInit: [UInt8]?, seizeUSB: Bool,
         featureInit2: [UInt8]? = nil,
@@ -183,6 +194,8 @@ struct WacomDeviceSpec {
         self.hasTouchRing = hasTouchRing
         self.hasDualRings = hasDualRings
         self.hasTouchStrips = hasTouchStrips
+        self.hasFingerTouch = hasFingerTouch
+        self.maxTouchContacts = maxTouchContacts
         self.ringSlotCount = ringSlotCount
         self.hasEraser = hasEraser
         self.hasTilt = hasTilt
@@ -656,6 +669,7 @@ enum WacomDeviceRegistry {
             productID: 0x00F8, name: "Cintiq 24HD Touch (DTH-2400)",  // ⚠ estimated
             parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasDualRings: true, ringSlotCount: 3, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 1,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true, ledCompanionPID: 0x0056),
         .init(
@@ -944,6 +958,7 @@ enum WacomDeviceRegistry {
             productID: 0x034F, name: "Wacom DTH-1320",  // ⚠ from OTD
             parser: .intuosV2, maxX: 59552, maxY: 33848, maxPressure: 8191,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 10,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
@@ -968,12 +983,14 @@ enum WacomDeviceRegistry {
             productID: 0x03C0, name: "Wacom Cintiq Pro 27 (DTH-271)",  // ⚠ from OTD
             parser: .intuosV2, maxX: 120032, maxY: 67868, maxPressure: 8191,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 10,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
             productID: 0x03F0, name: "Wacom Movink 13 (DTH-135)",  // ⚠ from OTD
             parser: .intuosV3, maxX: 59552, maxY: 33848, maxPressure: 8191,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 10,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
 
@@ -1031,6 +1048,7 @@ enum WacomDeviceRegistry {
             productID: 0x005B, name: "Wacom Cintiq 22HD Touch (DTH-2200)",  // ⚠ from OTD (parser corrected from ⚠ kernel)
             parser: .cintiqV1, maxX: 95600, maxY: 54200, maxPressure: 2047,
             buttonCount: 20, hasTouchRing: false, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 1,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(

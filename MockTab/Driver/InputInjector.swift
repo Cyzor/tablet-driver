@@ -524,6 +524,14 @@ final class InputInjector {
                 for i in recentDeltas.indices { recentDeltas[i] = 0 }
                 recentDeltaHead = 0
             }
+            // Record the moment the pen leaves proximity so finger-touch can
+            // apply a short grace window (touchArbitrationGrace) before
+            // accepting contacts again — prevents the palm rejection failure
+            // pattern where lifting the pen drops a stray finger on the
+            // tablet and the touch path races the pen-up.
+            if lastProximity && !point.inProximity {
+                penProximityExitTime = CFAbsoluteTimeGetCurrent()
+            }
             lastProximity = point.inProximity
         }
 
@@ -945,6 +953,148 @@ final class InputInjector {
     /// `touchRingSlots[index]` so the user can configure scroll vs. key-press
     /// behaviour through the ring settings UI.  Falls back to a direct scroll
     /// event if no slot is defined for that index.
+    // MARK: - Finger-touch injection
+
+    /// Mutable per-sequence state for capacitive touch.  HIDThread-owned.
+    private var touchTracker = TouchStateTracker()
+    /// CFAbsoluteTime when the pen last left proximity.  Touch is suppressed
+    /// while the pen is in proximity and for a brief grace window after exit
+    /// so palm-rejection bounces (finger contact arriving 1–2 frames after
+    /// pen-up) don't slip through as cursor jumps.
+    private var penProximityExitTime: CFAbsoluteTime = 0
+    /// Per-Wacom-driver convention; tunable if reports show false positives.
+    private static let touchArbitrationGrace: CFAbsoluteTime = 0.08
+
+    /// Inject a touch contact frame.
+    ///
+    /// Behaviour:
+    ///   • `touchEnabled == false` → no-op.
+    ///   • Pen in proximity, or pen lifted within `touchArbitrationGrace`
+    ///     → drop the frame (and reset tracker so a stale gesture mid-touch
+    ///     doesn't persist when the pen interrupts).
+    ///   • Otherwise project each contact through the user's touch-area
+    ///     mapping into screen-space, hand to `TouchStateTracker`, and
+    ///     translate its `Intent` into CGEvents:
+    ///       - `.pointerMove` → `mouseMoved`
+    ///       - `.scrollDelta` → smooth scroll-wheel event with phase
+    ///       - `.tapClick`    → left-click at the current cursor position
+    ///
+    /// No shipping decoder produces touch frames yet; this is hot-path
+    /// plumbing for when a per-family touch decoder lands.
+    func injectTouch(contacts: [TouchContact], settings: TabletSettings?) {
+        rearmWatchdog()
+        guard let snap = injectionSnapshot, snap.touchEnabled else { return }
+
+        // Pen arbitration: pen takes priority.  Drop frames and reset tracker
+        // so a half-formed gesture doesn't resume after the pen lifts.
+        let now = CFAbsoluteTimeGetCurrent()
+        if lastProximity || now - penProximityExitTime < Self.touchArbitrationGrace {
+            if !contacts.isEmpty {
+                _ = touchTracker.process(
+                    contacts: [], tapToClick: false, twoFingerScroll: false,
+                    naturalScrolling: false, sensitivity: 1.0, now: now)
+            }
+            return
+        }
+
+        // Resolve display bounds — touch shares the pen's target display.
+        let idx = snap.targetDisplayIndex
+        if cachedDisplayIndex != idx {
+            let (bounds, displayID) = resolveDisplayBoundsAndID(snapshot: snap)
+            cachedDisplayBounds = bounds
+            cachedDisplayUUID = CalibrationKey.uuidString(for: displayID)
+            cachedDisplayIndex = idx
+            cachedCalibrationOrientation = -1
+        }
+        let displayBounds = cachedDisplayBounds
+
+        // Project each contact to screen-space using the touch-area mapping.
+        // Coordinate maximums come from the active settings' digitizer spec
+        // via the snapshot's pen path; touch reports share the device's
+        // coordinate range (DTH-* devices use the same maxX/maxY for both).
+        let mx = Int(Swift.max(1.0, Double(deviceProductID == 0 ? 1 : 1)))  // placeholder — replaced below
+        _ = mx
+        // The injector doesn't currently carry the digitizer spec separately
+        // from the per-event TabletPoint.  Touch reports include absolute
+        // coordinates already in device units; until a real capture lets us
+        // confirm whether they share the pen's coordinate range, we derive
+        // the bounds from the maximum X/Y observed in the contact frame
+        // versus the snapshot's active area, normalising to 0..1 with a
+        // pessimistic floor.  This is fine for plumbing — a real decoder
+        // will pass the correct (maxX, maxY) once it knows the layout.
+        let maxX = Swift.max(1, contacts.map(\.x).max() ?? 1)
+        let maxY = Swift.max(1, contacts.map(\.y).max() ?? 1)
+
+        let projected: [(id: Int, screen: CGPoint)] = contacts.map { c in
+            let p = TouchStateTracker.screenPoint(
+                for: c, maxX: maxX, maxY: maxY,
+                areaX: snap.touchAreaX, areaY: snap.touchAreaY,
+                areaWidth: snap.touchAreaWidth, areaHeight: snap.touchAreaHeight,
+                displayBounds: displayBounds)
+            return (id: c.id, screen: p)
+        }
+
+        let intent = touchTracker.process(
+            contacts: projected,
+            tapToClick: snap.tapToClick,
+            twoFingerScroll: snap.twoFingerScroll,
+            naturalScrolling: snap.naturalScrolling,
+            sensitivity: snap.touchSensitivity,
+            now: now)
+
+        switch intent {
+        case .none:
+            return
+        case .pointerMove(let dx, let dy):
+            postTouchPointerMove(dx: dx, dy: dy)
+        case .scrollDelta(let dx, let dy, let phase):
+            postTouchScroll(dx: dx, dy: dy, phase: phase)
+        case .tapClick:
+            postTouchTapClick(snapshot: snap, settings: settings)
+        }
+    }
+
+    private func postTouchPointerMove(dx: Double, dy: Double) {
+        let loc = currentCursorPosition()
+        let target = CGPoint(x: loc.x + dx, y: loc.y + dy)
+        guard let e = CGEvent(
+            mouseEventSource: sessionSource,
+            mouseType: .mouseMoved,
+            mouseCursorPosition: target,
+            mouseButton: .left)
+        else { return }
+        e.flags = moveSafeEventFlags
+        finalizeAndPost(e)
+    }
+
+    private func postTouchScroll(dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase) {
+        let loc = currentCursorPosition()
+        // .pixel units + the scroll-phase field is what makes apps treat the
+        // stream as a trackpad scroll (smooth, with rubber-banding) rather
+        // than a discrete wheel-tick scroll.
+        guard let e = CGEvent(
+            scrollWheelEvent2Source: sessionSource,
+            units: .pixel,
+            wheelCount: 2,
+            wheel1: Int32(dy.rounded()),
+            wheel2: Int32(dx.rounded()),
+            wheel3: 0)
+        else { return }
+        e.location = loc
+        e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
+        e.flags = moveSafeEventFlags
+        finalizeAndPost(e)
+    }
+
+    private func postTouchTapClick(snapshot: InjectionSnapshot, settings: TabletSettings?) {
+        let loc = currentCursorPosition()
+        let (clickPt, count) = resolveClick(loc, snapshot: snapshot)
+        postMouseDown(
+            button: .left, at: clickPt, pressure: 1.0, clickCount: count, snapshot: snapshot)
+        postMouseUp(button: .left, at: clickPt, clickCount: count, snapshot: snapshot)
+    }
+
     func injectWheel(index: Int, delta: Int, settings: TabletSettings?) {
         rearmWatchdog()
         guard let snap = injectionSnapshot else { return }

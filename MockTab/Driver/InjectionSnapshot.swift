@@ -49,6 +49,18 @@ struct InjectionSnapshot: Sendable, Equatable {
     var touchRingSlots: [ControlSlot]
     var touchRingActiveSlotIndex: Int
 
+    // MARK: - Capacitive finger touch
+
+    var touchEnabled: Bool
+    var touchSensitivity: Double
+    var tapToClick: Bool
+    var twoFingerScroll: Bool
+    var naturalScrolling: Bool
+    var touchAreaX: Double
+    var touchAreaY: Double
+    var touchAreaWidth: Double
+    var touchAreaHeight: Double
+
     /// Value-typed copy of the @MainActor `ToolSettings` instance.
     /// Includes the precomputed pressure LUT so HIDThread doesn't reach back into
     /// the live `ToolSettings` reference (which is owned by the main actor).
@@ -110,7 +122,16 @@ extension TabletSettings {
             expressKeyBindings: expressKeyBindings,
             touchRingButtonBinding: touchRingButtonBinding,
             touchRingSlots: touchRingSlots,
-            touchRingActiveSlotIndex: touchRingActiveSlotIndex)
+            touchRingActiveSlotIndex: touchRingActiveSlotIndex,
+            touchEnabled: touchEnabled,
+            touchSensitivity: touchSensitivity,
+            tapToClick: tapToClick,
+            twoFingerScroll: twoFingerScroll,
+            naturalScrolling: naturalScrolling,
+            touchAreaX: touchAreaX,
+            touchAreaY: touchAreaY,
+            touchAreaWidth: touchAreaWidth,
+            touchAreaHeight: touchAreaHeight)
     }
 }
 

@@ -17,6 +17,15 @@ import Foundation
 ///   0x02 — pen digitizer (10-byte IntuosV1, WACOM_24HD typeNibble dispatch)
 ///   0x0C — touch rings + express keys (Linux kernel WACOM_24HD pad layout)
 ///
+/// TODO (finger touch): DTH-2400 (single-touch) and DTH-2200 (single-touch) also
+/// have a capacitive touch surface.  Wire format unknown — touch likely arrives on
+/// a separate HID interface (different usagePage/usage than the pen digitizer) and
+/// will need a routing change in DeviceRouter so that interface lands on this
+/// decoder.  Once a real capture from one of those devices is available, add the
+/// appropriate report ID to the dispatch switch and emit `.touch([TouchContact])`.
+/// Do not guess the layout from a generic HID spec — Wacom's actual byte layout
+/// almost certainly differs from the multi-touch reference in Notes/.
+///
 /// **Pen report type-nibble dispatch: `(status >> 1) & 0x0F`**
 ///   0x00–0x03: general pen packet (position, pressure, tilt, barrel buttons)
 ///   0x05:      Art Pen / Marker Pen rotation (ABS_Z kernel formula)

@@ -202,7 +202,7 @@ final class SettingsWindowController: NSWindowController {
     private let tabVC = ResizableTabViewController()
 
     enum Tab: Int {
-        case tabletArea = 0, penFeel, buttons, display, devices, profiles, scratchpad, info
+        case tabletArea = 0, penFeel, buttons, touch, display, devices, profiles, scratchpad, info
     }
 
     static let tabLabels = [
@@ -211,6 +211,7 @@ final class SettingsWindowController: NSWindowController {
             localized: "Pen Feel",
             comment: "Tab name: pen pressure, smoothing, double-click settings"),
         String(localized: "Buttons", comment: "Tab name: button and key mapping"),
+        String(localized: "Touch", comment: "Tab name: capacitive finger-touch settings"),
         String(localized: "Display", comment: "Tab name: display mapping and preview"),
         String(localized: "Devices", comment: "Tab name: tablet and tool registry"),
         String(localized: "Profiles", comment: "Tab name: profile management"),
@@ -218,7 +219,7 @@ final class SettingsWindowController: NSWindowController {
         String(localized: "Info", comment: "Tab name: live pen coordinates and device info"),
     ]
 
-    private static let deviceSpecificTabIndices: Set<Int> = [0, 1, 2, 3, 4, 5, 6, 7]
+    private static let deviceSpecificTabIndices: Set<Int> = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 
     init(settings: TabletSettings, deviceLabel: String, productID: Int?) {
         self.settings = settings
@@ -262,8 +263,8 @@ final class SettingsWindowController: NSWindowController {
             guard let self else { return }
             let label =
                 self.tabVC.tabViewItems[safe: self.tabVC.selectedTabViewItemIndex]?.label ?? ""
-            // Use tabLabels indices to match localized strings regardless of locale:
-            // [2] = Buttons, [6] = Scratchpad, [7] = Info
+            // Use tabLabels indices via the Tab enum so adding/reordering tabs
+            // doesn't break the visibility gate.
             let isInfoTab = (label == Self.tabLabels[Tab.info.rawValue] || label == Self.tabLabels[Tab.buttons.rawValue] || label == Self.tabLabels[Tab.scratchpad.rawValue])
             let isKeyWindow = window?.isKeyWindow ?? false
             Task { @MainActor in
@@ -309,33 +310,42 @@ final class SettingsWindowController: NSWindowController {
             PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
         }
 
-        addTab(label: Self.tabLabels[0], symbol: "rectangle.dashed", height: 790) {
+        addTab(label: Self.tabLabels[Tab.tabletArea.rawValue], symbol: "rectangle.dashed", height: 790) {
             TabletAreaView(
                 settings: s, tabletManager: tm, registry: dr,
                 onDeviceSelected: onDevice, boundProductID: productID)
         }
-        addTab(label: Self.tabLabels[1], symbol: "scribble.variable", height: 480, freezeOnResize: true) {
+        addTab(label: Self.tabLabels[Tab.penFeel.rawValue], symbol: "scribble.variable", height: 480, freezeOnResize: true) {
             PenFeelView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: Self.tabLabels[2], symbol: "square.grid.2x2.fill", height: 575, freezeOnResize: true) {
+        addTab(label: Self.tabLabels[Tab.buttons.rawValue], symbol: "square.grid.2x2.fill", height: 575, freezeOnResize: true) {
             ButtonMappingView(
                 settings: s, tabletManager: tm, registry: dr,
                 productID: productID)
         }
-        addTab(label: Self.tabLabels[3], symbol: "display", height: 370) {
+        // Touch tab is only registered for devices whose spec declares finger touch.
+        // The pane itself also guards against being shown for a non-touch device
+        // (defence-in-depth in case the spec lookup changes).
+        let touchSpec = productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
+        if touchSpec?.hasFingerTouch == true {
+            addTab(label: Self.tabLabels[Tab.touch.rawValue], symbol: "hand.point.up.left", height: 480) {
+                TouchView(settings: s, tabletManager: tm, registry: dr, productID: productID)
+            }
+        }
+        addTab(label: Self.tabLabels[Tab.display.rawValue], symbol: "display", height: 370) {
             DisplayMappingView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: Self.tabLabels[4], symbol: "rectangle.on.rectangle", height: 480, width: 620)
+        addTab(label: Self.tabLabels[Tab.devices.rawValue], symbol: "rectangle.on.rectangle", height: 480, width: 620)
         {
             DevicesView(settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
         }
-        addTab(label: Self.tabLabels[5], symbol: "star.circle", height: 450) {
+        addTab(label: Self.tabLabels[Tab.profiles.rawValue], symbol: "star.circle", height: 450) {
             ProfilesView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: Self.tabLabels[6], symbol: "pencil.and.outline", height: 360) {
+        addTab(label: Self.tabLabels[Tab.scratchpad.rawValue], symbol: "pencil.and.outline", height: 360) {
             ScratchpadView(settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
         }
-        addTab(label: Self.tabLabels[7], symbol: "info.circle", height: 430) {
+        addTab(label: Self.tabLabels[Tab.info.rawValue], symbol: "info.circle", height: 430) {
             InfoView(tabletManager: tm, settings: s, productID: productID)
         }
 
