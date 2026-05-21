@@ -11,8 +11,11 @@ parser family are NOT checked — those need protocol-level judgement and
 are out of scope for this rote-comparison tool.
 
 Usage:
-    python3 tools/audit_registry.py            # full audit
-    python3 tools/audit_registry.py --family X # filter by name substring
+    python3 tools/audit_registry.py                  # full audit
+    python3 tools/audit_registry.py --family X       # filter by name substring
+    python3 tools/audit_registry.py --only numeric   # show only maxX/Y/Pressure drift
+    python3 tools/audit_registry.py --only name      # show only name-string differences
+    python3 tools/audit_registry.py --only buttons   # show only buttonCount differences
 """
 from __future__ import annotations
 import argparse
@@ -78,44 +81,86 @@ def parse_kernel() -> dict[int, dict]:
     return rows
 
 
-def diff(reg: dict, ker: dict, family_filter: str | None) -> int:
+NUMERIC_FIELDS = ("maxX", "maxY", "maxPressure")
+
+
+def diff(reg: dict, ker: dict, family_filter: str | None,
+         only: str | None) -> int:
     common = sorted(set(reg) & set(ker))
-    mismatches = 0
+    printed = 0
+    numeric_count = 0
+    button_count = 0
+    name_only_count = 0
     for pid in common:
         r = reg[pid]
         k = ker[pid]
         if family_filter and family_filter.lower() not in r["name"].lower():
             continue
-        # Strict numeric diff; name diff is "fuzzy" (kernel often uses
-        # marketing-free names like "Wacom ISDv5 307" — flag but not fail).
-        deltas = []
-        for field in ("maxX", "maxY", "maxPressure", "buttonCount"):
-            if r[field] != k[field]:
-                deltas.append(f"{field}: {r[field]} -> {k[field]}")
-        # Name mismatch reported separately so callers can choose to fix
-        # those as well; not all kernel names are user-friendly.
+        numeric_deltas = [
+            f"{f}: {r[f]} -> {k[f]}"
+            for f in NUMERIC_FIELDS if r[f] != k[f]
+        ]
+        button_delta = (
+            f"buttonCount: {r['buttonCount']} -> {k['buttonCount']}"
+            if r["buttonCount"] != k["buttonCount"] else None
+        )
+        # Name mismatch reported separately; not all kernel names are
+        # user-friendly ("Wacom ISDv5 307" etc.).
         name_delta = r["name"] != k["name"]
-        if deltas or name_delta:
-            mismatches += 1
-            print(f"0x{pid:04X}  registry: {r['name']!r}")
-            print(f"        kernel:   {k['name']!r}")
-            for d in deltas:
-                print(f"          {d}")
-            print()
-    return mismatches
+
+        # Bucket classification (priority: numeric > buttons > name).
+        if numeric_deltas:
+            numeric_count += 1
+        elif button_delta:
+            button_count += 1
+        elif name_delta:
+            name_only_count += 1
+        else:
+            continue
+
+        # Apply --only filter for display.
+        if only == "numeric" and not numeric_deltas:
+            continue
+        if only == "buttons" and not button_delta:
+            continue
+        if only == "name" and (numeric_deltas or button_delta or not name_delta):
+            continue
+
+        printed += 1
+        print(f"0x{pid:04X}  registry: {r['name']!r}")
+        print(f"        kernel:   {k['name']!r}")
+        for d in numeric_deltas:
+            print(f"          {d}")
+        if button_delta:
+            print(f"          {button_delta}")
+        print()
+
+    total = numeric_count + button_count + name_only_count
+    print(
+        f"\n{total} entries with discrepancies"
+        f"  (numeric: {numeric_count}, buttons-only: {button_count}, "
+        f"name-only: {name_only_count})",
+        file=sys.stderr,
+    )
+    if only:
+        print(f"shown ({only}): {printed}", file=sys.stderr)
+    return total
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--family", help="filter by name substring")
+    ap.add_argument(
+        "--only", choices=("numeric", "name", "buttons"),
+        help="restrict output to one bucket (summary still totals all)",
+    )
     args = ap.parse_args()
     reg = parse_registry()
     ker = parse_kernel()
     print(f"Registry entries parsed: {len(reg)}", file=sys.stderr)
     print(f"Kernel entries parsed:   {len(ker)}", file=sys.stderr)
     print(f"Overlap:                 {len(set(reg) & set(ker))}", file=sys.stderr)
-    n = diff(reg, ker, args.family)
-    print(f"\n{n} entries with discrepancies", file=sys.stderr)
+    diff(reg, ker, args.family, args.only)
     return 0
 
 
