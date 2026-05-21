@@ -45,6 +45,9 @@ final class TabletManager: ObservableObject {
     @Published var activeToolID: String? = nil
     @Published var liveButtons = LiveButtonState()
     @Published var livePoint: TabletPoint? = nil
+    /// Most-recent touch contacts from the active device's touch surface.
+    /// Empty when no contacts are active or the device has no finger touch.
+    @Published var liveTouchContacts: [TouchContact] = []
 
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
     private var shimObservers: [NSObjectProtocol] = []
@@ -526,9 +529,12 @@ final class TabletManager: ObservableObject {
         // Called on HIDThread when a decoder emits a `.touch` result.  No
         // shipping decoder produces these yet — closure exists so the path
         // is hot the moment a per-family touch decoder lands.
-        let onTouch: ([TouchContact]) -> Void = { [weak context] contacts in
+        let onTouch: ([TouchContact]) -> Void = { [weak self, weak context] contacts in
             guard let context else { return }
             context.injector.injectTouch(contacts: contacts, settings: context.settings)
+            DispatchQueue.main.async { [weak self] in
+                self?.liveTouchContacts = contacts
+            }
         }
 
         let callbacks = DeviceRouter.Callbacks(

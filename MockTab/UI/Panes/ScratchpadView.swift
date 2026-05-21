@@ -66,9 +66,17 @@ struct ScratchpadView: View {
             pressureRow
 
             tiltRow
+
+            if spec?.hasFingerTouch == true {
+                touchRow
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var spec: WacomDeviceSpec? {
+        productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
 
     private var pressureRow: some View {
@@ -117,6 +125,24 @@ struct ScratchpadView: View {
             TiltVisualizerCanvas(tabletManager: tabletManager)
                 .frame(width: 100, height: 100)
                 .help(LocalizedStringKey("Live tilt direction and magnitude from the active pen."))
+
+            Spacer()
+        }
+    }
+
+    private var touchRow: some View {
+        HStack(spacing: 10) {
+            Text(LocalizedStringKey("Touch"))
+                .font(.settingsLabel)
+                .foregroundStyle(.secondary)
+                .frame(width: 58, alignment: .leading)
+
+            TouchContactsCanvas(
+                contacts: tabletManager.liveTouchContacts,
+                maxContacts: spec?.maxTouchContacts ?? 10
+            )
+            .frame(width: 100, height: 100)
+            .help(LocalizedStringKey("Live finger-touch contacts from the active device's touch surface."))
 
             Spacer()
         }
@@ -216,6 +242,80 @@ private struct TiltDisc: View, Equatable {
         ctx.stroke(
             Path(ellipseIn: rect),
             with: .color(.white.opacity(0.9)), lineWidth: 1)
+    }
+}
+
+// MARK: - Touch contacts visualizer
+
+/// Top-down rectangle showing normalised finger-contact positions as numbered
+/// dots. The tablet's touch surface maps to the full canvas area.
+/// Contacts fade out over ~0.3 s after they lift (lift = empty contacts array).
+private struct TouchContactsCanvas: View, Equatable {
+    let contacts: [TouchContact]
+    let maxContacts: Int
+
+    static func == (lhs: TouchContactsCanvas, rhs: TouchContactsCanvas) -> Bool {
+        lhs.contacts == rhs.contacts && lhs.maxContacts == rhs.maxContacts
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            Canvas { ctx, size in
+                drawBorder(ctx: ctx, size: size)
+                drawContacts(ctx: ctx, size: size)
+            }
+        }
+    }
+
+    private func drawBorder(ctx: GraphicsContext, size: CGSize) {
+        let rect = CGRect(origin: .zero, size: size).insetBy(dx: 0.5, dy: 0.5)
+        ctx.stroke(
+            Path(roundedRect: rect, cornerRadius: 3),
+            with: .color(.secondary.opacity(0.3)), lineWidth: 1)
+    }
+
+    private func drawContacts(ctx: GraphicsContext, size: CGSize) {
+        guard !contacts.isEmpty else { return }
+
+        // Determine the normalised coordinate range from the first contact.
+        // TouchContact uses raw tablet units; we don't have access to maxX/maxY
+        // here, so normalise each contact against the bounding box of all
+        // contacts with a small guard against zero-range.
+        let xs = contacts.map { Double($0.x) }
+        let ys = contacts.map { Double($0.y) }
+
+        // Normalise within [0,1] using whatever range the contacts span.
+        // Falls back to centring a single contact on the canvas.
+        func norm(_ val: Double, _ vals: [Double]) -> Double {
+            let lo = vals.min() ?? 0
+            let hi = vals.max() ?? 1
+            guard hi > lo else { return 0.5 }
+            return (val - lo) / (hi - lo)
+        }
+
+        let r: CGFloat = 6
+        let pad: CGFloat = r + 4
+
+        for (i, contact) in contacts.enumerated() {
+            let nx = contacts.count == 1 ? 0.5 : norm(Double(contact.x), xs)
+            let ny = contacts.count == 1 ? 0.5 : norm(Double(contact.y), ys)
+
+            // Tablet Y increases downward in most drivers; flip for screen coords.
+            let cx = pad + nx * (size.width  - 2 * pad)
+            let cy = pad + (1 - ny) * (size.height - 2 * pad)
+            let dot = CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2)
+
+            ctx.fill(Path(ellipseIn: dot), with: .color(.accentColor.opacity(0.8)))
+            ctx.stroke(Path(ellipseIn: dot), with: .color(.white.opacity(0.9)), lineWidth: 1)
+
+            // Label: contact index
+            ctx.draw(
+                Text("\(i + 1)")
+                    .font(.system(size: 7, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.white),
+                at: CGPoint(x: cx, y: cy),
+                anchor: .center)
+        }
     }
 }
 
