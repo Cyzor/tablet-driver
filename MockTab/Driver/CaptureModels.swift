@@ -134,6 +134,22 @@ enum CalibrationStep: Int, CaseIterable, Identifiable {
     static var withTouchRing: [CalibrationStep] {
         withRotation + [.touchRing, .touchRingPos0, .touchRingPos36, .touchRingPos71]
     }
+
+    /// Universal step set for unknown devices. Covers every input class we know
+    /// how to look for. Steps that don't apply to a given device are expected to
+    /// be skipped by the user (the engine times out after 60s if no delta).
+    /// Excludes `.idle` because it never produces a delta and would always time out.
+    static var allUniversal: [CalibrationStep] {
+        [
+            .tipDown, .tipUp,
+            .penButton1, .penButton2,
+            .eraserDown, .eraserUp,
+            .hover5mm, .tilt15, .tilt45,
+            .expressKey1, .expressKey2, .expressKey3, .expressKey4,
+            .expressKey5, .expressKey6, .expressKey7, .expressKey8,
+            .touchRing, .touchRingPos0, .touchRingPos36, .touchRingPos71,
+        ]
+    }
 }
 
 // MARK: - Captured Sample
@@ -240,12 +256,13 @@ struct CapturedReportSummary: Identifiable {
 
 /// Complete output of a calibration session — ready for JSON export.
 struct CalibrationResult: Codable {
-    var captureVersion: Int = 1
+    var captureVersion: Int = 2
     let capturedAt: Date
     let deviceInfo: DeviceInfo
     let reports: [String: ReportInfo]
     let notes: String?
     let submitterContact: String?
+    var hidReportDescriptor: HIDDescriptorReader.Parsed?
 
     struct DeviceInfo: Codable {
         let vendorID: String
@@ -253,6 +270,8 @@ struct CalibrationResult: Codable {
         let name: String
         let locationID: String?
         let serialNumber: String?
+        var manufacturer: String?
+        var transport: String?
     }
 
     struct ReportInfo: Codable {
@@ -280,18 +299,25 @@ struct CalibrationResult: Codable {
 /// Output of a discovery session — for unknown devices.
 /// Records all report IDs seen and which bytes vary vs constant.
 struct DiscoveryResult: Codable {
-    var captureVersion: Int = 2
+    var captureVersion: Int = 3
     let capturedAt: Date
     let mode: String  // always "discovery"
     let duration: TimeInterval
     let deviceInfo: DiscoveryDeviceInfo
     let reports: [String: DiscoveryReportSummary]
+    var hidReportDescriptor: HIDDescriptorReader.Parsed?
+    var notes: String?
+    var submitterContact: String?
 }
 
 struct DiscoveryDeviceInfo: Codable {
     let vendorID: String
     let productID: String
     let name: String
+    var manufacturer: String?
+    var transport: String?
+    var serialNumber: String?
+    var locationID: String?
 }
 
 struct DiscoveryReportSummary: Codable {
@@ -327,6 +353,9 @@ struct CaptureDeviceInfo {
     let name: String
     let locationID: String?
     let serialNumber: String?
+    var manufacturer: String? = nil
+    var transport: String? = nil
+    var parsedDescriptor: HIDDescriptorReader.Parsed? = nil
 
     var vendorIDHex: String   { String(format: "0x%04X", vendorID) }
     var productIDHex: String  { String(format: "0x%04X", productID) }

@@ -366,9 +366,16 @@ private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryRes
         deviceInfo: DiscoveryDeviceInfo(
             vendorID: deviceInfo.vendorIDHex,
             productID: deviceInfo.productIDHex,
-            name: deviceInfo.name
+            name: deviceInfo.name,
+            manufacturer: deviceInfo.manufacturer,
+            transport: deviceInfo.transport,
+            serialNumber: deviceInfo.serialNumber,
+            locationID: deviceInfo.locationID
         ),
-        reports: reportSummaries
+        reports: reportSummaries,
+        hidReportDescriptor: deviceInfo.parsedDescriptor,
+        notes: nil,
+        submitterContact: nil
     )
 }
     // MARK: - JSON Export
@@ -532,11 +539,14 @@ private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryRes
                 productID: deviceInfo.productIDHex,
                 name: deviceInfo.name,
                 locationID: deviceInfo.locationID,
-                serialNumber: deviceInfo.serialNumber
+                serialNumber: deviceInfo.serialNumber,
+                manufacturer: deviceInfo.manufacturer,
+                transport: deviceInfo.transport
             ),
             reports: reportInfoDict,
             notes: notes,
-            submitterContact: nil
+            submitterContact: nil,
+            hidReportDescriptor: deviceInfo.parsedDescriptor
         )
     }
 

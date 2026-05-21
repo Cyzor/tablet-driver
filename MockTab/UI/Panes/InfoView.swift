@@ -23,6 +23,9 @@ struct InfoView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    if fallbackDevice != nil {
+                        unknownDeviceBanner
+                    }
                     statusTable
                     Divider()
                     LiveInputView(
@@ -65,6 +68,40 @@ struct InfoView: View {
 
     private var deviceContext: DeviceContext? {
         tabletManager.contexts[productID ?? 0]
+    }
+
+    private var fallbackDevice: WacomFallbackDevice? {
+        deviceContext?.tabletDevice as? WacomFallbackDevice
+    }
+
+    private var unknownDeviceBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "questionmark.circle.fill")
+                .foregroundStyle(.orange)
+                .imageScale(.large)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(String(localized: "Unrecognised tablet", comment: "Banner title shown when active device is on the generic fallback driver"))
+                    .font(.headline)
+                Text(String(localized: "MockTab is using its generic driver for this device. Basic pen input may work, but full support requires a short data-collection session.", comment: "Body of the unknown-device banner"))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(String(localized: "Collect Device Data…", comment: "Banner button: start the data-collection session for an unknown device")) {
+                    showCaptureGuide = true
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .padding(.top, 2)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color.orange.opacity(0.45), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     private var statusTable: some View {
@@ -336,6 +373,17 @@ struct InfoView: View {
             let jitter = String(format: "%.2f", ctx.injector.jitterLevel)
             let highLabel = ctx.injector.isJittery ? String(localized: " (HIGH)", comment: "Jitter level warning") : ""
             lines += [String(localized: "Jitter level   : \(jitter) pt/sample\(highLabel)", comment: "Diagnostic: input jitter measurement")]
+        }
+
+        if let fallback = fallbackDevice {
+            lines += [""]
+            lines += ["─── HID Report Descriptor (fallback driver) ───"]
+            lines += [HIDDescriptorReader.summarize(fallback.parsedDescriptor)]
+            if let hex = fallback.parsedDescriptor.rawHex {
+                lines += [""]
+                lines += ["Raw bytes:"]
+                lines += [hex]
+            }
         }
 
         return lines.joined(separator: "\n")

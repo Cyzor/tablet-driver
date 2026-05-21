@@ -32,6 +32,9 @@ final class WacomFallbackDevice: TabletDevice {
     // Populated at init from HID descriptor query.
     let spec: DigitizerSpec
 
+    /// Parsed HID report descriptor, captured once at init for diagnostic display.
+    let parsedDescriptor: HIDDescriptorReader.Parsed
+
     private let device: IOHIDDevice
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((AuxButtons) -> Void)?
@@ -93,6 +96,7 @@ final class WacomFallbackDevice: TabletDevice {
 
         // Query HID descriptor for coordinate and pressure ranges.
         spec = Self.querySpec(device: device, family: family)
+        parsedDescriptor = HIDDescriptorReader.read(device)
     }
 
     // MARK: - HID descriptor query
@@ -190,6 +194,9 @@ final class WacomFallbackDevice: TabletDevice {
         let familyName = family == .intuosV1 ? "IntuosV1" : "IntuosV2"
         let maxX = spec.maxX; let maxY = spec.maxY; let maxP = spec.maxPressure
         logger.info("\(t, privacy: .public): generic driver attached (\(familyName, privacy: .public), maxX=\(maxX, privacy: .public) maxY=\(maxY, privacy: .public) maxP=\(maxP, privacy: .public))")
+
+        let summary = HIDDescriptorReader.summarize(parsedDescriptor)
+        logger.info("\(t, privacy: .public):\n\(summary, privacy: .public)")
     }
 
     func close() {

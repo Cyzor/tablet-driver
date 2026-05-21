@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import AppKit
+import IOKit.hid
 import SwiftUI
 
 /// Open-ended device data collection sheet.
@@ -25,8 +26,13 @@ struct CaptureGuideView: View {
 
     @State private var savedURL: URL? = nil
     @State private var showCancelConfirm = false
+    @State private var lastCapturedStep: CalibrationStep? = nil
 
     private var isComplete: Bool { savedURL != nil }
+
+    private var isUnknownDevice: Bool {
+        WacomDeviceRegistry.spec(for: productID) == nil
+    }
 
     // MARK: - Body
 
@@ -36,6 +42,8 @@ struct CaptureGuideView: View {
             Divider()
             if isComplete, let url = savedURL {
                 completionView(url: url)
+            } else if isUnknownDevice {
+                guidedRecordingView
             } else {
                 recordingView
             }
@@ -46,7 +54,7 @@ struct CaptureGuideView: View {
         .alert(String(localized: "Cancel Data Collection?", comment: "Data collection confirmation alert title"), isPresented: $showCancelConfirm) {
             Button(LocalizedStringKey("Continue Collecting"), role: .cancel) {}
             Button(LocalizedStringKey("Cancel"), role: .destructive) {
-                engine.cancelDiscovery()
+                if isUnknownDevice { engine.cancel() } else { engine.cancelDiscovery() }
                 onDismiss()
             }
         } message: {
@@ -121,6 +129,63 @@ struct CaptureGuideView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
+    // MARK: - Guided recording view (unknown devices)
+
+    private var guidedRecordingView: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let step = engine.armedStep {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(String(localized: "Step \(engine.currentStepIndex + 1) of \(engine.sessionSteps.count)", comment: "Guided capture: step progress, e.g. 'Step 3 of 21'"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(step.instruction)
+                        .font(.title3)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if lastCapturedStep == step {
+                        Label(String(localized: "Captured — advancing…", comment: "Guided capture: confirmation after a step's input is detected"),
+                              systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.caption)
+                    } else {
+                        Text(String(localized: "Perform the action above. If your tablet doesn't have it, click Skip.", comment: "Guided capture: prompt below current step instruction"))
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+            } else {
+                Text(String(localized: "Starting…", comment: "Guided capture: brief status while the first step arms"))
+                    .padding(20)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            HStack {
+                Button(String(localized: "Skip", comment: "Guided capture: skip the current step")) {
+                    lastCapturedStep = nil
+                    engine.skipCurrentStep()
+                }
+                .buttonStyle(.bordered)
+                .disabled(engine.armedStep == nil)
+                Spacer()
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(engine.isRunning ? Color.red : Color.secondary)
+                        .frame(width: 7, height: 7)
+                    Text(String(localized: "\(engine.stepResults.count) captured", comment: "Guided capture: count of steps with a captured sample"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
     @ViewBuilder
     private func instruction(_ icon: String, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -147,21 +212,86 @@ struct CaptureGuideView: View {
                 .font(.title3)
                 .fontWeight(.semibold)
 
-            Button {
-                NSWorkspace.shared.activateFileViewerSelecting([url])
-            } label: {
-                Label(String(localized: "Show File in Finder", comment: "Button label: open data collection file in Finder"), systemImage: "doc.badge.arrow.up")
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            HStack(spacing: 8) {
+                Button {
+                    openGitHubIssue(url: url)
+                } label: {
+                    Label(String(localized: "Open GitHub Issue…", comment: "Button label: open a pre-filled GitHub issue for device support"), systemImage: "arrow.up.right.square")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
 
-            Text(String(localized: "Share this file with MockTab developers for potential feature support.", comment: "Message encouraging user to share data collection file"))
+                Button {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                } label: {
+                    Label(String(localized: "Show in Finder", comment: "Button label: open data collection file in Finder"), systemImage: "doc.badge.arrow.up")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+
+            Text(String(localized: "The issue is pre-filled with your tablet's data. If the JSON is too large to fit in the form, drag the file from Finder into the issue body.", comment: "Caption on the data-collection completion screen"))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Open a pre-filled GitHub issue containing the capture JSON.
+    /// Falls back to a short body asking the user to drag-attach the file when
+    /// the inline JSON would exceed GitHub's URL form length limit.
+    private func openGitHubIssue(url: URL) {
+        let pidHex = String(format: "0x%04X", productID)
+        let title = "Device support: Wacom \(pidHex)"
+        let baseURL = "https://github.com/cyzor/tablet-driver/issues/new"
+        let json = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+
+        let inlineBody = """
+        <!-- Captured by MockTab — please leave the JSON block intact -->
+
+        **Wacom product ID:** `\(pidHex)`
+        **Capture file:** `\(url.lastPathComponent)`
+
+        <details><summary>Capture JSON</summary>
+
+        ```json
+        \(json)
+        ```
+
+        </details>
+        """
+
+        let fallbackBody = """
+        <!-- Captured by MockTab -->
+
+        **Wacom product ID:** `\(pidHex)`
+
+        The capture JSON is too large to fit in this form. Please drag
+        `\(url.lastPathComponent)` from Finder into the comment box to attach it.
+        """
+
+        var comps = URLComponents(string: baseURL)!
+        comps.queryItems = [
+            URLQueryItem(name: "title", value: title),
+            URLQueryItem(name: "labels", value: "device-support"),
+            URLQueryItem(name: "body", value: inlineBody),
+        ]
+
+        // GitHub serves /issues/new server-side; URL length needs to stay below
+        // typical browser/server limits. 7000 leaves headroom under the 8 KB mark.
+        if let u = comps.url, u.absoluteString.count > 7000 {
+            comps.queryItems = [
+                URLQueryItem(name: "title", value: title),
+                URLQueryItem(name: "labels", value: "device-support"),
+                URLQueryItem(name: "body", value: fallbackBody),
+            ]
+        }
+
+        if let u = comps.url {
+            NSWorkspace.shared.open(u)
+        }
     }
 
     // MARK: - Footer
@@ -181,7 +311,11 @@ struct CaptureGuideView: View {
                     .keyboardShortcut(.defaultAction)
             } else {
                 Button(LocalizedStringKey("Done")) {
-                    _ = engine.finishDiscovery()
+                    if isUnknownDevice {
+                        _ = engine.finish()
+                    } else {
+                        _ = engine.finishDiscovery()
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!engine.isRunning)
@@ -196,27 +330,56 @@ struct CaptureGuideView: View {
     private func startCollection() {
         guard let devInfo = deviceInfo() else { return }
 
-        engine.onDiscoveryComplete = { result in
-            Task { @MainActor in
-                if let url = engine.exportDiscoveryJSON(result: result) {
-                    savedURL = url
+        if isUnknownDevice {
+            engine.onSampleCaptured = { step, _ in
+                Task { @MainActor in
+                    lastCapturedStep = step
+                    try? await Task.sleep(nanoseconds: 800_000_000)
+                    engine.confirmAndContinue()
                 }
             }
+            engine.onCalibrationComplete = { result in
+                Task { @MainActor in
+                    if let url = engine.exportJSON(result: result) {
+                        savedURL = url
+                    }
+                }
+            }
+            engine.startCalibration(deviceInfo: devInfo, steps: CalibrationStep.allUniversal)
+        } else {
+            engine.onDiscoveryComplete = { result in
+                Task { @MainActor in
+                    if let url = engine.exportDiscoveryJSON(result: result) {
+                        savedURL = url
+                    }
+                }
+            }
+            engine.startDiscovery(deviceInfo: devInfo, duration: 3600)
         }
-
-        engine.startDiscovery(deviceInfo: devInfo, duration: 3600)
     }
 
     private func deviceInfo() -> CaptureDeviceInfo? {
         let name =
             WacomDeviceRegistry.spec(for: productID)?.name
             ?? TabletManager.deviceName(forProductID: productID)
+
+        let dev = tabletManager.contexts[productID]?.hidDevice
+        let manufacturer = dev.flatMap { IOHIDDeviceGetProperty($0, kIOHIDManufacturerKey as CFString) as? String }
+        let transport    = dev.flatMap { IOHIDDeviceGetProperty($0, kIOHIDTransportKey    as CFString) as? String }
+        let serial       = dev.flatMap { IOHIDDeviceGetProperty($0, kIOHIDSerialNumberKey as CFString) as? String }
+        let locationID   = dev.flatMap { IOHIDDeviceGetProperty($0, kIOHIDLocationIDKey   as CFString) as? Int }
+            .map { String(format: "0x%08X", $0) }
+        let parsed = dev.map { HIDDescriptorReader.read($0) }
+
         return CaptureDeviceInfo(
             vendorID: 0x056A,
             productID: productID,
             name: name,
-            locationID: nil,
-            serialNumber: nil
+            locationID: locationID,
+            serialNumber: serial,
+            manufacturer: manufacturer,
+            transport: transport,
+            parsedDescriptor: parsed
         )
     }
 }

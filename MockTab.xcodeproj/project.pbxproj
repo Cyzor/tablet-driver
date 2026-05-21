@@ -67,6 +67,7 @@
 		AA00C1F1 /* DTUSDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00C1F1 /* DTUSDecoder.swift */; };
 		AA00C1F2 /* DTUDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00C1F2 /* DTUDecoder.swift */; };
 		AA00DR01 /* DeviceRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DR01 /* DeviceRouter.swift */; };
+		AA00HD01 /* HIDDescriptorReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HD01 /* HIDDescriptorReader.swift */; };
 		AA00HH01 /* HIDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HH01 /* HIDHelpers.swift */; };
 		AA00HT01 /* HIDThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HT01 /* HIDThread.swift */; };
 		AA00IS01 /* InjectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00IS01 /* InjectionSnapshot.swift */; };
@@ -170,6 +171,7 @@
 		AB00C1F1 /* DTUSDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTUSDecoder.swift; sourceTree = "<group>"; };
 		AB00C1F2 /* DTUDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTUDecoder.swift; sourceTree = "<group>"; };
 		AB00DR01 /* DeviceRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRouter.swift; sourceTree = "<group>"; };
+		AB00HD01 /* HIDDescriptorReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDDescriptorReader.swift; sourceTree = "<group>"; };
 		AB00HH01 /* HIDHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDHelpers.swift; sourceTree = "<group>"; };
 		AB00HT01 /* HIDThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDThread.swift; sourceTree = "<group>"; };
 		AB00IS01 /* InjectionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjectionSnapshot.swift; sourceTree = "<group>"; };
@@ -252,6 +254,7 @@
 				AB000035 /* AppWatcher.swift */,
 				AB00HT01 /* HIDThread.swift */,
 				AB00MM01 /* ModifierMath.swift */,
+				AB00HD01 /* HIDDescriptorReader.swift */,
 				AB00HH01 /* HIDHelpers.swift */,
 				AB000008 /* InputInjector.swift */,
 				AB00IS01 /* InjectionSnapshot.swift */,
@@ -478,6 +481,7 @@
 				AA000102 /* CaptureEngine.swift in Sources */,
 				AA000071 /* WacomToolSpec.swift in Sources */,
 				AA00MM01 /* ModifierMath.swift in Sources */,
+				AA00HD01 /* HIDDescriptorReader.swift in Sources */,
 				AA00HH01 /* HIDHelpers.swift in Sources */,
 				AA000072 /* OTDImporter.swift in Sources */,
 				AA000049 /* WacomKnownDevice.swift in Sources */,
