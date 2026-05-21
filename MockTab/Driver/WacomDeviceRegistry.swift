@@ -443,7 +443,7 @@ enum WacomDeviceRegistry {
             featureInit2: [0x04, 0x00]),
         .init(
             productID: 0x00B5, name: "Intuos3 WS (PTZ-631W)",  // ✓ confirmed live
-            parser: .intuos3, maxX: 54204, maxY: 31750, maxPressure: 2046,
+            parser: .intuos3, maxX: 54204, maxY: 31750, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasTouchStrips: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false,
             featureInit2: [0x04, 0x00],
@@ -537,8 +537,10 @@ enum WacomDeviceRegistry {
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
+            // Dimensions corrected to kernel wacom_features_0x317 (65024×40640).
+            // Previous values (44704×27940) were the PTH-651 M-size by mistake.
             productID: 0x0317, name: "Intuos Pro L (PTH-851)",  // ✓ confirmed live
-            parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 1023,
+            parser: .intuosV1, maxX: 65024, maxY: 40640, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false,
             confidence: .verified),
@@ -940,11 +942,11 @@ enum WacomDeviceRegistry {
 
         // ── Cintiq pen-display additional models ──────────────────────────────
         .init(
-            // Pressure corrected from 2048 to 1023 per kernel wacom_features_0x304.
-            // Dimensions are within ~0.4 % of kernel's 59552×33848; left as-is
-            // (sub-pixel difference, not worth disturbing on an unverified entry).
+            // Pressure and dimensions corrected to kernel wacom_features_0x304
+            // (59552×33848, 1023 pressure). Previous dims were 59800×34200 (~0.4 %
+            // drift); aligned during 2026-05-21 audit pass.
             productID: 0x0304, name: "Wacom Cintiq 13HD (DTK-1300)",  // ⚠ from OTD
-            parser: .cintiqV1, maxX: 59800, maxY: 34200, maxPressure: 1023,
+            parser: .cintiqV1, maxX: 59552, maxY: 33848, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
@@ -1083,7 +1085,7 @@ enum WacomDeviceRegistry {
         .init(
             productID: 0x0343, name: "Wacom DTK1651",  // ⚠ from kernel
             parser: .dtus, maxX: 34816, maxY: 19759, maxPressure: 1023,
-            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            buttonCount: 4, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: false),
         .init(
