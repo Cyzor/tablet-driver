@@ -1,0 +1,66 @@
+name: Device support request
+description: Submit a capture for an unrecognised Wacom tablet
+title: "Device support: Wacom "
+labels: ["device-support"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before submitting:** use *Collect Device Data…* in MockTab's Info tab to generate a capture file. Paste its contents in the **Capture data** field below — that JSON is what makes new device support possible. If you used the in-app *Open GitHub Issue…* button the data is already pre-filled.
+
+  - type: input
+    id: model
+    attributes:
+      label: Model name / number
+      placeholder: "e.g. Intuos Pro Medium PTH-660"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Connection
+      options:
+        - USB
+        - Bluetooth
+        - USB wireless dongle
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "e.g. 15.4"
+    validations:
+      required: true
+
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: What happens
+      description: Which of these work, and which don't — pen tracking, pressure, tilt, buttons, touch?
+    validations:
+      required: false
+
+  - type: textarea
+    id: capture
+    attributes:
+      label: Capture data
+      description: Paste the contents of the JSON file produced by *Collect Device Data…*.
+      placeholder: |
+        ```json
+        <paste capture JSON here>
+        ```
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: The capture JSON is from this specific device, not copied from another issue.
+          required: true
