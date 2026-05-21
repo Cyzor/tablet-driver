@@ -63,7 +63,6 @@ struct PenDiagramView: View, Equatable {
             }
 
             let passive = Color.secondary
-//            let bodyFill = Color(NSColor.windowBackgroundColor)
             let bodyFill = Color.primary.opacity(0.80)
             let strokeDim = Color.secondary
             let accent = Color.accentColor
@@ -86,6 +85,5 @@ struct PenDiagramView: View, Equatable {
                 Self.tipPath, fill: liveButtons.tipDown ? accent : passive,
                 stroke: liveButtons.tipDown ? accent : strokeDim)
         }
-//        .shadow(color: Color.black.opacity(0.10), radius: 8, x: 0, y: 1)
     }
 }

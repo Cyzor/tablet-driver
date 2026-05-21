@@ -612,16 +612,16 @@ struct AppOverrideBar: View {
             } else {
                 ForEach(cachedRunningApps, id: \.bundleIdentifier) { app in
                     Button {
-                        addApp(bundleID: app.bundleIdentifier!, name: app.localizedName!)
+                        addApp(bundleID: app.bundleIdentifier ?? "", name: app.localizedName ?? "")
                     } label: {
                         if let icon = app.icon {
                             Label {
-                                Text(app.localizedName!)
+                                Text(app.localizedName ?? "")
                             } icon: {
                                 Image(nsImage: icon)
                             }
                         } else {
-                            Text(app.localizedName!)
+                            Text(app.localizedName ?? "")
                         }
                     }
                 }

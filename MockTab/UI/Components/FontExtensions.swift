@@ -4,29 +4,6 @@
 
 import SwiftUI
 
-//extension Font {
-//    /// Secondary label text: setting names, descriptions, status lines, footnotes.
-//    /// Usage: `Text("Setting name").font(.settingsLabel)`
-//    static var settingsLabel: Font { .caption }
-//
-//    /// Tertiary label: count badges, secondary status, help text, secondary information.
-//    /// Usage: `Text("5 overrides").font(.settingsBadge)`
-//    static var settingsBadge: Font { .caption2 }
-//
-//    /// Overlay badge title: device/app names on canvas, emphasized labels.
-//    /// Usage: `Text("Intuos Pro M").font(.badgeTitle)`
-//    static var badgeTitle: Font { .caption2 }
-//
-//    /// Overlay badge subtitle: model numbers, secondary badges, coordinates.
-//    /// Usage: `Text("PTH-660").font(.badgeSubtitle)`
-//    static var badgeSubtitle: Font { .caption2 }
-//
-//    /// Monospaced variant for numbers, codes, and technical readouts.
-//    /// Usage: `Text("(1024, 2048)").font(.monospaced)`
-//    static var monospaced: Font { .system(.caption, design: .monospaced) }
-//}
-
-
 extension Font {
     // Body-level: setting names, descriptions, toggle labels, status lines.
     // Usage: .font(.settingsLabel) — replaces previous .caption assignment.
