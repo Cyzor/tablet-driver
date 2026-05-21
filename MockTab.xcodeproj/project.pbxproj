@@ -74,6 +74,7 @@
 		AA00HT01 /* HIDThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HT01 /* HIDThread.swift */; };
 		AA00IS01 /* InjectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00IS01 /* InjectionSnapshot.swift */; };
 		AA00MM01 /* ModifierMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00MM01 /* ModifierMath.swift */; };
+		AA00CS01 /* CursorSmoother.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00CS01 /* CursorSmoother.swift */; };
 		AAAAAA02 /* PresetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA01 /* PresetExporter.swift */; };
 		AAAAAA04 /* PresetImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA03 /* PresetImporter.swift */; };
 		AAAAAA06 /* ImportPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA05 /* ImportPlan.swift */; };
@@ -180,6 +181,7 @@
 		AB00HT01 /* HIDThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDThread.swift; sourceTree = "<group>"; };
 		AB00IS01 /* InjectionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjectionSnapshot.swift; sourceTree = "<group>"; };
 		AB00MM01 /* ModifierMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModifierMath.swift; sourceTree = "<group>"; };
+		AB00CS01 /* CursorSmoother.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorSmoother.swift; sourceTree = "<group>"; };
 		AC000008 /* TabletColorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletColorTheme.swift; sourceTree = "<group>"; };
 		BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationOverlayView.swift; sourceTree = "<group>"; };
 		F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationOverlayWindow.swift; sourceTree = "<group>"; };
@@ -258,6 +260,7 @@
 				AB000035 /* AppWatcher.swift */,
 				AB00HT01 /* HIDThread.swift */,
 				AB00MM01 /* ModifierMath.swift */,
+				AB00CS01 /* CursorSmoother.swift */,
 				AB00HD01 /* HIDDescriptorReader.swift */,
 				AB00HH01 /* HIDHelpers.swift */,
 				AB00TT01 /* TouchStateTracker.swift */,
@@ -487,6 +490,7 @@
 				AA000102 /* CaptureEngine.swift in Sources */,
 				AA000071 /* WacomToolSpec.swift in Sources */,
 				AA00MM01 /* ModifierMath.swift in Sources */,
+				AA00CS01 /* CursorSmoother.swift in Sources */,
 				AA00HD01 /* HIDDescriptorReader.swift in Sources */,
 				AA00HH01 /* HIDHelpers.swift in Sources */,
 				AA00TT01 /* TouchStateTracker.swift in Sources */,

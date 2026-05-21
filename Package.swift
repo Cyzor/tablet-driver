@@ -41,6 +41,7 @@ let package = Package(
                 "Driver/TabletDevice.swift",
                 "Driver/WacomToolSpec.swift",
                 "Driver/ModifierMath.swift",
+                "Driver/CursorSmoother.swift",
                 "Driver/Decoders",
             ]
         ),

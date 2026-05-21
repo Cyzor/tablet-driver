@@ -134,44 +134,18 @@ final class InputInjector {
     private var lastUSBMouseMask: UInt8 = 0
     private var usbMouseLeftHeld: Bool = false
 
-    // MARK: - Jitter tracking
+    // MARK: - Cursor smoothing, jitter, velocity
     //
-    // Fixed ring buffer + running sum.
-    // Eliminates O(n) Array.removeFirst() and a full reduce() on every jitterLevel read.
+    // Per-report position smoothing (EMA), rolling jitter window, and short-window
+    // velocity for tip-up assist. State and math live in CursorSmoother.swift;
+    // InputInjector holds the instance and forwards reads where needed.
 
-    private static let jitterWindow = 60  // ~0.5 s at 133 Hz
-    private var hoverRing = ContiguousArray<CGFloat>(repeating: 0, count: jitterWindow)
-    private var hoverHead = 0
-    private var hoverCount = 0
-    private var hoverSum: CGFloat = 0
-    private var lastRawPoint: CGPoint = .zero
-    private var hasLastRawPoint = false
+    private var smoother = CursorSmoother()
 
     /// Mean hover-position delta over the rolling window (points per sample).
     /// Spikes above ~3 pt/sample while hovering suggest RF interference.
-    var jitterLevel: CGFloat {
-        guard hoverCount >= 10 else { return 0 }
-        return hoverSum / CGFloat(hoverCount)
-    }
-
-    var isJittery: Bool { jitterLevel > 3.0 }
-
-    private func addHoverDelta(_ delta: CGFloat) {
-        if hoverCount == Self.jitterWindow {
-            hoverSum -= hoverRing[hoverHead]
-        } else {
-            hoverCount += 1
-        }
-        hoverRing[hoverHead] = delta
-        hoverSum += delta
-        hoverHead = (hoverHead + 1) % Self.jitterWindow
-    }
-
-    private func clearHoverDeltas() {
-        guard hoverCount > 0 else { return }
-        hoverCount = 0
-        hoverSum = 0
-    }
+    var jitterLevel: CGFloat { smoother.jitterLevel }
+    var isJittery: Bool { smoother.isJittery }
 
     // MARK: - Relative movement
     //
@@ -181,14 +155,6 @@ final class InputInjector {
     // the first report after hover-entry doesn't produce a large jump.
 
     private var lastRelativeNorm: CGPoint? = nil
-
-    // MARK: - Smoothing
-
-    private var smoothedPoint: CGPoint = .zero
-    private var hasSmoothedPoint = false
-    /// Cached EMA alpha, recomputed at proximity entry.
-    /// 1.0 == raw (no smoothing); math collapses to smoothedPoint = rawPoint.
-    private var smoothingAlpha: Double = 1.0
 
     // MARK: - Delta gate
     //
@@ -208,18 +174,6 @@ final class InputInjector {
     private static let tipUpAssistDelay: Double = 0.08  // seconds
     private static let tipUpAssistVelocityThreshold: CGFloat = 2.0  // pts/sample
     private var pendingMouseUp: DispatchWorkItem? = nil
-    /// Rolling short-window velocity estimate (last 4 position deltas, screen pts/sample).
-    private var recentDeltas = ContiguousArray<CGFloat>(repeating: 0, count: 4)
-    private var recentDeltaHead = 0
-
-    private func recordMoveDelta(_ delta: CGFloat) {
-        recentDeltas[recentDeltaHead] = delta
-        recentDeltaHead = (recentDeltaHead + 1) % recentDeltas.count
-    }
-
-    private var recentVelocity: CGFloat {
-        recentDeltas.reduce(0, +) / CGFloat(recentDeltas.count)
-    }
 
     /// Set while a barrel-button click binding is held, so the movement path posts
     /// otherMouseDragged / rightMouseDragged instead of mouseMoved.
@@ -443,13 +397,14 @@ final class InputInjector {
                 activeToolIsEraser = point.eraser
                 lastEraserMode = point.eraser
                 let s = tool.smoothingStrength
-                smoothingAlpha = s > 0 ? 1.0 - s * 0.85 : 1.0
+                smoother.smoothingAlpha = s > 0 ? 1.0 - s * 0.85 : 1.0
             } else {
                 activeToolIsEraser = false
                 lastEraserMode = false
+                let exitPoint = smoother.smoothedPoint
                 if lastTipDown {
                     postMouseUp(
-                        button: activeButton, at: smoothedPoint,
+                        button: activeButton, at: exitPoint,
                         clickCount: activeClickCount,
                         snapshot: snap)
                     lastTipDown = false
@@ -459,20 +414,20 @@ final class InputInjector {
                 if lastUSBMouseMask != 0 {
                     if usbMouseLeftHeld {
                         postMouseUp(
-                            button: .left, at: smoothedPoint,
+                            button: .left, at: exitPoint,
                             clickCount: activeClickCount,
                             snapshot: snap)
                         usbMouseLeftHeld = false
                     }
                     if (lastUSBMouseMask & 0x02) != 0 {
                         postMouseUp(
-                            button: .right, at: smoothedPoint, clickCount: 1,
+                            button: .right, at: exitPoint, clickCount: 1,
                             snapshot: snap)
                     }
                     if (lastUSBMouseMask & 0x04) != 0 {
                         if let e = CGEvent(
                             mouseEventSource: sessionSource, mouseType: .otherMouseUp,
-                            mouseCursorPosition: smoothedPoint, mouseButton: .center)
+                            mouseCursorPosition: exitPoint, mouseButton: .center)
                         {
                             e.flags = currentEventFlags
                             finalizeAndPost(e)
@@ -483,7 +438,7 @@ final class InputInjector {
                 if lastMiddleDown {
                     if let e = CGEvent(
                         mouseEventSource: sessionSource, mouseType: .otherMouseUp,
-                        mouseCursorPosition: smoothedPoint, mouseButton: .center)
+                        mouseCursorPosition: exitPoint, mouseButton: .center)
                     {
                         e.flags = currentEventFlags
                         finalizeAndPost(e)
@@ -515,14 +470,10 @@ final class InputInjector {
                 hoverDragButton = nil
                 lastAuxButtons = [Bool](repeating: false, count: 16)
                 lastRingButtonDown = false
-                hasSmoothedPoint = false
-                hasLastRawPoint = false
                 hasPostedPoint = false
                 lastRelativeNorm = nil
                 lastPostedPressure = -1.0
-                clearHoverDeltas()
-                for i in recentDeltas.indices { recentDeltas[i] = 0 }
-                recentDeltaHead = 0
+                smoother.resetOnProximityExit()
             }
             // Record the moment the pen leaves proximity so finger-touch can
             // apply a short grace window (touchArbitrationGrace) before
@@ -549,33 +500,17 @@ final class InputInjector {
         guard point.inProximity else { return }
 
         // ── Position smoothing (every report) ─────────────────────────────────
-        if enteringProximity || !hasSmoothedPoint {
-            smoothedPoint = rawPoint
-            hasSmoothedPoint = true
-        } else {
-            smoothedPoint = CGPoint(
-                x: smoothedPoint.x + smoothingAlpha * (rawPoint.x - smoothedPoint.x),
-                y: smoothedPoint.y + smoothingAlpha * (rawPoint.y - smoothedPoint.y)
-            )
-        }
-        let screenPoint = smoothedPoint
+        let screenPoint = smoother.applySmoothing(
+            rawPoint: rawPoint, enteringProximity: enteringProximity)
         shimLastPoint = point
         shimLastScreen = screenPoint
         shimLastPressure = pressure
 
         // ── Jitter tracking (hover only, every report) ─────────────────────────
         if !tipDown {
-            if hasLastRawPoint {
-                addHoverDelta(
-                    hypot(
-                        rawPoint.x - lastRawPoint.x,
-                        rawPoint.y - lastRawPoint.y))
-            }
-            lastRawPoint = rawPoint
-            hasLastRawPoint = true
+            smoother.observeHoverRaw(rawPoint)
         } else {
-            hasLastRawPoint = false
-            clearHoverDeltas()
+            smoother.endHover()
         }
 
         // ── Tip press transitions (always immediate) ───────────────────────────
@@ -605,7 +540,7 @@ final class InputInjector {
 
                 if activeAppProfile == .generic
                     && snap.tipUpAssist
-                    && recentVelocity > Self.tipUpAssistVelocityThreshold {
+                    && smoother.recentVelocity > Self.tipUpAssistVelocityThreshold {
                     // Defer the mouseUp briefly so fast strokes aren't cut short.
                     // The deferred mouseUp captures `snap` so it has all the values it
                     // needs; the live snapshot may have rolled over by the time it fires.
@@ -673,7 +608,7 @@ final class InputInjector {
                     let delta = hypot(
                         screenPoint.x - lastPostedPoint.x,
                         screenPoint.y - lastPostedPoint.y)
-                    recordMoveDelta(delta)
+                    smoother.recordMoveDelta(delta)
                 }
                 if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
                     postTabletPointerEvent(
