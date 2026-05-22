@@ -126,43 +126,73 @@ struct TouchView: View {
 
     private var areaSection: some View {
         Section {
-            Text(LocalizedStringKey("The touch area is separate from the pen's active area. By default the entire touch surface is used; crop it if you want finger input restricted to a portion of the tablet."))
+            Text(LocalizedStringKey("Define the active surface area for touch input.  Not available on all devices."))
                 .font(.callout)
                 .foregroundStyle(.secondary)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
+
+            TouchAreaCropView(settings: settings, spec: spec)
+                .frame(height: 200)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
+                .disabled(!settings.touchEnabled)
+                .opacity(settings.touchEnabled ? 1 : 0.5)
+
             HStack {
-                Text(LocalizedStringKey("X"))
-                    .frame(width: 16, alignment: .leading)
-                Slider(value: $settings.touchAreaX, in: 0...1)
-                    .disabled(!settings.touchEnabled)
+                Spacer()
+                Button(String(localized: "Reset to full surface",
+                              comment: "Touch pane: reset the touch area to cover the entire touch surface")) {
+                    settings.touchAreaX = 0
+                    settings.touchAreaY = 0
+                    settings.touchAreaWidth = 1
+                    settings.touchAreaHeight = 1
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(!settings.touchEnabled)
             }
-            HStack {
-                Text(LocalizedStringKey("Y"))
-                    .frame(width: 16, alignment: .leading)
-                Slider(value: $settings.touchAreaY, in: 0...1)
-                    .disabled(!settings.touchEnabled)
-            }
-            HStack {
-                Text(LocalizedStringKey("Width"))
-                    .frame(width: 56, alignment: .leading)
-                Slider(value: $settings.touchAreaWidth, in: 0.01...1)
-                    .disabled(!settings.touchEnabled)
-            }
-            HStack {
-                Text(LocalizedStringKey("Height"))
-                    .frame(width: 56, alignment: .leading)
-                Slider(value: $settings.touchAreaHeight, in: 0.01...1)
-                    .disabled(!settings.touchEnabled)
-            }
-            Button(String(localized: "Reset to full surface",
-                          comment: "Touch pane: reset the touch area to cover the entire touch surface")) {
-                settings.touchAreaX = 0
-                settings.touchAreaY = 0
-                settings.touchAreaWidth = 1
-                settings.touchAreaHeight = 1
-            }
-            .disabled(!settings.touchEnabled)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         } header: {
             Text(LocalizedStringKey("Touch Area"))
+        }
+    }
+
+    // MARK: - Touch area crop editor
+
+    /// Visual, drag-based editor for the touch active area.  Aspect ratio
+    /// comes from the device's touch-coordinate maxima; the editor itself
+    /// is the shared `NormalizedAreaEditor` used by the pen pane.
+    private struct TouchAreaCropView: View {
+        @ObservedObject var settings: TabletSettings
+        let spec: WacomDeviceSpec?
+
+        private var aspectRatio: Double {
+            let mx = spec?.touchMaxX ?? 0
+            let my = spec?.touchMaxY ?? 0
+            guard mx > 0, my > 0 else { return 16.0 / 10.0 }
+            return Double(mx) / Double(my)
+        }
+
+        private var rectBinding: Binding<NormalizedRect> {
+            Binding(
+                get: {
+                    NormalizedRect(
+                        x: settings.touchAreaX, y: settings.touchAreaY,
+                        w: settings.touchAreaWidth, h: settings.touchAreaHeight)
+                },
+                set: { r in
+                    settings.touchAreaX = r.x
+                    settings.touchAreaY = r.y
+                    settings.touchAreaWidth = r.w
+                    settings.touchAreaHeight = r.h
+                }
+            )
+        }
+
+        var body: some View {
+            NormalizedAreaEditor(aspectRatio: aspectRatio, rect: rectBinding)
         }
     }
 
@@ -186,3 +216,4 @@ struct TouchView: View {
         }
     }
 }
+

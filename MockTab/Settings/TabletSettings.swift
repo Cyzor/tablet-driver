@@ -241,9 +241,10 @@ final class TabletSettings: ObservableObject {
 
     /// Master enable for finger-touch input.  When false, `InputInjector.injectTouch`
     /// becomes a no-op regardless of incoming reports.  Defaults to true so that
-    /// a device that ships touch data is usable on first connect; users who don't
-    /// want it (Wacom's touch behaviour is widely disliked) can flip this off.
-    @Published var touchEnabled: Bool = true {
+    /// Off by default: Wacom's touch behaviour is widely disliked, and many
+    /// users prefer to opt in deliberately rather than discover the cursor
+    /// jumping the first time they rest a hand on the tablet.
+    @Published var touchEnabled: Bool = false {
         didSet { persist("touchEnabled", touchEnabled) }
     }
     /// Scalar applied to cursor movement from finger drag in pointer mode.
@@ -931,7 +932,7 @@ final class TabletSettings: ObservableObject {
         invertRotation = loadBool("invertRotation", default: false)
         relativeCursorMovement = loadBool("relativeCursorMovement", default: false)
         tipUpAssist = loadBool("tipUpAssist", default: false)
-        touchEnabled = loadBool("touchEnabled", default: true)
+        touchEnabled = loadBool("touchEnabled", default: false)
         touchSensitivity = Swift.max(0.25, Swift.min(loadDouble("touchSensitivity", default: 1.0), 4.0))
         tapToClick = loadBool("tapToClick", default: false)
         twoFingerScroll = loadBool("twoFingerScroll", default: true)
