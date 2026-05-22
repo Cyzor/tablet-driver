@@ -105,7 +105,7 @@ final class InputInjector {
         if let obs = displayObserver { NotificationCenter.default.removeObserver(obs) }
         leakWatchdogTimer?.invalidate()
         if let src = flagsChangedTapSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), src, .commonModes)
+            CFRunLoopRemoveSource(HIDThread.shared.runLoop, src, .commonModes)
             flagsChangedTapSource = nil
         }
         if let tap = flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: false) }
@@ -1149,18 +1149,15 @@ final class InputInjector {
 
     /// Modifier flags for high-frequency move/drag events (mouseMoved, leftMouseDragged, etc.).
     ///
-    /// Carries only synthetic modifiers (express-key bindings), not physical keyboard state.
-    /// Including physical modifiers (tapLastPhysicalFlags) in 133 Hz move events creates a
-    /// race: if inject() runs in the same RunLoop cycle as the physical key-release
-    /// flagsChanged but before the tap callback updates tapLastPhysicalFlags, the outgoing
-    /// mouseMoved re-asserts the released modifier and apps re-latch it as held.
-    ///
-    /// Physical modifier state is authoritatively delivered via the keyboard's own
-    /// flagsChanged events.  Apps that properly track modifier state do not depend on
-    /// the flags field of continuous move events.  ⌘+click still works because
-    /// mouseDown/mouseUp use currentEventFlags which includes tapLastPhysicalFlags.
+    /// Includes physical (keyboard) modifiers so apps like Illustrator and Keynote can
+    /// read ⇧/⌘/⌥/⌃ from drag events for constraint-snapping.  The tap callback is
+    /// scheduled on HIDThread (same as inject()), so tapLastPhysicalFlags is written and
+    /// read on one thread — the cross-thread race that previously caused stuck modifiers
+    /// is eliminated at the source rather than worked around by dropping physical state.
     private var moveSafeEventFlags: CGEventFlags {
-        CGEventFlags(rawValue: groundTruthSyntheticFlags.rawValue)
+        CGEventFlags(rawValue:
+            (tapLastPhysicalFlags & ModifierMath.managedMask)
+            | groundTruthSyntheticFlags.rawValue)
     }
 
     /// The union of modifier flags justified by currently-held pen barrel buttons.
@@ -1349,7 +1346,9 @@ final class InputInjector {
         }
         flagsChangedTap = tap
         let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+        // Register on HIDThread so the tap callback and inject() share one thread.
+        // tapLastPhysicalFlags is therefore written and read without cross-thread races.
+        CFRunLoopAddSource(HIDThread.shared.runLoop, runLoopSource, .commonModes)
         flagsChangedTapSource = runLoopSource
         // Warm the cache before enabling so the first tap callback has a valid baseline.
         tapLastPhysicalFlags = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
