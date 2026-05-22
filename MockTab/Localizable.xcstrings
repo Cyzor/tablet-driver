@@ -11038,35 +11038,6 @@
         }
       }
     },
-    "settings-window-min-width": {
-      "comment": "Minimum window width (pts) that keeps all toolbar tabs visible without overflow. Update this when translations change significantly.",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "640"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "settings-window-min-width"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "638"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "578"
-          }
-        }
-      }
-    },
     "Show details about detected conflicts with other tablet drivers and how to resolve them.": {
       "comment": "Tooltip on Fix button for Conflicts row",
       "localizations": {

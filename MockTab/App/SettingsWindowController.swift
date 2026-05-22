@@ -58,6 +58,11 @@ final class ResizableTabViewController: NSTabViewController {
     /// chosen size is used for all tabs.
     private var userHasResized = false
 
+    /// Guards the toolbar-based minSize computation so we only apply it on the
+    /// first appearance, not on every subsequent show (where window.frame.width
+    /// could reflect a user-chosen large size and produce an inflated floor).
+    private var hasAppliedMinSize = false
+
     /// Called when the active tab changes — used to notify TabletManager
     /// whether the Info tab is currently visible.
     var onTabSelected: ((String?) -> Void)?
@@ -91,15 +96,16 @@ final class ResizableTabViewController: NSTabViewController {
             name: NSWindow.didResizeNotification,
             object: view.window)
 
-        // Minimum width varies by locale (tab labels differ in length).
-        // The value lives in Localizable.xcstrings so it stays co-located
-        // with translations and needs no code changes when labels are updated.
-        if let window = view.window {
-            let minWidth = CGFloat(
-                Double(String(localized: "settings-window-min-width",
-                              comment: "Minimum window width (pts) that keeps all toolbar tabs visible without overflow. Update this when translations change significantly."))
-                ?? 560)
-            window.minSize = NSSize(width: minWidth, height: 500)
+        // Derive minimum width from the toolbar's actual laid-out item frames.
+        // Deferred by one main-queue cycle: viewDidAppear fires before the toolbar
+        // finishes its own layout pass, so item frames can still be zero at this
+        // point. Applied once; subsequent shows leave the measured value in place.
+        if !hasAppliedMinSize, let window = view.window {
+            hasAppliedMinSize = true
+            DispatchQueue.main.async { [weak self, weak window] in
+                guard let self, let window else { return }
+                window.minSize = NSSize(width: self.toolbarMinWidth(in: window), height: 500)
+            }
         }
     }
 
@@ -126,6 +132,57 @@ final class ResizableTabViewController: NSTabViewController {
         if let title = item?.viewController?.title, !title.isEmpty {
             window.title = title
         }
+    }
+
+    /// Returns the minimum window width needed to show all toolbar tab items
+    /// without overflow, measured from the actual laid-out views.
+    ///
+    /// `NSTabViewController(.toolbar)` items use standard (non-custom-view) toolbar
+    /// items, so `NSToolbarItem.view` is nil and cannot be measured directly.
+    /// Instead this locates the toolbar container in the window frame hierarchy
+    /// and reads item positions from it. Falls back to a per-tab formula —
+    /// independent of current window width, so it stays correct even when a
+    /// previously-saved narrow frame is restored before this runs.
+    private func toolbarMinWidth(in window: NSWindow) -> CGFloat {
+        // Fast path: custom-view toolbar items (not the NSTabViewController case,
+        // but included for completeness/future-proofing).
+        if let toolbar = window.toolbar {
+            let widths = toolbar.items.compactMap { $0.view?.frame.width }.filter { $0 > 8 }
+            if !widths.isEmpty {
+                return widths.reduce(0, +) + 32
+            }
+        }
+
+        // Locate the toolbar container: it sits above the content view as a
+        // sibling inside the window frame view, spanning most of the window width.
+        let expectedCount = tabViewItems.count
+        if let contentView = window.contentView,
+           let frameView = contentView.superview
+        {
+            let contentTop = contentView.frame.maxY
+            for candidate in frameView.subviews where candidate !== contentView {
+                guard candidate.frame.minY >= contentTop - 2,
+                      candidate.frame.width > window.frame.width * 0.5
+                else { continue }
+                // Sort children left-to-right; skip hairlines and zero-size views.
+                let items = candidate.subviews
+                    .filter { $0.frame.width > 20 }
+                    .sorted { $0.frame.minX < $1.frame.minX }
+                // Require all tab items to be visible. Fewer means the toolbar is
+                // already in overflow (window too narrow) or this is the wrong view.
+                guard items.count >= expectedCount else { continue }
+                // The rightmost item edge plus a small trailing margin gives the
+                // minimum window width. Item x-coordinates already account for the
+                // window chrome on the left, so no additional chrome offset is needed.
+                return (items.last?.frame.maxX ?? 0) + 8
+            }
+        }
+
+        // Formula fallback: ~70 pt per tab item (icon + truncated label + spacing,
+        // empirically stable across locales) plus ~80 pt for window chrome and
+        // margins. Derived from tab count, so it adapts to Touch being present
+        // or absent and does not depend on the current window width.
+        return CGFloat(expectedCount) * 70 + 80
     }
 }
 
@@ -239,6 +296,15 @@ final class SettingsWindowController: NSWindowController {
         window.isReleasedWhenClosed = false
         window.collectionBehavior = [.managed, .fullScreenAllowsTiling]
         window.tabbingMode = .automatic
+
+        // Set a conservative minimum width before autosave frame restoration so a
+        // previously-saved narrow frame cannot be applied. Tab count is computable
+        // from the registry at this point; formula: ~70 pt per tab + ~80 pt chrome.
+        // The deferred measurement in viewDidAppear will refine this once the
+        // toolbar is fully laid out.
+        let hasTouchTab = productID.flatMap { WacomDeviceRegistry.spec(for: $0) }?.hasFingerTouch == true
+        window.minSize = NSSize(width: CGFloat(hasTouchTab ? 9 : 8) * 70 + 80, height: 500)
+
         // Don't auto-save frame for device-specific windows — PreferencesWindowController
         // handles manual persistence to support per-device window positions.
         if productID == nil {
