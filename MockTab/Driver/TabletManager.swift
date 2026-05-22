@@ -9,6 +9,34 @@ import OSLog
 
 private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "manager")
 
+/// Standalone publisher for live touch contacts.  Kept off `TabletManager`
+/// so the ~30 Hz touch stream invalidates only views that explicitly observe
+/// this object, not every view that observes `TabletManager`.
+///
+/// `isPublishingEnabled` lets the sole consumer (ScratchpadView) gate updates
+/// on its own visibility — when the scratchpad tab is hidden or the app
+/// resigns active, the HID-thread closure skips both the throttle bookkeeping
+/// and the main-thread dispatch entirely.
+final class LiveTouchPublisher: ObservableObject {
+    @MainActor @Published var contacts: [TouchContact] = []
+
+    /// HID-thread reads, main-thread writes.  Bool reads/writes are atomic on
+    /// aarch64; a brief disagreement during a state transition just costs one
+    /// or two redundant frames, which is harmless.
+    nonisolated(unsafe) var isPublishingEnabled: Bool = false
+
+    /// HID-thread-only.  Last time the throttle let a publish through.
+    /// Lives here (rather than on `TabletManager`, which is `@MainActor`)
+    /// so the cross-thread read/write is no longer a concurrency violation.
+    /// 8-byte loads/stores are atomic on aarch64; a torn read is impossible.
+    nonisolated(unsafe) var lastPublishTime: CFAbsoluteTime = 0
+
+    /// Throttle target: ~30 Hz.  HID delivers touch at ~100 Hz under load,
+    /// and even after `isPublishingEnabled` gates inactive consumers, the
+    /// active scratchpad doesn't benefit from canvas redraws faster than this.
+    static let publishInterval: CFAbsoluteTime = 1.0 / 30.0
+}
+
 /// Manages IOHIDManager lifecycle, per-device contexts, and proximity-based
 /// activation for multi-tablet support.
 ///
@@ -47,7 +75,13 @@ final class TabletManager: ObservableObject {
     @Published var livePoint: TabletPoint? = nil
     /// Most-recent touch contacts from the active device's touch surface.
     /// Empty when no contacts are active or the device has no finger touch.
-    @Published var liveTouchContacts: [TouchContact] = []
+    ///
+    /// Lives on its own `ObservableObject` so the ~30 Hz touch-frame stream
+    /// invalidates only the one view that consumes it (ScratchpadView) and
+    /// not every settings pane that observes `TabletManager`.  Broadcasting
+    /// touch updates through `TabletManager` collapsed every pane's body
+    /// at touch-frame rate, which was the dominant CPU cost under a palm.
+    let liveTouch = LiveTouchPublisher()
 
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
     private var shimObservers: [NSObjectProtocol] = []
@@ -526,14 +560,29 @@ final class TabletManager: ObservableObject {
         }
 
         // ── Touch closure (capacitive finger input on touch-capable Cintiqs) ───
-        // Called on HIDThread when a decoder emits a `.touch` result.  No
-        // shipping decoder produces these yet — closure exists so the path
-        // is hot the moment a per-family touch decoder lands.
+        // Called on HIDThread when a decoder emits a `.touch` result.  When
+        // touch is disabled in settings, return early — the hardware switch
+        // on PTH-660/860 streams 0x21 reports at ~100 Hz, and publishing
+        // them to `liveTouchContacts` invalidates every view that observes
+        // `TabletManager` (which is every settings pane), making the UI
+        // choppy and burning CPU even though no input is being injected.
         let onTouch: ([TouchContact]) -> Void = { [weak self, weak context] contacts in
-            guard let context else { return }
+            guard let context, context.settings.touchEnabled else { return }
             context.injector.injectTouch(contacts: contacts, settings: context.settings)
-            DispatchQueue.main.async { [weak self] in
-                self?.liveTouchContacts = contacts
+            // Skip the publish path entirely when no UI is observing — the
+            // scratchpad sets `isPublishingEnabled` only while it is the
+            // active tab and the app is frontmost.
+            guard let self else { return }
+            let publisher = self.liveTouch
+            guard publisher.isPublishingEnabled else { return }
+            // Throttle the live-contacts publish to ~30 Hz.  Always let the
+            // "empty" frame through so a finger lift updates the UI promptly.
+            let now = CFAbsoluteTimeGetCurrent()
+            let elapsed = now - publisher.lastPublishTime
+            if !contacts.isEmpty && elapsed < LiveTouchPublisher.publishInterval { return }
+            publisher.lastPublishTime = now
+            DispatchQueue.main.async {
+                publisher.contacts = contacts
             }
         }
 

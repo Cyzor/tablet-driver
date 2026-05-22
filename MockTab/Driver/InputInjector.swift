@@ -336,6 +336,11 @@ final class InputInjector {
     private var cachedDisplayUUID: String = ""
     private var cachedCalibration: CalibrationEntry?
     private var cachedCalibrationOrientation: Int = -1
+    /// Cached touch coordinate maximums, invalidated when `deviceProductID`
+    /// changes.  Saves a per-frame linear scan over `WacomDeviceRegistry`.
+    private var cachedTouchMaxX: Int = 1
+    private var cachedTouchMaxY: Int = 1
+    private var cachedTouchSpecPID: Int = -1
     private var currentToggleIndex: Int = 0
     private var displayObserver: NSObjectProtocol?
 
@@ -943,30 +948,31 @@ final class InputInjector {
         }
         let displayBounds = cachedDisplayBounds
 
-        // Project each contact to screen-space using the touch-area mapping.
-        // Coordinate maximums come from the active settings' digitizer spec
-        // via the snapshot's pen path; touch reports share the device's
-        // coordinate range (DTH-* devices use the same maxX/maxY for both).
-        let mx = Int(Swift.max(1.0, Double(deviceProductID == 0 ? 1 : 1)))  // placeholder — replaced below
-        _ = mx
-        // The injector doesn't currently carry the digitizer spec separately
-        // from the per-event TabletPoint.  Touch reports include absolute
-        // coordinates already in device units; until a real capture lets us
-        // confirm whether they share the pen's coordinate range, we derive
-        // the bounds from the maximum X/Y observed in the contact frame
-        // versus the snapshot's active area, normalising to 0..1 with a
-        // pessimistic floor.  This is fine for plumbing — a real decoder
-        // will pass the correct (maxX, maxY) once it knows the layout.
-        let maxX = Swift.max(1, contacts.map(\.x).max() ?? 1)
-        let maxY = Swift.max(1, contacts.map(\.y).max() ?? 1)
+        // Cache touch coordinate maximums per device.  Without this, the
+        // registry lookup (linear scan over ~80 specs) ran on every HID
+        // frame — at 100 Hz with a palm on the tablet, that alone was a
+        // measurable CPU contributor.
+        if cachedTouchSpecPID != deviceProductID {
+            let spec = WacomDeviceRegistry.spec(for: deviceProductID)
+            cachedTouchMaxX = Swift.max(1, spec?.touchMaxX ?? 1)
+            cachedTouchMaxY = Swift.max(1, spec?.touchMaxY ?? 1)
+            cachedTouchSpecPID = deviceProductID
+        }
 
-        let projected: [(id: Int, screen: CGPoint)] = contacts.map { c in
-            let p = TouchStateTracker.screenPoint(
-                for: c, maxX: maxX, maxY: maxY,
+        // Project each contact to screen-space using the touch-area mapping.
+        // Contacts whose raw position falls outside the crop rect return nil
+        // and are dropped entirely (no clamping to the rect edge — that would
+        // leave the deadzone partially responsive).
+        var projected: [(id: Int, screen: CGPoint)] = []
+        projected.reserveCapacity(contacts.count)
+        for c in contacts {
+            guard let p = TouchStateTracker.screenPoint(
+                for: c, maxX: cachedTouchMaxX, maxY: cachedTouchMaxY,
                 areaX: snap.touchAreaX, areaY: snap.touchAreaY,
                 areaWidth: snap.touchAreaWidth, areaHeight: snap.touchAreaHeight,
                 displayBounds: displayBounds)
-            return (id: c.id, screen: p)
+            else { continue }
+            projected.append((id: c.id, screen: p))
         }
 
         let intent = touchTracker.process(

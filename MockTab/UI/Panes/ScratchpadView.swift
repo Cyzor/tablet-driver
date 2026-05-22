@@ -11,11 +11,37 @@ struct ScratchpadView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
+    /// Observed separately from `tabletManager` so the ~30 Hz touch-frame
+    /// stream only invalidates this view, not the rest of the settings UI.
+    @ObservedObject private var liveTouch: LiveTouchPublisher
     var productID: Int?
     var undoManager: UndoManager?
 
+    init(settings: TabletSettings,
+         tabletManager: TabletManager,
+         registry: DeviceRegistry,
+         productID: Int? = nil,
+         undoManager: UndoManager? = nil) {
+        self.settings = settings
+        self.tabletManager = tabletManager
+        self.registry = registry
+        self.productID = productID
+        self.undoManager = undoManager
+        // Derive the touch publisher from the bound manager so the view isn't
+        // tied to the singleton — the only `TabletManager` in practice today,
+        // but the parameter is what the rest of the view uses.
+        _liveTouch = ObservedObject(wrappedValue: tabletManager.liveTouch)
+    }
+
     @State private var currentPressure: Double = 0
     @State private var clearID = 0
+
+    /// Tracks whether this view is on-screen AND the app is frontmost.
+    /// Used to gate the live-touch publish — when either is false, the
+    /// HID-thread closure skips dispatch entirely, so a palm resting on
+    /// the tablet costs nothing while the user is in another tab or app.
+    @State private var isVisible = false
+    @State private var isAppActive = NSApp.isActive
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -33,6 +59,38 @@ struct ScratchpadView: View {
             )
             .layoutPriority(1)
         }
+        .onAppear {
+            isVisible = true
+            updateLiveTouchGate()
+        }
+        .onDisappear {
+            isVisible = false
+            updateLiveTouchGate()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            isAppActive = true
+            updateLiveTouchGate()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            isAppActive = false
+            updateLiveTouchGate()
+        }
+        .onChange(of: settings.touchEnabled) { enabled in
+            // The HID closure stops publishing immediately when touch is
+            // disabled, but the previously displayed contacts would otherwise
+            // linger on the canvas with no fresh frame to overwrite them.
+            if !enabled { liveTouch.contacts = [] }
+        }
+    }
+
+    private func updateLiveTouchGate() {
+        let newValue = isVisible && isAppActive
+        // Clear any lingering contacts on the way out so the canvas doesn't
+        // paint a stale snapshot when the view becomes visible again.
+        if !newValue && liveTouch.isPublishingEnabled {
+            liveTouch.contacts = []
+        }
+        liveTouch.isPublishingEnabled = newValue
     }
 
     private var mainContent: some View {
@@ -138,7 +196,7 @@ struct ScratchpadView: View {
                 .frame(width: 58, alignment: .leading)
 
             TouchContactsCanvas(
-                contacts: tabletManager.liveTouchContacts,
+                contacts: liveTouch.contacts,
                 maxContacts: spec?.maxTouchContacts ?? 10
             )
             .frame(width: 100, height: 100)

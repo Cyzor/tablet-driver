@@ -82,6 +82,12 @@ struct TouchStateTracker {
     /// its own area mapping — independent from the pen's — and ignores
     /// orientation and calibration in v1 (added later if real captures show
     /// they're needed).
+    ///
+    /// Returns `nil` for contacts whose raw position falls outside the crop
+    /// rectangle.  Clamping out-of-bounds contacts to the rect edge would
+    /// make the "deadzone" outside the crop still partially responsive:
+    /// a finger touching outside one axis would pin the cursor to that
+    /// axis's edge while the other axis still tracked normally.
     static func screenPoint(
         for contact: TouchContact,
         maxX: Int,
@@ -89,16 +95,22 @@ struct TouchStateTracker {
         areaX: Double, areaY: Double,
         areaWidth: Double, areaHeight: Double,
         displayBounds: CGRect
-    ) -> CGPoint {
+    ) -> CGPoint? {
         let mx = Double(Swift.max(maxX, 1))
         let my = Double(Swift.max(maxY, 1))
-        let nx = (Double(contact.x) / mx - areaX) / Swift.max(areaWidth, 0.001)
-        let ny = (Double(contact.y) / my - areaY) / Swift.max(areaHeight, 0.001)
-        let cx = Swift.min(Swift.max(nx, 0), 1)
-        let cy = Swift.min(Swift.max(ny, 0), 1)
+        let rx = Double(contact.x) / mx
+        let ry = Double(contact.y) / my
+        let w = Swift.max(areaWidth, 0.001)
+        let h = Swift.max(areaHeight, 0.001)
+        // Reject contacts outside the crop rect entirely.
+        guard rx >= areaX, rx <= areaX + w,
+              ry >= areaY, ry <= areaY + h
+        else { return nil }
+        let nx = (rx - areaX) / w
+        let ny = (ry - areaY) / h
         return CGPoint(
-            x: displayBounds.minX + cx * displayBounds.width,
-            y: displayBounds.minY + cy * displayBounds.height)
+            x: displayBounds.minX + nx * displayBounds.width,
+            y: displayBounds.minY + ny * displayBounds.height)
     }
 
     /// Given a set of contacts already projected to screen-space, choose or
@@ -177,6 +189,9 @@ struct TouchStateTracker {
             let dx = newCentroid.x - oldCentroid.x
             let dy = newCentroid.y - oldCentroid.y
             for c in tracked { lastPositions[c.id] = c.screen }
+            // Skip dead frames: a stationary palm with two contacts down would
+            // otherwise post 100 no-op scroll events per second.
+            if dx == 0 && dy == 0 { return .none }
             // Natural scrolling: content follows finger (dy negative when fingers
             // move up).  Classic: scroll-wheel semantics, content moves opposite.
             let sign = naturalScrolling ? -1.0 : 1.0
