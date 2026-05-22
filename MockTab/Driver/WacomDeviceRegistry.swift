@@ -590,7 +590,11 @@ enum WacomDeviceRegistry {
             parser: .intuosV2, maxX: 44800, maxY: 29600, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             hasFingerTouch: true, maxTouchContacts: 5,
-            touchMaxX: 8960, touchMaxY: 5920,  // estimated: pen/5 ratio (unconfirmed)
+            // touchMaxX/Y still estimated as pen/5 ratio; both USB and BT
+            // paths use this entry (PTH-660 over BT presents this PID).
+            // BT touch confirmed working 2026-05-22; exact max coords
+            // unverified but cursor positioning feels correct.
+            touchMaxX: 8960, touchMaxY: 5920,
             featureInit: nil, seizeUSB: true,
             confidence: .verified),
         .init(
@@ -731,10 +735,11 @@ enum WacomDeviceRegistry {
             parser: .intuosV2, maxX: 44800, maxY: 29600, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             hasFingerTouch: true, maxTouchContacts: 5,
-            // Touch values mirror the USB PTH-660 entry, which is itself an
-            // estimate (pen-resolution / 5).  BT touch path is also untested
-            // on real hardware.  If a real user reports touch misbehaviour on
-            // PTH-660 BT, the coord range is the first suspect.
+            // Touch values mirror the USB PTH-660 entry.  In practice this
+            // entry is rarely hit: PTH-660 over BT presents the USB PID
+            // 0x0357, not 0x0360, so the USB entry's touchMaxX/Y is what
+            // actually drives BT touch projection (confirmed working
+            // 2026-05-22).  Kept here as a defensive fallback.
             touchMaxX: 8960, touchMaxY: 5920,
             featureInit: nil, seizeUSB: false),
         .init(
