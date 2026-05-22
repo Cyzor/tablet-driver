@@ -328,6 +328,67 @@ extension IntuosV2Decoder {
         return results
     }
 
+    // MARK: - BT finger touch (embedded in 0x80 / 361-byte container)
+    //
+    // Touch data is woven into the same 361-byte 0x80 report as the pen:
+    //   [109..280] = 4 frames × 43 bytes
+    // Layout matches `wacom_intuos_pro2_bt_touch()` in
+    // drivers/hid/wacom_wac.c (Linux kernel, INTUOSP2_BT branch).
+    //
+    // Per frame (43 bytes):
+    //   [0] = bit7 frame-valid, bits 0..6 = total contact count for the set
+    //         (only the first valid frame in a set carries a non-zero count;
+    //         the kernel state-machines this across frames to support >5
+    //         contacts.  PTH-660/660/860 max 5 fingers, so for V1 we treat
+    //         each frame independently and ignore count==0 frames.)
+    //   [1..]: up to 5 contacts, 8 bytes each
+    //
+    // Per contact (8 bytes):
+    //   [0] = slot_id  (stable across frames per finger)
+    //   [1] = status   (bit0 = down; 0 = lift)
+    //   [2..3] = X LE16
+    //   [4..5] = Y LE16
+    //   [6] = touch major (w)
+    //   [7] = touch minor (h)
+    //
+    // Emits one `.touch` per valid frame so `TouchStateTracker` sees per-time-
+    // slice snapshots, mirroring the cadence of the USB 0x21 path (one frame
+    // per report there).  Lift contacts (status & 0x01 == 0) are filtered at
+    // the decoder boundary, matching the USB decoder; the tracker recovers
+    // the lift by seeing the absence on the next emission.
+    func decodeBTTouch(
+        report: UnsafePointer<UInt8>,
+        length: CFIndex
+    ) -> [DecodeResult] {
+        let frameBase = 109
+        let frameLen = 43
+        let frameCount = 4
+        guard length >= frameBase + frameLen * frameCount else { return [] }
+
+        var results: [DecodeResult] = []
+        for i in 0 ..< frameCount {
+            let off = frameBase + i * frameLen
+            let header = report[off]
+            guard (header & 0x80) != 0 else { continue }      // frame-valid bit
+            let count = Int(header & 0x7F)
+            guard count > 0 else { continue }                  // continuation frame; V1 ignores
+            let slots = Swift.min(count, 5)
+            var contacts: [TouchContact] = []
+            contacts.reserveCapacity(slots)
+            for j in 0 ..< slots {
+                let cOff = off + 1 + j * 8
+                guard (report[cOff + 1] & 0x01) != 0 else { continue }  // lift → drop
+                let x = Int(report[cOff + 2]) | (Int(report[cOff + 3]) << 8)
+                let y = Int(report[cOff + 4]) | (Int(report[cOff + 5]) << 8)
+                let major = Int(report[cOff + 6])
+                contacts.append(TouchContact(
+                    id: Int(report[cOff]), x: x, y: y, contactArea: major))
+            }
+            results.append(.touch(contacts))
+        }
+        return results
+    }
+
     // MARK: - BT Classic pen (0x80, length == 99, PTH-860)
     //
     // The PTH-860 uses Bluetooth Classic (advertised as "BT IntuosPro L").

@@ -137,6 +137,15 @@ struct WacomDeviceSpec {
     /// Cintiq Pro 27, Movink 13, and Cintiq 16 family.  Zero when
     /// `hasFingerTouch == false`.
     let maxTouchContacts: Int
+    /// Coordinate maximum for the capacitive touch sensor's X axis.
+    /// Separate from `maxX` (pen digitizer); confirmed by live capture.
+    /// PTH-860: 12439. PTH-660: 8960 (estimated, same 1/5 ratio as pen).
+    /// Zero when `hasFingerTouch == false`.
+    let touchMaxX: Int
+    /// Coordinate maximum for the capacitive touch sensor's Y axis.
+    /// PTH-860: 8639. PTH-660: 5920 (estimated).
+    /// Zero when `hasFingerTouch == false`.
+    let touchMaxY: Int
     /// Number of ring mode slots to expose in the UI.
     /// Defaults to 4, matching Wacom's standard 4-LED toggle ring layout.
     let ringSlotCount: Int
@@ -177,6 +186,7 @@ struct WacomDeviceSpec {
         buttonCount: Int, hasTouchRing: Bool, hasDualRings: Bool = false,
         hasTouchStrips: Bool = false, ringSlotCount: Int = 4, hasEraser: Bool, hasTilt: Bool = false,
         hasFingerTouch: Bool = false, maxTouchContacts: Int = 0,
+        touchMaxX: Int = 0, touchMaxY: Int = 0,
         isPenDisplay: Bool = false,
         featureInit: [UInt8]?, seizeUSB: Bool,
         featureInit2: [UInt8]? = nil,
@@ -196,6 +206,8 @@ struct WacomDeviceSpec {
         self.hasTouchStrips = hasTouchStrips
         self.hasFingerTouch = hasFingerTouch
         self.maxTouchContacts = maxTouchContacts
+        self.touchMaxX = touchMaxX
+        self.touchMaxY = touchMaxY
         self.ringSlotCount = ringSlotCount
         self.hasEraser = hasEraser
         self.hasTilt = hasTilt
@@ -577,12 +589,16 @@ enum WacomDeviceRegistry {
             productID: 0x0357, name: "Intuos Pro M (PTH-660)",  // ✓ confirmed live
             parser: .intuosV2, maxX: 44800, maxY: 29600, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 5,
+            touchMaxX: 8960, touchMaxY: 5920,  // estimated: pen/5 ratio (unconfirmed)
             featureInit: nil, seizeUSB: true,
             confidence: .verified),
         .init(
             productID: 0x0358, name: "Intuos Pro L (PTH-860)",  // ✓ confirmed live
             parser: .intuosV2, maxX: 62200, maxY: 43200, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 5,
+            touchMaxX: 12439, touchMaxY: 8639,  // confirmed by live capture 2026-05-21
             featureInit: nil, seizeUSB: true,
             confidence: .verified),
 
@@ -714,11 +730,25 @@ enum WacomDeviceRegistry {
             productID: 0x0360, name: "Wacom PTH-660",  // ⚠ from OTD
             parser: .intuosV2, maxX: 44800, maxY: 29600, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 5,
+            // Touch values mirror the USB PTH-660 entry, which is itself an
+            // estimate (pen-resolution / 5).  BT touch path is also untested
+            // on real hardware.  If a real user reports touch misbehaviour on
+            // PTH-660 BT, the coord range is the first suspect.
+            touchMaxX: 8960, touchMaxY: 5920,
             featureInit: nil, seizeUSB: false),
         .init(
             productID: 0x0361, name: "Intuos Pro L (PTH-860) BT",  // ✓ confirmed live (BT Classic)
             parser: .intuosV2, maxX: 62200, maxY: 43200, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 5,
+            // Touch coords mirror the USB PTH-860 entry (12439×8639, live-
+            // verified for USB).  Same digitizer hardware so the BT range
+            // is almost certainly identical, but the BT touch path itself
+            // (kernel-ported from wacom_intuos_pro2_bt_touch) has not been
+            // exercised on real hardware yet.  `confidence: .verified` here
+            // refers to the pen/pad/battery paths, not touch.
+            touchMaxX: 12439, touchMaxY: 8639,
             featureInit: nil, seizeUSB: false,
             confidence: .verified),
         .init(

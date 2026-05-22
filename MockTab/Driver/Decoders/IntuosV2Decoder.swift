@@ -17,16 +17,14 @@ import Foundation
 /// 0x11 Auxiliary (express key + touch ring) report
 /// 0x80 Wireless status report (ACK-40401 RF dongle)
 ///
-/// TODO (finger touch): DTH-271, DTH-135, DTH-1320 (parser=.intuosV2 family)
-/// also expose a capacitive multi-touch surface.  The wire format is not yet
-/// known — touch reports likely arrive on a separate HID interface (different
-/// usagePage/usage from the pen digitizer) and may need a routing change in
-/// DeviceRouter so that interface lands on this decoder.  Once a real capture
-/// from one of those devices is available, add the appropriate report ID to
-/// the switch below and emit `.touch([TouchContact])` per frame.  Do not
-/// guess the layout from Notes/Wacom-HID-Touch-Reference.md without a live
-/// capture — those bytes are a generic HID multi-touch schema, not Wacom-
-/// specific, and the actual layout almost certainly differs.
+/// 0x21 Finger touch report (PTH-660/860, confirmed from live PTH-860 capture 2026-05-21)
+///      44 bytes: [0]=0x21, [1]=contact count, then 5 fixed 8-byte slots:
+///      slot[i]: [0]=slot_id [1]=status(0x01=down,0x00=lift) [2..3]=X LE16 [4..5]=Y LE16
+///               [6]=touch major [7]=reserved
+///      Coordinate range: X 0–12439, Y 0–8639 (PTH-860); PTH-660 unconfirmed.
+///      TODO (finger touch): DTH-271, DTH-135, DTH-1320 (parser=.intuosV2 family)
+///      touch format is unconfirmed for these devices — do not assume 0x21 / same layout
+///      without a live capture.
 struct IntuosV2Decoder: WacomDecoder {
 
     func decode(
@@ -62,6 +60,9 @@ struct IntuosV2Decoder: WacomDecoder {
             return decodeOffsetPenReport(report: report, length: length, spec: spec, state: &state)
         case 0x11:
             return decodeAuxReport(report: report, length: length)
+        case 0x21:
+            guard length >= 10 else { return [] }
+            return decodeTouchReport(report: report, length: length)
         case 0x80:
             // Report ID 0x80 is shared by three distinct payloads:
             // • RF wireless status (report[1] = 0x02/0x05/0x06)
@@ -76,9 +77,17 @@ struct IntuosV2Decoder: WacomDecoder {
                     report: report, length: length, spec: spec, state: &state,
                     deviceFamily: deviceFamily)
             }
-            return decodeBTPen(
+            var results = decodeBTPen(
                 report: report, length: length, spec: spec, state: &state,
                 deviceFamily: deviceFamily)
+            // Touch is woven into the same 361-byte container at offset 109.
+            // Only the Intuos Pro Gen 2 family with capacitive touch carries it
+            // (PTH-660 BT 0x0360, PTH-860 BT 0x0361); spec.hasFingerTouch gates
+            // the work for every other device that lands here.
+            if spec.hasFingerTouch {
+                results.append(contentsOf: decodeBTTouch(report: report, length: length))
+            }
+            return results
         default:
             return []
         }
@@ -420,6 +429,32 @@ struct IntuosV2Decoder: WacomDecoder {
                     touchRingButtonDown: ringButtonDown,
                     touchRingPosition: ringActive ? posByte : 0x7F))
         ]
+    }
+
+    // MARK: - Finger touch report (0x21)
+
+    /// 44-byte report: [0]=0x21 [1]=contact count (up to 5), then 5 × 8-byte fixed slots.
+    /// Slot layout: [0]=slot_id [1]=status(0x01=down, 0x00=lift) [2..3]=X LE16 [4..5]=Y LE16
+    ///              [6]=touch major [7]=reserved
+    /// Lift frame: status=0x00 for one frame at the last position, then the slot goes silent.
+    private func decodeTouchReport(
+        report: UnsafePointer<UInt8>,
+        length: CFIndex
+    ) -> [DecodeResult] {
+        let count = Int(report[1])
+        guard count > 0 else { return [.touch([])] }
+        var contacts: [TouchContact] = []
+        let maxSlots = min(count, 5)
+        for i in 0 ..< maxSlots {
+            let base = 2 + i * 8
+            guard base + 7 < length else { break }
+            guard report[base + 1] == 0x01 else { continue }
+            let x = Int(report[base + 2]) | (Int(report[base + 3]) << 8)
+            let y = Int(report[base + 4]) | (Int(report[base + 5]) << 8)
+            let major = Int(report[base + 6])
+            contacts.append(TouchContact(id: Int(report[base]), x: x, y: y, contactArea: major))
+        }
+        return [.touch(contacts)]
     }
 
 }
