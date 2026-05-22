@@ -61,25 +61,55 @@ struct TabletAreaView: View {
         return Double(activeDeviceMaxX) / Double(y)
     }
 
+    /// Aspect ratio adjusted for the user's tablet orientation (90°/270° swap
+    /// the canvas axes); passed through to `NormalizedAreaEditor`.
+    private var orientedAspectRatio: Double {
+        settings.tabletOrientation.swapsAxes
+            ? 1.0 / activeAspectRatio
+            : activeAspectRatio
+    }
+
+    /// Smallest dimension (as a fraction of the surface) the user can shrink
+    /// the active area to — enforced by both the `NormalizedAreaEditor` drag
+    /// gestures and the Width/Height pixel-field clamping below.
+    private static let minFraction: Double = 0.05
+
+    /// Single rect binding over the four `activeArea*` settings, the form the
+    /// shared crop editor consumes.  The editor writes the binding once on
+    /// drag-end, so this doesn't cause 60 Hz `persist(...)` calls.
+    private var activeAreaBinding: Binding<NormalizedRect> {
+        Binding(
+            get: {
+                NormalizedRect(
+                    x: settings.activeAreaX, y: settings.activeAreaY,
+                    w: settings.activeAreaWidth, h: settings.activeAreaHeight)
+            },
+            set: { r in
+                settings.activeAreaX = r.x
+                settings.activeAreaY = r.y
+                settings.activeAreaWidth = r.w
+                settings.activeAreaHeight = r.h
+            }
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.areaKeys, productID: boundProductID)
             Form {
                 Section {
-                    GeometryReader { geo in
-                        let cs = canvasSize(in: geo.size)
-                        ZStack(alignment: .topLeading) {
-                            // Full digitizer outline
-                            Rectangle()
-                                .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
-                                .frame(width: cs.width, height: cs.height)
-
-                            // Active area crop rectangle
-                            activeAreaCrop(canvasSize: cs)
+                    NormalizedAreaEditor(
+                        aspectRatio: orientedAspectRatio,
+                        rect: activeAreaBinding,
+                        onCommit: { oldRect in
+                            settings.recordAreaDrag(before: TabletSettings.AreaSnapshot(
+                                x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
+                        }
+                    ) { areaRect, cs in
+                        Canvas { ctx, _ in
+                            tabletBadge(ctx: ctx, areaRect: areaRect)
                         }
                         .frame(width: cs.width, height: cs.height)
-                        .coordinateSpace(name: "cropCanvas")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     }
                     .frame(height: 200)
                     .listRowBackground(Color.clear)
@@ -418,255 +448,6 @@ struct TabletAreaView: View {
             .multilineTextAlignment(.trailing)
     }
 
-    // MARK: - Crop rectangle
-
-    /// Drag-origin snapshot so deltas are computed from a stable reference.
-    @State private var dragOrigin = DragOrigin()
-    /// Draft crop values during a drag; nil when not dragging.
-    /// Used to defer updates to settings until the drag completes.
-    @State private var draftArea: DragOrigin? = nil
-
-    private struct DragOrigin {
-        var x: Double = 0, y: Double = 0, w: Double = 0, h: Double = 0
-    }
-
-    /// Which edge / corner / body is being dragged.
-    private enum CropEdge {
-        case body
-        case top, bottom, left, right
-        case topLeft, topRight, bottomLeft, bottomRight
-    }
-
-    private static let handleSize: CGFloat = 8
-    private static let edgeThickness: CGFloat = 6
-    private static let minFraction: Double = 0.05   // 5% minimum dimension
-
-    private func activeAreaCrop(canvasSize cs: CGSize) -> some View {
-        // Use draft values if dragging, otherwise settings
-        let activeX = draftArea?.x ?? settings.activeAreaX
-        let activeY = draftArea?.y ?? settings.activeAreaY
-        let activeW = draftArea?.w ?? settings.activeAreaWidth
-        let activeH = draftArea?.h ?? settings.activeAreaHeight
-
-        let x = activeX * cs.width
-        let y = activeY * cs.height
-        let w = activeW * cs.width
-        let h = activeH * cs.height
-        let rect = CGRect(x: x, y: y, width: w, height: h)
-
-        return ZStack(alignment: .topLeading) {
-            // Dimmed exterior — darkens everything outside the active area
-            // so the crop region pops visually, like Photoshop's crop overlay.
-            Canvas { ctx, size in
-                var outer = Path(CGRect(origin: .zero, size: size))
-                outer.addRect(rect)
-                ctx.fill(outer, with: .color(.black.opacity(0.10)),
-                         style: FillStyle(eoFill: true))
-            }
-            .frame(width: cs.width, height: cs.height)
-            .allowsHitTesting(false)
-
-            // Fill — drag to reposition
-            Rectangle()
-                .fill(Color.accentColor.opacity(0.12))
-                .frame(width: w, height: h)
-                .offset(x: x, y: y)
-                .gesture(cropGesture(.body, cs: cs))
-                .cursor(.openHand)
-
-            // Border
-            Rectangle()
-                .strokeBorder(Color.accentColor, lineWidth: 1.5)
-                .frame(width: w, height: h)
-                .offset(x: x, y: y)
-                .allowsHitTesting(false)
-
-            // Badge
-            Canvas { ctx, _ in
-                tabletBadge(ctx: ctx, areaRect: rect)
-            }
-            .frame(width: cs.width, height: cs.height)
-            .allowsHitTesting(false)
-
-            // Edge handles (invisible hit areas)
-            edgeHandle(.top,    rect: rect, cs: cs)
-            edgeHandle(.bottom, rect: rect, cs: cs)
-            edgeHandle(.left,   rect: rect, cs: cs)
-            edgeHandle(.right,  rect: rect, cs: cs)
-
-            // Corner handles (visible dots)
-            cornerHandle(.topLeft,     rect: rect, cs: cs)
-            cornerHandle(.topRight,    rect: rect, cs: cs)
-            cornerHandle(.bottomLeft,  rect: rect, cs: cs)
-            cornerHandle(.bottomRight, rect: rect, cs: cs)
-        }
-    }
-
-    // MARK: - Handle views
-
-    private func edgeHandle(_ edge: CropEdge, rect: CGRect, cs: CGSize) -> some View {
-        let t = Self.edgeThickness
-        let hs = Self.handleSize
-        let frame: (CGFloat, CGFloat)
-        let offset: (CGFloat, CGFloat)
-
-        switch edge {
-        case .top:
-            frame  = (rect.width - hs * 2, t)
-            offset = (rect.minX + hs, rect.minY - t / 2)
-        case .bottom:
-            frame  = (rect.width - hs * 2, t)
-            offset = (rect.minX + hs, rect.maxY - t / 2)
-        case .left:
-            frame  = (t, rect.height - hs * 2)
-            offset = (rect.minX - t / 2, rect.minY + hs)
-        case .right:
-            frame  = (t, rect.height - hs * 2)
-            offset = (rect.maxX - t / 2, rect.minY + hs)
-        default: frame = (0, 0); offset = (0, 0)
-        }
-
-        return Color.clear
-            .frame(width: frame.0, height: frame.1)
-            .contentShape(Rectangle())
-            .offset(x: offset.0, y: offset.1)
-            .gesture(cropGesture(edge, cs: cs))
-            .cursor(edgeCursor(edge))
-    }
-
-    private func cornerHandle(_ corner: CropEdge, rect: CGRect, cs: CGSize) -> some View {
-        let s = Self.handleSize
-        let pos: (CGFloat, CGFloat)
-        switch corner {
-        case .topLeft:     pos = (rect.minX, rect.minY)
-        case .topRight:    pos = (rect.maxX, rect.minY)
-        case .bottomLeft:  pos = (rect.minX, rect.maxY)
-        case .bottomRight: pos = (rect.maxX, rect.maxY)
-        default:           pos = (0, 0)
-        }
-
-        return Circle()
-            .fill(Color.accentColor)
-            .frame(width: s, height: s)
-            .offset(x: pos.0 - s / 2, y: pos.1 - s / 2)
-            .gesture(cropGesture(corner, cs: cs))
-            .cursor(cornerCursor(corner))
-    }
-
-    // MARK: - Drag gesture
-
-    /// Tracks the canvas-local start location so we can compute stable deltas
-    /// from the drag origin snapshot.  Using `v.location` (absolute cursor
-    /// position in the view) minus the start-of-drag anchor eliminates
-    /// accumulated error from noisy pen input — every frame is an independent
-    /// calculation from the snapshot, not a chain of incremental translations.
-    @State private var dragAnchor: CGPoint?
-
-    private func cropGesture(_ edge: CropEdge, cs: CGSize) -> some Gesture {
-        DragGesture(minimumDistance: 1, coordinateSpace: .named("cropCanvas"))
-            .onChanged { v in
-                if dragAnchor == nil {
-                    // First event — snapshot current state, initialize draft, and record start location.
-                    dragOrigin = DragOrigin(
-                        x: settings.activeAreaX, y: settings.activeAreaY,
-                        w: settings.activeAreaWidth, h: settings.activeAreaHeight)
-                    draftArea = dragOrigin  // Initialize draft from current state
-                    dragAnchor = v.startLocation
-                }
-                guard let anchor = dragAnchor else { return }
-                let dx = (v.location.x - anchor.x) / cs.width
-                let dy = (v.location.y - anchor.y) / cs.height
-                applyDrag(edge: edge, dx: dx, dy: dy)
-            }
-            .onEnded { _ in
-                // Commit draft to settings and register one coalesced undo entry
-                if dragAnchor != nil, let draft = draftArea {
-                    settings.activeAreaX = draft.x
-                    settings.activeAreaY = draft.y
-                    settings.activeAreaWidth = draft.w
-                    settings.activeAreaHeight = draft.h
-                    settings.recordAreaDrag(before: TabletSettings.AreaSnapshot(
-                        x: dragOrigin.x, y: dragOrigin.y,
-                        w: dragOrigin.w, h: dragOrigin.h))
-                }
-                dragAnchor = nil
-                draftArea = nil
-            }
-    }
-
-    private func applyDrag(edge: CropEdge, dx: Double, dy: Double) {
-        guard var draft = draftArea else { return }
-        let o = dragOrigin
-        let minD = Self.minFraction
-
-        switch edge {
-        case .body:
-            // Clamp so the active area never leaves the physical bounds.
-            draft.x = Swift.min(Swift.max(o.x + dx, 0), 1 - o.w)
-            draft.y = Swift.min(Swift.max(o.y + dy, 0), 1 - o.h)
-
-        case .left:
-            let newX = Swift.min(Swift.max(o.x + dx, 0), o.x + o.w - minD)
-            draft.x = newX
-            draft.w = o.x + o.w - newX
-
-        case .right:
-            draft.w = Swift.min(Swift.max(o.w + dx, minD), 1 - o.x)
-
-        case .top:
-            let newY = Swift.min(Swift.max(o.y + dy, 0), o.y + o.h - minD)
-            draft.y = newY
-            draft.h = o.y + o.h - newY
-
-        case .bottom:
-            draft.h = Swift.min(Swift.max(o.h + dy, minD), 1 - o.y)
-
-        case .topLeft:
-            let newX = Swift.min(Swift.max(o.x + dx, 0), o.x + o.w - minD)
-            let newY = Swift.min(Swift.max(o.y + dy, 0), o.y + o.h - minD)
-            draft.x = newX
-            draft.y = newY
-            draft.w = o.x + o.w - newX
-            draft.h = o.y + o.h - newY
-
-        case .topRight:
-            let newY = Swift.min(Swift.max(o.y + dy, 0), o.y + o.h - minD)
-            draft.y = newY
-            draft.w = Swift.min(Swift.max(o.w + dx, minD), 1 - o.x)
-            draft.h = o.y + o.h - newY
-
-        case .bottomLeft:
-            let newX = Swift.min(Swift.max(o.x + dx, 0), o.x + o.w - minD)
-            draft.x = newX
-            draft.w = o.x + o.w - newX
-            draft.h = Swift.min(Swift.max(o.h + dy, minD), 1 - o.y)
-
-        case .bottomRight:
-            draft.w = Swift.min(Swift.max(o.w + dx, minD), 1 - o.x)
-            draft.h = Swift.min(Swift.max(o.h + dy, minD), 1 - o.y)
-        }
-
-        draftArea = draft
-    }
-
-    // MARK: - Cursors
-
-    private func edgeCursor(_ edge: CropEdge) -> NSCursor {
-        switch edge {
-        case .top, .bottom:  return .resizeUpDown
-        case .left, .right:  return .resizeLeftRight
-        default:             return .arrow
-        }
-    }
-
-    private func cornerCursor(_ corner: CropEdge) -> NSCursor {
-        switch corner {
-        case .topLeft, .bottomRight: return .crosshair
-        case .topRight, .bottomLeft: return .crosshair
-        default:                     return .arrow
-        }
-    }
-
     // MARK: - Badge
 
     /// Draws a dark translucent badge with the tablet nickname and model name
@@ -724,28 +505,4 @@ struct TabletAreaView: View {
         }
     }
 
-    // MARK: - Helpers
-
-    private func canvasSize(in available: CGSize) -> CGSize {
-        let ratio = settings.tabletOrientation.swapsAxes
-            ? 1.0 / activeAspectRatio
-            : activeAspectRatio
-        let maxW = available.width - 8
-        let maxH = available.height - 8
-        if maxW / ratio <= maxH {
-            return CGSize(width: maxW, height: maxW / ratio)
-        } else {
-            return CGSize(width: maxH * ratio, height: maxH)
-        }
-    }
-}
-
-// MARK: - Cursor modifier
-
-private extension View {
-    func cursor(_ cursor: NSCursor) -> some View {
-        self.onHover { inside in
-            if inside { cursor.push() } else { NSCursor.pop() }
-        }
-    }
 }
