@@ -69,6 +69,32 @@ Punta de borrador tiene asignación propia (sección lápiz). La mayoría de app
 
 La barra de overrides en la parte superior te permite asignar botones diferentes para una aplicación específica. Los overrides se activan automáticamente cuando esa app pasa a primer plano. La configuración global se aplica en todos los demás casos.
 
+[touch]
+
+## Toque con el dedo
+
+Las tabletas con superficie táctil capacitiva detectan contactos del dedo además de la entrada del lápiz. MockTab mantiene esta función desactivada por defecto — activa **Habilitar toque con el dedo** para usarla.
+
+**Toca para hacer clic** – Un toque breve sin movimiento significativo emite un clic izquierdo. Mantén esta opción desactivada si apoyas los dedos en la tableta al dibujar; de lo contrario, se producen clics fantasma.
+
+**Velocidad del cursor** – Escala el movimiento del puntero al arrastrar con un solo dedo. 1,00× asigna el área táctil directamente a la pantalla; valores mayores recorren más distancia con menos movimiento, valores menores permiten control más fino.
+
+## Desplazamiento
+
+**Desplazamiento con dos dedos** – Dos dedos moviéndose juntos emiten eventos de desplazamiento suave. Las apps los tratan como desplazamiento de trackpad, incluido el efecto rubber-band en Safari y Vista Previa.
+
+**Desplazamiento natural** – Activado: el contenido sigue el movimiento del dedo, igualando la configuración del sistema macOS. Desactivado: el contenido se mueve en dirección opuesta, como una rueda de ratón tradicional.
+
+## Área táctil
+
+El área táctil funciona de forma independiente al área activa del lápiz. Arrastra los tiradores de la vista previa para recortar la superficie táctil; la entrada de dedo fuera del rectángulo no tiene efecto. La mayoría de los usuarios deja activa toda la superficie para el toque y recorta solo el área del lápiz.
+
+**Restablecer a superficie completa** – Restaura el área táctil a toda la región táctil disponible.
+
+## Lo que el toque no puede hacer
+
+MockTab no puede emitir Mission Control, Spaces, Launchpad ni otros gestos multitáctiles del sistema. macOS reserva esos canales privados de eventos de trackpad para controladores de primera parte. Usa un trackpad o atajos de teclado para la navegación del sistema.
+
 [display]
 
 ## Mapeo de pantalla

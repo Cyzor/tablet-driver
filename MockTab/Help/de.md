@@ -69,6 +69,32 @@ Radiergummispitze hat eigene Belegung (Stift-Bereich). Manche Apps wechseln auto
 
 Die Override-Leiste oben erlaubt es dir, für eine bestimmte App andere Tasten zuzuweisen. Overrides aktivieren sich automatisch, wenn diese App in den Vordergrund kommt. Globale Einstellungen gelten überall sonst.
 
+[touch]
+
+## Fingerberührung
+
+Tablets mit kapazitiver Berührungsfläche melden Fingerkontakte zusätzlich zur Stifteingabe. MockTab lässt diese Funktion standardmäßig deaktiviert — schalte **Fingerberührung aktivieren** ein, um sie zu nutzen.
+
+**Tippen für Klick** – Eine kurze Berührung ohne nennenswerte Bewegung sendet einen Linksklick. Lass dies deaktiviert, wenn du beim Zeichnen Finger auf dem Tablet abstützt; sonst entstehen Geisterklicks.
+
+**Zeigergeschwindigkeit** – Skaliert die Cursorbewegung bei einer einzelnen Fingerbewegung. 1,00× bildet die Berührungsfläche direkt auf den Bildschirm ab; höhere Werte legen mit weniger Bewegung mehr Strecke zurück, niedrigere ermöglichen feinere Kontrolle.
+
+## Scrollen
+
+**Zwei-Finger-Scrollen** – Zwei sich gemeinsam bewegende Finger senden weiche Scrollereignisse. Apps behandeln diese als Trackpad-Scrollen, einschließlich Rubber-Banding in Safari und Vorschau.
+
+**Natürliches Scrollen** – Ein: Der Inhalt folgt der Fingerbewegung, passend zur macOS-Systemeinstellung. Aus: Der Inhalt bewegt sich in die entgegengesetzte Richtung, wie bei einem klassischen Mausrad.
+
+## Berührungsbereich
+
+Der Berührungsbereich ist unabhängig vom aktiven Stiftbereich. Ziehe die Griffe in der Vorschau, um die Berührungsfläche zuzuschneiden; Fingereingaben außerhalb des Rechtecks haben keine Wirkung. Die meisten Nutzer lassen die volle Fläche für Berührung aktiviert und schneiden nur den Stiftbereich zu.
+
+**Auf volle Fläche zurücksetzen** – Stellt den Berührungsbereich auf die gesamte berührungsfähige Fläche zurück.
+
+## Was Berührung nicht kann
+
+MockTab kann keine Mission Control-, Spaces-, Launchpad- oder andere systemweite Multi-Touch-Gesten senden. macOS reserviert diese für private Trackpad-Ereigniskanäle, die nur First-Party-Treibern zugänglich sind. Verwende ein Trackpad oder Tastenkürzel zur Systemnavigation.
+
 [display]
 
 ## Display-Zuordnung

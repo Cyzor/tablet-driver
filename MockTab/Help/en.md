@@ -69,6 +69,32 @@ The eraser tip has its own binding, configured in the pen section. Some drawing 
 
 The app override bar at the top assigns different buttons for a specific application. Overrides activate automatically when that app moves to the foreground. Global settings apply in all other cases.
 
+[touch]
+
+## Finger Touch
+
+Tablets with a capacitive touch surface report finger contacts alongside pen input. MockTab keeps this disabled by default — enable **Enable finger touch** to use it.
+
+**Tap to click** – A brief touch with no significant motion posts a left click. Keep this disabled when resting fingers on the tablet while drawing; otherwise, it produces phantom clicks.
+
+**Cursor speed** – Scales pointer movement from a single-finger drag. 1.00× maps the touch area directly to the screen; higher values cover more distance with less motion, lower values allow finer control.
+
+## Scrolling
+
+**Two-finger scroll** – Two fingers moving together post smooth scroll events. Apps treat these as trackpad scrolling, including rubber-banding in Safari and Preview.
+
+**Natural scrolling** – On: content follows finger movement, matching the macOS system setting. Off: content moves in the opposite direction, like a traditional mouse wheel.
+
+## Touch Area
+
+The touch area operates independently from the pen’s active area. Drag the handles in the preview to crop the touch surface; finger input outside the rectangle has no effect. Most users leave the full surface enabled for touch and crop only the pen area.
+
+**Reset to full surface** – Restores the touch area to the entire touch-capable region.
+
+## What Touch Cannot Do
+
+MockTab cannot post Mission Control, Spaces, Launchpad, or other system-wide multi-touch gestures. macOS reserves these for private trackpad event channels used by first-party drivers. Use a trackpad or keyboard shortcuts for system navigation.
+
 [display]
 
 ## Display Mapping
@@ -90,8 +116,6 @@ The Devices pane lists every tablet and pen tool that MockTab has detected. Each
 Selecting a device row reveals model-specific settings and tools in the details pane on the right.
 
 Disconnected devices remain in the list so their profiles remain available for inspection or adjustment even while unplugged. When a listed device reconnects, MockTab applies its saved settings automatically.
-
-[tools]
 
 ## Conflict Detection
 

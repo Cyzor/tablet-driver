@@ -15,6 +15,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
     case tabletArea
     case penFeel
     case buttons
+    case touch
     case display
     case devices
     case profiles
@@ -33,6 +34,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .tabletArea: String(localized: "Tablet Area",  comment: "Help section title")
         case .penFeel:    String(localized: "Pen Feel",     comment: "Help section title")
         case .buttons:    String(localized: "Buttons",      comment: "Help section title")
+        case .touch:      String(localized: "Touch",        comment: "Help section title")
         case .display:    String(localized: "Display",      comment: "Help section title")
         case .devices:    String(localized: "Devices",      comment: "Help section title")
         case .profiles:   String(localized: "Profiles",     comment: "Help section title")
@@ -48,6 +50,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .tabletArea: "rectangle.dashed"
         case .penFeel:    "scribble.variable"
         case .buttons:    "square.grid.2x2.fill"
+        case .touch:      "hand.point.up.left"
         case .display:    "display"
         case .devices:    "rectangle.on.rectangle"
         case .profiles:   "star.circle"
