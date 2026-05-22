@@ -33,6 +33,8 @@ enum CalibrationStep: Int, CaseIterable, Identifiable {
     case touchRingPos0   = 21 // touch ring at position 0
     case touchRingPos36  = 22 // touch ring at position ~36 (quarter turn)
     case touchRingPos71  = 23 // touch ring at position ~71 (max)
+    case fingerTouch     = 24 // single finger drag across the capacitive surface
+    case twoFingerGesture = 25 // two-finger pinch / spread on the capacitive surface
 
     var id: Int { rawValue }
 
@@ -63,6 +65,14 @@ enum CalibrationStep: Int, CaseIterable, Identifiable {
         case .touchRingPos0:   return "Rotate ring to position 0"
         case .touchRingPos36:  return "Rotate ring to quarter position (~36)"
         case .touchRingPos71:  return "Rotate ring to maximum position (~71)"
+        // New touch-surface steps are localized; the older instructions above
+        // are still hardcoded English (left as-is to keep the change minimal).
+        case .fingerTouch:
+            return String(localized: "Drag one finger slowly across the touch surface",
+                          comment: "Capture-guide instruction: single-finger drag on capacitive touch surface")
+        case .twoFingerGesture:
+            return String(localized: "Pinch and spread with two fingers on the touch surface",
+                          comment: "Capture-guide instruction: two-finger pinch/spread on capacitive touch surface")
         }
     }
 
@@ -93,6 +103,8 @@ enum CalibrationStep: Int, CaseIterable, Identifiable {
         case .touchRingPos0:   return "Ring pos 0"
         case .touchRingPos36:  return "Ring pos ~36"
         case .touchRingPos71:  return "Ring pos ~71"
+        case .fingerTouch:     return "Finger drag"
+        case .twoFingerGesture: return "Two-finger gesture"
         }
     }
 
@@ -148,6 +160,7 @@ enum CalibrationStep: Int, CaseIterable, Identifiable {
             .expressKey1, .expressKey2, .expressKey3, .expressKey4,
             .expressKey5, .expressKey6, .expressKey7, .expressKey8,
             .touchRing, .touchRingPos0, .touchRingPos36, .touchRingPos71,
+            .fingerTouch, .twoFingerGesture,
         ]
     }
 }

@@ -13721,6 +13721,75 @@
           }
         }
       }
+    },
+    "Drag one finger slowly across the touch surface": {
+      "comment": "Capture-guide instruction: single-finger drag on capacitive touch surface",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziehe einen Finger langsam über die Berührungsfläche"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desliza un dedo lentamente por la superficie táctil"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 本の指でタッチ面をゆっくりとスライドさせます"
+          }
+        }
+      }
+    },
+    "Pinch and spread with two fingers on the touch surface": {
+      "comment": "Capture-guide instruction: two-finger pinch/spread on capacitive touch surface",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwei Finger auf der Berührungsfläche zusammen- und auseinanderziehen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pellizca y separa dos dedos sobre la superficie táctil"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タッチ面上で 2 本の指をピンチイン・ピンチアウトします"
+          }
+        }
+      }
+    },
+    "If your tablet has a touch surface, slide a finger across it and try a two-finger pinch": {
+      "comment": "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falls dein Tablet eine Berührungsfläche hat, ziehe einen Finger darüber und probiere eine Zwei-Finger-Geste"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si tu tableta tiene superficie táctil, desliza un dedo por ella y prueba un pellizco con dos dedos"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブレットにタッチ面がある場合は、指でなぞったり 2 本指でピンチしてみてください"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

@@ -107,6 +107,7 @@ struct CaptureGuideView: View {
                 instruction("arrow.up.and.down.circle", String(localized: "Press the eraser end to the surface (if present)", comment: "Device data collection instruction: eraser"))
                 instruction("rectangle.grid.2x2",    String(localized: "Press each button on the tablet body (if any)", comment: "Device data collection instruction: tablet buttons"))
                 instruction("circle.dashed",          String(localized: "Slide or touch any rings or strips on the tablet (if any)", comment: "Device data collection instruction: touch ring/strip"))
+                instruction("hand.draw",              String(localized: "If your tablet has a touch surface, slide a finger across it and try a two-finger pinch", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"))
             }
             .padding(.horizontal, 20)
 
