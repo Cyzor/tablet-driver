@@ -117,13 +117,13 @@ struct TouchStateTracker {
     /// continue a gesture mode and return the intent to execute.
     ///
     /// `tapToClick` and `twoFingerScroll` gate the optional behaviours;
-    /// `naturalScrolling` flips the sign of the scroll delta.
+    /// `reverseScrollDirection` flips the sign of the scroll delta.
     /// `sensitivity` multiplies pointer-mode movement (1.0 = identity).
     mutating func process(
         contacts: [(id: Int, screen: CGPoint)],
         tapToClick: Bool,
         twoFingerScroll: Bool,
-        naturalScrolling: Bool,
+        reverseScrollDirection: Bool,
         sensitivity: Double,
         now: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     ) -> Intent {
@@ -192,9 +192,9 @@ struct TouchStateTracker {
             // Skip dead frames: a stationary palm with two contacts down would
             // otherwise post 100 no-op scroll events per second.
             if dx == 0 && dy == 0 { return .none }
-            // Natural scrolling: content follows finger (dy negative when fingers
-            // move up).  Classic: scroll-wheel semantics, content moves opposite.
-            let sign = naturalScrolling ? -1.0 : 1.0
+            // Default (reverseScrollDirection=false): content follows finger.
+            // Reversed: classic scroll-wheel semantics, content moves opposite.
+            let sign = reverseScrollDirection ? -1.0 : 1.0
             lastScrollPhase = .changed
             return .scrollDelta(dx: sign * dx, dy: sign * dy, phase: .changed)
 

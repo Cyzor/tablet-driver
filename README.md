@@ -47,9 +47,9 @@ macOS 13 (Ventura) or later — macOS (Tahoe) may need further verification.
 
 ## Screenshots
 
-<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/tablet-area-light.png" alt="Tablet area settings" width="480">
-<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/pen-feel-light.png" alt="Pressure curve editor" width="480">
-<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/buttons-light.png" alt="Button mapping" width="480">
+<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/tablet-area-dark.png" alt="Tablet area settings" width="480">
+<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/pen-feel-dark.png" alt="Pressure curve editor" width="480">
+<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/buttons-dark.png" alt="Button mapping" width="480">
 
 ---
 
@@ -65,6 +65,7 @@ macOS 13 (Ventura) or later — macOS (Tahoe) may need further verification.
 - **Profile import/export** — drag a profile card to Finder to export as JSON; drag a file back in to import
 - **Multiple tablets** — connect several tablets simultaneously; switches automatically based on which one you pick up
 - **Wireless** — USB dongle and Bluetooth where hardware supports it
+- **Capacitive touch** — two-finger scroll, tap-to-click, and adjustable touch area on models with a touch surface
 - **Undo everywhere** — ⌘Z across every settings pane
 - **Menu bar mode** — hides the Dock icon
 - Native AppKit app, signed and notarized, without kernel extensions
@@ -76,7 +77,6 @@ macOS 13 (Ventura) or later — macOS (Tahoe) may need further verification.
 - Huion, XP-Pen, Xencelabs, or any non-Wacom hardware
 - Wacom tablets from recent product cycles not listed above (Cintiq Pro 2023 refresh, Intuos Pro with USB-C, etc.)
 - Windows, Linux, or iPad
-- Touch and gesture input (detected but not processed)
 
 ---
 

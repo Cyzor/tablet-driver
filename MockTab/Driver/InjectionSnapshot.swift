@@ -55,7 +55,7 @@ struct InjectionSnapshot: Sendable, Equatable {
     var touchSensitivity: Double
     var tapToClick: Bool
     var twoFingerScroll: Bool
-    var naturalScrolling: Bool
+    var reverseScrollDirection: Bool
     var touchAreaX: Double
     var touchAreaY: Double
     var touchAreaWidth: Double
@@ -127,7 +127,7 @@ extension TabletSettings {
             touchSensitivity: touchSensitivity,
             tapToClick: tapToClick,
             twoFingerScroll: twoFingerScroll,
-            naturalScrolling: naturalScrolling,
+            reverseScrollDirection: reverseScrollDirection,
             touchAreaX: touchAreaX,
             touchAreaY: touchAreaY,
             touchAreaWidth: touchAreaWidth,

@@ -83,7 +83,7 @@ Tablets with a capacitive touch surface report finger contacts alongside pen inp
 
 **Two-finger scroll** – Two fingers moving together post smooth scroll events. Apps treat these as trackpad scrolling, including rubber-banding in Safari and Preview.
 
-**Natural scrolling** – On: content follows finger movement, matching the macOS system setting. Off: content moves in the opposite direction, like a traditional mouse wheel.
+**Reverse direction** – On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers.
 
 ## Touch Area
 

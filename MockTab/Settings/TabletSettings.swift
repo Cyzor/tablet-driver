@@ -265,11 +265,10 @@ final class TabletSettings: ObservableObject {
     @Published var twoFingerScroll: Bool = true {
         didSet { persist("twoFingerScroll", twoFingerScroll) }
     }
-    /// When true, scroll direction follows finger motion (natural / "trackpad");
-    /// when false, scroll content moves opposite to finger (classic / "mouse wheel").
-    /// Matches macOS's system-wide "Natural scrolling" semantics; defaults to true.
-    @Published var naturalScrolling: Bool = true {
-        didSet { persist("naturalScrolling", naturalScrolling) }
+    /// When true, scroll direction is reversed relative to finger motion (classic
+    /// mouse-wheel feel); when false, content follows finger movement.  Defaults to false.
+    @Published var reverseScrollDirection: Bool = false {
+        didSet { persist("naturalScrolling", reverseScrollDirection) }
     }
     /// Active-touch-area mapping — independent from the pen's active area because
     /// users typically want the full surface for touch but a cropped area for pen
@@ -936,7 +935,7 @@ final class TabletSettings: ObservableObject {
         touchSensitivity = Swift.max(0.25, Swift.min(loadDouble("touchSensitivity", default: 1.0), 4.0))
         tapToClick = loadBool("tapToClick", default: false)
         twoFingerScroll = loadBool("twoFingerScroll", default: true)
-        naturalScrolling = loadBool("naturalScrolling", default: true)
+        reverseScrollDirection = loadBool("naturalScrolling", default: false)
         touchAreaX      = Swift.max(0.0,  Swift.min(loadDouble("touchAreaX",      default: 0.0), 1.0))
         touchAreaY      = Swift.max(0.0,  Swift.min(loadDouble("touchAreaY",      default: 0.0), 1.0))
         touchAreaWidth  = Swift.max(0.01, Swift.min(loadDouble("touchAreaWidth",  default: 1.0), 1.0))

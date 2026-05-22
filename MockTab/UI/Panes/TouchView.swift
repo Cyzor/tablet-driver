@@ -114,11 +114,11 @@ struct TouchView: View {
                 .help(LocalizedStringKey("Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview."))
 
             Toggle(
-                String(localized: "Natural scrolling",
-                       comment: "Touch pane: scroll direction matches finger motion"),
-                isOn: $settings.naturalScrolling)
+                String(localized: "Reverse direction",
+                       comment: "Touch pane: reverse scroll direction (off = content follows fingers)"),
+                isOn: $settings.reverseScrollDirection)
                 .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
-                .help(LocalizedStringKey("On (default): content follows your fingers, matching macOS's system-wide setting. Off: content moves opposite, like a classic mouse wheel."))
+                .help(LocalizedStringKey("On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers."))
         } header: {
             Text(LocalizedStringKey("Scrolling"))
         }

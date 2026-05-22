@@ -83,7 +83,7 @@ Las tabletas con superficie táctil capacitiva detectan contactos del dedo adem�
 
 **Desplazamiento con dos dedos** – Dos dedos moviéndose juntos emiten eventos de desplazamiento suave. Las apps los tratan como desplazamiento de trackpad, incluido el efecto rubber-band en Safari y Vista Previa.
 
-**Desplazamiento natural** – Activado: el contenido sigue el movimiento del dedo, igualando la configuración del sistema macOS. Desactivado: el contenido se mueve en dirección opuesta, como una rueda de ratón tradicional.
+**Invertir dirección** – Activado: el contenido se desplaza en sentido contrario al movimiento de los dedos, como una rueda de ratón clásica. Desactivado (predeterminado): el contenido sigue a tus dedos.
 
 ## Área táctil
 

@@ -598,11 +598,13 @@ enum WacomDeviceRegistry {
             featureInit: nil, seizeUSB: true,
             confidence: .verified),
         .init(
-            productID: 0x0358, name: "Intuos Pro L (PTH-860)",  // ✓ confirmed live
+            productID: 0x0358, name: "Intuos Pro L (PTH-860)",  // ✓ confirmed live (USB + BT)
             parser: .intuosV2, maxX: 62200, maxY: 43200, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             hasFingerTouch: true, maxTouchContacts: 5,
-            touchMaxX: 12439, touchMaxY: 8639,  // confirmed by live capture 2026-05-21
+            // USB coords confirmed 2026-05-21; BT touch confirmed 2026-05-22 via
+            // live capture (PID 0x0358 presented over BT, same as PTH-660 pattern).
+            touchMaxX: 12439, touchMaxY: 8639,
             featureInit: nil, seizeUSB: true,
             confidence: .verified),
 
@@ -747,12 +749,9 @@ enum WacomDeviceRegistry {
             parser: .intuosV2, maxX: 62200, maxY: 43200, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             hasFingerTouch: true, maxTouchContacts: 5,
-            // Touch coords mirror the USB PTH-860 entry (12439×8639, live-
-            // verified for USB).  Same digitizer hardware so the BT range
-            // is almost certainly identical, but the BT touch path itself
-            // (kernel-ported from wacom_intuos_pro2_bt_touch) has not been
-            // exercised on real hardware yet.  `confidence: .verified` here
-            // refers to the pen/pad/battery paths, not touch.
+            // PTH-860 over BT presents PID 0x0358 (USB PID), not this entry —
+            // same pattern as PTH-660/0x0360.  Kept as a defensive fallback.
+            // Touch confirmed working 2026-05-22 via 0x0358 path.
             touchMaxX: 12439, touchMaxY: 8639,
             featureInit: nil, seizeUSB: false,
             confidence: .verified),

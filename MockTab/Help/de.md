@@ -83,7 +83,7 @@ Tablets mit kapazitiver Berührungsfläche melden Fingerkontakte zusätzlich zur
 
 **Zwei-Finger-Scrollen** – Zwei sich gemeinsam bewegende Finger senden weiche Scrollereignisse. Apps behandeln diese als Trackpad-Scrollen, einschließlich Rubber-Banding in Safari und Vorschau.
 
-**Natürliches Scrollen** – Ein: Der Inhalt folgt der Fingerbewegung, passend zur macOS-Systemeinstellung. Aus: Der Inhalt bewegt sich in die entgegengesetzte Richtung, wie bei einem klassischen Mausrad.
+**Richtung umkehren** – Ein: Der Inhalt bewegt sich entgegen der Fingerbewegung, wie ein klassisches Mausrad. Aus (Standard): Der Inhalt folgt deinen Fingern.
 
 ## Berührungsbereich
 

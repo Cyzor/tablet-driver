@@ -932,7 +932,7 @@ final class InputInjector {
             if !contacts.isEmpty {
                 _ = touchTracker.process(
                     contacts: [], tapToClick: false, twoFingerScroll: false,
-                    naturalScrolling: false, sensitivity: 1.0, now: now)
+                    reverseScrollDirection: false, sensitivity: 1.0, now: now)
             }
             return
         }
@@ -979,7 +979,7 @@ final class InputInjector {
             contacts: projected,
             tapToClick: snap.tapToClick,
             twoFingerScroll: snap.twoFingerScroll,
-            naturalScrolling: snap.naturalScrolling,
+            reverseScrollDirection: snap.reverseScrollDirection,
             sensitivity: snap.touchSensitivity,
             now: now)
 
