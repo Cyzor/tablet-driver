@@ -52,7 +52,10 @@ struct IntuosV2Decoder: WacomDecoder {
             guard let aux = decodeBLEPadReport(report: report, length: length) else { return [] }
             return [.aux(aux)]
         case 0x10:
-            guard length >= 12 else { return [] }
+            // Body reads through report[16] (hover distance / mouse scroll counter)
+            // unconditionally; reject short reports here so the body can rely on it.
+            // Mirrors the bounds-check spirit of upstream input-wacom 09bc480.
+            guard length >= 17 else { return [] }
             return decodePenReport(
                 report: report, length: length, spec: spec, state: &state,
                 deviceFamily: deviceFamily)

@@ -124,7 +124,10 @@ extension IntuosV2Decoder {
         // no valid data or no range. Reset the counter on any good frame.
         for i in 0..<7 {
             let frameOffset = 1 + i * 14
-            guard frameOffset + 1 <= length else { break }
+            // Each frame is 14 bytes; body reads through f[13] (hoverDistance).
+            // Stop early if the report is truncated mid-frame. Bounds-check
+            // spirit of upstream input-wacom 09bc480.
+            guard frameOffset + 14 <= length else { break }
             let f = report.advanced(by: frameOffset)
             let flags = f[0]
 
