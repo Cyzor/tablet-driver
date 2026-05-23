@@ -548,7 +548,7 @@ struct AppOverrideBar: View {
                     .frame(width: chipIconSize, height: chipIconSize)
             } else {
                 Image(systemName: "globe")
-                    .font(.system(size: chipIconSize * 0.77))
+                    .appFont(size: chipIconSize * 0.77)
                     .frame(width: chipIconSize, height: chipIconSize)
                     .foregroundStyle(
                         showsActiveSelection
@@ -559,7 +559,7 @@ struct AppOverrideBar: View {
             }
 
             Text(label)
-                .font(.system(size: 11, weight: isSelected ? .medium : .regular))
+                .appFont(size: 11, weight: isSelected ? .medium : .regular)
                 .lineLimit(1)
 
             if domainKeyCount > 0 && !isSelected {
@@ -636,7 +636,7 @@ struct AppOverrideBar: View {
             }
         } label: {
             Image(systemName: "plus.app.fill")
-                .font(.system(size: 36, weight: .semibold))
+                .appFont(size: 36, weight: .semibold)
                 .foregroundStyle(Color.accentColor)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityHidden(true)
@@ -773,7 +773,7 @@ struct AppOverrideBar: View {
                     comment: "Label showing which app's settings are being edited"
                 )
             )
-            .font(.settingsLabel)
+            .appFont(.settingsLabel)
 
             Text(
                 String(
@@ -781,7 +781,7 @@ struct AppOverrideBar: View {
                     comment: "Note that per-app overrides only apply to the specific app"
                 )
             )
-            .font(.settingsLabel)
+            .appFont(.settingsLabel)
             .foregroundStyle(.secondary)
 
             Spacer()
@@ -789,7 +789,7 @@ struct AppOverrideBar: View {
             Button(LocalizedStringKey("Reset")) {
                 settings.removeAppOverride(bundleID: override.bundleID, keyScope: domainKeys)
             }
-            .font(.settingsLabel)
+            .appFont(.settingsLabel)
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .help(

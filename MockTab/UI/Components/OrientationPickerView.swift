@@ -120,5 +120,8 @@ struct OrientationGlyph: View {
             .resizable()
             .scaledToFit()
             .rotationEffect(Angle(radians: orientation.rotationAngle))
+            // Orientation is redundantly conveyed by the parent radio row's
+            // localised text label, so the rotated glyph is decorative.
+            .accessibilityHidden(true)
     }
 }

@@ -1189,6 +1189,98 @@
         }
       }
     },
+    "Active area height": {
+      "comment": "Accessibility label: VoiceOver slider for the active area's height (clamped above minimum)",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Höhe des aktiven Bereichs"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alto del área activa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクティブエリアの高さ"
+          }
+        }
+      }
+    },
+    "Active area horizontal position": {
+      "comment": "Accessibility label: VoiceOver slider for the active area's X origin (0%–100%)",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horizontale Position des aktiven Bereichs"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición horizontal del área activa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクティブエリアの水平位置"
+          }
+        }
+      }
+    },
+    "Active area vertical position": {
+      "comment": "Accessibility label: VoiceOver slider for the active area's Y origin (0%–100%)",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vertikale Position des aktiven Bereichs"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posición vertical del área activa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクティブエリアの垂直位置"
+          }
+        }
+      }
+    },
+    "Active area width": {
+      "comment": "Accessibility label: VoiceOver slider for the active area's width (clamped above minimum)",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Breite des aktiven Bereichs"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ancho del área activa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アクティブエリアの幅"
+          }
+        }
+      }
+    },
     "Active profile:": {
       "comment": "Label in active profile banner",
       "localizations": {
@@ -4232,6 +4324,29 @@
         }
       }
     },
+    "Drag one finger slowly across the touch surface": {
+      "comment": "Capture-guide instruction: single-finger drag on capacitive touch surface",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziehe einen Finger langsam über die Berührungsfläche"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desliza un dedo lentamente por la superficie táctil"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 本の指でタッチ面をゆっくりとスライドさせます"
+          }
+        }
+      }
+    },
     "Drag out to export a backup, drag in a JSON file to import, or Control-click for actions.": {
       "comment": "Help text for backup/restore tile",
       "localizations": {
@@ -4338,6 +4453,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "キャンバスに描画して、筆圧とクリックの動作を確認してください。"
+          }
+        }
+      }
+    },
+    "Drop a profile JSON file here to import, or drag this well to export the current profile.": {
+      "comment": "Accessibility help text describing the drag well's two directions",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Legen Sie eine Profil-JSON-Datei hier ab, um sie zu importieren, oder ziehen Sie diesen Bereich, um das aktuelle Profil zu exportieren."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suelte aquí un archivo JSON de perfil para importar, o arrastre este elemento para exportar el perfil actual."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロファイルのJSONファイルをここにドロップしてインポートするか、このウェルをドラッグして現在のプロファイルをエクスポートします。"
           }
         }
       }
@@ -4932,6 +5070,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "エクスプレスキー — 右"
+          }
+        }
+      }
+    },
+    "Extra Large": {
+      "comment": "Text Size submenu: largest",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sehr groß"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extra grande"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "特大"
           }
         }
       }
@@ -6012,6 +6173,29 @@
         }
       }
     },
+    "If your tablet has a touch surface, slide a finger across it and try a two-finger pinch": {
+      "comment": "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falls dein Tablet eine Berührungsfläche hat, ziehe einen Finger darüber und probiere eine Zwei-Finger-Geste"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si tu tableta tiene superficie táctil, desliza un dedo por ella y prueba un pellizco con dos dedos"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブレットにタッチ面がある場合は、指でなぞったり 2 本指でピンチしてみてください"
+          }
+        }
+      }
+    },
     "Illustrator: John Tenniel, 1865": {
       "comment": "A footnote displaying the illustrator of the Mock Turtle image.",
       "isCommentAutoGenerated": true,
@@ -6571,6 +6755,29 @@
         }
       }
     },
+    "Large": {
+      "comment": "Text Size submenu: second-largest",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groß"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grande"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大"
+          }
+        }
+      }
+    },
     "Launch at Login": {
       "comment": "Menu toggle: start app automatically on login\nRow label in Info tab status table",
       "localizations": {
@@ -7047,7 +7254,7 @@
       }
     },
     "Medium": {
-      "comment": "Stabilization strength label",
+      "comment": "Stabilization strength label\nText Size submenu: second-smallest",
       "localizations": {
         "de": {
           "stringUnit": {
@@ -7608,29 +7815,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "一部の旧型ペンタブレット向けのネイティブ macOS ドライバー"
-          }
-        }
-      }
-    },
-    "Reverse direction": {
-      "comment": "Touch pane: reverse scroll direction (off = content follows fingers)",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Richtung umkehren"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Invertir dirección"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "方向を反転"
           }
         }
       }
@@ -8786,6 +8970,29 @@
         }
       }
     },
+    "Pinch and spread with two fingers on the touch surface": {
+      "comment": "Capture-guide instruction: two-finger pinch/spread on capacitive touch surface",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwei Finger auf der Berührungsfläche zusammen- und auseinanderziehen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pellizca y separa dos dedos sobre la superficie táctil"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タッチ面上で 2 本の指をピンチイン・ピンチアウトします"
+          }
+        }
+      }
+    },
     "Point %lld of %lld": {
       "localizations": {
         "de": {
@@ -8816,7 +9023,27 @@
     },
     "Pointer": {
       "comment": "Section header in the TouchView that lists the \"Pointer\" settings.",
-      "isCommentAutoGenerated": true
+      "isCommentAutoGenerated": true,
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeiger"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puntero"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポインタ"
+          }
+        }
+      }
     },
     "Portrait": {
       "comment": "Tablet orientation: rotated 90° CCW",
@@ -9109,6 +9336,98 @@
         }
       }
     },
+    "Pressure curve point 1 input": {
+      "comment": "Accessibility label: VoiceOver slider for the X coordinate of the first Bézier control point",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Druckkurve Punkt 1 Eingang"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrada del punto 1 de la curva de presión"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感圧曲線ポイント1の入力"
+          }
+        }
+      }
+    },
+    "Pressure curve point 1 output": {
+      "comment": "Accessibility label: VoiceOver slider for the Y coordinate of the first Bézier control point",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Druckkurve Punkt 1 Ausgang"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salida del punto 1 de la curva de presión"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感圧曲線ポイント1の出力"
+          }
+        }
+      }
+    },
+    "Pressure curve point 2 input": {
+      "comment": "Accessibility label: VoiceOver slider for the X coordinate of the second Bézier control point",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Druckkurve Punkt 2 Eingang"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrada del punto 2 de la curva de presión"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感圧曲線ポイント2の入力"
+          }
+        }
+      }
+    },
+    "Pressure curve point 2 output": {
+      "comment": "Accessibility label: VoiceOver slider for the Y coordinate of the second Bézier control point",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Druckkurve Punkt 2 Ausgang"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salida del punto 2 de la curva de presión"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感圧曲線ポイント2の出力"
+          }
+        }
+      }
+    },
     "Preview": {
       "comment": "Section header in Display tab — canvas preview",
       "localizations": {
@@ -9269,6 +9588,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "プロファイル操作"
+          }
+        }
+      }
+    },
+    "Profile import and export drop target": {
+      "comment": "Accessibility label for the bidirectional drag-and-drop well in Profiles",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ablagebereich zum Importieren und Exportieren von Profilen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino de arrastre para importar y exportar perfiles"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロファイルのインポートおよびエクスポートのドロップターゲット"
           }
         }
       }
@@ -10305,6 +10647,29 @@
         }
       }
     },
+    "Reverse direction": {
+      "comment": "Touch pane: reverse scroll direction (off = content follows fingers)",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richtung umkehren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invertir dirección"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "方向を反転"
+          }
+        }
+      }
+    },
     "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).": {
       "comment": "A help text for the \"Invert Rotation Direction\" toggle, explaining its purpose.",
       "isCommentAutoGenerated": true,
@@ -10919,7 +11284,27 @@
     },
     "Scrolling": {
       "comment": "Section header in the touch settings view, describing the scrolling options.",
-      "isCommentAutoGenerated": true
+      "isCommentAutoGenerated": true,
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrollen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desplazamiento"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スクロール"
+          }
+        }
+      }
     },
     "Secondary mouse button (context menus)": {
       "comment": "The secondary mouse button, used for context menus in various applications.",
@@ -11432,6 +11817,29 @@
         }
       }
     },
+    "Small": {
+      "comment": "Text Size submenu: smallest",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klein"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pequeño"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小"
+          }
+        }
+      }
+    },
     "Snaps a second tap to the first click position within this radius, making double-clicks reliable.": {
       "comment": "A description of the double-click distance setting.",
       "isCommentAutoGenerated": true,
@@ -11686,6 +12094,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "手ぶれ補正"
+          }
+        }
+      }
+    },
+    "Standard": {
+      "comment": "Text Size submenu: system default",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estándar"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標準"
           }
         }
       }
@@ -12220,6 +12651,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "テスト領域"
+          }
+        }
+      }
+    },
+    "Text Size": {
+      "comment": "View menu: submenu containing the in-app text-size choices",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Textgröße"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamaño de texto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストサイズ"
           }
         }
       }
@@ -13689,75 +14143,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "ズーム"
-          }
-        }
-      }
-    },
-    "Drag one finger slowly across the touch surface": {
-      "comment": "Capture-guide instruction: single-finger drag on capacitive touch surface",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ziehe einen Finger langsam über die Berührungsfläche"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desliza un dedo lentamente por la superficie táctil"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 本の指でタッチ面をゆっくりとスライドさせます"
-          }
-        }
-      }
-    },
-    "Pinch and spread with two fingers on the touch surface": {
-      "comment": "Capture-guide instruction: two-finger pinch/spread on capacitive touch surface",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zwei Finger auf der Berührungsfläche zusammen- und auseinanderziehen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pellizca y separa dos dedos sobre la superficie táctil"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "タッチ面上で 2 本の指をピンチイン・ピンチアウトします"
-          }
-        }
-      }
-    },
-    "If your tablet has a touch surface, slide a finger across it and try a two-finger pinch": {
-      "comment": "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Falls dein Tablet eine Berührungsfläche hat, ziehe einen Finger darüber und probiere eine Zwei-Finger-Geste"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Si tu tableta tiene superficie táctil, desliza un dedo por ella y prueba un pellizco con dos dedos"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "タブレットにタッチ面がある場合は、指でなぞったり 2 本指でピンチしてみてください"
           }
         }
       }

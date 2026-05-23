@@ -96,7 +96,7 @@ struct ScratchpadView: View {
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(LocalizedStringKey("Test Area"))
-                .font(.headline)
+                .appFont(.headline)
 
             Text(
                 String(
@@ -104,7 +104,7 @@ struct ScratchpadView: View {
                     comment: "Description of the scratchpad drawing area"
                 )
             )
-            .font(.settingsLabel)
+            .appFont(.settingsLabel)
             .foregroundStyle(.secondary)
 
             ScratchpadCanvas(
@@ -140,9 +140,10 @@ struct ScratchpadView: View {
     private var pressureRow: some View {
         HStack(spacing: 10) {
             Text(LocalizedStringKey("Pressure"))
-                .font(.settingsLabel)
+                .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
-                .frame(width: 58, alignment: .leading)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -158,7 +159,7 @@ struct ScratchpadView: View {
             .frame(height: 8)
 
             Text(String(format: "%.0f%%", currentPressure * 100))
-                .font(.system(.body, design: .monospaced))
+                .appFont(.monospaced)
                 .foregroundStyle(.secondary)
                 .frame(width: 44, alignment: .trailing)
 
@@ -176,9 +177,10 @@ struct ScratchpadView: View {
     private var tiltRow: some View {
         HStack(spacing: 10) {
             Text(LocalizedStringKey("Tilt"))
-                .font(.settingsLabel)
+                .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
-                .frame(width: 58, alignment: .leading)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
 
             TiltVisualizerCanvas(tabletManager: tabletManager)
                 .frame(width: 100, height: 100)
@@ -191,9 +193,10 @@ struct ScratchpadView: View {
     private var touchRow: some View {
         HStack(spacing: 10) {
             Text(LocalizedStringKey("Touch"))
-                .font(.settingsLabel)
+                .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
-                .frame(width: 58, alignment: .leading)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
 
             TouchContactsCanvas(
                 contacts: liveTouch.contacts,

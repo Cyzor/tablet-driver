@@ -687,7 +687,7 @@ struct ButtonMappingView: View {
                 .listRowBackground(Color.clear)
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey(isMouse ? "Mouse Buttons" : "Pen Buttons"))
+                Text(LocalizedStringKey(isMouse ? "Mouse Buttons" : "Pen Buttons")).appFont(.headline)
                 ToolNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
@@ -708,7 +708,7 @@ struct ButtonMappingView: View {
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey("Express Keys"))
+                Text(LocalizedStringKey("Express Keys")).appFont(.headline)
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
@@ -763,7 +763,7 @@ struct ButtonMappingView: View {
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey("Toggle Buttons — Left"))
+                Text(LocalizedStringKey("Toggle Buttons — Left")).appFont(.headline)
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
@@ -980,7 +980,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                             comment: "Ring speed slider at minimum — rotation disabled")
                         : String(format: "%.2g×", slot.speed)
                     Text(speedLabel)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                         .frame(width: 36, alignment: .trailing)
                         .monospacedDigit()
@@ -999,7 +999,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                 HStack(spacing: 16) {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.clockwise")
-                            .font(.caption2)
+                            .appFont(.caption2)
                             .foregroundStyle(.secondary)
                             .accessibilityLabel(LocalizedStringKey("Clockwise"))
                         ButtonBindingControl(
@@ -1008,7 +1008,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                     }
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.counterclockwise")
-                            .font(.caption2)
+                            .appFont(.caption2)
                             .foregroundStyle(.secondary)
                             .accessibilityLabel(LocalizedStringKey("Counter-clockwise"))
                         ButtonBindingControl(
@@ -1139,7 +1139,7 @@ struct ButtonBindingControl: View, Equatable {
                 .help("Disable this button")
         } label: {
             Image(systemName: "ellipsis")
-                .font(.settingsBadge)
+                .appFont(.settingsBadge)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
                 .accessibilityHidden(true)

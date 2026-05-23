@@ -43,9 +43,9 @@ struct AboutView: View {
                         ) {
                             VStack(spacing: 4) {
                                 Text("Alice's Adventures in Wonderland, Lewis Carroll")
-                                    .font(.system(size: 12, weight: .bold).italic())
+                                    .appFont(.settingsCaption).fontWeight(.bold).italic()
                                 Text("Illustrator: John Tenniel, 1865")
-                                    .font(.system(size: 11, weight: .bold))
+                                    .appFont(.settingsBadge).fontWeight(.bold)
                             }
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
@@ -68,7 +68,7 @@ struct AboutView: View {
             Text(
                 "“Once,” said the Mock Turtle at last, with a deep sigh, “I was a real Turtle.”"
             )
-            .font(.system(size: 16).italic().bold())
+            .appFont(.title3).italic().bold()
             .foregroundColor(.secondary)
             .multilineTextAlignment(.center)
             .lineLimit(nil)
@@ -84,7 +84,7 @@ struct AboutView: View {
                     .accessibilityHidden(true)
 
                 Text(String(localized: "MockTab", comment: "Application name"))
-                    .font(.system(size: 32, weight: .semibold))
+                    .appFont(.largeTitle).fontWeight(.semibold)
             }
 
             // Version
@@ -93,7 +93,7 @@ struct AboutView: View {
                 Text(String(localized: "(\(build))", comment: "Build number in parentheses"))
                     .foregroundColor(.secondary)
             }
-            .font(.system(size: 13))
+            .appFont(.settingsLabel)
             .foregroundColor(.secondary)
 
             Divider()
@@ -101,7 +101,7 @@ struct AboutView: View {
 
             // Description
             Text(String(localized: "Native macOS driver for a few legacy drawing tablets", comment: "App tagline in about view"))
-                .font(.system(size: 12))
+                .appFont(.settingsCaption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(nil)
@@ -121,11 +121,11 @@ struct AboutView: View {
                 }
                 .buttonStyle(.link)
             }
-            .font(.system(size: 11))
+            .appFont(.settingsBadge)
 
             // Copyright
             Text(String(localized: "Copyright © \(copyrightYears) MockTab Contributors", comment: "Copyright notice with year range"))
-                .font(.system(size: 10))
+                .appFont(.badgeSubtitle)
                 .foregroundColor(.secondary)
         }
         .padding(28)
@@ -135,11 +135,11 @@ struct AboutView: View {
     private var licenseBox: some View {
         VStack(spacing: 0) {
             Text(String(localized: "Open Source License", comment: "Section header: open source license information"))
-                .font(.system(size: 11, weight: .medium))
+                .appFont(.settingsBadge).fontWeight(.medium)
                 .foregroundColor(.primary)
 
             Text(String(localized: "MockTab is free software released under the GNU General Public License v3.0.", comment: "License description in about view"))
-                .font(.system(size: 10))
+                .appFont(.badgeSubtitle)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(nil)
@@ -148,7 +148,7 @@ struct AboutView: View {
                 String(localized: "View License", comment: "Link label: view full GPL v3.0 license text"),
                 destination: URL(string: "https://www.gnu.org/licenses/gpl-3.0.html")!
             )
-            .font(.system(size: 10))
+            .appFont(.badgeSubtitle)
         }
         .padding(10)
         .frame(maxWidth: .infinity)

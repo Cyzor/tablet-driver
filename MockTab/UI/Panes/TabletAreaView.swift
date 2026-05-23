@@ -20,6 +20,9 @@ struct TabletAreaView: View {
     /// The product ID this view is currently showing.
     var boundProductID: Int?
 
+    @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
+    private var textScale: CGFloat { AppearancePrefs.scale(forIndex: textSizeIndex) }
+
     // MARK: - Digitizer dimensions
 
     /// Digitizer width for the currently-shown device, in hardware line-units.
@@ -162,9 +165,9 @@ struct TabletAreaView: View {
                                     .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(LocalizedStringKey("Calibrated"))
-                                        .font(.body)
+                                        .appFont(.body)
                                     Text(cal.calibratedAt, format: .dateTime.month(.abbreviated).day().year())
-                                        .font(.caption)
+                                        .appFont(.caption)
                                         .foregroundStyle(.secondary)
                                 }
                             } else {
@@ -268,7 +271,7 @@ struct TabletAreaView: View {
 
     private var sectionHeading: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(LocalizedStringKey("Active Surface Area")).font(.headline)
+            Text(LocalizedStringKey("Active Surface Area")).appFont(.headline)
             DeviceNameLabel(tabletManager: tabletManager, registry: registry)
         }
     }
@@ -456,9 +459,9 @@ struct TabletAreaView: View {
         let label = deviceLabel
 
         let line1Resolved = ctx.resolve(
-            Text(label.primary).font(.badgeTitle).bold().foregroundColor(.white))
+            Text(label.primary).font(Font.appFont(.badgeTitle, scale: textScale)).bold().foregroundColor(.white))
         let line2Resolved = label.secondary.map {
-            ctx.resolve(Text($0).font(.badgeSubtitle).foregroundColor(.white))
+            ctx.resolve(Text($0).font(Font.appFont(.badgeSubtitle, scale: textScale)).foregroundColor(.white))
         }
 
         let hPad: CGFloat = 6

@@ -14,6 +14,9 @@ struct DisplayMappingView: View {
     @State private var displays: [DisplayInfo] = []
     @State private var rangeStart: Int = -1
 
+    @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
+    private var textScale: CGFloat { AppearancePrefs.scale(forIndex: textSizeIndex) }
+
     private let modeAll = TabletSettings.displayModeAll  // -1
     private let modeToggle = TabletSettings.displayModeToggle  // -2
 
@@ -73,10 +76,10 @@ struct DisplayMappingView: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(String(localized: "Display Rotation Detected", comment: "Warning title for rotated display"))
-                            .font(.subheadline)
+                            .appFont(.subheadline)
                             .fontWeight(.semibold)
                         Text(String(localized: "Your display is rotated. Combined with a rotated tablet, this may require adjustment. Test your pen input to verify the mapping is correct.", comment: "Warning message for rotated display"))
-                            .font(.settingsLabel)
+                            .appFont(.settingsLabel)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -102,7 +105,7 @@ struct DisplayMappingView: View {
             }
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey("Display Mapping"))
+                Text(LocalizedStringKey("Display Mapping")).appFont(.headline)
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         } footer: {
@@ -158,7 +161,7 @@ struct DisplayMappingView: View {
     private var toggleSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(LocalizedStringKey("Included displays"))
-                .font(.settingsLabel)
+                .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
                 .help(LocalizedStringKey("Click a thumbnail to toggle that display in or out of the rotation. ⌘-click to add individual displays; ⇧-click to select a range."))
 
@@ -238,7 +241,7 @@ struct DisplayMappingView: View {
 
             // Include / exclude icon
             Image(systemName: included ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .font(.system(size: 18))
+                .appFont(size: 18)
                 .foregroundStyle(included ? Color.green : Color.secondary)
                 .shadow(color: .black.opacity(0.4), radius: 1)
                 .accessibilityHidden(true)
@@ -247,7 +250,7 @@ struct DisplayMappingView: View {
             VStack(spacing: 0) {
                 Spacer()
                 Text(info.name)
-                    .font(.badgeTitle)
+                    .appFont(.badgeTitle)
                     .bold()
                     .lineLimit(1)
                     .foregroundStyle(.white)
@@ -433,9 +436,9 @@ struct DisplayMappingView: View {
                         ), style: StrokeStyle(lineWidth: selected ? 2 : 1))
 
                     let nameResolved = ctx.resolve(
-                        Text(info.name).font(.badgeTitle).bold().foregroundColor(.white))
+                        Text(info.name).font(Font.appFont(.badgeTitle, scale: textScale)).bold().foregroundColor(.white))
                     let resResolved = ctx.resolve(
-                        Text(info.resolution).font(.badgeSubtitle).foregroundColor(.white))
+                        Text(info.resolution).font(Font.appFont(.badgeSubtitle, scale: textScale)).foregroundColor(.white))
                     let measure = CGSize(width: rect.width - 8, height: 40)
                     let nameSize = nameResolved.measure(in: measure)
                     let resSize = resResolved.measure(in: measure)

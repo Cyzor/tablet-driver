@@ -76,31 +76,31 @@ struct CalibrationOverlayView: View {
             switch session.state {
             case .idle:
                 Text("Preparing calibration…")
-                    .font(.title3)
+                    .appFont(.title3)
             case .awaitingTap(let idx):
                 Text("Point \(idx + 1) of \(session.targets.count)")
-                    .font(.title3.bold())
+                    .appFont(.title3).bold()
                 Text("Tap and hold the crosshair with your pen tip")
-                    .font(.body)
+                    .appFont(.body)
             case .collecting(let idx, let count):
                 Text("Point \(idx + 1) of \(session.targets.count)")
-                    .font(.title3.bold())
+                    .appFont(.title3).bold()
                 Text("Hold steady… (\(count)/16)")
-                    .font(.body)
+                    .appFont(.body)
             case .computing:
                 Text("Computing calibration…")
-                    .font(.title3)
+                    .appFont(.title3)
                 ProgressView()
             case .done(let maxRes, let transformType):
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 36))
+                    .appFont(size: 36)
                     .foregroundStyle(.green)
                     .accessibilityHidden(true)
                 Text("Calibration complete")
-                    .font(.title3.bold())
+                    .appFont(.title3).bold()
                 let pixelError = maxRes * Swift.max(session.displayBounds.width, session.displayBounds.height)
                 Text("\(transformType) transform, \(pixelError, specifier: "%.1f") px max error")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
             case .cancelled:
                 EmptyView()

@@ -60,6 +60,18 @@ final class ExportWellNSView: NSView, NSDraggingSource, NSFilePromiseProviderDel
         // Document icon
         updateIconSymbol(receiving: false)
         layer?.addSublayer(iconLayer)
+
+        // Default NSView role is `unknown`; expose the well as a labelled
+        // button so VoiceOver lands here with meaning. Callers may also set
+        // a .accessibilityLabel on the SwiftUI wrapper for higher-level
+        // grouping; this provides a useful fallback at the NSView level.
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(NSLocalizedString(
+            "Profile import and export drop target",
+            comment: "Accessibility label for the bidirectional drag-and-drop well in Profiles"))
+        setAccessibilityHelp(NSLocalizedString(
+            "Drop a profile JSON file here to import, or drag this well to export the current profile.",
+            comment: "Accessibility help text describing the drag well's two directions"))
     }
 
     private func updateIconSymbol(receiving: Bool) {

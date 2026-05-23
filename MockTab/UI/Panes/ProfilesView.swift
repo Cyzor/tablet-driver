@@ -125,9 +125,9 @@ struct ProfilesView: View {
                     .foregroundStyle(.green)
                     .accessibilityHidden(true)
                 Text(LocalizedStringKey("Active profile:"))
-                    .font(.headline)
+                    .appFont(.headline)
                 Text(active.name)
-                    .font(.settingsLabel)
+                    .appFont(.settingsLabel)
                     .fontWeight(.medium)
                 Spacer()
             }
@@ -143,7 +143,7 @@ struct ProfilesView: View {
     private var createRow: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(LocalizedStringKey("New Profile"))
-                .font(.headline)
+                .appFont(.headline)
                 .foregroundStyle(.secondary)
 
             if isCreating {
@@ -192,7 +192,7 @@ struct ProfilesView: View {
     private var autoSwitchSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(LocalizedStringKey("Auto-Switch"))
-                .font(.headline)
+                .appFont(.headline)
                 .foregroundStyle(.secondary)
 
             Toggle(
@@ -206,7 +206,7 @@ struct ProfilesView: View {
                     set: { settings.autoSwitchEnabled = $0 }
                 )
             )
-            .font(.settingsLabel)
+            .appFont(.settingsLabel)
             .help(LocalizedStringKey("Restore the active profile automatically when this tablet is connected"))
         }
     }
@@ -224,7 +224,7 @@ struct ProfilesView: View {
                         "Export your current configuration as a JSON file. You can restore it later if settings get reset or corrupted.",
                     comment: "Description of the backup/export functionality")
             )
-            .font(.settingsLabel)
+            .appFont(.settingsLabel)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
 
@@ -245,7 +245,7 @@ struct ProfilesView: View {
                             localized: "Drag out to save a backup. Drag a .json file in to import.",
                             comment: "Description of export/import drag-and-drop functionality")
                     )
-                    .font(.settingsLabel)
+                    .appFont(.settingsLabel)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -263,7 +263,7 @@ struct ProfilesView: View {
 
                     if let err = importError {
                         Text(err)
-                            .font(.settingsBadge)
+                            .appFont(.settingsBadge)
                             .foregroundStyle(.red)
                     }
                 }
@@ -306,7 +306,7 @@ struct ProfilesView: View {
 
                     VStack(spacing: 6) {
                         Image(systemName: "document.badge.gearshape.fill")
-                            .font(.system(size: 26, weight: .semibold))
+                            .appFont(size: 26, weight: .semibold)
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(isDropTargeted ? Color.accentColor : Color.primary)
                             .offset(x: 4)
@@ -317,7 +317,7 @@ struct ProfilesView: View {
                                 localized: "JSON",
                                 comment: "Short label inside backup/restore tile")
                         )
-                        .font(.settingsBadge)
+                        .appFont(.settingsBadge)
                         .foregroundStyle(.secondary)
                     }
                     .padding(10)
@@ -486,7 +486,7 @@ private struct PresetListView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(LocalizedStringKey("Profiles"))
-                .font(.headline)
+                .appFont(.headline)
                 .foregroundStyle(.secondary)
 
             if profiles.isEmpty {
@@ -495,7 +495,7 @@ private struct PresetListView: View {
                         localized: "No profiles yet. Create one below.",
                         comment: "Empty state message when no profiles exist")
                 )
-                .font(.settingsLabel)
+                .appFont(.settingsLabel)
                 .foregroundStyle(.tertiary)
                 .padding(.vertical, 4)
             } else {
@@ -545,7 +545,7 @@ private struct PresetListView: View {
                                     comment: "Count of overridden settings in a profile"),
                                 preset.overriddenKeys.count)
                         )
-                        .font(.settingsBadge)
+                        .appFont(.settingsBadge)
                         .foregroundStyle(.tertiary)
                     }
                 }
@@ -558,7 +558,7 @@ private struct PresetListView: View {
                         .help(LocalizedStringKey("Switch to this profile immediately"))
                 } else {
                     Text(String(localized: "Active", comment: "Badge label when profile is active"))
-                        .font(.settingsBadge)
+                        .appFont(.settingsBadge)
                         .foregroundStyle(.green)
                 }
 
@@ -579,7 +579,7 @@ private struct PresetListView: View {
                     .help(LocalizedStringKey("Permanently delete this profile (cannot be undone)"))
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.settingsBadge)
+                        .appFont(.settingsBadge)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 4)
                         .accessibilityHidden(true)
@@ -627,7 +627,7 @@ private struct PresetListView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 3))
         } else {
             Image(systemName: "app")
-                .font(.settingsBadge)
+                .appFont(.settingsBadge)
                 .frame(width: 16, height: 16)
                 .accessibilityHidden(true)
         }
@@ -670,10 +670,10 @@ private struct ConfigurationSummaryView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text(tablet.nickname)
-                    .font(.settingsLabel)
+                    .appFont(.settingsLabel)
                     .fontWeight(.medium)
                 Text(tablet.modelName)
-                    .font(.settingsBadge)
+                    .appFont(.settingsBadge)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(
@@ -687,14 +687,14 @@ private struct ConfigurationSummaryView: View {
                                 comment: "Count of profiles for a tablet"),
                             ts.profiles.count)
                 )
-                .font(.settingsBadge)
+                .appFont(.settingsBadge)
                 .foregroundStyle(.tertiary)
             }
 
             if !nonDefault.isEmpty {
                 ForEach(nonDefault, id: \.self) { line in
                     Text(line)
-                        .font(.settingsBadge)
+                        .appFont(.settingsBadge)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -727,17 +727,17 @@ private struct ConfigurationSummaryView: View {
 
         HStack(alignment: .top, spacing: 8) {
             Text(toolKind)
-                .font(.settingsBadge)
+                .appFont(.settingsBadge)
                 .foregroundStyle(.secondary)
                 .frame(width: 50, alignment: .leading)
             Text(tool.nickname.isEmpty ? tool.displayID : tool.nickname)
-                .font(.settingsBadge)
+                .appFont(.settingsBadge)
                 .foregroundStyle(.secondary)
             if !nonDefault.isEmpty {
                 Text(
                     "(\(nonDefault.joined(separator: String(localized: ", ", comment: "List separator"))))"
                 )
-                .font(.settingsBadge)
+                .appFont(.settingsBadge)
                 .foregroundStyle(.tertiary)
             }
         }

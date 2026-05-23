@@ -55,7 +55,7 @@ final class HelpWindowController: NSWindowController, ObservableObject {
         super.init(window: window)
 
         let view = HelpPanelView(controller: self)
-        window.contentViewController = NSHostingController(rootView: view)
+        window.contentViewController = NSHostingController(rootView: view.withAppearance())
 
         // Restore saved frame, or centre on first launch.
         if let frameString = UserDefaults.standard.string(forKey: Self.frameKey) {

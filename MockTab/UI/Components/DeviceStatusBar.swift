@@ -13,14 +13,31 @@ struct DeviceNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
 
+    @Environment(\.accessibilityDifferentiateWithoutColor)
+    private var differentiateWithoutColor
+
     var body: some View {
         HStack(spacing: 5) {
-            Circle()
-                .fill(tabletManager.isConnected ? Color.green : Color.secondary.opacity(0.5))
-                .frame(width: 6, height: 6)
+            statusDot(on: tabletManager.isConnected)
             Text(displayName)
-                .font(.settingsLabel)
+                .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func statusDot(on: Bool) -> some View {
+        if differentiateWithoutColor {
+            // Filled-vs-hollow glyph conveys state without colour for users
+            // who can't reliably distinguish the green/grey fill.
+            Image(systemName: on ? "circle.fill" : "circle")
+                .font(.system(size: 6))
+                .foregroundStyle(on ? Color.green : Color.secondary.opacity(0.5))
+                .accessibilityHidden(true)
+        } else {
+            Circle()
+                .fill(on ? Color.green : Color.secondary.opacity(0.5))
+                .frame(width: 6, height: 6)
         }
     }
 
@@ -43,14 +60,29 @@ struct ToolNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
 
+    @Environment(\.accessibilityDifferentiateWithoutColor)
+    private var differentiateWithoutColor
+
     var body: some View {
         HStack(spacing: 5) {
-            Circle()
-                .fill(tabletManager.activeToolID != nil ? Color.green : Color.secondary.opacity(0.5))
-                .frame(width: 6, height: 6)
+            statusDot(on: tabletManager.activeToolID != nil)
             Text(displayName)
-                .font(.settingsLabel)
+                .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func statusDot(on: Bool) -> some View {
+        if differentiateWithoutColor {
+            Image(systemName: on ? "circle.fill" : "circle")
+                .font(.system(size: 6))
+                .foregroundStyle(on ? Color.green : Color.secondary.opacity(0.5))
+                .accessibilityHidden(true)
+        } else {
+            Circle()
+                .fill(on ? Color.green : Color.secondary.opacity(0.5))
+                .frame(width: 6, height: 6)
         }
     }
 
@@ -106,11 +138,11 @@ struct DeviceStatusBar: View {
     private func statusItem(symbol: String, text: String, tint: Color = .secondary) -> some View {
         HStack(spacing: 4) {
             Image(systemName: symbol)
-                .font(.settingsBadge)
+                .appFont(.settingsBadge)
                 .foregroundStyle(tint)
                 .accessibilityHidden(true)
             Text(text)
-                .font(.settingsLabel)
+                .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 8)

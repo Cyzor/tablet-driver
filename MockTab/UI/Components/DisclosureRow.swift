@@ -20,11 +20,11 @@ struct DisclosureRow<Content: View>: View {
                     Image(systemName: "chevron.down")
                         .rotationEffect(.degrees(isExpanded ? -180 : 0))
                         .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: isExpanded)
-                        .font(.settingsLabel)
+                        .appFont(.settingsLabel)
                         .foregroundStyle(.secondary)
                         .accessibilityHidden(true)
                     Text(label)
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.secondary)
                     Spacer()
                 }

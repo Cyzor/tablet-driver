@@ -123,7 +123,7 @@ struct DevicesView: View {
 
     private var tabletsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(LocalizedStringKey("Tablets")).font(.headline)
+            Text(LocalizedStringKey("Tablets")).appFont(.headline)
             columnHeader("Name", "Kind", "Identifier")
             if registry.knownTablets.isEmpty {
                 emptyState(String(localized: "No tablets have been connected yet.", comment: "Empty state message when no tablets have been detected"))
@@ -180,7 +180,7 @@ struct DevicesView: View {
             // Serial / ID column
             Text(tablet.displayID)
                 .foregroundStyle(.secondary)
-                .font(.monospaced)
+                .appFont(.monospaced)
                 .frame(width: 110, alignment: .leading)
 
             // Actions
@@ -240,12 +240,12 @@ struct DevicesView: View {
         VStack(alignment: .leading, spacing: 6) {
             // Header shows which tablet's tools are listed
             HStack(spacing: 0) {
-                Text(LocalizedStringKey("Tools")).font(.headline)
+                Text(LocalizedStringKey("Tools")).appFont(.headline)
                 if let id = effectiveTabletID,
                     let tablet = registry.knownTablets.first(where: { $0.id == id })
                 {
                     Text(" — \(tablet.nickname)")
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -299,7 +299,7 @@ struct DevicesView: View {
 
             Text(tool.displayID)
                 .foregroundStyle(.secondary)
-                .font(.monospaced)
+                .appFont(.monospaced)
                 .frame(width: 110, alignment: .leading)
 
             if editingToolID == tool.id {
@@ -344,7 +344,7 @@ struct DevicesView: View {
 
     private var allToolsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(LocalizedStringKey("Tools (All Tablets)")).font(.headline)
+            Text(LocalizedStringKey("Tools (All Tablets)")).appFont(.headline)
             columnHeader("Name", "Kind", "Identifier")
             if registry.allKnownTools.isEmpty {
                 emptyState(String(localized: "No tools detected yet.\nMove the pen over a tablet to register it.", comment: "Empty state message in tools list — multiple tablets"))
@@ -387,7 +387,7 @@ struct DevicesView: View {
                 .frame(width: 110, alignment: .leading)
             Spacer(minLength: 60)  // room for the action buttons
         }
-        .font(.settingsLabel)
+        .appFont(.settingsLabel)
         .foregroundStyle(.secondary)
         .padding(.horizontal, 12)
         .padding(.top, 2)
@@ -408,7 +408,7 @@ struct DevicesView: View {
     private func emptyState(_ message: String) -> some View {
         Text(message)
             .foregroundStyle(.secondary)
-            .font(.callout)
+            .appFont(.callout)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)

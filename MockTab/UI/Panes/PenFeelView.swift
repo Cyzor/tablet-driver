@@ -26,10 +26,10 @@ struct PenFeelView: View {
                     VStack(alignment: .leading, spacing: 4) {  // ← Added .leading for consistency
                         HStack {
                             Text(LocalizedStringKey("Strength"))
-                                .font(.subheadline)
+                                .appFont(.subheadline)
                             Spacer()
                             Text(verbatim: smoothingLabel)
-                                .font(.settingsLabel)
+                                .appFont(.settingsLabel)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
                         }
@@ -42,7 +42,7 @@ struct PenFeelView: View {
                                 ))
 
                         Text(LocalizedStringKey("Reduces cursor jitter. Higher values add lag."))
-                            .font(.settingsLabel)
+                            .appFont(.settingsLabel)
                             .foregroundStyle(.secondary)
                     }
                     // .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -52,7 +52,7 @@ struct PenFeelView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text(LocalizedStringKey("Distance"))
-                                .font(.subheadline)
+                                .appFont(.subheadline)
                             Spacer()
                             Text(
                                 verbatim: settings.doubleClickDistance < 1
@@ -65,7 +65,7 @@ struct PenFeelView: View {
                                         localized: "\(Int(settings.doubleClickDistance)) pt",
                                         comment: "Distance in points, e.g. '10 pt'")
                             )
-                            .font(.settingsLabel)
+                            .appFont(.settingsLabel)
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                         }
@@ -81,7 +81,7 @@ struct PenFeelView: View {
                                 "Snaps a second tap to the first click position within this radius, making double-clicks reliable."
                             )
                         )
-                        .font(.settingsLabel)
+                        .appFont(.settingsLabel)
                         .foregroundStyle(.secondary)
                     }
                 }
@@ -100,7 +100,7 @@ struct PenFeelView: View {
                                     settings.invertRotation
                                         ? LocalizedStringKey(" Counter-clockwise")
                                         : LocalizedStringKey(" Clockwise")))
-                                .font(.settingsLabel)
+                                .appFont(.settingsLabel)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -119,9 +119,7 @@ struct PenFeelView: View {
                             Text(LocalizedStringKey("Art Pen: Swap Tilt with Rotation"))
                             Text(
                                 "Sacrifices an Art Pen's tilt behavior, allowing apps like Adobe Photoshop to detect barrel rotation."
-                            ).font(
-                                .settingsLabel
-                            ).foregroundStyle(.secondary)
+                            ).appFont(.settingsLabel).foregroundStyle(.secondary)
                         }
                     }
                     .help(
@@ -164,7 +162,7 @@ struct PenFeelView: View {
                                     settings.relativeCursorMovement
                                         ? LocalizedStringKey(" Relative, like a mouse")
                                         : LocalizedStringKey(" Absolute, like a stylus")))
-                                .font(.settingsLabel)
+                                .appFont(.settingsLabel)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -183,7 +181,7 @@ struct PenFeelView: View {
                                     "Delays the stroke release briefly when the pen is lifted mid-motion, preventing accidental short strokes."
                                 )
                             )
-                            .font(.settingsLabel)
+                            .appFont(.settingsLabel)
                             .foregroundStyle(.secondary)
                         }
                     }
@@ -246,7 +244,7 @@ struct PenFeelView: View {
             .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey("Pressure Curve"))
+                Text(LocalizedStringKey("Pressure Curve")).appFont(.headline)
                 ToolNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
@@ -327,12 +325,15 @@ struct PenFeelView: View {
 
 // MARK: - Pressure Curve Canvas (extracted for clarity)
 
+private enum PressureCurvePoint { case p1, p2 }
+
 private struct PressureCurveCanvas: View {
     @ObservedObject var tool: ToolSettings
 
     @State private var draggingP1 = false
     @State private var draggingP2 = false
     @State private var pressureCurveSnapshot: BezierCurve = .linear
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         GeometryReader { geo in
@@ -362,7 +363,85 @@ private struct PressureCurveCanvas: View {
                         draggingP2 = false
                     }
             )
+            .accessibilityRepresentation { accessibilityControls }
+            .modifier(PressureCurveKeyboardModifier(
+                isFocused: $isFocused,
+                onNudge: { dx, dy, target in nudgeControlPoint(dx: dx, dy: dy, target: target) }))
         }
+    }
+
+    // MARK: - Accessibility (VoiceOver)
+
+    /// Parallel control tree exposed to VoiceOver via
+    /// `.accessibilityRepresentation`. The visual Canvas remains the
+    /// authoritative surface for sighted-mouse users.
+    private var accessibilityControls: some View {
+        VStack {
+            Slider(value: bindingFor(.p1, axis: .x), in: 0...1) {
+                Text(String(
+                    localized: "Pressure curve point 1 input",
+                    comment: "Accessibility label: VoiceOver slider for the X coordinate of the first Bézier control point"))
+            }
+            Slider(value: bindingFor(.p1, axis: .y), in: 0...1) {
+                Text(String(
+                    localized: "Pressure curve point 1 output",
+                    comment: "Accessibility label: VoiceOver slider for the Y coordinate of the first Bézier control point"))
+            }
+            Slider(value: bindingFor(.p2, axis: .x), in: 0...1) {
+                Text(String(
+                    localized: "Pressure curve point 2 input",
+                    comment: "Accessibility label: VoiceOver slider for the X coordinate of the second Bézier control point"))
+            }
+            Slider(value: bindingFor(.p2, axis: .y), in: 0...1) {
+                Text(String(
+                    localized: "Pressure curve point 2 output",
+                    comment: "Accessibility label: VoiceOver slider for the Y coordinate of the second Bézier control point"))
+            }
+        }
+    }
+
+    private enum Axis { case x, y }
+
+    private func bindingFor(_ point: PressureCurvePoint, axis: Axis) -> Binding<Double> {
+        Binding(
+            get: {
+                let p = (point == .p1) ? tool.pressureCurve.p1 : tool.pressureCurve.p2
+                return axis == .x ? p.x : p.y
+            },
+            set: { newValue in
+                let clamped = Swift.min(Swift.max(newValue, 0), 1)
+                let snapshot = tool.pressureCurve
+                var curve = tool.pressureCurve
+                if point == .p1 {
+                    curve.p1 = CGPoint(
+                        x: axis == .x ? clamped : curve.p1.x,
+                        y: axis == .y ? clamped : curve.p1.y)
+                } else {
+                    curve.p2 = CGPoint(
+                        x: axis == .x ? clamped : curve.p2.x,
+                        y: axis == .y ? clamped : curve.p2.y)
+                }
+                guard curve.p1 != tool.pressureCurve.p1 || curve.p2 != tool.pressureCurve.p2 else { return }
+                tool.pressureCurve = curve
+                tool.record("Pressure Curve") { tool.pressureCurve = snapshot }
+            }
+        )
+    }
+
+    // MARK: - Keyboard nudging (macOS 14+)
+
+    private func nudgeControlPoint(dx: Double, dy: Double, target: PressureCurvePoint) {
+        let clamp01: (Double) -> Double = { Swift.min(Swift.max($0, 0), 1) }
+        let snapshot = tool.pressureCurve
+        var curve = tool.pressureCurve
+        if target == .p1 {
+            curve.p1 = CGPoint(x: clamp01(curve.p1.x + dx), y: clamp01(curve.p1.y + dy))
+        } else {
+            curve.p2 = CGPoint(x: clamp01(curve.p2.x + dx), y: clamp01(curve.p2.y + dy))
+        }
+        guard curve.p1 != tool.pressureCurve.p1 || curve.p2 != tool.pressureCurve.p2 else { return }
+        tool.pressureCurve = curve
+        tool.record("Pressure Curve") { tool.pressureCurve = snapshot }
     }
 
     // MARK: - Drawing helpers
@@ -463,5 +542,52 @@ private struct PressureCurveCanvas: View {
 
     private func dist(_ a: CGPoint, _ b: CGPoint) -> Double {
         sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2))
+    }
+}
+
+// MARK: - Keyboard nudge modifier (pressure curve)
+//
+//   ←/→/↑/↓          nudge control point 1 by 1%   (Y flipped: ↑ = +y)
+//   Shift + arrow    nudge control point 1 by 10%
+//   Option + arrow   nudge control point 2 by 1%
+//   Shift + Option   nudge control point 2 by 10%
+//
+// Tab is deliberately *not* repurposed for cycling between control points —
+// stealing Tab inside a focusable element would break standard focus
+// traversal. Option-modifier targeting keeps Tab free for its normal role.
+//
+// `.onKeyPress` requires macOS 14+; on macOS 13 the canvas remains mouse-
+// only, but VoiceOver still has the slider representation.
+private struct PressureCurveKeyboardModifier: ViewModifier {
+    @FocusState.Binding var isFocused: Bool
+    let onNudge: (Double, Double, PressureCurvePoint) -> Void
+
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content
+                .focusable()
+                .focused($isFocused)
+                // Suppress the default focus ring; on a Canvas it draws a
+                // thick rectangle that competes with the curve and handles.
+                // The control-point handles already convey focus by being
+                // the interactive surface.
+                .focusEffectDisabled()
+                .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow],
+                            phases: .down) { press in
+                    let step: Double = press.modifiers.contains(.shift) ? 0.10 : 0.01
+                    let target: PressureCurvePoint =
+                        press.modifiers.contains(.option) ? .p2 : .p1
+                    switch press.key {
+                    case .leftArrow:  onNudge(-step, 0, target)
+                    case .rightArrow: onNudge( step, 0, target)
+                    case .upArrow:    onNudge(0,  step, target)  // curve y increases upward
+                    case .downArrow:  onNudge(0, -step, target)
+                    default: return .ignored
+                    }
+                    return .handled
+                }
+        } else {
+            content
+        }
     }
 }

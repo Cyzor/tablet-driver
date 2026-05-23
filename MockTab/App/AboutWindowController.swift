@@ -26,7 +26,7 @@ final class AboutWindowController {
         win.title = String(localized: "About MockTab", comment: "Window title: about view")
         win.isReleasedWhenClosed = false
         win.center()
-        win.contentView = NSHostingView(rootView: AboutView())
+        win.contentView = NSHostingView(rootView: AboutView().withAppearance())
         window = win
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)

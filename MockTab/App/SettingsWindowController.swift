@@ -468,7 +468,7 @@ final class SettingsWindowController: NSWindowController {
         let aligned = content()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-        let hosting = NSHostingController(rootView: aligned)
+        let hosting = NSHostingController(rootView: aligned.withAppearance())
 
         let isDeviceTab = Self.deviceSpecificTabIndices.contains(nextTabIndex)
         hosting.title = isDeviceTab ? "\(label) — \(deviceLabel)" : label

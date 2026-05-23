@@ -74,7 +74,7 @@ struct TouchView: View {
                 .help(LocalizedStringKey("When off, the tablet's touch surface is ignored. Pen input is unaffected."))
         } header: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey("Touch"))
+                Text(LocalizedStringKey("Touch")).appFont(.headline)
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
@@ -100,7 +100,7 @@ struct TouchView: View {
             }
             .help(LocalizedStringKey("Multiplier for cursor motion from finger drag. 1.00× is the natural mapping through the touch area; raise to move faster across the screen, lower for finer control."))
         } header: {
-            Text(LocalizedStringKey("Pointer"))
+            Text(LocalizedStringKey("Pointer")).appFont(.headline)
         }
     }
 
@@ -120,14 +120,14 @@ struct TouchView: View {
                 .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
                 .help(LocalizedStringKey("On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers."))
         } header: {
-            Text(LocalizedStringKey("Scrolling"))
+            Text(LocalizedStringKey("Scrolling")).appFont(.headline)
         }
     }
 
     private var areaSection: some View {
         Section {
             Text(LocalizedStringKey("Define the active surface area for touch input.  Not available on all devices."))
-                .font(.callout)
+                .appFont(.callout)
                 .foregroundStyle(.secondary)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
@@ -155,7 +155,7 @@ struct TouchView: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         } header: {
-            Text(LocalizedStringKey("Touch Area"))
+            Text(LocalizedStringKey("Touch Area")).appFont(.headline)
         }
     }
 
@@ -205,10 +205,10 @@ struct TouchView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("System gestures not supported"))
-                        .font(.subheadline)
+                        .appFont(.subheadline)
                         .fontWeight(.semibold)
                     Text(LocalizedStringKey("Mission Control, Spaces, Launchpad, and other system-wide multi-touch gestures require Wacom's official driver. macOS does not let third-party apps post the native trackpad events those gestures depend on."))
-                        .font(.callout)
+                        .appFont(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

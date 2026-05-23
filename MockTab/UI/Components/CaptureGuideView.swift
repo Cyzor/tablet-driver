@@ -28,6 +28,9 @@ struct CaptureGuideView: View {
     @State private var showCancelConfirm = false
     @State private var lastCapturedStep: CalibrationStep? = nil
 
+    @Environment(\.accessibilityDifferentiateWithoutColor)
+    private var differentiateWithoutColor
+
     private var isComplete: Bool { savedURL != nil }
 
     private var isUnknownDevice: Bool {
@@ -68,14 +71,14 @@ struct CaptureGuideView: View {
     private var header: some View {
         HStack(spacing: 12) {
             Image(systemName: "square.and.arrow.up.on.square")
-                .font(.title2)
+                .appFont(.title2)
                 .foregroundStyle(.blue)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(String(localized: "Collect Device Data", comment: "Sheet title: device data collection"))
-                    .font(.headline)
+                    .appFont(.headline)
                 Text(subtitle)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -95,7 +98,7 @@ struct CaptureGuideView: View {
     private var recordingView: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(String(localized: "Perform each of these actions, then click Done:", comment: "Instruction text for device data collection"))
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
@@ -114,13 +117,12 @@ struct CaptureGuideView: View {
             Spacer()
 
             HStack(spacing: 6) {
-                Circle()
-                    .fill(engine.isRunning ? Color.red : Color.secondary)
+                recordingDot
                     .frame(width: 7, height: 7)
                 Text(engine.isRunning
                      ? String(localized: "\(engine.discoverySampleCount) events recorded", comment: "HID discovery: number of events captured during device discovery")
                      : String(localized: "Starting…", comment: "HID discovery: status indicator while discovery is starting"))
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
@@ -137,19 +139,19 @@ struct CaptureGuideView: View {
             if let step = engine.armedStep {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(String(localized: "Step \(engine.currentStepIndex + 1) of \(engine.sessionSteps.count)", comment: "Guided capture: step progress, e.g. 'Step 3 of 21'"))
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                     Text(step.instruction)
-                        .font(.title3)
+                        .appFont(.title3)
                         .fixedSize(horizontal: false, vertical: true)
                     if lastCapturedStep == step {
                         Label(String(localized: "Captured — advancing…", comment: "Guided capture: confirmation after a step's input is detected"),
                               systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
-                            .font(.caption)
+                            .appFont(.caption)
                     } else {
                         Text(String(localized: "Perform the action above. If your tablet doesn't have it, click Skip.", comment: "Guided capture: prompt below current step instruction"))
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -172,11 +174,10 @@ struct CaptureGuideView: View {
                 .disabled(engine.armedStep == nil)
                 Spacer()
                 HStack(spacing: 6) {
-                    Circle()
-                        .fill(engine.isRunning ? Color.red : Color.secondary)
+                    recordingDot
                         .frame(width: 7, height: 7)
                     Text(String(localized: "\(engine.stepResults.count) captured", comment: "Guided capture: count of steps with a captured sample"))
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
@@ -187,16 +188,33 @@ struct CaptureGuideView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
+    /// Recording-status indicator dot, shared by `recordingView` and
+    /// `guidedRecordingView`. When Differentiate-Without-Color is enabled,
+    /// uses an SF Symbol that distinguishes state by glyph (filled-vs-hollow
+    /// record glyph) in addition to red-vs-grey colour.
+    @ViewBuilder
+    private var recordingDot: some View {
+        if differentiateWithoutColor {
+            Image(systemName: engine.isRunning ? "record.circle.fill" : "circle")
+                .font(.system(size: 7))
+                .foregroundStyle(engine.isRunning ? Color.red : Color.secondary)
+                .accessibilityHidden(true)
+        } else {
+            Circle()
+                .fill(engine.isRunning ? Color.red : Color.secondary)
+        }
+    }
+
     @ViewBuilder
     private func instruction(_ icon: String, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: icon)
-                .font(.system(size: 13))
+                .appFont(.body)
                 .foregroundStyle(.secondary)
                 .frame(width: 18)
                 .accessibilityHidden(true)
             Text(text)
-                .font(.body)
+                .appFont(.body)
         }
     }
 
@@ -205,12 +223,12 @@ struct CaptureGuideView: View {
     private func completionView(url: URL) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 44))
+                .appFont(size: 44)
                 .foregroundStyle(.green)
                 .accessibilityHidden(true)
 
             Text(String(localized: "Collection Complete", comment: "Data collection completion status"))
-                .font(.title3)
+                .appFont(.title3)
                 .fontWeight(.semibold)
 
             HStack(spacing: 8) {
@@ -232,7 +250,7 @@ struct CaptureGuideView: View {
             }
 
             Text(String(localized: "The issue is pre-filled with your tablet's data. If the JSON is too large to fit in the form, drag the file from Finder into the issue body.", comment: "Caption on the data-collection completion screen"))
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)

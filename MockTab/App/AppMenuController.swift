@@ -42,6 +42,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             hookAboutMenuItem()
             hookAppMenu()
             hookViewMenu()
+            insertTextSizeSubmenu()
             hookWindowMenu()
             watchMainMenuForRebuild()
         }
@@ -50,9 +51,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     // MARK: - View menu
 
     /// Holds a weak reference so `menuWillOpen` can mutate the Show/Hide Tab Bar
-    /// item title before each open. SwiftUI rebuilds the View menu periodically;
-    /// `hookViewMenu()` is re-run from `mainMenuDidRemoveItem` to refresh both
-    /// the weak ref and the delegate assignment.
+    /// item title and Text Size checkmarks before each open. SwiftUI rebuilds
+    /// the View menu periodically; `hookViewMenu()` is re-run from
+    /// `mainMenuDidRemoveItem` to refresh both the weak ref and the delegate.
     private weak var viewMenu: NSMenu?
 
     private func hookViewMenu() {
@@ -70,6 +71,54 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             sub.delegate = self
             return
         }
+    }
+
+    // MARK: - Text Size submenu
+
+    /// Inserts (or re-inserts) a "Text Size" submenu into the View menu.
+    /// Built entirely in AppKit so checkmark state is updated in `menuWillOpen`
+    /// by reading UserDefaults directly — SwiftUI's reactive Picker/Toggle
+    /// cannot reliably reflect @AppStorage state in menu checkmarks.
+    private func insertTextSizeSubmenu() {
+        guard let viewMenu else { return }
+
+        // Remove any stale copy (e.g., after a SwiftUI rebuild replaced the View menu).
+        // Also remove the separator we inserted immediately before it.
+        if let oldIdx = viewMenu.items.firstIndex(where: { $0.action == nil && $0.title == textSizeMenuTitle }) {
+            viewMenu.removeItem(at: oldIdx)
+            // If the item immediately before is a separator, it's the one we added — remove it too.
+            if oldIdx > 0, viewMenu.items[oldIdx - 1].isSeparatorItem {
+                viewMenu.removeItem(at: oldIdx - 1)
+            }
+        }
+
+        let sub = NSMenu(title: textSizeMenuTitle)
+        for i in 0..<AppearancePrefs.scales.count {
+            let item = NSMenuItem(
+                title: AppearancePrefs.label(forIndex: i),
+                action: #selector(setTextSize(_:)),
+                keyEquivalent: "")
+            item.target = self
+            item.tag = i
+            sub.addItem(item)
+        }
+
+        let parent = NSMenuItem(title: textSizeMenuTitle, action: nil, keyEquivalent: "")
+        parent.submenu = sub
+
+        // The SwiftUI-built View menu has one separator (before "Show Tab Bar").
+        // Insert: separator → Text Size between the pane shortcuts and that separator.
+        let dividerIndex = viewMenu.items.firstIndex(where: { $0.isSeparatorItem }) ?? viewMenu.items.count
+        viewMenu.insertItem(parent, at: dividerIndex)
+        viewMenu.insertItem(.separator(), at: dividerIndex)
+    }
+
+    private let textSizeMenuTitle = String(
+        localized: "Text Size",
+        comment: "View menu: submenu containing the in-app text-size choices")
+
+    @objc private func setTextSize(_ sender: NSMenuItem) {
+        UserDefaults.standard.set(sender.tag, forKey: AppearancePrefs.storageKey)
     }
 
     // MARK: - Window menu
@@ -172,6 +221,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             removeEmptyViewMenu()
             hookAppMenu()
             hookViewMenu()
+            insertTextSizeSubmenu()
             hookWindowMenu()
             // Reset only after all work is done so that notifications fired by our
             // own remove/insert calls (hookWindowMenu removes the old Window item)
@@ -718,6 +768,17 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             {
                 item.title = newTitle
             }
+
+            // Update checkmarks in the Text Size submenu to reflect current selection.
+            let activeIndex = UserDefaults.standard.integer(forKey: AppearancePrefs.storageKey)
+            if let textSizeItem = menu.items.first(where: { $0.title == textSizeMenuTitle }),
+               let textSizeSub = textSizeItem.submenu
+            {
+                for item in textSizeSub.items {
+                    item.state = item.tag == activeIndex ? .on : .off
+                }
+            }
+
             return
         }
 

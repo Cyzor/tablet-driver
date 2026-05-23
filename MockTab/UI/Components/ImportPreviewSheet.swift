@@ -36,10 +36,10 @@ struct ImportPreviewSheet: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(LocalizedStringKey("Import Configuration")).font(.headline)
+            Text(LocalizedStringKey("Import Configuration")).appFont(.headline)
             if !plan.sourceDate.isEmpty {
                 Text(String(localized: "Exported \(formattedDate(plan.sourceDate))", comment: "Label showing when the backup was created"))
-                    .font(.settingsLabel).foregroundStyle(.secondary)
+                    .appFont(.settingsLabel).foregroundStyle(.secondary)
             }
         }
         .padding([.horizontal, .top], 20)
@@ -94,7 +94,7 @@ struct ImportPreviewSheet: View {
             "Each tablet's settings will be added as a new profile. " +
             "Your current settings are not changed until you activate a profile."
         )
-        .font(.settingsLabel).foregroundStyle(.secondary)
+        .appFont(.settingsLabel).foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
@@ -137,33 +137,33 @@ struct ImportPreviewSheet: View {
                 HStack(spacing: 6) {
                     Text(entry.nickname).fontWeight(.medium)
                         .foregroundStyle(isExcluded ? Color.secondary : Color.primary)
-                    Text(entry.modelName).font(.settingsBadge)
+                    Text(entry.modelName).appFont(.settingsBadge)
                         .foregroundStyle(.secondary)
                 }
 
                 if !isExcluded {
                     HStack(spacing: 4) {
-                        Text(LocalizedStringKey("→ New profile:")).font(.settingsLabel).foregroundStyle(.secondary)
-                        Text("\"\(finalName)\"").font(.settingsLabel)
+                        Text(LocalizedStringKey("→ New profile:")).appFont(.settingsLabel).foregroundStyle(.secondary)
+                        Text("\"\(finalName)\"").appFont(.settingsLabel)
                             .foregroundStyle(renamed ? Color.orange : Color.secondary)
                         if renamed {
                             Text(String(localized: "(renamed to avoid conflict)", comment: "Label when a profile name was changed to avoid a duplicate"))
-                                .font(.settingsBadge).foregroundStyle(.orange)
+                                .appFont(.settingsBadge).foregroundStyle(.orange)
                         }
                     }
                     if !entry.isKnown {
                         Text(String(localized: "Not in your registry — profile will be available when this tablet connects.", comment: "Message when importing a profile for a tablet that hasn't been connected yet"))
-                            .font(.settingsBadge).foregroundStyle(.orange)
+                            .appFont(.settingsBadge).foregroundStyle(.orange)
                     }
                     Text(String(format:
                         NSLocalizedString(
                             entry.profileValues.count == 1 ? "%d setting" : "%d settings",
                             comment: "Count of settings in imported profile"),
                         entry.profileValues.count))
-                        .font(.settingsBadge).foregroundStyle(.tertiary)
+                        .appFont(.settingsBadge).foregroundStyle(.tertiary)
                 } else {
                     Text(String(localized: "Skipped", comment: "Label when a tablet profile is excluded from import"))
-                        .font(.settingsLabel).foregroundStyle(.secondary)
+                        .appFont(.settingsLabel).foregroundStyle(.secondary)
                 }
             }
 

@@ -81,9 +81,9 @@ struct InfoView: View {
                 .imageScale(.large)
             VStack(alignment: .leading, spacing: 4) {
                 Text(String(localized: "Unrecognised tablet", comment: "Banner title shown when active device is on the generic fallback driver"))
-                    .font(.headline)
+                    .appFont(.headline)
                 Text(String(localized: "MockTab is using its generic driver for this device. Basic pen input may work, but full support requires a short data-collection session.", comment: "Body of the unknown-device banner"))
-                    .font(.callout)
+                    .appFont(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Button(String(localized: "Collect Device Data…", comment: "Banner button: start the data-collection session for an unknown device")) {
@@ -265,7 +265,7 @@ struct InfoView: View {
     private var captureSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(String(localized: "Diagnostics", comment: "Section header: device diagnostics and data collection"))
-                .font(.headline)
+                .appFont(.headline)
 
             HStack(spacing: 12) {
                 Button(String(localized: "Collect Device Data…", comment: "Button label: start device data collection")) {
@@ -278,7 +278,7 @@ struct InfoView: View {
             }
 
             Text(String(localized: "Use this if your device is unrecognised or a feature isn't working as expected. The collection takes about one minute.", comment: "Description below the Collect Device Data button"))
-                .font(.settingsLabel)
+                .appFont(.settingsLabel)
                 .foregroundStyle(.tertiary)
         }
     }
@@ -288,7 +288,7 @@ struct InfoView: View {
     private var diagnosticSection: some View {
         DisclosureRow(label: String(localized: "Diagnostic Detail", comment: "Collapsible section header for detailed diagnostic information"), isExpanded: $diagnosticsExpanded) {
             Text(diagnosticText)
-                .font(.monospaced)
+                .appFont(.monospaced)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(8)
@@ -518,7 +518,7 @@ private struct LiveInputView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(String(localized: "Live Input", comment: "Section header: live input state and pen position"))
-                .font(.headline)
+                .appFont(.headline)
 
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                 let tool: DeviceRegistry.KnownTool? = {
@@ -553,7 +553,7 @@ private struct LiveInputView: View {
                         if !lb.tipDown && !lb.eraserDown && !lb.button1Down
                             && !lb.button2Down && !anyExpress
                         {
-                            Text(LocalizedStringKey("None")).foregroundStyle(.tertiary).font(.settingsBadge)
+                            Text(LocalizedStringKey("None")).foregroundStyle(.tertiary).appFont(.settingsBadge)
                         }
                     }
                 }
@@ -685,7 +685,7 @@ private struct LiveInputView: View {
 
     private func tag(_ text: String) -> some View {
         Text(text)
-            .font(.settingsBadge)
+            .appFont(.settingsBadge)
             .padding(.horizontal, 4)
             .background(Color.accentColor.opacity(0.2))
             .cornerRadius(3)

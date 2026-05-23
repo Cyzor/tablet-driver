@@ -39,15 +39,21 @@ struct NormalizedAreaEditor<Overlay: View>: View {
     @State private var draftRect: NormalizedRect?
     @State private var dragAnchor: CGPoint?
 
+    /// Drives the focus ring for keyboard users; also enables `.onKeyPress`
+    /// nudging on macOS 14+ via the conditional modifier below.
+    @FocusState private var isFocused: Bool
+
     private enum CropEdge {
         case body
         case top, bottom, left, right
         case topLeft, topRight, bottomLeft, bottomRight
     }
 
-    private static var handleSize: CGFloat { 8 }
-    private static var edgeThickness: CGFloat { 6 }
+    private static var handleSize: CGFloat { 10 }
+    private static var edgeThickness: CGFloat { 8 }
     private static var coordinateSpaceName: String { "normalizedAreaEditorCanvas" }
+    private static var strokeWidth: CGFloat { 2.0 }
+    private static var focusedStrokeWidth: CGFloat { 3.0 }
 
     var body: some View {
         GeometryReader { geo in
@@ -61,6 +67,96 @@ struct NormalizedAreaEditor<Overlay: View>: View {
             .frame(width: cs.width, height: cs.height)
             .coordinateSpace(name: Self.coordinateSpaceName)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .accessibilityRepresentation { accessibilityControls }
+            .modifier(KeyboardNudgeModifier(
+                isFocused: $isFocused,
+                onMove: { dx, dy in commitNudge(dx: dx, dy: dy) },
+                onResize: { dw, dh in commitResize(dw: dw, dh: dh) }))
+        }
+    }
+
+    // MARK: - Accessibility (VoiceOver)
+
+    /// Parallel control tree exposed to VoiceOver via
+    /// `.accessibilityRepresentation`. The visual Canvas remains the
+    /// authoritative surface for sighted-mouse users; this tree never
+    /// renders, so its layout doesn't matter — only the labels, values, and
+    /// adjustability matter.
+    private var accessibilityControls: some View {
+        VStack {
+            Slider(value: bindingFor(.x), in: 0...1) {
+                Text(String(
+                    localized: "Active area horizontal position",
+                    comment: "Accessibility label: VoiceOver slider for the active area's X origin (0%–100%)"))
+            }
+            Slider(value: bindingFor(.y), in: 0...1) {
+                Text(String(
+                    localized: "Active area vertical position",
+                    comment: "Accessibility label: VoiceOver slider for the active area's Y origin (0%–100%)"))
+            }
+            Slider(value: bindingFor(.w), in: minDimension...1) {
+                Text(String(
+                    localized: "Active area width",
+                    comment: "Accessibility label: VoiceOver slider for the active area's width (clamped above minimum)"))
+            }
+            Slider(value: bindingFor(.h), in: minDimension...1) {
+                Text(String(
+                    localized: "Active area height",
+                    comment: "Accessibility label: VoiceOver slider for the active area's height (clamped above minimum)"))
+            }
+        }
+    }
+
+    private enum RectField { case x, y, w, h }
+
+    private func bindingFor(_ field: RectField) -> Binding<Double> {
+        Binding(
+            get: {
+                switch field {
+                case .x: return rect.x
+                case .y: return rect.y
+                case .w: return rect.w
+                case .h: return rect.h
+                }
+            },
+            set: { newValue in
+                let before = rect
+                var r = rect
+                switch field {
+                case .x: r.x = Swift.min(Swift.max(newValue, 0), 1 - r.w)
+                case .y: r.y = Swift.min(Swift.max(newValue, 0), 1 - r.h)
+                case .w: r.w = Swift.min(Swift.max(newValue, minDimension), 1 - r.x)
+                case .h: r.h = Swift.min(Swift.max(newValue, minDimension), 1 - r.y)
+                }
+                if r != before {
+                    rect = r
+                    onCommit?(before)
+                }
+            }
+        )
+    }
+
+    // MARK: - Keyboard nudging (macOS 14+)
+
+    private func commitNudge(dx: Double, dy: Double) {
+        let before = rect
+        var r = rect
+        r.x = Swift.min(Swift.max(r.x + dx, 0), 1 - r.w)
+        r.y = Swift.min(Swift.max(r.y + dy, 0), 1 - r.h)
+        if r != before {
+            rect = r
+            onCommit?(before)
+        }
+    }
+
+    private func commitResize(dw: Double, dh: Double) {
+        let before = rect
+        var r = rect
+        r.w = Swift.min(Swift.max(r.w + dw, minDimension), 1 - r.x)
+        r.h = Swift.min(Swift.max(r.h + dh, minDimension), 1 - r.y)
+        if r != before {
+            rect = r
+            onCommit?(before)
         }
     }
 
@@ -101,7 +197,9 @@ struct NormalizedAreaEditor<Overlay: View>: View {
                 .cursor(.openHand)
 
             Rectangle()
-                .strokeBorder(Color.accentColor, lineWidth: 1.5)
+                .strokeBorder(
+                    Color.accentColor,
+                    lineWidth: isFocused ? Self.focusedStrokeWidth : Self.strokeWidth)
                 .frame(width: w, height: h)
                 .offset(x: x, y: y)
                 .allowsHitTesting(false)
@@ -273,6 +371,52 @@ private extension View {
     func cursor(_ cursor: NSCursor) -> some View {
         self.onHover { inside in
             if inside { cursor.push() } else { NSCursor.pop() }
+        }
+    }
+}
+
+// MARK: - Keyboard nudge modifier
+//
+// Adds arrow-key nudging when the editor is focused:
+//   ←/→/↑/↓             move rect origin by 1%
+//   Shift + arrow       move rect origin by 10%
+//   Option + arrow      grow/shrink along that axis by 1%
+//   Shift + Option +    grow/shrink along that axis by 10%
+//
+// Wrapped in a ViewModifier with an availability gate because `.onKeyPress`
+// requires macOS 14+. On macOS 13 the editor remains mouse-driven, but the
+// VoiceOver slider representation (which uses VO adjust gestures, not key
+// presses) is still active.
+private struct KeyboardNudgeModifier: ViewModifier {
+    @FocusState.Binding var isFocused: Bool
+    let onMove: (Double, Double) -> Void
+    let onResize: (Double, Double) -> Void
+
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content
+                .focusable()
+                .focused($isFocused)
+                // Suppress the default system focus ring; it outlines the
+                // whole canvas including the dimmed exterior and competes
+                // with the resize handles. The crop rect's border thickens
+                // on focus instead — a purpose-built indicator.
+                .focusEffectDisabled()
+                .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow],
+                            phases: .down) { press in
+                    let step: Double = press.modifiers.contains(.shift) ? 0.10 : 0.01
+                    let resize = press.modifiers.contains(.option)
+                    switch press.key {
+                    case .leftArrow:  resize ? onResize(-step, 0) : onMove(-step, 0)
+                    case .rightArrow: resize ? onResize( step, 0) : onMove( step, 0)
+                    case .upArrow:    resize ? onResize(0, -step) : onMove(0, -step)
+                    case .downArrow:  resize ? onResize(0,  step) : onMove(0,  step)
+                    default: return .ignored
+                    }
+                    return .handled
+                }
+        } else {
+            content
         }
     }
 }
