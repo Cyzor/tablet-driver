@@ -1986,6 +1986,29 @@
         }
       }
     },
+    "Merge All Windows": {
+      "comment": "Window menu: merge all open windows into one tabbed window",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Fenster zusammenführen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unir todas las ventanas"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてのウインドウを結合"
+          }
+        }
+      }
+    },
     "Button %lld": {
       "comment": "Toggle button N label, e.g. 'Button 1'",
       "localizations": {

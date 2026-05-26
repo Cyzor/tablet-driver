@@ -13,6 +13,18 @@
         }
       ],
       "lighting" : "individual",
+      "position-specializations" : [
+        {
+          "idiom" : "square",
+          "value" : {
+            "scale" : 0.96,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5
@@ -76,6 +88,18 @@
         {
           "appearance" : "dark",
           "value" : 1
+        }
+      ],
+      "position-specializations" : [
+        {
+          "idiom" : "square",
+          "value" : {
+            "scale" : 0.96,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
         }
       ],
       "shadow-specializations" : [

@@ -296,6 +296,7 @@ final class SettingsWindowController: NSWindowController {
         window.isReleasedWhenClosed = false
         window.collectionBehavior = [.managed, .fullScreenAllowsTiling]
         window.tabbingMode = .automatic
+        window.tabbingIdentifier = "MockTabSettings"
 
         // Set a conservative minimum width before autosave frame restoration so a
         // previously-saved narrow frame cannot be applied. Tab count is computable
