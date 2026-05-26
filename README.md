@@ -80,9 +80,47 @@ macOS 13 (Ventura) or later — macOS (Tahoe) may need further verification.
 
 ---
 
+## TabletKit (Swift package)
+
+MockTab's HID report decoders — the pure-logic layer that turns raw tablet reports into pen / aux / touch events — are also published as a SwiftPM library called `TabletKit`, defined in [`Package.swift`](Package.swift).
+
+This lets the decoder layer be unit-tested without standing up an XCTest target inside the Xcode project, and gives other macOS / iOS apps that want to consume Wacom hardware a starting point that isn't tied to MockTab's UI.
+
+```swift
+// Package.swift of a consumer project
+dependencies: [
+    .package(url: "https://github.com/Cyzor/tablet-driver", branch: "main"),
+],
+targets: [
+    .target(name: "MyApp", dependencies: [
+        .product(name: "TabletKit", package: "tablet-driver"),
+    ]),
+],
+```
+
+```swift
+import TabletKit
+
+var state = DecoderState()
+var decoder: any TabletReportDecoder = IntuosV2Decoder()
+let results = decoder.decode(report: ptr, length: len, spec: spec, state: &state, deviceFamily: "intuosProGen2")
+```
+
+**Scope.** TabletKit is pure Swift — no AppKit, no IOKit-HID transport, no event injection. It decodes; you bring the HID transport (`IOHIDManager` on macOS, `BluetoothHID` on iOS, etc.) and the event sink.
+
+**Stability.** The public API surface (see [`CHANGELOG.md`](CHANGELOG.md)) is at 0.1 — workable but pre-1.0. Expect breaking changes until the first vendor outside Wacom (Xencelabs likely first) lands and the protocol shape is validated against more than one family.
+
+**Tests.** `swift test` from the repo root runs the package's 233-test suite without touching the Xcode project.
+
+---
+
 ## License
 
-GPL-3. See `LICENSE`. Free to run, study, modify, and share — modifications must stay under the same license.
+The app is **GPL-3.0-or-later** — see [`LICENSE`](LICENSE). Free to run, study, modify, and share; modifications must stay under the same license.
+
+The TabletKit Swift package (the decoder layer in `MockTab/Driver/`) is **MPL-2.0** — see [`LICENSES/MPL-2.0.txt`](LICENSES/MPL-2.0.txt). File-level copyleft: changes to TabletKit's own files must stay open, but consumers can link it from any-licensed app.
+
+Per-file licenses are declared via SPDX headers (`SPDX-License-Identifier:`) at the top of each source file.
 
 ---
 

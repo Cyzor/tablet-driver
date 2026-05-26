@@ -1,6 +1,6 @@
 // MockTab — native macOS driver for supported drawing tablets
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 
 // ModifierMath.swift — pure-math helpers for the synthetic-modifier state
 // machine in InputInjector. These are stateless functions on their inputs;
