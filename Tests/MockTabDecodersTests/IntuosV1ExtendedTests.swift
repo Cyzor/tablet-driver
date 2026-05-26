@@ -11,7 +11,7 @@
 // No hardware capture; reports are synthesized from the decoder source
 // comments and the Linux kernel wacom_intuos_general() reference.
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class IntuosV1ExtendedTests: XCTestCase {
 

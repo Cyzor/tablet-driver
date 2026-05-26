@@ -11,7 +11,7 @@
 //             tool-type eraser inference, pen buttons)
 //   • 0x15 — pad report, 2 bytes (4 express keys in low nibble)
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class DTUSDecoderTests: XCTestCase {
 

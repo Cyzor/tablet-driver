@@ -8,7 +8,7 @@
 //              [4..5]=Y LE16 [6]=touch major [7]=reserved
 // Coordinate range: X 0–12439, Y 0–8639 (PTH-860).
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class IntuosV2TouchDecoderTests: XCTestCase {
 

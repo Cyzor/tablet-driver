@@ -10,7 +10,7 @@
 //   • 0x02 — pen/eraser/mouse report, 8 bytes (LE16 X/Y, 10-bit pressure,
 //             mouse wheel, hover distance, G4 pad buttons in d[7])
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class GraphireDecoderTests: XCTestCase {
 

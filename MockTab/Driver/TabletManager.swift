@@ -265,12 +265,14 @@ final class TabletManager: ObservableObject {
         let maxRptSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        let productString =
+            IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? ""
         let isBLE = transport.lowercased().contains("bluetooth")
         let pidStr =
             rawProductID == productID
             ? "0x\(String(productID, radix:16))"
             : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
-        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public)")
+        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public) product=\"\(productString, privacy: .public)\"")
 
         // BLE tablets expose multiple interfaces. Log all of them; skip ghost mouse only.
         if isBLE && usagePage == 0x01 {

@@ -16,7 +16,7 @@
 //   • 0x03        — aux report (10 bytes), 8 express keys in byte 4
 //   • 0x0C        — pad report (5–10 bytes), touch strips + express keys
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class Intuos3DecoderTests: XCTestCase {
 

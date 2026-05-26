@@ -5,7 +5,7 @@
 // they are NOT exhaustive coverage. Add cases as bugs are discovered or
 // new behaviors are added.
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class IntuosV1DecoderTests: XCTestCase {
 

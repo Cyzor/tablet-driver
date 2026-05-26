@@ -13,7 +13,7 @@
 // don't exercise it. These tests lock in the dispatch, the genuine vs boundary
 // exit behaviour, and the pen / mouse / aux sub-paths.
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class IntuosV2USBDecoderTests: XCTestCase {
 

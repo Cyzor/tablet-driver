@@ -7,7 +7,7 @@
 // Notes/InputInjector-Modifier-State-Invariants.md.
 import XCTest
 import CoreGraphics
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class ModifierMathTests: XCTestCase {
 

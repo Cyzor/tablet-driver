@@ -13,7 +13,7 @@
 // code), and the eraser / barrel-button / battery / pad sub-paths in the 361-byte
 // container. They are not exhaustive — add cases as bugs are discovered.
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class IntuosV2BTDecoderTests: XCTestCase {
 

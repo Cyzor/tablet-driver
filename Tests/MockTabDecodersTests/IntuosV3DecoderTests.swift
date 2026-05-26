@@ -13,7 +13,7 @@
 //   • 0x1E — extended pen report, 24-bit XY, 16-bit tilt, penButton3
 //   • 0x11 — aux report: 10-button interleave + two 7-bit relative wheels
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class IntuosV3DecoderTests: XCTestCase {
 

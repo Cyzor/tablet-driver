@@ -179,6 +179,25 @@ struct WacomDeviceSpec {
     /// How well-vetted this entry is (see `ConfidenceTier`).
     /// Defaults to `.experimental` — promote explicitly when verified.
     let confidence: ConfidenceTier
+    /// Active-area width in millimetres.  Optional because the registry was
+    /// built around device-unit coordinates (`maxX`/`maxY`); physical
+    /// dimensions are backfilled incrementally as they're confirmed.
+    ///
+    /// When present, lets the cursor-mapping layer compute LPI per axis
+    /// (`maxX / activeWidthMM × 25.4`) and offer 1:1 mm mapping in the
+    /// tablet-area UI.  Matches the canonical (mm, logical-max) data shape
+    /// used by Huion and Xencelabs references, easing future cross-vendor
+    /// support.  Nil = unknown.
+    let activeWidthMM: Double?
+    /// Active-area height in millimetres.  See `activeWidthMM`.
+    let activeHeightMM: Double?
+    /// Optional substring matched against the device's `kIOHIDProductKey`
+    /// string when multiple specs share a `productID`.  Used to disambiguate
+    /// vendor PID collisions — Wacom has none today, but the plumbing is
+    /// shared with future Huion support (Huion PIDs `0x006D`/`0x006E` each
+    /// cover dozens of distinct models, discriminated only by firmware
+    /// string).  Case-insensitive substring match.  Nil = match any.
+    let productStringMatch: String?
 
     init(
         productID: Int, name: String, parser: ReportParser,
@@ -192,7 +211,10 @@ struct WacomDeviceSpec {
         featureInit2: [UInt8]? = nil,
         featureInit2Delay: Double = 0.15,
         ledCompanionPID: Int? = nil,
-        confidence: ConfidenceTier = .experimental
+        confidence: ConfidenceTier = .experimental,
+        productStringMatch: String? = nil,
+        activeWidthMM: Double? = nil,
+        activeHeightMM: Double? = nil
     ) {
         self.productID = productID
         self.name = name
@@ -218,6 +240,18 @@ struct WacomDeviceSpec {
         self.featureInit2Delay = featureInit2Delay
         self.ledCompanionPID = ledCompanionPID
         self.confidence = confidence
+        self.productStringMatch = productStringMatch
+        self.activeWidthMM = activeWidthMM
+        self.activeHeightMM = activeHeightMM
+    }
+
+    /// Lines per inch derived from `maxX`/`maxY` and `activeWidthMM`/`activeHeightMM`.
+    /// Returns nil unless both physical dimensions are populated.  Useful for
+    /// the info pane and for cross-vendor cursor-mapping that needs a real DPI
+    /// number rather than device-unit ratios.
+    var lpi: (x: Double, y: Double)? {
+        guard let w = activeWidthMM, w > 0, let h = activeHeightMM, h > 0 else { return nil }
+        return (Double(maxX) / w * 25.4, Double(maxY) / h * 25.4)
     }
 
     /// Derives the device family identifier from parser and name.
@@ -459,7 +493,8 @@ enum WacomDeviceRegistry {
             buttonCount: 8, hasTouchRing: false, hasTouchStrips: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false,
             featureInit2: [0x04, 0x00],
-            confidence: .verified),
+            confidence: .verified,
+            activeWidthMM: 270.5, activeHeightMM: 158.5),
         .init(
             productID: 0x00B7, name: "Intuos3 4×6 (PTZ-431W)",  // ⚠ estimated
             parser: .intuos3, maxX: 31496, maxY: 19685, maxPressure: 1023,
@@ -555,7 +590,8 @@ enum WacomDeviceRegistry {
             parser: .intuosV1, maxX: 65024, maxY: 40640, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             featureInit: [0x02, 0x02], seizeUSB: false,
-            confidence: .verified),
+            confidence: .verified,
+            activeWidthMM: 325.1, activeHeightMM: 203.2),
 
         // ── Intuos Pro second-gen (PTH-x60/x80, 2017–present) — intuosV2 ─────
         // 192-byte reports, LE24 coordinates, 8192-level pressure (13-bit).
@@ -596,7 +632,8 @@ enum WacomDeviceRegistry {
             // unverified but cursor positioning feels correct.
             touchMaxX: 8960, touchMaxY: 5920,
             featureInit: nil, seizeUSB: true,
-            confidence: .verified),
+            confidence: .verified,
+            activeWidthMM: 224.0, activeHeightMM: 148.0),
         .init(
             productID: 0x0358, name: "Intuos Pro L (PTH-860)",  // ✓ confirmed live (USB + BT)
             parser: .intuosV2, maxX: 62200, maxY: 43200, maxPressure: 8191,
@@ -606,7 +643,8 @@ enum WacomDeviceRegistry {
             // live capture (PID 0x0358 presented over BT, same as PTH-660 pattern).
             touchMaxX: 12439, touchMaxY: 8639,
             featureInit: nil, seizeUSB: true,
-            confidence: .verified),
+            confidence: .verified,
+            activeWidthMM: 311.0, activeHeightMM: 216.0),
 
         // ── Bamboo / CTL consumer line — bamboo parser ────────────────────────
         // 20-byte Report ID 0x10. Decoder not yet implemented.
@@ -688,7 +726,8 @@ enum WacomDeviceRegistry {
             buttonCount: 8, hasTouchRing: true, hasDualRings: true, ringSlotCount: 3, hasEraser: true,
             isPenDisplay: true,
             featureInit: [0x02, 0x02], seizeUSB: true, ledCompanionPID: 0x0056,
-            confidence: .verified),
+            confidence: .verified,
+            activeWidthMM: 519.0, activeHeightMM: 324.0),
         .init(
             productID: 0x00F8, name: "Cintiq 24HD Touch (DTH-2400)",  // ⚠ estimated
             parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
@@ -754,7 +793,8 @@ enum WacomDeviceRegistry {
             // Touch confirmed working 2026-05-22 via 0x0358 path.
             touchMaxX: 12439, touchMaxY: 8639,
             featureInit: nil, seizeUSB: false,
-            confidence: .verified),
+            confidence: .verified,
+            activeWidthMM: 311.0, activeHeightMM: 216.0),
         .init(
             productID: 0x035B, name: "Intuos Pro S (PTH-460) BT",  // ⚠ BT Classic PID (USB 0x0352 + 9)
             parser: .intuosV2, maxX: 31496, maxY: 19685, maxPressure: 8191,
@@ -1202,6 +1242,34 @@ enum WacomDeviceRegistry {
     /// Returns the spec for `productID`, or nil if unrecognised.
     static func spec(for productID: Int) -> WacomDeviceSpec? {
         knownDevices.first { $0.productID == productID }
+    }
+
+    /// Returns the best-matching spec for `productID`, optionally using the
+    /// device's `kIOHIDProductKey` string to disambiguate when more than one
+    /// entry shares the PID.
+    ///
+    /// Selection order among entries with matching `productID`:
+    ///   1. An entry whose `productStringMatch` is a case-insensitive
+    ///      substring of `productString` (when `productString != nil`).
+    ///   2. An entry with `productStringMatch == nil` (the catch-all).
+    ///   3. The first entry, as a last resort.
+    ///
+    /// Wacom has no PID collisions today, so this returns the same result as
+    /// `spec(for:)` for every current device.  The overload exists so the
+    /// app-side lookup path is already vendor-neutral when Huion / Xencelabs
+    /// support arrives.
+    static func spec(forProductID productID: Int, productString: String?) -> WacomDeviceSpec? {
+        let matches = knownDevices.filter { $0.productID == productID }
+        guard !matches.isEmpty else { return nil }
+        if let needle = productString?.lowercased() {
+            if let hit = matches.first(where: {
+                guard let m = $0.productStringMatch?.lowercased(), !m.isEmpty else { return false }
+                return needle.contains(m)
+            }) {
+                return hit
+            }
+        }
+        return matches.first(where: { $0.productStringMatch == nil }) ?? matches.first
     }
 
     /// Human-readable display name for any Wacom product.

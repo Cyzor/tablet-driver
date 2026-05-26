@@ -12,7 +12,7 @@
 //            [1..]: up to 5 × 8-byte contacts (slot_id, status, X LE16, Y LE16, w, h).
 // Lift (status & 0x01 == 0) is dropped at the decoder boundary, matching USB 0x21.
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class IntuosV2BTTouchDecoderTests: XCTestCase {
 

@@ -3,7 +3,7 @@
 // Tests for the shared wireless-status helper used by the IntuosV1 family
 // over the ACK-40401 RF dongle.
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class WirelessReportTests: XCTestCase {
 

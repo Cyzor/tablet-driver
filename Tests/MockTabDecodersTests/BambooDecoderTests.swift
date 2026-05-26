@@ -10,7 +10,7 @@
 //   • 0x10 — pen/eraser/mouse report, 10 bytes (BE16 X/Y, 11-bit pressure,
 //             4-bit tilt, tool-type field, pad buttons when not in proximity)
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class BambooDecoderTests: XCTestCase {
 

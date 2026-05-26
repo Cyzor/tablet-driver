@@ -20,7 +20,7 @@
 //   • Second exit frame suppressed by prevInProximity guard
 //   • Report ID not checked — arbitrary [0] byte still decoded
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class DTUDecoderTests: XCTestCase {
 

@@ -9,34 +9,34 @@ import OSLog
 private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "device")
 
 /// Digitizer dimensions in device units for a given tablet model.
-struct DigitizerSpec {
-    var maxX: Int
-    var maxY: Int
-    var maxPressure: Int
+public struct DigitizerSpec {
+    public var maxX: Int
+    public var maxY: Int
+    public var maxPressure: Int
     /// Number of programmable express-key buttons on this device.
     /// Used by BambooDecoder to select the correct pad-byte bit layout.
-    var buttonCount: Int = 0
+    public var buttonCount: Int = 0
     /// True if this device's pen reports carry tilt data.
     /// Currently relevant for BambooDecoder only (report[8]/report[9], 4-bit signed).
     /// IntuosV1/V2/Intuos3 always decode tilt regardless of this flag.
-    var hasTilt: Bool = false
+    public var hasTilt: Bool = false
     /// True if this model has two touch rings (one per bezel), e.g. Cintiq 24HD.
     /// Used by CintiqV1Decoder to gate decoding of the second ring byte in 0x0C reports.
-    var hasDualRings: Bool = false
+    public var hasDualRings: Bool = false
     /// True if this device is a pen display (Cintiq-class) with a built-in screen.
     /// Used to gate pen-display-specific UI (e.g. parallax offset calibration).
-    var isPenDisplay: Bool = false
+    public var isPenDisplay: Bool = false
     /// Number of ring mode slots this device supports.
     /// Matches the number of physical toggle positions (e.g. 4 LED positions on Intuos Pro).
     /// The UI shows this many slots; the model always stores 4 (same pattern as expressKeyBindings).
-    var ringSlotCount: Int = 4
+    public var ringSlotCount: Int = 4
     /// True if this device has capacitive finger touch in addition to the pen.
     /// Mirrors `WacomDeviceSpec.hasFingerTouch`; gates UI for the Touch pane
     /// and the touch-enable feature report.  See `hasFingerTouch` doc there.
-    var hasFingerTouch: Bool = false
+    public var hasFingerTouch: Bool = false
     /// Maximum simultaneous touch contacts the device reports (1 for single-touch
     /// Cintiqs like DTH-2400/DTH-2200; 10 for multi-touch DTH-271/DTH-135/DTH-1320).
-    var maxTouchContacts: Int = 0
+    public var maxTouchContacts: Int = 0
 }
 
 protocol TabletDevice: AnyObject {
@@ -234,7 +234,7 @@ func decodeBLEPenReport(
 
 // MARK: - WacomDecoder protocol
 
-enum WirelessStatus {
+public enum WirelessStatus {
     case active
     case lost
     case lowBattery
@@ -243,52 +243,54 @@ enum WirelessStatus {
 
 /// All mutable state shared between reports for a single decoder session.
 /// Passed `inout` through every `decode` call so decoders can be pure structs.
-struct DecoderState {
-    var lastX: Int = 0
-    var lastY: Int = 0
+public struct DecoderState {
+    public var lastX: Int = 0
+    public var lastY: Int = 0
     /// Serial number at the last tool-identity change.
-    var lastSerial: UInt32 = 0
+    public var lastSerial: UInt32 = 0
     /// Tool code at the last tool-identity change (V2 change detection).
-    var lastToolCode: UInt16 = 0
+    public var lastToolCode: UInt16 = 0
     /// Currently active tool code.
-    var currentToolCode: UInt16 = 0
+    public var currentToolCode: UInt16 = 0
     /// Absolute scroll-position counter for mouse-tool reports (V2).
-    var lastScrollPos: UInt8 = 0
-    var prevInProximity: Bool = false
-    var isEraser: Bool = false
-    var toolIsMouse: Bool = false
+    public var lastScrollPos: UInt8 = 0
+    public var prevInProximity: Bool = false
+    public var isEraser: Bool = false
+    public var toolIsMouse: Bool = false
     /// BT 0x80 container pad state — emit aux only on change.
-    var lastBTPadKeys: UInt8 = 0
-    var lastBTPadRing: UInt8 = 0x7F
-    var lastBTPadBtn: UInt8 = 0
+    public var lastBTPadKeys: UInt8 = 0
+    public var lastBTPadRing: UInt8 = 0x7F
+    public var lastBTPadBtn: UInt8 = 0
     /// Consecutive frames/reports with low-confidence or out-of-range signal.
     /// Exit proximity only after this reaches exitThreshold, bridging transient
     /// boundary oscillations (confirmed: Art Pen rotation sensor causes these).
     /// Reset to 0 on any valid in-proximity frame.
-    var exitFrameCount: Int = 0
-    static let exitThreshold = 3
+    public var exitFrameCount: Int = 0
+    public static let exitThreshold = 3
     /// Whether the current tool is supported on this device family.
     /// Used to show UI warnings for incompatible tools and adjust feature decoding.
-    var toolIsSupported: Bool = true
+    public var toolIsSupported: Bool = true
     /// Last valid rotation reading (Art Pen). Used to hold state during boundary-noise
     /// frames where !highConfidence (USB) or !inRange (BT). Reset to 0.0 on proximity exit.
-    var lastRotation: Double = 0.0
+    public var lastRotation: Double = 0.0
     /// True once at least one valid rotation frame has been decoded since tool-enter.
     /// Prevents emitting stale 0.0 during boundary oscillations at re-entry.
-    var hasValidRotationFrame: Bool = false
-    var hasValidTiltFrame: Bool = false
+    public var hasValidRotationFrame: Bool = false
+    public var hasValidTiltFrame: Bool = false
     /// Last valid tilt readings. Used to hold state during boundary-noise frames
     /// where !highConfidence (USB) or !inRange (BT) so that apps receive a continuous
     /// azimuth angle rather than a zero-snapped value on every low-confidence frame.
     /// Reset to 0.0 on proximity exit alongside lastRotation.
-    var lastTiltX: Double = 0.0
-    var lastTiltY: Double = 0.0
+    public var lastTiltX: Double = 0.0
+    public var lastTiltY: Double = 0.0
     /// Last raw battery byte seen (INTUOSP2_BT 361-byte path). 0xFF = not yet received.
     /// Used to suppress redundant .battery emissions on every pen report.
-    var lastBatteryByte: UInt8 = 0xFF
+    public var lastBatteryByte: UInt8 = 0xFF
+
+    public init() {}
 }
 
-enum DecodeResult {
+public enum DecodeResult {
     case none
     case pen(TabletPoint)
     case toolEnter(ToolIdentity)
@@ -328,14 +330,26 @@ enum DecodeResult {
 /// `id` is a per-contact tracking identifier reused across frames for the same
 /// finger (typically 0–9 on 10-point devices).  `contactArea` is optional and
 /// only populated on devices that report contact-major.
-struct TouchContact: Equatable {
-    let id: Int
-    let x: Int
-    let y: Int
-    let contactArea: Int?
+public struct TouchContact: Equatable {
+    public let id: Int
+    public let x: Int
+    public let y: Int
+    public let contactArea: Int?
+
+    public init(id: Int, x: Int, y: Int, contactArea: Int?) {
+        self.id = id
+        self.x = x
+        self.y = y
+        self.contactArea = contactArea
+    }
 }
 
-protocol WacomDecoder {
+/// Vendor-neutral decoder protocol.  One per HID report family.
+///
+/// G3 publish surface for the `TabletKit` Swift package.  Implementors translate
+/// a raw HID input report into a sequence of high-level `DecodeResult` events.
+/// Stateless across calls except for the `inout DecoderState` the host owns.
+public protocol TabletReportDecoder {
     /// Decode one raw HID report into zero or more results.
     /// Mutating to allow decoder structs with their own cached state if needed.
     /// - Parameter deviceFamily: The device family string (e.g., "intuosProGen2", "cintiq")
@@ -348,6 +362,12 @@ protocol WacomDecoder {
         deviceFamily: String
     ) -> [DecodeResult]
 }
+
+/// Source-compatible alias for the pre-TabletKit name.  All existing decoders
+/// inside this repo continue to compile against `WacomDecoder`; new code should
+/// prefer `TabletReportDecoder`.  Will be removed once the published package
+/// has shipped at least one minor release.
+public typealias WacomDecoder = TabletReportDecoder
 
 // MARK: - BLE HOGP Pad Report Decoder
 

@@ -15,11 +15,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "MockTabDecoders",
+    name: "TabletKit",
     platforms: [.macOS(.v13)],
+    products: [
+        // Vendor-neutral public surface of the decoder layer.
+        // The module name (`TabletKit`) is what downstream packages `import`.
+        // This is the G3 publish slot — see Notes/Scratch/Longevity-Plan-2026-05-23.md.
+        .library(name: "TabletKit", targets: ["TabletKit"]),
+    ],
     targets: [
         .target(
-            name: "MockTabDecoders",
+            name: "TabletKit",
             path: "MockTab",
             exclude: [
                 "App", "Assets.xcassets", "Driver/AppWatcher.swift",
@@ -28,7 +34,6 @@ let package = Package(
                 "Driver/HIDCapture.swift", "Driver/HIDThread.swift",
                 "Driver/InjectionSnapshot.swift", "Driver/InputInjector.swift",
                 "Driver/OTDImporter.swift", "Driver/TabletManager.swift",
-                "Driver/WacomDeviceRegistry.swift",
                 "Driver/WacomFallbackDevice.swift",
                 "Driver/WacomKnownDevice.swift", "Driver/WacomProbeDevice.swift",
                 "Help", "Info.plist", "Localizable.xcstrings",
@@ -39,6 +44,7 @@ let package = Package(
             sources: [
                 "Driver/TabletPoint.swift",
                 "Driver/TabletDevice.swift",
+                "Driver/WacomDeviceRegistry.swift",
                 "Driver/WacomToolSpec.swift",
                 "Driver/ModifierMath.swift",
                 "Driver/CursorSmoother.swift",
@@ -46,8 +52,8 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "MockTabDecodersTests",
-            dependencies: ["MockTabDecoders"],
+            name: "TabletKitTests",
+            dependencies: ["TabletKit"],
             path: "Tests/MockTabDecodersTests"
         ),
     ]

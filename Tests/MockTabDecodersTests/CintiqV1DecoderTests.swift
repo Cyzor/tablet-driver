@@ -18,7 +18,7 @@
 //   • Express-key / touch-ring report (0x0C) decodes left ring and gates right
 //     ring on spec.hasDualRings.
 import XCTest
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class CintiqV1DecoderTests: XCTestCase {
 

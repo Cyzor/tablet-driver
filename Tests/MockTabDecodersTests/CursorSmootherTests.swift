@@ -5,7 +5,7 @@
 import CoreGraphics
 import XCTest
 
-@testable import MockTabDecoders
+@testable import TabletKit
 
 final class CursorSmootherTests: XCTestCase {
 
