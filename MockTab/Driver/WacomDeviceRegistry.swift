@@ -341,7 +341,7 @@ enum WacomDeviceRegistry {
             productID: 0x0012, name: "Graphire 2 (5×7)",  // ⚠ estimated; kernel 0x12 = Graphire2 5×7
             parser: .graphire, maxX: 13918, maxY: 10206, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false),
+            seizeUSB: false, activeWidthMM: 178, activeHeightMM: 127),
         .init(
             productID: 0x0013, name: "Graphire 3 (4×5)",  // ⚠ estimated
             parser: .graphire, maxX: 10208, maxY: 7424, maxPressure: 511,
@@ -353,7 +353,7 @@ enum WacomDeviceRegistry {
             parser: .graphire, maxX: 16704, maxY: 12064, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 203, activeHeightMM: 152),
         .init(
             productID: 0x0015, name: "Graphire 4 (4×5)",  // ⚠ estimated
             parser: .graphire, maxX: 10208, maxY: 7424, maxPressure: 511,
@@ -365,13 +365,13 @@ enum WacomDeviceRegistry {
             parser: .graphire, maxX: 16704, maxY: 12064, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 203, activeHeightMM: 152),
         .init(
             productID: 0x0017, name: "Bamboo Fun (MTE-450)",  // ⚠ estimated
             parser: .graphire, maxX: 14760, maxY: 9225, maxPressure: 511,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
 
         // ── Volito / PenStation ───────────────────────────────────────────────
         .init(
@@ -396,7 +396,7 @@ enum WacomDeviceRegistry {
             parser: .graphire, maxX: 14760, maxY: 9225, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
 
         // ── Cintiq 21UX first-gen ─────────────────────────────────────────────
         .init(
@@ -408,7 +408,7 @@ enum WacomDeviceRegistry {
             parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: true, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: true, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 432, activeHeightMM: 330),
 
         // ── Intuos 1 (1998–2002) — intuosV1 parser ───────────────────────────
         // 10-byte reports, BE16, 1024-level pressure (10-bit).
@@ -416,54 +416,54 @@ enum WacomDeviceRegistry {
             productID: 0x0020, name: "Intuos 4×5",  // ⚠ estimated
             parser: .intuosV1, maxX: 12700, maxY: 10600, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 127, activeHeightMM: 102),
         .init(
             productID: 0x0021, name: "Intuos 6×8",  // ⚠ estimated
             parser: .intuosV1, maxX: 20320, maxY: 16240, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 203, activeHeightMM: 152),
         .init(
             productID: 0x0022, name: "Intuos 9×12",  // ⚠ estimated
             parser: .intuosV1, maxX: 30480, maxY: 24060, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 305, activeHeightMM: 229),
         .init(
             productID: 0x0023, name: "Intuos 12×12",  // ⚠ estimated; kernel maxY 31680
             parser: .intuosV1, maxX: 30480, maxY: 31680, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 305, activeHeightMM: 305),
         .init(
             productID: 0x0024, name: "Intuos 12×18",  // ⚠ estimated; kernel maxY 31680
             parser: .intuosV1, maxX: 45720, maxY: 31680, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 457, activeHeightMM: 305),
 
         // ── Intuos 2 (2002–2004) — intuosV1 parser ───────────────────────────
         .init(
             productID: 0x0041, name: "Intuos 2 (4×5)",  // ⚠ estimated
             parser: .intuosV1, maxX: 12700, maxY: 10600, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 127, activeHeightMM: 102),
         .init(
             productID: 0x0042, name: "Intuos 2 (6×8)",  // ⚠ estimated
             parser: .intuosV1, maxX: 20320, maxY: 16240, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 203, activeHeightMM: 152),
         .init(
             productID: 0x0043, name: "Intuos 2 (9×12)",  // ⚠ estimated
             parser: .intuosV1, maxX: 30480, maxY: 24060, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 305, activeHeightMM: 229),
         .init(
             productID: 0x0044, name: "Intuos 2 (12×12)",  // ⚠ estimated; kernel maxY 31680
             parser: .intuosV1, maxX: 30480, maxY: 31680, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 305, activeHeightMM: 305),
         .init(
             productID: 0x0045, name: "Intuos 2 (12×18)",  // ⚠ estimated; kernel maxY 31680
             parser: .intuosV1, maxX: 45720, maxY: 31680, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 457, activeHeightMM: 305),
 
         // ── Intuos3 (PTZ-xxx, 2003–2006) — intuos3 parser ───────────────────
         // Status byte layout differs from Intuos5: bit 6 (0x40) is proximity.
@@ -476,31 +476,31 @@ enum WacomDeviceRegistry {
             parser: .intuos3, maxX: 25400, maxY: 20320, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])]),
+            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])], activeWidthMM: 127, activeHeightMM: 102),
         .init(
             productID: 0x00B1, name: "Intuos3 6×8 (PTZ-631)",  // ⚠ estimated
             parser: .intuos3, maxX: 40640, maxY: 30480, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])]),
+            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])], activeWidthMM: 203, activeHeightMM: 152),
         .init(
             productID: 0x00B2, name: "Intuos3 9×12 (PTZ-930)",  // ⚠ estimated
             parser: .intuos3, maxX: 60960, maxY: 45720, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])]),
+            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])], activeWidthMM: 305, activeHeightMM: 229),
         .init(
             productID: 0x00B3, name: "Intuos3 12×12 (PTZ-1231)",  // ⚠ estimated
             parser: .intuos3, maxX: 60960, maxY: 60960, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])]),
+            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])], activeWidthMM: 305, activeHeightMM: 305),
         .init(
             productID: 0x00B4, name: "Intuos3 12×19 (PTZ-1231W)",  // ⚠ estimated
             parser: .intuos3, maxX: 97536, maxY: 60960, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])]),
+            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])], activeWidthMM: 483, activeHeightMM: 305),
         .init(
             productID: 0x00B5, name: "Intuos3 WS (PTZ-631W)",  // ✓ confirmed live
             parser: .intuos3, maxX: 54204, maxY: 31750, maxPressure: 1023,
@@ -514,7 +514,7 @@ enum WacomDeviceRegistry {
             parser: .intuos3, maxX: 31496, maxY: 19685, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])]),
+            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])], activeWidthMM: 152, activeHeightMM: 102),
 
         // ── Intuos4 (PTK-xxx, 2009–2012) — intuosV1 parser ───────────────────
         // OLED display on each express key; 2048-level pressure (11-bit).
@@ -523,31 +523,31 @@ enum WacomDeviceRegistry {
             parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x00B9, name: "Intuos4 M (PTK-640)",  // ⚠ estimated
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 229, activeHeightMM: 152),
         .init(
             // Dimensions corrected to kernel wacom_features_0xBA (65024×40640).
             productID: 0x00BA, name: "Intuos4 L (PTK-840)",  // ⚠ from kernel
             parser: .intuosV1, maxX: 65024, maxY: 40640, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 330, activeHeightMM: 203),
         .init(
             productID: 0x00BB, name: "Intuos4 XL (PTK-1240)",  // ⚠ estimated
             parser: .intuosV1, maxX: 97536, maxY: 60960, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 483, activeHeightMM: 305),
         .init(
             // Dimensions corrected to kernel wacom_features_0xBC (40640×25400).
             productID: 0x00BC, name: "Intuos4 WL (PTK-540WL)",  // ⚠ from kernel
             parser: .intuosV1, maxX: 40640, maxY: 25400, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 203, activeHeightMM: 127),
 
         // ── Intuos5 / Intuos Pro 1st-gen (PTH-x50/x51, 2012–2013) ──────────────
         // IntuosV1 10-byte format, 2047-level pressure (vs Intuos Pro 2nd-gen's 8191).
@@ -570,19 +570,19 @@ enum WacomDeviceRegistry {
             parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x0027, name: "Intuos5 M (PTH-650)",  // ⚠ estimated
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 229, activeHeightMM: 152),
         .init(
             productID: 0x0028, name: "Intuos5 L (PTH-850)",
             parser: .intuosV1, maxX: 65024, maxY: 40640, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 330, activeHeightMM: 203),
 
         // ── Intuos Pro first-gen (PTH-x51, 2013) — intuosV1 parser ───────────
         // Renamed from "Intuos5" to "Intuos Pro"; same HID format.
@@ -591,7 +591,7 @@ enum WacomDeviceRegistry {
             parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: true, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x0316, name: "Intuos Pro M (PTH-651)",  // ⚠ estimated
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
@@ -667,36 +667,36 @@ enum WacomDeviceRegistry {
             productID: 0x00D0, name: "Bamboo Touch (CTT-460)",  // ⚠ estimated
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 0,
             buttonCount: 0, hasTouchRing: false, hasEraser: false,
-            seizeUSB: false),
+            seizeUSB: false, activeWidthMM: 127, activeHeightMM: 76),
         .init(
             productID: 0x00D1, name: "Bamboo Pen & Touch (CTH-460)",  // ⚠ estimated
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: false,
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x00D4, name: "Bamboo Capture (CTH-470)",  // ⚠ estimated
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: false,
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x00D6, name: "Bamboo Pen (CTL-460)",  // ⚠ estimated
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 2, hasTouchRing: false, hasEraser: false,
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x00D7, name: "Bamboo Pen (CTL-660)",  // ⚠ from kernel — dims from kernel 0xD7 (BambooPT 2FG Small); name attribution uncertain
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 2, hasTouchRing: false, hasEraser: false,
-            seizeUSB: false),
+            seizeUSB: false, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x00DA, name: "Bamboo Pen & Touch 2 (CTH-461)",  // ⚠ estimated
             parser: .bamboo, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: false,
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x00DB, name: "Bamboo Connect (CTL-470)",  // ⚠ from kernel — dims from kernel 0xDB (Bamboo 2FG 6x8 SE); name attribution uncertain
             parser: .bamboo, maxX: 21648, maxY: 13700, maxPressure: 1023,
@@ -733,7 +733,7 @@ enum WacomDeviceRegistry {
             parser: .cintiqV1, maxX: 87200, maxY: 65600, maxPressure: 2047,
             buttonCount: 18, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: true, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: true, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 432, activeHeightMM: 330),
         .init(
             productID: 0x00F4, name: "Cintiq 24HD (DTK-2400)",  // ✓ confirmed live
             parser: .cintiqV1, maxX: 104480, maxY: 65600, maxPressure: 2047,
@@ -748,13 +748,13 @@ enum WacomDeviceRegistry {
             buttonCount: 8, hasTouchRing: true, hasDualRings: true, ringSlotCount: 3, hasEraser: true,
             hasFingerTouch: true, maxTouchContacts: 1,
             isPenDisplay: true,
-            seizeUSB: true, initSteps: [.featureReport([0x02, 0x02])], ledCompanionPID: 0x0056),
+            seizeUSB: true, initSteps: [.featureReport([0x02, 0x02])], ledCompanionPID: 0x0056, activeWidthMM: 533, activeHeightMM: 330),
         .init(
             productID: 0x00FA, name: "Cintiq 22HD (DTK-2200)",  // ⚠ from OTD (dims/buttonCount corrected from ⚠ estimated)
             parser: .cintiqV1, maxX: 95040, maxY: 54260, maxPressure: 2047,
             buttonCount: 20, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 483, activeHeightMM: 279),
         // 0x00FB previously listed as "Cintiq 21UX 2 (DTZ-2100B)" but Linux
         // input-wacom's `wacom_features_0xFB` identifies it as DTU-1031 (a
         // small entry-level DTUS pen display). The DTZ-2100B name was an
@@ -766,13 +766,13 @@ enum WacomDeviceRegistry {
             parser: .intuosV1, maxX: 31496, maxY: 19685, maxPressure: 2047,
             buttonCount: 6, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x002A, name: "Wacom PTK-650",  // ⚠ from OTD
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 229, activeHeightMM: 152),
 
         // ── Intuos Pro first-gen additional variant ───────────────────────────
         .init(
@@ -780,7 +780,7 @@ enum WacomDeviceRegistry {
             parser: .intuosV1, maxX: 44704, maxY: 27940, maxPressure: 2047,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 229, activeHeightMM: 152),
 
         // ── Intuos Pro second-gen Bluetooth Classic PIDs (PTH-460/660/860) ──────
         // These PIDs appear when the tablet connects over BT Classic (transport="Bluetooth").
@@ -796,7 +796,7 @@ enum WacomDeviceRegistry {
             // actually drives BT touch projection (confirmed working
             // 2026-05-22).  Kept here as a defensive fallback.
             touchMaxX: 8960, touchMaxY: 5920,
-            seizeUSB: false),
+            seizeUSB: false, activeWidthMM: 229, activeHeightMM: 152),
         .init(
             productID: 0x0361, name: "Intuos Pro L (PTH-860) BT",  // ✓ confirmed live (BT Classic)
             parser: .intuosV2, maxX: 62200, maxY: 43200, maxPressure: 8191,
@@ -818,12 +818,12 @@ enum WacomDeviceRegistry {
             productID: 0x0392, name: "Wacom PTH-460",  // ⚠ from OTD
             parser: .intuosV2, maxX: 31920, maxY: 19950, maxPressure: 8191,
             buttonCount: 6, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x03DC, name: "Wacom PTH-460",  // ⚠ from OTD
             parser: .intuosV2, maxX: 31920, maxY: 19950, maxPressure: 8191,
             buttonCount: 6, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false),
+            seizeUSB: false, activeWidthMM: 152, activeHeightMM: 102),
 
         // ── Bamboo / Graphire-era CTE / CTF consumer line ─────────────────────
         // Graphire-era: intuosV1 8-byte format.
@@ -836,7 +836,7 @@ enum WacomDeviceRegistry {
             productID: 0x006B, name: "Wacom CTE-660",  // ⚠ from kernel
             parser: .bamboo, maxX: 21648, maxY: 13530, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 203, activeHeightMM: 127),
         .init(
             productID: 0x0018, name: "Wacom CTE-650",  // ⚠ from OTD
             parser: .bamboo, maxX: 21648, maxY: 13530, maxPressure: 511,
@@ -866,25 +866,25 @@ enum WacomDeviceRegistry {
             parser: .intuosV1, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x00DE, name: "Wacom CTH-470",  // ⚠ from OTD
             parser: .intuosV1, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x0302, name: "Wacom CTH-480",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x033C, name: "Wacom CTH-490",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 2047,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x00D3, name: "Wacom CTH-661",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21648, maxY: 13700, maxPressure: 1023,
@@ -902,7 +902,7 @@ enum WacomDeviceRegistry {
             parser: .intuosV1, maxX: 21648, maxY: 13700, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x0303, name: "Wacom CTH-680",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 1023,
@@ -922,30 +922,30 @@ enum WacomDeviceRegistry {
             parser: .intuosV1, maxX: 14720, maxY: 9200, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x0300, name: "Wacom CTL-471",  // ⚠ from kernel
             parser: .intuosV1, maxX: 14720, maxY: 9225, maxPressure: 1023,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x037A, name: "Wacom CTL-472",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 2047,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x030E, name: "Wacom CTL-480",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x033B, name: "Wacom CTL-490",  // ⚠ from OTD
             parser: .intuosV1, maxX: 15200, maxY: 9500, maxPressure: 2047,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x0301, name: "Wacom CTL-671",  // ⚠ from OTD
             parser: .intuosV1, maxX: 21600, maxY: 13500, maxPressure: 1023,
@@ -973,23 +973,23 @@ enum WacomDeviceRegistry {
             productID: 0x0374, name: "Wacom CTL-4100",  // ⚠ from OTD
             parser: .intuosV2, maxX: 15200, maxY: 9500, maxPressure: 4095,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false),
+            seizeUSB: false, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x0376, name: "Wacom CTL-4100WL",  // ⚠ from OTD
             parser: .intuosV2, maxX: 15200, maxY: 9500, maxPressure: 4095,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x0377, name: "Wacom CTL-4100WL",  // ⚠ from OTD
             parser: .intuosV2, maxX: 15200, maxY: 9500, maxPressure: 4095,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced, activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x03C5, name: "Wacom CTL-4100WL",  // ⚠ from OTD
             parser: .intuosV2, maxX: 15200, maxY: 9500, maxPressure: 4095,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 152, activeHeightMM: 102),
         .init(
             productID: 0x0375, name: "Wacom CTL-6100",  // ⚠ from OTD
             parser: .intuosV2, maxX: 21600, maxY: 13500, maxPressure: 4095,
@@ -1037,7 +1037,7 @@ enum WacomDeviceRegistry {
             parser: .cintiqV1, maxX: 59552, maxY: 33848, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 305, activeHeightMM: 178),
         .init(
             productID: 0x00F9, name: "Wacom Cintiq 22HD (DTK-2200)",  // ⚠ from OTD
             parser: .cintiqV1, maxX: 95040, maxY: 54260, maxPressure: 2047,
@@ -1050,32 +1050,32 @@ enum WacomDeviceRegistry {
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             hasFingerTouch: true, maxTouchContacts: 10,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 305, activeHeightMM: 178),
         .init(
             productID: 0x0390, name: "Wacom Cintiq 16 (DTK-1660)",  // ⚠ from OTD
             parser: .intuosV2, maxX: 69632, maxY: 39518, maxPressure: 8191,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 356, activeHeightMM: 203),
         .init(
             productID: 0x03AE, name: "Wacom Cintiq 16 (DTK-1660)",  // ⚠ from OTD
             parser: .intuosV2, maxX: 69632, maxY: 39518, maxPressure: 8191,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 356, activeHeightMM: 203),
         .init(
             productID: 0x03A6, name: "Wacom DTC-133",  // ⚠ from OTD
             parser: .intuosV2, maxX: 29434, maxY: 16556, maxPressure: 4095,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 279, activeHeightMM: 152),
         .init(
             productID: 0x03C0, name: "Wacom Cintiq Pro 27 (DTH-271)",  // ⚠ from OTD
             parser: .intuosV2, maxX: 120032, maxY: 67868, maxPressure: 8191,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             hasFingerTouch: true, maxTouchContacts: 10,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 610, activeHeightMM: 330),
         .init(
             productID: 0x03F0, name: "Wacom Movink 13 (DTH-135)",  // ⚠ from OTD
             parser: .intuosV3, maxX: 59552, maxY: 33848, maxPressure: 8191,
@@ -1133,35 +1133,35 @@ enum WacomDeviceRegistry {
             parser: .intuosV2, maxX: 25632, maxY: 14418, maxPressure: 4095,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 279, activeHeightMM: 152),
         .init(
             productID: 0x005B, name: "Wacom Cintiq 22HD Touch (DTH-2200)",  // ⚠ from OTD (parser corrected from ⚠ kernel)
             parser: .cintiqV1, maxX: 95600, maxY: 54200, maxPressure: 2047,
             buttonCount: 20, hasTouchRing: false, hasEraser: true,
             hasFingerTouch: true, maxTouchContacts: 1,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 483, activeHeightMM: 279),
         .init(
             productID: 0x03D0, name: "Wacom Cintiq Pro 22 (DTH-227)",  // ⚠ from OTD
             parser: .intuosV2, maxX: 96012, maxY: 54356, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 457, activeHeightMM: 254),
         .init(
             productID: 0x03F5, name: "Wacom PTK-470",  // ⚠ from OTD (IntuosV3)
             parser: .intuosV3, maxX: 37400, maxY: 21000, maxPressure: 8191,
             buttonCount: 5, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 178, activeHeightMM: 102),
         .init(
             productID: 0x03F7, name: "Wacom PTK-670",  // ⚠ from OTD (IntuosV3)
             parser: .intuosV3, maxX: 52600, maxY: 29600, maxPressure: 8191,
             buttonCount: 10, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 254, activeHeightMM: 152),
         .init(
             productID: 0x03F9, name: "Wacom PTK-870",  // ⚠ from OTD (IntuosV3)
             parser: .intuosV3, maxX: 69800, maxY: 39000, maxPressure: 8191,
             buttonCount: 10, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 356, activeHeightMM: 203),
 
         // ── DTUS family (Linux input-wacom DTUS / DTUSX) ──────────────────────
         // Small entry-level pen displays sharing wacom_dtus_irq.  Dimensions
@@ -1175,7 +1175,7 @@ enum WacomDeviceRegistry {
             parser: .dtus, maxX: 34816, maxY: 19759, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 356, activeHeightMM: 203),
         .init(
             productID: 0x00FB, name: "Wacom DTU-1031",  // ⚠ from kernel
             parser: .dtus, maxX: 22096, maxY: 13960, maxPressure: 511,
@@ -1187,13 +1187,13 @@ enum WacomDeviceRegistry {
             parser: .dtus, maxX: 22672, maxY: 12928, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 229, activeHeightMM: 127),
         .init(
             productID: 0x0336, name: "Wacom DTU-1141",  // ⚠ from kernel
             parser: .dtus, maxX: 23672, maxY: 13403, maxPressure: 1023,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 229, activeHeightMM: 127),
 
         // ── DTU family (Linux input-wacom DTU type, wacom_dtu_irq) ────────────
         // Older entry-level pen displays. Single pen report 0x02 (LE16 X/Y,
@@ -1205,13 +1205,13 @@ enum WacomDeviceRegistry {
             parser: .dtu, maxX: 47864, maxY: 27011, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 483, activeHeightMM: 279),
         .init(
             productID: 0x00F0, name: "Wacom DTU-1631",  // ⚠ from kernel
             parser: .dtu, maxX: 34623, maxY: 19553, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 356, activeHeightMM: 203),
 
         // ── Legacy Bluetooth devices (serial-port based, out-of-scope) ─────────
         // CTE-630BT (Graphire4 Bluetooth, PID 0x0081) and XD-0608-BT (Intuos2
