@@ -328,10 +328,10 @@ enum WacomDeviceRegistry {
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
             seizeUSB: false),
         .init(
-            productID: 0x0010, name: "Graphire",  // ⚠ estimated; kernel 0x10 = original Graphire
+            productID: 0x0010, name: "Graphire",  // cross-referenced: linuxwacom + OTD
             parser: .graphire, maxX: 10206, maxY: 7422, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false),
+            seizeUSB: false, confidence: .crossReferenced),
         .init(
             productID: 0x0011, name: "Graphire 2 (4×5)",  // ⚠ estimated; kernel 0x11 = Graphire2 4×5
             parser: .graphire, maxX: 10206, maxY: 7422, maxPressure: 511,
@@ -478,11 +478,13 @@ enum WacomDeviceRegistry {
             seizeUSB: false,
             initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])], activeWidthMM: 127, activeHeightMM: 102),
         .init(
-            productID: 0x00B1, name: "Intuos3 6×8 (PTZ-631)",  // ⚠ estimated
+            productID: 0x00B1, name: "Intuos3 6×8 (PTZ-631)",  // cross-referenced: linuxwacom + OTD
             parser: .intuos3, maxX: 40640, maxY: 30480, maxPressure: 1023,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             seizeUSB: false,
-            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])], activeWidthMM: 203, activeHeightMM: 152),
+            initSteps: [.featureReport([0x02, 0x02]), .delay(0.15), .featureReport([0x04, 0x00])],
+            confidence: .crossReferenced,
+            activeWidthMM: 203, activeHeightMM: 152),
         .init(
             productID: 0x00B2, name: "Intuos3 9×12 (PTZ-930)",  // ⚠ estimated
             parser: .intuos3, maxX: 60960, maxY: 45720, maxPressure: 1023,
@@ -1070,12 +1072,14 @@ enum WacomDeviceRegistry {
             isPenDisplay: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 279, activeHeightMM: 152),
         .init(
-            productID: 0x03C0, name: "Wacom Cintiq Pro 27 (DTH-271)",  // ⚠ from OTD
+            productID: 0x03C0, name: "Wacom Cintiq Pro 27 (DTH-271)",  // cross-referenced: linuxwacom + libwacom + OTD
             parser: .intuosV2, maxX: 120032, maxY: 67868, maxPressure: 8191,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             hasFingerTouch: true, maxTouchContacts: 10,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 610, activeHeightMM: 330),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            confidence: .crossReferenced,
+            activeWidthMM: 610, activeHeightMM: 330),
         .init(
             productID: 0x03F0, name: "Wacom Movink 13 (DTH-135)",  // ⚠ from OTD
             parser: .intuosV3, maxX: 59552, maxY: 33848, maxPressure: 8191,
@@ -1142,11 +1146,13 @@ enum WacomDeviceRegistry {
             isPenDisplay: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 483, activeHeightMM: 279),
         .init(
-            productID: 0x03D0, name: "Wacom Cintiq Pro 22 (DTH-227)",  // ⚠ from OTD
+            productID: 0x03D0, name: "Wacom Cintiq Pro 22 (DTH-227)",  // cross-referenced: linuxwacom + libwacom + OTD
             parser: .intuosV2, maxX: 96012, maxY: 54356, maxPressure: 8191,
             buttonCount: 8, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 457, activeHeightMM: 254),
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            confidence: .crossReferenced,
+            activeWidthMM: 457, activeHeightMM: 254),
         .init(
             productID: 0x03F5, name: "Wacom PTK-470",  // ⚠ from OTD (IntuosV3)
             parser: .intuosV3, maxX: 37400, maxY: 21000, maxPressure: 8191,
@@ -1212,6 +1218,105 @@ enum WacomDeviceRegistry {
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])], activeWidthMM: 356, activeHeightMM: 203),
+
+        // ── Imported from wacom-hid-descriptors 2026-05-26 ─────────────────────
+        // Recognition-only entries for devices that appear in real linuxwacom
+        // sysinfo dumps (https://github.com/linuxwacom/wacom-hid-descriptors)
+        // but were absent from this registry.  Parser family, maxX/maxY, and
+        // pressure bit-depth are *guesses* by similarity to the closest in-
+        // registry relative — these entries name the device and provide
+        // libwacom-derived physical dimensions, but the decoder output is not
+        // verified.  Each one is `.experimental` and a candidate for promotion
+        // once a real capture log (in-app or hid-recorder format) replays
+        // cleanly through the assumed parser.
+        .init(
+            productID: 0x0325, name: "Wacom Cintiq Companion 2 (DTH-W1310)",  // ⚠ recognition-only
+            parser: .cintiqV1, maxX: 61000, maxY: 35600, maxPressure: 2047,
+            buttonCount: 4, hasTouchRing: false, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 10,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 305, activeHeightMM: 178),
+        .init(
+            productID: 0x0326, name: "Wacom Cintiq Companion 2 (DTH-W1310, alt)",  // ⚠ recognition-only
+            parser: .cintiqV1, maxX: 61000, maxY: 35600, maxPressure: 2047,
+            buttonCount: 4, hasTouchRing: false, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 10,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 305, activeHeightMM: 178),
+        .init(
+            productID: 0x0350, name: "Wacom Cintiq Pro 16 (DTH-1620)",  // ⚠ recognition-only
+            parser: .intuosV2, maxX: 71200, maxY: 40600, maxPressure: 8191,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 10,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 356, activeHeightMM: 203),
+        .init(
+            productID: 0x0354, name: "Wacom Cintiq Pro 16 (DTH-1620, alt)",  // ⚠ recognition-only
+            parser: .intuosV2, maxX: 71200, maxY: 40600, maxPressure: 8191,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 10,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 356, activeHeightMM: 203),
+        .init(
+            productID: 0x0379, name: "Wacom Intuos BT M (CTL-6100WL)",  // ⚠ recognition-only
+            parser: .intuosV2, maxX: 21600, maxY: 13500, maxPressure: 4095,
+            buttonCount: 4, hasTouchRing: false, hasEraser: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 229, activeHeightMM: 127),
+        .init(
+            productID: 0x03C4, name: "Wacom Cintiq Pro 17 (DTH172)",  // ⚠ recognition-only
+            parser: .intuosV2, maxX: 76200, maxY: 40600, maxPressure: 8191,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 10,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 381, activeHeightMM: 203),
+        .init(
+            productID: 0x03CB, name: "Wacom One Pen Display 13 (DTH134)",  // ⚠ recognition-only
+            parser: .intuosV2, maxX: 34815, maxY: 18779, maxPressure: 4095,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 330, activeHeightMM: 178),
+        .init(
+            productID: 0x03CF, name: "Wacom DTC121 (alt)",  // ⚠ recognition-only
+            parser: .intuosV2, maxX: 29434, maxY: 16036, maxPressure: 4095,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 279, activeHeightMM: 152),
+        .init(
+            productID: 0x03EC, name: "Wacom DTH134",  // ⚠ recognition-only
+            parser: .intuosV2, maxX: 34815, maxY: 18779, maxPressure: 4095,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 330, activeHeightMM: 178),
+        .init(
+            productID: 0x03ED, name: "Wacom DTC121",  // ⚠ recognition-only
+            parser: .intuosV2, maxX: 29434, maxY: 16036, maxPressure: 4095,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 279, activeHeightMM: 152),
+        .init(
+            productID: 0x03F2, name: "Wacom Movink 13 (DTH-135, alt)",  // ⚠ recognition-only
+            parser: .intuosV3, maxX: 59552, maxY: 33848, maxPressure: 8191,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            hasFingerTouch: true, maxTouchContacts: 10,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+        .init(
+            productID: 0x4900, name: "Wacom DTC121 (alt 2)",  // ⚠ recognition-only
+            parser: .intuosV2, maxX: 29434, maxY: 16036, maxPressure: 4095,
+            buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            isPenDisplay: true,
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 279, activeHeightMM: 152),
 
         // ── Legacy Bluetooth devices (serial-port based, out-of-scope) ─────────
         // CTE-630BT (Graphire4 Bluetooth, PID 0x0081) and XD-0608-BT (Intuos2
