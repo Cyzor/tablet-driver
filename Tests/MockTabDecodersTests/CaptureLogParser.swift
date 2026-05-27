@@ -191,4 +191,99 @@ public enum CaptureLogParser {
               let millis  = Int(dotParts[1]) else { return nil }
         return ((minutes * 60) + seconds) * 1000 + millis
     }
+
+    // MARK: - hid-recorder adapter
+
+    /// Parse a `hid-recorder` text dump (the format produced by
+    /// https://github.com/hidutils/hid-recorder and the older `hid-tools`).
+    ///
+    /// The line types recognised:
+    ///
+    ///     E: <secs>.<usecs> <size> <hex bytes…>   ← event (a HID report)
+    ///     N: <device name>                        ← captured as deviceTag
+    ///     # …                                     ← comment, ignored
+    ///     R: / P: / I: / D: …                     ← skipped (metadata)
+    ///
+    /// Timestamps in the source file are wall-clock-ish seconds with
+    /// microsecond resolution.  This parser normalises so that the first
+    /// returned record has `timestampMs == 0`, matching the convention of
+    /// the in-app capture format.
+    ///
+    /// Unlocks the OpenTabletDriver / DIGImend / kernel-bugzilla corpus as
+    /// regression fixtures — paste any user-submitted hid-recorder dump
+    /// into a test, call this parser, replay the records through the
+    /// relevant decoder.
+    public static func parseHidRecorder(_ text: String) throws -> [CaptureRecord] {
+        struct Raw { let usecs: Int64; let reportID: UInt8; let length: Int; let bytes: [UInt8] }
+        var raws: [Raw] = []
+        var deviceTag = ""
+
+        for (idx, rawLine) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let line = String(rawLine).trimmingCharacters(in: .whitespaces)
+            if line.isEmpty || line.hasPrefix("#") { continue }
+
+            if line.hasPrefix("N:") {
+                deviceTag = String(line.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+                continue
+            }
+            // R: / P: / I: / D: are metadata we don't need for replay.
+            if line.hasPrefix("R:") || line.hasPrefix("P:")
+                || line.hasPrefix("I:") || line.hasPrefix("D:") { continue }
+
+            guard line.hasPrefix("E:") else { continue }
+
+            // E: <secs>.<usecs> <size> <hex bytes…>
+            let payload = line.dropFirst(2)
+            let tokens = payload.split(whereSeparator: { $0.isWhitespace })
+            guard tokens.count >= 2 else {
+                throw CaptureLogParseError.malformedLine(lineNumber: idx + 1, content: line)
+            }
+
+            // Timestamp: seconds.microseconds → total microseconds.
+            let tsToken = tokens[0]
+            let tsParts = tsToken.split(separator: ".", maxSplits: 1)
+            guard tsParts.count == 2,
+                  let secs  = Int64(tsParts[0]),
+                  let usecs = Int64(tsParts[1].padding(toLength: 6, withPad: "0", startingAt: 0))
+            else {
+                throw CaptureLogParseError.malformedLine(lineNumber: idx + 1, content: line)
+            }
+            let totalUsecs = secs * 1_000_000 + usecs
+
+            guard let length = Int(tokens[1]) else {
+                throw CaptureLogParseError.malformedLine(lineNumber: idx + 1, content: line)
+            }
+
+            var bytes: [UInt8] = []
+            bytes.reserveCapacity(length)
+            for token in tokens.dropFirst(2) {
+                guard let b = UInt8(token, radix: 16) else {
+                    throw CaptureLogParseError.invalidHexByte(
+                        lineNumber: idx + 1, token: String(token))
+                }
+                bytes.append(b)
+            }
+            guard bytes.count == length else {
+                throw CaptureLogParseError.lengthMismatch(
+                    lineNumber: idx + 1, declared: length, actual: bytes.count)
+            }
+            guard let reportID = bytes.first else {
+                throw CaptureLogParseError.malformedLine(lineNumber: idx + 1, content: line)
+            }
+
+            raws.append(Raw(usecs: totalUsecs, reportID: reportID,
+                            length: length, bytes: bytes))
+        }
+
+        // Normalise timestamps so the first record is t=0 (matches mockTab format).
+        guard let base = raws.first?.usecs else { return [] }
+        return raws.map { r in
+            CaptureRecord(
+                timestampMs: Int((r.usecs - base) / 1000),
+                deviceTag: deviceTag,
+                reportID: r.reportID,
+                length: r.length,
+                bytes: r.bytes)
+        }
+    }
 }

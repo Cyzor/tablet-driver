@@ -159,4 +159,106 @@ final class CaptureLogParserTests: XCTestCase {
         XCTAssertGreaterThan(penCount, 0,
                              "Replay produced no .pen events — decoder didn't run?")
     }
+
+    // MARK: - hid-recorder format
+
+    /// Minimal hid-recorder dump shape — three event lines plus the metadata
+    /// lines that real `hid-recorder` output always carries.  Modelled on the
+    /// format documented at https://man.archlinux.org/man/hid-recorder.1.en
+    /// (verified 2026-05-26).
+    private static let hidRecorderSample = """
+        # hid-recorder
+        # Recorded on Tue 26 May 2026 10:00:00 AM
+        N: Wacom Intuos Pro M
+        P: usb-0000:00:14.0-3/input0
+        I: 3 056a 0357
+        R: 18 05 0d 09 02 a1 01 85 10 09 20 a1 00 09 32 81 02 c0 c0
+        E: 000000.000123 27 10 60 f2 69 00 a8 62 00 00 00 21 0d 00 00 00 00 09 b7 a5 80 14 42 08 10 00 42 08
+        E: 000000.005678 27 10 60 ed 69 00 a8 62 00 00 00 21 0d 00 00 00 00 0a b7 a5 80 14 42 08 10 00 42 08
+        E: 000000.010234 27 10 60 ea 69 00 a8 62 00 00 00 21 0d 00 00 00 00 0b b7 a5 80 14 42 08 10 00 42 08
+        """
+
+    func testHidRecorderParsesEventLines() throws {
+        let records = try CaptureLogParser.parseHidRecorder(Self.hidRecorderSample)
+        XCTAssertEqual(records.count, 3)
+        XCTAssertEqual(records[0].reportID, 0x10)
+        XCTAssertEqual(records[0].length, 27)
+        XCTAssertEqual(records[0].bytes.first, 0x10)
+        XCTAssertEqual(records[0].bytes.last, 0x08)
+    }
+
+    func testHidRecorderCapturesDeviceTagFromNLine() throws {
+        let records = try CaptureLogParser.parseHidRecorder(Self.hidRecorderSample)
+        XCTAssertEqual(records[0].deviceTag, "Wacom Intuos Pro M")
+        // Every record should carry the same deviceTag (single-device dump).
+        XCTAssertTrue(records.allSatisfy { $0.deviceTag == "Wacom Intuos Pro M" })
+    }
+
+    func testHidRecorderNormalisesTimestampToZeroOrigin() throws {
+        // Source timestamps: 0.000123, 0.005678, 0.010234 seconds.
+        // After normalisation: 0 ms, 5 ms (truncated from 5.555), 10 ms.
+        let records = try CaptureLogParser.parseHidRecorder(Self.hidRecorderSample)
+        XCTAssertEqual(records[0].timestampMs, 0)
+        XCTAssertEqual(records[1].timestampMs, 5)
+        XCTAssertEqual(records[2].timestampMs, 10)
+    }
+
+    func testHidRecorderSkipsNonEventLines() throws {
+        // No E: lines at all — should produce zero records, not throw.
+        let metadataOnly = """
+            # comment
+            N: Some Device
+            P: some-path
+            I: 3 256c 006d
+            R: 4 05 01 09 02
+            """
+        XCTAssertEqual(try CaptureLogParser.parseHidRecorder(metadataOnly).count, 0)
+    }
+
+    /// End-to-end replay: feed an embedded hid-recorder dump for a PTH-660
+    /// (Wacom) device through `IntuosV2Decoder` and assert that the decoder
+    /// produces the same shape of output it would on the in-app log format.
+    /// This is the canonical pattern for converting a future user-submitted
+    /// hid-recorder dump into a regression test.
+    func testHidRecorderReplayThroughIntuosV2Decoder() throws {
+        let records = try CaptureLogParser.parseHidRecorder(Self.hidRecorderSample)
+        XCTAssertEqual(records.count, 3)
+
+        var decoder = IntuosV2Decoder()
+        var state   = DecoderState()
+        var results: [DecodeResult] = []
+        for record in records {
+            let r = record.bytes.withUnsafeBufferPointer { buf -> [DecodeResult] in
+                decoder.decode(
+                    report: buf.baseAddress!, length: record.length,
+                    spec: pth860, state: &state, deviceFamily: "intuosProGen2")
+            }
+            results.append(contentsOf: r)
+        }
+        let penCount = results.filter {
+            if case .pen = $0 { return true } else { return false }
+        }.count
+        XCTAssertGreaterThan(penCount, 0,
+                             "hid-recorder → CaptureRecord → IntuosV2Decoder pipeline produced no .pen events")
+    }
+
+    // MARK: - hid-recorder parser error cases
+
+    func testHidRecorderMalformedTimestampThrows() {
+        let bad = "E: not-a-timestamp 1 10"
+        XCTAssertThrowsError(try CaptureLogParser.parseHidRecorder(bad)) { error in
+            guard case .malformedLine = error as? CaptureLogParseError
+            else { return XCTFail("Expected .malformedLine, got \(error)") }
+        }
+    }
+
+    func testHidRecorderLengthMismatchThrows() {
+        let bad = "E: 0.000000 4 10 60"  // declared 4, supplied 2
+        XCTAssertThrowsError(try CaptureLogParser.parseHidRecorder(bad)) { error in
+            guard case .lengthMismatch(_, let declared, let actual) = error as? CaptureLogParseError
+            else { return XCTFail("Expected .lengthMismatch, got \(error)") }
+            XCTAssertEqual(declared, 4)
+            XCTAssertEqual(actual, 2)
+        }
+    }
 }
