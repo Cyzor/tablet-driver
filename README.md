@@ -1,6 +1,6 @@
 # MockTab
 
-Native macOS driver for Wacom drawing tablets that no longer have official support on modern macOS releases.
+Native Mac driver for Wacom drawing tablets that no longer have official support on macOS.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue) ![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue)
 
@@ -29,7 +29,7 @@ MockTab covers a small set of hardware so far and may not work with your configu
 
 ## Requirements
 
-macOS 13 (Ventura) or later — macOS (Tahoe) may need further verification.
+macOS 13 (Ventura) or later.
 
 ---
 

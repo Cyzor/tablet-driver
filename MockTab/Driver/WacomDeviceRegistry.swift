@@ -634,8 +634,8 @@ enum WacomDeviceRegistry {
         // │PTH-860 │  L   │   0x0358    │    0x0361 (+9)   │    ? (LE IntuosPro L)│
         // │                                                                         │
         // │ Transport notes:                                                       │
-        // │  • USB: standard HID, requires featureInit=nil + InputMode init       │
-        // │  • BT Classic: 361-byte 0x80 container, featureInit=nil, no InputMode  │
+        // │  • USB: standard HID, requires initSteps=[] + InputMode init           │
+        // │  • BT Classic: 361-byte 0x80 container, initSteps=[], no InputMode    │
         // │  • BLE: GATT always active, limited to trackpad mode on macOS         │
         // │    (AppleBluetoothMultitouch kext conflict — requires device seizure) │
         // │                                                                        │

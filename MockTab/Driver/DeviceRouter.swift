@@ -113,15 +113,15 @@ enum DeviceRouter {
             // Interface routing depends on parser family:
             //
             // IntuosV2 (PTH-x60/x80):  vendor interface 0xFF00 is primary
-            //   (featureInit via the InputMode element). Interface 0x01 is
+            //   (init via the InputMode element). Interface 0x01 is
             //   deferred and registered as a secondary without seizure —
             //   seizing 0x01 stops IntuosV2 firmware from sending pen reports.
             //
             // CintiqV1 (DTK-2400 etc): interface 0x01 is the pen digitizer
             //   (reports 0x02, 0x0C). It must be seized so the OS doesn't
-            //   interpret tip-switch as a native click, and featureInit
-            //   [0x02, 0x02] must be sent there. 0xFF00 carries only the
-            //   periodic 0x80 status report; defer until 0x01 has the driver.
+            //   interpret tip-switch as a native click, and the `.featureReport`
+            //   `[0x02, 0x02]` init step must be sent there. 0xFF00 carries only
+            //   the periodic 0x80 status report; defer until 0x01 has the driver.
             let isCintiqV1 = deviceSpec.parser == .cintiqV1
             let deferrablePage: Int = isCintiqV1 ? 0xFF00 : 0x01
             let shouldDefer = !isBLE && deviceSpec.seizeUSB && usagePage == deferrablePage

@@ -75,7 +75,7 @@ All other decoding (pressure, tilt, buttons) follows the standard `intuosV2` pen
 
 ### Cintiq Pro 27 — PID `0x03C0` ⚠ Estimated
 
-**Parser:** `intuosV2` (HID-generic) · **featureInit:** `[0x02, 0x02]` · **seizeUSB:** false
+**Parser:** `intuosV2` (HID-generic) · **initSteps:** `[.featureReport([0x02, 0x02])]` · **seizeUSB:** false
 
 | Property | Value |
 |---|---|
@@ -104,7 +104,7 @@ Touch ring center button: reports as a distinct `BUTTON` usage in the pad collec
 
 ### Cintiq 16 — PID `0x0390` / `0x03AE` ⚠ Estimated
 
-**Parser:** `intuosV2` · **featureInit:** `[0x02, 0x02]` · **seizeUSB:** false
+**Parser:** `intuosV2` · **initSteps:** `[.featureReport([0x02, 0x02])]` · **seizeUSB:** false
 
 | Property | Value |
 |---|---|
@@ -120,7 +120,7 @@ No pad interface of consequence. Pen-only decode, standard HID-generic path. The
 
 ### DTH-1320 — PID `0x034F` ⚠ Estimated
 
-**Parser:** `intuosV2` · **featureInit:** `[0x02, 0x02]`
+**Parser:** `intuosV2` · **initSteps:** `[.featureReport([0x02, 0x02])]`
 
 | Property | Value |
 |---|---|
@@ -136,7 +136,7 @@ Touch interface uses a separate HID report collection; pen report is standard HI
 
 ### DTC-133 — PID `0x03A6` ⚠ Estimated
 
-**Parser:** `intuosV2` · **featureInit:** `[0x02, 0x02]`
+**Parser:** `intuosV2` · **initSteps:** `[.featureReport([0x02, 0x02])]`
 
 | Property | Value |
 |---|---|
@@ -151,7 +151,7 @@ Entry-level Wacom One. Likely uses **AES**, not EMR — the 4095 pressure ceilin
 
 ### Movink 13 — PID `0x03F0` ⚠ Estimated
 
-**Parser:** `intuosV2` · **featureInit:** `[0x02, 0x02]`
+**Parser:** `intuosV2` · **initSteps:** `[.featureReport([0x02, 0x02])]`
 
 | Property | Value |
 |---|---|
