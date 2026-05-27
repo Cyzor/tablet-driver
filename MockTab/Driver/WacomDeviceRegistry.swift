@@ -129,7 +129,17 @@ enum ConfidenceTier {
 ///   • Live capture on owned hardware (PTH-851, PTH-660, PTH-860, PTZ-631W, DTK-2400)
 ///   • Linux input-wacom driver `drivers/input/tablet/wacom_wac.c`
 ///   • OpenTabletDriver JSON configs `Configurations/Wacom/`
-/// Entries marked ⚠ are estimated from driver sources and unverified on hardware.
+///   • libwacom `.tablet` files (https://github.com/linuxwacom/libwacom) — used
+///     for the `activeWidthMM` / `activeHeightMM` backfill via
+///     `tools/backfill_libwacom_dimensions.py`
+///   • linuxwacom HID descriptors corpus
+///     (https://github.com/linuxwacom/wacom-hid-descriptors) — used for the
+///     recognition-only newer-device entries and `.experimental` →
+///     `.crossReferenced` promotions via `tools/audit_wacom_hid_descriptors.py`
+/// Entries marked ⚠ are estimated from driver sources and unverified on
+/// hardware; the `⚠ recognition-only` variant additionally means the parser
+/// family and `maxX`/`maxY` are guesses by similarity — the device will be
+/// named correctly but pen decode may produce nonsense until verified.
 struct WacomDeviceSpec {
     let productID: Int
     let name: String
