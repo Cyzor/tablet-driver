@@ -42,6 +42,8 @@
 		AA000044 /* ToolSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* ToolSettings.swift */; };
 		AA000045 /* WacomFallbackDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000045 /* WacomFallbackDevice.swift */; };
 		AA000046 /* WacomDeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000046 /* WacomDeviceRegistry.swift */; };
+		AA000074 /* VendorDeviceProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000074 /* VendorDeviceProfile.swift */; };
+		AA000075 /* VendorDeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000075 /* VendorDeviceRegistry.swift */; };
 		AA000047 /* IntuosV2Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000047 /* IntuosV2Decoder.swift */; };
 		AA000048 /* IntuosV1Decoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000048 /* IntuosV1Decoder.swift */; };
 		AA000049 /* WacomKnownDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomKnownDevice.swift */; };
@@ -139,6 +141,8 @@
 		AB000044 /* ToolSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolSettings.swift; sourceTree = "<group>"; };
 		AB000045 /* WacomFallbackDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomFallbackDevice.swift; sourceTree = "<group>"; };
 		AB000046 /* WacomDeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomDeviceRegistry.swift; sourceTree = "<group>"; };
+		AB000074 /* VendorDeviceProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VendorDeviceProfile.swift; sourceTree = "<group>"; };
+		AB000075 /* VendorDeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VendorDeviceRegistry.swift; sourceTree = "<group>"; };
 		AB000047 /* IntuosV2Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV2Decoder.swift; sourceTree = "<group>"; };
 		AB000048 /* IntuosV1Decoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntuosV1Decoder.swift; sourceTree = "<group>"; };
 		AB000049 /* WacomKnownDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomKnownDevice.swift; sourceTree = "<group>"; };
@@ -250,6 +254,8 @@
 				AB000045 /* WacomFallbackDevice.swift */,
 				AB00DR01 /* DeviceRouter.swift */,
 				AB000046 /* WacomDeviceRegistry.swift */,
+				AB000074 /* VendorDeviceProfile.swift */,
+				AB000075 /* VendorDeviceRegistry.swift */,
 				AB000070 /* HIDCapture.swift */,
 				AB000101 /* CaptureModels.swift */,
 				AB000102 /* CaptureEngine.swift */,
@@ -488,6 +494,8 @@
 				AA000045 /* WacomFallbackDevice.swift in Sources */,
 				AA00DR01 /* DeviceRouter.swift in Sources */,
 				AA000046 /* WacomDeviceRegistry.swift in Sources */,
+				AA000074 /* VendorDeviceProfile.swift in Sources */,
+				AA000075 /* VendorDeviceRegistry.swift in Sources */,
 				AA000070 /* HIDCapture.swift in Sources */,
 				AA000101 /* CaptureModels.swift in Sources */,
 				AA000102 /* CaptureEngine.swift in Sources */,

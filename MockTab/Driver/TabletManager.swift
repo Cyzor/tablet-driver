@@ -187,8 +187,22 @@ final class TabletManager: ObservableObject {
             IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
         }
 
-        let matching: [String: Any] = [kIOHIDVendorIDKey: 0x056A as NSNumber]
-        IOHIDManagerSetDeviceMatching(manager, matching as CFDictionary)
+        // Primary match: Wacom (VID 0x056A) — the only vendor we actually decode.
+        //
+        // Secondary matches: Huion, Xencelabs/XP-Pen, UC-Logic — vendors covered
+        // by VendorDeviceRegistry.  These devices are *not* decoded; deviceConnected
+        // logs them by name and returns immediately, so the user can see in
+        // `log show --predicate 'subsystem == "com.cyzor.mocktab"'` that the device
+        // was recognised even though MockTab can't drive it yet.  This keeps the
+        // unknown-device discovery flow honest: "your tablet is a Huion H1060P,
+        // and we don't support it" beats "your tablet is invisible to us."
+        let matching: [[String: Any]] = [
+            [kIOHIDVendorIDKey: 0x056A as NSNumber],  // Wacom
+            [kIOHIDVendorIDKey: 0x256C as NSNumber],  // Huion (recognition only)
+            [kIOHIDVendorIDKey: 0x28BD as NSNumber],  // Xencelabs / XP-Pen (recognition only)
+            [kIOHIDVendorIDKey: 0x5543 as NSNumber],  // UC-Logic OEMs (recognition only)
+        ]
+        IOHIDManagerSetDeviceMatchingMultiple(manager, matching as CFArray)
 
         let ctx = Unmanaged.passRetained(self).toOpaque()
 
@@ -258,7 +272,25 @@ final class TabletManager: ObservableObject {
     // MARK: - Device lifecycle
 
     private func deviceConnected(_ device: IOHIDDevice) {
+        let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
         let rawProductID = hidIntProperty(device, kIOHIDProductIDKey)
+
+        // Non-Wacom recognition path: name the device via VendorDeviceRegistry,
+        // log it, and bail out before any Wacom-specific state touches it.
+        // The IOHIDManager match-dict broadens to Huion/Xencelabs/XP-Pen/UC-Logic
+        // VIDs so these calls fire instead of the device being invisible — but
+        // we have no decoder for them yet, so there's nothing more to do here.
+        if vendorID != 0x056A {
+            let profiles = VendorDeviceRegistry.profiles(
+                forVendorID: vendorID, productID: rawProductID)
+            let name = profiles.first?.productName ?? "(unknown product)"
+            let vendorName = profiles.first?.vendor
+                ?? "non-Wacom vendor 0x\(String(vendorID, radix: 16))"
+            let candidateCount = profiles.count
+            logger.info("TabletManager: recognised \(vendorName, privacy: .public) device — \(name, privacy: .public) (VID=0x\(String(vendorID, radix: 16), privacy: .public) PID=0x\(String(rawProductID, radix: 16), privacy: .public), \(candidateCount, privacy: .public) profile candidates) — no decoder support yet")
+            return
+        }
+
         let productID = WacomDeviceRegistry.canonicalProductID(for: rawProductID)
         let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
         let usage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
