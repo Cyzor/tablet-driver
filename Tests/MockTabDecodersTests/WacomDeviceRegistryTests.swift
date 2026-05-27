@@ -36,10 +36,17 @@ final class WacomDeviceRegistryTests: XCTestCase {
     // MARK: - lpi derivation
 
     func testLPIIsNilWhenDimensionsMissing() {
-        // PTH-460 (S) is intentionally not yet backfilled with mm dimensions.
-        let s = WacomDeviceRegistry.spec(for: 0x0352)
+        // PenPartner (0x0003) is one of the older entries we don't have
+        // confident mm dimensions for — the LPI standard for the PenPartner
+        // era isn't documented and our maxX/maxY come from kernel sources
+        // without a paired physical-dimension reference.  Keep this canary
+        // pointed at an entry that's intentionally nil so a future backfill
+        // pass that touches it has to think about it.
+        let s = WacomDeviceRegistry.spec(for: 0x0003)
         XCTAssertNotNil(s)
-        XCTAssertNil(s?.activeWidthMM)
+        XCTAssertNil(s?.activeWidthMM,
+                     "If you just backfilled 0x0003, point this canary at "
+                     + "another intentionally-nil PID (or delete the test).")
         XCTAssertNil(s?.lpi)
     }
 
