@@ -304,7 +304,13 @@ enum OTDImporter {
         }
 
         // Parse feature init reports
-        let (featureInit, featureInit2, initDelay) = extractFeatureInit(from: config)
+        let (featureInitBytes, initDelay) = extractFeatureInit(from: config)
+
+        // Build init steps from extracted bytes (OTD only supports single-stage init)
+        var initSteps: [InitStep] = []
+        if let bytes = featureInitBytes {
+            initSteps = [.featureReport(bytes)]
+        }
 
         // Determine if USB seizure is needed
         let seizeUSB = determineSeizeUSB(from: config)
@@ -325,10 +331,8 @@ enum OTDImporter {
             hasDualRings: false,
             hasTouchStrips: false,
             hasEraser: hasEraser,
-            featureInit: featureInit,
             seizeUSB: seizeUSB,
-            featureInit2: featureInit2,
-            featureInit2Delay: initDelay
+            initSteps: initSteps
         )
 
         // Extract tools if present (OTD v0.6+)
@@ -402,7 +406,7 @@ enum OTDImporter {
     }
 
     private static func extractFeatureInit(from config: OTDDeviceConfig) -> (
-        [UInt8]?, [UInt8]?, Double
+        [UInt8]?, Double
     ) {
         var featureInit: [UInt8]?
         var initDelay: Double = 0.15
@@ -426,7 +430,7 @@ enum OTDImporter {
             initDelay = ms / 1000.0
         }
 
-        return (featureInit, nil, initDelay)
+        return (featureInit, initDelay)
     }
 
     private static func decodeBase64FeatureInit(_ encoded: String) -> [UInt8]? {
@@ -509,16 +513,6 @@ enum OTDImporter {
         lines.append("")
 
         for spec in specs.sorted(by: { $0.productID < $1.productID }) {
-            let featureInitStr =
-                spec.featureInit.map { bytes in
-                    "[" + bytes.map { String(format: "0x%02X", $0) }.joined(separator: ", ") + "]"
-                } ?? "nil"
-
-            let featureInit2Str =
-                spec.featureInit2.map { bytes in
-                    "[" + bytes.map { String(format: "0x%02X", $0) }.joined(separator: ", ") + "]"
-                } ?? "nil"
-
             lines.append("        .init(")
             lines.append("            productID: 0x\(String(format: "%04X", spec.productID)),")
             lines.append("            name: \"\(spec.name)\",")
@@ -529,13 +523,23 @@ enum OTDImporter {
             lines.append("            buttonCount: \(spec.buttonCount),")
             lines.append("            hasTouchRing: \(spec.hasTouchRing),")
             lines.append("            hasEraser: \(spec.hasEraser),")
-            lines.append("            featureInit: \(featureInitStr),")
             lines.append("            seizeUSB: \(spec.seizeUSB)")
-            if spec.featureInit2 != nil {
-                lines.append("            featureInit2: \(featureInit2Str)")
-                if spec.featureInit2Delay != 0.15 {
-                    lines.append("            featureInit2Delay: \(spec.featureInit2Delay)")
-                }
+            if !spec.initSteps.isEmpty {
+                let stepsStr = spec.initSteps.map { step -> String in
+                    switch step {
+                    case .featureReport(let b):
+                        let hex = b.map { String(format: "0x%02X", $0) }.joined(separator: ", ")
+                        return ".featureReport([\(hex)])"
+                    case .outputReport(let b):
+                        let hex = b.map { String(format: "0x%02X", $0) }.joined(separator: ", ")
+                        return ".outputReport([\(hex)])"
+                    case .delay(let s):
+                        return ".delay(\(s))"
+                    case .stringDescriptor(let i):
+                        return ".stringDescriptor(\(i))"
+                    }
+                }.joined(separator: ", ")
+                lines.append("            initSteps: [\(stepsStr)]")
             }
             lines.append("        ),")
             lines.append("")

@@ -94,7 +94,7 @@ enum DeviceRouter {
                 parser: .intuosV1,
                 maxX: dMaxX, maxY: dMaxY, maxPressure: dMaxP,
                 buttonCount: 8, hasTouchRing: true, hasEraser: true,
-                featureInit: [0x02, 0x02], seizeUSB: false)
+                seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])])
             let drv = WacomKnownDevice(
                 device: device, deviceSpec: dongleSpec, isWireless: true,
                 onTablet: callbacks.onTablet, onAux: callbacks.onAux,

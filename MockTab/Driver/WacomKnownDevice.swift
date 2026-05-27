@@ -161,24 +161,12 @@ final class WacomKnownDevice: TabletDevice {
             sendWacomInputModeInit(device, tag: deviceSpec.name)
         }
 
-        // Feature inits activate the digitizer endpoint over USB.  Not needed for BLE.
-        // For wireless dongles, the feature init is sent immediately on open to tell the
-        // dongle to begin searching for the tablet.  It may be silently discarded if the
-        // RF link is not yet established, so it is re-sent when 0x80/0x02 confirms link-up.
+        // Execute the device's init sequence (USB/dongle only — not needed for BLE).
+        // For wireless dongles this fires on open to start the RF search; it may be
+        // silently discarded until the link is up, so it is re-run when 0x80/0x02
+        // confirms link-up (see the wireless-ready handler below).
         if !isBluetooth {
-            // IntuosV1 / Intuos3: feature init. First byte is the report ID.
-            sendFeatureInit()
-
-            // Intuos3 two-stage init: second feature report after a brief delay.
-            if var bytes2 = deviceSpec.featureInit2 {
-                let reportID2 = CFIndex(bytes2[0])
-                let delay = deviceSpec.featureInit2Delay
-                let dev = device
-                let tag = "\(name) featureInit2"
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    hidSetReport(dev, reportID: reportID2, bytes: &bytes2, tag: tag, log: logger)
-                }
-            }
+            executeInitSteps()
 
             // Query hardware serial from WACOM_REPORT_USB (Report ID 0x03) for device
             // unification: same physical tablet via USB, BT, or dongle has the same serial.
@@ -373,16 +361,31 @@ final class WacomKnownDevice: TabletDevice {
         setRingLED(index: pendingLEDIndex)
     }
 
-    /// Send feature init to activate the digitizer endpoint.
-    /// Assumes caller is on the main thread (IOHIDDeviceSetReport is not thread-safe).
-    private func sendFeatureInit() {
-        sendFeatureInit(to: device)
-    }
-
-    private func sendFeatureInit(to target: IOHIDDevice) {
-        guard var bytes = deviceSpec.featureInit else { return }
-        let reportID = CFIndex(bytes[0])
-        hidSetReport(target, reportID: reportID, bytes: &bytes, tag: "\(deviceSpec.name) featureInit", log: logger)
+    /// Execute the device's init sequence (`deviceSpec.initSteps`) from `index` onward.
+    ///
+    /// Runs synchronously until a `.delay` step is encountered; at that point the
+    /// remaining steps are scheduled on the main queue and this call returns.
+    /// Callers must be on the main thread — `IOHIDDeviceSetReport` is not thread-safe.
+    private func executeInitSteps(from index: Int = 0) {
+        let steps = deviceSpec.initSteps
+        guard index < steps.count else { return }
+        switch steps[index] {
+        case .featureReport(var bytes):
+            let reportID = CFIndex(bytes[0])
+            hidSetReport(device, reportID: reportID, bytes: &bytes,
+                         tag: "\(deviceSpec.name) initStep[\(index)]", log: logger)
+            executeInitSteps(from: index + 1)
+        case .outputReport:
+            // Not yet wired up (Xencelabs); advance to keep the sequence moving.
+            executeInitSteps(from: index + 1)
+        case .delay(let seconds):
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+                self?.executeInitSteps(from: index + 1)
+            }
+        case .stringDescriptor:
+            // Not yet wired up (Huion); advance to keep the sequence moving.
+            executeInitSteps(from: index + 1)
+        }
     }
 
     /// Query the hardware serial number from WACOM_REPORT_USB (Report ID 0x03) feature report.
@@ -505,10 +508,10 @@ final class WacomKnownDevice: TabletDevice {
                         state = DecoderState()
                         wirelessReady = true
                         wirelessLinkConfirmed = true
-                        // Send feature init now that the RF link is confirmed.
+                        // Re-run init steps now that the RF link is confirmed.
                         // Must be dispatched to main thread — HID callbacks are background.
                         Task { @MainActor in
-                            self.sendFeatureInit()
+                            self.executeInitSteps()
                         }
                     }
                 case .lost:
