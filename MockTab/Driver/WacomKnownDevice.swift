@@ -246,10 +246,14 @@ final class WacomKnownDevice: TabletDevice {
             //   Report 0x32 (3 bytes): [0x32, 0x46, slot]
             //     — selects active ring LED slot (0–3); 0x46 byte is a fixed preamble
             // The pair is sent every time the slot changes (including at init).
+            //
+            // Hardware LED byte 0 = BL, 1 = TL, 2 = TR, 3 = BR.  Our slot 0 is TL
+            // (Mode 1 = upper-left), so we add 1 for quarterly rings before sending.
+            let ledByte = UInt8((index + (deviceSpec.ringSlotCount == 4 ? 1 : 0)) & 0x03)
             var r31: [UInt8] = [0x31, 0x46, 0x46, 0x46, 0x46, 0x46]
             hidSetReport(device, reportID: CFIndex(0x31), bytes: &r31,
                          tag: "\(name) USB LED brightness", severity: .bestEffort, log: logger)
-            var r32: [UInt8] = [0x32, 0x46, UInt8(index & 0x03)]
+            var r32: [UInt8] = [0x32, 0x46, ledByte]
             hidSetReport(device, reportID: CFIndex(0x32), bytes: &r32,
                          tag: "\(name) USB LED slot=\(index)", log: logger)
 
@@ -265,12 +269,13 @@ final class WacomKnownDevice: TabletDevice {
             // The GetReport response carries current state in the same layout;
             // the serial number occupies buf[11..18] in the device's reply but
             // we clear those bytes on write (official driver does the same).
+            let ledByteBT = UInt8((index + (deviceSpec.ringSlotCount == 4 ? 1 : 0)) & 0x03)
             var buf = [UInt8](repeating: 0, count: 51)
             buf[0]  = 0x82
             buf[1]  = 0x02
             buf[4]  = 0x46; buf[5] = 0x46; buf[6] = 0x46
             buf[7]  = 0x46; buf[8] = 0x46; buf[9] = 0x46
-            buf[10] = UInt8(index & 0x03)
+            buf[10] = ledByteBT
             hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf,
                          tag: "\(name) BT LED ring slot=\(index)", log: logger)
 

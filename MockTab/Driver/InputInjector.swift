@@ -1785,9 +1785,11 @@ final class InputInjector {
             }
         case .ringCycle:
             guard down else { break }
-            let nextIndex = (snapshot.touchRingActiveSlotIndex + 1) % max(1, snapshot.touchRingSlots.count)
             if let s = settings {
-                Task { @MainActor in s.touchRingActiveSlotIndex = nextIndex }
+                Task { @MainActor in
+                    let nextIndex = (s.touchRingActiveSlotIndex + 1) % max(1, s.touchRingSlots.count)
+                    s.touchRingActiveSlotIndex = nextIndex
+                }
             }
         case .ringSelectSlot:
             guard down else { break }
