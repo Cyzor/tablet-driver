@@ -87,11 +87,11 @@ MockTab's HID report decoders — the pure-logic layer that turns raw tablet rep
 ```swift
 // Package.swift of a consumer project
 dependencies: [
-    .package(url: "https://github.com/Cyzor/mocktab-kit", from: "0.1.0"),
+    .package(url: "https://github.com/Cyzor/TabletKit", from: "0.1.0"),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
-        .product(name: "TabletKit", package: "mocktab-kit"),
+        .product(name: "TabletKit", package: "TabletKit"),
     ]),
 ],
 ```
