@@ -341,12 +341,16 @@ enum WacomDeviceRegistry {
             productID: 0x0010, name: "Graphire",  // cross-referenced: linuxwacom + OTD
             parser: .graphire, maxX: 10206, maxY: 7422, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, confidence: .crossReferenced),
+            // dimensions: input-wacom 4.18 wacom_features_0x10 (10206/80 lpmm × 7422/80 lpmm)
+            seizeUSB: false, confidence: .crossReferenced,
+            activeWidthMM: 127.6, activeHeightMM: 92.8),
         .init(
             productID: 0x0011, name: "Graphire 2 (4×5)",  // ⚠ estimated; kernel 0x11 = Graphire2 4×5
             parser: .graphire, maxX: 10206, maxY: 7422, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false),
+            // dimensions: input-wacom 4.18 wacom_features_0x11 (10206/80 lpmm × 7422/80 lpmm)
+            seizeUSB: false,
+            activeWidthMM: 127.6, activeHeightMM: 92.8),
         .init(
             productID: 0x0012, name: "Graphire 2 (5×7)",  // ⚠ estimated; kernel 0x12 = Graphire2 5×7
             parser: .graphire, maxX: 13918, maxY: 10206, maxPressure: 511,
@@ -356,8 +360,10 @@ enum WacomDeviceRegistry {
             productID: 0x0013, name: "Graphire 3 (4×5)",  // ⚠ estimated
             parser: .graphire, maxX: 10208, maxY: 7424, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
+            // dimensions: input-wacom 4.18 wacom_features_0x13 (10208/80 lpmm × 7424/80 lpmm)
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced,
+            activeWidthMM: 127.6, activeHeightMM: 92.8),
         .init(
             productID: 0x0014, name: "Graphire 3 (6×8)",  // ⚠ estimated
             parser: .graphire, maxX: 16704, maxY: 12064, maxPressure: 511,
@@ -368,8 +374,10 @@ enum WacomDeviceRegistry {
             productID: 0x0015, name: "Graphire 4 (4×5)",  // ⚠ estimated
             parser: .graphire, maxX: 10208, maxY: 7424, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
+            // dimensions: input-wacom 4.18 wacom_features_0x15 (10208/80 lpmm × 7424/80 lpmm)
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced,
+            activeWidthMM: 127.6, activeHeightMM: 92.8),
         .init(
             productID: 0x0016, name: "Graphire 4 (6×8)",  // ⚠ estimated
             parser: .graphire, maxX: 16704, maxY: 12064, maxPressure: 511,
@@ -388,19 +396,25 @@ enum WacomDeviceRegistry {
             productID: 0x0060, name: "Volito",  // ⚠ estimated
             parser: .graphire, maxX: 5104, maxY: 3712, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: false,
+            // dimensions: input-wacom 4.18 wacom_features_0x60 (5104/50 lpmm × 3712/50 lpmm)
             seizeUSB: false,
-            confidence: .crossReferenced),
+            confidence: .crossReferenced,
+            activeWidthMM: 102.1, activeHeightMM: 74.2),
         .init(
             // Kernel calls this PenStation2; dimensions/pressure corrected.
             productID: 0x0061, name: "PenStation2",  // ⚠ from kernel
             parser: .graphire, maxX: 3250, maxY: 2320, maxPressure: 255,
             buttonCount: 0, hasTouchRing: false, hasEraser: false,
-            seizeUSB: false),
+            // dimensions: input-wacom 4.18 wacom_features_0x61 (3250/50 lpmm × 2320/50 lpmm)
+            seizeUSB: false,
+            activeWidthMM: 65, activeHeightMM: 46.4),
         .init(
             productID: 0x0062, name: "Volito 2",  // ⚠ estimated
             parser: .graphire, maxX: 5104, maxY: 3712, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: false,
-            seizeUSB: false),
+            // dimensions: input-wacom 4.18 wacom_features_0x62 (5104/50 lpmm × 3712/50 lpmm)
+            seizeUSB: false,
+            activeWidthMM: 102.1, activeHeightMM: 74.2),
         .init(
             productID: 0x0065, name: "Bamboo One (CTF-430)",  // ⚠ estimated
             parser: .graphire, maxX: 14760, maxY: 9225, maxPressure: 511,
@@ -1197,7 +1211,9 @@ enum WacomDeviceRegistry {
             parser: .dtus, maxX: 22096, maxY: 13960, maxPressure: 511,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            // dimensions: input-wacom 4.18 wacom_features_0xFB (22096/100 lpmm × 13960/100 lpmm)
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 221, activeHeightMM: 139.6),
         .init(
             productID: 0x032F, name: "Wacom DTU-1031X",  // ⚠ from kernel
             parser: .dtus, maxX: 22672, maxY: 12928, maxPressure: 511,

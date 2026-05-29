@@ -110,7 +110,7 @@ let results = decoder.decode(report: ptr, length: len, spec: spec, state: &state
 
 **Stability.** The public API surface (see [`CHANGELOG.md`](CHANGELOG.md)) is at 0.1 — workable but pre-1.0. Expect breaking changes until the first vendor outside Wacom (Xencelabs likely first) lands and the protocol shape is validated against more than one family.
 
-**Tests.** `swift test` from the repo root runs the package's 233-test suite without touching the Xcode project.
+**Tests.** `swift test` from the repo root runs the package's 259-test suite without touching the Xcode project.
 
 ---
 
