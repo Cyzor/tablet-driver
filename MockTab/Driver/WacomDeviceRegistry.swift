@@ -125,17 +125,30 @@ enum ConfidenceTier {
 /// device-name display today and will route `WacomKnownDevice` once
 /// Phase 3 decoders are in place.
 ///
-/// Coordinate-range sources:
-///   • Live capture on owned hardware (PTH-851, PTH-660, PTH-860, PTZ-631W, DTK-2400)
-///   • Linux input-wacom driver `drivers/input/tablet/wacom_wac.c`
-///   • OpenTabletDriver JSON configs `Configurations/Wacom/`
-///   • libwacom `.tablet` files (https://github.com/linuxwacom/libwacom) — used
-///     for the `activeWidthMM` / `activeHeightMM` backfill via
-///     `tools/backfill_libwacom_dimensions.py`
-///   • linuxwacom HID descriptors corpus
-///     (https://github.com/linuxwacom/wacom-hid-descriptors) — used for the
-///     recognition-only newer-device entries and `.experimental` →
-///     `.crossReferenced` promotions via `tools/audit_wacom_hid_descriptors.py`
+/// Data sources, in descending priority for *physical dimensions*:
+///   1. Live measurement on owned hardware (PTH-851, PTH-660, PTH-860, PTZ-631W, DTK-2400).
+///   2. **libwacom** `.tablet` files (https://github.com/linuxwacom/libwacom) —
+///      maintained per-device for hardware metadata; backfilled via
+///      `tools/backfill_libwacom_dimensions.py`. Authoritative for any
+///      Wacom-vid model it covers.
+///   3. Linux **input-wacom** driver `drivers/input/tablet/wacom_wac.c` — its
+///      `wacom_features_0x…` tables and family resolution constants
+///      (`WACOM_PENPRTN_RES`, `_VOLITO_RES`, `_GRAPHIRE_RES`, `_INTUOS_RES`,
+///      `_INTUOS3_RES`) are *approximations*. Reliable for `maxX`/`maxY`
+///      device-unit coords; dimensions derived as `maxX / resolution` can be
+///      off by ~10–25% (e.g. the kernel's Volito resolution constant
+///      mis-estimates 0x0060 by 25%; libwacom is correct).
+///   4. **OpenTabletDriver** configs `Configurations/Wacom/` — typically
+///      derived from libwacom + kernel; useful tiebreaker but rarely the
+///      primary source for Wacom hardware.
+///   5. **linuxwacom HID descriptors corpus**
+///      (https://github.com/linuxwacom/wacom-hid-descriptors) — drives
+///      recognition-only newer-device entries and `.experimental` →
+///      `.crossReferenced` promotions via `tools/audit_wacom_hid_descriptors.py`.
+///
+/// For *non-Wacom* hardware (Huion / Xencelabs / XP-Pen / UC-Logic) the
+/// priority inverts: OpenTabletDriver configs are the primary public source
+/// and the kernel rarely covers them.
 /// Entries marked ⚠ are estimated from driver sources and unverified on
 /// hardware; the `⚠ recognition-only` variant additionally means the parser
 /// family and `maxX`/`maxY` are guesses by similarity — the device will be
@@ -341,16 +354,16 @@ enum WacomDeviceRegistry {
             productID: 0x0010, name: "Graphire",  // cross-referenced: linuxwacom + OTD
             parser: .graphire, maxX: 10206, maxY: 7422, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            // dimensions: input-wacom 4.18 wacom_features_0x10 (10206/80 lpmm × 7422/80 lpmm)
+            // dimensions: libwacom wacom-graphire-usb.tablet (Width=127, Height=102)
             seizeUSB: false, confidence: .crossReferenced,
-            activeWidthMM: 127.6, activeHeightMM: 92.8),
+            activeWidthMM: 127, activeHeightMM: 102),
         .init(
             productID: 0x0011, name: "Graphire 2 (4×5)",  // ⚠ estimated; kernel 0x11 = Graphire2 4×5
             parser: .graphire, maxX: 10206, maxY: 7422, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            // dimensions: input-wacom 4.18 wacom_features_0x11 (10206/80 lpmm × 7422/80 lpmm)
+            // dimensions: libwacom wacom-graphire2-4x5.tablet (Width=127, Height=102)
             seizeUSB: false,
-            activeWidthMM: 127.6, activeHeightMM: 92.8),
+            activeWidthMM: 127, activeHeightMM: 102),
         .init(
             productID: 0x0012, name: "Graphire 2 (5×7)",  // ⚠ estimated; kernel 0x12 = Graphire2 5×7
             parser: .graphire, maxX: 13918, maxY: 10206, maxPressure: 511,
@@ -360,10 +373,10 @@ enum WacomDeviceRegistry {
             productID: 0x0013, name: "Graphire 3 (4×5)",  // ⚠ estimated
             parser: .graphire, maxX: 10208, maxY: 7424, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            // dimensions: input-wacom 4.18 wacom_features_0x13 (10208/80 lpmm × 7424/80 lpmm)
+            // dimensions: libwacom wacom-graphire3-4x5.tablet (Width=127, Height=102)
             seizeUSB: false,
             confidence: .crossReferenced,
-            activeWidthMM: 127.6, activeHeightMM: 92.8),
+            activeWidthMM: 127, activeHeightMM: 102),
         .init(
             productID: 0x0014, name: "Graphire 3 (6×8)",  // ⚠ estimated
             parser: .graphire, maxX: 16704, maxY: 12064, maxPressure: 511,
@@ -374,10 +387,10 @@ enum WacomDeviceRegistry {
             productID: 0x0015, name: "Graphire 4 (4×5)",  // ⚠ estimated
             parser: .graphire, maxX: 10208, maxY: 7424, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            // dimensions: input-wacom 4.18 wacom_features_0x15 (10208/80 lpmm × 7424/80 lpmm)
+            // dimensions: libwacom wacom-graphire4-4x5.tablet (Width=127, Height=102)
             seizeUSB: false,
             confidence: .crossReferenced,
-            activeWidthMM: 127.6, activeHeightMM: 92.8),
+            activeWidthMM: 127, activeHeightMM: 102),
         .init(
             productID: 0x0016, name: "Graphire 4 (6×8)",  // ⚠ estimated
             parser: .graphire, maxX: 16704, maxY: 12064, maxPressure: 511,
@@ -396,25 +409,32 @@ enum WacomDeviceRegistry {
             productID: 0x0060, name: "Volito",  // ⚠ estimated
             parser: .graphire, maxX: 5104, maxY: 3712, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: false,
-            // dimensions: input-wacom 4.18 wacom_features_0x60 (5104/50 lpmm × 3712/50 lpmm)
+            // dimensions: libwacom wacom-volito-4x5.tablet (Width=127, Height=102).
+            // Kernel WACOM_VOLITO_RES=50 lpmm would give 102×74 mm — too small;
+            // libwacom measurement supersedes for a 4×5 (FT-0405) tablet.
             seizeUSB: false,
             confidence: .crossReferenced,
-            activeWidthMM: 102.1, activeHeightMM: 74.2),
+            activeWidthMM: 127, activeHeightMM: 102),
         .init(
             // Kernel calls this PenStation2; dimensions/pressure corrected.
             productID: 0x0061, name: "PenStation2",  // ⚠ from kernel
             parser: .graphire, maxX: 3250, maxY: 2320, maxPressure: 255,
             buttonCount: 0, hasTouchRing: false, hasEraser: false,
-            // dimensions: input-wacom 4.18 wacom_features_0x61 (3250/50 lpmm × 2320/50 lpmm)
+            // dimensions: input-wacom 4.18 wacom_features_0x61 (3250/50 lpmm × 2320/50 lpmm).
+            // Not in libwacom; the kernel WACOM_VOLITO_RES=50 constant proved
+            // ~25% off for 0x0060 — these values may be similarly low.
             seizeUSB: false,
             activeWidthMM: 65, activeHeightMM: 46.4),
         .init(
             productID: 0x0062, name: "Volito 2",  // ⚠ estimated
             parser: .graphire, maxX: 5104, maxY: 3712, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: false,
-            // dimensions: input-wacom 4.18 wacom_features_0x62 (5104/50 lpmm × 3712/50 lpmm)
+            // dimensions inferred from sibling 0x0060 (Volito) in libwacom
+            // wacom-volito-4x5.tablet (Width=127, Height=102). Volito 2 shares
+            // identical kernel max coords with Volito 1 → almost certainly the
+            // same physical size. Not in libwacom directly.
             seizeUSB: false,
-            activeWidthMM: 102.1, activeHeightMM: 74.2),
+            activeWidthMM: 127, activeHeightMM: 102),
         .init(
             productID: 0x0065, name: "Bamboo One (CTF-430)",  // ⚠ estimated
             parser: .graphire, maxX: 14760, maxY: 9225, maxPressure: 511,
@@ -873,20 +893,26 @@ enum WacomDeviceRegistry {
             productID: 0x0069, name: "Wacom CTF-430",  // ⚠ from OTD
             parser: .bamboo, maxX: 5104, maxY: 3712, maxPressure: 511,
             buttonCount: 0, hasTouchRing: false, hasEraser: true,
+            // dimensions: libwacom wacom-bamboo-one.tablet (Width=127, Height=102)
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            confidence: .crossReferenced),
+            confidence: .crossReferenced,
+            activeWidthMM: 127, activeHeightMM: 102),
 
         // ── Bamboo CTH (pen + touch) ──────────────────────────────────────────
         .init(
             productID: 0x0319, name: "Wacom CTH-300",  // ⚠ from OTD
             parser: .bamboo, maxX: 10690, maxY: 6680, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            // dimensions: libwacom wacom-bamboo-pad-wireless.tablet (Width=102, Height=76)
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 102, activeHeightMM: 76),
         .init(
             productID: 0x0318, name: "Wacom CTH-301",  // ⚠ from OTD
             parser: .bamboo, maxX: 10690, maxY: 6680, maxPressure: 511,
             buttonCount: 2, hasTouchRing: false, hasEraser: true,
-            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])]),
+            // dimensions: libwacom wacom-bamboo-pad.tablet (Width=102, Height=76)
+            seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
+            activeWidthMM: 102, activeHeightMM: 76),
         .init(
             productID: 0x00D2, name: "Wacom CTH-461",  // ⚠ from OTD
             parser: .intuosV1, maxX: 14720, maxY: 9200, maxPressure: 1023,
@@ -1211,9 +1237,11 @@ enum WacomDeviceRegistry {
             parser: .dtus, maxX: 22096, maxY: 13960, maxPressure: 511,
             buttonCount: 4, hasTouchRing: false, hasEraser: true,
             isPenDisplay: true,
-            // dimensions: input-wacom 4.18 wacom_features_0xFB (22096/100 lpmm × 13960/100 lpmm)
+            // dimensions: libwacom wacom-dtu-1031.tablet (Width=229, Height=127).
+            // Kernel math (22096/100 × 13960/100) gives 221×140 — height is
+            // wrong (digitiser maxY over-ranges past the bezel).
             seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])],
-            activeWidthMM: 221, activeHeightMM: 139.6),
+            activeWidthMM: 229, activeHeightMM: 127),
         .init(
             productID: 0x032F, name: "Wacom DTU-1031X",  // ⚠ from kernel
             parser: .dtus, maxX: 22672, maxY: 12928, maxPressure: 511,
