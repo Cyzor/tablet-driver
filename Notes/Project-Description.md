@@ -4,6 +4,8 @@ description: Native Swift/SwiftUI driver for ~95 Wacom tablet models, supporting
 type: project
 ---
 
+> **Note (2026-05-29):** The Architecture section below reflects an early design. The current architecture uses a dedicated **HIDThread** for all IOHIDManager callbacks (not the main run loop), `WacomKnownDevice` / `WacomFallbackDevice` / `WacomProbeDevice` instead of `WacomGenericDevice`, and the decoder layer is now in the **TabletKit** SwiftPM package at `../mocktab-kit/`. See `Architecture.md` for the authoritative current layout. The CGEvent injection, app compatibility, and IOHIDManager scheduling notes below remain accurate.
+
 A Swift/SwiftUI native macOS application that brings discontinued Wacom drawing tablets back to life with modern macOS support.
 
 **Target hardware:** ~95 Wacom tablet models from the early 2000s onward, including Intuos (all generations), Cintiq 24HD, Bamboo, and more.
