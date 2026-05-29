@@ -5,6 +5,7 @@
 import Foundation
 import IOKit.hid
 import OSLog
+import TabletKit
 
 private let routerLog = Logger(subsystem: "com.cyzor.mocktab", category: "router")
 

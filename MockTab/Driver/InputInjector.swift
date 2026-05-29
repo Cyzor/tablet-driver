@@ -5,6 +5,7 @@
 import AppKit
 import CoreGraphics
 import os
+import TabletKit
 
 private let modLog = Logger(subsystem: "com.cyzor.mocktab", category: "modifiers")
 private let injectLog = Logger(subsystem: "com.cyzor.mocktab", category: "inject")

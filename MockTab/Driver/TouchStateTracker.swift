@@ -4,6 +4,7 @@
 
 import CoreGraphics
 import Foundation
+import TabletKit
 
 /// Translates a per-frame set of capacitive contacts into a single sticky-mode
 /// gesture intent (pointer drag vs. two-finger scroll vs. tap-click).

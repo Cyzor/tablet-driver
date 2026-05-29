@@ -4,6 +4,7 @@
 
 import AppKit
 import SwiftUI
+import TabletKit
 
 /// Devices tab — lists every tablet and pen the user has ever connected.
 ///

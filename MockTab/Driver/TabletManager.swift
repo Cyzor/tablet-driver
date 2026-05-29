@@ -6,6 +6,7 @@ import AppKit
 import Foundation
 import IOKit.hid
 import OSLog
+import TabletKit
 
 private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "manager")
 

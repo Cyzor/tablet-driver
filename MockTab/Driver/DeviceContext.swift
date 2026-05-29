@@ -5,6 +5,7 @@
 import Combine
 import Foundation
 import IOKit.hid
+import TabletKit
 
 /// Per-device bundle of settings, input injector, and tablet driver.
 ///

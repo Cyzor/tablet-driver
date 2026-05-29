@@ -4,6 +4,7 @@
 
 import AppKit
 import SwiftUI
+import TabletKit
 
 // MARK: - ButtonMappingView
 

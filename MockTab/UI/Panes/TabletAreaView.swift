@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import TabletKit
 
 /// Interactive tablet active-area editor.
 /// Shows the full digitizer surface with a crop-tool-style draggable

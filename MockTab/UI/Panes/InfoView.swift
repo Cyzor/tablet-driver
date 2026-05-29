@@ -5,6 +5,7 @@
 import AppKit
 import ServiceManagement
 import SwiftUI
+import TabletKit
 
 /// Status dashboard tab — shows live device state, system permissions,
 /// and a collapsible diagnostic dump for technical analysis.

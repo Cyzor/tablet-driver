@@ -5,6 +5,7 @@
 import AppKit
 import IOKit.hid
 import SwiftUI
+import TabletKit
 
 /// Open-ended device data collection sheet.
 ///

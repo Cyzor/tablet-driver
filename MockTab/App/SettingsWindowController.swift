@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import AppKit
 import SwiftUI
+import TabletKit
 
 extension Array {
     fileprivate subscript(safe index: Int) -> Element? {

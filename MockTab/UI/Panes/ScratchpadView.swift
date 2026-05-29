@@ -4,6 +4,7 @@
 
 import SwiftUI
 import AppKit
+import TabletKit
 
 // MARK: - SwiftUI wrapper
 

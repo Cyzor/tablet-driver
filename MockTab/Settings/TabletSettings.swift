@@ -7,6 +7,7 @@ import Carbon
 import Foundation
 import OSLog
 import SwiftUI
+import TabletKit
 
 private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "settings")
 

@@ -6,6 +6,7 @@
 
 import Foundation
 import CoreGraphics
+import TabletKit
 
 /// Drives the calibration flow: presents targets, collects raw pen samples,
 /// fits a transform, and stores the result.
