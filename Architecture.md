@@ -39,24 +39,24 @@ The **snapshot pattern** keeps the two sides loosely coupled. `TabletSettings` l
 ```
 MockTab/
   App/         SwiftUI entry point, menu bar, top-level windows
-  Driver/      The pipeline above (HID → decoders → injector)
-    Decoders/  One file per Wacom protocol family
+  Driver/      App glue around the TabletKit decoder layer
+               (HID transport, device routing, event injection)
   Settings/    Live settings, presets, calibration, profile load/save
   UI/
     Panes/     The tabs of the settings window
     Components/ Reusable views
   Help/        In-app help content
-Tests/
-  MockTabDecodersTests/  Per-decoder regression suites + log replay
 ```
 
-## TabletKit (Swift package)
+The decoder layer (`TabletReportDecoder`, the 9 decoder structs, `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, pure-logic helpers) lives in the **TabletKit** SwiftPM package at `../mocktab-kit/` — a sibling repository — and is consumed here as a local package dependency. Tests for the decoder layer (`swift test`) run from that repo, not this one.
 
-`Package.swift` defines a separate target named `TabletKit` that contains the pure-logic slice of the codebase — every file under `Driver/Decoders/` plus `TabletPoint`, `TabletDevice` (which declares the public `TabletReportDecoder` protocol and the value types it speaks), `WacomDeviceRegistry`, `WacomToolSpec`, `VendorDeviceProfile`, `VendorDeviceRegistry`, `CursorSmoother`, and `ModifierMath`. Nothing in `TabletKit` touches I/O, AppKit, SwiftUI, or global state; that gear lives in the app-only files (`HIDThread`, `HIDCapture`, `CaptureEngine`, `InputInjector`, `TabletManager`, `DeviceContext`, everything under `Settings/` and `UI/`).
+## TabletKit (sibling SwiftPM package)
 
-`TabletKit` and `MockTab.xcodeproj` share source files on disk rather than linking together. The package's `path: "MockTab"` points at the same tree the Xcode project compiles, and `sources:` lists the pure-logic files explicitly. `swift test` builds those files into the `TabletKit` library; Xcode builds the same files into the app. Neither target produces a binary the other depends on.
+The pure-logic decoder layer lives in [`../mocktab-kit`](../mocktab-kit) as an MPL-2.0 SwiftPM package called **TabletKit**. It holds `TabletReportDecoder` (the protocol every decoder implements), the value types it speaks (`DecodeResult`, `TabletPoint`, `ToolIdentity`, `AuxButtons`, `TouchContact`, `WirelessStatus`, `DigitizerSpec`, `DecoderState`), `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, the 9 Wacom decoder structs, and pure-logic helpers (`CursorSmoother`, `ModifierMath`). Nothing in TabletKit touches AppKit, SwiftUI, or app-wide state; the gear that does lives in this repo's `MockTab/Driver/` (`HIDThread`, `HIDCapture`, `CaptureEngine`, `InputInjector`, `TabletManager`, `DeviceContext`, the three `Wacom*Device` classes) plus everything under `Settings/` and `UI/`.
 
-`TabletKit` serves two roles. Today it hosts the test sidecar (`Tests/MockTabDecodersTests/`), which exists so the decoder layer can run under `swift test` without an XCTest target in the Xcode project. Tomorrow it is the publish surface — `Package.swift` flags the library product as the slot for a future standalone release, so the protocol, registries, and decoders can ship to other Mac apps that want Wacom HID support without pulling in MockTab itself.
+`MockTab.xcodeproj` consumes TabletKit through an `XCLocalSwiftPackageReference` that points at `../mocktab-kit`. A fresh clone of mocktab-app expects the sibling directory to exist (see the project memory for the eventual switch to a remote ref). Files in this repo that touch TabletKit types carry an explicit `import TabletKit`.
+
+`swift test` runs the 259-test decoder suite from `mocktab-kit/`, not from this repo. The historical sidecar arrangement is gone.
 
 ## Driver
 
@@ -86,12 +86,12 @@ mutating func decode(
 
 Decoders parse a single report and emit zero or more `DecodeResult` values. The host (`WacomKnownDevice.handleReport`) owns the `DecoderState` and routes results to the `TabletManager` callbacks.
 
-Adding support for a new Wacom variant of an existing family means:
+Adding support for a new Wacom variant of an existing family means (all edits happen in `mocktab-kit`):
 
 1. Add a row to `WacomDeviceRegistry` (and/or `WacomToolSpec` for new pen tools) with the VID/PID and physical dimensions.
-2. Add a fixture to the matching `*DecoderTests.swift` file under `Tests/MockTabDecodersTests/`.
+2. Add a fixture to the matching `*DecoderTests.swift` file under `Tests/TabletKitTests/`.
 
-Adding a new family means writing a new decoder under `Driver/Decoders/`, wiring it in `WacomDeviceRegistry.decoder(for:)`, and adding a test file.
+Adding a new family means writing a new decoder under `Sources/TabletKit/Decoders/`, wiring it in `WacomDeviceRegistry.decoder(for:)`, and adding a test file. MockTab picks up the change automatically through the local package dep.
 
 ### Injection
 
@@ -122,11 +122,11 @@ The settings window hosts a tab bar; each tab maps to one file in `UI/Panes/`. E
 
 ## Tests
 
-`Tests/MockTabDecodersTests/` runs as a Swift Package (`swift test`). Each decoder has its own fixture suite; the `CaptureLogParser` replays the logs the in-app `HIDCapture` writes, so regressions surface as diff-able test failures. ~260 tests run in well under a second.
+The decoder test suite lives in `mocktab-kit/Tests/TabletKitTests/` and runs via `swift test` from that repo (`cd ../mocktab-kit && swift test`). Each decoder has its own fixture suite; the `CaptureLogParser` replays the logs the in-app `HIDCapture` writes, so regressions surface as diff-able test failures. 259 tests run in well under a second.
 
 ## Threading rules (the short version)
 
-- **Anything in `Driver/Decoders/`** lacks I/O, clocks, and globals. The host owns `DecoderState`.
+- **Anything in TabletKit** (every conformer of `TabletReportDecoder`, the registries, the value types) lacks I/O, clocks, and globals. The host owns `DecoderState`.
 - **Anything reachable from `handleReport`** runs on HIDThread. It must not touch main-thread state directly — hand the work over with `Task { @MainActor in … }` or `CFRunLoopPerformBlock` first.
 - **Anything marked `@MainActor`** runs on the main thread. It updates HIDThread state by packaging a snapshot and posting it onto `HIDThread.shared.runLoop`.
 - **`IOHIDDeviceSetReport` / `GetReport`** are not thread-safe; they run on the main thread. Devices defer LED writes and feature reports to the main thread via `DispatchQueue.main.async`.
@@ -136,11 +136,11 @@ The settings window hosts a tab bar; each tab maps to one file in `UI/Panes/`. E
 
 | Goal | File to open first |
 |------|--------------------|
-| Add a Wacom model in an existing family | `Driver/WacomDeviceRegistry.swift` |
-| Add a new pen tool | `Driver/WacomToolSpec.swift` |
-| Add a non-Wacom vendor | `Driver/VendorDeviceRegistry.swift` |
-| Add a new protocol family | `Driver/Decoders/` + `WacomDeviceRegistry.decoder(for:)` |
-| Tweak smoothing / click resolution | `Driver/InputInjector.swift` (read the header) |
+| Add a Wacom model in an existing family | `mocktab-kit/Sources/TabletKit/WacomDeviceRegistry.swift` |
+| Add a new pen tool | `mocktab-kit/Sources/TabletKit/WacomToolSpec.swift` |
+| Add a non-Wacom vendor | `mocktab-kit/Sources/TabletKit/VendorDeviceRegistry.swift` |
+| Add a new protocol family | `mocktab-kit/Sources/TabletKit/Decoders/` + `WacomDeviceRegistry.decoder(for:)` |
+| Tweak smoothing / click resolution | `MockTab/Driver/InputInjector.swift` (read the header) |
 | Add a settings knob | `Settings/TabletSettings.swift` + relevant pane |
 | Add a new settings pane | `UI/Panes/` + `App/SettingsWindowController.swift` |
 | Diagnose a misbehaving tablet | Settings → Info → Start Capture (writes to Desktop) |
