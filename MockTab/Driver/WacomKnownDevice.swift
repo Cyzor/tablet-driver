@@ -9,7 +9,7 @@ import TabletKit
 
 private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 
-/// Data-driven tablet driver backed by a `WacomDecoder` selected at init time.
+/// Data-driven tablet driver backed by a `TabletReportDecoder` selected at init time.
 ///
 /// Replaces per-device Swift classes for any product in `WacomDeviceRegistry`
 /// whose parser family has a live decoder (IntuosV1, IntuosV2, Intuos3).
@@ -42,7 +42,7 @@ final class WacomKnownDevice: TabletDevice {
     /// query fails or the device does not support the feature report.
     private let onHardwareSerial: ((UInt32) -> Void)?
 
-    private var decoder: any WacomDecoder
+    private var decoder: any TabletReportDecoder
     private var state = DecoderState()
     private var reportBuffer: [UInt8]
     private var isBluetooth = false
