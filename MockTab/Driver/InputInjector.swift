@@ -1265,7 +1265,7 @@ final class InputInjector {
         // the OS still reports the modifier as held — points to event-tap interference
         // or a state-source mismatch. Async so we sample after WindowServer settles.
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(50)) { [weak self] in
-            guard let self else { return }
+            guard self != nil else { return }
             let systemAfter = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
             let stillStuck = toRelease.rawValue & systemAfter
             if stillStuck != 0 {

@@ -458,10 +458,7 @@ final class WacomKnownDevice: TabletDevice {
             let r0 = report[0]
             let bytes = [UInt8](UnsafeBufferPointer(start: report, count: length))
             Task { @MainActor in
-                bytes.withUnsafeBufferPointer {
-                    CaptureEngine.shared.recordSample(
-                        reportID: r0, report: $0.baseAddress!, length: length)
-                }
+                CaptureEngine.shared.recordSample(reportID: r0, data: bytes)
             }
         }
         // For wireless dongles, extract paired tablet PID from 0x80 status report and

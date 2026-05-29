@@ -227,9 +227,14 @@ final class WacomFallbackDevice: TabletDevice {
         // Delta capture — only fires when CaptureEngine.isRunning is true.
         // Use _isRunningNonisolated to avoid MainActor hop on every HID report.
         if CaptureEngine._isRunningNonisolated {
+            // Copy the report buffer before hopping to MainActor — the raw
+            // `report` pointer is only valid for the duration of this IOHID
+            // callback, so capturing it directly across the Task boundary
+            // would be a use-after-free by the time the closure runs.
+            let r0 = report[0]
+            let bytes = [UInt8](UnsafeBufferPointer(start: report, count: length))
             Task { @MainActor in
-                CaptureEngine.shared.recordSample(
-                    reportID: report[0], report: report, length: length)
+                CaptureEngine.shared.recordSample(reportID: r0, data: bytes)
             }
         }
         guard length >= 2 else { return }

@@ -12,9 +12,9 @@ swift test --filter IntuosV1DecoderTests   # one suite
 
 ## Layout
 
-- `Package.swift` (project root) — defines the `MockTabDecoders` library
-  target (vendoring a minimal slice of `MockTab/Driver/`) and the
-  `MockTabDecodersTests` test target.
+- `Package.swift` (project root) — defines the `TabletKit` library
+  target (the pure-logic slice of `MockTab/Driver/`) and the
+  `TabletKitTests` test target.
 - `Tests/MockTabDecodersTests/` — test files. One per decoder family.
 
 ## Why a SwiftPM sidecar instead of an Xcode test target?
@@ -31,7 +31,7 @@ grows beyond pure decoders, revisit this choice.
 2. Read the byte-layout comments at the top of the file.
 3. Add a `Tests/MockTabDecodersTests/<Name>Tests.swift` with:
    ```swift
-   @testable import MockTabDecoders
+   @testable import TabletKit
    import XCTest
    ```
 4. `swift test` to run.

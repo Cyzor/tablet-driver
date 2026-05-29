@@ -304,7 +304,7 @@ enum OTDImporter {
         }
 
         // Parse feature init reports
-        let (featureInitBytes, initDelay) = extractFeatureInit(from: config)
+        let (featureInitBytes, _) = extractFeatureInit(from: config)
 
         // Build init steps from extracted bytes (OTD only supports single-stage init)
         var initSteps: [InitStep] = []

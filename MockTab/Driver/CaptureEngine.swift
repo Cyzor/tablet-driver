@@ -10,12 +10,15 @@ import Foundation
 /// Usage:
 /// 1. Call `startCalibration(deviceInfo:steps:)` to begin a session.
 /// 2. Each step, call `armForStep()` then wait for `onSampleCaptured` callback.
-/// 3. Call `recordSample(reportID:report:length:)` from device handleReport callbacks.
+/// 3. Call `recordSample(reportID:data:)` from device handleReport callbacks.
 /// 4. On completion, call `finish()` to get a `CalibrationResult`.
 /// 5. Call `exportJSON(result:)` to write to disk.
 ///
-/// Thread safety: all UI-state methods are @MainActor. Device callbacks fire on
-/// main thread (IOHIDManager scheduled on kCFRunLoopCommonModes).
+/// Thread safety: all UI-state methods are @MainActor. Device handleReport
+/// callbacks fire on HIDThread (see HIDThread.swift) and reach `recordSample`
+/// via `Task { @MainActor in ... }`, so by the time `recordSample` runs the
+/// engine's state is already main-isolated. The nonisolated `_isRunningNonisolated`
+/// mirror exists so the HID callback can gate the hop without an actor jump.
 @MainActor
 final class CaptureEngine: ObservableObject {
 
@@ -30,7 +33,10 @@ final class CaptureEngine: ObservableObject {
     @Published private(set) var isRunning = false {
         didSet { CaptureEngine._isRunningNonisolated = isRunning }
     }
-    /// Nonisolated mirror of `isRunning` for use in HID callbacks (main run loop, no data race).
+    /// Nonisolated mirror of `isRunning` for use in HID callbacks running on
+    /// HIDThread. Bool stores are atomic enough for a gating flag — a stale
+    /// read just costs one extra Task hop, never a crash. The MainActor side
+    /// updates it via the `didSet` above.
     nonisolated(unsafe) static private(set) var _isRunningNonisolated = false
     @Published private(set) var currentStepIndex = 0
     @Published private(set) var armedStep: CalibrationStep?
@@ -143,20 +149,21 @@ final class CaptureEngine: ObservableObject {
 
     /// Attempt to record a report toward the current step.
     /// Called from device handleReport callbacks when captureMode is .delta.
-    func recordSample(reportID: UInt8, report: UnsafePointer<UInt8>, length: Int, toolCode: UInt16? = nil) {
+    /// `data` is consumed by reference into baselines/samples without further
+    /// copying — callers should pass the already-allocated `[UInt8]` they
+    /// created to ferry the report across the HIDThread → main hop.
+    func recordSample(reportID: UInt8, data: [UInt8], toolCode: UInt16? = nil) {
 
         // Discovery mode: capture all samples without baseline comparison
         if isRunning && isDiscoveryMode {
-            recordDiscoverySample(reportID: reportID, report: report, length: length)
+            recordDiscoverySample(reportID: reportID, data: data)
             return
         }
         guard isRunning,
             let step = armedStep,
             !hasCapturedThisStep,
-            length > 0
+            !data.isEmpty
         else { return }
-
-        let data = Array(UnsafeBufferPointer(start: report, count: length))
 
         if currentBaseline == nil {
             // First report for this step — establish baseline.
@@ -248,9 +255,8 @@ final class CaptureEngine: ObservableObject {
     }
 
     /// Record a sample in discovery mode (no baseline comparison).
-    private func recordDiscoverySample(reportID: UInt8, report: UnsafePointer<UInt8>, length: Int) {
-        guard isRunning, isDiscoveryMode, length > 0 else { return }
-        let data = Array(UnsafeBufferPointer(start: report, count: length))
+    private func recordDiscoverySample(reportID: UInt8, data: [UInt8]) {
+        guard isRunning, isDiscoveryMode, !data.isEmpty else { return }
         if discoverySamples[reportID] == nil {
             discoverySamples[reportID] = []
         }
