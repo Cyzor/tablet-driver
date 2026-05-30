@@ -14,7 +14,7 @@ want to refresh against newer upstream data.
 **OTD → `WacomDeviceSpec` Swift entries.**
 
 Reads an OpenTabletDriver `Configurations/Wacom/` checkout, emits `.init(…)`
-blocks for any Wacom PID we don't already cover.  Output goes to stdout —
+blocks for any Wacom PID not already in the registry.  Output goes to stdout —
 paste into `WacomDeviceRegistry.knownDevices`.
 
 ```
@@ -42,12 +42,12 @@ python3 tools/backfill_libwacom_dimensions.py \
 **Cross-reference registry against linuxwacom HID descriptor corpus.**
 
 Walks `linuxwacom/wacom-hid-descriptors` via the GitHub API, extracts PIDs from
-sysinfo filenames (`BUS:VID:PID.NNNN.hid.txt`), and categorises every registry
+sysinfo filenames (`BUS:VID:PID.NNNN.hid.txt`), and categorizes every registry
 entry as: confirmed (`.verified` — no action), promotable (PID present in both
 with matching names — candidate for `.crossReferenced`), naming-drift (PIDs
 match but names diverge — needs human review), or missing (linuxwacom has it,
-we don't).  Emits a Markdown table to stdout — paste into a `Notes/Scratch/`
-audit doc.
+the registry doesn't).  Emits a Markdown table to stdout — paste into a
+`Notes/Scratch/` audit doc.
 
 ```
 python3 tools/audit_wacom_hid_descriptors.py \
@@ -70,7 +70,8 @@ missing required fields, etc.).
 **OTD → `VendorDeviceProfile` Swift entries** for non-Wacom vendors.
 
 Sibling of `import_otd_configs.py`, but produces the recognition-only shape
-used by `VendorDeviceRegistry` for devices we *name* but don't yet decode.
+used by `VendorDeviceRegistry` for devices the registry *names* but doesn't
+yet decode.
 
 ```
 python3 tools/import_vendor_configs.py \
@@ -83,7 +84,7 @@ python3 tools/import_vendor_configs.py \
 ### `wacom_capture.d`, `wacom_init.d`
 DTrace scripts for capturing USB IOKit traffic against Wacom devices.  macOS
 only.  Used during the initial reverse-engineering of PTH-660 and PTH-860 BT
-behaviour.  Superseded by the in-app capture flow for most cases.
+behavior.  Superseded by the in-app capture flow for most cases.
 
 ### `touch_capture.c`
 Standalone C utility that opens a HID device and dumps reports.  Pre-existing,
@@ -95,7 +96,7 @@ used during the PTH-860 touch decoder work.
 Xcode archive export config — referenced by `release-and-publish.sh`.
 
 ### `release.sh`, `release-and-publish.sh`
-App-side release scripts.  Build, sign, notarise, package.  Out of scope for
+App-side release scripts.  Build, sign, notarize, package.  Out of scope for
 TabletKit (the package has no release process yet).
 
 ## Generated files

@@ -6,13 +6,13 @@ Native Mac driver for Wacom drawing tablets that no longer have official support
 
 ---
 
-Wacom hardware tends to outlast its driver support. MockTab aims to be a small, focused driver for Wacom tablets from the early 2000s through the early 2020s, on macOS Ventura and later.
+Drawing tablet equipment tends to outlast its driver support. MockTab aims to be a small, focused Mac driver for Wacom tablets from the early 2000s through the early 2020s, on macOS Ventura and later.
 
 ---
 
 ## Supported hardware
 
-Several Wacom models across multiple protocol families:
+Several Wacom models across multiple families:
 
 - **Intuos 1–5 / Intuos Pro Gen 1** (PTH-x50/x51, PTZ, PTK series) — USB
 - **Intuos Pro Gen 2** (PTH-460, PTH-660, PTH-860) — USB and Bluetooth Classic
@@ -23,7 +23,7 @@ Several Wacom models across multiple protocol families:
 
 Full list: [mocktab.org/hardware](https://mocktab.org/hardware.html)
 
-MockTab covers a small set of hardware so far and may not work with your configuration. Filing an issue with a diagnostic detail can help improve support.
+For other devices, MockTab might not work with your configuration yet. Filing an issue with a diagnostic detail can help improve support.
 
 ---
 
@@ -68,11 +68,11 @@ macOS 13 (Ventura) or later.
 - **Capacitive touch** — two-finger scroll, tap-to-click, and adjustable touch area on models with a touch surface
 - **Undo everywhere** — ⌘Z across every settings pane
 - **Menu bar mode** — hides the Dock icon
-- Native AppKit app, signed and notarized, without kernel extensions
+- **Native AppKit** app, signed and notarized, without kernel extensions
 
 ---
 
-## What it doesn't do
+## Currently Unsupported
 
 - Huion, XP-Pen, Xencelabs, or any non-Wacom hardware
 - Wacom tablets from recent product cycles not listed above (Cintiq Pro 2023 refresh, Intuos Pro with USB-C, etc.)
@@ -80,9 +80,9 @@ macOS 13 (Ventura) or later.
 
 ---
 
-## TabletKit (Swift package)
+## TabletKit 
 
-MockTab's HID report decoders — the pure-logic layer that turns raw tablet reports into pen / aux / touch events — live in a sibling repository, [**mocktab-kit**](../mocktab-kit), and are consumed here as a SwiftPM dependency named `TabletKit`. Anything in `MockTab/Driver/` that's still here is the app-specific glue (IOKit transport, event injection, device routing) that depends on TabletKit but isn't part of it.
+MockTab relies on a related Swift package called [**TabletKit**](https://github.com/Cyzor/TabletKit) to communicate with tablet devices.  TabletKit processes raw Human Interface Device (HID) data reports and decodes them into events such as pen coordinates, pressure, position, tilt, rotation, and touch detail.  Everything in `MockTab/Driver/` is app-specific glue (IOKit transport, event injection, device routing) that depends on TabletKit but lives in this repo, not the package.
 
 ```swift
 // Package.swift of a consumer project
@@ -104,9 +104,9 @@ var decoder: any TabletReportDecoder = IntuosV2Decoder()
 let results = decoder.decode(report: ptr, length: len, spec: spec, state: &state, deviceFamily: "intuosProGen2")
 ```
 
-**Scope.** TabletKit is pure Swift — no AppKit, no event injection. It decodes; you bring the HID transport and the event sink.
+**Scope.** TabletKit is a Swift package without AppKit or system event requirements. It decodes based on its registry of known devices.
 
-**Stability.** The public API surface (see [mocktab-kit/CHANGELOG.md](../mocktab-kit/CHANGELOG.md)) is at 0.1 — workable but pre-1.0. Expect breaking changes until the first vendor outside Wacom (Xencelabs likely first) lands and the protocol shape is validated against more than one family.
+**Stability.** The public API surface (see [CHANGELOG.md](https://github.com/Cyzor/TabletKit/blob/main/CHANGELOG.md)) is at 0.1 — workable but pre-1.0. Expect breaking changes until the first vendor outside Wacom lands and with further protocol validation.
 
 **Tests.** TabletKit's 259-test suite runs from its own repo (`cd ../mocktab-kit && swift test`).
 
@@ -116,9 +116,17 @@ let results = decoder.decode(report: ptr, length: len, spec: spec, state: &state
 
 The app is **GPL-3.0-or-later** — see [`LICENSE`](LICENSE). Free to run, study, modify, and share; modifications must stay under the same license.
 
-The TabletKit Swift package lives in [`../mocktab-kit`](../mocktab-kit) and is **MPL-2.0** — see [`mocktab-kit/LICENSES/MPL-2.0.txt`](../mocktab-kit/LICENSES/MPL-2.0.txt). File-level copyleft: changes to TabletKit's own files must stay open, but consumers can link it from any-licensed app.
+The TabletKit Swift package lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit) and is **MPL-2.0** — see [`LICENSES/MPL-2.0.txt`](https://github.com/Cyzor/TabletKit/blob/main/LICENSES/MPL-2.0.txt). File-level copyleft: changes to TabletKit's own files must stay open, but consumers can link it from any-licensed app.
 
 Per-file licenses are declared via SPDX headers (`SPDX-License-Identifier:`) at the top of each source file.
+
+---
+
+## Contributing
+
+Triage runs in batches, usually a few weeks per cycle. Bug reports go on Issues, feature ideas on [Discussions](https://github.com/Cyzor/tablet-driver/discussions), decoder PRs on [TabletKit](https://github.com/Cyzor/TabletKit). See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full scope. Forking is a first-class option if MockTab doesn't fit your needs.
+
+For decoder analysis, `tools/wacom_capture.d` is a dtrace script that records raw USB traffic before any decoder interprets it. Higher fidelity than the in-app capture flow, but requires disabling System Integrity Protection. See [TabletKit's CONTRIBUTING](https://github.com/Cyzor/TabletKit/blob/main/CONTRIBUTING.md#data-sources-in-order-of-confidence) for the full hierarchy of data sources.
 
 ---
 

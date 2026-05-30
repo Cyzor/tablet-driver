@@ -1,5 +1,5 @@
 name: Device support request
-description: Submit a capture for an unrecognised Wacom tablet
+description: Submit a capture for an unrecognized Wacom tablet
 title: "Device support: Wacom "
 labels: ["device-support"]
 body:
@@ -36,7 +36,7 @@ body:
       required: true
 
   - type: textarea
-    id: behaviour
+    id: behavior
     attributes:
       label: What happens
       description: Which of these work, and which don't — pen tracking, pressure, tilt, buttons, touch?
