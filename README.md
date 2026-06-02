@@ -75,12 +75,12 @@ macOS 13 (Ventura) or later.
 ## Currently Unsupported
 
 - Huion, XP-Pen, Xencelabs, or any non-Wacom hardware
-- Wacom tablets from recent product cycles not listed above (Cintiq Pro 2023 refresh, Intuos Pro with USB-C, etc.)
+- Wacom tablets from recent product cycles not listed above (Cintiq Pro 2023 refresh, etc.)
 - Windows, Linux, or iPad
 
 ---
 
-## TabletKit 
+## TabletKit
 
 MockTab relies on a related Swift package called [**TabletKit**](https://github.com/Cyzor/TabletKit) to communicate with tablet devices.  TabletKit processes raw Human Interface Device (HID) data reports and decodes them into events such as pen coordinates, pressure, position, tilt, rotation, and touch detail.  Everything in `MockTab/Driver/` is app-specific glue (IOKit transport, event injection, device routing) that depends on TabletKit but lives in this repo, not the package.
 
@@ -130,8 +130,15 @@ For decoder analysis, `tools/wacom_capture.d` is a dtrace script that records ra
 
 ---
 
+## Troubleshooting
+
+If the tablet light is on but Wacom Center shows "No device connected", or Wacom's installer says "Supported tablet not found", the official driver has likely dropped your model. See [mocktab.org/troubleshooting.html](https://mocktab.org/troubleshooting.html) for symptoms, affected hardware (Intuos 4, Intuos 5, Bamboo, and others), and steps to switch.
+
+For post-install issues (pressure not working, conflict warning, tablet not recognized), the same page covers each case.
+
 ## Resources
 
 - [mocktab.org](https://mocktab.org) — website and FAQ
 - [Hardware compatibility](https://mocktab.org/hardware.html) — full device list
+- [Troubleshooting](https://mocktab.org/troubleshooting.html) — common problems and fixes
 - [Issues](https://github.com/Cyzor/tablet-driver/issues) — bug reports and feature requests

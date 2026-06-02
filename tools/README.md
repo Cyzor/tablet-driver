@@ -3,7 +3,7 @@
 Project-side scripts that aren't part of the app build but are used to maintain
 the registry, audit it against upstream sources, and capture HID traffic.
 
-Most of these scripts touch `MockTab/Driver/WacomDeviceRegistry.swift` directly
+Most of these scripts touch `../mocktab-kit/Sources/TabletKit/WacomDeviceRegistry.swift` directly
 or produce input that gets pasted in.  None of them are wired into a build step
 — they're meant to be run from the repo root by hand, occasionally, when you
 want to refresh against newer upstream data.
@@ -34,7 +34,7 @@ signature of a stale libwacom row or a cross-product PID collision.
 ```
 python3 tools/backfill_libwacom_dimensions.py \
     --libwacom-data /path/to/libwacom/data \
-    --registry MockTab/Driver/WacomDeviceRegistry.swift \
+    --registry ../mocktab-kit/Sources/TabletKit/WacomDeviceRegistry.swift \
     --dry-run
 ```
 
@@ -51,7 +51,7 @@ the registry doesn't).  Emits a Markdown table to stdout — paste into a
 
 ```
 python3 tools/audit_wacom_hid_descriptors.py \
-    --registry MockTab/Driver/WacomDeviceRegistry.swift \
+    --registry ../mocktab-kit/Sources/TabletKit/WacomDeviceRegistry.swift \
     > Notes/Scratch/Wacom-Descriptor-Audit-$(date +%Y-%m-%d).md
 ```
 
