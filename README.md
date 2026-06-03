@@ -122,9 +122,20 @@ Per-file licenses are declared via SPDX headers (`SPDX-License-Identifier:`) at 
 
 ---
 
+## Acknowledgments
+
+MockTab's protocol knowledge and device data draw from several open-source projects:
+
+- **[OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver)** — TabletKit's non-Wacom registry entries come from OTD's per-vendor JSON configurations, the most comprehensive public database of tablet PIDs and dimensions across vendors.
+- **[wacom-hid-descriptors](https://github.com/linuxwacom/wacom-hid-descriptors)** — the linuxwacom HID descriptor corpus informed decoder development across multiple tablet families.
+- **[libwacom](https://github.com/linuxwacom/libwacom)** — libwacom's tablet files are the authoritative source for Wacom physical dimensions; they cross-check and correct entries where the kernel's constants are inaccurate.
+- **[input-wacom](https://github.com/linuxwacom/input-wacom) / Linux kernel HID subsystem** — the kernel driver is the canonical reference for Wacom report formats and protocol constants; several decoder field mappings follow kernel source directly.
+
+---
+
 ## Contributing
 
-Triage runs in batches, usually a few weeks per cycle. Bug reports go on Issues, feature ideas on [Discussions](https://github.com/Cyzor/tablet-driver/discussions), decoder PRs on [TabletKit](https://github.com/Cyzor/TabletKit). See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full scope. Forking is a first-class option if MockTab doesn't fit your needs.
+Bug reports, device-support requests, translation corrections, and decoder work are all in scope — see [`CONTRIBUTING.md`](CONTRIBUTING.md) for how each is handled. Decoder PRs belong on [TabletKit](https://github.com/Cyzor/TabletKit). Forking is a first-class option if MockTab doesn't fit your needs.
 
 For decoder analysis, `tools/wacom_capture.d` is a dtrace script that records raw USB traffic before any decoder interprets it. Higher fidelity than the in-app capture flow, but requires disabling System Integrity Protection. See [TabletKit's CONTRIBUTING](https://github.com/Cyzor/TabletKit/blob/main/CONTRIBUTING.md#data-sources-in-order-of-confidence) for the full hierarchy of data sources.
 
