@@ -204,6 +204,13 @@ final class PresetExporter {
             else { return nil }
             return exportCurve(curve)
 
+        case "touchRingSlotsJSON", "calibrationJSON":
+            return ud.string(forKey: prefix + key)
+
+        case "touchRingActiveSlotIndex":
+            guard ud.object(forKey: prefix + key) != nil else { return nil }
+            return ud.integer(forKey: prefix + key)
+
         default:
             return nil
         }

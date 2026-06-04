@@ -585,7 +585,7 @@ final class TabletSettings: ObservableObject {
             "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
             "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
             "expressKeyBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
-            "touchRingActiveSlotIndex", "pressureCurve",
+            "touchRingActiveSlotIndex", "pressureCurve", "calibrationJSON",
         ]
         for key in allKeys { ud.removeObject(forKey: prefix + key) }
         profiles.removeAll { $0.id == profile.id }

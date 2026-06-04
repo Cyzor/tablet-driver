@@ -82,13 +82,15 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     private func insertTextSizeSubmenu() {
         guard let viewMenu else { return }
 
-        // Remove any stale copy (e.g., after a SwiftUI rebuild replaced the View menu).
-        // Also remove the separator we inserted immediately before it.
-        if let oldIdx = viewMenu.items.firstIndex(where: { $0.action == nil && $0.title == textSizeMenuTitle }) {
-            viewMenu.removeItem(at: oldIdx)
-            // If the item immediately before is a separator, it's the one we added — remove it too.
-            if oldIdx > 0, viewMenu.items[oldIdx - 1].isSeparatorItem {
-                viewMenu.removeItem(at: oldIdx - 1)
+        // Remove ALL stale or system-injected copies (macOS 26 injects its own
+        // "Text Size" entry on each rebuild; removing only the first one leaves extras).
+        // Snapshot items first so index shifts don't skip entries.
+        for item in viewMenu.items.filter({ $0.title == textSizeMenuTitle }) {
+            guard let idx = viewMenu.items.firstIndex(of: item) else { continue }
+            viewMenu.removeItem(at: idx)
+            // Remove the separator immediately before the (now-gone) item if it's ours.
+            if idx > 0, viewMenu.items[idx - 1].isSeparatorItem {
+                viewMenu.removeItem(at: idx - 1)
             }
         }
 

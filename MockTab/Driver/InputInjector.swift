@@ -263,6 +263,7 @@ final class InputInjector {
     /// `groundTruthSyntheticFlags` is non-empty, the flags are a leak.
     private var tabletIsQuiescent: Bool {
         !lastTipDown && !lastButton1Down && !lastButton2Down
+            && !lastMiddleDown
             && !lastRingButtonDown
             && lastRingPos == 0x7F && lastRing2Pos == 0x7F
             && lastStrip1Pos == 0xFF && lastStrip2Pos == 0xFF
