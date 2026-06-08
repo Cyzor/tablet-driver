@@ -92,12 +92,12 @@ sweep "OTD — non-Wacom vendor configs" OpenTabletDriver "$OTD_PIN" \
   "OpenTabletDriver.Configurations/Configurations/XPPen/" \
   "OpenTabletDriver.Configurations/Configurations/UCLogic/"
 
-echo "## OTD open device-support issues" >>"$OUT"
+echo "## OTD open configuration issues" >>"$OUT"
 echo >>"$OUT"
 if command -v gh >/dev/null 2>&1; then
   echo '```' >>"$OUT"
   gh issue list --repo OpenTabletDriver/OpenTabletDriver \
-    --label "device support" --state open --limit 50 \
+    --label "configuration" --state open --limit 50 \
     --json number,title,createdAt \
     --template '{{range .}}#{{.number}} {{.title}} ({{timeago .createdAt}}){{"\n"}}{{end}}' \
     >>"$OUT" 2>/dev/null || echo "(gh failed)" >>"$OUT"

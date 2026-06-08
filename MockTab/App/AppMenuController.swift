@@ -324,8 +324,6 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 $0.action == #selector(NSApplication.terminate(_:))
             })
         else { return }
-        let quitIndex = menu.items.firstIndex(of: quitItem)!
-
         // Always remove and re-insert the Factory Reset alternates so they land
         // directly after Quit regardless of any SwiftUI-driven menu reordering.
         // Guarding with "already present" is not enough: if a rebuild shifts Quit
@@ -376,9 +374,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 keyEquivalent: "")
             hideItem.target = self
             // Insert before the separator that precedes Quit.
-            let separatorIndex = (quitIndex > 0 && menu.items[quitIndex - 1].isSeparatorItem)
-                ? quitIndex - 1
-                : quitIndex
+            let separatorIndex = (freshQuitIndex > 0 && menu.items[freshQuitIndex - 1].isSeparatorItem)
+                ? freshQuitIndex - 1
+                : freshQuitIndex
             menu.insertItem(NSMenuItem.separator(), at: separatorIndex)
             menu.insertItem(hideItem, at: separatorIndex)
             menu.insertItem(NSMenuItem.separator(), at: separatorIndex)
