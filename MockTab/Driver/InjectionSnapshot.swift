@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import AppKit
 import CoreGraphics
 import Foundation
 
@@ -37,6 +38,9 @@ struct InjectionSnapshot: Sendable, Equatable {
     var relativeCursorMovement: Bool
     var tipUpAssist: Bool
     var doubleClickDistance: Double
+    /// System double-click time window (NSEvent.doubleClickInterval), captured
+    /// on main so resolveClick never calls AppKit from HIDThread.
+    var doubleClickInterval: Double
 
     // MARK: - Active tool (value-copied)
 
@@ -118,6 +122,7 @@ extension TabletSettings {
             relativeCursorMovement: relativeCursorMovement,
             tipUpAssist: tipUpAssist,
             doubleClickDistance: doubleClickDistance,
+            doubleClickInterval: NSEvent.doubleClickInterval,
             activeTool: activeTool.injectionSnapshot(),
             expressKeyBindings: expressKeyBindings,
             touchRingButtonBinding: touchRingButtonBinding,

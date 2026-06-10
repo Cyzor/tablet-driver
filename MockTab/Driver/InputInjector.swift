@@ -1080,7 +1080,7 @@ final class InputInjector {
 
         let snapThreshold = snapshot.doubleClickDistance
         let countThreshold = snapThreshold > 0 ? snapThreshold : 8.0
-        let withinTime = now - lastClickTime < NSEvent.doubleClickInterval
+        let withinTime = now - lastClickTime < snapshot.doubleClickInterval
         let withinDist = dist < countThreshold
 
         if withinTime && withinDist { clickCount += 1 } else { clickCount = 1 }
