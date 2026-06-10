@@ -9,7 +9,7 @@ MockTab ships under GPL-3.0-or-later.
 - **Bug reports** for specific, reproducible problems on supported hardware.
 - **Device-support requests** for unrecognized Wacom tablets. The *Collect Device Data…* button in the Info pane produces the JSON capture the device support template requires.
 - **Translation corrections** for the German, Japanese, or Spanish locales.
-- **Decoder work** belongs on [TabletKit](https://github.com/Cyzor/TabletKit) — see its [`CONTRIBUTING.md`](https://github.com/Cyzor/TabletKit/blob/main/CONTRIBUTING.md) for the capture and submission process.
+- **Decoder work** belongs on [TabletKit](https://github.com/Cyzor/TabletKit) — see its [`Contributing.md`](https://github.com/Cyzor/TabletKit/blob/main/Contributing.md) for the capture and submission process.
 
 ## How to file a bug report
 

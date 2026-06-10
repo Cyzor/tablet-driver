@@ -48,15 +48,15 @@ MockTab/
   Help/        In-app help content
 ```
 
-The decoder layer (`TabletReportDecoder`, the 9 decoder structs, `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, pure-logic helpers) lives in the **TabletKit** SwiftPM package at `../mocktab-kit/` — a sibling repository — and is consumed here as a local package dependency. Tests for the decoder layer (`swift test`) run from that repo, not this one.
+The decoder layer (`TabletReportDecoder`, the decoder structs, `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, pure-logic helpers) lives in the **TabletKit** SwiftPM package, included as a git submodule at `TabletKit/` and consumed as a local package dependency. Tests for the decoder layer (`swift test`) run from the submodule, not from this repo's root.
 
-## TabletKit (sibling SwiftPM package)
+## TabletKit (SwiftPM package, git submodule)
 
-The pure-logic decoder layer lives in [`../mocktab-kit`](../mocktab-kit) as an MPL-2.0 SwiftPM package called **TabletKit**. It holds `TabletReportDecoder` (the protocol every decoder implements), the value types it speaks (`DecodeResult`, `TabletPoint`, `ToolIdentity`, `AuxButtons`, `TouchContact`, `WirelessStatus`, `DigitizerSpec`, `DecoderState`), `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, the 9 Wacom decoder structs, and pure-logic helpers (`CursorSmoother`, `ModifierMath`). Nothing in TabletKit touches AppKit, SwiftUI, or app-wide state; the gear that does lives in this repo's `MockTab/Driver/` (`HIDThread`, `HIDCapture`, `CaptureEngine`, `InputInjector`, `TabletManager`, `DeviceContext`, the three `Wacom*Device` classes) plus everything under `Settings/` and `UI/`.
+The pure-logic decoder layer lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit), an MPL-2.0 SwiftPM package checked out here as a git submodule at `TabletKit/`. It holds `TabletReportDecoder` (the protocol every decoder implements), the value types it speaks (`DecodeResult`, `TabletPoint`, `ToolIdentity`, `AuxButtons`, `TouchContact`, `WirelessStatus`, `DigitizerSpec`, `DecoderState`), `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, the 9 Wacom decoder structs, and pure-logic helpers (`CursorSmoother`, `ModifierMath`). Nothing in TabletKit touches AppKit, SwiftUI, or app-wide state; the gear that does lives in this repo's `MockTab/Driver/` (`HIDThread`, `HIDCapture`, `CaptureEngine`, `InputInjector`, `TabletManager`, `DeviceContext`, the three `Wacom*Device` classes) plus everything under `Settings/` and `UI/`.
 
-`MockTab.xcodeproj` consumes TabletKit through an `XCLocalSwiftPackageReference` that points at `../mocktab-kit`. A fresh clone of mocktab-app expects the sibling directory to exist (see the project memory for the eventual switch to a remote ref). Files in this repo that touch TabletKit types carry an explicit `import TabletKit`.
+`MockTab.xcodeproj` consumes TabletKit through an `XCLocalSwiftPackageReference` that points at `TabletKit` (the submodule). Each app commit pins the exact TabletKit commit it builds against; clone with `--recurse-submodules` (or run `git submodule update --init`). Decoder work happens inside the submodule and is pushed to the TabletKit repo — push the kit before pushing an app commit that bumps the pin. Files in this repo that touch TabletKit types carry an explicit `import TabletKit`.
 
-`swift test` runs the 259-test decoder suite from `mocktab-kit/`, not from this repo. The historical sidecar arrangement is gone.
+`swift test` runs the decoder suite from `TabletKit/`, not from this repo's root. The historical sidecar arrangement is gone.
 
 ## Driver
 
@@ -86,7 +86,7 @@ mutating func decode(
 
 Decoders parse a single report and emit zero or more `DecodeResult` values. The host (`WacomKnownDevice.handleReport`) owns the `DecoderState` and routes results to the `TabletManager` callbacks.
 
-Adding support for a new Wacom variant of an existing family means (all edits happen in `mocktab-kit`):
+Adding support for a new Wacom variant of an existing family means (all edits happen in the `TabletKit/` submodule):
 
 1. Add a row to `WacomDeviceRegistry` (and/or `WacomToolSpec` for new pen tools) with the VID/PID and physical dimensions.
 2. Add a fixture to the matching `*DecoderTests.swift` file under `Tests/TabletKitTests/`.
@@ -122,7 +122,7 @@ The settings window hosts a tab bar; each tab maps to one file in `UI/Panes/`. E
 
 ## Tests
 
-The decoder test suite lives in `mocktab-kit/Tests/TabletKitTests/` and runs via `swift test` from that repo (`cd ../mocktab-kit && swift test`). Each decoder has its own fixture suite; the `CaptureLogParser` replays the logs the in-app `HIDCapture` writes, so regressions surface as diff-able test failures. 259 tests run in well under a second.
+The decoder test suite lives in `TabletKit/Tests/TabletKitTests/` and runs via `swift test` from the submodule (`cd TabletKit && swift test`). Each decoder has its own fixture suite; the `CaptureLogParser` replays the logs the in-app `HIDCapture` writes, so regressions surface as diff-able test failures. The suite (272 tests as of TabletKit 0.2.0) runs in well under a second.
 
 ## Threading rules (the short version)
 
@@ -136,10 +136,10 @@ The decoder test suite lives in `mocktab-kit/Tests/TabletKitTests/` and runs via
 
 | Goal | File to open first |
 |------|--------------------|
-| Add a Wacom model in an existing family | `mocktab-kit/Sources/TabletKit/WacomDeviceRegistry.swift` |
-| Add a new pen tool | `mocktab-kit/Sources/TabletKit/WacomToolSpec.swift` |
-| Add a non-Wacom vendor | `mocktab-kit/Sources/TabletKit/VendorDeviceRegistry.swift` |
-| Add a new protocol family | `mocktab-kit/Sources/TabletKit/Decoders/` + `WacomDeviceRegistry.decoder(for:)` |
+| Add a Wacom model in an existing family | `TabletKit/Sources/TabletKit/WacomDeviceRegistry.swift` |
+| Add a new pen tool | `TabletKit/Sources/TabletKit/WacomToolSpec.swift` |
+| Add a non-Wacom vendor | `TabletKit/Sources/TabletKit/VendorDeviceRegistry.swift` |
+| Add a new protocol family | `TabletKit/Sources/TabletKit/Decoders/` + `WacomDeviceRegistry.decoder(for:)` |
 | Tweak smoothing / click resolution | `MockTab/Driver/InputInjector.swift` (read the header) |
 | Add a settings knob | `Settings/TabletSettings.swift` + relevant pane |
 | Add a new settings pane | `UI/Panes/` + `App/SettingsWindowController.swift` |
