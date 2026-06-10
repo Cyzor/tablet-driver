@@ -503,6 +503,11 @@ final class TabletManager: ObservableObject {
         let onAux: (AuxButtons) -> Void = { [weak self, weak context] aux in
             guard let context else { return }
             context.injector.injectAux(buttons: aux, settings: context.settings)
+            // HID-thread gate: skip the Task hop entirely when no UI is watching.
+            // Ring scrubbing streams aux reports at ~100 Hz; without this gate every
+            // report spawned a main-actor Task whose body did nothing. Same pattern
+            // as the needsHop gate in onTablet; both flags are HID-thread-readable.
+            guard self?.appIsFrontmost == true && self?.infoViewVisible == true else { return }
             Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
             // Update UI only when app is frontmost, state changed, and Info/Buttons tab is visible.
