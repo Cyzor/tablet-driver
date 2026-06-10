@@ -72,13 +72,18 @@ enum DeviceRouter {
     ///   - contexts: Current context table — read-only, used to find LED
     ///     companion parents.
     ///   - callbacks: Event closures to hand to the new driver.
+    /// - Parameter overrideSpec: A spec synthesized outside the Wacom registry
+    ///   (drivable non-Wacom devices, e.g. Xencelabs). When non-nil it takes
+    ///   the place of the `WacomDeviceRegistry` lookup; all interface-routing
+    ///   logic downstream is identical.
     static func route(
         device: IOHIDDevice,
         productID: Int,
         usagePage: Int,
         isBLE: Bool,
         contexts: [Int: DeviceContext],
-        callbacks: Callbacks
+        callbacks: Callbacks,
+        overrideSpec: WacomDeviceSpec? = nil
     ) -> Routed {
 
         // ── ACK-40401 RF wireless dongle ─────────────────────────────────────
@@ -107,8 +112,7 @@ enum DeviceRouter {
         }
 
         // ── Recognised PID with a live decoder ───────────────────────────────
-        if let deviceSpec = WacomDeviceRegistry.spec(for: productID),
-            WacomDeviceRegistry.hasLiveDecoder(for: productID),
+        if let deviceSpec = overrideSpec ?? WacomDeviceRegistry.spec(for: productID),
             deviceSpec.maxX > 0
         {
             // Interface routing depends on parser family:

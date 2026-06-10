@@ -153,7 +153,15 @@ final class TabletManager: ObservableObject {
     // MARK: - Device name helpers
 
     static func deviceName(forProductID pid: Int) -> String {
-        WacomDeviceRegistry.deviceName(forProductID: pid)
+        if let spec = WacomDeviceRegistry.spec(for: pid) { return spec.name }
+        // Drivable non-Wacom devices (Xencelabs is the only vendor on the
+        // allowlist, hence the fixed VID; revisit when a second vendor lands).
+        if let profile = VendorDeviceRegistry.drivableProfile(
+            forVendorID: 0x28BD, productID: pid)
+        {
+            return profile.productName
+        }
+        return WacomDeviceRegistry.deviceName(forProductID: pid)
     }
 
     var connectedDeviceName: String {
@@ -276,20 +284,43 @@ final class TabletManager: ObservableObject {
         let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
         let rawProductID = hidIntProperty(device, kIOHIDProductIDKey)
 
-        // Non-Wacom recognition path: name the device via VendorDeviceRegistry,
-        // log it, and bail out before any Wacom-specific state touches it.
-        // The IOHIDManager match-dict broadens to Huion/Xencelabs/XP-Pen/UC-Logic
-        // VIDs so these calls fire instead of the device being invisible — but
-        // we have no decoder for them yet, so there's nothing more to do here.
+        // Non-Wacom path. Devices on the drivable allowlist (currently the two
+        // Xencelabs Pen Tablets) get a spec synthesized from their vendor
+        // profile and continue through the normal routing below; everything
+        // else is recognition-only — name it, log it, and bail out before any
+        // Wacom-specific state touches it.
+        var vendorSpec: WacomDeviceSpec? = nil
         if vendorID != 0x056A {
-            let profiles = VendorDeviceRegistry.profiles(
+            if let profile = VendorDeviceRegistry.drivableProfile(
                 forVendorID: vendorID, productID: rawProductID)
-            let name = profiles.first?.productName ?? "(unknown product)"
-            let vendorName = profiles.first?.vendor
-                ?? "non-Wacom vendor 0x\(String(vendorID, radix: 16))"
-            let candidateCount = profiles.count
-            logger.info("TabletManager: recognised \(vendorName, privacy: .public) device — \(name, privacy: .public) (VID=0x\(String(vendorID, radix: 16), privacy: .public) PID=0x\(String(rawProductID, radix: 16), privacy: .public), \(candidateCount, privacy: .public) profile candidates) — no decoder support yet")
-            return
+            {
+                vendorSpec = WacomDeviceSpec(
+                    productID: rawProductID,
+                    name: profile.productName,
+                    parser: .xencelabs,
+                    maxX: profile.maxX ?? 0,
+                    maxY: profile.maxY ?? 0,
+                    maxPressure: profile.maxPressure ?? 8191,
+                    buttonCount: profile.auxButtonCount ?? 0,
+                    hasTouchRing: false, hasEraser: true,
+                    seizeUSB: false,
+                    // Tablet-mode handshake; without it the device stays in
+                    // mouse emulation (see Xencelabs-G1D-Feasibility note).
+                    initSteps: [.outputReport([0x02, 0xB0, 0x04])],
+                    confidence: .experimental,
+                    activeWidthMM: profile.activeWidthMM,
+                    activeHeightMM: profile.activeHeightMM)
+                logger.info("TabletManager: drivable \(profile.vendor, privacy: .public) device — \(profile.productName, privacy: .public) (PID=0x\(String(rawProductID, radix: 16), privacy: .public)) — attaching experimental decoder")
+            } else {
+                let profiles = VendorDeviceRegistry.profiles(
+                    forVendorID: vendorID, productID: rawProductID)
+                let name = profiles.first?.productName ?? "(unknown product)"
+                let vendorName = profiles.first?.vendor
+                    ?? "non-Wacom vendor 0x\(String(vendorID, radix: 16))"
+                let candidateCount = profiles.count
+                logger.info("TabletManager: recognised \(vendorName, privacy: .public) device — \(name, privacy: .public) (VID=0x\(String(vendorID, radix: 16), privacy: .public) PID=0x\(String(rawProductID, radix: 16), privacy: .public), \(candidateCount, privacy: .public) profile candidates) — no decoder support yet")
+                return
+            }
         }
 
         let productID = WacomDeviceRegistry.canonicalProductID(for: rawProductID)
@@ -314,7 +345,8 @@ final class TabletManager: ObservableObject {
         }
 
         let context =
-            contexts[productID] ?? DeviceContext(productID: productID, rawProductID: rawProductID)
+            contexts[productID]
+            ?? DeviceContext(productID: productID, rawProductID: rawProductID, vendorID: vendorID)
         contexts[productID] = context
         context.hidDevice = device
 
@@ -634,7 +666,8 @@ final class TabletManager: ObservableObject {
 
         switch DeviceRouter.route(
             device: device, productID: productID, usagePage: usagePage,
-            isBLE: isBLE, contexts: contexts, callbacks: callbacks)
+            isBLE: isBLE, contexts: contexts, callbacks: callbacks,
+            overrideSpec: vendorSpec)
         {
         case .deferred:
             pendingInterfaces[productID, default: []].append(device)

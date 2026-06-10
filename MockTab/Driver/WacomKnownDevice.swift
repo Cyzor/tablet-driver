@@ -128,6 +128,7 @@ final class WacomKnownDevice: TabletDevice {
         case .bamboo:    self.decoder = BambooDecoder()     // CTL/CTH-xxx (experimental)
         case .cintiqV1:  self.decoder = CintiqV1Decoder()   // Cintiq pen-displays
         case .graphire:  self.decoder = GraphireDecoder()   // Graphire/PenPartner (experimental)
+        case .xencelabs: self.decoder = XencelabsDecoder()  // Xencelabs Pen Tablet (experimental)
         case .intuosV1:  self.decoder = IntuosV1Decoder()   // Intuos 1–5, PTK-xxx, PTH-851
         }
 

@@ -143,13 +143,13 @@ final class DeviceContext: ObservableObject, Identifiable {
             .store(in: &snapshotCancellables)
     }
 
-    init(productID: Int, rawProductID: Int? = nil) {
+    init(productID: Int, rawProductID: Int? = nil, vendorID: Int = 0x056A) {
         self.id = productID
         self.productID = productID
         self.rawProductID = rawProductID ?? productID
         let s = TabletSettings(productID: productID)
         self.settings = s
-        self.injector = InputInjector(vendorID: 0x056A, productID: productID)
+        self.injector = InputInjector(vendorID: vendorID, productID: productID)
         self.activeTool = s.activeTool
     }
 }
