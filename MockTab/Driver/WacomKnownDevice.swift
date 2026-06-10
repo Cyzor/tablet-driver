@@ -384,8 +384,31 @@ final class WacomKnownDevice: TabletDevice {
             hidSetReport(device, reportID: reportID, bytes: &bytes,
                          tag: "\(deviceSpec.name) initStep[\(index)]", log: logger)
             executeInitSteps(from: index + 1)
-        case .outputReport:
-            // Not yet wired up (Xencelabs); advance to keep the sequence moving.
+        case .outputReport(var bytes):
+            // Vendor tablet-mode init over the HID output pipe (Xencelabs:
+            // [0x02, 0xB0, 0x04]). Some firmware accepts the raw short write;
+            // some transports reject writes shorter than the declared output
+            // report length. Try raw first, then retry zero-padded to
+            // MaxOutputReportSize so first hardware contact tells us which
+            // path the device takes (see Xencelabs-G1D-Feasibility note).
+            let reportID = CFIndex(bytes[0])
+            let ret = hidSetReport(
+                device, type: kIOHIDReportTypeOutput, reportID: reportID,
+                bytes: &bytes, tag: "\(deviceSpec.name) initStep[\(index)] output",
+                severity: .bestEffort, log: logger)
+            if ret != kIOReturnSuccess {
+                let declared = hidIntProperty(device, kIOHIDMaxOutputReportSizeKey)
+                if declared > bytes.count {
+                    var padded = bytes + [UInt8](repeating: 0, count: declared - bytes.count)
+                    hidSetReport(
+                        device, type: kIOHIDReportTypeOutput, reportID: reportID,
+                        bytes: &padded,
+                        tag: "\(deviceSpec.name) initStep[\(index)] output padded to \(declared)",
+                        log: logger)
+                } else {
+                    logger.error("\(self.deviceSpec.name, privacy: .public): initStep[\(index, privacy: .public)] output report failed and no longer declared length to pad to")
+                }
+            }
             executeInitSteps(from: index + 1)
         case .delay(let seconds):
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
