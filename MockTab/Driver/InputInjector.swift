@@ -1058,9 +1058,13 @@ final class InputInjector {
     }
 
     private func currentCursorPosition() -> CGPoint {
-        let loc = NSEvent.mouseLocation
-        let screenH = CGFloat(CGDisplayPixelsHigh(CGMainDisplayID()))
-        return CGPoint(x: loc.x, y: screenH - loc.y)
+        // CGEvent(source: nil).location is the cursor in CG global (top-left
+        // origin) coordinates and is safe off the main thread — unlike
+        // NSEvent.mouseLocation (AppKit, main-thread) which this previously
+        // used with a manual Y-flip against the main display's height (wrong
+        // on multi-display layouts where a secondary screen extends above or
+        // below the primary).
+        CGEvent(source: nil)?.location ?? .zero
     }
 
     // MARK: - Click resolution
