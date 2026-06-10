@@ -386,7 +386,7 @@
 			);
 			mainGroup = AC000099;
 			packageReferences = (
-				05A04B802FCA009F00D64F90 /* XCLocalSwiftPackageReference "../mocktab-kit" */,
+				05A04B802FCA009F00D64F90 /* XCLocalSwiftPackageReference "TabletKit" */,
 			);
 			productRefGroup = AC000010 /* Products */;
 			projectDirPath = "";
@@ -694,9 +694,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		05A04B802FCA009F00D64F90 /* XCLocalSwiftPackageReference "../mocktab-kit" */ = {
+		05A04B802FCA009F00D64F90 /* XCLocalSwiftPackageReference "TabletKit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "../mocktab-kit";
+			relativePath = TabletKit;
 		};
 /* End XCLocalSwiftPackageReference section */
 

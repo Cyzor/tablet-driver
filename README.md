@@ -108,7 +108,15 @@ let results = decoder.decode(report: ptr, length: len, spec: spec, state: &state
 
 **Stability.** The public API surface (see [CHANGELOG.md](https://github.com/Cyzor/TabletKit/blob/main/CHANGELOG.md)) is at 0.1 — workable but pre-1.0. Expect breaking changes until the first vendor outside Wacom lands and with further protocol validation.
 
-**Tests.** TabletKit's 259-test suite runs from its own repo (`cd ../mocktab-kit && swift test`).
+**Checkout.** TabletKit is included as a git submodule at `TabletKit/`, pinned to the commit MockTab builds against. Clone with:
+
+```sh
+git clone --recurse-submodules https://github.com/Cyzor/tablet-driver.git
+```
+
+(For an existing clone: `git submodule update --init`.) The submodule is a full TabletKit checkout — decoder work happens there and is committed/pushed to the TabletKit repo directly.
+
+**Tests.** TabletKit's test suite runs from the submodule (`cd TabletKit && swift test`).
 
 ---
 

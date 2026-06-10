@@ -1,0 +1,4 @@
+[submodule "TabletKit"]
+	path = TabletKit
+	url = https://github.com/Cyzor/TabletKit.git
+	branch = main
