@@ -1694,6 +1694,14 @@ final class InputInjector {
                 mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: .right)
             {
+                // Match OTD's event format: subtype=1 + devID + ptBtns, pressure explicitly 0.
+                // CGEvent auto-sets mouseEventPressure=1.0 on mouseDown; zeroing it prevents
+                // apps like QGIS, SketchUp from treating the button press as a tip contact.
+                e.setIntegerValueField(.mouseEventSubtype, value: 1)
+                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                e.setIntegerValueField(.tabletEventPointButtons, value: down ? 2 : 0)  // bit 1 = right
+                e.setDoubleValueField(.tabletEventPointPressure, value: 0.0)
+                e.setDoubleValueField(.mouseEventPressure, value: 0.0)
                 e.flags = currentEventFlags
                 finalizeAndPost(e)
             }
