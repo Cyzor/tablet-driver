@@ -125,7 +125,7 @@ final class WacomKnownDevice: TabletDevice {
         case .dtus:      self.decoder = DTUSDecoder()        // DTK-1651, DTU-1031/1141 (experimental)
         case .dtu:       self.decoder = DTUDecoder()         // DTU-1631, DTU-2231 (experimental)
         case .intuos3:   self.decoder = Intuos3Decoder()    // PTZ-xxx (2003–2006)
-        case .bamboo:    self.decoder = BambooDecoder()     // CTL/CTH-xxx (stub)
+        case .bamboo:    self.decoder = BambooDecoder()     // CTL/CTH-xxx (experimental)
         case .cintiqV1:  self.decoder = CintiqV1Decoder()   // Cintiq pen-displays
         case .graphire:  self.decoder = GraphireDecoder()   // Graphire/PenPartner (experimental)
         case .intuosV1:  self.decoder = IntuosV1Decoder()   // Intuos 1–5, PTK-xxx, PTH-851
@@ -244,7 +244,7 @@ final class WacomKnownDevice: TabletDevice {
         case .intuosV2 where !isBluetooth:
             // USB ring LED: reports 0x31 (brightness) + 0x32 (slot selection), both sent
             // to the primary device. Format confirmed by USB capture against official
-            // Wacom driver (6.3.46-2) on PTH-660 (PID 0x0357) and PTH-860 (PID 0x0356):
+            // Wacom driver (6.3.46-2) on PTH-660 (PID 0x0357) and PTH-860 (PID 0x0358):
             //   Report 0x31 (6 bytes): [0x31, 0x46, 0x46, 0x46, 0x46, 0x46]
             //     — sets brightness for all ring LED channels (0x46 = 70, max observed)
             //   Report 0x32 (3 bytes): [0x32, 0x46, slot]
