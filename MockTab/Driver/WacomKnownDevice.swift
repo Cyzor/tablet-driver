@@ -67,6 +67,9 @@ final class WacomKnownDevice: TabletDevice {
     // On link-lost the gate closes again so stale reports from a dropped connection are not forwarded.
     private let isWireless: Bool
     private var wirelessReady: Bool = false
+    /// PID of the dongle's paired tablet whose spec is currently applied.
+    /// 0 until the first 0x80 status report identifies the tablet.
+    private var pairedPID: Int = 0
     /// True after the first .active status for this RF link session.
     /// Prevents resending feature init on subsequent status reports.
     private var wirelessLinkConfirmed: Bool = false
@@ -466,7 +469,7 @@ final class WacomKnownDevice: TabletDevice {
         // use its spec for accurate coordinate ranges (instead of fallback guesses).
         if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {
             let pairedTabletPID = Int(UInt16(report[7]) | UInt16(report[6]) << 8)  // Big-endian
-            if pairedTabletPID > 0,
+            if pairedTabletPID > 0, pairedTabletPID != pairedPID,
                 let pairedSpec = WacomDeviceRegistry.spec(for: pairedTabletPID),
                 pairedSpec.maxX > 0 && pairedSpec.maxY > 0
             {
@@ -476,9 +479,14 @@ final class WacomKnownDevice: TabletDevice {
                     maxY: pairedSpec.maxY,
                     maxPressure: pairedSpec.maxPressure,
                     buttonCount: pairedSpec.buttonCount,
+                    hasTilt: pairedSpec.hasTilt,
+                    hasDualRings: pairedSpec.hasDualRings,
+                    isPenDisplay: pairedSpec.isPenDisplay,
+                    ringSlotCount: pairedSpec.ringSlotCount,
                     hasFingerTouch: pairedSpec.hasFingerTouch,
                     maxTouchContacts: pairedSpec.maxTouchContacts)
-                //                print("\(deviceSpec.name): using paired tablet spec (PID 0x\(String(pairedTabletPID, radix: 16, uppercase: true))) — maxX=\(spec.maxX) maxY=\(spec.maxY) maxPressure=\(spec.maxPressure)")
+                pairedPID = pairedTabletPID
+                logger.info("\(name, privacy: .public): paired tablet 0x\(String(pairedTabletPID, radix: 16, uppercase: true), privacy: .public) — maxX=\(pairedSpec.maxX, privacy: .public) maxY=\(pairedSpec.maxY, privacy: .public) maxPressure=\(pairedSpec.maxPressure, privacy: .public)")
             }
         }
 
