@@ -47,6 +47,26 @@ final class WacomKnownDevice: TabletDevice {
     private var reportBuffer: [UInt8]
     private var isBluetooth = false
 
+    // ── Callback-context lifetime ─────────────────────────────────────────────
+    // One retain backs every IOHIDDeviceRegisterInputReportCallback context for
+    // this driver. Created lazily at first registration, released on HIDThread
+    // after close() has unregistered every interface — the release runs behind
+    // any in-flight callback on the same run loop, so use-after-free is
+    // impossible. Previously each registration called passRetained with no
+    // balancing release, leaking the driver (and its buffers) on every
+    // connect/disconnect cycle.
+    private var selfRetain: Unmanaged<WacomKnownDevice>?
+    /// Every interface handed to registerDevice(), so close() can unregister
+    /// them all (it previously only handled the primary and one secondary).
+    private var registeredInterfaces: [IOHIDDevice] = []
+
+    private func callbackContext() -> UnsafeMutableRawPointer {
+        if let retain = selfRetain { return retain.toOpaque() }
+        let retain = Unmanaged.passRetained(self)
+        selfRetain = retain
+        return retain.toOpaque()
+    }
+
     // ── LED companion interface ───────────────────────────────────────────────
     // Some composite devices (e.g. DTK-2400) expose LED control on a separate
     // USB interface with its own PID. That IOHIDDevice is handed to us via
@@ -178,10 +198,9 @@ final class WacomKnownDevice: TabletDevice {
             queryHardwareSerial()
         }
 
-        let ctx = Unmanaged.passRetained(self).toOpaque()
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count,
-            WacomKnownDevice.reportCallback, ctx)
+            WacomKnownDevice.reportCallback, callbackContext())
         IOHIDDeviceScheduleWithRunLoop(
             device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
     }
@@ -190,10 +209,10 @@ final class WacomKnownDevice: TabletDevice {
     /// Used for multi-interface devices (e.g. ACK-40401 wireless dongle) that
     /// enumerate separate IOHIDDevices for each interface (digitizer, wireless status, etc).
     func registerDevice(_ device: IOHIDDevice) {
-        let ctx = Unmanaged.passRetained(self).toOpaque()
+        registeredInterfaces.append(device)
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count,
-            WacomKnownDevice.reportCallback, ctx)
+            WacomKnownDevice.reportCallback, callbackContext())
         IOHIDDeviceScheduleWithRunLoop(
             device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
         let transport =
@@ -226,11 +245,26 @@ final class WacomKnownDevice: TabletDevice {
             IOHIDDeviceClose(led, IOOptionBits(kIOHIDOptionsTypeNone))
             ledDevice = nil
         }
-        if let sec = secondaryDevice {
+        // Unregister every secondary interface (registerDevice may have been
+        // called more than once for multi-interface devices).
+        for sec in registeredInterfaces {
             IOHIDDeviceUnscheduleFromRunLoop(sec, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
             IOHIDDeviceRegisterInputReportCallback(sec, &reportBuffer, reportBuffer.count, nil, nil)
+        }
+        registeredInterfaces.removeAll()
+        if let sec = secondaryDevice {
             IOHIDDeviceClose(sec, IOOptionBits(kIOHIDOptionsTypeNone))
             secondaryDevice = nil
+        }
+        // Balance the callback-context retain. Deferred to HIDThread so it runs
+        // after any callback already executing there; nothing can re-enter the
+        // callbacks afterwards because every registration was cleared above.
+        if let retain = selfRetain {
+            selfRetain = nil
+            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+                retain.release()
+            }
+            CFRunLoopWakeUp(HIDThread.shared.runLoop)
         }
     }
 

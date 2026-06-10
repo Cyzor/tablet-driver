@@ -158,6 +158,9 @@ final class WacomFallbackDevice: TabletDevice {
 
     // MARK: - Open / Close
 
+    /// Callback-context retain; created in open(), released in close().
+    private var selfRetain: Unmanaged<WacomFallbackDevice>?
+
     func open() {
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
@@ -185,10 +188,15 @@ final class WacomFallbackDevice: TabletDevice {
 
         probeDeadline = CFAbsoluteTimeGetCurrent() + 30.0
 
-        let ctx = Unmanaged.passRetained(self).toOpaque()
+        // Retain backing the callback context; balanced in close() after the
+        // callback is unregistered. Both run on the scheduling thread, so an
+        // in-flight callback cannot outlive the release. (Previously leaked —
+        // one immortal driver per connect/disconnect cycle.)
+        let retain = Unmanaged.passRetained(self)
+        selfRetain = retain
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count,
-            WacomFallbackDevice.reportCallback, ctx)
+            WacomFallbackDevice.reportCallback, retain.toOpaque())
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
 
@@ -205,6 +213,8 @@ final class WacomFallbackDevice: TabletDevice {
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        selfRetain?.release()
+        selfRetain = nil
 
         if sampleCount > 0 {
             let t = tag

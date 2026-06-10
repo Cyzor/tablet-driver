@@ -40,6 +40,9 @@ final class WacomProbeDevice: TabletDevice {
         self.device = device
     }
 
+    /// Callback-context retain; created in open(), released in close().
+    private var selfRetain: Unmanaged<WacomProbeDevice>?
+
     func open() {
         let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
         guard ret == kIOReturnSuccess else {
@@ -52,10 +55,15 @@ final class WacomProbeDevice: TabletDevice {
         var init1: [UInt8] = [0x02, 0x02]
         hidSetReport(device, reportID: 0x02, bytes: &init1, tag: "probe featureInit", log: probeLog)
 
-        let ctx = Unmanaged.passRetained(self).toOpaque()
+        // Retain backing the callback context; balanced in close() after the
+        // callback is unregistered. Both run on the scheduling thread, so an
+        // in-flight callback cannot outlive the release. (Previously leaked —
+        // one immortal driver per connect/disconnect cycle.)
+        let retain = Unmanaged.passRetained(self)
+        selfRetain = retain
         IOHIDDeviceRegisterInputReportCallback(
             device, &reportBuffer, reportBuffer.count,
-            WacomProbeDevice.reportCB, ctx)
+            WacomProbeDevice.reportCB, retain.toOpaque())
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(),
             RunLoop.Mode.common.rawValue as CFString)
@@ -70,6 +78,8 @@ final class WacomProbeDevice: TabletDevice {
             RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        selfRetain?.release()
+        selfRetain = nil
         probeLog.notice("WacomProbe: final maxima — X=\(self.maxX, privacy: .public) Y=\(self.maxY, privacy: .public) P=\(self.maxP, privacy: .public) (from \(self.sampleCount, privacy: .public) samples)")
     }
 
