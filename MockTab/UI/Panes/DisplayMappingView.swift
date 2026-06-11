@@ -70,7 +70,7 @@ struct DisplayMappingView: View {
             radioRow("Primary display", tag: 0)
                 .help("Map the tablet to your main display.")
             ForEach(displays, id: \.listIndex) { info in
-                radioRow(info.pickerLabel, tag: info.listIndex)
+                radioRowContent(Text(verbatim: info.pickerLabel), tag: info.listIndex, disabled: false)
                     .help(String(localized: "Map the tablet to \(info.name) only.", comment: "Help: specific display mapping"))
             }
             radioRow("Toggle between displays", tag: modeToggle, disabled: displays.count <= 1)
@@ -104,11 +104,6 @@ struct DisplayMappingView: View {
 
     @ViewBuilder
     private func radioRow(_ label: LocalizedStringKey, tag: Int, disabled: Bool = false) -> some View {
-        radioRowContent(Text(label), tag: tag, disabled: disabled)
-    }
-
-    @ViewBuilder
-    private func radioRow(_ label: String, tag: Int, disabled: Bool = false) -> some View {
         radioRowContent(Text(label), tag: tag, disabled: disabled)
     }
 
