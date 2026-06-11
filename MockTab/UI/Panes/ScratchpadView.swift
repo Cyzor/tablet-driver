@@ -96,7 +96,7 @@ struct ScratchpadView: View {
 
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(LocalizedStringKey("Test Area"))
+            Text("Test Area")
                 .appFont(.headline)
 
             Text(
@@ -140,7 +140,7 @@ struct ScratchpadView: View {
 
     private var pressureRow: some View {
         HStack(spacing: 10) {
-            Text(LocalizedStringKey("Pressure"))
+            Text("Pressure")
                 .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -166,18 +166,17 @@ struct ScratchpadView: View {
 
             Spacer()
 
-            Button(LocalizedStringKey("Clear")) {
+            Button("Clear") {
                 clearID += 1
             }
-            .help(LocalizedStringKey("Erase all strokes from the test canvas"))
-//            .buttonStyle(.borderless)
+            .help("Erase all strokes from the test canvas")
             .controlSize(.small)
         }
     }
 
     private var tiltRow: some View {
         HStack(spacing: 10) {
-            Text(LocalizedStringKey("Tilt"))
+            Text("Tilt")
                 .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -185,7 +184,7 @@ struct ScratchpadView: View {
 
             TiltVisualizerCanvas(tabletManager: tabletManager)
                 .frame(width: 100, height: 100)
-                .help(LocalizedStringKey("Live tilt direction and magnitude from the active pen."))
+                .help("Live tilt direction and magnitude from the active pen.")
 
             Spacer()
         }
@@ -193,7 +192,7 @@ struct ScratchpadView: View {
 
     private var touchRow: some View {
         HStack(spacing: 10) {
-            Text(LocalizedStringKey("Touch"))
+            Text("Touch")
                 .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -204,7 +203,7 @@ struct ScratchpadView: View {
                 maxContacts: spec?.maxTouchContacts ?? 10
             )
             .frame(width: 100, height: 100)
-            .help(LocalizedStringKey("Live finger-touch contacts from the active device's touch surface."))
+            .help("Live finger-touch contacts from the active device's touch surface.")
 
             Spacer()
         }

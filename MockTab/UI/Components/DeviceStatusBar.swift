@@ -4,6 +4,43 @@
 
 import SwiftUI
 
+// MARK: - StatusCaptionLabel
+
+/// A compact caption line: green/grey presence dot plus a name.  Shared
+/// shape behind `DeviceNameLabel` and `ToolNameLabel`.
+private struct StatusCaptionLabel: View {
+    let name: String
+    let isLive: Bool
+
+    @Environment(\.accessibilityDifferentiateWithoutColor)
+    private var differentiateWithoutColor
+
+    var body: some View {
+        HStack(spacing: 5) {
+            statusDot
+            Text(name)
+                .appFont(.settingsLabel)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var statusDot: some View {
+        if differentiateWithoutColor {
+            // Filled-vs-hollow glyph conveys state without colour for users
+            // who can't reliably distinguish the green/grey fill.
+            Image(systemName: isLive ? "circle.fill" : "circle")
+                .font(.system(size: 6))
+                .foregroundStyle(isLive ? Color.green : Color.secondary.opacity(0.5))
+                .accessibilityHidden(true)
+        } else {
+            Circle()
+                .fill(isLive ? Color.green : Color.secondary.opacity(0.5))
+                .frame(width: 6, height: 6)
+        }
+    }
+}
+
 // MARK: - DeviceNameLabel
 
 /// A compact caption line showing the active device's user-assigned nickname
@@ -13,32 +50,8 @@ struct DeviceNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
 
-    @Environment(\.accessibilityDifferentiateWithoutColor)
-    private var differentiateWithoutColor
-
     var body: some View {
-        HStack(spacing: 5) {
-            statusDot(on: tabletManager.isConnected)
-            Text(displayName)
-                .appFont(.settingsLabel)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private func statusDot(on: Bool) -> some View {
-        if differentiateWithoutColor {
-            // Filled-vs-hollow glyph conveys state without colour for users
-            // who can't reliably distinguish the green/grey fill.
-            Image(systemName: on ? "circle.fill" : "circle")
-                .font(.system(size: 6))
-                .foregroundStyle(on ? Color.green : Color.secondary.opacity(0.5))
-                .accessibilityHidden(true)
-        } else {
-            Circle()
-                .fill(on ? Color.green : Color.secondary.opacity(0.5))
-                .frame(width: 6, height: 6)
-        }
+        StatusCaptionLabel(name: displayName, isLive: tabletManager.isConnected)
     }
 
     private var displayName: String {
@@ -60,30 +73,8 @@ struct ToolNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
 
-    @Environment(\.accessibilityDifferentiateWithoutColor)
-    private var differentiateWithoutColor
-
     var body: some View {
-        HStack(spacing: 5) {
-            statusDot(on: tabletManager.activeToolID != nil)
-            Text(displayName)
-                .appFont(.settingsLabel)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private func statusDot(on: Bool) -> some View {
-        if differentiateWithoutColor {
-            Image(systemName: on ? "circle.fill" : "circle")
-                .font(.system(size: 6))
-                .foregroundStyle(on ? Color.green : Color.secondary.opacity(0.5))
-                .accessibilityHidden(true)
-        } else {
-            Circle()
-                .fill(on ? Color.green : Color.secondary.opacity(0.5))
-                .frame(width: 6, height: 6)
-        }
+        StatusCaptionLabel(name: displayName, isLive: tabletManager.activeToolID != nil)
     }
 
     private var displayName: String {
@@ -178,28 +169,15 @@ struct DeviceStatusBar: View {
 
     private var batteryItem: (String, String)? {
         guard let context = context, let pct = context.batteryPercent else { return nil }
-        let sym = batterySymbol(pct: pct, charging: context.batteryCharging)
+        let sym = BatteryIndicator.symbolName(pct: pct, charging: context.batteryCharging)
         let label = context.batteryCharging ? "\(pct)% ⚡" : "\(pct)%"
         return (sym, label)
     }
 
     private var batteryTint: Color {
         guard let context = context, let pct = context.batteryPercent else { return .secondary }
-        if context.batteryCharging { return .green }
-        if pct < 20 { return .red }
-        if pct < 50 { return .orange }
-        return .secondary
-    }
-
-    private func batterySymbol(pct: Int, charging: Bool) -> String {
-        guard !charging else { return "battery.100percent.bolt" }
-        switch pct {
-        case 0 ..< 13:  return "battery.0percent"
-        case 13 ..< 38: return "battery.25percent"
-        case 38 ..< 63: return "battery.50percent"
-        case 63 ..< 88: return "battery.75percent"
-        default:        return "battery.100percent"
-        }
+        // Neutral when healthy — the slim footer shouldn't draw the eye.
+        return BatteryIndicator.tint(pct: pct, charging: context.batteryCharging, healthy: .secondary)
     }
 
     private var toolName: String {

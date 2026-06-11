@@ -39,28 +39,24 @@ struct TouchView: View {
     private var maxTouchContacts: Int { spec?.maxTouchContacts ?? 0 }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Form {
-                if hasFingerTouch {
-                    enableSection
-                    pointerSection
-                    if maxTouchContacts > 1 {
-                        scrollSection
-                    }
-                    areaSection
-                    disclaimerSection
-                } else {
-                    Section {
-                        Text(LocalizedStringKey("The connected tablet does not have a capacitive touch surface."))
-                            .foregroundStyle(.secondary)
-                    }
+        SettingsPane(
+            settings: settings, tabletManager: tabletManager, registry: registry,
+            productID: productID
+        ) {
+            if hasFingerTouch {
+                enableSection
+                pointerSection
+                if maxTouchContacts > 1 {
+                    scrollSection
+                }
+                areaSection
+                disclaimerSection
+            } else {
+                Section {
+                    Text("The connected tablet does not have a capacitive touch surface.")
+                        .foregroundStyle(.secondary)
                 }
             }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            DeviceStatusBar(
-                settings: settings, tabletManager: tabletManager,
-                registry: registry, productID: productID ?? 0)
         }
     }
 
@@ -71,11 +67,13 @@ struct TouchView: View {
             Toggle(
                 String(localized: "Enable finger touch",
                        comment: "Touch pane: master toggle for capacitive touch input"),
-                isOn: $settings.touchEnabled)
-                .help(LocalizedStringKey("When off, the tablet's touch surface is ignored. Pen input is unaffected."))
+                isOn: settings.recordingBinding(
+                    "Touch",
+                    get: { settings.touchEnabled },
+                    set: { settings.touchEnabled = $0 }))
+                .help("When off, the tablet's touch surface is ignored. Pen input is unaffected.")
         } header: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey("Touch")).appFont(.headline)
+            PaneSectionHeader("Touch") {
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
@@ -86,22 +84,30 @@ struct TouchView: View {
             Toggle(
                 String(localized: "Tap to click",
                        comment: "Touch pane: brief tap posts a left click"),
-                isOn: $settings.tapToClick)
+                isOn: settings.recordingBinding(
+                    "Tap to Click",
+                    get: { settings.tapToClick },
+                    set: { settings.tapToClick = $0 }))
                 .disabled(!settings.touchEnabled)
-                .help(LocalizedStringKey("A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks."))
+                .help("A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks.")
 
             HStack {
-                Text(LocalizedStringKey("Cursor speed"))
-                Slider(value: $settings.touchSensitivity, in: 0.25...4.0)
+                Text("Cursor speed")
+                Slider(
+                    value: settings.recordingBinding(
+                        "Cursor Speed",
+                        get: { settings.touchSensitivity },
+                        set: { settings.touchSensitivity = $0 }),
+                    in: 0.25...4.0)
                     .disabled(!settings.touchEnabled)
                 Text(String(format: "%.2f×", settings.touchSensitivity))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
                     .frame(width: 56, alignment: .trailing)
             }
-            .help(LocalizedStringKey("Multiplier for cursor motion from finger drag. 1.00× is the natural mapping through the touch area; raise to move faster across the screen, lower for finer control."))
+            .help("Multiplier for cursor motion from finger drag. 1.00× is the natural mapping through the touch area; raise to move faster across the screen, lower for finer control.")
         } header: {
-            Text(LocalizedStringKey("Pointer")).appFont(.headline)
+            Text("Pointer").appFont(.headline)
         }
     }
 
@@ -110,24 +116,30 @@ struct TouchView: View {
             Toggle(
                 String(localized: "Two-finger scroll",
                        comment: "Touch pane: enable two-finger scroll-wheel emulation"),
-                isOn: $settings.twoFingerScroll)
+                isOn: settings.recordingBinding(
+                    "Two-Finger Scroll",
+                    get: { settings.twoFingerScroll },
+                    set: { settings.twoFingerScroll = $0 }))
                 .disabled(!settings.touchEnabled)
-                .help(LocalizedStringKey("Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview."))
+                .help("Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview.")
 
             Toggle(
                 String(localized: "Reverse direction",
                        comment: "Touch pane: reverse scroll direction (off = content follows fingers)"),
-                isOn: $settings.reverseScrollDirection)
+                isOn: settings.recordingBinding(
+                    "Scroll Direction",
+                    get: { settings.reverseScrollDirection },
+                    set: { settings.reverseScrollDirection = $0 }))
                 .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
-                .help(LocalizedStringKey("On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers."))
+                .help("On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers.")
         } header: {
-            Text(LocalizedStringKey("Scrolling")).appFont(.headline)
+            Text("Scrolling").appFont(.headline)
         }
     }
 
     private var areaSection: some View {
         Section {
-            Text(LocalizedStringKey("Define the active surface area for touch input.  Not available on all devices."))
+            Text("Define the active surface area for touch input.  Not available on all devices.")
                 .appFont(.callout)
                 .foregroundStyle(.secondary)
                 .listRowBackground(Color.clear)
@@ -144,10 +156,16 @@ struct TouchView: View {
                 Spacer()
                 Button(String(localized: "Reset to full surface",
                               comment: "Touch pane: reset the touch area to cover the entire touch surface")) {
+                    let old = (settings.touchAreaX, settings.touchAreaY,
+                               settings.touchAreaWidth, settings.touchAreaHeight)
                     settings.touchAreaX = 0
                     settings.touchAreaY = 0
                     settings.touchAreaWidth = 1
                     settings.touchAreaHeight = 1
+                    settings.record("Touch Area Reset") {
+                        (settings.touchAreaX, settings.touchAreaY,
+                         settings.touchAreaWidth, settings.touchAreaHeight) = old
+                    }
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -156,7 +174,7 @@ struct TouchView: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         } header: {
-            Text(LocalizedStringKey("Touch Area")).appFont(.headline)
+            Text("Touch Area").appFont(.headline)
         }
     }
 
@@ -205,10 +223,10 @@ struct TouchView: View {
                     .padding(.top, 2)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey("System gestures not supported"))
+                    Text("System gestures not supported")
                         .appFont(.subheadline)
                         .fontWeight(.semibold)
-                    Text(LocalizedStringKey("Mission Control, Spaces, Launchpad, and other system-wide multi-touch gestures require Wacom's official driver. macOS does not let third-party apps post the native trackpad events those gestures depend on."))
+                    Text("Mission Control, Spaces, Launchpad, and other system-wide multi-touch gestures require Wacom's official driver. macOS does not let third-party apps post the native trackpad events those gestures depend on.")
                         .appFont(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

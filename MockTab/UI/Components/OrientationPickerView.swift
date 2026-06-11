@@ -89,20 +89,20 @@ extension TabletOrientation {
     /// Short label shown next to each radio button.
     var pickerLabel: LocalizedStringKey {
         switch self {
-        case .landscape:        return LocalizedStringKey("Landscape")
-        case .portrait:         return LocalizedStringKey("Portrait")
-        case .landscapeFlipped: return LocalizedStringKey("Landscape Flipped")
-        case .portraitFlipped:  return LocalizedStringKey("Portrait Flipped")
+        case .landscape:        return "Landscape"
+        case .portrait:         return "Portrait"
+        case .landscapeFlipped: return "Landscape Flipped"
+        case .portraitFlipped:  return "Portrait Flipped"
         }
     }
 
     /// Tooltip shown on hover.
     var helpText: LocalizedStringKey {
         switch self {
-        case .landscape:        return LocalizedStringKey("Standard orientation — tablet's long edge is horizontal.")
-        case .portrait:         return LocalizedStringKey("Rotate the active surface 90° clockwise. Hold the tablet in portrait orientation.")
-        case .landscapeFlipped: return LocalizedStringKey("Flip 180° — useful for left-handed use or reversed cable routing.")
-        case .portraitFlipped:  return LocalizedStringKey("Rotate the active surface 90° counter-clockwise.")
+        case .landscape:        return "Standard orientation — tablet's long edge is horizontal."
+        case .portrait:         return "Rotate the active surface 90° clockwise. Hold the tablet in portrait orientation."
+        case .landscapeFlipped: return "Flip 180° — useful for left-handed use or reversed cable routing."
+        case .portraitFlipped:  return "Rotate the active surface 90° counter-clockwise."
         }
     }
 }

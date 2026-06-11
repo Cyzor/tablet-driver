@@ -537,56 +537,19 @@ struct ButtonMappingView: View {
         return min(max(count, 0), 16)
     }
 
-    // MARK: - Recording Binding Helper
-
-    /// Creates a binding that automatically registers undo for any change.
-    /// The `owner` should be the object that has the undoManager (tool or settings).
-    private func recordingBinding<T>(
-        _ name: String,
-        owner: AnyObject,
-        get: @escaping () -> T,
-        set: @escaping (T) -> Void
-    ) -> Binding<T> {
-        // Always register undo against settings — its undoManager is reliably wired
-        // by SettingsWindowController.  Routing through toolOwner.record() silently
-        // failed whenever tool.undoManager was nil (e.g. before proximity entry).
-        // ToolSettings mutations don't propagate to settings.objectWillChange
-        // automatically, so send explicitly for tool-owned bindings.
-        let settings = self.settings
-        let isToolOwned = owner is ToolSettings
-        return Binding(
-            get: get,
-            set: { newValue in
-                let oldValue = get()
-                set(newValue)
-                if isToolOwned { settings.objectWillChange.send() }
-                settings.record(name) {
-                    set(oldValue)
-                    if isToolOwned { settings.objectWillChange.send() }
-                }
-            }
-        )
-    }
-
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            AppOverrideBar(
-                settings: settings, domainKeys: AppOverrideBar.buttonKeys, productID: productID)
-            Form {
-                penButtonsSection(lb: liveButtons)
-                if hasDualRings {
-                    dualSidedSection(lb: liveButtons)
-                } else {
-                    singleSidedSection(lb: liveButtons)
-                }
+        SettingsPane(
+            settings: settings, tabletManager: tabletManager, registry: registry,
+            productID: productID, overrideKeys: AppOverrideBar.buttonKeys
+        ) {
+            penButtonsSection(lb: liveButtons)
+            if hasDualRings {
+                dualSidedSection(lb: liveButtons)
+            } else {
+                singleSidedSection(lb: liveButtons)
             }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            DeviceStatusBar(
-                settings: settings, tabletManager: tabletManager, registry: registry,
-                productID: productID ?? 0)
         }
         .background(
             LiveResizeDetector(isResizing: $isLiveResizing)
@@ -687,8 +650,7 @@ struct ButtonMappingView: View {
                 .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
                 .listRowBackground(Color.clear)
         } header: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey(isMouse ? "Mouse Buttons" : "Pen Buttons")).appFont(.headline)
+            PaneSectionHeader(isMouse ? "Mouse Buttons" : "Pen Buttons") {
                 ToolNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
@@ -708,19 +670,18 @@ struct ButtonMappingView: View {
                     lb: lb)
             }
         } header: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey("Express Keys")).appFont(.headline)
+            PaneSectionHeader("Express Keys") {
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
 
         if hasTouchRing {
-            Section(LocalizedStringKey("Touch Ring")) {
+            Section("Touch Ring") {
                 buttonRow(
                     String(localized: "Center", comment: "Touch ring center button row label"),
                     isActive: lb.touchRingButtonDown,
-                    binding: recordingBinding(
-                        "Touch Ring Button", owner: settings,
+                    binding: settings.recordingBinding(
+                        "Touch Ring Button",
                         get: { settings.touchRingButtonBinding },
                         set: { settings.touchRingButtonBinding = $0 }),
                     ringSlotCount: spec?.ringSlotCount ?? 4)
@@ -734,7 +695,7 @@ struct ButtonMappingView: View {
         }
 
         if hasTouchStrips {
-            Section(LocalizedStringKey("Touch Strips")) {
+            Section("Touch Strips") {
                 touchRingSlotsSection(
                     String(localized: "Left", comment: "Left touch strip row label"),
                     isActive: lb.touchStrip1Active)
@@ -763,13 +724,12 @@ struct ButtonMappingView: View {
                         comment: "Toggle button N label, e.g. 'Button 1'"), lb: lb)
             }
         } header: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey("Toggle Buttons — Left")).appFont(.headline)
+            PaneSectionHeader("Toggle Buttons — Left") {
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
 
-        Section(LocalizedStringKey("Express Keys — Left")) {
+        Section("Express Keys — Left") {
             ForEach(3..<8, id: \.self) { i in
                 expressKeyRow(
                     index: i,
@@ -778,7 +738,7 @@ struct ButtonMappingView: View {
             }
         }
 
-        Section(LocalizedStringKey("Touch Ring — Left")) {
+        Section("Touch Ring — Left") {
             touchRingSlotsSection(
                 String(
                     localized: "Touch Ring", comment: "Section header / row label for touch ring"),
@@ -786,7 +746,7 @@ struct ButtonMappingView: View {
             touchRingDiagramRow
         }
 
-        Section(LocalizedStringKey("Toggle Buttons — Right")) {
+        Section("Toggle Buttons — Right") {
             ForEach(8..<11, id: \.self) { i in
                 expressKeyRow(
                     index: i,
@@ -796,7 +756,7 @@ struct ButtonMappingView: View {
             }
         }
 
-        Section(LocalizedStringKey("Express Keys — Right")) {
+        Section("Express Keys — Right") {
             ForEach(11..<16, id: \.self) { i in
                 expressKeyRow(
                     index: i,
@@ -805,7 +765,7 @@ struct ButtonMappingView: View {
             }
         }
 
-        Section(LocalizedStringKey("Touch Ring — Right")) {
+        Section("Touch Ring — Right") {
             touchRingSlotsSection(
                 String(
                     localized: "Touch Ring", comment: "Section header / row label for touch ring"),
@@ -821,8 +781,8 @@ struct ButtonMappingView: View {
         buttonRow(
             label,
             isActive: lb.expressKeys[index],
-            binding: recordingBinding(
-                "Express Key \(index + 1)", owner: settings,
+            binding: settings.recordingBinding(
+                "Express Key \(index + 1)",
                 get: { settings.expressKeyBindings[index] },
                 set: { newValue in
                     var updated = settings.expressKeyBindings
@@ -1002,7 +962,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                         Image(systemName: "arrow.clockwise")
                             .appFont(.caption2)
                             .foregroundStyle(.secondary)
-                            .accessibilityLabel(LocalizedStringKey("Clockwise"))
+                            .accessibilityLabel("Clockwise")
                         ButtonBindingControl(
                             binding: cwBinding, compact: true,
                             ringSlotCount: ringSlotCount)
@@ -1011,7 +971,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                         Image(systemName: "arrow.counterclockwise")
                             .appFont(.caption2)
                             .foregroundStyle(.secondary)
-                            .accessibilityLabel(LocalizedStringKey("Counter-clockwise"))
+                            .accessibilityLabel("Counter-clockwise")
                         ButtonBindingControl(
                             binding: ccwBinding, compact: true,
                             ringSlotCount: ringSlotCount)
@@ -1068,9 +1028,7 @@ struct ButtonBindingControl: View, Equatable {
             .buttonStyle(.plain)
             .background(fieldBackground)
             .help(
-                LocalizedStringKey(
-                    "Click to record a keyboard shortcut. Press Escape to cancel or Delete to clear. Use the ▾ menu to assign a click action."
-                ))
+                "Click to record a keyboard shortcut. Press Escape to cancel or Delete to clear. Use the ▾ menu to assign a click action.")
 
             // Clear button
             if binding.kind != .none && !isRecording {
@@ -1083,7 +1041,7 @@ struct ButtonBindingControl: View, Equatable {
                 }
                 .buttonStyle(.plain)
                 .help("Clear this button assignment.")
-                .accessibilityLabel(LocalizedStringKey("Clear button assignment"))
+                .accessibilityLabel("Clear button assignment")
             }
 
             // Click-action picker
@@ -1151,7 +1109,7 @@ struct ButtonBindingControl: View, Equatable {
         .help(
             "Assign a click action: left-click, right-click, middle-click, modifier keys, or display toggle."
         )
-        .accessibilityLabel(LocalizedStringKey("Click action menu"))
+        .accessibilityLabel("Click action menu")
     }
 
     // MARK: - Visual state

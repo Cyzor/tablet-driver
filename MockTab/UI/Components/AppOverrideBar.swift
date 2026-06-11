@@ -1,20 +1,6 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
 // MockTab — native macOS driver for supported drawing tablets
-//
-// Copyright (C) 2026 This file is part of MockTab.
-//
-// MockTab is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// MockTab is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with MockTab. If not, see <https://www.gnu.org/licenses/>.
+// SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Requires macOS 13+ for .draggable / .dropDestination.
 
@@ -73,7 +59,7 @@ private struct ChipContentWidthKey: PreferenceKey {
 /// Unselected chips use a dynamic fill with explicit light/dark values so they read
 /// clearly against the bar background in both appearances. Selected chips now also
 /// respect whether the containing control is in the key window, so inactive windows
-/// get a Finder-like softened selection treatment rather than a full accent fill [file:1].
+/// get a Finder-like softened selection treatment rather than a full accent fill.
 ///
 /// Icon-size plumbing:
 /// All chip icon geometry derives from `chipIconSize`. Bumping it scales chip height
@@ -223,10 +209,10 @@ struct AppOverrideBar: View {
                 String(localized: "App name", comment: "Placeholder text in app rename field"),
                 text: $renameText
             )
-            Button(LocalizedStringKey("Cancel"), role: .cancel) {
+            Button("Cancel", role: .cancel) {
                 renamingBundleID = nil
             }
-            Button(LocalizedStringKey("Rename")) {
+            Button("Rename") {
                 commitRename(bundleID: bundleID)
             }
         }
@@ -247,11 +233,11 @@ struct AppOverrideBar: View {
                 addMultipleApps(urls)
             }
 
-            Button(LocalizedStringKey("Add First 3 Only")) {
+            Button("Add First 3 Only") {
                 addMultipleApps(Array(urls.prefix(3)))
             }
 
-            Button(LocalizedStringKey("Cancel"), role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: { urls in
             Text(
                 String(
@@ -484,13 +470,13 @@ struct AppOverrideBar: View {
                     renamingBundleID = bundleID
                     renameText = label
                 } label: {
-                    Label(LocalizedStringKey("Rename…"), systemImage: "pencil")
+                    Label("Rename…", systemImage: "pencil")
                 }
 
                 Button {
                     revealInFinder(bundleID: bundleID)
                 } label: {
-                    Label(LocalizedStringKey("Reveal in Finder"), systemImage: "folder")
+                    Label("Reveal in Finder", systemImage: "folder")
                 }
 
                 Divider()
@@ -498,7 +484,7 @@ struct AppOverrideBar: View {
                 Button(role: .destructive) {
                     settings.removeAppOverride(bundleID: bundleID)
                 } label: {
-                    Label(LocalizedStringKey("Remove"), systemImage: "trash")
+                    Label("Remove", systemImage: "trash")
                 }
             }
         }
@@ -607,7 +593,7 @@ struct AppOverrideBar: View {
     private var addMenu: some View {
         Menu {
             if cachedRunningApps.isEmpty {
-                Text(LocalizedStringKey("No other apps running"))
+                Text("No other apps running")
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(cachedRunningApps, id: \.bundleIdentifier) { app in
@@ -632,7 +618,7 @@ struct AppOverrideBar: View {
             Button {
                 browseForApp()
             } label: {
-                Label(LocalizedStringKey("Other…"), systemImage: "folder")
+                Label("Other…", systemImage: "folder")
             }
         } label: {
             Image(systemName: "plus.app.fill")
@@ -643,8 +629,8 @@ struct AppOverrideBar: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .help(LocalizedStringKey("Add per-app override — or drag an app here from Finder or the Dock"))
-        .accessibilityLabel(LocalizedStringKey("Add app override"))
+        .help("Add per-app override — or drag an app here from Finder or the Dock")
+        .accessibilityLabel("Add app override")
     }
 
     // MARK: - Drop handling
@@ -786,7 +772,7 @@ struct AppOverrideBar: View {
 
             Spacer()
 
-            Button(LocalizedStringKey("Reset")) {
+            Button("Reset") {
                 settings.removeAppOverride(bundleID: override.bundleID, keyScope: domainKeys)
             }
             .appFont(.settingsLabel)

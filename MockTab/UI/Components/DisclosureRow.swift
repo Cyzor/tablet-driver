@@ -33,8 +33,8 @@ struct DisclosureRow<Content: View>: View {
             .buttonStyle(.plain)
             .accessibilityValue(
                 isExpanded
-                    ? Text(LocalizedStringKey("Expanded"))
-                    : Text(LocalizedStringKey("Collapsed"))
+                    ? Text("Expanded")
+                    : Text("Collapsed")
             )
 
             if isExpanded {

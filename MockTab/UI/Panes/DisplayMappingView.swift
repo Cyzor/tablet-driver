@@ -32,34 +32,13 @@ struct DisplayMappingView: View {
         }
     }
 
-    // MARK: - Recording Binding Helper
-
-    /// Creates a binding that automatically registers undo when the value changes.
-    private func recordingBinding<T: Equatable>(
-        _ name: String,
-        get: @escaping () -> T,
-        set: @escaping (T) -> Void
-    ) -> Binding<T> {
-        Binding(
-            get: get,
-            set: { newValue in
-                let oldValue = get()
-                guard newValue != oldValue else { return }
-                set(newValue)
-                settings.record(name) { set(oldValue) }
-            }
-        )
-    }
-
     var body: some View {
-        VStack(spacing: 0) {
-            Form {
-                displayMappingSection
-                canvasSection
-            }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: productID ?? 0)
+        SettingsPane(
+            settings: settings, tabletManager: tabletManager, registry: registry,
+            productID: productID
+        ) {
+            displayMappingSection
+            canvasSection
         }
         .onAppear { displays = DisplayInfo.all() }
     }
@@ -88,35 +67,34 @@ struct DisplayMappingView: View {
                 .cornerRadius(6)
             }
 
-            radioRow(LocalizedStringKey("Primary display"), tag: 0)
-                .help(LocalizedStringKey("Map the tablet to your main display."))
+            radioRow("Primary display", tag: 0)
+                .help("Map the tablet to your main display.")
             ForEach(displays, id: \.listIndex) { info in
                 radioRow(info.pickerLabel, tag: info.listIndex)
                     .help(String(localized: "Map the tablet to \(info.name) only.", comment: "Help: specific display mapping"))
             }
-            radioRow(LocalizedStringKey("Toggle between displays"), tag: modeToggle, disabled: displays.count <= 1)
-                .help(LocalizedStringKey("Use a button press to cycle the tablet's active mapping between selected displays."))
-            radioRow(LocalizedStringKey("All — span across all displays"), tag: modeAll, disabled: displays.count <= 1)
-                .help(LocalizedStringKey("Map the tablet across all displays as one continuous surface."))
+            radioRow("Toggle between displays", tag: modeToggle, disabled: displays.count <= 1)
+                .help("Use a button press to cycle the tablet's active mapping between selected displays.")
+            radioRow("All — span across all displays", tag: modeAll, disabled: displays.count <= 1)
+                .help("Map the tablet across all displays as one continuous surface.")
 
             if settings.targetDisplayIndex == modeToggle {
                 toggleSection
                 displayToggleHintRow
             }
         } header: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey("Display Mapping")).appFont(.headline)
+            PaneSectionHeader("Display Mapping") {
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry)
             }
         } footer: {
-            Text(LocalizedStringKey("The active tablet area maps to the selected display."))
+            Text("The active tablet area maps to the selected display.")
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
     private var canvasSection: some View {
-        Section(LocalizedStringKey("Preview")) {
+        Section("Preview") {
             displayCanvas
                 .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
         }
@@ -160,10 +138,10 @@ struct DisplayMappingView: View {
 
     private var toggleSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(LocalizedStringKey("Included displays"))
+            Text("Included displays")
                 .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
-                .help(LocalizedStringKey("Click a thumbnail to toggle that display in or out of the rotation. ⌘-click to add individual displays; ⇧-click to select a range."))
+                .help("Click a thumbnail to toggle that display in or out of the rotation. ⌘-click to add individual displays; ⇧-click to select a range.")
 
             HStack(spacing: 8) {
                 ForEach(Array(displays.enumerated()), id: \.element.id) { index, info in
@@ -204,7 +182,7 @@ struct DisplayMappingView: View {
                 .foregroundStyle(assignedLabel != nil ? .secondary : .primary)
             Spacer()
             if assignedLabel == nil {
-                Button(LocalizedStringKey("Set Up")) {
+                Button("Set Up") {
                     if let wc = NSApp.keyWindow?.windowController as? SettingsWindowController {
                         wc.showTab(.buttons)
                     } else {
@@ -213,7 +191,7 @@ struct DisplayMappingView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .help(LocalizedStringKey("Go to the Buttons tab to assign a button that triggers the display toggle."))
+                .help("Go to the Buttons tab to assign a button that triggers the display toggle.")
             }
         }
         .padding(.vertical, 2)
@@ -276,7 +254,7 @@ struct DisplayMappingView: View {
             localized: "Display \(info.name), \(included ? "included" : "excluded")",
             comment: "Accessibility label for a display thumbnail in the toggle-display picker"
         )))
-        .accessibilityHint(LocalizedStringKey("Double tap to toggle inclusion in the display rotation"))
+        .accessibilityHint("Double tap to toggle inclusion in the display rotation")
         .onTapGesture {
             let flags = NSApplication.shared.currentEvent?.modifierFlags ?? []
 
@@ -503,7 +481,7 @@ struct DisplayMappingView: View {
             }
         }
         .frame(height: 180)
-        .help(LocalizedStringKey("Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays."))
+        .help("Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays.")
     }
 
     // MARK: - Coordinate helpers

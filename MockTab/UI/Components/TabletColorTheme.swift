@@ -19,43 +19,15 @@ struct TabletColorTheme {
 
         let nsColor = NSColor(
             name: nil,
-            dynamicProvider: { appearance in
-                // Get control background in the current appearance context
+            dynamicProvider: { _ in
                 let controlBG = NSColor.controlBackgroundColor
-
-                // Create tint color: desaturated hue at full brightness
                 let tintColor = NSColor(hue: hue, saturation: 0.08, brightness: 1.0, alpha: 1.0)
-
-                // Blend tint at 6% opacity onto the control background
-                return blendColors(background: controlBG, tint: tintColor, alpha: 0.08)
+                // Resolve the catalog color to sRGB first; blended(withFraction:of:)
+                // returns nil for unconvertible color spaces.
+                let bgRGB = controlBG.usingColorSpace(.sRGB) ?? controlBG
+                return bgRGB.blended(withFraction: 0.08, of: tintColor) ?? controlBG
             })
 
         return Color(nsColor)
-    }
-
-    /// Blends a tint color onto a background using alpha composition.
-    /// result = tint * alpha + background * (1 - alpha)
-    private static func blendColors(background: NSColor, tint: NSColor, alpha: CGFloat) -> NSColor {
-        // Convert catalog colors to concrete RGB colorspace for component extraction
-        let bgRGB = background.usingColorSpace(.sRGB) ?? background
-        let tintRGB = tint.usingColorSpace(.sRGB) ?? tint
-
-        var bgR: CGFloat = 0
-        var bgG: CGFloat = 0
-        var bgB: CGFloat = 0
-        var bgA: CGFloat = 0
-        var tR: CGFloat = 0
-        var tG: CGFloat = 0
-        var tB: CGFloat = 0
-        var tA: CGFloat = 0
-
-        bgRGB.getRed(&bgR, green: &bgG, blue: &bgB, alpha: &bgA)
-        tintRGB.getRed(&tR, green: &tG, blue: &tB, alpha: &tA)
-
-        let resultR = tR * alpha + bgR * (1 - alpha)
-        let resultG = tG * alpha + bgG * (1 - alpha)
-        let resultB = tB * alpha + bgB * (1 - alpha)
-
-        return NSColor(red: resultR, green: resultG, blue: resultB, alpha: bgA)
     }
 }

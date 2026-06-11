@@ -16,186 +16,118 @@ struct PenFeelView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            AppOverrideBar(
-                settings: settings, domainKeys: AppOverrideBar.pressureKeys, productID: productID)
-            Form {
-                pressureCurveSection
+        SettingsPane(
+            settings: settings, tabletManager: tabletManager, registry: registry,
+            productID: productID, overrideKeys: AppOverrideBar.pressureKeys
+        ) {
+            pressureCurveSection
 
-                Section(LocalizedStringKey("Stabilization")) {
-                    VStack(alignment: .leading, spacing: 4) {  // ← Added .leading for consistency
-                        HStack {
-                            Text(LocalizedStringKey("Strength"))
-                                .appFont(.subheadline)
-                            Spacer()
-                            Text(verbatim: smoothingLabel)
-                                .appFont(.settingsLabel)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                        }
-
-                        Slider(value: smoothingBinding, in: 0...1)
-                            .labelsHidden()
-                            .help(
-                                LocalizedStringKey(
-                                    "Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but add input lag."
-                                ))
-
-                        Text(LocalizedStringKey("Reduces cursor jitter. Higher values add lag."))
-                            .appFont(.settingsLabel)
-                            .foregroundStyle(.secondary)
-                    }
-                    // .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                }
-
-                Section(LocalizedStringKey("Double-Click Distance")) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(LocalizedStringKey("Distance"))
-                                .appFont(.subheadline)
-                            Spacer()
-                            Text(
-                                verbatim: settings.doubleClickDistance < 1
-                                    ? String(
-                                        localized: "Off",
-                                        comment:
-                                            "Feature disabled — double-click distance slider at minimum value"
-                                    )
-                                    : String(
-                                        localized: "\(Int(settings.doubleClickDistance)) pt",
-                                        comment: "Distance in points, e.g. '10 pt'")
-                            )
-                            .appFont(.settingsLabel)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                        }
-                        Slider(value: doubleClickBinding, in: 0...30, step: 1)
-                            .labelsHidden()
-                            .help(
-                                LocalizedStringKey(
-                                    "How close a second tap must land to the first to count as a double-click. Drag to Off to disable position snapping."
-                                ))
-
-                        Text(
-                            LocalizedStringKey(
-                                "Snaps a second tap to the first click position within this radius, making double-clicks reliable."
-                            )
-                        )
-                        .appFont(.settingsLabel)
-                        .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section(LocalizedStringKey("Movement")) {
-                    Toggle(isOn: invertRotationBinding) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(LocalizedStringKey("Invert Rotation Direction"))
-                            (Text(LocalizedStringKey("Current: "))
-                                + Text(
-                                    Image(
-                                        systemName: settings.invertRotation
-                                            ? "arrow.counterclockwise"
-                                            : "arrow.clockwise"))
-                                + Text(
-                                    settings.invertRotation
-                                        ? LocalizedStringKey(" Counter-clockwise")
-                                        : LocalizedStringKey(" Clockwise")))
-                                .appFont(.settingsLabel)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .help(
-                        LocalizedStringKey(
-                            "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita)."
-                        ))
-
-                    Toggle(
-                        isOn: Binding(
-                            get: { tool.useRotationAsTilt },
-                            set: { newVal in tool.useRotationAsTilt = newVal }
-                        )
-                    ) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(LocalizedStringKey("Art Pen: Swap Tilt with Rotation"))
-                            Text(
-                                "Sacrifices an Art Pen's tilt behavior, allowing apps like Adobe Photoshop to detect barrel rotation."
-                            ).appFont(.settingsLabel).foregroundStyle(.secondary)
-                        }
-                    }
-                    .help(
-                        "Feeds barrel rotation into Photoshop's Pen Tilt control by sending fake tilt data. Real tilt is suppressed while this is on. Use in Brush Dynamics → Shape Dynamics → Angle → Pen Tilt."
-                    )
-
-                    if tool.useRotationAsTilt {
-                        HStack {
-                            Text("Tilt Offset")
-                            Slider(
-                                value: Binding(
-                                    get: { tool.rotationTiltOffsetDegrees },
-                                    set: { tool.rotationTiltOffsetDegrees = $0 }
-                                ), in: -180...180)
-                            Text("\(Int(tool.rotationTiltOffsetDegrees))°").frame(width: 40)
-                        }
-
-                        HStack {
-                            Text("Tilt Magnitude")
-                            Slider(
-                                value: Binding(
-                                    get: { tool.rotationTiltMagnitude },
-                                    set: { tool.rotationTiltMagnitude = $0 }
-                                ), in: 0.1...1.0)
-                            Text(String(format: "%.0f%%", tool.rotationTiltMagnitude * 100)).frame(
-                                width: 40)
-                        }
-                    }
-
-                    Toggle(isOn: relativeCursorMovementBinding) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(LocalizedStringKey("Relative Cursor Movement"))
-                            (Text(LocalizedStringKey("Current: "))
-                                + Text(
-                                    Image(
-                                        systemName: settings.relativeCursorMovement
-                                            ? "cursorarrow.motionlines"
-                                            : "pencil.tip"))
-                                + Text(
-                                    settings.relativeCursorMovement
-                                        ? LocalizedStringKey(" Relative, like a mouse")
-                                        : LocalizedStringKey(" Absolute, like a stylus")))
-                                .appFont(.settingsLabel)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .help(
-                        LocalizedStringKey(
-                            "In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse."
-                        ))
-                }
-
-                Section(LocalizedStringKey("Click Behavior")) {
-                    Toggle(isOn: tipUpAssistBinding) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(LocalizedStringKey("Tip-up Assist"))
-                            Text(
-                                LocalizedStringKey(
-                                    "Delays the stroke release briefly when the pen is lifted mid-motion, preventing accidental short strokes."
-                                )
-                            )
-                            .appFont(.settingsLabel)
-                            .foregroundStyle(.secondary)
-                        }
-                    }
-                    .help(
-                        LocalizedStringKey(
-                            "When enabled, the pen click is held open for ~80 ms after the tip lifts if you are moving quickly. This helps prevent unintended stroke breaks during fast drawing."
-                        ))
-                }
+            Section("Stabilization") {
+                SettingSliderRow(
+                    "Strength",
+                    value: smoothingBinding,
+                    in: 0...1,
+                    valueText: smoothingLabel,
+                    caption: "Reduces cursor jitter. Higher values add lag."
+                )
+                .help(
+                    "Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but add input lag.")
             }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            DeviceStatusBar(
-                settings: settings, tabletManager: tabletManager, registry: registry,
-                productID: productID ?? 0)
+
+            Section("Double-Click Distance") {
+                SettingSliderRow(
+                    "Distance",
+                    value: doubleClickBinding,
+                    in: 0...30,
+                    step: 1,
+                    valueText: settings.doubleClickDistance < 1
+                        ? String(
+                            localized: "Off",
+                            comment:
+                                "Feature disabled — double-click distance slider at minimum value"
+                        )
+                        : String(
+                            localized: "\(Int(settings.doubleClickDistance)) pt",
+                            comment: "Distance in points, e.g. '10 pt'"),
+                    caption:
+                        "Snaps a second tap to the first click position within this radius, making double-clicks reliable."
+                )
+                .help(
+                    "How close a second tap must land to the first to count as a double-click. Drag to Off to disable position snapping.")
+            }
+
+            Section("Movement") {
+                DescribedToggle("Invert Rotation Direction", isOn: invertRotationBinding) {
+                    Text("Current: ")
+                        + Text(
+                            Image(
+                                systemName: settings.invertRotation
+                                    ? "arrow.counterclockwise"
+                                    : "arrow.clockwise"))
+                        + Text(
+                            settings.invertRotation
+                                ? " Counter-clockwise"
+                                : " Clockwise")
+                }
+                .help(
+                    "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
+
+                DescribedToggle(
+                    "Art Pen: Swap Tilt with Rotation",
+                    isOn: rotationAsTiltBinding,
+                    description:
+                        "Sacrifices an Art Pen's tilt behavior, allowing apps like Adobe Photoshop to detect barrel rotation."
+                )
+                .help(
+                    "Feeds barrel rotation into Photoshop's Pen Tilt control by sending fake tilt data. Real tilt is suppressed while this is on. Use in Brush Dynamics → Shape Dynamics → Angle → Pen Tilt."
+                )
+
+                if tool.useRotationAsTilt {
+                    SettingSliderRow(
+                        "Tilt Offset",
+                        value: settings.recordingBinding(
+                            "Tilt Offset", toolOwned: true,
+                            get: { tool.rotationTiltOffsetDegrees },
+                            set: { tool.rotationTiltOffsetDegrees = $0 }),
+                        in: -180...180,
+                        valueText: "\(Int(tool.rotationTiltOffsetDegrees))°")
+
+                    SettingSliderRow(
+                        "Tilt Magnitude",
+                        value: settings.recordingBinding(
+                            "Tilt Magnitude", toolOwned: true,
+                            get: { tool.rotationTiltMagnitude },
+                            set: { tool.rotationTiltMagnitude = $0 }),
+                        in: 0.1...1.0,
+                        valueText: String(format: "%.0f%%", tool.rotationTiltMagnitude * 100))
+                }
+
+                DescribedToggle("Relative Cursor Movement", isOn: relativeCursorMovementBinding) {
+                    Text("Current: ")
+                        + Text(
+                            Image(
+                                systemName: settings.relativeCursorMovement
+                                    ? "cursorarrow.motionlines"
+                                    : "pencil.tip"))
+                        + Text(
+                            settings.relativeCursorMovement
+                                ? " Relative, like a mouse"
+                                : " Absolute, like a stylus")
+                }
+                .help(
+                    "In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse.")
+            }
+
+            Section("Click Behavior") {
+                DescribedToggle(
+                    "Tip-up Assist",
+                    isOn: tipUpAssistBinding,
+                    description:
+                        "Delays the stroke release briefly when the pen is lifted mid-motion, preventing accidental short strokes."
+                )
+                .help(
+                    "When enabled, the pen click is held open for ~80 ms after the tip lifts if you are moving quickly. This helps prevent unintended stroke breaks during fast drawing.")
+            }
         }
     }
 
@@ -210,41 +142,34 @@ struct PenFeelView: View {
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
 
             HStack(spacing: 4) {
-                Button(LocalizedStringKey("Linear")) {
+                Button("Linear") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .linear
                     tool.record("Linear Curve") { tool.pressureCurve = old }
                 }
                 .help(
-                    LocalizedStringKey(
-                        "Linear response — equal pen force produces equal pressure output. Best for general use."
-                    ))
-                Button(LocalizedStringKey("Soft")) {
+                    "Linear response — equal pen force produces equal pressure output. Best for general use.")
+                Button("Soft") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .soft
                     tool.record("Soft Curve") { tool.pressureCurve = old }
                 }
                 .help(
-                    LocalizedStringKey(
-                        "Soft response — light pressure reaches full output quickly. Good for loose, expressive work."
-                    ))
-                Button(LocalizedStringKey("Firm")) {
+                    "Soft response — light pressure reaches full output quickly. Good for loose, expressive work.")
+                Button("Firm") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .firm
                     tool.record("Firm Curve") { tool.pressureCurve = old }
                 }
                 .help(
-                    LocalizedStringKey(
-                        "Firm response — requires more force to reach full output. Good for precise detail work."
-                    ))
+                    "Firm response — requires more force to reach full output. Good for precise detail work.")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
         } header: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey("Pressure Curve")).appFont(.headline)
+            PaneSectionHeader("Pressure Curve") {
                 ToolNameLabel(tabletManager: tabletManager, registry: registry)
             }
         }
@@ -253,60 +178,45 @@ struct PenFeelView: View {
     // MARK: - Bindings with undo support
 
     private var smoothingBinding: Binding<Double> {
-        Binding(
+        settings.recordingBinding(
+            "Stabilization", toolOwned: true,
             get: { tool.smoothingStrength },
-            set: { newVal in
-                let old = tool.smoothingStrength
-                tool.smoothingStrength = newVal
-                tool.record("Stabilization") { tool.smoothingStrength = old }
-            }
-        )
+            set: { tool.smoothingStrength = $0 })
     }
 
     private var doubleClickBinding: Binding<Double> {
-        Binding(
+        settings.recordingBinding(
+            "Double-Click Distance",
             get: { settings.doubleClickDistance },
-            set: { newVal in
-                let old = settings.doubleClickDistance
-                settings.doubleClickDistance = newVal
-                settings.record("Double-Click Distance") { settings.doubleClickDistance = old }
-            }
-        )
+            set: { settings.doubleClickDistance = $0 })
     }
 
     private var invertRotationBinding: Binding<Bool> {
-        Binding(
+        settings.recordingBinding(
+            "Invert Rotation",
             get: { settings.invertRotation },
-            set: { newVal in
-                let old = settings.invertRotation
-                settings.invertRotation = newVal
-                settings.record("Invert Rotation") { settings.invertRotation = old }
-            }
-        )
+            set: { settings.invertRotation = $0 })
+    }
+
+    private var rotationAsTiltBinding: Binding<Bool> {
+        settings.recordingBinding(
+            "Rotation as Tilt", toolOwned: true,
+            get: { tool.useRotationAsTilt },
+            set: { tool.useRotationAsTilt = $0 })
     }
 
     private var relativeCursorMovementBinding: Binding<Bool> {
-        Binding(
+        settings.recordingBinding(
+            "Relative Cursor Movement",
             get: { settings.relativeCursorMovement },
-            set: { newVal in
-                let old = settings.relativeCursorMovement
-                settings.relativeCursorMovement = newVal
-                settings.record("Relative Cursor Movement") {
-                    settings.relativeCursorMovement = old
-                }
-            }
-        )
+            set: { settings.relativeCursorMovement = $0 })
     }
 
     private var tipUpAssistBinding: Binding<Bool> {
-        Binding(
+        settings.recordingBinding(
+            "Tip-up Assist",
             get: { settings.tipUpAssist },
-            set: { newVal in
-                let old = settings.tipUpAssist
-                settings.tipUpAssist = newVal
-                settings.record("Tip-up Assist") { settings.tipUpAssist = old }
-            }
-        )
+            set: { settings.tipUpAssist = $0 })
     }
 
     // MARK: - Smoothing label

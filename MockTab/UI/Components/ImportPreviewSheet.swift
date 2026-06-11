@@ -36,7 +36,7 @@ struct ImportPreviewSheet: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(LocalizedStringKey("Import Configuration")).appFont(.headline)
+            Text("Import Configuration").appFont(.headline)
             if !plan.sourceDate.isEmpty {
                 Text(String(localized: "Exported \(formattedDate(plan.sourceDate))", comment: "Label showing when the backup was created"))
                     .appFont(.settingsLabel).foregroundStyle(.secondary)
@@ -58,7 +58,7 @@ struct ImportPreviewSheet: View {
                         .accessibilityElement(children: .combine)
                         .accessibilityAddTraits(.isButton)
                         .accessibilityLabel(rowAccessibilityLabel(for: entry))
-                        .accessibilityHint(LocalizedStringKey("Double tap to toggle whether this profile is imported"))
+                        .accessibilityHint("Double tap to toggle whether this profile is imported")
                         .accessibilityAction {
                             toggleExclusion(entry.productID)
                         }
@@ -103,7 +103,7 @@ struct ImportPreviewSheet: View {
     private var buttons: some View {
         HStack {
             Spacer()
-            Button(LocalizedStringKey("Cancel")) { onDismiss() }
+            Button("Cancel") { onDismiss() }
                 .keyboardShortcut(.cancelAction)
             Button(includedCount == 0 ? String(localized: "Import") : "Import \(includedCount)") {
                 applyImport()
@@ -143,7 +143,7 @@ struct ImportPreviewSheet: View {
 
                 if !isExcluded {
                     HStack(spacing: 4) {
-                        Text(LocalizedStringKey("→ New profile:")).appFont(.settingsLabel).foregroundStyle(.secondary)
+                        Text("→ New profile:").appFont(.settingsLabel).foregroundStyle(.secondary)
                         Text("\"\(finalName)\"").appFont(.settingsLabel)
                             .foregroundStyle(renamed ? Color.orange : Color.secondary)
                         if renamed {
