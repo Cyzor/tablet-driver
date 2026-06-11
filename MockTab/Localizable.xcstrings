@@ -1532,7 +1532,6 @@
     },
     "All — span across all displays" : {
       "comment" : "Display mapping option: treat all displays as one continuous surface",
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9495,7 +9494,6 @@
     },
     "Primary display" : {
       "comment" : "Display mapping option: map to main screen",
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13016,7 +13014,6 @@
     },
     "Toggle between displays" : {
       "comment" : "Display mapping option: cycle through displays with button press",
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

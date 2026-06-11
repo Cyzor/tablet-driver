@@ -124,11 +124,7 @@ struct ScratchpadView: View {
 
             pressureRow
 
-            tiltRow
-
-            if spec?.hasFingerTouch == true {
-                touchRow
-            }
+            visualizerRow
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -174,38 +170,36 @@ struct ScratchpadView: View {
         }
     }
 
-    private var tiltRow: some View {
-        HStack(spacing: 10) {
-            Text("Tilt")
-                .appFont(.settingsLabel)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
+    /// Tilt and touch visualizers share one row; both canvases are 100 pt
+    /// tall, so their vertical centers align without any further bookkeeping.
+    private var visualizerRow: some View {
+        HStack(spacing: 24) {
+            HStack(spacing: 10) {
+                Text("Tilt")
+                    .appFont(.settingsLabel)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
 
-            TiltVisualizerCanvas(tabletManager: tabletManager)
-                .frame(width: 100, height: 100)
-                .help("Live tilt direction and magnitude from the active pen.")
+                TiltVisualizerCanvas(tabletManager: tabletManager)
+                    .frame(width: 100, height: 100)
+                    .help("Live tilt direction and magnitude from the active pen.")
+            }
 
-            Spacer()
-        }
-    }
+            if spec?.hasFingerTouch == true {
+                HStack(spacing: 10) {
+                    Text("Touch")
+                        .appFont(.settingsLabel)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
 
-    private var touchRow: some View {
-        HStack(spacing: 10) {
-            Text("Touch")
-                .appFont(.settingsLabel)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-
-            TouchContactsCanvas(
-                contacts: liveTouch.contacts,
-                maxContacts: spec?.maxTouchContacts ?? 10
-            )
-            .frame(width: 100, height: 100)
-            .help("Live finger-touch contacts from the active device's touch surface.")
-
-            Spacer()
+                    TouchContactsCanvas(
+                        contacts: liveTouch.contacts,
+                        maxContacts: spec?.maxTouchContacts ?? 10
+                    )
+                    .frame(width: 100, height: 100)
+                    .help("Live finger-touch contacts from the active device's touch surface.")
+                }
+            }
         }
     }
 
@@ -361,9 +355,8 @@ private struct TouchContactsCanvas: View, Equatable {
             let nx = contacts.count == 1 ? 0.5 : norm(Double(contact.x), xs)
             let ny = contacts.count == 1 ? 0.5 : norm(Double(contact.y), ys)
 
-            // Tablet Y increases downward in most drivers; flip for screen coords.
             let cx = pad + nx * (size.width  - 2 * pad)
-            let cy = pad + (1 - ny) * (size.height - 2 * pad)
+            let cy = pad + ny * (size.height - 2 * pad)
             let dot = CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2)
 
             ctx.fill(Path(ellipseIn: dot), with: .color(.accentColor.opacity(0.8)))
