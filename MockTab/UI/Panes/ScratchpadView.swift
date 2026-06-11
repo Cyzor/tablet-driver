@@ -12,9 +12,13 @@ struct ScratchpadView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
-    /// Observed separately from `tabletManager` so the ~30 Hz touch-frame
-    /// stream only invalidates this view, not the rest of the settings UI.
-    @ObservedObject private var liveTouch: LiveTouchPublisher
+    /// Deliberately NOT @ObservedObject: the ~30 Hz touch-frame stream must
+    /// invalidate only the small `TouchVisualizer` child (which observes the
+    /// publisher itself), not this whole pane — re-evaluating the full body
+    /// per frame was a measurable main-thread CPU cost while touch was live.
+    /// This view only writes gating state (`isPublishingEnabled`, clearing
+    /// `contacts`); it never reads `contacts` in `body`.
+    private let liveTouch: LiveTouchPublisher
     var productID: Int?
     var undoManager: UndoManager?
 
@@ -31,7 +35,7 @@ struct ScratchpadView: View {
         // Derive the touch publisher from the bound manager so the view isn't
         // tied to the singleton — the only `TabletManager` in practice today,
         // but the parameter is what the rest of the view uses.
-        _liveTouch = ObservedObject(wrappedValue: tabletManager.liveTouch)
+        self.liveTouch = tabletManager.liveTouch
     }
 
     @State private var currentPressure: Double = 0
@@ -192,8 +196,8 @@ struct ScratchpadView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
 
-                    TouchContactsCanvas(
-                        contacts: liveTouch.contacts,
+                    TouchVisualizer(
+                        liveTouch: liveTouch,
                         maxContacts: spec?.maxTouchContacts ?? 10
                     )
                     .frame(width: 100, height: 100)
@@ -207,6 +211,21 @@ struct ScratchpadView: View {
         currentPressure < 0.5
             ? .accentColor
             : Color(hue: 0.05, saturation: 0.8, brightness: 0.85)
+    }
+}
+
+// MARK: - Touch Visualizer wrapper
+
+/// Isolation boundary for the live-touch stream: observes the publisher so
+/// each ~30 Hz contact frame re-evaluates only this wrapper (and redraws the
+/// Equatable-gated canvas when contacts actually changed) instead of the
+/// whole Scratchpad pane.
+private struct TouchVisualizer: View {
+    @ObservedObject var liveTouch: LiveTouchPublisher
+    let maxContacts: Int
+
+    var body: some View {
+        TouchContactsCanvas(contacts: liveTouch.contacts, maxContacts: maxContacts)
     }
 }
 
