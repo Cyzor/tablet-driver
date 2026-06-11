@@ -276,6 +276,8 @@ final class TabletManager: ObservableObject {
         hidDeviceMap.removeAll()
         contexts.removeAll()
         activeContext = nil
+        isConnected = false
+        updateActivityAssertion()
     }
 
     // MARK: - Device lifecycle
@@ -739,6 +741,7 @@ final class TabletManager: ObservableObject {
     private func refreshConnectedIDs(mostRecent: Int?) {
         connectedProductIDs = hidDeviceMap.values.map { $0.productID }.sorted()
         isConnected = !connectedProductIDs.isEmpty
+        updateActivityAssertion()
         if let pid = mostRecent, connectedProductIDs.contains(pid) {
             connectedProductID = pid
         } else {
@@ -753,6 +756,25 @@ final class TabletManager: ObservableObject {
         } else {
             connectedTransport = "—"
             connectedUSBSpeed = "—"
+        }
+    }
+
+    // MARK: - Latency-critical activity assertion
+
+    /// Held while at least one tablet is connected. Tells the system this
+    /// process performs latency-critical input injection, which opts it out
+    /// of App Nap and timer coalescing — both of which otherwise degrade
+    /// HID delivery precisely when an unrelated process loads the CPU.
+    private var latencyActivityToken: NSObjectProtocol?
+
+    private func updateActivityAssertion() {
+        if isConnected, latencyActivityToken == nil {
+            latencyActivityToken = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiated, .latencyCritical],
+                reason: "Tablet connected — latency-critical input injection")
+        } else if !isConnected, let token = latencyActivityToken {
+            ProcessInfo.processInfo.endActivity(token)
+            latencyActivityToken = nil
         }
     }
 

@@ -376,6 +376,13 @@ struct InfoView: View {
             lines += [String(localized: "Jitter level   : \(jitter) pt/sample\(highLabel)", comment: "Diagnostic: input jitter measurement")]
         }
 
+        let probe = LatencyProbe.shared
+        if probe.reportCount > 0 {
+            let avg = String(format: "%.2f", probe.averageMs)
+            let worst = String(format: "%.1f", probe.worstMs)
+            lines += [String(localized: "HID latency    : \(avg) ms avg, \(worst) ms worst, \(probe.stallCount) stalls >\(Int(LatencyProbe.stallThresholdMs)) ms", comment: "Diagnostic: HID report delivery latency from kernel receipt to driver callback")]
+        }
+
         if let fallback = fallbackDevice {
             lines += [""]
             lines += ["─── HID Report Descriptor (fallback driver) ───"]

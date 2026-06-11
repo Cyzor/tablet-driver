@@ -198,7 +198,7 @@ final class WacomKnownDevice: TabletDevice {
             queryHardwareSerial()
         }
 
-        IOHIDDeviceRegisterInputReportCallback(
+        IOHIDDeviceRegisterInputReportWithTimeStampCallback(
             device, &reportBuffer, reportBuffer.count,
             WacomKnownDevice.reportCallback, callbackContext())
         IOHIDDeviceScheduleWithRunLoop(
@@ -210,7 +210,7 @@ final class WacomKnownDevice: TabletDevice {
     /// enumerate separate IOHIDDevices for each interface (digitizer, wireless status, etc).
     func registerDevice(_ device: IOHIDDevice) {
         registeredInterfaces.append(device)
-        IOHIDDeviceRegisterInputReportCallback(
+        IOHIDDeviceRegisterInputReportWithTimeStampCallback(
             device, &reportBuffer, reportBuffer.count,
             WacomKnownDevice.reportCallback, callbackContext())
         IOHIDDeviceScheduleWithRunLoop(
@@ -238,7 +238,7 @@ final class WacomKnownDevice: TabletDevice {
     func close() {
         IOHIDDeviceUnscheduleFromRunLoop(
             device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
-        IOHIDDeviceRegisterInputReportCallback(
+        IOHIDDeviceRegisterInputReportWithTimeStampCallback(
             device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
         if let led = ledDevice {
@@ -249,7 +249,7 @@ final class WacomKnownDevice: TabletDevice {
         // called more than once for multi-interface devices).
         for sec in registeredInterfaces {
             IOHIDDeviceUnscheduleFromRunLoop(sec, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
-            IOHIDDeviceRegisterInputReportCallback(sec, &reportBuffer, reportBuffer.count, nil, nil)
+            IOHIDDeviceRegisterInputReportWithTimeStampCallback(sec, &reportBuffer, reportBuffer.count, nil, nil)
         }
         registeredInterfaces.removeAll()
         if let sec = secondaryDevice {
@@ -504,8 +504,10 @@ final class WacomKnownDevice: TabletDevice {
 
     // MARK: - C callback
 
-    private static let reportCallback: IOHIDReportCallback = { ctx, _, _, _, _, report, length in
+    private static let reportCallback: IOHIDReportWithTimeStampCallback = { ctx, _, _, _, _, report, length, timestamp in
         guard let ctx else { return }
+        // Kernel-receipt → here. Spikes mean the scheduler starved HIDThread.
+        LatencyProbe.shared.record(kernelTimestamp: timestamp)
         Unmanaged<WacomKnownDevice>.fromOpaque(ctx).takeUnretainedValue()
             .handleReport(report: report, length: length)
     }

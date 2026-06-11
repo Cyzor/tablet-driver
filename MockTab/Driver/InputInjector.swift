@@ -111,6 +111,7 @@ final class InputInjector {
         }
         if let tap = flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: false) }
         watchdogTimer.map { CFRunLoopTimerInvalidate($0) }
+        pendingMouseUp.map { CFRunLoopTimerInvalidate($0) }
     }
 
     // MARK: - State
@@ -174,7 +175,16 @@ final class InputInjector {
 
     private static let tipUpAssistDelay: Double = 0.08  // seconds
     private static let tipUpAssistVelocityThreshold: CGFloat = 2.0  // pts/sample
-    private var pendingMouseUp: DispatchWorkItem? = nil
+    /// One-shot CFRunLoopTimer scheduled on HIDThread (NOT the main queue —
+    /// a congested main thread must not be able to stretch the 80 ms delay).
+    /// Fires and is cancelled on HIDThread, same thread as all per-report state.
+    private var pendingMouseUp: CFRunLoopTimer? = nil
+
+    /// Must run on HIDThread (or deinit, after all callbacks are unregistered).
+    private func cancelPendingMouseUp() {
+        if let t = pendingMouseUp { CFRunLoopTimerInvalidate(t) }
+        pendingMouseUp = nil
+    }
 
     /// Set while a barrel-button click binding is held, so the movement path posts
     /// otherMouseDragged / rightMouseDragged instead of mouseMoved.
@@ -472,8 +482,7 @@ final class InputInjector {
                 lastLoggedManagedFlags = 0  // reset for clean logging on next proximity entry
 
                 // Reset aux state so the next injectAux fires fresh transitions.
-                pendingMouseUp?.cancel()
-                pendingMouseUp = nil
+                cancelPendingMouseUp()
                 hoverDragButton = nil
                 lastAuxButtons = [Bool](repeating: false, count: 16)
                 lastRingButtonDown = false
@@ -528,8 +537,7 @@ final class InputInjector {
             }
             if tipDown {
                 // Cancel any pending deferred mouseUp — tip is back down.
-                pendingMouseUp?.cancel()
-                pendingMouseUp = nil
+                cancelPendingMouseUp()
                 didEmitDragSinceDown = false
                 let tipAction = activeToolIsEraser ? tool.eraserBinding : tool.tipBinding
                 activeButton = tipAction.mouseButton ?? .left
@@ -552,7 +560,17 @@ final class InputInjector {
                     // The deferred mouseUp captures `snap` so it has all the values it
                     // needs; the live snapshot may have rolled over by the time it fires.
                     let capturedSnap = snap
-                    let work = DispatchWorkItem { [weak self] in
+                    // One-shot timer on HIDThread's run loop: the delay stays
+                    // honest under main-thread congestion, and the handler runs
+                    // on the same thread that owns all per-report state — no hop,
+                    // no cancellation race (invalidation on this thread guarantees
+                    // the handler never fires afterwards).
+                    let timer = CFRunLoopTimerCreateWithHandler(
+                        kCFAllocatorDefault,
+                        CFAbsoluteTimeGetCurrent() + Self.tipUpAssistDelay,
+                        0,  // interval — one-shot
+                        0, 0
+                    ) { [weak self] _ in
                         guard let self, self.pendingMouseUp != nil else { return }
                         self.pendingMouseUp = nil
                         // Fire at lastPostedPoint, not at the tip-lift position.
@@ -563,23 +581,14 @@ final class InputInjector {
                         // creating a visible cursor zap and spurious drag.  For drawing
                         // strokes the pen travels only a few pixels in 80ms, so
                         // stroke-end fidelity is effectively unchanged.
-                        // Hop to HIDThread to keep all per-report state on its owning
-                        // run loop — this handler is scheduled via DispatchQueue.main
-                        // to honor the 80ms delay using the existing run-loop timer
-                        // semantics, but the state mutations belong to HIDThread.
-                        CFRunLoopPerformBlock(
-                            HIDThread.shared.runLoop,
-                            CFRunLoopMode.commonModes.rawValue
-                        ) {
-                            self.postMouseUp(
-                                button: btn, at: self.lastPostedPoint, clickCount: count,
-                                point: pt, snapshot: capturedSnap)
-                        }
-                        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+                        self.postMouseUp(
+                            button: btn, at: self.lastPostedPoint, clickCount: count,
+                            point: pt, snapshot: capturedSnap)
                     }
-                    pendingMouseUp = work
-                    DispatchQueue.main.asyncAfter(
-                        deadline: .now() + Self.tipUpAssistDelay, execute: work)
+                    pendingMouseUp = timer
+                    if let timer {
+                        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+                    }
                 } else {
                     postMouseUp(
                         button: activeButton, at: screenPoint,
