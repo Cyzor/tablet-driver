@@ -22,6 +22,7 @@ struct TouchStateTracker {
 
     enum Mode {
         case idle
+        case pending        // contact(s) down, gesture not yet committed
         case pointer        // single contact moving the cursor
         case scroll         // two contacts moving the scroll wheel
     }
@@ -75,6 +76,14 @@ struct TouchStateTracker {
     static let tapMaxDistance: Double = 8.0
     /// Maximum tap duration (seconds); longer touches become drags or scrolls.
     static let tapMaxDuration: CFAbsoluteTime = 0.30
+    /// Onset delay: a touch sequence emits nothing until it has been down this
+    /// long.  Two jobs: (1) a pen+palm landing posts its proximity report
+    /// within this window, so the injector resets the tracker before the palm
+    /// has moved the cursor or scrolled anything; (2) a second finger landing
+    /// within the window starts a scroll directly, without the first finger
+    /// having dragged the cursor in the meantime.  Same trick trackpads use;
+    /// the cost is pointer motion starting ~0.1 s late.
+    static let onsetDelay: CFAbsoluteTime = 0.12
 
     // MARK: - Process
 
@@ -129,38 +138,42 @@ struct TouchStateTracker {
         now: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     ) -> Intent {
 
-        // All fingers lifted — wrap up any in-progress gesture.
+        // All fingers lifted — wrap up any in-progress gesture.  A sequence
+        // that never outlived the onset delay can still be a tap (a tap is by
+        // definition shorter than most onset windows).
         if contacts.isEmpty {
             let priorMode = mode
             let priorPhase = lastScrollPhase
-            let tap = tapToClick && priorMode == .pointer
+            let tap = tapToClick && (priorMode == .pointer || priorMode == .pending)
                 && now - tapStart <= Self.tapMaxDuration
                 && tapMaxDelta < Self.tapMaxDistance
             reset()
             switch priorMode {
             case .scroll where priorPhase != .ended:
                 return .scrollDelta(dx: 0, dy: 0, phase: .ended)
-            case .pointer where tap:
+            case .pointer where tap, .pending where tap:
                 return .tapClick
             default:
                 return .none
             }
         }
 
-        // First contact — enter pointer mode tentatively.  Mode escalates to
-        // .scroll on the frame a second finger arrives, and stays there until
-        // all fingers lift (sticky).
+        // First contact — hold in pending until the onset delay elapses, so
+        // the opening frames of a sequence (where a palm smush or the second
+        // scroll finger is still arriving) never move anything.
         if mode == .idle, let first = contacts.first {
-            mode = .pointer
+            mode = .pending
             lastPositions = [first.id: first.screen]
             tapAnchor = first.screen
             tapStart = now
             tapMaxDelta = 0
-            return .none  // first frame is just calibration
+            return .none
         }
 
         // Escalate to scroll once two contacts are present, if enabled.
-        if mode == .pointer, contacts.count >= 2 {
+        // From pending this means the fingers landed together (the normal
+        // two-finger gesture) — the scroll starts with zero cursor drift.
+        if mode == .pending || mode == .pointer, contacts.count >= 2 {
             if twoFingerScroll {
                 mode = .scroll
                 lastPositions = Dictionary(uniqueKeysWithValues:
@@ -168,7 +181,7 @@ struct TouchStateTracker {
                 tapAnchor = nil  // tap is off the table once we go to two fingers
                 lastScrollPhase = .began
                 return .scrollDelta(dx: 0, dy: 0, phase: .began)
-            } else {
+            } else if mode == .pointer {
                 // Two-finger scroll disabled: ignore the second contact,
                 // keep pointer-tracking the first.
                 if let first = contacts.first, lastPositions[first.id] == nil {
@@ -178,18 +191,37 @@ struct TouchStateTracker {
         }
 
         switch mode {
-        case .scroll:
-            // Centroid of the (up to two) tracked contacts.
-            let tracked = contacts.prefix(2).filter { lastPositions[$0.id] != nil }
-            guard !tracked.isEmpty else {
-                // The original two contacts both lifted; defer to next frame.
-                return .none
+        case .pending:
+            // Track motion for tap detection, but emit nothing.  Anchor at the
+            // contact's current position on commit so motion accumulated during
+            // the window is discarded rather than replayed as a cursor jump.
+            if let first = contacts.first {
+                if let anchor = tapAnchor {
+                    tapMaxDelta = Swift.max(tapMaxDelta, hypot(
+                        first.screen.x - anchor.x, first.screen.y - anchor.y))
+                }
+                lastPositions = [first.id: first.screen]
             }
+            if now - tapStart >= Self.onsetDelay {
+                mode = .pointer
+            }
+            return .none
+
+        case .scroll:
+            // Centroid delta over the contacts present in both this frame and
+            // the last.  Contacts with new ids (finger lifted and re-landed,
+            // or upstream palm filtering churned the set) are seeded for the
+            // next frame instead of stalling the gesture — losing both
+            // original ids used to kill the scroll until every finger lifted.
+            let current = Array(contacts.prefix(2))
+            let tracked = current.filter { lastPositions[$0.id] != nil }
             let oldCentroid = centroid(of: tracked.compactMap { lastPositions[$0.id] })
             let newCentroid = centroid(of: tracked.map { $0.screen })
+            lastPositions = Dictionary(uniqueKeysWithValues:
+                current.map { ($0.id, $0.screen) })
+            guard !tracked.isEmpty else { return .none }
             let dx = newCentroid.x - oldCentroid.x
             let dy = newCentroid.y - oldCentroid.y
-            for c in tracked { lastPositions[c.id] = c.screen }
             // Skip dead frames: a stationary palm with two contacts down would
             // otherwise post 100 no-op scroll events per second.
             if dx == 0 && dy == 0 { return .none }

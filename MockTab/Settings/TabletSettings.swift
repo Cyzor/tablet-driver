@@ -266,6 +266,14 @@ final class TabletSettings: ObservableObject {
     @Published var twoFingerScroll: Bool = true {
         didSet { persist("twoFingerScroll", twoFingerScroll) }
     }
+    /// Prototype, currently disconnected: two-finger scrolling while the pen is
+    /// in proximity (iPad-style).  The injector ignores this flag and the UI
+    /// toggle is removed — palm rejection wasn't reliable enough to ship (see
+    /// the arbitration comment in InputInjector.injectTouch).  Kept, along with
+    /// the snapshot field, so a future attempt doesn't have to re-plumb.
+    @Published var touchDuringPenUse: Bool = false {
+        didSet { persist("touchDuringPenUse", touchDuringPenUse) }
+    }
     /// When true, scroll direction is reversed relative to finger motion (classic
     /// mouse-wheel feel); when false, content follows finger movement.  Defaults to false.
     @Published var reverseScrollDirection: Bool = false {
@@ -936,6 +944,7 @@ final class TabletSettings: ObservableObject {
         touchSensitivity = Swift.max(0.25, Swift.min(loadDouble("touchSensitivity", default: 1.0), 4.0))
         tapToClick = loadBool("tapToClick", default: false)
         twoFingerScroll = loadBool("twoFingerScroll", default: true)
+        touchDuringPenUse = loadBool("touchDuringPenUse", default: false)
         reverseScrollDirection = loadBool("naturalScrolling", default: false)
         touchAreaX      = Swift.max(0.0,  Swift.min(loadDouble("touchAreaX",      default: 0.0), 1.0))
         touchAreaY      = Swift.max(0.0,  Swift.min(loadDouble("touchAreaY",      default: 0.0), 1.0))

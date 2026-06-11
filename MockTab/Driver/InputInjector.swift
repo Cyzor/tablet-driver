@@ -370,6 +370,12 @@ final class InputInjector {
         // before any HID report can arrive, so this guard is defense-in-depth.
         guard let snap = injectionSnapshot else { return }
         let tool = snap.activeTool
+        // Track the pen's normalized raw position (device frame, pre-orientation)
+        // for touch palm rejection: contacts near the pen are the pen hand.
+        if point.inProximity {
+            penNormX = Double(point.x) / Double(Swift.max(point.maxX, 1))
+            penNormY = Double(point.y) / Double(Swift.max(point.maxY, 1))
+        }
         var point = point
         if snap.invertRotation && point.rotation != 0.0 {
             point.rotation = (360.0 - point.rotation).truncatingRemainder(dividingBy: 360.0)
@@ -916,6 +922,39 @@ final class InputInjector {
     /// Per-Wacom-driver convention; tunable if reports show false positives.
     private static let touchArbitrationGrace: CFAbsoluteTime = 0.08
 
+    // MARK: Palm rejection (touchDuringPenUse)
+    //
+    // While the pen is busy, contacts are classified before they reach the
+    // gesture tracker.  A contact is palm if it reports a large touch-major
+    // or lands near the pen tip (the pen hand's heel).  Classification is
+    // sticky for the contact's lifetime so a blob that momentarily shrinks
+    // or drifts away from the pen can't flip back to being a finger.
+
+    /// Pen tip position normalized 0..1 in the raw device frame
+    /// (pre-orientation — same frame as raw touch coordinates).
+    private var penNormX: Double = -1
+    private var penNormY: Double = -1
+    /// Contact ids currently classified as palm.  HIDThread-owned.
+    private var palmRejectedIDs: Set<Int> = []
+    /// Touch-major (single byte, 0–255 device units) at or above which a
+    /// contact is a palm.  Fingertips report small values; tune against
+    /// hardware if real fingers get eaten.
+    private static let palmAreaThreshold = 80
+    /// Contacts within this distance of the pen tip are the pen hand.
+    /// Normalized to surface width (~60 mm on a medium tablet); the Y axis is
+    /// aspect-corrected so the zone is physically circular.
+    private static let palmRadiusNorm = 0.28
+
+    /// True if the contact should be rejected as a palm while the pen is busy.
+    private func isPalmContact(_ c: TouchContact) -> Bool {
+        if let area = c.contactArea, area >= Self.palmAreaThreshold { return true }
+        guard penNormX >= 0 else { return false }
+        let dx = Double(c.x) / Double(cachedTouchMaxX) - penNormX
+        let dy = (Double(c.y) / Double(cachedTouchMaxY) - penNormY)
+            * (Double(cachedTouchMaxY) / Double(cachedTouchMaxX))
+        return dx * dx + dy * dy < Self.palmRadiusNorm * Self.palmRadiusNorm
+    }
+
     /// Inject a touch contact frame.
     ///
     /// Behaviour:
@@ -936,10 +975,35 @@ final class InputInjector {
         rearmWatchdog()
         guard let snap = injectionSnapshot, snap.touchEnabled else { return }
 
+        // Cache touch coordinate maximums per device.  Without this, the
+        // registry lookup (linear scan over ~80 specs) ran on every HID
+        // frame — at 100 Hz with a palm on the tablet, that alone was a
+        // measurable CPU contributor.  (Before the arbitration gate because
+        // palm classification needs the maximums.)
+        if cachedTouchSpecPID != deviceProductID {
+            let spec = WacomDeviceRegistry.spec(for: deviceProductID)
+            cachedTouchMaxX = Swift.max(1, spec?.touchMaxX ?? 1)
+            cachedTouchMaxY = Swift.max(1, spec?.touchMaxY ?? 1)
+            cachedTouchSpecPID = deviceProductID
+        }
+
         // Pen arbitration: pen takes priority.  Drop frames and reset tracker
         // so a half-formed gesture doesn't resume after the pen lifts.
+        //
+        // An iPad-style "scroll while the pen is in use" mode was prototyped
+        // here (2026-06): the PTH-x50 firmware does keep streaming touch with
+        // the pen in proximity and even tip-down, and the palm-rejection
+        // helpers below (isPalmContact / palmRejectedIDs) stripped pen-hand
+        // contacts before gating on ≥2 surviving fingers.  It worked, but
+        // not well enough to ship — scrolls died mid-gesture, and per-app
+        // event arbitration (e.g. Affinity) was inconsistent.  The plumbing
+        // (TabletSettings.touchDuringPenUse, the snapshot field, and the
+        // helpers) is kept for another attempt; the gate below deliberately
+        // ignores the flag so behavior is classic one-or-the-other.
         let now = CFAbsoluteTimeGetCurrent()
-        if lastProximity || now - penProximityExitTime < Self.touchArbitrationGrace {
+        let penBusy = lastProximity ||
+            now - penProximityExitTime < Self.touchArbitrationGrace
+        if penBusy {
             if !contacts.isEmpty {
                 _ = touchTracker.process(
                     contacts: [], tapToClick: false, twoFingerScroll: false,
@@ -958,17 +1022,6 @@ final class InputInjector {
             cachedCalibrationOrientation = -1
         }
         let displayBounds = cachedDisplayBounds
-
-        // Cache touch coordinate maximums per device.  Without this, the
-        // registry lookup (linear scan over ~80 specs) ran on every HID
-        // frame — at 100 Hz with a palm on the tablet, that alone was a
-        // measurable CPU contributor.
-        if cachedTouchSpecPID != deviceProductID {
-            let spec = WacomDeviceRegistry.spec(for: deviceProductID)
-            cachedTouchMaxX = Swift.max(1, spec?.touchMaxX ?? 1)
-            cachedTouchMaxY = Swift.max(1, spec?.touchMaxY ?? 1)
-            cachedTouchSpecPID = deviceProductID
-        }
 
         // Project each contact to screen-space using the touch-area mapping.
         // Contacts whose raw position falls outside the crop rect return nil
