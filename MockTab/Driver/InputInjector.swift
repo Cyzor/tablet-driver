@@ -322,12 +322,12 @@ final class InputInjector {
     private(set) var shimLastScreen: CGPoint = .zero
     private(set) var shimLastPressure: Double = 0.0
 
-    // MARK: - Settings snapshot (Phase 2 — populated, not yet read)
+    // MARK: - Settings snapshot
     //
-    // Owned by main actor for now. Refreshed by DeviceContext on every
-    // settings/tool change. Phase 3 will switch this to nonisolated(unsafe)
-    // and route writes through CFRunLoopPerformBlock(HIDThread.shared.runLoop)
-    // so inject() can read it inline on HIDThread without the @MainActor hop.
+    // The hot path's only view of settings/tool configuration. Rebuilt by
+    // DeviceContext.observeInjectionSnapshot() on every settings/tool change
+    // and published onto HIDThread via CFRunLoopPerformBlock, so inject()
+    // reads it inline on the same thread that wrote it — no @MainActor hop.
 
     var injectionSnapshot: InjectionSnapshot?
 
@@ -689,7 +689,7 @@ final class InputInjector {
     /// Re-emits the last tablet pointer event.
     /// Called by TabletManager when WacomShim receives an eSendTabletEvent(eEventPointer)
     /// Apple Event from Adobe Photoshop / Illustrator.
-    func replayPointerEvent(settings: TabletSettings? = nil) {
+    func replayPointerEvent() {
         guard let point = shimLastPoint, let snap = injectionSnapshot else { return }
         postTabletPointerEvent(
             at: shimLastScreen, pressure: shimLastPressure, point: point, snapshot: snap)
