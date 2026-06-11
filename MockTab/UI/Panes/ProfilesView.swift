@@ -32,24 +32,6 @@ struct ProfilesView: View {
     @State private var pendingImport: ImportPlan?
     @State private var importError: String?
 
-    // MARK: - Recording Binding Helper
-
-    private func recordingBinding<T: Equatable>(
-        _ name: String,
-        get: @escaping () -> T,
-        set: @escaping (T) -> Void
-    ) -> Binding<T> {
-        Binding(
-            get: get,
-            set: { newValue in
-                let oldValue = get()
-                guard newValue != oldValue else { return }
-                set(newValue)
-                settings.record(name) { set(oldValue) }
-            }
-        )
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -95,6 +77,12 @@ struct ProfilesView: View {
                 productID: productID ?? 0
             )
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            // Finder-style: a single click outside the field confirms any
+            // rename in progress (an empty name reverts to the old one).
+            if editingPreset != nil { commitRename() }
+        }
         .onAppear { populateOfflineSettings() }
         .onChange(of: registry.knownTablets.count) { _ in populateOfflineSettings() }
         .onReceive(NotificationCenter.default.publisher(for: .mockTabImportData)) { note in
@@ -124,7 +112,7 @@ struct ProfilesView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
                     .accessibilityHidden(true)
-                Text(LocalizedStringKey("Active profile:"))
+                Text("Active profile:")
                     .appFont(.headline)
                 Text(active.name)
                     .appFont(.settingsLabel)
@@ -142,7 +130,7 @@ struct ProfilesView: View {
 
     private var createRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(LocalizedStringKey("New Profile"))
+            Text("New Profile")
                 .appFont(.headline)
                 .foregroundStyle(.secondary)
 
@@ -153,18 +141,18 @@ struct ProfilesView: View {
                         .frame(maxWidth: 200)
                         .onSubmit { commitCreate() }
 
-                    Button(LocalizedStringKey("Create")) { commitCreate() }
+                    Button("Create") { commitCreate() }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                         .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
-                        .help(LocalizedStringKey("Save this new profile with the current settings"))
+                        .help("Save this new profile with the current settings")
 
-                    Button(LocalizedStringKey("Cancel")) {
+                    Button("Cancel") {
                         isCreating = false
                         newName = ""
                     }
                     .controlSize(.small)
-                    .help(LocalizedStringKey("Cancel creating a new profile"))
+                    .help("Cancel creating a new profile")
                 }
             } else {
                 Button {
@@ -181,7 +169,7 @@ struct ProfilesView: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                .help(LocalizedStringKey("Save the current settings as a new profile"))
+                .help("Save the current settings as a new profile")
             }
         }
     }
@@ -191,7 +179,7 @@ struct ProfilesView: View {
     @ViewBuilder
     private var autoSwitchSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(LocalizedStringKey("Auto-Switch"))
+            Text("Auto-Switch")
                 .appFont(.headline)
                 .foregroundStyle(.secondary)
 
@@ -200,14 +188,14 @@ struct ProfilesView: View {
                     localized:
                         "Automatically switch to the matching profile when this tablet connects",
                     comment: "Toggle: auto-activate profile when tablet connects"),
-                isOn: recordingBinding(
+                isOn: settings.recordingBinding(
                     "Auto-Switch",
                     get: { settings.autoSwitchEnabled },
                     set: { settings.autoSwitchEnabled = $0 }
                 )
             )
             .appFont(.settingsLabel)
-            .help(LocalizedStringKey("Restore the active profile automatically when this tablet is connected"))
+            .help("Restore the active profile automatically when this tablet is connected")
         }
     }
 
@@ -215,7 +203,7 @@ struct ProfilesView: View {
 
     private var exportSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(LocalizedStringKey("Backup & Restore"))
+            Text("Backup & Restore")
                 .fontWeight(.medium)
 
             Text(
@@ -250,15 +238,15 @@ struct ProfilesView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                     HStack(spacing: 8) {
-                        Button(LocalizedStringKey("Export as JSON…")) { saveExportToFile() }
+                        Button("Export as JSON…") { saveExportToFile() }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
-                            .help(LocalizedStringKey("Save all profiles and settings to a JSON backup file"))
+                            .help("Save all profiles and settings to a JSON backup file")
 
-                        Button(LocalizedStringKey("Import from File…")) { openImportPanel() }
+                        Button("Import from File…") { openImportPanel() }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
-                            .help(LocalizedStringKey("Restore settings from a previously saved JSON backup"))
+                            .help("Restore settings from a previously saved JSON backup")
                     }
 
                     if let err = importError {
@@ -323,7 +311,7 @@ struct ProfilesView: View {
                     .padding(10)
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(LocalizedStringKey("JSON backup tile — drag out to export, drop a JSON file in to import"))
+                .accessibilityLabel("JSON backup tile — drag out to export, drop a JSON file in to import")
                 .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .onHover { hovering in
                     isHovering = hovering
@@ -485,7 +473,7 @@ private struct PresetListView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(LocalizedStringKey("Profiles"))
+            Text("Profiles")
                 .appFont(.headline)
                 .foregroundStyle(.secondary)
 
@@ -523,14 +511,14 @@ private struct PresetListView: View {
                     .frame(maxWidth: 200)
                     .onSubmit { onRenameCommit() }
 
-                Button(LocalizedStringKey("Save")) { onRenameCommit() }
+                Button("Save") { onRenameCommit() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                    .help(LocalizedStringKey("Save the profile name"))
+                    .help("Save the profile name")
 
-                Button(LocalizedStringKey("Cancel")) { onRenameCancel() }
+                Button("Cancel") { onRenameCancel() }
                     .controlSize(.small)
-                    .help(LocalizedStringKey("Cancel renaming"))
+                    .help("Cancel renaming")
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(preset.name)
@@ -553,9 +541,9 @@ private struct PresetListView: View {
                 Spacer()
 
                 if !isActive {
-                    Button(LocalizedStringKey("Activate")) { onActivate(preset) }
+                    Button("Activate") { onActivate(preset) }
                         .controlSize(.small)
-                        .help(LocalizedStringKey("Switch to this profile immediately"))
+                        .help("Switch to this profile immediately")
                 } else {
                     Text(String(localized: "Active", comment: "Badge label when profile is active"))
                         .appFont(.settingsBadge)
@@ -568,15 +556,15 @@ private struct PresetListView: View {
 
                 Menu {
                     Button { onRenameBegin(preset) } label: {
-                        Label(LocalizedStringKey("Rename"), systemImage: "pencil")
+                        Label("Rename", systemImage: "pencil")
                     }
-                    .help(LocalizedStringKey("Edit the profile name"))
+                    .help("Edit the profile name")
                     Divider()
                     Button(role: .destructive) { onDelete(preset) } label: {
-                        Label(LocalizedStringKey("Delete"), systemImage: "trash")
+                        Label("Delete", systemImage: "trash")
                     }
                     .disabled(preset.name == "Default")
-                    .help(LocalizedStringKey("Permanently delete this profile (cannot be undone)"))
+                    .help("Permanently delete this profile (cannot be undone)")
                 } label: {
                     Image(systemName: "ellipsis")
                         .appFont(.settingsBadge)
@@ -587,7 +575,7 @@ private struct PresetListView: View {
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .frame(width: 24)
-                .accessibilityLabel(LocalizedStringKey("Profile actions"))
+                .accessibilityLabel("Profile actions")
             }
         }
         .padding(10)

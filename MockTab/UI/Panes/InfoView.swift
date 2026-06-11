@@ -126,12 +126,15 @@ struct InfoView: View {
                         ? "\(pct)%  \(String(localized: "(Charging)", comment: "Suffix when device is charging, e.g. '85%  (Charging)'"))"
                         : "\(pct)%",
                     ok: pct < 20 ? false : nil,
-                    leadingSymbol: batterySymbolName(
+                    leadingSymbol: BatteryIndicator.symbolName(
                         pct: pct,
                         charging: deviceContext?.batteryCharging ?? false),
-                    symbolColor: batteryColor(
+                    // Affirmative green when healthy — this table is the
+                    // place users come to check on the device.
+                    symbolColor: BatteryIndicator.tint(
                         pct: pct,
-                        charging: deviceContext?.batteryCharging ?? false))
+                        charging: deviceContext?.batteryCharging ?? false,
+                        healthy: .green))
             }
 
             row(
@@ -214,7 +217,7 @@ struct InfoView: View {
                 }
                 Text(value)
                 if let fix {
-                    Button(LocalizedStringKey("Fix"), action: fix)
+                    Button("Fix", action: fix)
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .help(fixHelp ?? "")
@@ -229,36 +232,16 @@ struct InfoView: View {
         if ok == true {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-                .accessibilityLabel(LocalizedStringKey("OK"))
+                .accessibilityLabel("OK")
         } else if ok == false {
             Image(systemName: "xmark.circle.fill")
                 .foregroundStyle(.primary)
-                .accessibilityLabel(LocalizedStringKey("Failed"))
+                .accessibilityLabel("Failed")
         } else {
             Image(systemName: "minus.circle.fill")
                 .foregroundStyle(.tertiary)
-                .accessibilityLabel(LocalizedStringKey("Unknown"))
+                .accessibilityLabel("Unknown")
         }
-    }
-
-    // MARK: - Battery icon helpers
-
-    private func batterySymbolName(pct: Int, charging: Bool) -> String {
-        guard !charging else { return "battery.100percent.bolt" }
-        switch pct {
-        case 0..<13: return "battery.0percent"
-        case 13..<38: return "battery.25percent"
-        case 38..<63: return "battery.50percent"
-        case 63..<88: return "battery.75percent"
-        default: return "battery.100percent"
-        }
-    }
-
-    private func batteryColor(pct: Int, charging: Bool) -> Color {
-        if charging { return .green }
-        if pct < 20 { return .red }
-        if pct < 50 { return .orange }
-        return .green
     }
 
     // MARK: - HID capture section
@@ -561,7 +544,7 @@ private struct LiveInputView: View {
                         if !lb.tipDown && !lb.eraserDown && !lb.button1Down
                             && !lb.button2Down && !anyExpress
                         {
-                            Text(LocalizedStringKey("None")).foregroundStyle(.tertiary).appFont(.settingsBadge)
+                            Text("None").foregroundStyle(.tertiary).appFont(.settingsBadge)
                         }
                     }
                 }
@@ -589,10 +572,13 @@ private struct LiveInputView: View {
                     rotationGauge(degrees: point?.rotation)
                 }
 
+                // Coordinate and tilt are heavily quantized: this table is a
+                // liveness check, not a precision readout, and raw values
+                // flicker on every report even with the pen at rest.
                 liveRow(label: String(localized: "Coordinate", comment: "Live Input table row label — raw X/Y position")) {
                     Text(
                         point != nil
-                            ? "X: \(point!.x)   Y: \(point!.y)"
+                            ? "X: \(quantize(point!.x, to: 100))   Y: \(quantize(point!.y, to: 100))"
                             : String(localized: "X: 0   Y: 0", comment: "Default coordinate display when no pen is detected")
                     )
                     .monospacedDigit()
@@ -602,8 +588,8 @@ private struct LiveInputView: View {
                 liveRow(label: String(localized: "Tilt", comment: "Live Input table row label — pen tilt X/Y")) {
                     Text(
                         point != nil
-                            ? "X: \(String(format: "%+.2f", point!.tiltX))   Y: \(String(format: "%+.2f", point!.tiltY))"
-                            : String(localized: "X: +0.00   Y: +0.00", comment: "Default tilt display when no pen is detected")
+                            ? "X: \(String(format: "%+.1f", point!.tiltX))   Y: \(String(format: "%+.1f", point!.tiltY))"
+                            : String(localized: "X: +0.0   Y: +0.0", comment: "Default tilt display when no pen is detected")
                     )
                     .monospacedDigit()
                 }
@@ -659,6 +645,11 @@ private struct LiveInputView: View {
                     .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
             )
         }
+    }
+
+    /// Round to the nearest multiple of `step` (coordinates are non-negative).
+    private func quantize(_ value: Int, to step: Int) -> Int {
+        ((value + step / 2) / step) * step
     }
 
     @ViewBuilder

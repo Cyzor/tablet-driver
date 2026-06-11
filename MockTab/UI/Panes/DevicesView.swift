@@ -60,9 +60,11 @@ struct DevicesView: View {
             )
         }
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) {
-            editingTabletID = nil
-            editingToolID = nil
+        .onTapGesture {
+            // Finder-style: a single click outside the field confirms any
+            // rename in progress (an empty name reverts to the old one).
+            commitTabletRename()
+            commitToolRename()
         }
         .onAppear { syncTools() }
         .onChange(of: tabletManager.connectedProductID) { _ in
@@ -76,7 +78,7 @@ struct DevicesView: View {
             )
         ) {
             // No .destructive role so "Remove" is the default (blue) button — Enter confirms.
-            Button(LocalizedStringKey("Remove")) {
+            Button("Remove") {
                 guard let tool = pendingForgetTool else { return }
                 let snapshot: DeviceRegistry.ToolRemovalSnapshot?
                 if let did = pendingForgetDeviceID {
@@ -93,7 +95,7 @@ struct DevicesView: View {
                 pendingForgetTool = nil
                 editingToolID = nil
             }
-            Button(LocalizedStringKey("Cancel"), role: .cancel) { pendingForgetTool = nil }
+            Button("Cancel", role: .cancel) { pendingForgetTool = nil }
         } message: {
             Text(String(localized: "This tool will reappear with its default name next time the tablet detects it.", comment: "Message explaining that removed tool nicknames are temporary"))
         }
@@ -104,7 +106,7 @@ struct DevicesView: View {
                 set: { if !$0 { pendingRemoveTablet = nil } }
             )
         ) {
-            Button(LocalizedStringKey("Remove")) {
+            Button("Remove") {
                 guard let tablet = pendingRemoveTablet else { return }
                 if let snapshot = registry.removeTablet(id: tablet.id) {
                     undoManager?.registerUndo(withTarget: registry) { target in
@@ -114,7 +116,7 @@ struct DevicesView: View {
                 }
                 pendingRemoveTablet = nil
             }
-            Button(LocalizedStringKey("Cancel"), role: .cancel) { pendingRemoveTablet = nil }
+            Button("Cancel", role: .cancel) { pendingRemoveTablet = nil }
         } message: {
             Text(String(localized: "This will discard all settings, profiles, button mappings, and the saved tool list for this tablet. The tablet will be re-added with defaults the next time it connects.", comment: "Message explaining what gets wiped when removing a tablet"))
         }
@@ -124,7 +126,7 @@ struct DevicesView: View {
 
     private var tabletsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(LocalizedStringKey("Tablets")).appFont(.headline)
+            Text("Tablets").appFont(.headline)
             columnHeader("Name", "Kind", "Identifier")
             if registry.knownTablets.isEmpty {
                 emptyState(String(localized: "No tablets have been connected yet.", comment: "Empty state message when no tablets have been detected"))
@@ -186,9 +188,9 @@ struct DevicesView: View {
 
             // Actions
             if editingTabletID == tablet.id {
-                Button(LocalizedStringKey("Save")) { commitTabletRename() }
+                Button("Save") { commitTabletRename() }
                     .buttonStyle(.borderedProminent).controlSize(.small)
-                Button(LocalizedStringKey("Cancel")) { editingTabletID = nil }
+                Button("Cancel") { editingTabletID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
                     .keyboardShortcut(.cancelAction)
             } else {
@@ -199,8 +201,8 @@ struct DevicesView: View {
                     Image(systemName: "pencil")
                         .accessibilityHidden(true)
                 }
-                .buttonStyle(.plain).foregroundStyle(.secondary).help(LocalizedStringKey("Rename"))
-                .accessibilityLabel(LocalizedStringKey("Rename"))
+                .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
+                .accessibilityLabel("Rename")
             }
         }
         .padding(.horizontal, 12)
@@ -209,14 +211,15 @@ struct DevicesView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { beginTabletEdit(tablet) }
         .onTapGesture {
-            guard editingTabletID == nil else { return }
+            commitTabletRename()
+            commitToolRename()
             selectedTabletID = tablet.id
             registry.loadTools(forDevice: tablet.id)
         }
         .contextMenu {
-            Button(LocalizedStringKey("Rename…")) { beginTabletEdit(tablet) }
+            Button("Rename…") { beginTabletEdit(tablet) }
             Divider()
-            Button(LocalizedStringKey("Remove from List…")) {
+            Button("Remove from List…") {
                 pendingRemoveTablet = tablet
             }
             .disabled(isActive)
@@ -224,12 +227,16 @@ struct DevicesView: View {
     }
 
     private func beginTabletEdit(_ tablet: DeviceRegistry.KnownTablet) {
+        commitToolRename()
+        commitTabletRename()
         editingToolID = nil
         editingTabletID = tablet.id
         editingName = tablet.nickname
     }
 
     private func beginToolEdit(_ tool: DeviceRegistry.KnownTool) {
+        commitTabletRename()
+        commitToolRename()
         editingTabletID = nil
         editingToolID = tool.id
         editingName = tool.nickname
@@ -241,7 +248,7 @@ struct DevicesView: View {
         VStack(alignment: .leading, spacing: 6) {
             // Header shows which tablet's tools are listed
             HStack(spacing: 0) {
-                Text(LocalizedStringKey("Tools")).appFont(.headline)
+                Text("Tools").appFont(.headline)
                 if let id = effectiveTabletID,
                     let tablet = registry.knownTablets.first(where: { $0.id == id })
                 {
@@ -304,16 +311,16 @@ struct DevicesView: View {
                 .frame(width: 110, alignment: .leading)
 
             if editingToolID == tool.id {
-                Button(LocalizedStringKey("Rename")) { commitToolRename() }
+                Button("Rename") { commitToolRename() }
                     .buttonStyle(.borderedProminent).controlSize(.small)
-                Button(LocalizedStringKey("Forget…")) {
+                Button("Forget…") {
                     pendingForgetTool = tool
                     pendingForgetDeviceID = deviceID
                 }
                 .buttonStyle(.bordered).controlSize(.small)
                 .foregroundStyle(.red)
-                .help(LocalizedStringKey("Remove this tool from the registry. It will reappear with its default name next time it is detected."))
-                Button(LocalizedStringKey("Cancel")) { editingToolID = nil }
+                .help("Remove this tool from the registry. It will reappear with its default name next time it is detected.")
+                Button("Cancel") { editingToolID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
                     .keyboardShortcut(.cancelAction)
             } else {
@@ -323,7 +330,7 @@ struct DevicesView: View {
                 } label: {
                     Image(systemName: "pencil")
                 }
-                .buttonStyle(.plain).foregroundStyle(.secondary).help(LocalizedStringKey("Rename"))
+                .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
             }
         }
         .padding(.horizontal, 12)
@@ -332,9 +339,9 @@ struct DevicesView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { beginToolEdit(tool) }
         .contextMenu {
-            Button(LocalizedStringKey("Rename…")) { beginToolEdit(tool) }
+            Button("Rename…") { beginToolEdit(tool) }
             Divider()
-            Button(LocalizedStringKey("Remove from List…")) {
+            Button("Remove from List…") {
                 pendingForgetTool = tool
                 pendingForgetDeviceID = deviceID
             }
@@ -345,7 +352,7 @@ struct DevicesView: View {
 
     private var allToolsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(LocalizedStringKey("Tools (All Tablets)")).appFont(.headline)
+            Text("Tools (All Tablets)").appFont(.headline)
             columnHeader("Name", "Kind", "Identifier")
             if registry.allKnownTools.isEmpty {
                 emptyState(String(localized: "No tools detected yet.\nMove the pen over a tablet to register it.", comment: "Empty state message in tools list — multiple tablets"))
@@ -421,8 +428,10 @@ struct DevicesView: View {
         guard let id = editingTabletID,
             let tablet = registry.knownTablets.first(where: { $0.id == id })
         else { return }
+        editingTabletID = nil
         let trimmed = editingName.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
+        // Empty or unchanged names end the edit and keep the old name.
+        guard !trimmed.isEmpty, trimmed != tablet.nickname else { return }
         let oldName = tablet.nickname
         registry.renameTablet(id: id, to: trimmed)
         // Register undo for tablet rename
@@ -430,7 +439,6 @@ struct DevicesView: View {
             target.renameTablet(id: id, to: oldName)
         }
         undoManager?.setActionName(String(localized: "Rename Tablet", comment: "Undo action name when renaming a tablet"))
-        editingTabletID = nil
     }
 
     private func commitToolRename() {
@@ -438,8 +446,10 @@ struct DevicesView: View {
             let deviceID = effectiveTabletID,
             let tool = registry.knownTools.first(where: { $0.id == toolID })
         else { return }
+        editingToolID = nil
         let trimmed = editingName.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
+        // Empty or unchanged names end the edit and keep the old name.
+        guard !trimmed.isEmpty, trimmed != tool.nickname else { return }
         let oldName = tool.nickname
         registry.renameTool(id: toolID, to: trimmed, forDevice: deviceID)
         // Register undo for tool rename
@@ -447,7 +457,6 @@ struct DevicesView: View {
             target.renameTool(id: toolID, to: oldName, forDevice: deviceID)
         }
         undoManager?.setActionName(String(localized: "Rename Tool", comment: "Undo action name when renaming a tool"))
-        editingToolID = nil
     }
 
     private func syncTools() {

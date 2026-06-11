@@ -98,9 +98,10 @@ struct TabletAreaView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            AppOverrideBar(settings: settings, domainKeys: AppOverrideBar.areaKeys, productID: boundProductID)
-            Form {
+        SettingsPane(
+            settings: settings, tabletManager: tabletManager, registry: registry,
+            productID: boundProductID, overrideKeys: AppOverrideBar.areaKeys
+        ) {
                 Section {
                     NormalizedAreaEditor(
                         aspectRatio: orientedAspectRatio,
@@ -125,13 +126,13 @@ struct TabletAreaView: View {
 
                     HStack {
 
-                        Toggle(LocalizedStringKey("Proportional mapping"), isOn: proportionalMappingBinding)
+                        Toggle("Proportional mapping", isOn: proportionalMappingBinding)
                             .toggleStyle(.checkbox)
-                            .help(LocalizedStringKey("Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed."))
+                            .help("Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed.")
                         
                         Spacer()
                         
-                        Button(LocalizedStringKey("Reset to Full Area")) {
+                        Button("Reset to Full Area") {
                             let snap = TabletSettings.AreaSnapshot(
                                 x: settings.activeAreaX, y: settings.activeAreaY,
                                 w: settings.activeAreaWidth, h: settings.activeAreaHeight)
@@ -141,7 +142,7 @@ struct TabletAreaView: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .help(LocalizedStringKey("Reset the active area to the full tablet surface (undoable)."))
+                        .help("Reset the active area to the full tablet surface (undoable).")
 
                     }
                     .listRowBackground(Color.clear)
@@ -151,21 +152,21 @@ struct TabletAreaView: View {
                 }
 
                 if activeDeviceIsPenDisplay {
-                    Section(LocalizedStringKey("Pen Display Calibration")) {
+                    Section("Pen Display Calibration") {
                         // Calibration status + actions
                         HStack {
                             if !activeDeviceIsConnected {
                                 Image(systemName: "display.slash")
                                     .foregroundStyle(.secondary)
                                     .accessibilityHidden(true)
-                                Text(LocalizedStringKey("Display not connected"))
+                                Text("Display not connected")
                                     .foregroundStyle(.secondary)
                             } else if let cal = activeCalibration {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(.green)
                                     .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(LocalizedStringKey("Calibrated"))
+                                    Text("Calibrated")
                                         .appFont(.body)
                                     Text(cal.calibratedAt, format: .dateTime.month(.abbreviated).day().year())
                                         .appFont(.caption)
@@ -175,17 +176,17 @@ struct TabletAreaView: View {
                                 Image(systemName: "exclamationmark.triangle")
                                     .foregroundStyle(.orange)
                                     .accessibilityHidden(true)
-                                Text(LocalizedStringKey("Not calibrated"))
+                                Text("Not calibrated")
                             }
                             Spacer()
-                            Button(LocalizedStringKey("Calibrate…")) {
+                            Button("Calibrate…") {
                                 startCalibration()
                             }
                             .buttonStyle(.bordered)
                             .disabled(!activeDeviceIsConnected || settings.targetDisplayIndex == TabletSettings.displayModeAll)
-                            .help(LocalizedStringKey("Open the calibration overlay to tap crosshair targets on your pen display."))
+                            .help("Open the calibration overlay to tap crosshair targets on your pen display.")
                             if activeCalibration != nil {
-                                Button(LocalizedStringKey("Reset")) {
+                                Button("Reset") {
                                     resetCalibration()
                                 }
                                 .buttonStyle(.bordered)
@@ -194,10 +195,12 @@ struct TabletAreaView: View {
                         }
 
                         // Manual fine-tune offset
-                        DisclosureGroup(LocalizedStringKey("Manual Fine-Tune")) {
+                        DisclosureGroup("Manual Fine-Tune") {
+                            // Vertical padding keeps the rounded-border fields and
+                            // buttons from clipping against the disclosure row bounds.
                             HStack(spacing: 16) {
                                 HStack(spacing: 4) {
-                                    Text(LocalizedStringKey("Horizontal:"))
+                                    Text("Horizontal:")
                                         .foregroundStyle(.secondary)
                                     TextField("", value: parallaxXBinding,
                                               format: .number.precision(.fractionLength(1)))
@@ -207,7 +210,7 @@ struct TabletAreaView: View {
                                     Text("pt").foregroundStyle(.secondary)
                                 }
                                 HStack(spacing: 4) {
-                                    Text(LocalizedStringKey("Vertical:"))
+                                    Text("Vertical:")
                                         .foregroundStyle(.secondary)
                                     TextField("", value: parallaxYBinding,
                                               format: .number.precision(.fractionLength(1)))
@@ -217,7 +220,7 @@ struct TabletAreaView: View {
                                     Text("pt").foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Button(LocalizedStringKey("Reset Offset")) {
+                                Button("Reset Offset") {
                                     let oldX = settings.parallaxOffsetX
                                     let oldY = settings.parallaxOffsetY
                                     settings.parallaxOffsetX = 0
@@ -231,18 +234,15 @@ struct TabletAreaView: View {
                                 .controlSize(.small)
                                 .disabled(settings.parallaxOffsetX == 0 && settings.parallaxOffsetY == 0)
                             }
+                            .padding(.vertical, 6)
                         }
-                        .help(LocalizedStringKey("Apply a small constant offset on top of calibration for sub-pixel fine-tuning."))
+                        .help("Apply a small constant offset on top of calibration for sub-pixel fine-tuning.")
                     }
                 }
 
-                Section(LocalizedStringKey("Orientation")) {
+                Section("Orientation") {
                     OrientationPickerView(settings: settings)
                 }
-            }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            DeviceStatusBar(settings: settings, tabletManager: tabletManager, registry: registry, productID: boundProductID ?? 0)
         }
     }
 
@@ -271,8 +271,7 @@ struct TabletAreaView: View {
     // MARK: - Section heading
 
     private var sectionHeading: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(LocalizedStringKey("Active Surface Area")).appFont(.headline)
+        PaneSectionHeader("Active Surface Area") {
             DeviceNameLabel(tabletManager: tabletManager, registry: registry)
         }
     }
@@ -395,22 +394,14 @@ struct TabletAreaView: View {
 
     private var coordinateReadout: some View {
         Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
-//            GridRow {
-//                Text("Offset X").foregroundStyle(.secondary)
-//                    .frame(width: 60, alignment: .trailing)
-//                percentField($settings.activeAreaX)
-//                Text("Offset Y").foregroundStyle(.secondary)
-//                    .frame(width: 60, alignment: .trailing)
-//                percentField($settings.activeAreaY)
-//            }
             GridRow {
-                Text(LocalizedStringKey("Width")).foregroundStyle(.secondary)
+                Text("Width").foregroundStyle(.secondary)
                     .frame(width: 60, alignment: .trailing)
                 pixelField(fraction: $settings.activeAreaWidth,
                            maxValue: activeDeviceMaxX,
                            minFraction: Self.minFraction,
                            maxFraction: 1 - settings.activeAreaX)
-                Text(LocalizedStringKey("Height")).foregroundStyle(.secondary)
+                Text("Height").foregroundStyle(.secondary)
                     .frame(width: 60, alignment: .trailing)
                 pixelField(fraction: $settings.activeAreaHeight,
                            maxValue: activeDeviceMaxY,
