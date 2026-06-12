@@ -23,6 +23,15 @@ CONFIG="Release"
 KEYCHAIN_PROFILE="MockTabNotary"
 EXPORT_OPTIONS="tools/ExportOptions.plist"
 
+# Notary auth. Locally we use the stored keychain profile (MockTabNotary).
+# CI has no login keychain, so it passes credentials via the environment:
+# set NOTARY_APPLE_ID, NOTARY_PASSWORD (app-specific), and NOTARY_TEAM_ID.
+if [[ -n "${NOTARY_APPLE_ID:-}" && -n "${NOTARY_PASSWORD:-}" && -n "${NOTARY_TEAM_ID:-}" ]]; then
+    NOTARY_AUTH=(--apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$NOTARY_TEAM_ID")
+else
+    NOTARY_AUTH=(--keychain-profile "$KEYCHAIN_PROFILE")
+fi
+
 DIST_DIR="dist"
 BUILD_DIR="$DIST_DIR/build"
 
@@ -67,7 +76,7 @@ echo "==> Notarizing .app"
 APP_ZIP="$BUILD_DIR/MockTab-$VERSION.zip"
 ditto -c -k --keepParent "$APP_PATH" "$APP_ZIP"
 xcrun notarytool submit "$APP_ZIP" \
-    --keychain-profile "$KEYCHAIN_PROFILE" \
+    "${NOTARY_AUTH[@]}" \
     --wait
 xcrun stapler staple "$APP_PATH"
 xcrun stapler validate "$APP_PATH"
@@ -83,7 +92,7 @@ hdiutil create -volname "MockTab $VERSION" \
 
 echo "==> Notarizing DMG"
 xcrun notarytool submit "$DMG_PATH" \
-    --keychain-profile "$KEYCHAIN_PROFILE" \
+    "${NOTARY_AUTH[@]}" \
     --wait
 xcrun stapler staple "$DMG_PATH"
 xcrun stapler validate "$DMG_PATH"

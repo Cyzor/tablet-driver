@@ -1,0 +1,112 @@
+# MockTab — tag-triggered release.
+#
+# Push an annotated tag like v0.2.3 and this builds, signs, notarizes, and
+# staples the .app and DMG, then creates a DRAFT GitHub Release with the DMG
+# attached. Nothing is public until you click Publish on GitHub.
+#
+# This and the local `tools/release-and-publish.sh` are two front doors to the
+# same build/notarize path (tools/release.sh) — use ONE per release, not both:
+#   • CI (this file): bump version, commit, push main, then push a tag. Done.
+#   • Local script: builds and drafts on your Mac, then pushes the tag itself —
+#     which also fires this workflow. CI would then fail trying to create a
+#     release for a tag that already has one. So if you run the local script,
+#     this workflow's redundant run is expected to error on the last step; the
+#     local draft is the real one. Prefer the CI path unless you're offline.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   DEVELOPER_ID_CERT_P12       base64 of the "Developer ID Application" cert
+#                               exported as a .p12  (base64 -i cert.p12 | pbcopy)
+#   DEVELOPER_ID_CERT_PASSWORD  the password set when exporting that .p12
+#   NOTARY_APPLE_ID             Apple ID email used for notarization
+#   NOTARY_PASSWORD             app-specific password for that Apple ID
+# Team ID (3R62GZR6Q2) is not secret and is read from tools/ExportOptions.plist.
+#
+# NOTE: GitHub-hosted runners ship a fixed set of Xcode versions. MockTab is
+# developed against Xcode 26 / the macOS 26 SDK; if the runner's newest Xcode is
+# older and the build fails on missing SDK symbols, pin a version with the
+# `Select Xcode` step below (uncomment and set a path that `ls /Applications`
+# shows on the runner).
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write          # create the GitHub Release
+
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      NOTARY_TEAM_ID: 3R62GZR6Q2
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # - name: Select Xcode
+      #   run: sudo xcode-select -s /Applications/Xcode_26.app
+
+      - name: Show toolchain
+        run: xcodebuild -version
+
+      - name: Verify tag matches MARKETING_VERSION
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          MV=$(xcodebuild -project MockTab.xcodeproj -scheme MockTab -configuration Release \
+              -showBuildSettings 2>/dev/null | awk '/ MARKETING_VERSION = /{print $3; exit}')
+          if [[ "$VERSION" != "$MV" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match MARKETING_VERSION $MV — bump the project before tagging" >&2
+            exit 1
+          fi
+          echo "Releasing MockTab $VERSION"
+
+      - name: Import Developer ID certificate
+        env:
+          CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASS=$(openssl rand -base64 24)
+          echo "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+
+          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/cert.p12" -P "$CERT_PASSWORD" \
+              -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+              -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH" >/dev/null
+          # Put our keychain first in the search list so xcodebuild/codesign find the identity.
+          security list-keychains -d user -s "$KEYCHAIN_PATH" \
+              $(security list-keychains -d user | sed s/\"//g)
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Build, sign, notarize, package
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: tools/release.sh
+
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          DMG="dist/MockTab-$VERSION.dmg"
+          NOTES="release-notes/$GITHUB_REF_NAME.md"
+          if [[ -f "$NOTES" ]]; then
+            gh release create "$GITHUB_REF_NAME" "$DMG" \
+              --title "MockTab $VERSION" --notes-file "$NOTES" --draft
+          else
+            gh release create "$GITHUB_REF_NAME" "$DMG" \
+              --title "MockTab $VERSION" --generate-notes --draft
+          fi
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true

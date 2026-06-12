@@ -5,6 +5,12 @@
 # release can be triggered as one action (from Xcode's "Release" aggregate target
 # or directly from the terminal).
 #
+# NOTE: .github/workflows/release.yml does the same thing in CI when you push a
+# v* tag. Use ONE path per release. This script pushes the tag in step 4, which
+# will also fire that workflow; its run is expected to error on "create release"
+# (the draft already exists here). For a pure CI release, just push a tag and
+# skip this script. Prefer this script only when releasing offline/by hand.
+#
 # Flow:
 #   1. Sanity: clean working tree, on main, gh installed and authenticated.
 #   2. Read MARKETING_VERSION; verify tag v<version> doesn't exist yet.
