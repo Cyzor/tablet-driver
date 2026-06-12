@@ -43,7 +43,20 @@ jobs:
     env:
       NOTARY_TEAM_ID: 3R62GZR6Q2
     steps:
+      - name: Skip if release already exists
+        id: precheck
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" &>/dev/null; then
+            echo "Release $GITHUB_REF_NAME already exists (local script ran first). Nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout (with submodules)
+        if: steps.precheck.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -52,9 +65,11 @@ jobs:
       #   run: sudo xcode-select -s /Applications/Xcode_26.app
 
       - name: Show toolchain
+        if: steps.precheck.outputs.skip != 'true'
         run: xcodebuild -version
 
       - name: Verify tag matches MARKETING_VERSION
+        if: steps.precheck.outputs.skip != 'true'
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           MV=$(xcodebuild -project MockTab.xcodeproj -scheme MockTab -configuration Release \
@@ -66,6 +81,7 @@ jobs:
           echo "Releasing MockTab $VERSION"
 
       - name: Import Developer ID certificate
+        if: steps.precheck.outputs.skip != 'true'
         env:
           CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
           CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
@@ -87,12 +103,14 @@ jobs:
           rm -f "$RUNNER_TEMP/cert.p12"
 
       - name: Build, sign, notarize, package
+        if: steps.precheck.outputs.skip != 'true'
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
         run: tools/release.sh
 
       - name: Create draft GitHub Release
+        if: steps.precheck.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
