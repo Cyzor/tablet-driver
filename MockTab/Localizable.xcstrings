@@ -5832,7 +5832,6 @@
     },
     "Hide Tab Bar" : {
       "comment" : "View menu: hide the window tab bar (shown when tab bar is visible)",
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11570,7 +11569,7 @@
       }
     },
     "Show Tab Bar" : {
-      "comment" : "View menu: toggle the window tab bar",
+      "comment" : "View menu: show the window tab bar",
       "localizations" : {
         "de" : {
           "stringUnit" : {

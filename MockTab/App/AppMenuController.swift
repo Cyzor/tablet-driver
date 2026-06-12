@@ -210,7 +210,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         }
 
         let item = NSMenuItem(
-            title: String(localized: "Show Tab Bar", comment: "View menu: toggle the window tab bar"),
+            title: String(localized: "Show Tab Bar", comment: "View menu: show the window tab bar"),
             action: #selector(NSWindow.toggleTabBar(_:)),
             keyEquivalent: "t")
         item.keyEquivalentModifierMask = [.command, .shift]
