@@ -5,6 +5,14 @@
 import AppKit
 import UniformTypeIdentifiers
 
+/// Standard responder-chain actions that have no public `#selector`-able
+/// declaration in AppKit. NSWindow handles both by forwarding to the first
+/// responder's `undoManager`, validating (and retitling) the menu items.
+@objc private protocol UndoRedoResponding {
+    func undo(_ sender: Any?)
+    func redo(_ sender: Any?)
+}
+
 extension Notification.Name {
     /// Posted by the Profiles menu "Import Configuration…" item after the user picks a file.
     /// `userInfo["data"]` contains the raw `Data` to import.
@@ -19,6 +27,11 @@ extension Notification.Name {
 /// DeviceRegistry.  Rebuilt on every open via `menuNeedsUpdate(_:)`.
 ///
 /// **Profiles menu** — inserted after the Tablet menu.  Rebuilt on every open.
+///
+/// **Edit menu** — SwiftUI's Button-based items are always enabled; replaced
+/// with nil-target selector items so AppKit responder-chain validation greys
+/// out inapplicable commands, Finder-style.  Same for Show/Hide Tab Bar in
+/// the View menu.
 ///
 /// **Duplicate View menu removal** — SwiftUI generates an empty "View" menu;
 /// we remove it here so only the one with ⌘1–⌘8 shortcuts remains.
@@ -41,19 +54,72 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             removeEmptyViewMenu()
             hookAboutMenuItem()
             hookAppMenu()
+            hookEditMenu()
             hookViewMenu()
             insertTextSizeSubmenu()
+            hookTabBarItem()
             hookWindowMenu()
             watchMainMenuForRebuild()
         }
     }
 
+    // MARK: - Edit menu
+
+    private var editMenu: NSMenu?
+
+    /// Replaces the SwiftUI-generated Edit menu's contents with native items
+    /// that use nil-target standard selectors. AppKit's responder-chain
+    /// validation then greys out whatever has no effect — clipboard items
+    /// without a focused text field, Undo/Redo without recorded actions —
+    /// and gives Undo/Redo their contextual titles from the key window's
+    /// UndoManager (vended by SettingsWindowController via
+    /// `windowWillReturnUndoManager`).
+    private func hookEditMenu() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        // Locate Edit by its ⌘Z item — reliable regardless of locale.
+        guard let editItem = mainMenu.items.first(where: { item in
+            item.submenu?.items.contains {
+                $0.keyEquivalent == "z" && $0.keyEquivalentModifierMask == .command
+            } ?? false
+        }) else { return }
+
+        if editMenu == nil {
+            let menu = NSMenu(title: editItem.title)
+            func addItem(_ title: String, action: Selector, key: String, modifiers: NSEvent.ModifierFlags = .command) {
+                let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+                item.keyEquivalentModifierMask = modifiers
+                item.target = nil
+                menu.addItem(item)
+            }
+            addItem(String(localized: "Undo", comment: "Edit menu: undo last action"),
+                    action: #selector(UndoRedoResponding.undo(_:)), key: "z")
+            addItem(String(localized: "Redo", comment: "Edit menu: redo last undone action"),
+                    action: #selector(UndoRedoResponding.redo(_:)), key: "z", modifiers: [.command, .shift])
+            menu.addItem(.separator())
+            addItem(String(localized: "Cut", comment: "Edit menu: cut selection"),
+                    action: #selector(NSText.cut(_:)), key: "x")
+            addItem(String(localized: "Copy", comment: "Edit menu: copy selection"),
+                    action: #selector(NSText.copy(_:)), key: "c")
+            addItem(String(localized: "Paste", comment: "Edit menu: paste from clipboard"),
+                    action: #selector(NSText.paste(_:)), key: "v")
+            menu.addItem(.separator())
+            addItem(String(localized: "Select All", comment: "Edit menu: select all text"),
+                    action: #selector(NSText.selectAll(_:)), key: "a")
+            editMenu = menu
+        }
+
+        if editItem.submenu !== editMenu {
+            editItem.submenu = editMenu
+        }
+    }
+
     // MARK: - View menu
 
-    /// Holds a weak reference so `menuWillOpen` can mutate the Show/Hide Tab Bar
-    /// item title and Text Size checkmarks before each open. SwiftUI rebuilds
-    /// the View menu periodically; `hookViewMenu()` is re-run from
-    /// `mainMenuDidRemoveItem` to refresh both the weak ref and the delegate.
+    /// Holds a weak reference so `menuWillOpen` can update the Text Size
+    /// checkmarks before each open and `hookTabBarItem()` can append the
+    /// native Show/Hide Tab Bar item. SwiftUI rebuilds the View menu
+    /// periodically; `hookViewMenu()` is re-run from `mainMenuDidRemoveItem`
+    /// to refresh both the weak ref and the delegate.
     private weak var viewMenu: NSMenu?
 
     private func hookViewMenu() {
@@ -108,8 +174,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         let parent = NSMenuItem(title: textSizeMenuTitle, action: nil, keyEquivalent: "")
         parent.submenu = sub
 
-        // The SwiftUI-built View menu has one separator (before "Show Tab Bar").
-        // Insert: separator → Text Size between the pane shortcuts and that separator.
+        // Insert separator → Text Size after the pane shortcuts: before the
+        // first separator if one exists (the one preceding the native Show/Hide
+        // Tab Bar item on rebuild passes), else at the end.
         let dividerIndex = viewMenu.items.firstIndex(where: { $0.isSeparatorItem }) ?? viewMenu.items.count
         viewMenu.insertItem(parent, at: dividerIndex)
         viewMenu.insertItem(.separator(), at: dividerIndex)
@@ -121,6 +188,36 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     @objc private func setTextSize(_ sender: NSMenuItem) {
         UserDefaults.standard.set(sender.tag, forKey: AppearancePrefs.storageKey)
+    }
+
+    // MARK: - Show/Hide Tab Bar
+
+    /// Appends a native Show/Hide Tab Bar item to the View menu. With a nil
+    /// target and the standard `toggleTabBar:` selector, AppKit both retitles
+    /// the item (Show vs. Hide) and disables it when the key window cannot
+    /// toggle its tab bar — e.g. a window already merged into a tab group —
+    /// matching Finder.
+    private func hookTabBarItem() {
+        guard let viewMenu else { return }
+
+        // Remove stale copies from earlier passes (snapshot first; index math
+        // as in insertTextSizeSubmenu).
+        for item in viewMenu.items.filter({ $0.action == #selector(NSWindow.toggleTabBar(_:)) }) {
+            guard let idx = viewMenu.items.firstIndex(of: item) else { continue }
+            viewMenu.removeItem(at: idx)
+            if idx > 0, viewMenu.items[idx - 1].isSeparatorItem {
+                viewMenu.removeItem(at: idx - 1)
+            }
+        }
+
+        let item = NSMenuItem(
+            title: String(localized: "Show Tab Bar", comment: "View menu: toggle the window tab bar"),
+            action: #selector(NSWindow.toggleTabBar(_:)),
+            keyEquivalent: "t")
+        item.keyEquivalentModifierMask = [.command, .shift]
+        item.target = nil
+        viewMenu.addItem(.separator())
+        viewMenu.addItem(item)
     }
 
     // MARK: - Window menu
@@ -224,8 +321,10 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             insertPresetsMenu()
             removeEmptyViewMenu()
             hookAppMenu()
+            hookEditMenu()
             hookViewMenu()
             insertTextSizeSubmenu()
+            hookTabBarItem()
             hookWindowMenu()
             // Reset only after all work is done so that notifications fired by our
             // own remove/insert calls (hookWindowMenu removes the old Window item)
@@ -752,25 +851,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
-        // View menu: swap the Tab Bar item label between "Show Tab Bar" and
-        // "Hide Tab Bar" based on the main window's current tab-bar visibility,
-        // matching Finder. The item is identified by its ⇧⌘T shortcut, which
-        // SwiftUI maps directly to NSMenuItem.keyEquivalent — stable across
-        // SwiftUI rebuilds even though the action is a closure (not a selector
-        // we could match on).
+        // (The Show/Hide Tab Bar item titles and enables itself: it is a native
+        // nil-target toggleTabBar: item, validated by AppKit per key window.)
         if menu === viewMenu {
-            let visible = NSApp.mainWindow?.tabGroup?.isTabBarVisible ?? false
-            let newTitle = visible
-                ? String(localized: "Hide Tab Bar",
-                         comment: "View menu: hide the window tab bar (shown when tab bar is visible)")
-                : String(localized: "Show Tab Bar",
-                         comment: "View menu: toggle the window tab bar")
-            for item in menu.items
-                where item.keyEquivalent == "t" && item.keyEquivalentModifierMask == [.command, .shift]
-            {
-                item.title = newTitle
-            }
-
             // Update checkmarks in the Text Size submenu to reflect current selection.
             let activeIndex = UserDefaults.standard.integer(forKey: AppearancePrefs.storageKey)
             if let textSizeItem = menu.items.first(where: { $0.title == textSizeMenuTitle }),

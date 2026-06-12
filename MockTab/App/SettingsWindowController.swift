@@ -254,9 +254,6 @@ final class SettingsWindowController: NSWindowController {
     /// Cmd+Z / Cmd+Shift+Z handling reaches it when this window is key.
     override var undoManager: UndoManager? { docUndoManager }
 
-    /// Alias for PreferencesWindowController access (kept for source compatibility).
-    var settingsUndoManager: UndoManager? { docUndoManager }
-
     private let tabVC = ResizableTabViewController()
 
     enum Tab: Int {
@@ -315,9 +312,10 @@ final class SettingsWindowController: NSWindowController {
 
         super.init(window: window)
 
-        // Set up undo manager for settings layer
-        // Note: NSWindow.undoManager is read-only, so we can't wire Cmd+Z through the window
-        // Instead, we rely on the Edit menu items being enabled via canUndo/canRedo
+        // Vend docUndoManager through NSWindow.undoManager (which consults
+        // windowWillReturnUndoManager before creating its own), so the nil-target
+        // undo:/redo: menu items validate, retitle, and fire against it.
+        window.delegate = self
         settings.undoManager = docUndoManager
         settings.activeTool.undoManager = docUndoManager
 
@@ -498,5 +496,14 @@ final class SettingsWindowController: NSWindowController {
         tabVC.addTabViewItem(item)
 
         nextTabIndex += 1
+    }
+}
+
+extension SettingsWindowController: NSWindowDelegate {
+    /// NSWindow.undoManager consults this before lazily creating its own,
+    /// which is what the nil-target undo:/redo: Edit menu items resolve
+    /// against for validation, contextual titles, and dispatch.
+    func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? {
+        docUndoManager
     }
 }

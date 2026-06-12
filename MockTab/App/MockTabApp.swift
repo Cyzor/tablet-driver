@@ -40,12 +40,9 @@ struct MockTabApp: App {
                 Button { PreferencesWindowController.shared.showTab(at: 7) } label: { Label(String(localized: "Info", comment: "Menu item: open Info tab"), systemImage: "info.circle") }
                     .keyboardShortcut("8", modifiers: .command)
 
-                Divider()
-
-                Button(String(localized: "Show Tab Bar", comment: "View menu: toggle the window tab bar")) {
-                    NSApp.sendAction(#selector(NSWindow.toggleTabBar(_:)), to: nil, from: nil)
-                }
-                .keyboardShortcut("t", modifiers: [.command, .shift])
+                // The Show/Hide Tab Bar item is appended natively by
+                // AppMenuController.hookTabBarItem() so AppKit validation can
+                // grey it out and retitle it like Finder.
             }
 
             CommandGroup(replacing: .help) {
@@ -59,37 +56,9 @@ struct MockTabApp: App {
                 }
             }
 
-            CommandGroup(replacing: .undoRedo) {
-                Button(String(localized: "Undo", comment: "Edit menu: undo last action")) {
-                    PreferencesWindowController.shared.getUndoManager()?.undo()
-                }
-                .keyboardShortcut("z", modifiers: .command)
-
-                Button(String(localized: "Redo", comment: "Edit menu: redo last undone action")) {
-                    PreferencesWindowController.shared.getUndoManager()?.redo()
-                }
-                .keyboardShortcut("z", modifiers: [.command, .shift])
-
-                Divider()
-
-                Button(String(localized: "Cut", comment: "Edit menu: cut selection")) {
-                    NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil)
-                }
-                .keyboardShortcut("x", modifiers: .command)
-                Button(String(localized: "Copy", comment: "Edit menu: copy selection")) {
-                    NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
-                }
-                .keyboardShortcut("c", modifiers: .command)
-                Button(String(localized: "Paste", comment: "Edit menu: paste from clipboard")) {
-                    NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
-                }
-                .keyboardShortcut("v", modifiers: .command)
-                Button(String(localized: "Select All", comment: "Edit menu: select all text")) {
-                    NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
-                }
-                .keyboardShortcut("a", modifiers: .command)
-            }
-
+            // Edit menu: replaced wholesale with native selector-based items by
+            // AppMenuController.hookEditMenu() so the responder chain enables and
+            // disables Undo/Redo/Cut/Copy/Paste/Select All like Finder does.
         }
     }
 }

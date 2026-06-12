@@ -27,19 +27,6 @@ final class PreferencesWindowController: ObservableObject {
 
     private static let restorationKey = "MockTab_OpenWindows"
 
-    /// Returns the undo manager for the currently key settings window.
-    /// Used by the Edit menu to wire Cmd+Z / Cmd+Shift+Z.
-    func getUndoManager() -> UndoManager? {
-        // Prefer the key window — correct when multiple tablet windows are open.
-        if let keyWC = windows.first(where: { $0.window?.isKeyWindow == true }) {
-            return keyWC.settingsUndoManager
-        }
-        if let dw = self.defaultWindow {
-            return dw.settingsUndoManager
-        }
-        return windows.first?.settingsUndoManager
-    }
-
     private init() {
         deviceObserver = TabletManager.shared.$connectedProductIDs
             .dropFirst()
