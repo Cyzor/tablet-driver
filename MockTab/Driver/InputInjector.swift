@@ -32,7 +32,10 @@ private let injectLog = Logger(subsystem: "com.cyzor.mocktab", category: "inject
 /// thread declared in HIDThread.swift). Snapshot updates from the @MainActor
 /// `TabletSettings` are pushed via CFRunLoopPerformBlock onto HIDThread so the
 /// hot path never needs to read @Published storage directly.
-final class InputInjector {
+///
+/// `@unchecked Sendable`: cross-thread access is synchronized manually per the
+/// scheme above (HIDThread confinement for hot-path state, locks elsewhere).
+final class InputInjector: @unchecked Sendable {
 
     // MARK: - Device identity
 

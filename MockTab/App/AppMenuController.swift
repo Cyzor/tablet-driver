@@ -157,7 +157,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             addItem(String(localized: "Zoom",               comment: "Window menu"), action: #selector(NSWindow.performZoom(_:)),        key: "", modifiers: [])
             addItem(String(localized: "Full Screen",        comment: "Window menu"), action: #selector(NSWindow.toggleFullScreen(_:)),   key: "f", modifiers: [.control, .command])
             menu.addItem(.separator())
-            addItem(String(localized: "Merge All Windows", comment: "Window menu: merge all open windows into one tabbed window"), action: Selector("mergeAllWindows:"), key: "", modifiers: [])
+            addItem(String(localized: "Merge All Windows", comment: "Window menu: merge all open windows into one tabbed window"), action: #selector(NSWindow.mergeAllWindows(_:)), key: "", modifiers: [])
             menu.addItem(.separator())
             addItem(String(localized: "Bring All to Front", comment: "Window menu"), action: #selector(NSApplication.arrangeInFront(_:)), key: "", modifiers: [])
 

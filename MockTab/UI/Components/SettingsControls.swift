@@ -23,18 +23,20 @@ extension TabletSettings {
     func recordingBinding<T>(
         _ name: String,
         toolOwned: Bool = false,
-        get: @escaping () -> T,
-        set: @escaping (T) -> Void
+        get: @escaping @MainActor @Sendable () -> T,
+        set: @escaping @MainActor @Sendable (T) -> Void
     ) -> Binding<T> {
         Binding(
-            get: get,
+            get: { MainActor.assumeIsolated { get() } },
             set: { newValue in
-                let oldValue = get()
-                set(newValue)
-                if toolOwned { self.objectWillChange.send() }
-                self.record(name) {
-                    set(oldValue)
+                MainActor.assumeIsolated {
+                    let oldValue = get()
+                    set(newValue)
                     if toolOwned { self.objectWillChange.send() }
+                    self.record(name) {
+                        set(oldValue)
+                        if toolOwned { self.objectWillChange.send() }
+                    }
                 }
             }
         )
@@ -45,19 +47,21 @@ extension TabletSettings {
     func recordingBinding<T: Equatable>(
         _ name: String,
         toolOwned: Bool = false,
-        get: @escaping () -> T,
-        set: @escaping (T) -> Void
+        get: @escaping @MainActor @Sendable () -> T,
+        set: @escaping @MainActor @Sendable (T) -> Void
     ) -> Binding<T> {
         Binding(
-            get: get,
+            get: { MainActor.assumeIsolated { get() } },
             set: { newValue in
-                let oldValue = get()
-                guard newValue != oldValue else { return }
-                set(newValue)
-                if toolOwned { self.objectWillChange.send() }
-                self.record(name) {
-                    set(oldValue)
+                MainActor.assumeIsolated {
+                    let oldValue = get()
+                    guard newValue != oldValue else { return }
+                    set(newValue)
                     if toolOwned { self.objectWillChange.send() }
+                    self.record(name) {
+                        set(oldValue)
+                        if toolOwned { self.objectWillChange.send() }
+                    }
                 }
             }
         )
