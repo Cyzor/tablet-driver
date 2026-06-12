@@ -115,11 +115,10 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     // MARK: - View menu
 
-    /// Holds a weak reference so `menuWillOpen` can update the Text Size
-    /// checkmarks before each open and `hookTabBarItem()` can append the
-    /// native Show/Hide Tab Bar item. SwiftUI rebuilds the View menu
-    /// periodically; `hookViewMenu()` is re-run from `mainMenuDidRemoveItem`
-    /// to refresh both the weak ref and the delegate.
+    /// Holds a weak reference so `menuWillOpen` can retitle the Show/Hide Tab Bar
+    /// item and update the Text Size checkmarks before each open.  SwiftUI rebuilds
+    /// the View menu periodically; `hookViewMenu()` is re-run from
+    /// `mainMenuDidRemoveItem` to refresh both the weak ref and the delegate.
     private weak var viewMenu: NSMenu?
 
     private func hookViewMenu() {
@@ -851,9 +850,18 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
-        // (The Show/Hide Tab Bar item titles and enables itself: it is a native
-        // nil-target toggleTabBar: item, validated by AppKit per key window.)
         if menu === viewMenu {
+            // Retitle Show/Hide Tab Bar based on current visibility. AppKit validates
+            // (enables/disables) the item automatically; it does not retitle it.
+            let visible = NSApp.mainWindow?.tabGroup?.isTabBarVisible ?? false
+            for item in menu.items where item.action == #selector(NSWindow.toggleTabBar(_:)) {
+                item.title = visible
+                    ? String(localized: "Hide Tab Bar",
+                             comment: "View menu: hide the window tab bar (shown when tab bar is visible)")
+                    : String(localized: "Show Tab Bar",
+                             comment: "View menu: show the window tab bar")
+            }
+
             // Update checkmarks in the Text Size submenu to reflect current selection.
             let activeIndex = UserDefaults.standard.integer(forKey: AppearancePrefs.storageKey)
             if let textSizeItem = menu.items.first(where: { $0.title == textSizeMenuTitle }),

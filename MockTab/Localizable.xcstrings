@@ -5832,6 +5832,7 @@
     },
     "Hide Tab Bar" : {
       "comment" : "View menu: hide the window tab bar (shown when tab bar is visible)",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
