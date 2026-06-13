@@ -39,6 +39,10 @@ permissions:
 
 jobs:
   release:
+    # macOS 27 prep: bump to macos-26 once GitHub ships that image, so the DMG
+    # is built and notarized against the macOS 26+ SDK. Pair this with the
+    # "Select Xcode" step below. Verify the signed build still notarizes before
+    # making it the default runner.
     runs-on: macos-15
     env:
       NOTARY_TEAM_ID: 3R62GZR6Q2
@@ -61,7 +65,11 @@ jobs:
         with:
           submodules: recursive
 
+      # macOS 27 prep: enable alongside the macos-26 runner above to build
+      # against the newer SDK. Adjust the version to whatever Xcode the image
+      # provides (check available paths with `ls /Applications | grep Xcode`).
       # - name: Select Xcode
+      #   if: steps.precheck.outputs.skip != 'true'
       #   run: sudo xcode-select -s /Applications/Xcode_26.app
 
       - name: Show toolchain
