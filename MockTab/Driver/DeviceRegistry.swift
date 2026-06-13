@@ -94,8 +94,12 @@ final class DeviceRegistry: ObservableObject {
     /// Called when a tablet connects.  Adds it to the global tablet list if
     /// it has not been seen before, then loads the per-device tool list.
     /// `usbSerial` is the firmware-reported USB serial number (may be nil).
-    func recordTablet(productID: Int, usbSerial: String?) {
-        let modelName = TabletManager.deviceName(forProductID: productID)
+    func recordTablet(
+        productID: Int, usbSerial: String?,
+        vendorID: Int = 0x056A, productString: String? = nil
+    ) {
+        let modelName = TabletManager.deviceName(
+            forProductID: productID, vendorID: vendorID, productString: productString)
         if let idx = knownTablets.firstIndex(where: { $0.id == productID }) {
             // Backfill serial if we now have it and didn't before.
             if knownTablets[idx].usbSerial == nil, let s = usbSerial, !s.isEmpty {

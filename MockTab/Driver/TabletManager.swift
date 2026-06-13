@@ -152,15 +152,26 @@ final class TabletManager: ObservableObject {
 
     // MARK: - Device name helpers
 
-    static func deviceName(forProductID pid: Int) -> String {
-        if let spec = WacomDeviceRegistry.spec(for: pid) { return spec.name }
-        // Drivable non-Wacom devices (Xencelabs is the only vendor on the
-        // allowlist, hence the fixed VID; revisit when a second vendor lands).
-        if let profile = VendorDeviceRegistry.drivableProfile(
-            forVendorID: 0x28BD, productID: pid)
-        {
-            return profile.productName
+    /// Resolve a human-readable model name. `vendorID` defaults to Wacom for the
+    /// many PID-only UI callers; pass the real vendor (and the device's IOKit
+    /// product string) for non-Wacom hardware so generically-driven tablets show
+    /// a real name instead of a bare PID.
+    static func deviceName(
+        forProductID pid: Int, vendorID: Int = 0x056A, productString: String? = nil
+    ) -> String {
+        if vendorID == 0x056A {
+            if let spec = WacomDeviceRegistry.spec(for: pid) { return spec.name }
+            return WacomDeviceRegistry.deviceName(forProductID: pid)
         }
+        // Non-Wacom naming, accuracy first. Many vendors (Huion especially)
+        // share one PID across a dozen models, so a curated profile name is only
+        // trustworthy when the PID maps to exactly one product. Otherwise the
+        // device's own product string is the honest source — better to show
+        // "HUION Tablet" than to assert the wrong model.
+        let profiles = VendorDeviceRegistry.profiles(forVendorID: vendorID, productID: pid)
+        if profiles.count == 1, let name = profiles.first?.productName { return name }
+        if let ps = productString, !ps.isEmpty { return ps }
+        if let name = profiles.first?.productName { return name }  // ambiguous, but better than a PID
         return WacomDeviceRegistry.deviceName(forProductID: pid)
     }
 
@@ -730,7 +741,9 @@ final class TabletManager: ObservableObject {
 
             let usbSerial =
                 IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
-            DeviceRegistry.shared.recordTablet(productID: productID, usbSerial: usbSerial)
+            DeviceRegistry.shared.recordTablet(
+                productID: productID, usbSerial: usbSerial,
+                vendorID: vendorID, productString: productString)
         }
     }
 
