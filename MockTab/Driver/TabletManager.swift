@@ -210,6 +210,12 @@ final class TabletManager: ObservableObject {
             [kIOHIDVendorIDKey: 0x256C as NSNumber],  // Huion (recognition only)
             [kIOHIDVendorIDKey: 0x28BD as NSNumber],  // Xencelabs / XP-Pen (recognition only)
             [kIOHIDVendorIDKey: 0x5543 as NSNumber],  // UC-Logic OEMs (recognition only)
+            // Universal floor: any vendor's standards-compliant pen digitizer
+            // (top-level usage Digitizer/Pen). Matching on the Pen usage — not
+            // just the page — excludes trackpads (0x05) and touch screens (0x04),
+            // so we never claim the built-in trackpad.
+            [kIOHIDDeviceUsagePageKey: 0x0D as NSNumber,
+             kIOHIDDeviceUsageKey: 0x02 as NSNumber],  // any-vendor pen digitizer
         ]
         IOHIDManagerSetDeviceMatchingMultiple(manager, matching as CFArray)
 
@@ -314,14 +320,28 @@ final class TabletManager: ObservableObject {
                     activeHeightMM: profile.activeHeightMM)
                 logger.info("TabletManager: drivable \(profile.vendor, privacy: .public) device — \(profile.productName, privacy: .public) (PID=0x\(String(rawProductID, radix: 16), privacy: .public)) — attaching experimental decoder")
             } else {
+                // Not on the drivable allowlist. If this interface is a
+                // standards-compliant pen digitizer (top-level usage Pen), let it
+                // fall through to normal routing with no spec — DeviceRouter
+                // attaches the vendor-agnostic GenericHIDDigitizer (universal
+                // floor: pen motion + tap + absolute). Otherwise it's a non-pen
+                // interface or a vendor we only recognise: name it and bail.
+                let primaryUsagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
+                let primaryUsage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
+                let isPenDigitizer = primaryUsagePage == 0x0D && primaryUsage == 0x02
                 let profiles = VendorDeviceRegistry.profiles(
                     forVendorID: vendorID, productID: rawProductID)
                 let name = profiles.first?.productName ?? "(unknown product)"
                 let vendorName = profiles.first?.vendor
                     ?? "non-Wacom vendor 0x\(String(vendorID, radix: 16))"
-                let candidateCount = profiles.count
-                logger.info("TabletManager: recognised \(vendorName, privacy: .public) device — \(name, privacy: .public) (VID=0x\(String(vendorID, radix: 16), privacy: .public) PID=0x\(String(rawProductID, radix: 16), privacy: .public), \(candidateCount, privacy: .public) profile candidates) — no decoder support yet")
-                return
+                if isPenDigitizer {
+                    logger.info("TabletManager: \(vendorName, privacy: .public) \(name, privacy: .public) (PID=0x\(String(rawProductID, radix: 16), privacy: .public)) — generic pen digitizer, attaching universal floor")
+                    // vendorSpec stays nil; fall through to routing below.
+                } else {
+                    let candidateCount = profiles.count
+                    logger.info("TabletManager: recognised \(vendorName, privacy: .public) device — \(name, privacy: .public) (VID=0x\(String(vendorID, radix: 16), privacy: .public) PID=0x\(String(rawProductID, radix: 16), privacy: .public), \(candidateCount, privacy: .public) profile candidates) — no decoder support yet")
+                    return
+                }
             }
         }
 

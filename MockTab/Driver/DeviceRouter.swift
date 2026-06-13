@@ -86,12 +86,19 @@ enum DeviceRouter {
         overrideSpec: WacomDeviceSpec? = nil
     ) -> Routed {
 
+        // Wacom-specific routing (dongle remap, registry decoders) only applies
+        // to actual Wacom hardware. A non-Wacom PID can numerically collide with
+        // a Wacom registry entry, so gate these branches by vendor. Drivable
+        // non-Wacom devices arrive with an explicit `overrideSpec` instead.
+        let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
+        let isWacom = vendorID == 0x056A
+
         // ── ACK-40401 RF wireless dongle ─────────────────────────────────────
         // The dongle presents the same HID descriptor as the paired tablet
         // (PTH-x50/x51 family, IntuosV1 format). We synthesize a spec from the
         // live descriptor — pen events are gated by WacomKnownDevice until the
         // 0x80 wireless status report confirms the RF link.
-        if productID == 0x0084 {
+        if isWacom && productID == 0x0084 {
             routerLog.info("ACK-40401 wireless dongle connected")
             let (dMaxX, dMaxY, dMaxP, _) = queryHIDDigitizerSpec(device)
             let dongleSpec = WacomDeviceSpec(
@@ -112,7 +119,7 @@ enum DeviceRouter {
         }
 
         // ── Recognised PID with a live decoder ───────────────────────────────
-        if let deviceSpec = overrideSpec ?? WacomDeviceRegistry.spec(for: productID),
+        if let deviceSpec = overrideSpec ?? (isWacom ? WacomDeviceRegistry.spec(for: productID) : nil),
             deviceSpec.maxX > 0
         {
             // Interface routing depends on parser family:
@@ -158,12 +165,21 @@ enum DeviceRouter {
         let pidStr = String(productID, radix: 16, uppercase: true)
         let (probeX, _, _, _) = queryHIDDigitizerSpec(device)
         if probeX > 0 {
-            routerLog.info("unknown Wacom 0x\(pidStr, privacy: .public) — attaching generic driver")
-            let drv = WacomFallbackDevice(
-                device: device,
-                onTablet: callbacks.onTablet,
-                onAux: callbacks.onAux,
-                onToolEnter: callbacks.onToolEnter)
+            // Unknown *Wacom* gets the Intuos-family fallback (knows the Wacom
+            // report layout). Any other vendor's standards-compliant pen
+            // digitizer gets the vendor-agnostic universal floor, which reads
+            // only standard HID usages and needs no per-device knowledge.
+            if isWacom {
+                routerLog.info("unknown Wacom 0x\(pidStr, privacy: .public) — attaching Wacom fallback driver")
+                let drv = WacomFallbackDevice(
+                    device: device,
+                    onTablet: callbacks.onTablet,
+                    onAux: callbacks.onAux,
+                    onToolEnter: callbacks.onToolEnter)
+                return .driver(drv, seized: false)
+            }
+            routerLog.info("0x\(String(vendorID, radix: 16), privacy: .public)/0x\(pidStr, privacy: .public) — attaching generic HID digitizer (universal floor)")
+            let drv = GenericHIDDigitizer(device: device, onTablet: callbacks.onTablet)
             return .driver(drv, seized: false)
         }
 
