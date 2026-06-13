@@ -298,11 +298,17 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     private var rebuildScheduled = false
     private var mainMenuObserver: NSObjectProtocol?
+    private var keyWindowObserver: NSObjectProtocol?
+    private var flagsTimer: Timer?
 
     private func watchMainMenuForRebuild() {
         if let obs = mainMenuObserver {
             NotificationCenter.default.removeObserver(obs)
             mainMenuObserver = nil
+        }
+        if let obs = keyWindowObserver {
+            NotificationCenter.default.removeObserver(obs)
+            keyWindowObserver = nil
         }
         guard let mainMenu = NSApp.mainMenu else { return }
         mainMenuObserver = NotificationCenter.default.addObserver(
@@ -310,6 +316,15 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             object: mainMenu,
             queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.mainMenuDidRemoveItem() } }
+        // Re-establish the app-menu delegate whenever the key window changes.
+        // On macOS 27+, SwiftUI refreshes triggered by window transitions (e.g.
+        // opening/closing the About window) can silently clear the delegate, which
+        // prevents menuWillOpen from hiding the Factory Reset alternates.
+        keyWindowObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.hookAppMenu() } }
     }
 
     @objc private func mainMenuDidRemoveItem() {
@@ -410,22 +425,22 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         guard let menu = NSApp.mainMenu?.items.first?.submenu else { return }
 
         // Always re-assign the delegate — SwiftUI rebuilds can clear it, which
-        // breaks isAlternate recognition.  The rest of the function is idempotent:
-        // items are only inserted when not already present.
+        // breaks the menuWillOpen visibility management.  The rest of the
+        // function is idempotent: items are only inserted when not already present.
         menu.delegate = self
 
-        // Find the Quit item. Factory Reset is inserted immediately after it as
-        // an isAlternate — the same mechanism Finder uses for "Secure Empty Trash".
-        // AppKit's NSMenuView handles the live Option-key toggle natively.
+        // Find the Quit item. Factory Reset is inserted immediately after it,
+        // hidden, and shown/hidden by modifier state in menuWillOpen plus an
+        // eventTracking-mode timer while the menu is open.  (isAlternate would
+        // be the native mechanism, but macOS 27 force-unhides alternates after
+        // window transitions, so visibility is managed explicitly.)
         guard
             let quitItem = menu.items.last(where: {
                 $0.action == #selector(NSApplication.terminate(_:))
             })
         else { return }
-        // Always remove and re-insert the Factory Reset alternates so they land
+        // Always remove and re-insert the Factory Reset items so they land
         // directly after Quit regardless of any SwiftUI-driven menu reordering.
-        // Guarding with "already present" is not enough: if a rebuild shifts Quit
-        // relative to the existing alternates, isAlternate stops hiding them.
         for item in menu.items.filter({ $0.action == #selector(confirmFactoryReset) }) {
             menu.removeItem(item)
         }
@@ -451,8 +466,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 action: #selector(confirmFactoryReset),
                 keyEquivalent: key)
             item.keyEquivalentModifierMask = modifiers
-            item.isAlternate = true
-            item.isHidden = true  // explicit guard: macOS 26+ may not honour isAlternate hiding
+            item.isHidden = true
+            // Without isAlternate, hidden items don't fire key equivalents by default.
+            item.allowsKeyEquivalentWhenHidden = true
 //                item.image = resetIcon
             item.target = self
             menu.insertItem(item, at: freshQuitIndex + 1 + i)
@@ -877,13 +893,20 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
         guard menu === NSApp.mainMenu?.items.first?.submenu else { return }
 
-        // macOS 26+ may not honour isAlternate for hiding Factory Reset; manage explicitly.
-        // Show exactly the variant whose non-Command modifier mask matches what is held.
-        let relevantFlags = NSEvent.modifierFlags.intersection([.option, .shift])
-        for resetItem in menu.items where resetItem.action == #selector(confirmFactoryReset) {
-            let nonCommandMods = resetItem.keyEquivalentModifierMask.subtracting(.command)
-            resetItem.isHidden = (nonCommandMods != relevantFlags)
+        // Factory Reset visibility is managed explicitly (isAlternate is unusable:
+        // macOS 27 force-unhides alternates after window transitions).
+        updateFactoryResetVisibility(in: menu)
+        // Menu tracking runs its own event loop that bypasses NSEvent local
+        // monitors, so poll the modifier state with a timer instead. Scheduling
+        // in .eventTracking mode keeps it firing while the menu is open.
+        flagsTimer?.invalidate()
+        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self, weak menu] _ in
+            MainActor.assumeIsolated {
+                if let menu { self?.updateFactoryResetVisibility(in: menu) }
+            }
         }
+        RunLoop.main.add(timer, forMode: .eventTracking)
+        flagsTimer = timer
 
         guard let item = hideDockIconItem else { return }
 
@@ -897,6 +920,26 @@ final class AppMenuController: NSObject, NSMenuDelegate {
            menu.items[idx + 1].isSeparatorItem
         {
             menu.items[idx + 1].isHidden = !showingInDock
+        }
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        guard menu === NSApp.mainMenu?.items.first?.submenu else { return }
+        flagsTimer?.invalidate()
+        flagsTimer = nil
+        // Re-hide all Factory Reset items so that if the delegate is subsequently
+        // cleared by a SwiftUI refresh, they don't remain visible on next open.
+        for item in menu.items where item.action == #selector(confirmFactoryReset) {
+            item.isHidden = true
+        }
+    }
+
+    private func updateFactoryResetVisibility(in menu: NSMenu) {
+        // Show exactly the variant whose non-Command modifier mask matches what is held.
+        let relevantFlags = NSEvent.modifierFlags.intersection([.option, .shift])
+        for resetItem in menu.items where resetItem.action == #selector(confirmFactoryReset) {
+            let nonCommandMods = resetItem.keyEquivalentModifierMask.subtracting(.command)
+            resetItem.isHidden = (nonCommandMods != relevantFlags)
         }
     }
 
