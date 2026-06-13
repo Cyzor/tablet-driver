@@ -35,38 +35,10 @@ final class GenericHIDDigitizer: TabletDevice {
     private let onTablet: (TabletPoint) -> Void
     private let tag: String
 
-    // ── Standard digitizer usages (HID Usage Tables, Digitizer page 0x0D) ──
-    private enum GD {  // Generic Desktop page 0x01
-        static let x: UInt32 = 0x30
-        static let y: UInt32 = 0x31
-    }
-    private enum Dig {  // Digitizer page 0x0D
-        static let tipPressure: UInt32 = 0x30
-        static let inRange: UInt32 = 0x32
-        static let invert: UInt32 = 0x3C
-        static let tiltX: UInt32 = 0x3D
-        static let tiltY: UInt32 = 0x3E
-        static let tipSwitch: UInt32 = 0x42
-        static let barrelSwitch: UInt32 = 0x44
-        static let eraserSwitch: UInt32 = 0x45
-        static let secondaryBarrel: UInt32 = 0x5A
-    }
-
-    // Which optional usages this device actually exposes — decided once at init.
-    private let hasInRange: Bool
-    private let hasPressure: Bool
-
-    // Latest decoded field values, accumulated across per-element callbacks.
-    private var curX = 0
-    private var curY = 0
-    private var curPressure = 0
-    private var tip = false
-    private var inRange = false
-    private var barrel1 = false
-    private var barrel2 = false
-    private var eraser = false
-    private var tiltX = 0
-    private var tiltY = 0
+    /// Pure decode state — maps standard HID usages to `TabletPoint`. Lives in
+    /// TabletKit so it is unit-testable without IOKit; this class only does the
+    /// IOKit plumbing (open, value callbacks) and forwards element values to it.
+    private var frame: GenericDigitizerFrame
 
     // MARK: - Init
 
@@ -91,16 +63,18 @@ final class GenericHIDDigitizer: TabletDevice {
             for i in 0..<CFArrayGetCount(elements) {
                 guard let raw = CFArrayGetValueAtIndex(elements, i) else { continue }
                 let elem = Unmanaged<IOHIDElement>.fromOpaque(raw).takeUnretainedValue()
-                guard IOHIDElementGetUsagePage(elem) == 0x0D else { continue }
+                guard IOHIDElementGetUsagePage(elem) == GenericDigitizerFrame.Usage.digitizerPage
+                else { continue }
                 switch IOHIDElementGetUsage(elem) {
-                case Dig.inRange: sawInRange = true
-                case Dig.tipPressure: sawPressure = true
+                case GenericDigitizerFrame.Usage.inRange: sawInRange = true
+                case GenericDigitizerFrame.Usage.tipPressure: sawPressure = true
                 default: break
                 }
             }
         }
-        hasInRange = sawInRange
-        hasPressure = sawPressure
+        frame = GenericDigitizerFrame(
+            maxX: spec.maxX, maxY: spec.maxY, maxPressure: spec.maxPressure,
+            hasInRange: sawInRange, hasPressure: sawPressure)
     }
 
     // MARK: - Open / Close
@@ -129,7 +103,7 @@ final class GenericHIDDigitizer: TabletDevice {
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
 
         let mx = spec.maxX; let my = spec.maxY; let mp = spec.maxPressure
-        logger.info("\(self.tag, privacy: .public): generic HID digitizer attached (maxX=\(mx, privacy: .public) maxY=\(my, privacy: .public) pressure=\(self.hasPressure ? mp : 0, privacy: .public) inRange=\(self.hasInRange, privacy: .public))")
+        logger.info("\(self.tag, privacy: .public): generic HID digitizer attached (maxX=\(mx, privacy: .public) maxY=\(my, privacy: .public) pressure=\(self.frame.hasPressure ? mp : 0, privacy: .public) inRange=\(self.frame.hasInRange, privacy: .public))")
     }
 
     func close() {
@@ -151,49 +125,22 @@ final class GenericHIDDigitizer: TabletDevice {
             .handle(value: value)
     }
 
-    /// One element changed. Update the cached field, then emit a fresh point.
+    /// One element changed. Update the decode frame, then emit a fresh point.
     ///
-    /// We emit on every element update rather than per report: IOKit delivers one
-    /// callback per changed element with no stable frame boundary, so a frame may
-    /// be momentarily one element stale (e.g. X updated, Y not yet). At pen rates
-    /// that is sub-pixel and self-corrects on the next callback microseconds
-    /// later, and `InputInjector`'s delta gate drops the redundant duplicates.
+    /// We emit on every recognized element update rather than per report: IOKit
+    /// delivers one callback per changed element with no stable frame boundary,
+    /// so a frame may be momentarily one element stale (e.g. X updated, Y not
+    /// yet). At pen rates that is sub-pixel and self-corrects on the next
+    /// callback microseconds later, and `InputInjector`'s delta gate drops the
+    /// redundant duplicates.
     private func handle(value: IOHIDValue) {
         let elem = IOHIDValueGetElement(value)
         let page = IOHIDElementGetUsagePage(elem)
         let usage = IOHIDElementGetUsage(elem)
         let v = IOHIDValueGetIntegerValue(value)
 
-        switch (page, usage) {
-        case (0x01, GD.x): curX = v
-        case (0x01, GD.y): curY = v
-        case (0x0D, Dig.tipPressure): curPressure = v
-        case (0x0D, Dig.tipSwitch): tip = v != 0
-        case (0x0D, Dig.inRange): inRange = v != 0
-        case (0x0D, Dig.barrelSwitch): barrel1 = v != 0
-        case (0x0D, Dig.secondaryBarrel): barrel2 = v != 0
-        case (0x0D, Dig.eraserSwitch), (0x0D, Dig.invert): eraser = v != 0
-        case (0x0D, Dig.tiltX): tiltX = v
-        case (0x0D, Dig.tiltY): tiltY = v
-        default: return  // Unrelated element — don't bother re-emitting.
+        if frame.update(usagePage: page, usage: usage, value: v) {
+            onTablet(frame.point())
         }
-
-        // Proximity: trust In Range if present; otherwise reports only arrive
-        // while the pen is active, so treat any report as in-proximity.
-        let proximity = hasInRange ? inRange : true
-
-        // Click is derived downstream from pressure (`pressure > 0.004`). A
-        // tip-only pen with no pressure axis gets a synthesized full-scale
-        // pressure on contact so taps register; pressure-reporting pens pass
-        // their real value through.
-        let effPressure = hasPressure ? curPressure : (tip ? spec.maxPressure : 0)
-
-        onTablet(
-            TabletPoint(
-                x: curX, y: curY, maxX: spec.maxX, maxY: spec.maxY,
-                pressure: effPressure, maxPressure: spec.maxPressure,
-                tiltX: Double(tiltX), tiltY: Double(tiltY), rotation: 0.0,
-                penButton1: barrel1, penButton2: barrel2,
-                eraser: eraser, inProximity: proximity, hoverDistance: 0))
     }
 }
