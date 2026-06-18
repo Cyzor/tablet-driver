@@ -3031,6 +3031,7 @@
     },
     "Connected" : {
       "comment" : "Accessibility label for connected tablet indicator",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

@@ -71,6 +71,10 @@ struct InfoView: View {
         tabletManager.contexts[productID ?? 0]
     }
 
+    private var isConnected: Bool {
+        deviceContext?.isConnected ?? false
+    }
+
     private var fallbackDevice: WacomFallbackDevice? {
         deviceContext?.tabletDevice as? WacomFallbackDevice
     }
@@ -109,15 +113,15 @@ struct InfoView: View {
         Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
             row(
                 String(localized: "Device", comment: "Row label in Info tab status table"),
-                value: deviceContext?.isConnected ?? false
+                value: isConnected
                     ? TabletManager.deviceName(forProductID: productID ?? 0)
                     : String(localized: "Not connected", comment: "Device connection status value"),
-                ok: deviceContext?.isConnected ?? false)
+                ok: isConnected)
 
             row(
                 String(localized: "Connection", comment: "Row label in Info tab status table"),
                 value: deviceContext?.transport ?? "—",
-                ok: deviceContext?.isConnected ?? false ? true : nil)
+                ok: isConnected ? true : nil)
 
             if let pct = deviceContext?.batteryPercent {
                 row(
@@ -140,14 +144,14 @@ struct InfoView: View {
             row(
                 String(localized: "Speed", comment: "Row label in Info tab status table — USB speed"),
                 value: deviceContext?.usbSpeed ?? "—",
-                ok: deviceContext?.isConnected ?? false ? true : nil)
+                ok: isConnected ? true : nil)
 
             row(
                 String(localized: "Status", comment: "Row label in Info tab status table — driver status"),
-                value: (deviceContext?.isConnected ?? false)
+                value: isConnected
                     ? String(localized: "Active", comment: "Driver status value — device is active")
                     : String(localized: "Idle", comment: "Driver status value — device is idle"),
-                ok: (deviceContext?.isConnected ?? false) ? true : nil)
+                ok: isConnected ? true : nil)
 
             row(
                 String(localized: "Permission", comment: "Row label in Info tab status table — Accessibility permission"),

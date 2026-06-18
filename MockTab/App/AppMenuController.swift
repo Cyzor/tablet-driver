@@ -456,7 +456,6 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             [.command, .shift],
             [.command, .option, .shift],
         ]
-//            let resetIcon = NSImage(systemSymbolName: "trash.square", accessibilityDescription: nil)
         let freshQuitIndex = menu.items.firstIndex(of: quitItem)!
         for (i, modifiers) in alternates.enumerated() {
             let item = NSMenuItem(
@@ -469,7 +468,6 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             item.isHidden = true
             // Without isAlternate, hidden items don't fire key equivalents by default.
             item.allowsKeyEquivalentWhenHidden = true
-//                item.image = resetIcon
             item.target = self
             menu.insertItem(item, at: freshQuitIndex + 1 + i)
         }
@@ -662,15 +660,10 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                     keyEquivalent: "")
                 item.target = self
                 item.tag = tablet.id
-                // Show a checkmark for currently connected tablets.
-                if tm.connectedProductIDs.contains(tablet.id) {
-                    item.image = NSImage(
-                        systemSymbolName: "checkmark.circle.fill",
-                        accessibilityDescription: String(
-                            localized: "Connected",
-                            comment: "Accessibility label for connected tablet indicator"))
-                    item.image?.size = NSSize(width: 12, height: 12)
-                }
+                // Show the native state checkmark for currently connected tablets,
+                // matching the flush-left alignment of the other checkmarked items
+                // (toggles, active profile) in the same menu.
+                item.state = tm.connectedProductIDs.contains(tablet.id) ? .on : .off
                 menu.addItem(item)
             }
         }
