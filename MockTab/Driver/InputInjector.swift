@@ -56,7 +56,6 @@ final class InputInjector: @unchecked Sendable {
     /// Used in proximity events so apps key per-tool brush memory on the correct identity.
     var activeToolSerial: UInt32 = 0
     /// The tool code for the current tool. Used for proximity events and tool identification.
-    /// May be overridden by forcedToolCode from DeviceRegistry if set by the user.
     var activeToolCode: UInt16 = 0x0802
 
     /// When true, the frontmost app consumes `.tabletPointer` CGEvents (Qt/GTK: Krita, GIMP).

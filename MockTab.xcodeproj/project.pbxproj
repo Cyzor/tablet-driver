@@ -32,7 +32,6 @@
 		AA000034 /* ProfilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* ProfilesView.swift */; };
 		AA000035 /* AppWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* AppWatcher.swift */; };
 		AA000036 /* AppMenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000036 /* AppMenuController.swift */; };
-		AA000037 /* WacomProbeDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000037 /* WacomProbeDevice.swift */; };
 		AA000039 /* DeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000039 /* DeviceRegistry.swift */; };
 		AA000040 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* DevicesView.swift */; };
 		AA000041 /* DeviceStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000041 /* DeviceStatusBar.swift */; };
@@ -115,7 +114,6 @@
 		AB000034 /* ProfilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilesView.swift; sourceTree = "<group>"; };
 		AB000035 /* AppWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWatcher.swift; sourceTree = "<group>"; };
 		AB000036 /* AppMenuController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMenuController.swift; sourceTree = "<group>"; };
-		AB000037 /* WacomProbeDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomProbeDevice.swift; sourceTree = "<group>"; };
 		AB000039 /* DeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRegistry.swift; sourceTree = "<group>"; };
 		AB000040 /* DevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesView.swift; sourceTree = "<group>"; };
 		AB000041 /* DeviceStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusBar.swift; sourceTree = "<group>"; };
@@ -218,7 +216,6 @@
 		AC000002 /* Driver */ = {
 			isa = PBXGroup;
 			children = (
-				AB000037 /* WacomProbeDevice.swift */,
 				AB000045 /* WacomFallbackDevice.swift */,
 				AB00DR01 /* DeviceRouter.swift */,
 				AB00GD01 /* GenericHIDDigitizer.swift */,
@@ -436,7 +433,6 @@
 				AA000043 /* SettingsWindowController.swift in Sources */,
 				AA000036 /* AppMenuController.swift in Sources */,
 				057B24D82F899E3A0032B29E /* Path+SVGData.swift in Sources */,
-				AA000037 /* WacomProbeDevice.swift in Sources */,
 				05D7EB7B2F79E6E30086E03F /* AboutView.swift in Sources */,
 				AA000045 /* WacomFallbackDevice.swift in Sources */,
 				AA00DR01 /* DeviceRouter.swift in Sources */,
