@@ -156,7 +156,7 @@ struct TabletAreaView: View {
                         // Calibration status + actions
                         HStack {
                             if !activeDeviceIsConnected {
-                                Image(systemName: "display.slash")
+                                Image(systemName: "display.trianglebadge.exclamationmark")
                                     .foregroundStyle(.secondary)
                                     .accessibilityHidden(true)
                                 Text("Display not connected")
