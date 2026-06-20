@@ -448,7 +448,10 @@ final class SettingsWindowController: NSWindowController {
     }
 
     func showTab(_ tab: Tab) {
-        showTab(at: tab.rawValue)
+        let label = Self.tabLabels[tab.rawValue]
+        if let index = tabVC.tabViewItems.firstIndex(where: { $0.label == label }) {
+            showTab(at: index)
+        }
     }
     //
     var selectedTabIndex: Int { tabVC.selectedTabViewItemIndex }

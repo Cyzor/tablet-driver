@@ -43,43 +43,55 @@ private struct StatusCaptionLabel: View {
 
 // MARK: - DeviceNameLabel
 
-/// A compact caption line showing the active device's user-assigned nickname
-/// plus a green/grey presence dot.  Used as a subtitle under section headings
-/// in tabs whose settings are per-device (Pressure, Buttons, Display).
+/// A compact caption line showing a specific device's user-assigned nickname
+/// plus a green/grey presence dot.  Pass the window's `productID` so the label
+/// reflects that device rather than whichever device is globally active.
 struct DeviceNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
+    var productID: Int?
 
     var body: some View {
-        StatusCaptionLabel(name: displayName, isLive: tabletManager.isConnected)
+        StatusCaptionLabel(name: displayName, isLive: isConnected)
+    }
+
+    private var context: DeviceContext? {
+        productID.flatMap { tabletManager.contexts[$0] }
+    }
+
+    private var isConnected: Bool {
+        context?.isConnected == true
     }
 
     private var displayName: String {
-        guard tabletManager.isConnected else {
+        guard let pid = productID, isConnected else {
             return String(localized: "No device connected", comment: "Device name label when no tablet is connected")
         }
-        let id = tabletManager.connectedProductID
-        if let t = registry.knownTablets.first(where: { $0.id == id }) { return t.nickname }
-        return TabletManager.deviceName(forProductID: id)
+        if let t = registry.knownTablets.first(where: { $0.id == pid }) { return t.nickname }
+        return TabletManager.deviceName(forProductID: pid)
     }
 }
 
 // MARK: - ToolNameLabel
 
-/// A compact caption line showing the active tool's user-assigned nickname
-/// plus a green/grey proximity dot.  Used as a subtitle under the Pen Buttons
-/// section heading, where settings are per-tool (not per-device).
+/// A compact caption line showing a device's active tool nickname plus a
+/// green/grey proximity dot.  Pass the window's `productID` so the label
+/// reflects that device's in-proximity tool rather than the globally active one.
 struct ToolNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
+    var productID: Int?
 
     var body: some View {
-        StatusCaptionLabel(name: displayName, isLive: tabletManager.activeToolID != nil)
+        StatusCaptionLabel(name: displayName, isLive: context?.activeToolID != nil)
+    }
+
+    private var context: DeviceContext? {
+        productID.flatMap { tabletManager.contexts[$0] }
     }
 
     private var displayName: String {
-        guard let toolID = tabletManager.activeToolID else {
-            // Fall back to last-seen tool if registry has one
+        guard let toolID = context?.activeToolID else {
             return registry.knownTools.first?.nickname
                 ?? String(localized: "No tool in proximity", comment: "Tool name label when no pen is in range")
         }
