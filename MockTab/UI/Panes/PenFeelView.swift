@@ -170,7 +170,7 @@ struct PenFeelView: View {
             .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
         } header: {
             PaneSectionHeader("Pressure Curve") {
-                ToolNameLabel(tabletManager: tabletManager, registry: registry)
+                ToolNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
             }
         }
     }

@@ -651,7 +651,7 @@ struct ButtonMappingView: View {
                 .listRowBackground(Color.clear)
         } header: {
             PaneSectionHeader(isMouse ? "Mouse Buttons" : "Pen Buttons") {
-                ToolNameLabel(tabletManager: tabletManager, registry: registry)
+                ToolNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
             }
         }
     }
@@ -671,7 +671,7 @@ struct ButtonMappingView: View {
             }
         } header: {
             PaneSectionHeader("Express Keys") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
             }
         }
 
@@ -725,7 +725,7 @@ struct ButtonMappingView: View {
             }
         } header: {
             PaneSectionHeader("Toggle Buttons — Left") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
             }
         }
 

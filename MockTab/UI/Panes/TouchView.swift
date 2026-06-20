@@ -74,7 +74,7 @@ struct TouchView: View {
                 .help("When off, the tablet's touch surface is ignored. Pen input is unaffected.")
         } header: {
             PaneSectionHeader("Touch") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
             }
         }
     }

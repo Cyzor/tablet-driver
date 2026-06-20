@@ -84,7 +84,7 @@ struct DisplayMappingView: View {
             }
         } header: {
             PaneSectionHeader("Display Mapping") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
             }
         } footer: {
             Text("The active tablet area maps to the selected display.")

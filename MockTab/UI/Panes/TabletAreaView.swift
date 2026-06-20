@@ -272,7 +272,7 @@ struct TabletAreaView: View {
 
     private var sectionHeading: some View {
         PaneSectionHeader("Active Surface Area") {
-            DeviceNameLabel(tabletManager: tabletManager, registry: registry)
+            DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: boundProductID)
         }
     }
 
