@@ -653,7 +653,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             menu.addItem(.separator())
 
             for tablet in registry.knownTablets {
-                let label = PreferencesWindowController.shared.menuLabel(forProductID: tablet.id)
+                let connected = tm.connectedProductIDs.contains(tablet.id)
+                let suffix = connected ? (tm.contexts[tablet.id]?.batteryMenuSuffix ?? "") : ""
+                let label = PreferencesWindowController.shared.menuLabel(forProductID: tablet.id) + suffix
                 let item = NSMenuItem(
                     title: label,
                     action: #selector(openDeviceWindow(_:)),
@@ -663,7 +665,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 // Show the native state checkmark for currently connected tablets,
                 // matching the flush-left alignment of the other checkmarked items
                 // (toggles, active profile) in the same menu.
-                item.state = tm.connectedProductIDs.contains(tablet.id) ? .on : .off
+                item.state = connected ? .on : .off
                 menu.addItem(item)
             }
         }

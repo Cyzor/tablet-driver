@@ -11,11 +11,13 @@ struct MockTabApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("MockTab", image: "MenuBarIcon") {
+        MenuBarExtra {
             MenuBarView()
                 .environmentObject(TabletManager.shared)
                 .environmentObject(PreferencesWindowController.shared.settings)
                 .environmentObject(PreferencesWindowController.shared)
+        } label: {
+            MenuBarIconLabel(manager: TabletManager.shared)
         }
         .menuBarExtraStyle(.menu)
         .commands {
@@ -183,9 +185,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(.separator())
             let connectedIDs = TabletManager.shared.connectedProductIDs
             let pwc = PreferencesWindowController.shared
+            let tm = TabletManager.shared
             for tablet in knownTablets {
+                let connected = connectedIDs.contains(tablet.id)
+                let suffix = connected ? (tm.contexts[tablet.id]?.batteryMenuSuffix ?? "") : ""
                 let item = NSMenuItem(
-                    title: pwc.menuLabel(forProductID: tablet.id),
+                    title: pwc.menuLabel(forProductID: tablet.id) + suffix,
                     action: #selector(dockOpenTablet(_:)),
                     keyEquivalent: "")
                 item.target = self
@@ -194,7 +199,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // checkmark) but not all NSMenuItem.image values render in the
                 // Dock's restricted menu pipeline, so use the canonical
                 // selected-state indicator here rather than a custom image.
-                if connectedIDs.contains(tablet.id) {
+                if connected {
                     item.state = .on
                 }
                 menu.addItem(item)
@@ -219,5 +224,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func dockOpenTablet(_ sender: NSMenuItem) {
         PreferencesWindowController.shared.openWindow(forProductID: sender.tag)
         NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+private struct MenuBarIconLabel: View {
+    @ObservedObject var manager: TabletManager
+
+    var body: some View {
+        if let pct = manager.batteryPercent, pct < 20, !manager.batteryCharging {
+            Image(systemName: BatteryIndicator.symbolName(pct: pct, charging: false))
+        } else {
+            Image("MenuBarIcon")
+                .renderingMode(.template)
+        }
     }
 }

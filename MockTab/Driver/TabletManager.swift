@@ -619,6 +619,7 @@ final class TabletManager: ObservableObject {
                 self.batteryPercent = percent
                 self.batteryCharging = charging
             }
+            self.updateDockBadge()
             } // end Task @MainActor
         }
 
@@ -768,6 +769,7 @@ final class TabletManager: ObservableObject {
             activeContext = hidDeviceMap.values.first
             batteryPercent = nil
             batteryCharging = false
+            updateDockBadge()
         }
     }
 
@@ -839,5 +841,13 @@ final class TabletManager: ObservableObject {
             }
         }
         return ("USB", "USB")
+    }
+
+    private func updateDockBadge() {
+        let anyLow = contexts.values.contains {
+            guard let pct = $0.batteryPercent else { return false }
+            return pct < 20 && !$0.batteryCharging
+        }
+        NSApp.dockTile.badgeLabel = anyLow ? "!" : nil
     }
 }

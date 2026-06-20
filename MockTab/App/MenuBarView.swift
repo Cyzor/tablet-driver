@@ -47,8 +47,10 @@ struct MenuBarView: View {
                 // name column stays fixed regardless of checkmark presence.
                 // ✓ + regular space ≈ 1em in SF Pro at menu size, so both
                 // variants reach the name at the same horizontal position.
-                let title = tabletManager.connectedProductIDs.contains(tablet.id)
-                    ? "✓ \(name)"
+                let connected = tabletManager.connectedProductIDs.contains(tablet.id)
+                let suffix = connected ? (tabletManager.contexts[tablet.id]?.batteryMenuSuffix ?? "") : ""
+                let title = connected
+                    ? "✓ \(name)\(suffix)"
                     : "\u{2003}\(name)"
                 Button(title) {
                     pwc.openWindow(forProductID: tablet.id)

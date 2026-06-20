@@ -62,6 +62,13 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// True if the device is currently charging (BT only).
     @Published var batteryCharging: Bool = false
 
+    /// Short string to append to a tablet's menu label when battery data is available.
+    /// Returns "" for USB devices or when no battery report has been received yet.
+    var batteryMenuSuffix: String {
+        guard let pct = batteryPercent else { return "" }
+        return batteryCharging ? "  \(pct)% ⚡" : "  \(pct)%"
+    }
+
     /// Serial ID (as hex string) of the tool currently in proximity, or nil.
     @Published var activeToolID: String? = nil
 
