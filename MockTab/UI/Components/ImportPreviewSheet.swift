@@ -91,8 +91,8 @@ struct ImportPreviewSheet: View {
 
     private var note: some View {
         Text(
-            "Each tablet's settings will be added as a new profile. " +
-            "Your current settings are not changed until you activate a profile."
+            String(localized: "Each tablet's settings will be added as a new profile. Your current settings are not changed until you activate a profile.",
+                   comment: "Import sheet: footer explaining that import creates new profiles and doesn't overwrite current settings")
         )
         .appFont(.settingsLabel).foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
@@ -103,9 +103,10 @@ struct ImportPreviewSheet: View {
     private var buttons: some View {
         HStack {
             Spacer()
-            Button("Cancel") { onDismiss() }
+            Button(String(localized: "Cancel", comment: "Import sheet: dismiss button")) { onDismiss() }
+                .buttonStyle(.bordered)
                 .keyboardShortcut(.cancelAction)
-            Button(includedCount == 0 ? String(localized: "Import") : "Import \(includedCount)") {
+            Button(String(localized: "Import", comment: "Import sheet: import button")) {
                 applyImport()
             }
             .keyboardShortcut(.defaultAction)
@@ -143,7 +144,7 @@ struct ImportPreviewSheet: View {
 
                 if !isExcluded {
                     HStack(spacing: 4) {
-                        Text("→ New profile:").appFont(.settingsLabel).foregroundStyle(.secondary)
+                        Text(String(localized: "→ New profile:", comment: "Import sheet: label before the profile name that will be created")).appFont(.settingsLabel).foregroundStyle(.secondary)
                         Text("\"\(finalName)\"").appFont(.settingsLabel)
                             .foregroundStyle(renamed ? Color.orange : Color.secondary)
                         if renamed {
