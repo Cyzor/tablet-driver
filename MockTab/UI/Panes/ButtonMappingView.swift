@@ -1001,6 +1001,10 @@ struct ButtonBindingControl: View, Equatable {
     @State private var monitor: Any?
     /// Modifier keys accumulated while recording (before any base key is pressed).
     @State private var pendingModifiers: NSEvent.ModifierFlags = []
+    /// Set by the left-mouse-down monitor so toggleRecording() knows the
+    /// click that fired the button action was the same one that already
+    /// stopped recording — and should not restart it.
+    @State private var stoppedByMouseDown = false
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.binding == rhs.binding
@@ -1011,7 +1015,8 @@ struct ButtonBindingControl: View, Equatable {
     var body: some View {
         // Cached once per body call — prevents String(localized:) + CGEventFlags
         // set ops in displayLabel from firing on every SwiftUI invalidation.
-        let displayText = binding.displayLabel
+        // fieldText adds recording-state placeholder text on top of displayLabel.
+        let displayText = fieldText
         HStack(spacing: 4) {
             // Recording field
             Button(action: toggleRecording) {
@@ -1021,6 +1026,7 @@ struct ButtonBindingControl: View, Equatable {
                         .lineLimit(1)
                     Spacer(minLength: 0)
                 }
+                .contentShape(Rectangle())
                 .frame(minWidth: compact ? 60 : 140, maxWidth: compact ? 120 : .infinity)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
@@ -1170,19 +1176,39 @@ struct ButtonBindingControl: View, Equatable {
     }
 
     private func toggleRecording() {
+        // The left-mouse-down monitor already stopped recording on the mouse-down
+        // event that caused this button action to fire. Don't restart — the user
+        // clicked this field to dismiss, not to begin a new recording.
+        if stoppedByMouseDown {
+            stoppedByMouseDown = false
+            return
+        }
         isRecording ? stopRecording() : startRecording()
     }
 
     private func startRecording() {
+        stoppedByMouseDown = false
         isRecording = true
         pendingModifiers = []
-        // Monitor both keyDown (regular keys) and flagsChanged (modifier-only presses).
-        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+        // Monitor keyDown and flagsChanged (keyboard input) plus leftMouseDown.
+        // leftMouseDown is passed through (return event) so the click reaches its
+        // target — which may be another field that then starts its own recording,
+        // naturally enforcing single-field mutual exclusion without coordination.
+        monitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.keyDown, .flagsChanged, .leftMouseDown]
+        ) { event in
             switch event.type {
-            case .flagsChanged: self.handleFlagsChanged(event)
-            default: self.handleKey(event)
+            case .flagsChanged:
+                self.handleFlagsChanged(event)
+                return nil
+            case .leftMouseDown:
+                self.stoppedByMouseDown = true
+                self.stopRecording()
+                return event  // pass through — click reaches its target
+            default:
+                self.handleKey(event)
+                return nil
             }
-            return nil  // consume — prevents the key from reaching any other responder
         }
     }
 
