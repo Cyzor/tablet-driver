@@ -106,7 +106,7 @@
       }
     },
     " Absolute, like a stylus" : {
-      "comment" : "Movement mode label after SF Symbol",
+      "comment" : "Movement mode label appended after an SF Symbol glyph — keep the leading space",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -135,7 +135,7 @@
       }
     },
     " Clockwise" : {
-      "comment" : "Rotation direction label after SF Symbol",
+      "comment" : "Rotation direction label appended after an SF Symbol glyph — keep the leading space",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -164,7 +164,7 @@
       }
     },
     " Counter-clockwise" : {
-      "comment" : "Rotation direction label after SF Symbol",
+      "comment" : "Rotation direction label appended after an SF Symbol glyph — keep the leading space",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -193,7 +193,7 @@
       }
     },
     " Relative, like a mouse" : {
-      "comment" : "Movement mode label after SF Symbol",
+      "comment" : "Movement mode label appended after an SF Symbol glyph — keep the leading space",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -308,7 +308,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@\""
+            "value" : "„%@“"
           }
         },
         "es" : {
@@ -331,7 +331,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "»Einst, «sagte die falsche Schildkröte endlich mit einem tiefen Seufzer, »war ich eine wirkliche Schildkröte.«"
+            "value" : "„Einst,“ sagte die falsche Schildkröte endlich mit einem tiefen Seufzer, „ich war eine wirkliche Schildkröte.“"
           }
         },
         "en" : {
@@ -343,7 +343,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "-Hubo un tiempo -dijo por fin la Falsa Tortuga, con un profundo suspiro- en que yo era una tortuga de verdad."
+            "value" : "—Hubo un tiempo —dijo por fin la Falsa Tortuga, con un profundo suspiro— en que yo era una tortuga de verdad."
           }
         },
         "ja" : {
@@ -546,122 +546,146 @@
         }
       }
     },
-    "%d profile" : {
-      "comment" : "Singular: count of profiles for a tablet",
+    "%lld profile" : {
+      "comment" : "Count of profiles for a tablet",
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d Profil"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Profil"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Profile"
+                }
+              }
+            }
           }
         },
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%d profile"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld profile"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld profiles"
+                }
+              }
+            }
           }
         },
         "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d perfil"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld perfil"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld perfiles"
+                }
+              }
+            }
           }
         },
         "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d プロファイル"
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld プロファイル"
+                }
+              }
+            }
           }
         }
       }
     },
-    "%d profiles" : {
-      "comment" : "Plural: count of profiles for a tablet",
+    "%lld setting" : {
+      "comment" : "Count of overridden settings in a profile",
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d Profile"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Einstellung"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Einstellungen"
+                }
+              }
+            }
           }
         },
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%d profiles"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld setting"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld settings"
+                }
+              }
+            }
           }
         },
         "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d perfiles"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld configuración"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld configuraciones"
+                }
+              }
+            }
           }
         },
         "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d プロファイル"
-          }
-        }
-      }
-    },
-    "%d setting" : {
-      "comment" : "Singular: count of overridden settings in a profile",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d Einstellung"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%d setting"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d configuración"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d 設定"
-          }
-        }
-      }
-    },
-    "%d settings" : {
-      "comment" : "Plural: count of overridden settings in a profile",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d Einstellungen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%d settings"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d configuraciones"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d 設定"
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld 設定"
+                }
+              }
+            }
           }
         }
       }
@@ -892,7 +916,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⇧ Shift"
+            "value" : "⇧ シフト"
           }
         }
       }
@@ -922,7 +946,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⌃ Control"
+            "value" : "⌃ コントロール"
           }
         }
       }
@@ -952,7 +976,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⌘ Command"
+            "value" : "⌘ コマンド"
           }
         }
       }
@@ -982,7 +1006,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⌥ Option"
+            "value" : "⌥ オプション"
           }
         }
       }
@@ -2708,7 +2732,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "クリックしてキーボードショートカットを記録します。Escape で キャンセル、Delete で クリア。▾ メニューを使用してクリック アクションを割り当てます。"
+            "value" : "キーボードショートカットを記録するにはクリックします。Esc キーでキャンセル、Delete キーで削除できます。▾ メニューからクリック操作を割り当ててください。"
           }
         }
       }
@@ -2913,7 +2937,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Driver en conflicto: %@"
+            "value" : "Controlador en conflicto: %@"
           }
         },
         "ja" : {
@@ -2982,7 +3006,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conflicts      : keine"
+            "value" : "Konflikte      : keine"
           }
         },
         "en" : {
@@ -2994,13 +3018,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conflicts      : ninguno"
+            "value" : "Conflictos     : ninguno"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conflicts      : なし"
+            "value" : "競合 : なし"
           }
         }
       }
@@ -4803,6 +4827,64 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "互換性のないバックアップ形式（バージョン %lld）"
+          }
+        }
+      }
+    },
+    "Escape" : {
+      "comment" : "Escape key label in the button action menu",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escape"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Escape"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escape"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "エスケープ"
+          }
+        }
+      }
+    },
+    "Escape key" : {
+      "comment" : "Tooltip for the Escape key option in the button action menu",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escape-Taste"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Escape key"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tecla Escape"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "エスケープキー"
           }
         }
       }
@@ -7339,7 +7421,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "中クリック＋ペン先"
+            "value" : "中央クリック＋ペン先"
           }
         }
       }
@@ -9881,7 +9963,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tastenkürzel aufzeichnen"
+            "value" : "Tastenkombination festlegen"
           }
         },
         "en" : {
@@ -13594,7 +13676,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Shortcut eingeben…"
+            "value" : "Tastenkombination zuweisen…"
           }
         },
         "es" : {

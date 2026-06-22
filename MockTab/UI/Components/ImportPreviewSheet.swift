@@ -156,11 +156,7 @@ struct ImportPreviewSheet: View {
                         Text(String(localized: "Not in your registry — profile will be available when this tablet connects.", comment: "Message when importing a profile for a tablet that hasn't been connected yet"))
                             .appFont(.settingsBadge).foregroundStyle(.orange)
                     }
-                    Text(String(format:
-                        NSLocalizedString(
-                            entry.profileValues.count == 1 ? "%d setting" : "%d settings",
-                            comment: "Count of settings in imported profile"),
-                        entry.profileValues.count))
+                    Text(String(localized: "\(entry.profileValues.count) setting", comment: "Count of settings in imported profile"))
                         .appFont(.settingsBadge).foregroundStyle(.tertiary)
                 } else {
                     Text(String(localized: "Skipped", comment: "Label when a tablet profile is excluded from import"))

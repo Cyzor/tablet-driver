@@ -526,13 +526,7 @@ private struct PresetListView: View {
                         .foregroundStyle(Color.primary)
 
                     if !preset.overriddenKeys.isEmpty {
-                        Text(
-                            String(format:
-                                NSLocalizedString(
-                                    preset.overriddenKeys.count == 1 ? "%d setting" : "%d settings",
-                                    comment: "Count of overridden settings in a profile"),
-                                preset.overriddenKeys.count)
-                        )
+                        Text(String(localized: "\(preset.overriddenKeys.count) setting", comment: "Count of overridden settings in a profile"))
                         .appFont(.settingsBadge)
                         .foregroundStyle(.tertiary)
                     }
@@ -666,14 +660,8 @@ private struct ConfigurationSummaryView: View {
                 Spacer()
                 Text(
                     ts.profiles.count == 0
-                        ? String(
-                            localized: "No profiles",
-                            comment: "Badge text when tablet has no profiles")
-                        : String(format:
-                            NSLocalizedString(
-                                ts.profiles.count == 1 ? "%d profile" : "%d profiles",
-                                comment: "Count of profiles for a tablet"),
-                            ts.profiles.count)
+                        ? String(localized: "No profiles", comment: "Badge text when tablet has no profiles")
+                        : String(localized: "\(ts.profiles.count) profile", comment: "Count of profiles for a tablet")
                 )
                 .appFont(.settingsBadge)
                 .foregroundStyle(.tertiary)

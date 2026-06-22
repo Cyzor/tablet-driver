@@ -666,7 +666,7 @@ struct ButtonMappingView: View {
             ForEach(0..<expressKeyCount, id: \.self) { i in
                 expressKeyRow(
                     index: i,
-                    label: String(format: NSLocalizedString("Key %lld", comment: "Express key N label, e.g. 'Key 1'"), i + 1),
+                    label: String(localized: "Key \(i + 1)", comment: "Express key N label, e.g. 'Key 1'"),
                     lb: lb)
             }
         } header: {
@@ -733,7 +733,7 @@ struct ButtonMappingView: View {
             ForEach(3..<8, id: \.self) { i in
                 expressKeyRow(
                     index: i,
-                    label: String(format: NSLocalizedString("Key %lld", comment: "Express key N label, e.g. 'Key 1'"), i - 2),
+                    label: String(localized: "Key \(i - 2)", comment: "Express key N label, e.g. 'Key 1'"),
                     lb: lb)
             }
         }
@@ -760,7 +760,7 @@ struct ButtonMappingView: View {
             ForEach(11..<16, id: \.self) { i in
                 expressKeyRow(
                     index: i,
-                    label: String(format: NSLocalizedString("Key %lld", comment: "Express key N label, e.g. 'Key 1'"), i - 10),
+                    label: String(localized: "Key \(i - 10)", comment: "Express key N label, e.g. 'Key 1'"),
                     lb: lb)
             }
         }
@@ -1077,6 +1077,10 @@ struct ButtonBindingControl: View, Equatable {
             Divider()
             Button("Spacebar") { binding = ButtonBinding(kind: .spacebar) }
                 .help("Spacebar key (hand-tool in many design apps)")
+            Button("Escape") {
+                binding = ButtonBinding(kind: .keyCombo, keyCode: 53, modifierFlags: 0, keyLabel: "⎋")
+            }
+            .help("Escape key")
             Button("Toggle Display") { binding = ButtonBinding(kind: .displayToggle) }
                 .help("Switch tablet mapping between displays")
             Menu("Touch Ring Mode") {
