@@ -338,6 +338,7 @@ struct CaptureGuideView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
                 .disabled(!engine.isRunning)
             }
         }

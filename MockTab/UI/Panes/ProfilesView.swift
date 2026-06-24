@@ -152,6 +152,7 @@ struct ProfilesView: View {
                         newName = ""
                     }
                     .controlSize(.small)
+                    .keyboardShortcut(.cancelAction)
                     .help("Cancel creating a new profile")
                 }
             } else {
@@ -518,6 +519,7 @@ private struct PresetListView: View {
 
                 Button("Cancel") { onRenameCancel() }
                     .controlSize(.small)
+                    .keyboardShortcut(.cancelAction)
                     .help("Cancel renaming")
             } else {
                 VStack(alignment: .leading, spacing: 2) {
