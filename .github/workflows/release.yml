@@ -61,7 +61,7 @@ jobs:
 
       - name: Checkout (with submodules)
         if: steps.precheck.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           submodules: recursive
 
@@ -124,7 +124,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           DMG="dist/MockTab-$VERSION.dmg"
-          NOTES="release-notes/$GITHUB_REF_NAME.md"
+          NOTES="release-notes/v${VERSION}.md"
           if [[ -f "$NOTES" ]]; then
             gh release create "$GITHUB_REF_NAME" "$DMG" \
               --title "MockTab $VERSION" --notes-file "$NOTES" --draft

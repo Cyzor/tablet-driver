@@ -435,7 +435,7 @@ enum OTDImporter {
     }
 
     private static func decodeBase64FeatureInit(_ encoded: String) -> [UInt8]? {
-        guard let data = Data(base64Encoded: encoded) else { return nil }
+        guard let data = Data(base64Encoded: encoded), data.count <= 256 else { return nil }
         return Array(data)
     }
 
