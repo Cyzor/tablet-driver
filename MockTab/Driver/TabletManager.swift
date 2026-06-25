@@ -454,6 +454,9 @@ final class TabletManager: ObservableObject {
 
             // ── Fast path: inject inline on HIDThread ─────────────────────────
             let isActive = injector.isActive
+            // Snapshot before inject() — inject() sets lastProximity = point.inProximity
+            // at its tail, so reading after would always equal point.inProximity.
+            let wasInProximity = injector.lastProximity
             if isActive {
                 injector.inject(point: point, settings: context.settings)
             }
@@ -465,6 +468,7 @@ final class TabletManager: ObservableObject {
             let needsHop: Bool
             if isActive {
                 needsHop = !point.inProximity  // proximity-exit cleanup
+                    || (point.inProximity && !wasInProximity)  // proximity-enter: re-arm assertion
                     || self?.appIsFrontmost == true && self?.infoViewVisible == true  // UI update
                     || self?.calibrationActive == true  // calibration sample
             } else {
@@ -497,6 +501,7 @@ final class TabletManager: ObservableObject {
                     old.injector.inject(point: exitPoint, settings: old.settings)
                 }
                 self.activeContext = context
+                self.penEnteredProximity()
                 // Inject this report from main (slow, one-time per switch). Cheap.
                 injector.inject(point: point, settings: context.settings)
             }
@@ -524,8 +529,14 @@ final class TabletManager: ObservableObject {
                 context.liveButtons = LiveButtonState()
                 self.livePoint = nil
                 context.livePoint = nil
-                return  // Skip UI updates for proximity-exit state
+                self.penExitedProximity()
+                return
             }
+
+            // Pen is in proximity. Re-arm the latency assertion if it was dropped during
+            // an idle period (covers the same-context re-entry path not caught by the
+            // context-switch block above).
+            self.penEnteredProximity()
 
             // Skip UI updates when MockTab is in the background OR the Info/Buttons
             // tab isn't visible. This eliminates every @Published write during
@@ -796,20 +807,54 @@ final class TabletManager: ObservableObject {
 
     // MARK: - Latency-critical activity assertion
 
-    /// Held while at least one tablet is connected. Tells the system this
-    /// process performs latency-critical input injection, which opts it out
-    /// of App Nap and timer coalescing — both of which otherwise degrade
-    /// HID delivery precisely when an unrelated process loads the CPU.
+    /// Held while a pen is in proximity. Tells the system this process performs
+    /// latency-critical input injection, opting out of App Nap and timer coalescing.
+    /// Armed on proximity-enter; dropped after `proximityIdleDelay` seconds without
+    /// any pen in proximity; dropped immediately on tablet disconnect.
     private var latencyActivityToken: NSObjectProtocol?
+    private var proximityIdleTimer: Timer?
+    private static let proximityIdleDelay: TimeInterval = 60.0
 
+    /// Called on tablet connect/disconnect. Connection alone no longer arms the
+    /// assertion; that happens in `penEnteredProximity()` so idle connected tablets
+    /// don't block App Nap.
     private func updateActivityAssertion() {
-        if isConnected, latencyActivityToken == nil {
-            latencyActivityToken = ProcessInfo.processInfo.beginActivity(
-                options: [.userInitiated, .latencyCritical],
-                reason: "Tablet connected — latency-critical input injection")
-        } else if !isConnected, let token = latencyActivityToken {
+        guard !isConnected else { return }
+        proximityIdleTimer?.invalidate()
+        proximityIdleTimer = nil
+        if let token = latencyActivityToken {
             ProcessInfo.processInfo.endActivity(token)
             latencyActivityToken = nil
+        }
+    }
+
+    /// Arms the latency assertion. Idempotent — no-op if already held.
+    private func penEnteredProximity() {
+        proximityIdleTimer?.invalidate()
+        proximityIdleTimer = nil
+        guard isConnected, latencyActivityToken == nil else { return }
+        latencyActivityToken = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiated, .latencyCritical],
+            reason: "Pen in proximity — latency-critical input injection")
+    }
+
+    /// Schedules assertion drop after `proximityIdleDelay` seconds, unless another
+    /// connected device still has a pen in proximity.
+    private func penExitedProximity() {
+        let anyStillDown = contexts.values.contains { $0.isConnected && $0.injector.lastProximity }
+        guard !anyStillDown else { return }
+        proximityIdleTimer?.invalidate()
+        proximityIdleTimer = Timer.scheduledTimer(
+            withTimeInterval: Self.proximityIdleDelay, repeats: false
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.proximityIdleTimer = nil
+                let anyDown = self.contexts.values.contains { $0.isConnected && $0.injector.lastProximity }
+                guard !anyDown, let token = self.latencyActivityToken else { return }
+                ProcessInfo.processInfo.endActivity(token)
+                self.latencyActivityToken = nil
+            }
         }
     }
 
