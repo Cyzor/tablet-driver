@@ -24,6 +24,43 @@ private struct ChipContentWidthKey: PreferenceKey {
     }
 }
 
+// MARK: - Keyboard proxy (arrow-key navigation, no focus ring)
+
+private struct ChipKeyboardProxy: NSViewRepresentable {
+    var focusGeneration: Int
+    var onLeft: () -> Void
+    var onRight: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeNSView(context: Context) -> KeyView { KeyView() }
+
+    func updateNSView(_ v: KeyView, context: Context) {
+        v.onLeft = onLeft
+        v.onRight = onRight
+        if context.coordinator.lastGeneration != focusGeneration {
+            context.coordinator.lastGeneration = focusGeneration
+            DispatchQueue.main.async { v.window?.makeFirstResponder(v) }
+        }
+    }
+
+    class Coordinator { var lastGeneration = -1 }
+
+    class KeyView: NSView {
+        var onLeft: (() -> Void)?
+        var onRight: (() -> Void)?
+        override var acceptsFirstResponder: Bool { true }
+        override func drawFocusRingMask() {}
+        override var focusRingMaskBounds: NSRect { .zero }
+        override func keyDown(with event: NSEvent) {
+            switch event.keyCode {
+            case 123: onLeft?()
+            case 124: onRight?()
+            default: super.keyDown(with: event)
+            }
+        }
+    }
+}
+
 // MARK: - AppOverrideBar
 
 /// Per-tab application override selector.
@@ -121,6 +158,8 @@ struct AppOverrideBar: View {
 
     @State private var alwaysShowScrollbars = (NSScroller.preferredScrollerStyle == .legacy)
 
+    @State private var chipFocusGeneration: Int = 0
+
     @State private var iconCache: [String: NSImage] = [:]
 
     @State private var renamingBundleID: String? = nil
@@ -137,7 +176,7 @@ struct AppOverrideBar: View {
 
     // MARK: - Constants
 
-    private let longPressDuration: TimeInterval = 0.4
+    private let longPressDuration: TimeInterval = 0.55
     private let longPressMaxDrift: CGFloat = 18
     private let dragHoverGap: CGFloat = 20
 
@@ -283,6 +322,13 @@ struct AppOverrideBar: View {
                 addMenuPanel
                     .frame(height: chipAreaHeight)
             }
+            .background(
+                ChipKeyboardProxy(
+                    focusGeneration: chipFocusGeneration,
+                    onLeft: { selectAdjacentChip(offset: -1) },
+                    onRight: { selectAdjacentChip(offset: 1) }
+                )
+            )
     }
 
     // MARK: - addMenu panel
@@ -416,6 +462,15 @@ struct AppOverrideBar: View {
         settings.reorderAppOverrides(from: sourceIdx, to: targetIdx)
     }
 
+    private func selectAdjacentChip(offset: Int) {
+        let ids: [String?] = [nil] + settings.appOverrides.map { Optional($0.bundleID) }
+        guard !ids.isEmpty,
+              let current = ids.firstIndex(where: { $0 == selectedBundleID })
+        else { return }
+        let next = (current + offset + ids.count) % ids.count
+        settings.selectAppOverride(bundleID: ids[next])
+    }
+
     // MARK: - App chip
 
     @ViewBuilder
@@ -430,8 +485,9 @@ struct AppOverrideBar: View {
 
         Button {
             settings.selectAppOverride(bundleID: bundleID)
+            chipFocusGeneration += 1
         } label: {
-            if let id = bundleID {
+            if let id = bundleID, isDragLifted {
                 chipContent(
                     label: label,
                     icon: icon,
@@ -462,6 +518,14 @@ struct AppOverrideBar: View {
         .buttonStyle(.plain)
         .scaleEffect(isDragLifted ? 1.06 : 1.0)
         .animation(reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.65), value: isDragLifted)
+        .simultaneousGesture(
+            TapGesture(count: 2).onEnded {
+                if let bundleID {
+                    renamingBundleID = bundleID
+                    renameText = label
+                }
+            }
+        )
         .accessibilityLabel(label)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .contextMenu {
