@@ -8,14 +8,7 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-// MARK: - Scroll-tracking preference keys
-
-private struct ChipScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
+// MARK: - Scroll-tracking preference key
 
 private struct ChipContentWidthKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -142,19 +135,16 @@ struct AppOverrideBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var isDropTargeted = false
-    @State private var dragEnabledID: String? = nil
     @State private var dragHoverTargetID: String? = nil
 
-    @State private var chipScrollOffset: CGFloat = 0
     @State private var chipContentWidth: CGFloat = 0
     @State private var chipViewportWidth: CGFloat = 0
 
-    private var canScrollLeading: Bool { chipScrollOffset < -2 }
-
-    private var canScrollTrailing: Bool {
-        guard chipContentWidth > chipViewportWidth else { return false }
-        return chipScrollOffset > -(chipContentWidth - chipViewportWidth) + 2
-    }
+    // canScrollTrailing is intentionally imprecise: it stays true even when scrolled
+    // all the way right, because the alternative (tracking exact offset via a named
+    // coordinate space) causes floating-point noise that fires onPreferenceChange on
+    // every layout pass, creating a display-rate render loop.
+    private var canScrollTrailing: Bool { chipContentWidth > chipViewportWidth }
 
     @State private var alwaysShowScrollbars = (NSScroller.preferredScrollerStyle == .legacy)
 
@@ -164,6 +154,7 @@ struct AppOverrideBar: View {
 
     @State private var renamingBundleID: String? = nil
     @State private var renameText = ""
+    @State private var lastChipTapTime: [String: TimeInterval] = [:]
     @State private var pendingDropURLs: [URL] = []
     @State private var showMultiDropAlert = false
     @State private var cachedRunningApps: [NSRunningApplication] = []
@@ -176,8 +167,6 @@ struct AppOverrideBar: View {
 
     // MARK: - Constants
 
-    private let longPressDuration: TimeInterval = 0.55
-    private let longPressMaxDrift: CGFloat = 18
     private let dragHoverGap: CGFloat = 20
 
     private let chipVerticalPadding: CGFloat = 7
@@ -360,7 +349,10 @@ struct AppOverrideBar: View {
         let barBG = TabletColorTheme.barBackgroundColor(for: productID)
         let fadeWidth: CGFloat = 24
 
-        return ScrollView(.horizontal, showsIndicators: true) {
+        // Suppress the scroller knob in overlay mode: its flash animation drives a
+        // display-link that fires enqueueHoverUpdateIfNeeded at refresh rate, spiking CPU.
+        // Gradient fades already serve as the overflow indicator in overlay mode.
+        return ScrollView(.horizontal, showsIndicators: alwaysShowScrollbars) {
             chipRow
                 .padding(.leading, chipHorizontalPadding)
                 .padding(.trailing, addMenuSlotWidth)
@@ -369,14 +361,9 @@ struct AppOverrideBar: View {
                     GeometryReader { geo in
                         Color.clear
                             .preference(key: ChipContentWidthKey.self, value: geo.size.width)
-                            .preference(
-                                key: ChipScrollOffsetKey.self,
-                                value: geo.frame(in: .named("chipScroll")).minX
-                            )
                     }
                 )
         }
-        .coordinateSpace(name: "chipScroll")
         .background(
             GeometryReader { geo in
                 Color.clear
@@ -385,19 +372,6 @@ struct AppOverrideBar: View {
             }
         )
         .onPreferenceChange(ChipContentWidthKey.self) { chipContentWidth = $0 }
-        .onPreferenceChange(ChipScrollOffsetKey.self) { chipScrollOffset = $0 }
-        .overlay(alignment: .leading) {
-            if canScrollLeading && !alwaysShowScrollbars {
-                LinearGradient(
-                    colors: [barBG, barBG.opacity(0)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: fadeWidth)
-                .allowsHitTesting(false)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: canScrollLeading)
-            }
-        }
         .overlay(alignment: .trailing) {
             if canScrollTrailing && !alwaysShowScrollbars {
                 LinearGradient(
@@ -481,13 +455,22 @@ struct AppOverrideBar: View {
         isSelected: Bool,
         domainKeyCount: Int = 0
     ) -> some View {
-        let isDragLifted = bundleID != nil && dragEnabledID == bundleID
-
         Button {
-            settings.selectAppOverride(bundleID: bundleID)
-            chipFocusGeneration += 1
+            let now = Date.timeIntervalSinceReferenceDate
+            let key = bundleID ?? "__global__"
+            if let prev = lastChipTapTime[key], now - prev < NSEvent.doubleClickInterval {
+                lastChipTapTime[key] = nil
+                if let bundleID {
+                    renamingBundleID = bundleID
+                    renameText = label
+                }
+            } else {
+                lastChipTapTime[key] = now
+                settings.selectAppOverride(bundleID: bundleID)
+                chipFocusGeneration += 1
+            }
         } label: {
-            if let id = bundleID, isDragLifted {
+            if let id = bundleID {
                 chipContent(
                     label: label,
                     icon: icon,
@@ -516,16 +499,6 @@ struct AppOverrideBar: View {
             }
         }
         .buttonStyle(.plain)
-        .scaleEffect(isDragLifted ? 1.06 : 1.0)
-        .animation(reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.65), value: isDragLifted)
-        .simultaneousGesture(
-            TapGesture(count: 2).onEnded {
-                if let bundleID {
-                    renamingBundleID = bundleID
-                    renameText = label
-                }
-            }
-        )
         .accessibilityLabel(label)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .contextMenu {
@@ -552,17 +525,6 @@ struct AppOverrideBar: View {
                 }
             }
         }
-        .onLongPressGesture(
-            minimumDuration: longPressDuration,
-            maximumDistance: longPressMaxDrift,
-            perform: { dragEnabledID = bundleID },
-            onPressingChanged: { pressing in
-                if !pressing {
-                    dragEnabledID = nil
-                    dragHoverTargetID = nil
-                }
-            }
-        )
     }
 
     // MARK: - Chip visual
