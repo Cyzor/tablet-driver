@@ -158,6 +158,13 @@ struct AppOverrideBar: View {
     @State private var pendingDropURLs: [URL] = []
     @State private var showMultiDropAlert = false
     @State private var cachedRunningApps: [NSRunningApplication] = []
+    /// True after the first refresh fires. Prevents refreshRunningApps() from
+    /// re-running on every pane switch (i.e., every time this bar re-appears
+    /// because its tab became the selected one). Without this guard the @State
+    /// write from refreshRunningApps() triggers a SwiftUI body re-evaluation on
+    /// every tab switch, which causes the GPU compositor to allocate ~400 MB of
+    /// IOSurface backing stores on multi-display retina setups.
+    @State private var hasRefreshedRunningApps = false
 
     private var selectedBundleID: String? { settings.activeAppOverride?.bundleID }
 
@@ -275,6 +282,8 @@ struct AppOverrideBar: View {
             )
         }
         .onAppear {
+            guard !hasRefreshedRunningApps else { return }
+            hasRefreshedRunningApps = true
             refreshRunningApps()
         }
         .onChange(of: settings.appOverrides.map(\.bundleID)) { _ in

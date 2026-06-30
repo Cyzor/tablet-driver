@@ -4,6 +4,7 @@
 
 import AppKit
 import CoreGraphics
+import ImageIO
 import SwiftUI
 
 struct DisplayMappingView: View {
@@ -554,7 +555,7 @@ struct DisplayInfo {
             let h = Int(CGDisplayPixelsHigh(id))
             let wallpaper: NSImage? = screenMap[id].flatMap { screen in
                 NSWorkspace.shared.desktopImageURL(for: screen)
-                    .flatMap { NSImage(contentsOf: $0) }
+                    .flatMap { Self.loadThumbnail(from: $0, maxEdge: 640) }
             }
             return DisplayInfo(
                 id: id, listIndex: index + 1,
@@ -568,5 +569,17 @@ struct DisplayInfo {
             if abs($0.bounds.minX - $1.bounds.minX) > 1 { return $0.bounds.minX < $1.bounds.minX }
             return $0.bounds.minY < $1.bounds.minY
         }
+    }
+
+    private static func loadThumbnail(from url: URL, maxEdge: CGFloat) -> NSImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let opts: [CFString: Any] = [
+            kCGImageSourceThumbnailMaxPixelSize: maxEdge,
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, opts as CFDictionary)
+        else { return nil }
+        return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
     }
 }
