@@ -25,6 +25,16 @@ final class PreferencesWindowController: ObservableObject {
     private var isTerminating = false
     private var skipWindowSave = false
 
+    /// Last-known window size per logical window, keyed by productID (as string)
+    /// or "generic". Captured when a window closes so re-opening it restores the
+    /// size the user last had, even though the closed window is no longer in
+    /// `windows` and therefore absent from `saveWindowState()`.
+    private var lastKnownSizes: [String: NSSize] = [:]
+
+    private func sizeKey(productID: Int?) -> String {
+        productID.map(String.init) ?? "generic"
+    }
+
     private static let restorationKey = "MockTab_OpenWindows"
 
     private init() {
@@ -304,6 +314,13 @@ final class PreferencesWindowController: ObservableObject {
         } else {
             // Place new window: cascade from the previous window if one exists,
             // otherwise land in the upper-left area of the primary display.
+            // If we have a last-known size for this device, restore it so the
+            // window comes back at the same size the user last had.
+            if let lastSize = lastKnownSizes[sizeKey(productID: productID)] {
+                wc.window?.setContentSize(lastSize)
+                wc.suppressAutoResize()
+            }
+
             let screen = NSScreen.main ?? NSScreen.screens.first
             let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
             let windowSize = wc.window?.frame.size ?? NSSize(width: 560, height: 870)
@@ -360,6 +377,10 @@ final class PreferencesWindowController: ObservableObject {
         ) { [weak self, weak wc] _ in
             MainActor.assumeIsolated {
                 guard let self, let wc else { return }
+                // Capture size before removing so re-opening restores it.
+                if let size = wc.window?.frame.size {
+                    self.lastKnownSizes[self.sizeKey(productID: wc.productID)] = size
+                }
                 self.windows.removeAll(where: { $0 === wc })
                 if self.defaultWindow === wc { self.defaultWindow = nil }
                 // Skip saving during termination — AppKit closes all windows

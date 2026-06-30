@@ -442,6 +442,10 @@ final class SettingsWindowController: NSWindowController {
     }
 
     func showTab(at index: Int) {
+        // Programmatic tab selection must not trigger per-tab auto-sizing: the
+        // user's intent is to navigate, not to resize. Suppress before show() so
+        // the flag is in place before viewDidAppear fires.
+        suppressAutoResize()
         show()
         guard index >= 0, index < tabVC.tabViewItems.count else { return }
         tabVC.selectedTabViewItemIndex = index
