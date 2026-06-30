@@ -178,8 +178,9 @@ enum DeviceRouter {
                     onToolEnter: callbacks.onToolEnter)
                 return .driver(drv, seized: false)
             }
-            routerLog.info("0x\(String(vendorID, radix: 16), privacy: .public)/0x\(pidStr, privacy: .public) — attaching generic HID digitizer (universal floor)")
             let drv = GenericHIDDigitizer(device: device, onTablet: callbacks.onTablet)
+            let brandNote = drv.detectedBrand.map { " (looks like \($0))" } ?? ""
+            routerLog.info("0x\(String(vendorID, radix: 16), privacy: .public)/0x\(pidStr, privacy: .public)\(brandNote, privacy: .public) — attaching generic HID digitizer (universal floor)")
             return .driver(drv, seized: false)
         }
 

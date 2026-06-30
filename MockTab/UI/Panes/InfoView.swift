@@ -24,7 +24,7 @@ struct InfoView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    if fallbackDevice != nil {
+                    if fallbackDevice != nil || genericDigitizer != nil {
                         unknownDeviceBanner
                     }
                     statusTable
@@ -79,6 +79,17 @@ struct InfoView: View {
         deviceContext?.tabletDevice as? WacomFallbackDevice
     }
 
+    private var genericDigitizer: GenericHIDDigitizer? {
+        deviceContext?.tabletDevice as? GenericHIDDigitizer
+    }
+
+    /// Brand/category guessed from USB strings for an unrecognised device,
+    /// when available — `WacomFallbackDevice` already knows it's Wacom, so
+    /// only `GenericHIDDigitizer` carries a heuristic guess.
+    private var detectedBrand: String? {
+        genericDigitizer?.detectedBrand
+    }
+
     private var unknownDeviceBanner: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "questionmark.circle.fill")
@@ -87,6 +98,12 @@ struct InfoView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(String(localized: "Unrecognised tablet", comment: "Banner title shown when active device is on the generic fallback driver"))
                     .appFont(.headline)
+                if let detectedBrand {
+                    Text(String(localized: "This looks like \(detectedBrand), but MockTab doesn't recognise this specific model yet.", comment: "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand"))
+                        .appFont(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Text(String(localized: "MockTab is using its generic driver for this device. Basic pen input may work, but full support requires a short data-collection session.", comment: "Body of the unknown-device banner"))
                     .appFont(.callout)
                     .foregroundStyle(.secondary)

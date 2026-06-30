@@ -31,6 +31,12 @@ final class GenericHIDDigitizer: TabletDevice {
 
     let spec: DigitizerSpec
 
+    /// Brand/category guessed from the USB manufacturer/product strings when
+    /// the VID/PID didn't match any registry entry — nil when nothing in
+    /// those strings hints at a tablet. Drives the "looks like a Huion
+    /// device" wording on the unrecognised-device banner.
+    let detectedBrand: String?
+
     private let device: IOHIDDevice
     private let onTablet: (TabletPoint) -> Void
     private let tag: String
@@ -49,7 +55,9 @@ final class GenericHIDDigitizer: TabletDevice {
         let pid = hidIntProperty(device, kIOHIDProductIDKey)
         let vid = hidIntProperty(device, kIOHIDVendorIDKey)
         let productName = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String
+        let manufacturer = IOHIDDeviceGetProperty(device, kIOHIDManufacturerKey as CFString) as? String
         tag = productName ?? "HID-digitizer-\(String(vid, radix: 16))/\(String(pid, radix: 16))"
+        detectedBrand = BrandHeuristic.likelyBrand(manufacturer: manufacturer, product: productName)
 
         let probed = queryHIDDigitizerSpec(device)
         spec = DigitizerSpec(maxX: probed.maxX, maxY: probed.maxY, maxPressure: probed.maxPressure)
