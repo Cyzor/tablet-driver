@@ -635,7 +635,9 @@ struct AppOverrideBar: View {
                     Button {
                         addApp(bundleID: app.bundleIdentifier ?? "", name: app.localizedName ?? "")
                     } label: {
-                        if let icon = app.icon {
+                        if let bundleID = app.bundleIdentifier,
+                            let icon = appIconCached(bundleID: bundleID)
+                        {
                             Label {
                                 Text(app.localizedName ?? "")
                             } icon: {
@@ -749,7 +751,7 @@ struct AppOverrideBar: View {
         guard let path = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)?.path
         else { return nil }
 
-        return NSWorkspace.shared.icon(forFile: path)
+        return Self.downsampledIcon(NSWorkspace.shared.icon(forFile: path), pointSize: chipIconSize)
     }
 
     private func appIconCached(bundleID: String) -> NSImage? {
@@ -760,6 +762,29 @@ struct AppOverrideBar: View {
             }
         }
         return nil
+    }
+
+    /// `NSWorkspace` icons carry every representation up to the app's largest
+    /// `.icns` size (often 1024pt+ at retina). Rendered at chip size that's a
+    /// lot of wasted GPU-backed surface — rasterizing once to a small bitmap
+    /// here, the same way `DisplayMappingView.loadThumbnail` caps wallpaper
+    /// thumbnails, keeps the cached icon's backing store proportional to what's
+    /// actually drawn on screen.
+    private static func downsampledIcon(_ image: NSImage, pointSize: CGFloat, scale: CGFloat = 2) -> NSImage {
+        let pixelSize = Int(pointSize * scale)
+        guard pixelSize > 0,
+            let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
+            let context = CGContext(
+                data: nil, width: pixelSize, height: pixelSize,
+                bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+            true
+        else { return image }
+        context.interpolationQuality = .high
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: pixelSize, height: pixelSize))
+        guard let resized = context.makeImage() else { return image }
+        return NSImage(cgImage: resized, size: NSSize(width: pointSize, height: pointSize))
     }
 
     private func refreshRunningApps() {

@@ -187,6 +187,44 @@ final class ResizableTabViewController: NSTabViewController {
     }
 }
 
+// MARK: - LazyHostingViewController
+
+/// Defers building its wrapped `NSHostingController` (and thus evaluating the
+/// SwiftUI view tree and its GPU-backed layer) until the tab actually becomes
+/// visible, instead of all panes paying that cost up front in
+/// `SettingsWindowController.init`.
+private final class LazyHostingViewController: NSViewController {
+    private let make: () -> NSViewController
+    private var inner: NSViewController?
+
+    init(make: @escaping () -> NSViewController) {
+        self.make = make
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override var preferredContentSize: NSSize {
+        get { inner?.preferredContentSize ?? super.preferredContentSize }
+        set { if let inner { inner.preferredContentSize = newValue } else { super.preferredContentSize = newValue } }
+    }
+
+    override func loadView() {
+        view = NSView()
+    }
+
+    override func viewWillAppear() {
+        super.viewWillAppear()
+        guard inner == nil else { return }
+        let built = make()
+        addChild(built)
+        built.view.frame = view.bounds
+        built.view.autoresizingMask = [.width, .height]
+        view.addSubview(built.view)
+        inner = built
+    }
+}
+
 // MARK: - LiveResizeFreezeView / LiveResizeFreezeViewController
 
 /// Container NSView that pins its content at its current size when live resize
@@ -470,32 +508,36 @@ final class SettingsWindowController: NSWindowController {
         height: CGFloat,
         width: CGFloat = 500,
         freezeOnResize: Bool = false,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: @escaping () -> Content
     ) {
-        let aligned = content()
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-        let hosting = NSHostingController(rootView: aligned.withAppearance())
-
         let isDeviceTab = Self.deviceSpecificTabIndices.contains(nextTabIndex)
-        hosting.title = isDeviceTab ? "\(label) — \(deviceLabel)" : label
-
-        hosting.preferredContentSize = NSSize(width: width, height: 0)
-        if #available(macOS 13.0, *) {
-            hosting.sizingOptions = []
-        }
+        let title = isDeviceTab ? "\(label) — \(deviceLabel)" : label
 
         tabVC.register(
             defaultSize: NSSize(width: width, height: height),
             forTabLabeled: label)
 
+        let lazy = LazyHostingViewController {
+            let aligned = content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            let hosting = NSHostingController(rootView: aligned.withAppearance())
+            hosting.title = title
+            hosting.preferredContentSize = NSSize(width: width, height: 0)
+            if #available(macOS 13.0, *) {
+                hosting.sizingOptions = []
+            }
+            return hosting
+        }
+        lazy.title = title
+        lazy.preferredContentSize = NSSize(width: width, height: 0)
+
         let vc: NSViewController
         if freezeOnResize {
-            let frozen = LiveResizeFreezeViewController(wrapping: hosting)
-            frozen.title = hosting.title
+            let frozen = LiveResizeFreezeViewController(wrapping: lazy)
+            frozen.title = title
             vc = frozen
         } else {
-            vc = hosting
+            vc = lazy
         }
         let item = NSTabViewItem(viewController: vc)
         item.label = label

@@ -249,6 +249,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             }
 
             addItem(String(localized: "Close",              comment: "Window menu"), action: #selector(NSWindow.performClose(_:)),       key: "w")
+            addItem(String(localized: "Close All",          comment: "Window menu: close all windows"), action: #selector(closeAllWindows(_:)), key: "w", modifiers: [.command, .option])
             addItem(String(localized: "Minimize",           comment: "Window menu"), action: #selector(NSWindow.performMiniaturize(_:)), key: "m")
             addItem(String(localized: "Zoom",               comment: "Window menu"), action: #selector(NSWindow.performZoom(_:)),        key: "", modifiers: [])
             addItem(String(localized: "Full Screen",        comment: "Window menu"), action: #selector(NSWindow.toggleFullScreen(_:)),   key: "f", modifiers: [.control, .command])
@@ -286,6 +287,15 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             mainMenu.insertItem(menuItem, at: idx + 1)
         } else {
             mainMenu.addItem(menuItem)
+        }
+    }
+
+    @objc private func closeAllWindows(_ sender: Any?) {
+        let windows = NSApp.windows
+        for window in windows {
+            if !window.isExcludedFromWindowsMenu {
+                window.performClose(sender)
+            }
         }
     }
 
