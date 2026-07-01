@@ -516,7 +516,17 @@ struct ButtonMappingView: View {
     }
 
     private var spec: WacomDeviceSpec? {
-        productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
+        guard let pid = productID else { return nil }
+        // Most devices are in the registry keyed by their own PID.
+        // The ACK-40401 wireless dongle's own registry entry is a
+        // name-only placeholder (maxX/maxY/buttonCount all 0) — skip it
+        // and fall back to the paired tablet's PID reported over the RF
+        // link instead of showing an empty Buttons pane.
+        if let s = WacomDeviceRegistry.spec(for: pid), s.maxX > 0 { return s }
+        if let ctx = tabletManager.contexts[pid], ctx.pairedProductID > 0 {
+            return WacomDeviceRegistry.spec(for: ctx.pairedProductID)
+        }
+        return nil
     }
 
     private var activeToolSpec: WacomToolSpec? {

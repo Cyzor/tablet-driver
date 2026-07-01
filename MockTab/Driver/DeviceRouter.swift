@@ -37,6 +37,9 @@ enum DeviceRouter {
         /// fingers lifted.  No shipping decoder emits this yet; reserved
         /// for the DTH-* touch-capable devices (Phase 1 plumbing).
         let onTouch: ([TouchContact]) -> Void
+        /// Called once when a wireless dongle (ACK-40401) identifies the
+        /// paired tablet's PID from the 0x80 status report.
+        let onPairedPID: (Int) -> Void
     }
 
     /// The decision made for a single HID interface.
@@ -107,6 +110,7 @@ enum DeviceRouter {
                 parser: .intuosV1,
                 maxX: dMaxX, maxY: dMaxY, maxPressure: dMaxP,
                 buttonCount: 8, hasTouchRing: true, hasEraser: true,
+                hasFingerTouch: true, maxTouchContacts: 5,
                 seizeUSB: false, initSteps: [.featureReport([0x02, 0x02])])
             let drv = WacomKnownDevice(
                 device: device, deviceSpec: dongleSpec, isWireless: true,
@@ -114,7 +118,8 @@ enum DeviceRouter {
                 onToolEnter: callbacks.onToolEnter,
                 onHardwareSerial: callbacks.onHardwareSerial,
                 onWheel: callbacks.onWheel,
-                onTouch: callbacks.onTouch)
+                onTouch: callbacks.onTouch,
+                onPairedPID: callbacks.onPairedPID)
             return .driver(drv, seized: false)
         }
 

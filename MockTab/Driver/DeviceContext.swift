@@ -19,6 +19,11 @@ final class DeviceContext: ObservableObject, Identifiable {
     let id: Int  // productID — also serves as Identifiable key
     let productID: Int  // canonical (USB) product ID
     let rawProductID: Int  // actual transport-specific PID from hardware
+
+    /// For the ACK-40401 wireless dongle, the PID of the paired tablet
+    /// discovered from the 0x80 status report (e.g. 0x0316 for PTH-651).
+    /// 0 until the first status report identifies the tablet.
+    @Published var pairedProductID: Int = 0
     let settings: TabletSettings
     let injector: InputInjector
 

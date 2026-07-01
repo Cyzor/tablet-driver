@@ -33,6 +33,10 @@ final class WacomKnownDevice: TabletDevice {
     private let onMouseButton: ((UInt8) -> Void)?
     private let onBattery: ((Int, Bool) -> Void)?
     private let onWheel: ((Int, Int) -> Void)?
+    /// Called once when the wireless dongle's 0x80 status report reveals the
+    /// paired tablet's PID (e.g. 0x0316 for PTH-651). Fires once per RF link
+    /// session on HIDThread.
+    private let onPairedPID: ((Int) -> Void)?
     /// Called once per touch frame for devices that report capacitive finger
     /// touch.  No decoder produces these yet — wired so the integration
     /// surface is ready when a per-family touch decoder lands.
@@ -106,7 +110,8 @@ final class WacomKnownDevice: TabletDevice {
         onBattery: ((Int, Bool) -> Void)? = nil,
         onHardwareSerial: ((UInt32) -> Void)? = nil,
         onWheel: ((Int, Int) -> Void)? = nil,
-        onTouch: (([TouchContact]) -> Void)? = nil
+        onTouch: (([TouchContact]) -> Void)? = nil,
+        onPairedPID: ((Int) -> Void)? = nil
     ) {
         self.isWireless = isWireless
         self.device = device
@@ -120,6 +125,7 @@ final class WacomKnownDevice: TabletDevice {
         self.onHardwareSerial = onHardwareSerial
         self.onWheel = onWheel
         self.onTouch = onTouch
+        self.onPairedPID = onPairedPID
 
         self.spec = DigitizerSpec(
             maxX: deviceSpec.maxX,
@@ -546,6 +552,7 @@ final class WacomKnownDevice: TabletDevice {
                     hasFingerTouch: pairedSpec.hasFingerTouch,
                     maxTouchContacts: pairedSpec.maxTouchContacts)
                 pairedPID = pairedTabletPID
+                onPairedPID?(pairedTabletPID)
                 logger.info("\(name, privacy: .public): paired tablet 0x\(String(pairedTabletPID, radix: 16, uppercase: true), privacy: .public) — maxX=\(pairedSpec.maxX, privacy: .public) maxY=\(pairedSpec.maxY, privacy: .public) maxPressure=\(pairedSpec.maxPressure, privacy: .public)")
             }
         }

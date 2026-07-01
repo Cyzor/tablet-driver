@@ -703,11 +703,25 @@ final class TabletManager: ObservableObject {
             }
         }
 
+        // ── Wireless dongle paired PID ──────────────────────────────────────────
+        // Called once on HIDThread when the 0x80 status report reveals the
+        // paired tablet's PID, so ButtonMappingView can fall back to its spec
+        // (the dongle's own PID isn't in WacomDeviceRegistry).
+        let onPairedPID: (Int) -> Void = { [weak self, weak context] pid in
+            Task { @MainActor [weak self, weak context] in
+                context?.pairedProductID = pid
+                // DeviceContext is nested inside `contexts`, so observers of
+                // TabletManager (e.g. ButtonMappingView) don't see this
+                // @Published change on its own — nudge them explicitly.
+                self?.objectWillChange.send()
+            }
+        }
+
         let callbacks = DeviceRouter.Callbacks(
             onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
             onMouseButton: onMouseButton, onBattery: onBattery,
             onHardwareSerial: onHardwareSerial, onWheel: onWheel,
-            onTouch: onTouch)
+            onTouch: onTouch, onPairedPID: onPairedPID)
 
         switch DeviceRouter.route(
             device: device, productID: productID, usagePage: usagePage,
