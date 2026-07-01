@@ -222,7 +222,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     // MARK: - Window menu
 
     private var windowMenu: NSMenu?
-    private weak var closeAllItem: NSMenuItem?
+    private weak var closeItem: NSMenuItem?
 
     private func hookWindowMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
@@ -250,18 +250,15 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 menu.addItem(item)
             }
 
-            addItem(String(localized: "Close",              comment: "Window menu"), action: #selector(NSWindow.performClose(_:)),       key: "w")
-
-            // "Close All" — hidden by default, shown only when Option key is pressed (Finder convention)
-            let closeAllItem = NSMenuItem(title: String(localized: "Close All", comment: "Window menu: close all windows"),
-                                         action: #selector(closeAllWindows(_:)),
-                                         keyEquivalent: "w")
-            closeAllItem.keyEquivalentModifierMask = [.command, .option]
-            closeAllItem.target = self
-            closeAllItem.isHidden = true
-            closeAllItem.allowsKeyEquivalentWhenHidden = true
-            menu.addItem(closeAllItem)
-            self.closeAllItem = closeAllItem
+            // "Close" item that will transform to "Close All" when Option is pressed
+            let closeItem = NSMenuItem(title: String(localized: "Close",
+                                                     comment: "Window menu: close current window"),
+                                      action: #selector(NSWindow.performClose(_:)),
+                                      keyEquivalent: "w")
+            closeItem.keyEquivalentModifierMask = [.command]
+            closeItem.target = nil
+            menu.addItem(closeItem)
+            self.closeItem = closeItem
 
             addItem(String(localized: "Minimize",           comment: "Window menu"), action: #selector(NSWindow.performMiniaturize(_:)), key: "m")
             addItem(String(localized: "Zoom",               comment: "Window menu"), action: #selector(NSWindow.performZoom(_:)),        key: "", modifiers: [])
@@ -312,10 +309,18 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         }
     }
 
-    private func updateCloseAllVisibility() {
-        guard let closeAllItem else { return }
+    private func updateCloseItemState() {
+        guard let closeItem else { return }
         let optionPressed = NSEvent.modifierFlags.contains(.option)
-        closeAllItem.isHidden = !optionPressed
+        if optionPressed {
+            closeItem.title = String(localized: "Close All", comment: "Window menu: close all windows")
+            closeItem.action = #selector(closeAllWindows(_:))
+            closeItem.target = self
+        } else {
+            closeItem.title = String(localized: "Close", comment: "Window menu: close current window")
+            closeItem.action = #selector(NSWindow.performClose(_:))
+            closeItem.target = nil
+        }
     }
 
     // MARK: - Rebuild guard
@@ -891,12 +896,12 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         if menu === windowMenu {
-            // Update "Close All" visibility based on Option key state.
+            // Update "Close" item title/action based on Option key state.
             // Poll with a timer while the menu is open to respond to modifier key changes.
-            updateCloseAllVisibility()
+            updateCloseItemState()
             flagsTimer?.invalidate()
             let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
-                MainActor.assumeIsolated { self?.updateCloseAllVisibility() }
+                MainActor.assumeIsolated { self?.updateCloseItemState() }
             }
             RunLoop.main.add(timer, forMode: .eventTracking)
             flagsTimer = timer
@@ -964,9 +969,10 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         if menu === windowMenu {
             flagsTimer?.invalidate()
             flagsTimer = nil
-            // Re-hide "Close All" so if the delegate is cleared by a SwiftUI refresh,
-            // it doesn't remain visible on next open.
-            closeAllItem?.isHidden = true
+            // Reset "Close" item to default state in case the delegate is cleared by a SwiftUI refresh
+            closeItem?.title = String(localized: "Close", comment: "Window menu: close current window")
+            closeItem?.action = #selector(NSWindow.performClose(_:))
+            closeItem?.target = nil
             return
         }
 
