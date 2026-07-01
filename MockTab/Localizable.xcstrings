@@ -2762,7 +2762,7 @@
       }
     },
     "Close" : {
-      "comment" : "Window menu",
+      "comment" : "Window menu: close current window",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2785,7 +2785,27 @@
       }
     },
     "Close All" : {
-      "comment" : "Window menu: close all windows"
+      "comment" : "Window menu: close all windows",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle schließen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar todas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべて閉じる"
+          }
+        }
+      }
     },
     "Collapsed" : {
       "comment" : "Text describing the accessibility value of the disclosure row when it is collapsed.",

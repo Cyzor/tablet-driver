@@ -260,6 +260,20 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             menu.addItem(closeItem)
             self.closeItem = closeItem
 
+            // Menu tracking only runs the flagsTimer (below) while the Window menu is
+            // open, so the visible Close item's keyEquivalentModifierMask reverts to
+            // plain ⌘W as soon as the menu closes. That means ⌘⌥W pressed outside menu
+            // tracking never matches it. Register a permanently hidden item that owns
+            // the ⌘⌥W shortcut at all times; the visible item stays cosmetic-only.
+            let closeAllKeyItem = NSMenuItem(title: String(localized: "Close All", comment: "Window menu: close all windows"),
+                                            action: #selector(closeAllWindows(_:)),
+                                            keyEquivalent: "w")
+            closeAllKeyItem.keyEquivalentModifierMask = [.command, .option]
+            closeAllKeyItem.target = self
+            closeAllKeyItem.isHidden = true
+            closeAllKeyItem.allowsKeyEquivalentWhenHidden = true
+            menu.addItem(closeAllKeyItem)
+
             addItem(String(localized: "Minimize",           comment: "Window menu"), action: #selector(NSWindow.performMiniaturize(_:)), key: "m")
             addItem(String(localized: "Zoom",               comment: "Window menu"), action: #selector(NSWindow.performZoom(_:)),        key: "", modifiers: [])
             addItem(String(localized: "Full Screen",        comment: "Window menu"), action: #selector(NSWindow.toggleFullScreen(_:)),   key: "f", modifiers: [.control, .command])
@@ -969,10 +983,15 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         if menu === windowMenu {
             flagsTimer?.invalidate()
             flagsTimer = nil
-            // Reset "Close" item to default state in case the delegate is cleared by a SwiftUI refresh
-            closeItem?.title = String(localized: "Close", comment: "Window menu: close current window")
-            closeItem?.action = #selector(NSWindow.performClose(_:))
-            closeItem?.target = nil
+            // AppKit sends the clicked item's action *after* menuDidClose returns, so
+            // resetting the item here synchronously would clobber the action a click
+            // just selected (e.g. turn a "Close All" click back into plain "Close"
+            // before it fires). Defer the reset to the next run-loop turn instead.
+            DispatchQueue.main.async { [weak self] in
+                self?.closeItem?.title = String(localized: "Close", comment: "Window menu: close current window")
+                self?.closeItem?.action = #selector(NSWindow.performClose(_:))
+                self?.closeItem?.target = nil
+            }
             return
         }
 
