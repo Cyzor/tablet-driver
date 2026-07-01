@@ -135,6 +135,7 @@ struct AppOverrideBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var isDropTargeted = false
+    @State private var dragEnabledID: String? = nil
     @State private var dragHoverTargetID: String? = nil
 
     @State private var chipContentWidth: CGFloat = 0
@@ -174,6 +175,8 @@ struct AppOverrideBar: View {
 
     // MARK: - Constants
 
+    private let longPressDuration: TimeInterval = 0.45
+    private let longPressMaxDrift: CGFloat = 18
     private let dragHoverGap: CGFloat = 20
 
     private let chipVerticalPadding: CGFloat = 7
@@ -479,7 +482,7 @@ struct AppOverrideBar: View {
                 chipFocusGeneration += 1
             }
         } label: {
-            if let id = bundleID {
+            if let id = bundleID, dragEnabledID == id {
                 chipContent(
                     label: label,
                     icon: icon,
@@ -508,6 +511,17 @@ struct AppOverrideBar: View {
             }
         }
         .buttonStyle(.plain)
+        .onLongPressGesture(
+            minimumDuration: longPressDuration,
+            maximumDistance: longPressMaxDrift,
+            perform: { dragEnabledID = bundleID },
+            onPressingChanged: { pressing in
+                if !pressing {
+                    dragEnabledID = nil
+                    dragHoverTargetID = nil
+                }
+            }
+        )
         .accessibilityLabel(label)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .contextMenu {
