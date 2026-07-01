@@ -353,25 +353,51 @@ final class WacomKnownDevice: TabletDevice {
                          tag: "\(name) CintiqV1 LED slot=\(slot) (both rings)", log: logger)
 
         case .intuosV1:
-            // USB LED control via WAC_CMD_LED_CONTROL (0x20), 9-byte feature report.
-            // Format confirmed by USB capture against official Wacom driver (6.3.46-2)
-            // on PTH-850 (Intuos5 L, PID 0x0028):
-            //   buf[0] = 0x20
-            //   buf[1] = (llv & 0x1f) | ((ringSelect & 0x07) << 5)
-            //     bits[4:0] = llv luminance (0–31)
-            //     bits[7:5] = ring LED slot (0–3 for 4-slot; 0–2 for 3-slot devices)
-            //   buf[2] = hlv & 0x1f  (high-luminance value, 0–31)
-            //   buf[3..8] = 0x00
-            // Official driver observed values: llv=0x14 (20), hlv=0x01 — used as defaults.
-            // Sent to primary device (no companion interface on Intuos5 USB).
-            let llv: UInt8 = 0x14
-            let hlv: UInt8 = 0x01
-            var buf = [UInt8](repeating: 0, count: 9)
-            buf[0] = 0x20  // WAC_CMD_LED_CONTROL
-            buf[1] = (llv & 0x1f) | (UInt8(index & 0x07) << 5)
-            buf[2] = hlv & 0x1f
-            hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf,
-                         tag: "\(name) IntuosV1 LED slot=\(index)", log: logger)
+            // The Linux kernel's wacom_led_control() switches report format
+            // once the device is reached through the ACK-40401 wireless
+            // dongle rather than direct USB:
+            //   - Wired:    Report ID 0x20 (WAC_CMD_LED_CONTROL), 9 bytes.
+            //   - Wireless: Report ID 0x03 (WAC_CMD_WL_LED_CONTROL), 13 bytes.
+            // Only the wired format has been confirmed against real hardware
+            // (see below); the wireless branch is unverified against a real
+            // ACK-40401 dongle and sent best-effort so a rejected report
+            // can't surface as a user-facing error.
+            if isWireless && pairedPID > 0 {
+                // Wireless dongle: WAC_CMD_WL_LED_CONTROL, 13-byte feature report.
+                // Format from kernel wacom_sys.c (INTUOS5 branch), unverified here:
+                //   buf[0] = 0x03
+                //   buf[4] = (cropLum << 4) | (ringLum << 2) | ringSlot
+                //     bits[1:0] = ring LED slot (0–3)
+                //     bits[3:2] = ring luminance (0=low … 3=off)
+                //     bits[5:4] = crop-mark luminance (same encoding, usually 0)
+                let slot = UInt8(index & 0x03)
+                let ringLum: UInt8 = 1  // medium
+                var buf = [UInt8](repeating: 0, count: 13)
+                buf[0] = 0x03  // WAC_CMD_WL_LED_CONTROL
+                buf[4] = (ringLum << 2) | slot
+                hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf,
+                             tag: "\(name) IntuosV1 WL LED slot=\(index)", severity: .bestEffort, log: logger)
+            } else {
+                // USB LED control via WAC_CMD_LED_CONTROL (0x20), 9-byte feature report.
+                // Format confirmed by USB capture against official Wacom driver (6.3.46-2)
+                // on PTH-850 (Intuos5 L, PID 0x0028):
+                //   buf[0] = 0x20
+                //   buf[1] = (llv & 0x1f) | ((ringSelect & 0x07) << 5)
+                //     bits[4:0] = llv luminance (0–31)
+                //     bits[7:5] = ring LED slot (0–3 for 4-slot; 0–2 for 3-slot devices)
+                //   buf[2] = hlv & 0x1f  (high-luminance value, 0–31)
+                //   buf[3..8] = 0x00
+                // Official driver observed values: llv=0x14 (20), hlv=0x01 — used as defaults.
+                // Sent to primary device (no companion interface on Intuos5 USB).
+                let llv: UInt8 = 0x14
+                let hlv: UInt8 = 0x01
+                var buf = [UInt8](repeating: 0, count: 9)
+                buf[0] = 0x20  // WAC_CMD_LED_CONTROL
+                buf[1] = (llv & 0x1f) | (UInt8(index & 0x07) << 5)
+                buf[2] = hlv & 0x1f
+                hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf,
+                             tag: "\(name) IntuosV1 LED slot=\(index)", log: logger)
+            }
 
         default:
             break
