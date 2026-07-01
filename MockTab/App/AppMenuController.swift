@@ -222,6 +222,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     // MARK: - Window menu
 
     private var windowMenu: NSMenu?
+    private weak var closeAllItem: NSMenuItem?
 
     private func hookWindowMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
@@ -240,6 +241,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         if windowMenu == nil {
             let menu = NSMenu(title: windowTitle)
             windowMenu = menu
+            menu.delegate = self
 
             func addItem(_ title: String, action: Selector, key: String = "", modifiers: NSEvent.ModifierFlags = .command) {
                 let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
@@ -249,7 +251,18 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             }
 
             addItem(String(localized: "Close",              comment: "Window menu"), action: #selector(NSWindow.performClose(_:)),       key: "w")
-            addItem(String(localized: "Close All",          comment: "Window menu: close all windows"), action: #selector(closeAllWindows(_:)), key: "w", modifiers: [.command, .option])
+
+            // "Close All" — hidden by default, shown only when Option key is pressed (Finder convention)
+            let closeAllItem = NSMenuItem(title: String(localized: "Close All", comment: "Window menu: close all windows"),
+                                         action: #selector(closeAllWindows(_:)),
+                                         keyEquivalent: "w")
+            closeAllItem.keyEquivalentModifierMask = [.command, .option]
+            closeAllItem.target = self
+            closeAllItem.isHidden = true
+            closeAllItem.allowsKeyEquivalentWhenHidden = true
+            menu.addItem(closeAllItem)
+            self.closeAllItem = closeAllItem
+
             addItem(String(localized: "Minimize",           comment: "Window menu"), action: #selector(NSWindow.performMiniaturize(_:)), key: "m")
             addItem(String(localized: "Zoom",               comment: "Window menu"), action: #selector(NSWindow.performZoom(_:)),        key: "", modifiers: [])
             addItem(String(localized: "Full Screen",        comment: "Window menu"), action: #selector(NSWindow.toggleFullScreen(_:)),   key: "f", modifiers: [.control, .command])
@@ -297,6 +310,12 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 window.performClose(sender)
             }
         }
+    }
+
+    private func updateCloseAllVisibility() {
+        guard let closeAllItem else { return }
+        let optionPressed = NSEvent.modifierFlags.contains(.option)
+        closeAllItem.isHidden = !optionPressed
     }
 
     // MARK: - Rebuild guard
@@ -871,6 +890,19 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        if menu === windowMenu {
+            // Update "Close All" visibility based on Option key state.
+            // Poll with a timer while the menu is open to respond to modifier key changes.
+            updateCloseAllVisibility()
+            flagsTimer?.invalidate()
+            let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.updateCloseAllVisibility() }
+            }
+            RunLoop.main.add(timer, forMode: .eventTracking)
+            flagsTimer = timer
+            return
+        }
+
         if menu === viewMenu {
             // Retitle Show/Hide Tab Bar based on current visibility. AppKit validates
             // (enables/disables) the item automatically; it does not retitle it.
@@ -929,6 +961,15 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     func menuDidClose(_ menu: NSMenu) {
+        if menu === windowMenu {
+            flagsTimer?.invalidate()
+            flagsTimer = nil
+            // Re-hide "Close All" so if the delegate is cleared by a SwiftUI refresh,
+            // it doesn't remain visible on next open.
+            closeAllItem?.isHidden = true
+            return
+        }
+
         guard menu === NSApp.mainMenu?.items.first?.submenu else { return }
         flagsTimer?.invalidate()
         flagsTimer = nil
