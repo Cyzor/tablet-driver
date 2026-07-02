@@ -34,9 +34,20 @@ struct CaptureGuideView: View {
 
     private var isComplete: Bool { savedURL != nil }
 
-    private var isUnknownDevice: Bool {
-        WacomDeviceRegistry.spec(for: productID) == nil
-    }
+    /// Always false: the named step-by-step walkthrough (`guidedRecordingView`)
+    /// is retired in favor of the free-form discovery recorder everywhere. It
+    /// misread noise as user actions, stalled on 60s timeouts waiting for
+    /// signals that never arrived, and — on any device streaming more than
+    /// one report ID — routinely mislabeled reports from the *other* stream
+    /// as the requested action. The discovery recorder has none of those
+    /// failure modes and produces equally usable output. `guidedRecordingView`
+    /// and the underlying `CaptureEngine.startCalibration` machinery are left
+    /// in place for now rather than deleted outright, since removing them
+    /// touches the calibration JSON export format and the GitHub-issue
+    /// submission flow documented in
+    /// Notes/Scratch/Unknown-Device-Discovery-2026-05-21.md — a separate,
+    /// deliberate cleanup pass, not a side effect of this one.
+    private var isUnknownDevice: Bool { false }
 
     // MARK: - Body
 
@@ -380,20 +391,24 @@ struct CaptureGuideView: View {
     }
 
     private func deviceInfo() -> CaptureDeviceInfo? {
+        guard let dev = tabletManager.contexts[productID]?.hidDevice else { return nil }
+
+        let vendorID     = (IOHIDDeviceGetProperty(dev, kIOHIDVendorIDKey as CFString) as? Int) ?? 0x056A
+        let manufacturer = IOHIDDeviceGetProperty(dev, kIOHIDManufacturerKey as CFString) as? String
+        let transport    = IOHIDDeviceGetProperty(dev, kIOHIDTransportKey    as CFString) as? String
+        let serial       = IOHIDDeviceGetProperty(dev, kIOHIDSerialNumberKey as CFString) as? String
+        let productString = IOHIDDeviceGetProperty(dev, kIOHIDProductKey as CFString) as? String
+        let locationID   = (IOHIDDeviceGetProperty(dev, kIOHIDLocationIDKey  as CFString) as? Int)
+            .map { String(format: "0x%08X", $0) }
+        let parsed = HIDDescriptorReader.read(dev)
+
         let name =
             WacomDeviceRegistry.spec(for: productID)?.name
-            ?? TabletManager.deviceName(forProductID: productID)
-
-        let dev = tabletManager.contexts[productID]?.hidDevice
-        let manufacturer = dev.flatMap { IOHIDDeviceGetProperty($0, kIOHIDManufacturerKey as CFString) as? String }
-        let transport    = dev.flatMap { IOHIDDeviceGetProperty($0, kIOHIDTransportKey    as CFString) as? String }
-        let serial       = dev.flatMap { IOHIDDeviceGetProperty($0, kIOHIDSerialNumberKey as CFString) as? String }
-        let locationID   = dev.flatMap { IOHIDDeviceGetProperty($0, kIOHIDLocationIDKey   as CFString) as? Int }
-            .map { String(format: "0x%08X", $0) }
-        let parsed = dev.map { HIDDescriptorReader.read($0) }
+            ?? TabletManager.deviceName(
+                forProductID: productID, vendorID: vendorID, productString: productString)
 
         return CaptureDeviceInfo(
-            vendorID: 0x056A,
+            vendorID: vendorID,
             productID: productID,
             name: name,
             locationID: locationID,

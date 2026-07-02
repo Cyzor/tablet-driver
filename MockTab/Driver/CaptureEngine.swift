@@ -69,8 +69,18 @@ final class CaptureEngine: ObservableObject {
 
     // MARK: - Capture State
 
-    /// Baseline sample captured before the current step's action.
-    private var currentBaseline: [UInt8]?
+    /// Baseline sample captured before the current step's action, per report
+    /// ID. Devices that stream multiple report IDs concurrently (e.g. a
+    /// 32-byte vendor report interleaved with a 10-byte pen report) need
+    /// separate baselines per stream — otherwise a report from the *other*
+    /// stream naturally differs from a baseline established on this one and
+    /// gets misread as the step's action.
+    private var baselinesByReport: [UInt8: [UInt8]] = [:]
+
+    /// A differing sample seen once, held pending confirmation on the next
+    /// report from the same stream — filters single-sample noise (ADC/tilt
+    /// jitter) from genuine, sustained actions.
+    private var pendingCandidate: (reportID: UInt8, data: [UInt8])?
 
     /// The first action sample that differs from baseline — captured and held.
     private var capturedAction: (reportID: UInt8, data: [UInt8])?
@@ -121,7 +131,8 @@ final class CaptureEngine: ObservableObject {
     /// when a spurious capture (e.g. hover movement) must be discarded.
     func rebaseline() {
         guard isRunning, !isDiscoveryMode else { return }
-        currentBaseline = nil
+        baselinesByReport = [:]
+        pendingCandidate = nil
         hasCapturedThisStep = false
         capturedAction = nil
     }
@@ -165,23 +176,35 @@ final class CaptureEngine: ObservableObject {
             !data.isEmpty
         else { return }
 
-        if currentBaseline == nil {
-            // First report for this step — establish baseline.
-            currentBaseline = data
+        guard let baseline = baselinesByReport[reportID] else {
+            // First report seen for this stream this step — establish its baseline.
+            baselinesByReport[reportID] = data
             return
         }
-
-        // Already have baseline. Check if this report differs.
-        guard let baseline = currentBaseline else { return }
 
         if reportsIdentical(baseline, data) {
-            // Still idle — ignore.
+            // Still idle on this stream — ignore, and drop any pending candidate
+            // from this stream since it didn't sustain.
+            if pendingCandidate?.reportID == reportID { pendingCandidate = nil }
             return
         }
 
-        // This report differs from baseline — capture as action sample.
+        // This report differs from its stream's baseline. Require the same
+        // differing value to reappear on the next report from the same stream
+        // before treating it as a genuine action — filters single-sample noise.
+        if let pending = pendingCandidate, pending.reportID == reportID,
+            reportsIdentical(pending.data, data)
+        {
+            // Confirmed twice in a row.
+        } else {
+            pendingCandidate = (reportID, data)
+            return
+        }
+
+        // Confirmed action sample.
         capturedAction = (reportID, data)
         hasCapturedThisStep = true
+        pendingCandidate = nil
 
         // Build sample and record it.
         var sample = CapturedSample(
@@ -416,7 +439,8 @@ private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryRes
 
     private func reset() {
         stopTimers()
-        currentBaseline = nil
+        baselinesByReport = [:]
+        pendingCandidate = nil
         capturedAction = nil
         hasCapturedThisStep = false
         currentStepIndex = 0
@@ -435,7 +459,8 @@ private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryRes
         let step = sessionSteps[index]
         armedStep = step
         currentStepIndex = index
-        currentBaseline = nil
+        baselinesByReport = [:]
+        pendingCandidate = nil
         capturedAction = nil
         hasCapturedThisStep = false
         stepStartTime = Date()

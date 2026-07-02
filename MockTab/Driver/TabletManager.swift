@@ -152,13 +152,20 @@ final class TabletManager: ObservableObject {
 
     // MARK: - Device name helpers
 
-    /// Resolve a human-readable model name. `vendorID` defaults to Wacom for the
-    /// many PID-only UI callers; pass the real vendor (and the device's IOKit
-    /// product string) for non-Wacom hardware so generically-driven tablets show
-    /// a real name instead of a bare PID.
+    /// Vendor ID last seen for a given product ID, recorded as devices connect.
+    /// Lets `deviceName` resolve the right vendor for the many UI callers that
+    /// only have a product ID on hand, instead of silently assuming Wacom.
+    @MainActor private static var lastSeenVendorID: [Int: Int] = [:]
+
+    /// Resolve a human-readable model name. `vendorID` defaults to whatever
+    /// vendor was last seen connected under `pid` (falling back to Wacom if
+    /// none), so PID-only UI callers still show the right name for non-Wacom
+    /// hardware. Pass the real vendor (and the device's IOKit product string)
+    /// explicitly when calling from a context that already has them.
     static func deviceName(
-        forProductID pid: Int, vendorID: Int = 0x056A, productString: String? = nil
+        forProductID pid: Int, vendorID: Int? = nil, productString: String? = nil
     ) -> String {
+        let vendorID = vendorID ?? lastSeenVendorID[pid] ?? 0x056A
         if vendorID == 0x056A {
             if let spec = WacomDeviceRegistry.spec(for: pid) { return spec.name }
             return WacomDeviceRegistry.deviceName(forProductID: pid)
@@ -302,6 +309,7 @@ final class TabletManager: ObservableObject {
     private func deviceConnected(_ device: IOHIDDevice) {
         let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
         let rawProductID = hidIntProperty(device, kIOHIDProductIDKey)
+        Self.lastSeenVendorID[rawProductID] = vendorID
 
         // Non-Wacom path. Devices on the drivable allowlist (currently the two
         // Xencelabs Pen Tablets) get a spec synthesized from their vendor
@@ -357,6 +365,7 @@ final class TabletManager: ObservableObject {
         }
 
         let productID = WacomDeviceRegistry.canonicalProductID(for: rawProductID)
+        Self.lastSeenVendorID[productID] = vendorID
         let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
         let usage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
         let maxRptSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
