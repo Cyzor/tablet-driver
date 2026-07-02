@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = ROOT / "MockTab" / "Driver" / "WacomDeviceRegistry.swift"
+REGISTRY = ROOT / "TabletKit" / "Sources" / "TabletKit" / "WacomDeviceRegistry.swift"
 KERNEL = (
     ROOT / "Notes" / "Scratch" / "upstream" / "input-wacom"
     / "4.18" / "wacom_wac.c"
