@@ -88,10 +88,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
 
-        if !AXIsProcessTrusted() {
-            let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true]
-            AXIsProcessTrustedWithOptions(opts)
-        }
+        // The Accessibility prompt is deferred to the first tablet connection
+        // (TabletManager.promptForAccessibilityIfNeeded) so the request appears
+        // when injection is actually about to happen, not cold at launch.
 
         Task { @MainActor in
             let settings = PreferencesWindowController.shared.settings
@@ -231,7 +230,8 @@ private struct MenuBarIconLabel: View {
     @ObservedObject var manager: TabletManager
 
     var body: some View {
-        if let pct = manager.batteryPercent, pct < 20, !manager.batteryCharging {
+        if let pct = manager.activeContext?.batteryPercent, pct < 20,
+           manager.activeContext?.batteryCharging != true {
             Image(systemName: BatteryIndicator.symbolName(pct: pct, charging: false))
         } else {
             Image("MenuBarIcon")
