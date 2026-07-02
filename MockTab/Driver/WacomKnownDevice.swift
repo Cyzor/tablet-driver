@@ -239,6 +239,16 @@ final class WacomKnownDevice: TabletDevice {
             // before it was available (mirrors the registerLEDDevice pattern).
             setRingLED(index: pendingLEDIndex)
         }
+
+        // Xencelabs re-enumerates shortly after the initial connect (observed
+        // 2026-07-01: ~5s after "opened", a second IOHIDDevice arrives for the
+        // same PID and lands here instead of deviceConnected). The original
+        // device's tablet-mode init was addressed to the now-superseded
+        // handle, so the live interface never actually left mouse-emulation
+        // mode. Re-run init against the interface that's actually live.
+        if deviceSpec.parser == .xencelabs && !isBluetooth {
+            executeInitSteps(on: device)
+        }
     }
 
     func close() {
@@ -442,7 +452,8 @@ final class WacomKnownDevice: TabletDevice {
     /// Runs synchronously until a `.delay` step is encountered; at that point the
     /// remaining steps are scheduled on the main queue and this call returns.
     /// Callers must be on the main thread — `IOHIDDeviceSetReport` is not thread-safe.
-    private func executeInitSteps(from index: Int = 0) {
+    private func executeInitSteps(from index: Int = 0, on target: IOHIDDevice? = nil) {
+        let device = target ?? self.device
         let steps = deviceSpec.initSteps
         guard index < steps.count else { return }
         switch steps[index] {
@@ -450,40 +461,45 @@ final class WacomKnownDevice: TabletDevice {
             let reportID = CFIndex(bytes[0])
             hidSetReport(device, reportID: reportID, bytes: &bytes,
                          tag: "\(deviceSpec.name) initStep[\(index)]", log: logger)
-            executeInitSteps(from: index + 1)
+            executeInitSteps(from: index + 1, on: target)
         case .outputReport(var bytes):
             // Vendor tablet-mode init over the HID output pipe (Xencelabs:
-            // [0x02, 0xB0, 0x04]). Some firmware accepts the raw short write;
-            // some transports reject writes shorter than the declared output
-            // report length. Try raw first, then retry zero-padded to
-            // MaxOutputReportSize so first hardware contact tells us which
-            // path the device takes (see Xencelabs-G1D-Feasibility note).
+            // [0x02, 0xB0, 0x04]). Confirmed 2026-07-01 on a Pen Display: a
+            // raw short write reports kIOReturnSuccess at the transport level
+            // but the firmware silently ignores it — no report ID 7 ever
+            // arrives afterward. Pad to the device's declared
+            // MaxOutputReportSize up front rather than treating that as a
+            // fallback-on-failure retry, since a successful-but-ignored write
+            // never triggers the retry path.
             let reportID = CFIndex(bytes[0])
-            let ret = hidSetReport(
-                device, type: kIOHIDReportTypeOutput, reportID: reportID,
-                bytes: &bytes, tag: "\(deviceSpec.name) initStep[\(index)] output",
-                severity: .bestEffort, log: logger)
-            if ret != kIOReturnSuccess {
-                let declared = hidIntProperty(device, kIOHIDMaxOutputReportSizeKey)
-                if declared > bytes.count {
-                    var padded = bytes + [UInt8](repeating: 0, count: declared - bytes.count)
-                    hidSetReport(
-                        device, type: kIOHIDReportTypeOutput, reportID: reportID,
-                        bytes: &padded,
-                        tag: "\(deviceSpec.name) initStep[\(index)] output padded to \(declared)",
-                        log: logger)
-                } else {
-                    logger.error("\(self.deviceSpec.name, privacy: .public): initStep[\(index, privacy: .public)] output report failed and no longer declared length to pad to")
-                }
+            let declared = hidIntProperty(device, kIOHIDMaxOutputReportSizeKey)
+            let name = deviceSpec.name
+            let ret: IOReturn
+            if declared > bytes.count {
+                var padded = bytes + [UInt8](repeating: 0, count: declared - bytes.count)
+                ret = hidSetReport(
+                    device, type: kIOHIDReportTypeOutput, reportID: reportID,
+                    bytes: &padded,
+                    tag: "\(name) initStep[\(index)] output padded to \(declared)",
+                    log: logger)
+            } else {
+                ret = hidSetReport(
+                    device, type: kIOHIDReportTypeOutput, reportID: reportID,
+                    bytes: &bytes, tag: "\(name) initStep[\(index)] output",
+                    log: logger)
             }
-            executeInitSteps(from: index + 1)
+            // hidSetReport only logs on failure — log the outcome unconditionally
+            // here, since "no error" has been ambiguous with "never ran."
+            let hex = String(format: "0x%08x", ret)
+            logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] output report result=\(hex, privacy: .public)")
+            executeInitSteps(from: index + 1, on: target)
         case .delay(let seconds):
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
-                self?.executeInitSteps(from: index + 1)
+                self?.executeInitSteps(from: index + 1, on: target)
             }
         case .stringDescriptor:
             // Not yet wired up (Huion); advance to keep the sequence moving.
-            executeInitSteps(from: index + 1)
+            executeInitSteps(from: index + 1, on: target)
         }
     }
 

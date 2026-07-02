@@ -329,7 +329,10 @@ final class TabletManager: ObservableObject {
                     maxY: profile.maxY ?? 0,
                     maxPressure: profile.maxPressure ?? 8191,
                     buttonCount: profile.auxButtonCount ?? 0,
-                    hasTouchRing: false, hasEraser: true,
+                    // Tilt fields are present in the confirmed report-7
+                    // descriptor (bits 54–69); scale still unverified.
+                    hasTouchRing: false, hasEraser: true, hasTilt: true,
+                    isPenDisplay: profile.isPenDisplay,
                     seizeUSB: false,
                     // Tablet-mode handshake; without it the device stays in
                     // mouse emulation (see Xencelabs-G1D-Feasibility note).
