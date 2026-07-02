@@ -249,7 +249,7 @@ struct TiltVisualizerCanvas: View {
     var body: some View {
         // Quantize to 0.01 (sub-pixel on a 100-pt disc) so micro-jitter and
         // changes that wouldn't move the dot don't trigger redraws.
-        let raw = tabletManager.livePoint
+        let raw = tabletManager.activeContext?.livePoint
         let inProximity = raw?.inProximity == true
         let tx: Double = inProximity ? quantize(raw!.tiltX) : 0.0
         let ty: Double = inProximity ? quantize(raw!.tiltY) : 0.0
@@ -542,11 +542,12 @@ final class ScratchpadNSView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let pt = canvasPoint(convert(event.locationInWindow, from: nil))
+        let activeContext = tabletManager?.activeContext
         let isEraser = tabletManager?.injector?.activeToolIsEraser == true
-            || tabletManager?.activeToolID?.hasPrefix("eraser") == true
+            || activeContext?.activeToolID?.hasPrefix("eraser") == true
             || event.pointingDeviceType == .eraser
-            || tabletManager?.livePoint?.eraser == true
-            || tabletManager?.liveButtons.eraserDown == true
+            || activeContext?.livePoint?.eraser == true
+            || activeContext?.liveButtons.eraserDown == true
         if isEraser {
             currentStroke = nil
             isErasingGesture = true

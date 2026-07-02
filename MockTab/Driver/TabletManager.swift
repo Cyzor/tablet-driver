@@ -71,9 +71,6 @@ final class TabletManager: ObservableObject {
             activeContext?.injector.isActive = true
         }
     }
-    @Published var activeToolID: String? = nil
-    @Published var liveButtons = LiveButtonState()
-    @Published var livePoint: TabletPoint? = nil
     /// Most-recent touch contacts from the active device's touch surface.
     /// Empty when no contacts are active or the device has no finger touch.
     ///
@@ -90,18 +87,18 @@ final class TabletManager: ObservableObject {
     /// Drained into registerDevice() once a WacomKnownDevice is created for that PID.
     private var pendingInterfaces: [Int: [IOHIDDevice]] = [:]
 
-    // MARK: - Legacy published state
+    // MARK: - Manager-level published state
+    //
+    // Per-device state (connection, transport, battery, live pen state) lives on
+    // `DeviceContext` only — views read it through `contexts` / `activeContext`.
+    // The manager publishes just the aggregate list and its own health.
 
-    @Published var isConnected = false
+    /// Product ID of the most recently connected device (0 when none).
     @Published var connectedProductID: Int = 0
     @Published var connectedProductIDs: [Int] = []
-    @Published var connectedTransport: String = "—"
-    @Published var connectedUSBSpeed: String = "—"
     @Published var hidManagerOpen: Bool = false
 
-    /// Battery state for the active device, nil when unknown (USB or pre-first-report).
-    @Published var batteryPercent: Int? = nil
-    @Published var batteryCharging: Bool = false
+    var isConnected: Bool { !connectedProductIDs.isEmpty }
 
     // MARK: - UI throttle
     //
@@ -300,7 +297,8 @@ final class TabletManager: ObservableObject {
         hidDeviceMap.removeAll()
         contexts.removeAll()
         activeContext = nil
-        isConnected = false
+        connectedProductIDs = []
+        connectedProductID = 0
         updateActivityAssertion()
     }
 
@@ -420,10 +418,11 @@ final class TabletManager: ObservableObject {
         // Set initial connection state for this device.
         context.isConnected = true
         context.transport = transport
-        if !isBLE {
-            // Fetch USB speed only for USB devices (will be fetched in refreshConnectedIDs).
-            context.usbSpeed = "—"
-        }
+        context.usbSpeed = Self.connectionInfo(for: device).speed
+
+        // First tablet is the moment injection becomes possible — prompt for
+        // Accessibility here rather than at launch so the request has context.
+        promptForAccessibilityIfNeeded()
 
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         // Called on HIDThread — hop to main before touching @Published properties.
@@ -445,7 +444,6 @@ final class TabletManager: ObservableObject {
             context.injector.activeToolSerial = identity.serial
             context.injector.activeToolCode = identity.toolCode
             context.activeToolID = toolID
-            self.activeToolID = toolID  // Legacy: forward to global for backward compatibility
             } // end Task @MainActor
         }
 
@@ -534,12 +532,9 @@ final class TabletManager: ObservableObject {
             // Proximity exit always clears state immediately, regardless of app foreground/tab visibility.
             if !point.inProximity {
                 self.uiUpdateCounter = 0
-                self.activeToolID = nil
                 context.activeToolID = nil
                 context.activeToolCode = 0
-                self.liveButtons = LiveButtonState()
                 context.liveButtons = LiveButtonState()
-                self.livePoint = nil
                 context.livePoint = nil
                 self.penExitedProximity()
                 return
@@ -570,17 +565,15 @@ final class TabletManager: ObservableObject {
                 button3Down: point.penButton3,
                 button4Down: point.penButton4,
                 button5Down: point.penButton5,
-                expressKeys: self.liveButtons.expressKeys,
-                touchRingActive: self.liveButtons.touchRingActive,
-                touchRingButtonDown: self.liveButtons.touchRingButtonDown,
-                touchRing2Active: self.liveButtons.touchRing2Active,
-                touchStrip1Active: self.liveButtons.touchStrip1Active,
-                touchStrip2Active: self.liveButtons.touchStrip2Active
+                expressKeys: context.liveButtons.expressKeys,
+                touchRingActive: context.liveButtons.touchRingActive,
+                touchRingButtonDown: context.liveButtons.touchRingButtonDown,
+                touchRing2Active: context.liveButtons.touchRing2Active,
+                touchStrip1Active: context.liveButtons.touchStrip1Active,
+                touchStrip2Active: context.liveButtons.touchStrip2Active
             )
             // Only assign when values changed — avoids spurious objectWillChange.
-            if newButtons != self.liveButtons { self.liveButtons = newButtons }
             if newButtons != context.liveButtons { context.liveButtons = newButtons }
-            self.livePoint = point
             context.livePoint = point
             } // end Task @MainActor
         }
@@ -601,28 +594,22 @@ final class TabletManager: ObservableObject {
             // Update UI only when app is frontmost, state changed, and Info/Buttons tab is visible.
             guard appIsFrontmost && infoViewVisible else { return }
             let keys = (0..<16).map { aux[$0] }
-            if keys != self.liveButtons.expressKeys {
-                self.liveButtons.expressKeys = keys
+            if keys != context.liveButtons.expressKeys {
                 context.liveButtons.expressKeys = keys
             }
-            if aux.touchRingActive != self.liveButtons.touchRingActive {
-                self.liveButtons.touchRingActive = aux.touchRingActive
+            if aux.touchRingActive != context.liveButtons.touchRingActive {
                 context.liveButtons.touchRingActive = aux.touchRingActive
             }
-            if aux.touchRing2Active != self.liveButtons.touchRing2Active {
-                self.liveButtons.touchRing2Active = aux.touchRing2Active
+            if aux.touchRing2Active != context.liveButtons.touchRing2Active {
                 context.liveButtons.touchRing2Active = aux.touchRing2Active
             }
-            if aux.touchRingButtonDown != self.liveButtons.touchRingButtonDown {
-                self.liveButtons.touchRingButtonDown = aux.touchRingButtonDown
+            if aux.touchRingButtonDown != context.liveButtons.touchRingButtonDown {
                 context.liveButtons.touchRingButtonDown = aux.touchRingButtonDown
             }
-            if aux.touchStrip1Active != self.liveButtons.touchStrip1Active {
-                self.liveButtons.touchStrip1Active = aux.touchStrip1Active
+            if aux.touchStrip1Active != context.liveButtons.touchStrip1Active {
                 context.liveButtons.touchStrip1Active = aux.touchStrip1Active
             }
-            if aux.touchStrip2Active != self.liveButtons.touchStrip2Active {
-                self.liveButtons.touchStrip2Active = aux.touchStrip2Active
+            if aux.touchStrip2Active != context.liveButtons.touchStrip2Active {
                 context.liveButtons.touchStrip2Active = aux.touchStrip2Active
             }
             } // end Task @MainActor
@@ -637,11 +624,6 @@ final class TabletManager: ObservableObject {
             guard let self, let context else { return }
             context.batteryPercent = percent
             context.batteryCharging = charging
-            // Also update global for active context (backward compatibility)
-            if self.activeContext === context {
-                self.batteryPercent = percent
-                self.batteryCharging = charging
-            }
             self.updateDockBadge()
             } // end Task @MainActor
         }
@@ -804,30 +786,17 @@ final class TabletManager: ObservableObject {
         refreshConnectedIDs(mostRecent: nil)
         if activeContext === context {
             activeContext = hidDeviceMap.values.first
-            batteryPercent = nil
-            batteryCharging = false
             updateDockBadge()
         }
     }
 
     private func refreshConnectedIDs(mostRecent: Int?) {
         connectedProductIDs = hidDeviceMap.values.map { $0.productID }.sorted()
-        isConnected = !connectedProductIDs.isEmpty
         updateActivityAssertion()
         if let pid = mostRecent, connectedProductIDs.contains(pid) {
             connectedProductID = pid
         } else {
             connectedProductID = connectedProductIDs.last ?? 0
-        }
-        if let primary = hidDeviceMap.keys.first(where: {
-            hidIntProperty($0, kIOHIDProductIDKey) == connectedProductID
-        }) {
-            let info = Self.connectionInfo(for: primary)
-            connectedTransport = info.transport
-            connectedUSBSpeed = info.speed
-        } else {
-            connectedTransport = "—"
-            connectedUSBSpeed = "—"
         }
     }
 
@@ -912,6 +881,17 @@ final class TabletManager: ObservableObject {
             }
         }
         return ("USB", "USB")
+    }
+
+    /// One-shot per launch. CGEventPost silently drops events without the
+    /// Accessibility grant, so the pen would move nothing with no explanation.
+    private var accessibilityPromptShown = false
+
+    private func promptForAccessibilityIfNeeded() {
+        guard !accessibilityPromptShown, !AXIsProcessTrusted() else { return }
+        accessibilityPromptShown = true
+        let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true]
+        AXIsProcessTrustedWithOptions(opts)
     }
 
     private func updateDockBadge() {

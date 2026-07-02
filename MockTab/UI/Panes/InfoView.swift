@@ -350,10 +350,11 @@ struct InfoView: View {
                 let name = TabletManager.deviceName(forProductID: pid)
                 lines += ["  • \(name)  (ProductID 0x\(String(pid, radix: 16, uppercase: true)))"]
             }
-            lines += [String(localized: "Transport : \(tabletManager.connectedTransport)", comment: "Diagnostic: USB/Bluetooth transport type")]
-            lines += [String(localized: "Speed     : \(tabletManager.connectedUSBSpeed)", comment: "Diagnostic: USB speed or Bluetooth version")]
-            if let pct = tabletManager.batteryPercent {
-                let chgStr = tabletManager.batteryCharging ? String(localized: " (charging)", comment: "Battery status indicator") : ""
+            let active = tabletManager.activeContext
+            lines += [String(localized: "Transport : \(active?.transport ?? "—")", comment: "Diagnostic: USB/Bluetooth transport type")]
+            lines += [String(localized: "Speed     : \(active?.usbSpeed ?? "—")", comment: "Diagnostic: USB speed or Bluetooth version")]
+            if let pct = active?.batteryPercent {
+                let chgStr = (active?.batteryCharging ?? false) ? String(localized: " (charging)", comment: "Battery status indicator") : ""
                 lines += [String(localized: "Battery   : \(pct)%\(chgStr)", comment: "Diagnostic: battery percentage and charging status")]
             }
         }

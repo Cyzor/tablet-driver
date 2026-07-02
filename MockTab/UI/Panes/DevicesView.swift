@@ -275,7 +275,7 @@ struct DevicesView: View {
 
     @ViewBuilder
     private func toolRow(_ tool: DeviceRegistry.KnownTool, forDevice deviceID: Int?) -> some View {
-        let isInProximity = tool.id == tabletManager.activeToolID
+        let isInProximity = tool.id == tabletManager.activeContext?.activeToolID
         HStack(spacing: 8) {
             // Proximity indicator
             Image(systemName: isInProximity ? "checkmark.circle.fill" : "circle")

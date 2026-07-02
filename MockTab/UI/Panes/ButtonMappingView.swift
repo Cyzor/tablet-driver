@@ -22,7 +22,9 @@ struct ButtonMappingView: View {
     /// window-geometry invalidations that already occur every resize frame.
     private var liveButtons: LiveButtonState {
         guard controlActiveState == .key, !isLiveResizing else { return LiveButtonState() }
-        return tabletManager.liveButtons
+        let context = productID.flatMap { tabletManager.contexts[$0] }
+            ?? tabletManager.activeContext
+        return context?.liveButtons ?? LiveButtonState()
     }
 
     private var tool: ToolSettings { settings.activeTool }
