@@ -167,12 +167,11 @@ final class CalibrationSession: ObservableObject {
 
         if settings.proportionalMapping {
             // Mirror of InputInjector.mapToScreen's proportional crop — keep
-            // the two in sync. Raw coordinate density isn't always the same
-            // on both axes (confirmed on Xencelabs' Pen Display: X ~74
-            // units/mm, Y ~199 units/mm), so both the aspect *comparison*
-            // and the crop *amounts* must be computed unit-free: use the
-            // vendor profile's physical mm dimensions when available, and
-            // scale crops by aspect ratios rather than cross-multiplying one
+            // the two in sync. Nothing guarantees both axes share a raw
+            // units-per-mm scale, so both the aspect *comparison* and the
+            // crop *amounts* are computed unit-free: use the vendor
+            // profile's physical mm dimensions when available, and scale
+            // crops by aspect ratios rather than cross-multiplying one
             // axis's raw units against the other's. Reduces exactly to the
             // old isotropic math for Wacom hardware (no mm data).
             var surfaceAspect = effMaxX / effMaxY

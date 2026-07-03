@@ -2082,14 +2082,11 @@ final class InputInjector: @unchecked Sendable {
             let tabletAspect = surfaceAspect * (areaW / effMaxX) / (areaH / effMaxY)
             let displayAspect = Double(displayBounds.width) / Double(displayBounds.height)
             // Crop as a *ratio of aspects*, never by cross-multiplying one
-            // axis's raw units against the other's: the two axes can have
-            // very different units-per-mm (Xencelabs Pen Display: X ~74/mm,
-            // Y ~199/mm), so `areaH * displayAspect` is not an X-axis
-            // length there. That was the "cursor trapped in a tall
-            // rectangle" bug when mapping to any display whose aspect
-            // differs from the tablet's. For isotropic hardware these
-            // expressions reduce exactly to the old areaH*displayAspect /
-            // areaW/displayAspect forms.
+            // axis's raw units against the other's: nothing guarantees the
+            // two axes share a units-per-mm scale, and if they don't,
+            // `areaH * displayAspect` is not an X-axis length. For
+            // isotropic hardware these expressions reduce exactly to the
+            // old areaH*displayAspect / areaW/displayAspect forms.
             if tabletAspect > displayAspect {
                 let effectiveW = areaW * (displayAspect / tabletAspect)
                 areaX += (areaW - effectiveW) / 2
