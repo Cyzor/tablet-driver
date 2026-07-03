@@ -97,9 +97,24 @@ final class DeviceContext: ObservableObject, Identifiable {
     func observeRingLED() {
         settings.$touchRingActiveSlotIndex
             .sink { [weak self] index in
-                self?.tabletDevice?.setRingLED(index: index)
+                guard let self else { return }
+                self.tabletDevice?.setRingLED(index: index)
+                self.pushDeviceDisplayState(activeSlotIndex: index)
             }
             .store(in: &cancellables)
+    }
+
+    /// Push host-side display state (mode name, key labels) to devices with
+    /// their own screen — currently the Xencelabs Quick Keys OLED. No-ops on
+    /// everything else via the TabletDevice protocol defaults; the device
+    /// layer dedupes, so redundant calls are cheap.
+    func pushDeviceDisplayState(activeSlotIndex: Int? = nil) {
+        guard let device = tabletDevice else { return }
+        let index = activeSlotIndex ?? settings.touchRingActiveSlotIndex
+        if settings.touchRingSlots.indices.contains(index) {
+            device.setRingModeLabel(settings.touchRingSlots[index].label)
+        }
+        device.setAuxKeyLabels(settings.expressKeyBindings.map { $0.displayLabel })
     }
 
     /// Keep `injector.injectionSnapshot` in sync with the live TabletSettings/ToolSettings.
@@ -132,6 +147,9 @@ final class DeviceContext: ObservableObject, Identifiable {
                 injectorRef.injectionSnapshot = snap
             }
             CFRunLoopWakeUp(HIDThread.shared.runLoop)
+            // Binding/slot renames should reach devices with their own display
+            // (Quick Keys OLED); deduped downstream, cheap when nothing changed.
+            self.pushDeviceDisplayState()
         }
 
         settings.objectWillChange

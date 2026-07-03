@@ -355,6 +355,20 @@ final class InputInjector: @unchecked Sendable {
     private var cachedTouchMaxX: Int = 1
     private var cachedTouchMaxY: Int = 1
     private var cachedTouchSpecPID: Int = -1
+    /// Cached physical active-area aspect ratio (width/height in mm),
+    /// invalidated when `deviceProductID` changes. nil when the registry
+    /// doesn't have mm dimensions for this device, or the raw digitizer
+    /// coordinate space happens to be isotropic (physical aspect and raw
+    /// maxX/maxY ratio agree, as on Wacom hardware) — either way proportional
+    /// mapping falls back to the raw-unit ratio. Needed because raw
+    /// coordinate density isn't always the same on both axes (confirmed on
+    /// Xencelabs' Pen Display: X and Y have very different units-per-mm), so
+    /// `areaW / areaH` in raw units is not a reliable proxy for the tablet's
+    /// visual aspect ratio — using it directly let proportional mapping
+    /// letterbox against a fictitious ~2.7x-too-tall "aspect ratio" and
+    /// badly distort the mapped area.
+    private var cachedPhysicalAspect: Double?
+    private var cachedAspectSpecPID: Int = -1
     private var currentToggleIndex: Int = 0
     private var displayObserver: NSObjectProtocol?
 
@@ -2036,14 +2050,52 @@ final class InputInjector: @unchecked Sendable {
         var areaH = Swift.max(snapshot.activeAreaHeight, 0.001) * effMaxY
 
         if snapshot.proportionalMapping {
-            let tabletAspect = areaW / areaH
+            if cachedAspectSpecPID != deviceProductID {
+                // Wacom hardware's raw units are isotropic, so WacomDeviceRegistry
+                // doesn't need this — only vendor (Xencelabs/XP-Pen/etc.) profiles
+                // carry activeWidthMM/Height for this purpose. Look up by
+                // productID alone (not vendorID+productID): deviceVendorID
+                // is correct at DeviceContext construction time, but proved
+                // unreliable to depend on here in practice (this cache
+                // observably flipped to the raw-ratio fallback partway
+                // through a session, right when the pen tool was first
+                // detected) — simplest fix is to not need it.
+                if let profile = VendorDeviceRegistry.profile(forProductID: deviceProductID),
+                    let w = profile.activeWidthMM, w > 0, let h = profile.activeHeightMM, h > 0
+                {
+                    cachedPhysicalAspect = w / h
+                } else {
+                    cachedPhysicalAspect = nil
+                }
+                cachedAspectSpecPID = deviceProductID
+            }
+            // Visual aspect of the (possibly cropped) active area. With mm
+            // data: physical surface aspect, orientation-swapped, scaled by
+            // the crop fractions of each axis. Without: raw-unit ratio
+            // (correct for isotropic Wacom hardware).
+            let surfaceAspect: Double
+            if let phys = cachedPhysicalAspect {
+                surfaceAspect = orientation.swapsAxes ? 1.0 / phys : phys
+            } else {
+                surfaceAspect = effMaxX / effMaxY
+            }
+            let tabletAspect = surfaceAspect * (areaW / effMaxX) / (areaH / effMaxY)
             let displayAspect = Double(displayBounds.width) / Double(displayBounds.height)
+            // Crop as a *ratio of aspects*, never by cross-multiplying one
+            // axis's raw units against the other's: the two axes can have
+            // very different units-per-mm (Xencelabs Pen Display: X ~74/mm,
+            // Y ~199/mm), so `areaH * displayAspect` is not an X-axis
+            // length there. That was the "cursor trapped in a tall
+            // rectangle" bug when mapping to any display whose aspect
+            // differs from the tablet's. For isotropic hardware these
+            // expressions reduce exactly to the old areaH*displayAspect /
+            // areaW/displayAspect forms.
             if tabletAspect > displayAspect {
-                let effectiveW = areaH * displayAspect
+                let effectiveW = areaW * (displayAspect / tabletAspect)
                 areaX += (areaW - effectiveW) / 2
                 areaW = effectiveW
             } else if tabletAspect < displayAspect {
-                let effectiveH = areaW / displayAspect
+                let effectiveH = areaH * (tabletAspect / displayAspect)
                 areaY += (areaH - effectiveH) / 2
                 areaH = effectiveH
             }

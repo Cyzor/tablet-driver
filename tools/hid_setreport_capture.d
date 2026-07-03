@@ -29,7 +29,37 @@ pid$target:IOKit:IOHIDDeviceSetReportWithCallback:entry
         tracemem(copyin(arg3, this->len), 64, this->len);
 }
 
+/*
+ * IOHIDDeviceGetReport(device, type, reportID, report, pReportLength):
+ * the response bytes land in the caller's buffer (arg3) only after the call
+ * returns, and the actual byte count is written through pReportLength (arg4).
+ * Save both pointers at entry, dump the filled buffer at return.
+ */
 pid$target:IOKit:IOHIDDeviceGetReport:entry
 {
-        printf("[GetReport] type=%d id=0x%02x\n", arg1, arg2);
+        self->grbuf = arg3;
+        self->grplen = arg4;
+        printf("\n[GetReport] type=%d id=0x%02x\n", arg1, arg2);
+}
+
+pid$target:IOKit:IOHIDDeviceGetReport:return
+/self->grbuf/
+{
+        self->grlen = *(int64_t *)copyin(self->grplen, 8);
+        self->grlen = self->grlen > 64 ? 64 : self->grlen;
+        printf("[GetReport ret] ret=0x%x len=%d\n", arg1, self->grlen);
+}
+
+pid$target:IOKit:IOHIDDeviceGetReport:return
+/self->grbuf && self->grlen > 0/
+{
+        tracemem(copyin(self->grbuf, self->grlen), 64, self->grlen);
+}
+
+pid$target:IOKit:IOHIDDeviceGetReport:return
+/self->grbuf/
+{
+        self->grbuf = 0;
+        self->grplen = 0;
+        self->grlen = 0;
 }

@@ -319,6 +319,9 @@ final class TabletManager: ObservableObject {
             if let profile = VendorDeviceRegistry.drivableProfile(
                 forVendorID: vendorID, productID: rawProductID)
             {
+                // Profiles without coordinate maxima are aux-only devices
+                // (Quick Keys: express keys + dial, no pen digitizer).
+                let isAuxOnly = profile.maxX == nil
                 vendorSpec = WacomDeviceSpec(
                     productID: rawProductID,
                     name: profile.productName,
@@ -327,9 +330,9 @@ final class TabletManager: ObservableObject {
                     maxY: profile.maxY ?? 0,
                     maxPressure: profile.maxPressure ?? 8191,
                     buttonCount: profile.auxButtonCount ?? 0,
-                    // Tilt fields are present in the confirmed report-7
-                    // descriptor (bits 54–69); scale still unverified.
-                    hasTouchRing: false, hasEraser: true, hasTilt: true,
+                    // Tilt confirmed live in report 2 (signed bytes at
+                    // offsets 8–9); degree scale still unverified.
+                    hasTouchRing: false, hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
                     isPenDisplay: profile.isPenDisplay,
                     seizeUSB: false,
                     // Tablet-mode handshake; without it the device stays in
@@ -348,7 +351,27 @@ final class TabletManager: ObservableObject {
                 // interface or a vendor we only recognise: name it and bail.
                 let primaryUsagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
                 let primaryUsage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
-                let isPenDigitizer = primaryUsagePage == 0x0D && primaryUsage == 0x02
+                // Xencelabs' whole family declares a standards-compliant
+                // report-7 digitizer collection on every interface (dongle,
+                // puck) but never actually sends data on it — confirmed live,
+                // see XencelabsDecoder's header comment. Attaching the generic
+                // floor there produces a phantom tablet-area window sized off
+                // that decorative descriptor (which mirrors the real display's
+                // logical bounds, hence looking plausible) for hardware that
+                // isn't a digitizer at all.
+                //
+                // 0xFEED/0xBEEF is Karabiner-Elements' VirtualHIDDevice (its
+                // well-known synthetic keyboard/pointer identity) — not real
+                // drawing hardware. It also exposes a digitizer usage page,
+                // and it's not just cosmetic here: attaching the generic
+                // floor to it lets its synthetic events assert proximity,
+                // which steals `activeContext` (and with it CGEvent posting)
+                // away from a real connected tablet whenever Karabiner is
+                // running, so real pen motion silently stops reaching the
+                // screen.
+                let isPenDigitizer =
+                    primaryUsagePage == 0x0D && primaryUsage == 0x02
+                    && vendorID != 0x28BD && vendorID != 0xFEED
                 let profiles = VendorDeviceRegistry.profiles(
                     forVendorID: vendorID, productID: rawProductID)
                 let name = profiles.first?.productName ?? "(unknown product)"

@@ -248,6 +248,11 @@ final class WacomKnownDevice: TabletDevice {
         // mode. Re-run init against the interface that's actually live.
         if deviceSpec.parser == .xencelabs && !isBluetooth {
             executeInitSteps(on: device)
+            // The fresh firmware state lost any OLED text and dial color the
+            // superseded handle received. Re-apply the LED now; dropping the
+            // text cache lets the next display push actually resend.
+            xencelabsSentText.removeAll()
+            setRingLED(index: pendingLEDIndex)
         }
     }
 
@@ -409,9 +414,63 @@ final class WacomKnownDevice: TabletDevice {
                              tag: "\(name) IntuosV1 LED slot=\(index)", log: logger)
             }
 
+        case .xencelabs:
+            // Quick Keys dial LED: vendor output report 0xB4 sub-op 0x01 with
+            // literal RGB (see XencelabsControl). Colors follow Xencelabs'
+            // own per-mode factory palette so the ring reads the same way it
+            // does under their software. Best-effort: the Pen Display has no
+            // dial and ignores/rejects the write harmlessly.
+            let colors = XencelabsControl.defaultSlotColors
+            let c = colors[((index % colors.count) + colors.count) % colors.count]
+            sendXencelabsOutput(
+                XencelabsControl.dialColorPayload(r: c.r, g: c.g, b: c.b),
+                tag: "dial LED slot=\(index)")
+
         default:
             break
         }
+    }
+
+    // MARK: - Xencelabs OLED / dial output
+
+    /// Last text pushed per OLED field+index, to suppress redundant writes —
+    /// the settings pipeline re-fires on every settings change, and the OLED
+    /// only needs traffic when something it shows actually changed.
+    private var xencelabsSentText: [String: String] = [:]
+
+    /// Show the active dial mode's name on the Quick Keys OLED mode line.
+    func setRingModeLabel(_ label: String) {
+        guard deviceSpec.parser == .xencelabs else { return }
+        guard xencelabsSentText["mode"] != label else { return }
+        xencelabsSentText["mode"] = label
+        for payload in XencelabsControl.textPayloads(field: .modeName, text: label) {
+            sendXencelabsOutput(payload, tag: "OLED mode label")
+        }
+    }
+
+    /// Sync per-key labels (labels[0] = key 1) to the Quick Keys OLED.
+    func setAuxKeyLabels(_ labels: [String]) {
+        guard deviceSpec.parser == .xencelabs else { return }
+        let joined = labels.joined(separator: "\u{1F}")
+        guard xencelabsSentText["keys"] != joined else { return }
+        xencelabsSentText["keys"] = joined
+        for payload in XencelabsControl.keyLabelPayloads(labels) {
+            sendXencelabsOutput(payload, tag: "OLED key labels")
+        }
+    }
+
+    /// Send a Xencelabs vendor output report, zero-padded to the device's
+    /// declared MaxOutputReportSize (short writes return success but are
+    /// silently ignored by this firmware — same rule as the init path).
+    private func sendXencelabsOutput(_ bytes: [UInt8], tag: String) {
+        let declared = hidIntProperty(device, kIOHIDMaxOutputReportSizeKey)
+        var padded = bytes
+        if declared > padded.count {
+            padded += [UInt8](repeating: 0, count: declared - padded.count)
+        }
+        hidSetReport(device, type: kIOHIDReportTypeOutput,
+                     reportID: CFIndex(padded[0]), bytes: &padded,
+                     tag: "\(deviceSpec.name) \(tag)", severity: .bestEffort, log: logger)
     }
 
     /// Enable or disable capacitive finger touch on the hardware.

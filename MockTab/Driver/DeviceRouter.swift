@@ -124,8 +124,11 @@ enum DeviceRouter {
         }
 
         // ── Recognised PID with a live decoder ───────────────────────────────
+        // maxX == 0 with a nonzero buttonCount is a legitimate aux-only device
+        // (Xencelabs Quick Keys: express keys + dial, no pen digitizer);
+        // maxX == 0 otherwise means a malformed spec, rejected as before.
         if let deviceSpec = overrideSpec ?? (isWacom ? WacomDeviceRegistry.spec(for: productID) : nil),
-            deviceSpec.maxX > 0
+            deviceSpec.maxX > 0 || deviceSpec.buttonCount > 0
         {
             // Interface routing depends on parser family:
             //

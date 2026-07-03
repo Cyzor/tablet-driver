@@ -166,14 +166,30 @@ final class CalibrationSession: ObservableObject {
         var areaH = Swift.max(settings.activeAreaHeight, 0.001) * effMaxY
 
         if settings.proportionalMapping {
-            let tabletAspect = areaW / areaH
+            // Mirror of InputInjector.mapToScreen's proportional crop — keep
+            // the two in sync. Raw coordinate density isn't always the same
+            // on both axes (confirmed on Xencelabs' Pen Display: X ~74
+            // units/mm, Y ~199 units/mm), so both the aspect *comparison*
+            // and the crop *amounts* must be computed unit-free: use the
+            // vendor profile's physical mm dimensions when available, and
+            // scale crops by aspect ratios rather than cross-multiplying one
+            // axis's raw units against the other's. Reduces exactly to the
+            // old isotropic math for Wacom hardware (no mm data).
+            var surfaceAspect = effMaxX / effMaxY
+            if let productID = tabletManager.activeContext?.injector.deviceProductID,
+                let profile = VendorDeviceRegistry.profile(forProductID: productID),
+                let w = profile.activeWidthMM, w > 0, let h = profile.activeHeightMM, h > 0
+            {
+                surfaceAspect = orientation.swapsAxes ? h / w : w / h
+            }
+            let tabletAspect = surfaceAspect * (areaW / effMaxX) / (areaH / effMaxY)
             let displayAspect = Double(displayBounds.width) / Double(displayBounds.height)
             if tabletAspect > displayAspect {
-                let effectiveW = areaH * displayAspect
+                let effectiveW = areaW * (displayAspect / tabletAspect)
                 areaX += (areaW - effectiveW) / 2
                 areaW = effectiveW
             } else if tabletAspect < displayAspect {
-                let effectiveH = areaW / displayAspect
+                let effectiveH = areaH * (tabletAspect / displayAspect)
                 areaY += (areaH - effectiveH) / 2
                 areaH = effectiveH
             }
