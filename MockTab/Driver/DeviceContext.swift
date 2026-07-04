@@ -19,6 +19,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     let id: Int  // productID — also serves as Identifiable key
     let productID: Int  // canonical (USB) product ID
     let rawProductID: Int  // actual transport-specific PID from hardware
+    let vendorID: Int  // 0x056A (Wacom) unless a non-Wacom drivable device
 
     /// For the ACK-40401 wireless dongle, the PID of the paired tablet
     /// discovered from the 0x80 status report (e.g. 0x0316 for PTH-651).
@@ -177,6 +178,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         self.id = productID
         self.productID = productID
         self.rawProductID = rawProductID ?? productID
+        self.vendorID = vendorID
         let s = TabletSettings(productID: productID)
         self.settings = s
         self.injector = InputInjector(vendorID: vendorID, productID: productID)

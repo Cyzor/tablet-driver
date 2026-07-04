@@ -304,6 +304,46 @@ final class TabletManager: ObservableObject {
 
     // MARK: - Device lifecycle
 
+    /// Synthesizes the `WacomDeviceSpec` for a drivable non-Wacom device from
+    /// its `VendorDeviceRegistry` profile. Shared by `deviceConnected` (which
+    /// needs it live, to attach a driver) and UI callers like
+    /// `ButtonMappingView` (which need the same shape — `hasTouchRing`,
+    /// `buttonCount`, etc. — even when no live `DeviceContext` spec is
+    /// reachable, since these devices aren't in the Wacom-only
+    /// `WacomDeviceRegistry` the UI otherwise consults).
+    static func vendorDeviceSpec(forVendorID vendorID: Int, productID: Int) -> WacomDeviceSpec? {
+        guard vendorID != 0x056A,
+            let profile = VendorDeviceRegistry.drivableProfile(
+                forVendorID: vendorID, productID: productID)
+        else { return nil }
+        // Profiles without coordinate maxima are aux-only devices
+        // (Quick Keys: express keys + dial, no pen digitizer).
+        let isAuxOnly = profile.maxX == nil
+        return WacomDeviceSpec(
+            productID: productID,
+            name: profile.productName,
+            parser: .xencelabs,
+            maxX: profile.maxX ?? 0,
+            maxY: profile.maxY ?? 0,
+            maxPressure: profile.maxPressure ?? 8191,
+            buttonCount: profile.auxButtonCount ?? 0,
+            // Tilt confirmed live in report 2 (signed bytes at
+            // offsets 8–9); degree scale still unverified.
+            // hasTouchRing reuses the entire Wacom touch-ring UI/LED
+            // architecture for the Quick Keys dial (4 modes on both,
+            // ringSlotCount defaults to 4) — see XencelabsDecoder's
+            // touchRingButtonDown/buttons[8] mapping.
+            hasTouchRing: true, hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
+            isPenDisplay: profile.isPenDisplay,
+            seizeUSB: false,
+            // Tablet-mode handshake; without it the device stays in
+            // mouse emulation (see Xencelabs-G1D-Feasibility note).
+            initSteps: [.outputReport([0x02, 0xB0, 0x04])],
+            confidence: .experimental,
+            activeWidthMM: profile.activeWidthMM,
+            activeHeightMM: profile.activeHeightMM)
+    }
+
     private func deviceConnected(_ device: IOHIDDevice) {
         let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
         let rawProductID = hidIntProperty(device, kIOHIDProductIDKey)
@@ -314,33 +354,11 @@ final class TabletManager: ObservableObject {
         // profile and continue through the normal routing below; everything
         // else is recognition-only — name it, log it, and bail out before any
         // Wacom-specific state touches it.
-        var vendorSpec: WacomDeviceSpec? = nil
+        let vendorSpec = Self.vendorDeviceSpec(forVendorID: vendorID, productID: rawProductID)
         if vendorID != 0x056A {
             if let profile = VendorDeviceRegistry.drivableProfile(
                 forVendorID: vendorID, productID: rawProductID)
             {
-                // Profiles without coordinate maxima are aux-only devices
-                // (Quick Keys: express keys + dial, no pen digitizer).
-                let isAuxOnly = profile.maxX == nil
-                vendorSpec = WacomDeviceSpec(
-                    productID: rawProductID,
-                    name: profile.productName,
-                    parser: .xencelabs,
-                    maxX: profile.maxX ?? 0,
-                    maxY: profile.maxY ?? 0,
-                    maxPressure: profile.maxPressure ?? 8191,
-                    buttonCount: profile.auxButtonCount ?? 0,
-                    // Tilt confirmed live in report 2 (signed bytes at
-                    // offsets 8–9); degree scale still unverified.
-                    hasTouchRing: false, hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
-                    isPenDisplay: profile.isPenDisplay,
-                    seizeUSB: false,
-                    // Tablet-mode handshake; without it the device stays in
-                    // mouse emulation (see Xencelabs-G1D-Feasibility note).
-                    initSteps: [.outputReport([0x02, 0xB0, 0x04])],
-                    confidence: .experimental,
-                    activeWidthMM: profile.activeWidthMM,
-                    activeHeightMM: profile.activeHeightMM)
                 logger.info("TabletManager: drivable \(profile.vendor, privacy: .public) device — \(profile.productName, privacy: .public) (PID=0x\(String(rawProductID, radix: 16), privacy: .public)) — attaching experimental decoder")
             } else {
                 // Not on the drivable allowlist. If this interface is a

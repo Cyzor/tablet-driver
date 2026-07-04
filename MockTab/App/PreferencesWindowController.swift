@@ -362,7 +362,14 @@ final class PreferencesWindowController: ObservableObject {
             // adopts any pre-existing context via `contexts[pid] ?? DeviceContext(...)`,
             // ensuring writes from the UI are immediately visible to the driver.
             if tm.contexts[pid] == nil {
-                tm.contexts[pid] = DeviceContext(productID: pid)
+                // Use the last-known vendor for this product (persisted from a
+                // prior live connect) so the stub doesn't default to Wacom for
+                // a non-Wacom device — TabletManager.deviceConnected() reuses
+                // whatever context already occupies this key, so a wrong
+                // vendorID here would stick (it's a `let`) for the rest of
+                // this launch, breaking vendor-specific spec lookups.
+                let vendorID = DeviceRegistry.shared.vendorID(forProductID: pid) ?? 0x056A
+                tm.contexts[pid] = DeviceContext(productID: pid, vendorID: vendorID)
             }
             return (tm.contexts[pid]!.settings, displayLabel(forProductID: pid))
         }

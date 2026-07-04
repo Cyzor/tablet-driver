@@ -528,6 +528,12 @@ struct ButtonMappingView: View {
         if let ctx = tabletManager.contexts[pid], ctx.pairedProductID > 0 {
             return WacomDeviceRegistry.spec(for: ctx.pairedProductID)
         }
+        // Non-Wacom drivable devices (Xencelabs) aren't in WacomDeviceRegistry
+        // at all — synthesize the same spec shape TabletManager attached the
+        // live driver with.
+        if let ctx = tabletManager.contexts[pid] {
+            return TabletManager.vendorDeviceSpec(forVendorID: ctx.vendorID, productID: pid)
+        }
         return nil
     }
 

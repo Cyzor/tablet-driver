@@ -1076,8 +1076,16 @@ final class InputInjector: @unchecked Sendable {
         rearmWatchdog()
         guard let snap = injectionSnapshot else { return }
         let cursorPos = currentCursorPosition()
-        let slot: ControlSlot? = snap.touchRingSlots.indices.contains(index)
-            ? snap.touchRingSlots[index] : nil
+        // Xencelabs Quick Keys has a single dial reusing the Wacom touch-ring
+        // mode-cycling model (4 selectable modes via a mode-cycle key), unlike
+        // IntuosV3 PTK-x70's two independent physical wheels (each hardware
+        // index is a distinct wheel, not a mode). So for the dial, resolve
+        // through the live active-slot index rather than the fixed hardware
+        // index — otherwise "Ring: Cycle" / "Jump to Mode N" have no effect
+        // on the dial even though the UI exposes them.
+        let slotIndex = deviceVendorID == 0x28BD ? snap.touchRingActiveSlotIndex : index
+        let slot: ControlSlot? = snap.touchRingSlots.indices.contains(slotIndex)
+            ? snap.touchRingSlots[slotIndex] : nil
         if let slot {
             if index == 0 {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &wheel0Accum,

@@ -25,6 +25,12 @@ final class DeviceRegistry: ObservableObject {
         var nickname: String  // user-editable; defaults to modelName
         let modelName: String  // set at first-seen time (e.g. "PTH-860")
         var usbSerial: String?  // USB serial number from device firmware; nil if absent
+        /// Vendor ID last seen for this product, so window restoration can
+        /// reconstruct a stub `DeviceContext` with the right vendor before the
+        /// real device reconnects. Optional so pre-existing persisted entries
+        /// (saved before this field existed) still decode; nil = unknown,
+        /// callers fall back to the Wacom default.
+        var vendorID: Int?
 
         /// Best available identifier string for display.
         /// Prefers the firmware USB serial number; falls back to product ID hex.
@@ -97,21 +103,38 @@ final class DeviceRegistry: ObservableObject {
         let modelName = TabletManager.deviceName(
             forProductID: productID, vendorID: vendorID, productString: productString)
         if let idx = knownTablets.firstIndex(where: { $0.id == productID }) {
+            var changed = false
             // Backfill serial if we now have it and didn't before.
             if knownTablets[idx].usbSerial == nil, let s = usbSerial, !s.isEmpty {
                 knownTablets[idx].usbSerial = s
-                saveTablets()
+                changed = true
             }
+            // Backfill vendorID for entries persisted before this field existed,
+            // or if it's ever recorded wrong — the live connect always knows best.
+            if knownTablets[idx].vendorID != vendorID {
+                knownTablets[idx].vendorID = vendorID
+                changed = true
+            }
+            if changed { saveTablets() }
         } else {
             knownTablets.append(
                 KnownTablet(
                     id: productID,
                     nickname: modelName,
                     modelName: modelName,
-                    usbSerial: usbSerial))
+                    usbSerial: usbSerial,
+                    vendorID: vendorID))
             saveTablets()
         }
         loadTools(forDevice: productID)
+    }
+
+    /// Last-known vendor ID for a previously-connected product, or nil if
+    /// never recorded. Used by `PreferencesWindowController` to reconstruct a
+    /// stub `DeviceContext` with the correct vendor when restoring a window
+    /// at launch, before the real device has reconnected this session.
+    func vendorID(forProductID productID: Int) -> Int? {
+        knownTablets.first(where: { $0.id == productID })?.vendorID
     }
 
     /// Called when a new tool enters proximity on an IntuosV2 device (serial known).
