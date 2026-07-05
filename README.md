@@ -87,10 +87,10 @@ To run the decoder test suite: `cd TabletKit && swift test`.
 
 ## Incomplete or unsupported
 
-- **Xencelabs** — pen and Quick Keys work, but support is still experimental and incomplete (no dial LED control, no dongle-relay wireless path yet)
 - Huion, XP-Pen, or any other non-Wacom hardware
 - Wacom tablets from recent product cycles not listed above (Cintiq Pro 2023 refresh, etc.)
 - Windows, Linux, or iPad
+- **Xencelabs** — pen and Quick Keys work, but support is still experimental and incomplete (no dial LED control, no dongle-relay wireless path yet)
 
 ---
 
@@ -118,19 +118,17 @@ var decoder: any TabletReportDecoder = IntuosV2Decoder()
 let results = decoder.decode(report: ptr, length: len, spec: spec, state: &state, deviceFamily: "intuosProGen2")
 ```
 
-**Scope.** TabletKit has no AppKit or system-event dependencies and decodes based on a registry of known devices.
+It has no AppKit or system-event dependencies of its own; everything it does is driven off a registry of known devices, so it can run in any Swift context.
 
-**Stability.** The public API (see [CHANGELOG.md](https://github.com/Cyzor/TabletKit/blob/main/CHANGELOG.md)) is at 0.1 — workable but pre-1.0. Expect breaking changes until the first non-Wacom vendor lands and with further protocol validation.
+The public API is still at 0.1 (see [CHANGELOG.md](https://github.com/Cyzor/TabletKit/blob/main/CHANGELOG.md)) — workable today, but expect some breaking changes before 1.0, particularly once a second non-Wacom vendor lands and exercises the registry shape more.
 
-**Checkout.** TabletKit is included as a git submodule at `TabletKit/`, pinned to the commit MockTab builds against. Clone with:
+TabletKit lives here as a git submodule at `TabletKit/`, pinned to the commit MockTab builds against:
 
 ```sh
 git clone --recurse-submodules https://github.com/Cyzor/tablet-driver.git
 ```
 
-For an existing clone: `git submodule update --init`. Decoder work happens in the submodule and is committed directly to the TabletKit repo.
-
-**Tests.** `cd TabletKit && swift test`
+Already cloned without `--recurse-submodules`? Run `git submodule update --init`. Decoder work happens directly in the submodule and is committed to the TabletKit repo, not here. Its test suite runs the same way: `cd TabletKit && swift test`.
 
 ---
 
@@ -146,12 +144,7 @@ Per-file licenses are declared via SPDX headers (`SPDX-License-Identifier:`) at 
 
 ## Acknowledgments
 
-MockTab's protocol knowledge and device data draw from several open-source projects:
-
-- **[OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver)** — TabletKit's non-Wacom registry entries come from OTD's per-vendor JSON configurations, the most comprehensive public database of tablet PIDs and dimensions across vendors.
-- **[wacom-hid-descriptors](https://github.com/linuxwacom/wacom-hid-descriptors)** — the linuxwacom HID descriptor corpus informed decoder development across multiple tablet families.
-- **[libwacom](https://github.com/linuxwacom/libwacom)** — the authoritative source for Wacom physical dimensions; cross-checks and corrects entries where the kernel's constants are inaccurate.
-- **[input-wacom](https://github.com/linuxwacom/input-wacom) / Linux kernel HID subsystem** — the canonical reference for Wacom report formats and protocol constants; several decoder field mappings follow kernel source directly.
+MockTab's protocol knowledge and device data draw from several open-source projects. TabletKit's non-Wacom registry entries are pulled from **[OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver)**'s per-vendor JSON configurations — still the most comprehensive public database of tablet PIDs and dimensions across vendors. The **[wacom-hid-descriptors](https://github.com/linuxwacom/wacom-hid-descriptors)** corpus shaped decoder development across multiple tablet families, and **[libwacom](https://github.com/linuxwacom/libwacom)** is the authority we check Wacom physical dimensions against whenever the kernel's own constants look off. Report formats and protocol constants ultimately trace back to **[input-wacom](https://github.com/linuxwacom/input-wacom)** and the Linux kernel HID subsystem; several decoder field mappings follow that source directly.
 
 ---
 

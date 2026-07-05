@@ -27,12 +27,9 @@ DeviceContext + InputInjector
 CGEvent  ──►  CGEventPost(.cghidEventTap)  ──►  WindowServer
 ```
 
-Two threads carry live work:
+Two threads carry live work. HIDThread owns the IOHIDManager run loop and every `handleReport` callback, running at the highest priority class macOS offers for app work so a busy main thread can never delay a pen sample (`HIDThread.swift` declares the singleton). Everything else — AppKit, SwiftUI, settings storage, most CGEvent posts — stays on the main thread. When HIDThread needs to hand work over, it has two options: `CFRunLoopPerformBlock(HIDThread.shared.runLoop, …)` for state writes the hot path will read back, or `Task { @MainActor in … }` for UI work.
 
-- **HIDThread** owns the IOHIDManager run loop and every `handleReport` callback. The thread runs at the highest priority class macOS offers for app work, so a busy main thread cannot delay a pen sample. `HIDThread.swift` declares the singleton.
-- **Main thread** owns AppKit, SwiftUI, settings storage, and most CGEvent posts. The HID thread hands work to the main thread two ways: `CFRunLoopPerformBlock(HIDThread.shared.runLoop, …)` for state writes the hot path will read back, or `Task { @MainActor in … }` for UI work.
-
-The **snapshot pattern** keeps the two sides loosely coupled. `TabletSettings` lives on the main thread and uses SwiftUI's `@Published` storage so views update automatically. When a setting changes, `makeInjectionSnapshot()` builds an immutable `InjectionSnapshot` and `DeviceContext` pushes it onto HIDThread. `InputInjector` then reads its working copy with no cross-thread synchronization on the 133 Hz hot path.
+What keeps these two sides from stepping on each other is the snapshot pattern. `TabletSettings` lives on the main thread and uses SwiftUI's `@Published` storage so views update automatically; when a setting changes, `makeInjectionSnapshot()` builds an immutable `InjectionSnapshot` and `DeviceContext` pushes it onto HIDThread. From there, `InputInjector` just reads its working copy — no cross-thread synchronization needed on the 133 Hz hot path.
 
 ## Layout
 
@@ -48,7 +45,7 @@ MockTab/
   Help/        In-app help content
 ```
 
-The decoder layer (`TabletReportDecoder`, the decoder structs, `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, pure-logic helpers) lives in the **TabletKit** SwiftPM package, included as a git submodule at `TabletKit/` and consumed as a local package dependency. Tests for the decoder layer (`swift test`) run from the submodule, not from this repo's root.
+The decoder layer — `TabletReportDecoder`, the decoder structs, the device registries, and their pure-logic helpers — doesn't live in this tree at all; see the next section.
 
 ## TabletKit (SwiftPM package, git submodule)
 
@@ -95,9 +92,8 @@ Adding a new family means writing a new decoder under `Sources/TabletKit/Decoder
 
 ### Injection
 
-`InputInjector` converts a `TabletPoint` into the CGEvent sequence apps expect: a proximity event, then a `.tabletPointer` event (which Krita, GIMP, and other Qt/GTK apps consume directly), then a mouse event carrying pressure via `.mouseEventPressure` and `.mouseEventSubtype = .tabletPoint`. The class also owns:
+`InputInjector` converts a `TabletPoint` into the CGEvent sequence apps expect: a proximity event, then a `.tabletPointer` event (which Krita, GIMP, and other Qt/GTK apps consume directly), then a mouse event carrying pressure via `.mouseEventPressure` and `.mouseEventSubtype = .tabletPoint`. Two pieces of this are split into their own files — position smoothing (`CursorSmoother`, in TabletKit) and display selection/orientation/calibration (`DisplayMapper.swift`, in this repo) — because both are self-contained transforms with no dependency on the rest of the class. What's left in `InputInjector` itself:
 
-- the exponential-moving-average position smoother (`CursorSmoother`)
 - click-count resolution for double- and triple-clicks
 - synthesizing keyboard modifiers when a tablet button is bound to one
 - a brief mouse-up delay so fast pen lifts don't cut strokes short
@@ -140,7 +136,9 @@ The decoder test suite lives in `TabletKit/Tests/TabletKitTests/` and runs via `
 | Add a new pen tool | `TabletKit/Sources/TabletKit/WacomToolSpec.swift` |
 | Add a non-Wacom vendor | `TabletKit/Sources/TabletKit/VendorDeviceRegistry.swift` |
 | Add a new protocol family | `TabletKit/Sources/TabletKit/Decoders/` + `WacomDeviceRegistry.decoder(for:)` |
-| Tweak smoothing / click resolution | `MockTab/Driver/InputInjector.swift` (read the header) |
+| Tweak click resolution or button dispatch | `MockTab/Driver/InputInjector.swift` (read the header) |
+| Tweak position smoothing | `TabletKit/Sources/TabletKit/CursorSmoother.swift` |
+| Tweak display mapping or calibration | `MockTab/Driver/DisplayMapper.swift` |
 | Add a settings knob | `Settings/TabletSettings.swift` + relevant pane |
 | Add a new settings pane | `UI/Panes/` + `App/SettingsWindowController.swift` |
 | Diagnose a misbehaving tablet | Settings → Info → Start Capture (writes to Desktop) |
