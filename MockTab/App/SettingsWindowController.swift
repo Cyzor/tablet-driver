@@ -11,6 +11,27 @@ extension Array {
     }
 }
 
+extension NSWindow {
+    /// Grows the current frame up to `minSize` in either dimension if it's
+    /// currently smaller, keeping the top-left corner anchored. No-op if the
+    /// frame already meets `minSize`. Needed because `setFrame`/`setContentSize`
+    /// don't enforce `minSize` themselves — only interactive resizing and
+    /// `zoom(_:)` do.
+    func clampToMinSize() {
+        let current = frame
+        let width = max(current.width, minSize.width)
+        let height = max(current.height, minSize.height)
+        guard width > current.width || height > current.height else { return }
+        setFrame(
+            NSRect(
+                x: current.minX,
+                y: current.maxY - height,
+                width: width,
+                height: height),
+            display: false)
+    }
+}
+
 // MARK: - ResizableWindow
 
 final class ResizableWindow: NSWindow {
@@ -79,6 +100,16 @@ final class ResizableTabViewController: NSTabViewController {
     }
 
     override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
+        // NSTabViewController (.toolbar style) natively resizes the window to
+        // the incoming tab's preferredContentSize as part of `super`'s handling
+        // below — a second, unguarded resize path alongside applyDefaultSize.
+        // Once the user has taken ownership of the window's size (resized it
+        // manually, or it was restored/reopened at an explicit size), report
+        // the window's current size instead of the tab's authored default so
+        // that native resize is a no-op and doesn't fight the restored size.
+        if userHasResized, let window = view.window, let vc = tabViewItem?.viewController {
+            vc.preferredContentSize = window.contentView?.frame.size ?? window.frame.size
+        }
         super.tabView(tabView, didSelect: tabViewItem)
         applyDefaultSize(for: tabViewItem)
         onTabSelected?(tabViewItem?.label)
@@ -106,6 +137,10 @@ final class ResizableTabViewController: NSTabViewController {
             DispatchQueue.main.async { [weak self, weak window] in
                 guard let self, let window else { return }
                 window.minSize = NSSize(width: self.toolbarMinWidth(in: window), height: 500)
+                // The measurement above is authoritative for this window's toolbar
+                // layout — widen an already-narrower restored/last-known frame now,
+                // since setFrame/setContentSize don't enforce minSize on their own.
+                window.clampToMinSize()
             }
         }
     }

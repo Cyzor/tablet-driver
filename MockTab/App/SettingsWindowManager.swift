@@ -290,7 +290,12 @@ final class SettingsWindowManager: ObservableObject {
         }
         let pid = activeDeviceProductID()
         let wc = makeWindow(productID: pid, tabIndex: 0, frame: nil)
-        wc.window?.setFrameAutosaveName("PreferencesWindow")
+        // SettingsWindowController.init already sets this autosave name when
+        // productID == nil; only needed here for the pid != nil case, where
+        // this "default" window is standing in for a specific device.
+        if pid != nil {
+            wc.window?.setFrameAutosaveName("PreferencesWindow")
+        }
         defaultWindow = wc
         return wc
     }
@@ -310,6 +315,7 @@ final class SettingsWindowManager: ObservableObject {
             // Mark as user-resized so tab switches don't override the saved size
             // with per-tab preset defaults.
             wc.window?.setFrame(frame, display: false)
+            wc.window?.clampToMinSize()
             wc.suppressAutoResize()
         } else {
             // Place new window: cascade from the previous window if one exists,
@@ -318,6 +324,7 @@ final class SettingsWindowManager: ObservableObject {
             // window comes back at the same size the user last had.
             if let lastSize = lastKnownSizes[sizeKey(productID: productID)] {
                 wc.window?.setContentSize(lastSize)
+                wc.window?.clampToMinSize()
                 wc.suppressAutoResize()
             }
 
