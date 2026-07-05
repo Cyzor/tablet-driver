@@ -116,6 +116,7 @@ final class InputInjector: @unchecked Sendable {
         proximityExitDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+        button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
     }
 
     // MARK: - State
@@ -126,8 +127,15 @@ final class InputInjector: @unchecked Sendable {
     /// Used to guarantee Pages sees at least one drag event even when deltas are tiny.
     private var didEmitDragSinceDown = false
     private var lastEraserMode = false  // Track eraser/tip flip while in proximity
+    // Named per-button fields rather than an array/dictionary, deliberately:
+    // this runs at 133 Hz on the HID hot path, where a direct field read beats
+    // a collection's bounds-check/hash overhead, and named fields stay readable
+    // in a debugger during real-hardware sessions. See BarrelButtonSlot below
+    // for where a small fixed enum already substitutes for a collection where
+    // dispatch (not just storage) is needed.
     private var lastButton1Down = false
     private var lastButton2Down = false
+    private var lastButton3Down = false
     private var lastMiddleDown = false
     private var activeButton: CGMouseButton = .left
 
@@ -266,6 +274,7 @@ final class InputInjector: @unchecked Sendable {
     /// button and position sensing share one range, so this doesn't apply.
     private var button1UpDebounceTimer: CFRunLoopTimer?
     private var button2UpDebounceTimer: CFRunLoopTimer?
+    private var button3UpDebounceTimer: CFRunLoopTimer?
     private let buttonUpDebounceInterval: TimeInterval = 0.08
 
     // MARK: - Time-based leak watchdog
@@ -305,7 +314,7 @@ final class InputInjector: @unchecked Sendable {
     /// True when no physical tablet control is held. If this holds and
     /// `groundTruthSyntheticFlags` is non-empty, the flags are a leak.
     private var tabletIsQuiescent: Bool {
-        !lastTipDown && !lastButton1Down && !lastButton2Down
+        !lastTipDown && !lastButton1Down && !lastButton2Down && !lastButton3Down
             && !lastMiddleDown
             && !lastRingButtonDown
             && lastRingPos == 0x7F && lastRing2Pos == 0x7F
@@ -444,7 +453,7 @@ final class InputInjector: @unchecked Sendable {
                 // A held tip/barrel/mouse button gets the long safety-net delay
                 // instead of the short blip debounce — see the property's doc.
                 let anyButtonHeld =
-                    lastTipDown || lastButton1Down || lastButton2Down
+                    lastTipDown || lastButton1Down || lastButton2Down || lastButton3Down
                     || lastMiddleDown || usbMouseLeftHeld || lastUSBMouseMask != 0
                 let delay = anyButtonHeld
                     ? proximityExitHeldButtonSafetyInterval : proximityExitDebounceInterval
@@ -462,6 +471,10 @@ final class InputInjector: @unchecked Sendable {
                     if let t = button2UpDebounceTimer {
                         CFRunLoopTimerInvalidate(t)
                         button2UpDebounceTimer = nil
+                    }
+                    if let t = button3UpDebounceTimer {
+                        CFRunLoopTimerInvalidate(t)
+                        button3UpDebounceTimer = nil
                     }
                 }
                 let timer = CFRunLoopTimerCreateWithHandler(
@@ -659,11 +672,22 @@ final class InputInjector: @unchecked Sendable {
         //    deferred-release debounce — see button1/2UpDebounceTimer) ─────────
         let btn1 = tool.penButton1Binding
         let btn2 = tool.penButton2Binding
+        let btn3 = tool.penButton3Binding
 
         if deviceVendorID == 0x28BD {
             if !activeToolIsMouse {
                 handleXencelabsBarrelButton(
                     slot: .one, down: point.penButton1, binding: btn1,
+                    at: screenPoint, snap: snap, settings: settings)
+                // The 3-button pen's dedicated lower button (barrelLowBit in
+                // XencelabsDecoder) arrives in the same digitizer stream as
+                // button1/2 but was never dispatched here — it only reached
+                // TabletManager's live UI display, never fireButtonAction, so
+                // a binding assigned to it had no effect anywhere else on the
+                // system. Shares the same debounce treatment as button1/2
+                // since it rides the same short button-sensing range.
+                handleXencelabsBarrelButton(
+                    slot: .three, down: point.penButton3, binding: btn3,
                     at: screenPoint, snap: snap, settings: settings)
             } else {
                 lastButton1Down = point.penButton1
@@ -826,13 +850,25 @@ final class InputInjector: @unchecked Sendable {
                     snapshot: snap, settings: nil)
             }
         }
+        if let t = button3UpDebounceTimer {
+            CFRunLoopTimerInvalidate(t)
+            button3UpDebounceTimer = nil
+            if lastButton3Down {
+                lastButton3Down = false
+                if !activeToolIsMouse {
+                    fireButtonAction(
+                        snap.activeTool.penButton3Binding, down: false, at: exitScreenPoint,
+                        snapshot: snap, settings: nil)
+                }
+            }
+        }
     }
 
     /// Which barrel button a debounced-release timer handler is resolving —
     /// used instead of `inout` state (escaping closures can't capture `inout`
     /// parameters), so the handler can read/write the right stored properties
     /// by branching on this instead of holding a reference to them directly.
-    private enum BarrelButtonSlot { case one, two }
+    private enum BarrelButtonSlot { case one, two, three }
 
     /// Xencelabs-only barrel-button handling: presses fire immediately;
     /// releases are debounced (see `button1UpDebounceTimer`/
@@ -843,8 +879,13 @@ final class InputInjector: @unchecked Sendable {
         binding: ButtonBinding, at location: CGPoint,
         snap: InjectionSnapshot, settings: TabletSettings?
     ) {
-        let wasDown = slot == .one ? lastButton1Down : lastButton2Down
-        let pendingTimer = slot == .one ? button1UpDebounceTimer : button2UpDebounceTimer
+        let wasDown: Bool
+        let pendingTimer: CFRunLoopTimer?
+        switch slot {
+        case .one: wasDown = lastButton1Down; pendingTimer = button1UpDebounceTimer
+        case .two: wasDown = lastButton2Down; pendingTimer = button2UpDebounceTimer
+        case .three: wasDown = lastButton3Down; pendingTimer = button3UpDebounceTimer
+        }
 
         if down {
             // Reasserted (or still down) — cancel any pending release; if it
@@ -867,7 +908,12 @@ final class InputInjector: @unchecked Sendable {
         ) { [weak self] _ in
             guard let self else { return }
             self.setBarrelButtonTimer(slot, nil)
-            let stillDown = slot == .one ? self.lastButton1Down : self.lastButton2Down
+            let stillDown: Bool
+            switch slot {
+            case .one: stillDown = self.lastButton1Down
+            case .two: stillDown = self.lastButton2Down
+            case .three: stillDown = self.lastButton3Down
+            }
             guard stillDown else { return }
             self.setBarrelButtonDown(slot, false)
             self.fireButtonAction(binding, down: false, at: location, snapshot: snap, settings: settings)
@@ -880,6 +926,7 @@ final class InputInjector: @unchecked Sendable {
         switch slot {
         case .one: lastButton1Down = down
         case .two: lastButton2Down = down
+        case .three: lastButton3Down = down
         }
     }
 
@@ -887,6 +934,7 @@ final class InputInjector: @unchecked Sendable {
         switch slot {
         case .one: button1UpDebounceTimer = timer
         case .two: button2UpDebounceTimer = timer
+        case .three: button3UpDebounceTimer = timer
         }
     }
 
