@@ -3,70 +3,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import AppKit
-import SwiftUI
 
 @main
-struct MockTabApp: App {
-
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-
-    var body: some Scene {
-        MenuBarExtra {
-            MenuBarView()
-                .environmentObject(TabletManager.shared)
-                .environmentObject(PreferencesWindowController.shared.settings)
-                .environmentObject(PreferencesWindowController.shared)
-        } label: {
-            MenuBarIconLabel(manager: TabletManager.shared)
-        }
-        .menuBarExtraStyle(.menu)
-        .commands {
-            // View menu with ⌘1–⌘8 tab shortcuts.
-            // Declared here so SwiftUI owns the menu lifecycle and it is never
-            // overwritten by SwiftUI's own menu-rebuild passes.
-            CommandMenu(String(localized: "View", comment: "Menu header: view/navigate tabs")) {
-                Button { PreferencesWindowController.shared.showTab(at: 0) } label: { Label(String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab"), systemImage: "rectangle.dashed") }
-                    .keyboardShortcut("1", modifiers: .command)
-                Button { PreferencesWindowController.shared.showTab(at: 1) } label: { Label(String(localized: "Pen Feel", comment: "Menu item: open Pen Feel tab"), systemImage: "scribble.variable") }
-                    .keyboardShortcut("2", modifiers: .command)
-                Button { PreferencesWindowController.shared.showTab(at: 2) } label: { Label(String(localized: "Buttons", comment: "Menu item: open Button Mapping tab"), systemImage: "square.grid.2x2.fill") }
-                    .keyboardShortcut("3", modifiers: .command)
-                Button { PreferencesWindowController.shared.showTab(at: 3) } label: { Label(String(localized: "Display", comment: "Menu item: open Display Mapping tab"), systemImage: "display") }
-                    .keyboardShortcut("4", modifiers: .command)
-                Button { PreferencesWindowController.shared.showTab(at: 4) } label: { Label(String(localized: "Devices", comment: "Menu item: open Devices tab"), systemImage: "rectangle.on.rectangle") }
-                    .keyboardShortcut("5", modifiers: .command)
-                Button { PreferencesWindowController.shared.showTab(at: 5) } label: { Label(String(localized: "Profiles", comment: "Menu item: open Profiles tab"), systemImage: "star.circle") }
-                    .keyboardShortcut("6", modifiers: .command)
-                Button { PreferencesWindowController.shared.showTab(at: 6) } label: { Label(String(localized: "Scratchpad", comment: "Menu item: open Scratchpad tab"), systemImage: "pencil.and.outline") }
-                    .keyboardShortcut("7", modifiers: .command)
-                Button { PreferencesWindowController.shared.showTab(at: 7) } label: { Label(String(localized: "Info", comment: "Menu item: open Info tab"), systemImage: "info.circle") }
-                    .keyboardShortcut("8", modifiers: .command)
-
-                // The Show/Hide Tab Bar item is appended natively by
-                // AppMenuController.hookTabBarItem() so AppKit validation can
-                // grey it out and retitle it like Finder.
-            }
-
-            CommandGroup(replacing: .help) {
-                Button(String(localized: "MockTab Help", comment: "Help menu: open help window")) {
-                    HelpWindowController.shared.show()
-                }
-                .keyboardShortcut("?", modifiers: .command)
-
-                Button(String(localized: "MockTab Website\u{2026}", comment: "Help menu: open MockTab website")) {
-                    NSWorkspace.shared.open(URL(string: "https://mocktab.org")!)
-                }
-            }
-
-            // Edit menu: replaced wholesale with native selector-based items by
-            // AppMenuController.hookEditMenu() so the responder chain enables and
-            // disables Undo/Redo/Cut/Copy/Paste/Select All like Finder does.
-        }
-    }
-}
-
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.run()
+    }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Prevent AppKit from inserting a "Quit and Keep Windows" item at ⌘⌥Q.
@@ -74,10 +21,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // redundant and conflicts with the Factory Reset alternate menu item.
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
 
-        // Set the activation policy here — before SwiftUI configures its
-        // MenuBarExtra scene — so the app registers with the Dock as a regular
-        // app from the start.  If we defer this to applicationDidFinishLaunching
-        // (after scene setup), the Dock sees the app launch as an accessory and
+        // Set the activation policy here — before applicationDidFinishLaunching —
+        // so the app registers with the Dock as a regular app from the start.
+        // If we defer this, the Dock sees the app launch as an accessory and
         // never establishes the applicationDockMenu callback, even though the
         // icon appears.
         let showInDock = UserDefaults.standard.object(forKey: "showInDock") == nil
@@ -92,12 +38,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // (TabletManager.promptForAccessibilityIfNeeded) so the request appears
         // when injection is actually about to happen, not cold at launch.
 
-        Task { @MainActor in
-            let settings = PreferencesWindowController.shared.settings
-            AppMenuController.shared.setup(settings: settings)
-            TabletManager.shared.start()
-            AppWatcher.shared.start()
-        }
+        NSApp.mainMenu = MainMenuBuilder.build()
+        StatusItemController.shared.start()
+
+        let settings = PreferencesWindowController.shared.settings
+        AppMenuController.shared.setup(settings: settings)
+        TabletManager.shared.start()
+        AppWatcher.shared.start()
 
         // Only open a fresh window on first launch — subsequent launches
         // restore their windows via PreferencesWindowController.restoreWindows().
@@ -223,19 +170,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func dockOpenTablet(_ sender: NSMenuItem) {
         PreferencesWindowController.shared.openWindow(forProductID: sender.tag)
         NSApp.activate(ignoringOtherApps: true)
-    }
-}
-
-private struct MenuBarIconLabel: View {
-    @ObservedObject var manager: TabletManager
-
-    var body: some View {
-        if let pct = manager.activeContext?.batteryPercent, pct < 20,
-           manager.activeContext?.batteryCharging != true {
-            Image(systemName: BatteryIndicator.symbolName(pct: pct, charging: false))
-        } else {
-            Image("MenuBarIcon")
-                .renderingMode(.template)
-        }
     }
 }

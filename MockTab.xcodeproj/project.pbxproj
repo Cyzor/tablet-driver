@@ -17,7 +17,8 @@
 		4BD0B8E0541D4BBB82F9A3BB /* CalibrationOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */; };
 		A62404859BAF4F58B6F4409D /* CalibrationOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */; };
 		AA000001 /* MockTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001 /* MockTabApp.swift */; };
-		AA000002 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* MenuBarView.swift */; };
+		AA000002 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* StatusItemController.swift */; };
+		AA000074 /* MainMenuBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000074 /* MainMenuBuilder.swift */; };
 		AA000008 /* InputInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000008 /* InputInjector.swift */; };
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
 		AA000010 /* BezierCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* BezierCurve.swift */; };
@@ -97,7 +98,8 @@
 		AAAAAA07 /* ExportDragWell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportDragWell.swift; sourceTree = "<group>"; };
 		AAAAAA09 /* ImportPreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPreviewSheet.swift; sourceTree = "<group>"; };
 		AB000001 /* MockTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTabApp.swift; sourceTree = "<group>"; };
-		AB000002 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		AB000002 /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
+		AB000074 /* MainMenuBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuBuilder.swift; sourceTree = "<group>"; };
 		AB000008 /* InputInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputInjector.swift; sourceTree = "<group>"; };
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
 		AB000010 /* BezierCurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BezierCurve.swift; sourceTree = "<group>"; };
@@ -203,7 +205,8 @@
 			isa = PBXGroup;
 			children = (
 				AB000001 /* MockTabApp.swift */,
-				AB000002 /* MenuBarView.swift */,
+				AB000002 /* StatusItemController.swift */,
+				AB000074 /* MainMenuBuilder.swift */,
 				AB000017 /* PreferencesWindowController.swift */,
 				AB000043 /* SettingsWindowController.swift */,
 				AB000036 /* AppMenuController.swift */,
@@ -428,7 +431,8 @@
 				4BD0B8E0541D4BBB82F9A3BB /* CalibrationOverlayWindow.swift in Sources */,
 				A62404859BAF4F58B6F4409D /* CalibrationOverlayView.swift in Sources */,
 				AA000001 /* MockTabApp.swift in Sources */,
-				AA000002 /* MenuBarView.swift in Sources */,
+				AA000002 /* StatusItemController.swift in Sources */,
+				AA000074 /* MainMenuBuilder.swift in Sources */,
 				AA000017 /* PreferencesWindowController.swift in Sources */,
 				AA000043 /* SettingsWindowController.swift in Sources */,
 				AA000036 /* AppMenuController.swift in Sources */,

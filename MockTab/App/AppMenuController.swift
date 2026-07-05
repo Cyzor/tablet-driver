@@ -46,21 +46,29 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     func setup(settings: TabletSettings) {
         self.settings = settings
 
-        // Main menu is available by applicationDidFinishLaunching, but
-        // defer one run-loop tick to let SwiftUI finish its menu scaffolding.
-        DispatchQueue.main.async { [self] in
-            insertTabletMenu()
-            insertPresetsMenu()
-            removeEmptyViewMenu()
-            hookAboutMenuItem()
-            hookAppMenu()
-            hookEditMenu()
-            hookViewMenu()
-            insertTextSizeSubmenu()
-            hookTabBarItem()
-            hookWindowMenu()
-            watchMainMenuForRebuild()
-        }
+        insertTabletMenu()
+        insertPresetsMenu()
+        hookAboutMenuItem()
+        hookAppMenu()
+        hookEditMenu()
+        hookViewMenu()
+        insertTextSizeSubmenu()
+        hookTabBarItem()
+        hookWindowMenu()
+    }
+
+    // MARK: - View menu item actions (targets for MainMenuBuilder's ⌘1–⌘8 items)
+
+    @objc func showTabFromMainMenu(_ sender: NSMenuItem) {
+        PreferencesWindowController.shared.showTab(at: sender.tag)
+    }
+
+    @objc func showHelpFromMainMenu() {
+        HelpWindowController.shared.show()
+    }
+
+    @objc func showWebsiteFromMainMenu() {
+        NSWorkspace.shared.open(URL(string: "https://mocktab.org")!)
     }
 
     // MARK: - Edit menu
@@ -76,12 +84,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     /// `windowWillReturnUndoManager`).
     private func hookEditMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
-        // Locate Edit by its ⌘Z item — reliable regardless of locale.
-        guard let editItem = mainMenu.items.first(where: { item in
-            item.submenu?.items.contains {
-                $0.keyEquivalent == "z" && $0.keyEquivalentModifierMask == .command
-            } ?? false
-        }) else { return }
+        guard let editItem = mainMenu.items.first(where: { $0.title == MainMenuBuilder.editMenuTitle }) else { return }
 
         if editMenu == nil {
             let menu = NSMenu(title: editItem.title)
@@ -337,115 +340,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         }
     }
 
-    // MARK: - Rebuild guard
-
-    // SwiftUI can rebuild NSApp.mainMenu any time a scene re-evaluates (e.g.,
-    // when TabletManager publishes during startup), silently removing menus that
-    // were inserted via AppKit.  Observing didRemoveItemNotification lets us
-    // re-insert them immediately after SwiftUI's rebuild pass settles.
-
-    private var rebuildScheduled = false
-    private var mainMenuObserver: NSObjectProtocol?
-    private var keyWindowObserver: NSObjectProtocol?
     private var flagsTimer: Timer?
-
-    private func watchMainMenuForRebuild() {
-        if let obs = mainMenuObserver {
-            NotificationCenter.default.removeObserver(obs)
-            mainMenuObserver = nil
-        }
-        if let obs = keyWindowObserver {
-            NotificationCenter.default.removeObserver(obs)
-            keyWindowObserver = nil
-        }
-        guard let mainMenu = NSApp.mainMenu else { return }
-        mainMenuObserver = NotificationCenter.default.addObserver(
-            forName: NSMenu.didRemoveItemNotification,
-            object: mainMenu,
-            queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.mainMenuDidRemoveItem() } }
-        // Re-establish the app-menu delegate whenever the key window changes.
-        // On macOS 27+, SwiftUI refreshes triggered by window transitions (e.g.
-        // opening/closing the About window) can silently clear the delegate, which
-        // prevents menuWillOpen from hiding the Factory Reset alternates.
-        keyWindowObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.didBecomeKeyNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.hookAppMenu() } }
-    }
-
-    @objc private func mainMenuDidRemoveItem() {
-        guard !rebuildScheduled else { return }
-        rebuildScheduled = true
-        DispatchQueue.main.async { [self] in
-            insertTabletMenu()
-            insertPresetsMenu()
-            removeEmptyViewMenu()
-            hookAppMenu()
-            hookEditMenu()
-            hookViewMenu()
-            insertTextSizeSubmenu()
-            hookTabBarItem()
-            hookWindowMenu()
-            // Reset only after all work is done so that notifications fired by our
-            // own remove/insert calls (hookWindowMenu removes the old Window item)
-            // are suppressed by the still-true guard and don't re-enter this handler.
-            rebuildScheduled = false
-        }
-    }
-
-    // MARK: - Duplicate View menu removal
-
-    /// SwiftUI generates a redundant View menu alongside our `CommandMenu("View")`.
-    /// The stub's title varies by locale ("View" in English, "Darstellung" in German,
-    /// etc.), and AppKit may inject system items (Full Screen, Show All Tabs) into it
-    /// before our code runs, so we can't match by title alone or by emptiness alone.
-    ///
-    /// Strategy: skip menus whose titles are ones we own, then remove any remaining
-    /// menu item that is either empty or contains the system Full Screen action
-    /// (the reliable fingerprint of AppKit's auto-generated View stub).
-    private func removeEmptyViewMenu() {
-        guard let mainMenu = NSApp.mainMenu else { return }
-
-        // Titles of menus we build ourselves — never remove these even if transiently empty.
-        let ours: Set<String> = [
-            String(localized: "View",     comment: "Menu header: view/navigate tabs"),
-            String(localized: "Tablet",   comment: "Menu header: tablet-specific actions"),
-            String(localized: "Profiles", comment: "Menu header: profile management"),
-            String(localized: "Window",   comment: "Menu header: window management"),
-        ]
-
-        for item in mainMenu.items.dropFirst() where !item.isSeparatorItem {
-            guard !ours.contains(item.title), let sub = item.submenu else { continue }
-            let isEmpty = sub.items.isEmpty
-            let isSystemStub = sub.items.contains {
-                $0.action == #selector(NSWindow.toggleFullScreen(_:))
-            }
-            if isEmpty || isSystemStub {
-                mainMenu.removeItem(item)
-                return
-            }
-        }
-
-        // macOS 26 may generate a system View stub that evades the fingerprint above
-        // (Full Screen moved to the Window menu; stub is no longer empty or ToggleFullScreen).
-        // If more than one menu is titled "View", keep the one with our ⌘1 pane shortcut
-        // and remove any others.
-        let viewTitle = String(localized: "View", comment: "Menu header: view/navigate tabs")
-        let viewItems = mainMenu.items.dropFirst().filter {
-            !$0.isSeparatorItem && $0.title == viewTitle
-        }
-        guard viewItems.count > 1 else { return }
-        for item in viewItems {
-            let hasOurContent = item.submenu?.items.contains {
-                $0.keyEquivalent == "1" && $0.keyEquivalentModifierMask == [.command]
-            } ?? false
-            if !hasOurContent {
-                mainMenu.removeItem(item)
-            }
-        }
-    }
 
     // MARK: - About
 
