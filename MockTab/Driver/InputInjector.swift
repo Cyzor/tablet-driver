@@ -93,8 +93,7 @@ final class InputInjector: @unchecked Sendable {
             guard let self else { return }
             MainActor.assumeIsolated { self.recomputeVirtualScreenBounds() }
             CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
-                self.cachedDisplayIndex = Int.min
-                self.cachedCalibrationOrientation = -1
+                self.displayMapper.invalidateDisplayCache()
             }
             CFRunLoopWakeUp(HIDThread.shared.runLoop)
         }
@@ -150,15 +149,6 @@ final class InputInjector: @unchecked Sendable {
     /// Spikes above ~3 pt/sample while hovering suggest RF interference.
     var jitterLevel: CGFloat { smoother.jitterLevel }
     var isJittery: Bool { smoother.isJittery }
-
-    // MARK: - Relative movement
-    //
-    // When relativeCursorMovement is enabled, the pen acts like a mouse: each report
-    // moves the cursor by the delta from the previous normalized tablet position,
-    // scaled to the display size.  lastRelativeNorm is cleared at proximity exit so
-    // the first report after hover-entry doesn't produce a large jump.
-
-    private var lastRelativeNorm: CGPoint? = nil
 
     // MARK: - Delta gate
     //
@@ -343,40 +333,21 @@ final class InputInjector: @unchecked Sendable {
 
     var injectionSnapshot: InjectionSnapshot?
 
-    // MARK: - Display bounds cache
+    // MARK: - Display mapping
 
-    private var cachedDisplayBounds: CGRect = .zero
-    private var cachedDisplayIndex: Int = Int.min
-    private var cachedDisplayUUID: String = ""
-    private var cachedCalibration: CalibrationEntry?
-    private var cachedCalibrationOrientation: Int = -1
+    /// Display selection, orientation/crop, calibration, and relative-mode
+    /// mapping. See `DisplayMapper.swift`. Caching/threading contract is
+    /// unchanged from when this state lived directly on InputInjector: reads
+    /// and writes happen on HIDThread except `recomputeVirtualScreenBounds()`,
+    /// which callers must invoke on main.
+    private var displayMapper = DisplayMapper()
+
     /// Cached touch coordinate maximums, invalidated when `deviceProductID`
     /// changes.  Saves a per-frame linear scan over `WacomDeviceRegistry`.
     private var cachedTouchMaxX: Int = 1
     private var cachedTouchMaxY: Int = 1
     private var cachedTouchSpecPID: Int = -1
-    /// Cached physical active-area aspect ratio (width/height in mm),
-    /// invalidated when `deviceProductID` changes. nil when the registry
-    /// doesn't have mm dimensions for this device, or the raw digitizer
-    /// coordinate space happens to be isotropic (physical aspect and raw
-    /// maxX/maxY ratio agree, as on Wacom hardware) — either way proportional
-    /// mapping falls back to the raw-unit ratio. Needed because raw
-    /// coordinate density isn't always the same on both axes (confirmed on
-    /// Xencelabs' Pen Display: X and Y have very different units-per-mm), so
-    /// `areaW / areaH` in raw units is not a reliable proxy for the tablet's
-    /// visual aspect ratio — using it directly let proportional mapping
-    /// letterbox against a fictitious ~2.7x-too-tall "aspect ratio" and
-    /// badly distort the mapped area.
-    private var cachedPhysicalAspect: Double?
-    private var cachedAspectSpecPID: Int = -1
-    private var currentToggleIndex: Int = 0
     private var displayObserver: NSObjectProtocol?
-
-    /// Union of all NSScreen frames in CG (top-left origin) coordinates, used by
-    /// relative-mode mapping. NSScreen is AppKit and main-thread-only; reading it
-    /// inside `resolveRelativePoint` blocks moving inject() off the main actor.
-    /// Recomputed on main when displays change (didChangeScreenParametersNotification).
-    private var cachedVirtualScreenBounds: CGRect = .zero
 
     // MARK: - Pen injection
 
@@ -392,11 +363,14 @@ final class InputInjector: @unchecked Sendable {
         }
         let rawPoint: CGPoint
         if snap.relativeCursorMovement {
-            rawPoint = resolveRelativePoint(point, snapshot: snap)
+            rawPoint = displayMapper.resolveRelativePoint(
+                point, snapshot: snap, currentCursorPosition: currentCursorPosition())
         } else {
-            guard let absPoint = mapToScreen(point, snapshot: snap) else {
+            guard let absPoint = displayMapper.mapToScreen(
+                point, snapshot: snap, deviceProductID: deviceProductID)
+            else {
                 // Pen outside active area — deadzone, no events
-                lastRelativeNorm = nil
+                displayMapper.clearRelativeAnchor()
                 return
             }
             rawPoint = absPoint
@@ -503,7 +477,7 @@ final class InputInjector: @unchecked Sendable {
                 lastAuxButtons = [Bool](repeating: false, count: 16)
                 lastRingButtonDown = false
                 hasPostedPoint = false
-                lastRelativeNorm = nil
+                displayMapper.clearRelativeAnchor()
                 lastPostedPressure = -1.0
                 smoother.resetOnProximityExit()
             }
@@ -985,15 +959,7 @@ final class InputInjector: @unchecked Sendable {
         }
 
         // Resolve display bounds — touch shares the pen's target display.
-        let idx = snap.targetDisplayIndex
-        if cachedDisplayIndex != idx {
-            let (bounds, displayID) = resolveDisplayBoundsAndID(snapshot: snap)
-            cachedDisplayBounds = bounds
-            cachedDisplayUUID = CalibrationKey.uuidString(for: displayID)
-            cachedDisplayIndex = idx
-            cachedCalibrationOrientation = -1
-        }
-        let displayBounds = cachedDisplayBounds
+        let displayBounds = displayMapper.displayBounds(for: snap)
 
         // Project each contact to screen-space using the touch-area mapping.
         // Contacts whose raw position falls outside the crop rect return nil
@@ -1923,306 +1889,33 @@ final class InputInjector: @unchecked Sendable {
     }
 
     // MARK: - Screen mapping
-
-    /// In relative mode: computes a delta from the previous normalized tablet position
-    /// and applies it to the current cursor location.
-    ///
-    /// Display mapping is intentionally ignored — it makes no sense for mouse-like input.
-    /// Deltas are scaled by the total virtual screen space (union of all displays), so a
-    /// full active-area sweep traverses the entire available screen real estate.  The
-    /// cursor is clamped to the same total bounds so it can reach any display.
-    ///
-    /// Active-area crop is still respected: a smaller crop = higher sensitivity.
-    private func resolveRelativePoint(_ point: TabletPoint, snapshot: InjectionSnapshot) -> CGPoint {
-        // Virtual screen bounds (union of all displays in CG coordinates) are cached
-        // on main and refreshed via didChangeScreenParametersNotification — see
-        // recomputeVirtualScreenBounds(). NSScreen.screens is AppKit and must not be
-        // touched on the HID thread.
-        let virtualBounds = cachedVirtualScreenBounds
-        let screen =
-            virtualBounds.isEmpty
-            ? CGRect(
-                x: 0, y: 0,
-                width: CGFloat(CGDisplayPixelsWide(CGMainDisplayID())),
-                height: CGFloat(CGDisplayPixelsHigh(CGMainDisplayID())))
-            : virtualBounds
-
-        // Compute normalized position within the active area (same orientation math
-        // as mapToScreen; active-area crop controls sensitivity).
-        let rawX = Double(point.x)
-        let rawY = Double(point.y)
-        let rawMaxX = Double(point.maxX)
-        let rawMaxY = Double(point.maxY)
-        let ox: Double
-        let oy: Double
-        let effMaxX: Double
-        let effMaxY: Double
-        let orientation = snapshot.tabletOrientation
-        switch orientation {
-        case .landscape:
-            ox = rawX
-            oy = rawY
-            effMaxX = rawMaxX
-            effMaxY = rawMaxY
-        case .portrait:
-            ox = rawY
-            oy = rawMaxX - rawX
-            effMaxX = rawMaxY
-            effMaxY = rawMaxX
-        case .landscapeFlipped:
-            ox = rawMaxX - rawX
-            oy = rawMaxY - rawY
-            effMaxX = rawMaxX
-            effMaxY = rawMaxY
-        case .portraitFlipped:
-            ox = rawMaxY - rawY
-            oy = rawX
-            effMaxX = rawMaxY
-            effMaxY = rawMaxX
-        }
-        let areaW = Swift.max(snapshot.activeAreaWidth, 0.001) * effMaxX
-        let areaH = Swift.max(snapshot.activeAreaHeight, 0.001) * effMaxY
-        let norm = CGPoint(
-            x: (ox - snapshot.activeAreaX * effMaxX) / areaW,
-            y: (oy - snapshot.activeAreaY * effMaxY) / areaH)
-
-        // First report after proximity entry: anchor without moving.
-        guard let prev = lastRelativeNorm else {
-            lastRelativeNorm = norm
-            return currentCursorPosition()
-        }
-        lastRelativeNorm = norm
-
-        let dx = (norm.x - prev.x) * screen.width
-        let dy = (norm.y - prev.y) * screen.height
-        let cur = currentCursorPosition()
-        return CGPoint(
-            x: Swift.min(Swift.max(cur.x + dx, screen.minX), screen.maxX),
-            y: Swift.min(Swift.max(cur.y + dy, screen.minY), screen.maxY))
-    }
-
-    /// Maps a tablet point to screen coordinates, accounting for orientation and active area cropping.
-    /// Returns nil if the pen is outside the active area (deadzone).
-    private func mapToScreen(_ point: TabletPoint, snapshot: InjectionSnapshot) -> CGPoint? {
-        let idx = snapshot.targetDisplayIndex
-        if cachedDisplayIndex != idx {
-            let (bounds, displayID) = resolveDisplayBoundsAndID(snapshot: snapshot)
-            cachedDisplayBounds = bounds
-            cachedDisplayUUID = CalibrationKey.uuidString(for: displayID)
-            cachedDisplayIndex = idx
-            // Invalidate calibration cache when display changes.
-            cachedCalibrationOrientation = -1
-        }
-        let displayBounds = cachedDisplayBounds
-
-        // Apply orientation transform before the active-area crop.
-        // The active-area fractions are defined in oriented (post-rotation) space,
-        // so we transform raw hardware coordinates first, then apply the crop.
-        let rawX = Double(point.x)
-        let rawY = Double(point.y)
-        let rawMaxX = Double(point.maxX)
-        let rawMaxY = Double(point.maxY)
-
-        let ox: Double  // oriented x
-        let oy: Double  // oriented y
-        let effMaxX: Double  // range of oriented x axis
-        let effMaxY: Double  // range of oriented y axis
-
-        let orientation = snapshot.tabletOrientation
-        switch orientation {
-        case .landscape:
-            ox = rawX
-            oy = rawY
-            effMaxX = rawMaxX
-            effMaxY = rawMaxY
-        case .portrait:  // 90° CW — USB port moves to left
-            ox = rawY
-            oy = rawMaxX - rawX
-            effMaxX = rawMaxY
-            effMaxY = rawMaxX
-        case .landscapeFlipped:  // 180° — USB port at top
-            ox = rawMaxX - rawX
-            oy = rawMaxY - rawY
-            effMaxX = rawMaxX
-            effMaxY = rawMaxY
-        case .portraitFlipped:  // 90° CCW — USB port moves to right
-            ox = rawMaxY - rawY
-            oy = rawX
-            effMaxX = rawMaxY
-            effMaxY = rawMaxX
-        }
-
-        var areaX = snapshot.activeAreaX * effMaxX
-        var areaY = snapshot.activeAreaY * effMaxY
-        var areaW = Swift.max(snapshot.activeAreaWidth, 0.001) * effMaxX
-        var areaH = Swift.max(snapshot.activeAreaHeight, 0.001) * effMaxY
-
-        if snapshot.proportionalMapping {
-            if cachedAspectSpecPID != deviceProductID {
-                // Wacom hardware's raw units are isotropic, so WacomDeviceRegistry
-                // doesn't need this — only vendor (Xencelabs/XP-Pen/etc.) profiles
-                // carry activeWidthMM/Height for this purpose. Look up by
-                // productID alone (not vendorID+productID): deviceVendorID
-                // is correct at DeviceContext construction time, but proved
-                // unreliable to depend on here in practice (this cache
-                // observably flipped to the raw-ratio fallback partway
-                // through a session, right when the pen tool was first
-                // detected) — simplest fix is to not need it.
-                if let profile = VendorDeviceRegistry.profile(forProductID: deviceProductID),
-                    let w = profile.activeWidthMM, w > 0, let h = profile.activeHeightMM, h > 0
-                {
-                    cachedPhysicalAspect = w / h
-                } else {
-                    cachedPhysicalAspect = nil
-                }
-                cachedAspectSpecPID = deviceProductID
-            }
-            // Visual aspect of the (possibly cropped) active area. With mm
-            // data: physical surface aspect, orientation-swapped, scaled by
-            // the crop fractions of each axis. Without: raw-unit ratio
-            // (correct for isotropic Wacom hardware).
-            let surfaceAspect: Double
-            if let phys = cachedPhysicalAspect {
-                surfaceAspect = orientation.swapsAxes ? 1.0 / phys : phys
-            } else {
-                surfaceAspect = effMaxX / effMaxY
-            }
-            let tabletAspect = surfaceAspect * (areaW / effMaxX) / (areaH / effMaxY)
-            let displayAspect = Double(displayBounds.width) / Double(displayBounds.height)
-            // Crop as a *ratio of aspects*, never by cross-multiplying one
-            // axis's raw units against the other's: nothing guarantees the
-            // two axes share a units-per-mm scale, and if they don't,
-            // `areaH * displayAspect` is not an X-axis length. For
-            // isotropic hardware these expressions reduce exactly to the
-            // old areaH*displayAspect / areaW/displayAspect forms.
-            if tabletAspect > displayAspect {
-                let effectiveW = areaW * (displayAspect / tabletAspect)
-                areaX += (areaW - effectiveW) / 2
-                areaW = effectiveW
-            } else if tabletAspect < displayAspect {
-                let effectiveH = areaH * (tabletAspect / displayAspect)
-                areaY += (areaH - effectiveH) / 2
-                areaH = effectiveH
-            }
-        }
-
-        let relX = (ox - areaX) / areaW
-        let relY = (oy - areaY) / areaH
-
-        // Outside active area — deadzone
-        guard relX >= 0, relX <= 1, relY >= 0, relY <= 1 else { return nil }
-
-        // Apply multi-point calibration transform in normalized space (if available).
-        var calX = relX, calY = relY
-        let orientRaw = orientation.rawValue
-        if cachedCalibrationOrientation != orientRaw {
-            cachedCalibration = snapshot.calibration(for: orientation,
-                                                     displayUUID: cachedDisplayUUID)
-            cachedCalibrationOrientation = orientRaw
-        }
-        if let cal = cachedCalibration {
-            (calX, calY) = cal.apply(to: (relX, relY))
-        }
-
-        var sx = displayBounds.minX + calX * displayBounds.width
-        var sy = displayBounds.minY + calY * displayBounds.height
-
-        // Additive fine-tune offset (points, user-configured) — stacks on top of calibration.
-        sx += snapshot.parallaxOffsetX
-        sy += snapshot.parallaxOffsetY
-
-        sx = Swift.min(Swift.max(sx, displayBounds.minX), displayBounds.maxX)
-        sy = Swift.min(Swift.max(sy, displayBounds.minY), displayBounds.maxY)
-        return CGPoint(x: sx, y: sy)
-    }
-
-    /// Queries the OS display list and returns the target display's bounds and ID.
-    /// Only called on cache miss; results stored in cachedDisplayBounds/cachedDisplayUUID.
-    private func resolveDisplayBoundsAndID(snapshot: InjectionSnapshot) -> (CGRect, CGDirectDisplayID) {
-        let mainID = CGMainDisplayID()
-        let fallback = CGRect(
-            x: 0, y: 0,
-            width: CGFloat(CGDisplayPixelsWide(mainID)),
-            height: CGFloat(CGDisplayPixelsHigh(mainID))
-        )
-        var count: UInt32 = 0
-        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
-            injectLog.error("displayUnion: CGGetActiveDisplayList(count) failed or zero displays — falling back to main display")
-            return (fallback, mainID)
-        }
-        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        guard CGGetActiveDisplayList(count, &ids, &count) == .success else {
-            injectLog.error("displayUnion: CGGetActiveDisplayList(ids) failed — falling back to main display")
-            return (fallback, mainID)
-        }
-        let idx = snapshot.targetDisplayIndex
-        if idx == TabletSettings.displayModeAll {
-            // Union bounding rect spanning every active display — no single display ID.
-            return (ids.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }, 0)
-        }
-        if idx == TabletSettings.displayModeToggle {
-            let rotation = toggleRotation(snapshot: snapshot, allIDs: ids)
-            guard !rotation.isEmpty else { return (CGDisplayBounds(mainID), mainID) }
-            let toggleID = rotation[currentToggleIndex % rotation.count]
-            return (CGDisplayBounds(toggleID), toggleID)
-        }
-        if idx > 0, idx <= ids.count {
-            let targetID = ids[idx - 1]
-            return (CGDisplayBounds(targetID), targetID)
-        }
-        return (CGDisplayBounds(mainID), mainID)
-    }
-
-    /// Returns the ordered list of display IDs in the toggle rotation,
-    /// filtered by the IDs stored in settings (empty = all included).
-    private func toggleRotation(
-        snapshot: InjectionSnapshot,
-        allIDs: [CGDirectDisplayID]
-    ) -> [CGDirectDisplayID] {
-        let stored = snapshot.toggleDisplayIDs
-        if stored.isEmpty { return allIDs }
-        return allIDs.filter { stored.contains($0) }
-    }
+    //
+    // Display selection, orientation/crop, calibration, and relative-mode
+    // mapping live in DisplayMapper.swift. These forward to it for the
+    // handful of call sites outside inject()/injectTouch (button actions,
+    // settings/calibration edits from main).
 
     /// Advances the toggle rotation to the next display in the sequence.
-    /// No-op when fewer than two displays are in the rotation.
     /// Called from fireButtonAction (HIDThread) when a `.displayToggle` binding fires.
     func cycleToggleDisplay(snapshot: InjectionSnapshot) {
-        var count: UInt32 = 0
-        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
-        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
-        let rotation = toggleRotation(snapshot: snapshot, allIDs: ids)
-        guard rotation.count > 1 else { return }
-        currentToggleIndex = (currentToggleIndex + 1) % rotation.count
-        cachedDisplayIndex = Int.min  // force cache miss on next inject
-        cachedCalibrationOrientation = -1
+        displayMapper.cycleToggleDisplay(snapshot: snapshot)
     }
 
     /// Force re-read of calibration data on next inject.
     /// Call after calibration data is stored or cleared. Hops to HIDThread because
-    /// `cachedCalibrationOrientation` is owned there.
+    /// the display mapper's cache is owned there.
     func invalidateCalibrationCache() {
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
-            self?.cachedCalibrationOrientation = -1
+            self?.displayMapper.invalidateCalibrationCache()
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
     }
 
-    /// Recomputes `cachedVirtualScreenBounds` from `NSScreen.screens`.
+    /// Recomputes the virtual-screen union from `NSScreen.screens`.
     /// Must be called on main. Invoked from init and from the
     /// didChangeScreenParametersNotification observer.
     @MainActor
     private func recomputeVirtualScreenBounds() {
-        let primaryH = CGFloat(CGDisplayPixelsHigh(CGMainDisplayID()))
-        let union: CGRect = NSScreen.screens.reduce(CGRect.null) { acc, screen in
-            // Convert AppKit frame (bottom-left origin) → CG frame (top-left origin).
-            let f = screen.frame
-            let cgRect = CGRect(
-                x: f.minX, y: primaryH - f.maxY,
-                width: f.width, height: f.height)
-            return acc.union(cgRect)
-        }
-        cachedVirtualScreenBounds = union
+        displayMapper.recomputeVirtualScreenBounds()
     }
 }
