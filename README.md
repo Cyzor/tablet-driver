@@ -41,6 +41,24 @@ macOS 13 (Ventura) or later.
 
 ---
 
+## Building from source
+
+```sh
+git clone --recurse-submodules https://github.com/Cyzor/tablet-driver.git
+cd tablet-driver
+open MockTab.xcodeproj
+```
+
+Requires Xcode 15 or later. Select the **MockTab** scheme and build. If you're
+building a fork, switch code signing to your own team in the project's Signing
+& Capabilities tab.
+
+Existing clone without `--recurse-submodules`? Run `git submodule update --init`.
+
+To run the decoder test suite: `cd TabletKit && swift test`.
+
+---
+
 ## Screenshots
 
 <img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/tablet-area-dark.png" alt="Tablet area settings" width="480">
@@ -55,7 +73,7 @@ macOS 13 (Ventura) or later.
 - **Pressure curve** — curve editor with Linear, Soft, and Firm presets
 - **Button mapping** — remap barrel buttons, express keys, and touch ring to any modifier + key combination
 - **Per-app overrides** — customized settings that activate automatically
-- **Touch ring** — multi-slot modes with per-slot
+- **Touch ring** — multiple slots, each with its own clockwise/counterclockwise binding
 - **Display mapping** — route the tablet to any connected display
 - **Live scratchpad** — test pressure, tilt, and button assignments
 - **Profile import/export** — save and restore profile configurations
@@ -67,9 +85,10 @@ macOS 13 (Ventura) or later.
 
 ---
 
-## Currently Unsupported
+## Incomplete or unsupported
 
-- Huion, XP-Pen, Xencelabs, or any non-Wacom hardware
+- **Xencelabs** — pen and Quick Keys work, but support is still experimental and incomplete (no dial LED control, no dongle-relay wireless path yet)
+- Huion, XP-Pen, or any other non-Wacom hardware
 - Wacom tablets from recent product cycles not listed above (Cintiq Pro 2023 refresh, etc.)
 - Windows, Linux, or iPad
 
@@ -152,6 +171,7 @@ For post-install issues (pressure not working, conflict warning, tablet not reco
 
 ## Resources
 
+- [CHANGELOG.md](CHANGELOG.md) — release history
 - [mocktab.org](https://mocktab.org) — website and FAQ
 - [Hardware compatibility](https://mocktab.org/hardware.html) — full device list
 - [Troubleshooting](https://mocktab.org/troubleshooting.html) — common problems and fixes

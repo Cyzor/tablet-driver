@@ -26,8 +26,9 @@
 # Pre-flight to add a new release:
 #   1. Bump MARKETING_VERSION in MockTab.xcodeproj.
 #   2. (Optional) Create release-notes/v<new-version>.md.
-#   3. Commit and push.
-#   4. Run this script (or build the "Release" scheme in Xcode).
+#   3. Add a line for the new version to CHANGELOG.md.
+#   4. Commit and push.
+#   5. Run this script (or build the "Release" scheme in Xcode).
 
 set -euo pipefail
 

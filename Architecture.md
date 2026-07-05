@@ -38,7 +38,7 @@ The **snapshot pattern** keeps the two sides loosely coupled. `TabletSettings` l
 
 ```
 MockTab/
-  App/         SwiftUI entry point, menu bar, top-level windows
+  App/         AppKit entry point, menu bar, top-level windows
   Driver/      App glue around the TabletKit decoder layer
                (HID transport, device routing, event injection)
   Settings/    Live settings, presets, calibration, profile load/save
@@ -52,7 +52,7 @@ The decoder layer (`TabletReportDecoder`, the decoder structs, `WacomDeviceRegis
 
 ## TabletKit (SwiftPM package, git submodule)
 
-The pure-logic decoder layer lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit), an MPL-2.0 SwiftPM package checked out here as a git submodule at `TabletKit/`. It holds `TabletReportDecoder` (the protocol every decoder implements), the value types it speaks (`DecodeResult`, `TabletPoint`, `ToolIdentity`, `AuxButtons`, `TouchContact`, `WirelessStatus`, `DigitizerSpec`, `DecoderState`), `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, the 9 Wacom decoder structs, and pure-logic helpers (`CursorSmoother`, `ModifierMath`). Nothing in TabletKit touches AppKit, SwiftUI, or app-wide state; the gear that does lives in this repo's `MockTab/Driver/` (`HIDThread`, `HIDCapture`, `CaptureEngine`, `InputInjector`, `TabletManager`, `DeviceContext`, the three `Wacom*Device` classes) plus everything under `Settings/` and `UI/`.
+The pure-logic decoder layer lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit), an MPL-2.0 SwiftPM package checked out here as a git submodule at `TabletKit/`. It holds `TabletReportDecoder` (the protocol every decoder implements), the value types it speaks (`DecodeResult`, `TabletPoint`, `ToolIdentity`, `AuxButtons`, `TouchContact`, `WirelessStatus`, `DigitizerSpec`, `DecoderState`), `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, the Wacom decoder structs (one per protocol family), and pure-logic helpers (`CursorSmoother`, `ModifierMath`). Nothing in TabletKit touches AppKit, SwiftUI, or app-wide state; the gear that does lives in this repo's `MockTab/Driver/` (`HIDThread`, `HIDCapture`, `CaptureEngine`, `InputInjector`, `TabletManager`, `DeviceContext`, the three `Wacom*Device` classes) plus everything under `Settings/` and `UI/`.
 
 `MockTab.xcodeproj` consumes TabletKit through an `XCLocalSwiftPackageReference` that points at `TabletKit` (the submodule). Each app commit pins the exact TabletKit commit it builds against; clone with `--recurse-submodules` (or run `git submodule update --init`). Decoder work happens inside the submodule and is pushed to the TabletKit repo — push the kit before pushing an app commit that bumps the pin. Files in this repo that touch TabletKit types carry an explicit `import TabletKit`.
 
@@ -122,7 +122,7 @@ The settings window hosts a tab bar; each tab maps to one file in `UI/Panes/`. E
 
 ## Tests
 
-The decoder test suite lives in `TabletKit/Tests/TabletKitTests/` and runs via `swift test` from the submodule (`cd TabletKit && swift test`). Each decoder has its own fixture suite; the `CaptureLogParser` replays the logs the in-app `HIDCapture` writes, so regressions surface as diff-able test failures. The suite (272 tests as of TabletKit 0.2.0) runs in well under a second.
+The decoder test suite lives in `TabletKit/Tests/TabletKitTests/` and runs via `swift test` from the submodule (`cd TabletKit && swift test`). Each decoder has its own fixture suite; the `CaptureLogParser` replays the logs the in-app `HIDCapture` writes, so regressions surface as diff-able test failures. The suite (300+ tests — see CI for the current count) runs in well under a second.
 
 ## Threading rules (the short version)
 

@@ -1,21 +1,48 @@
 # Contributing to MockTab
 
-MockTab is a native macOS driver for older Wacom drawing tablets.
+MockTab is a native macOS driver for older Wacom drawing tablets. It ships
+under GPL-3.0-or-later.
 
-MockTab ships under GPL-3.0-or-later.
+## Getting the code running
 
-## Contribution Process
+```sh
+git clone --recurse-submodules https://github.com/Cyzor/tablet-driver.git
+cd tablet-driver
+open MockTab.xcodeproj
+```
 
-- **Bug reports** for specific, reproducible problems on supported hardware.
-- **Device-support requests** for unrecognized Wacom tablets. The *Collect Device Data…* button in the Info pane produces the JSON capture the device support template requires.
+Requires Xcode 15 or later. Select the **MockTab** scheme and build. Run the
+decoder test suite with `cd TabletKit && swift test`. See the
+[README's Building from source section](README.md#building-from-source) for
+more detail.
+
+## Reading the code
+
+[`Architecture.md`](Architecture.md) has a pipeline diagram, the threading
+rules, and a "Where to start" table mapping common goals to files — read that
+before diving into `MockTab/` or `TabletKit/`.
+
+## What's welcome first
+
+These are the easiest PRs to review and merge, roughly in order of how much
+context they need:
+
+- **Device fixture tests and registry rows** — the decoder test suite in
+  `TabletKit/Tests/` is fixture-based; adding a captured report as a new
+  fixture is low-risk and highly valued.
 - **Translation corrections** for the German, Japanese, or Spanish locales.
-- **Decoder work** belongs on [TabletKit](https://github.com/Cyzor/TabletKit) — see its [`Contributing.md`](https://github.com/Cyzor/TabletKit/blob/main/Contributing.md) for the capture and submission process.
+- **Documentation fixes** — typos, stale info, unclear steps.
+- **Device-support requests** for unrecognized Wacom tablets — see below.
+- **Bug reports** for specific, reproducible problems on supported hardware.
+- **Decoder work** belongs on [TabletKit](https://github.com/Cyzor/TabletKit)
+  — see its [`Contributing.md`](https://github.com/Cyzor/TabletKit/blob/main/Contributing.md)
+  for the capture and submission process.
 
 ## How to file a bug report
 
 1. Reproduce the issue and note the steps.
 2. In MockTab, open the Info pane and press **Copy Diagnostics** to bundle your driver state into a text block.
-3. Open an issue using the bug report template. Include: macOS version, tablet model, steps to reproduce, and the diagnostics output.
+3. Open an issue using the [bug report template](.github/ISSUE_TEMPLATE/bug-report.yml). Include: macOS version, tablet model, steps to reproduce, and the diagnostics output.
 
 ## How to request device support
 
@@ -33,10 +60,10 @@ MockTab ships under GPL-3.0-or-later.
 - macOS version and hardware tested on.
 - Steps to verify the change.
 
-Not in Scope:
-
-- **Feature requests filed as Issues.** Issues track confirmed work; open an issue to propose a feature only if you're prepared to help build it.
-
+**Feature requests as standalone issues aren't tracked** — issues here are for
+confirmed work (bugs, device support, translations), so an untracked feature
+request tends to sit unanswered. If you want a feature, the fastest path is
+proposing it alongside a willingness to help build it.
 
 ## Forking
 

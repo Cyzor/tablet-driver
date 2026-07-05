@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a problem with MockTab on supported hardware
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before submitting:** in MockTab, open the Info pane and press **Copy Diagnostics** to bundle your driver state into a text block. Paste it in the **Diagnostics** field below.
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "e.g. 15.4"
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Tablet model
+      placeholder: "e.g. Intuos Pro Medium PTH-660"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Paste the output of Info pane → Copy Diagnostics.
+      placeholder: |
+        ```
+        <paste diagnostics output here>
+        ```
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
