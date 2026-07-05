@@ -342,7 +342,7 @@ final class SettingsWindowController: NSWindowController {
         let hasTouchTab = productID.flatMap { WacomDeviceRegistry.spec(for: $0) }?.hasFingerTouch == true
         window.minSize = NSSize(width: CGFloat(hasTouchTab ? 9 : 8) * 70 + 80, height: 500)
 
-        // Don't auto-save frame for device-specific windows — PreferencesWindowController
+        // Don't auto-save frame for device-specific windows — SettingsWindowManager
         // handles manual persistence to support per-device window positions.
         if productID == nil {
             window.setFrameAutosaveName("PreferencesWindow")
@@ -411,7 +411,7 @@ final class SettingsWindowController: NSWindowController {
         let um = docUndoManager
         let onDevice: (Int) -> Void = { [weak self] pid in
             guard let self else { return }
-            PreferencesWindowController.shared.replaceWindow(self, withDeviceID: pid)
+            SettingsWindowManager.shared.replaceWindow(self, withDeviceID: pid)
         }
 
         addTab(label: Self.tabLabels[Tab.tabletArea.rawValue], symbol: "rectangle.dashed", height: 790) {

@@ -41,15 +41,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = MainMenuBuilder.build()
         StatusItemController.shared.start()
 
-        let settings = PreferencesWindowController.shared.settings
+        let settings = SettingsWindowManager.shared.settings
         AppMenuController.shared.setup(settings: settings)
         TabletManager.shared.start()
         AppWatcher.shared.start()
 
         // Only open a fresh window on first launch — subsequent launches
-        // restore their windows via PreferencesWindowController.restoreWindows().
+        // restore their windows via SettingsWindowManager.restoreWindows().
         DispatchQueue.main.async {
-            PreferencesWindowController.shared.showIfNoSavedSession()
+            SettingsWindowManager.shared.showIfNoSavedSession()
             HelpWindowController.shared.restoreIfWasOpen()
         }
 
@@ -93,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         if !hasVisibleWindows {
-            PreferencesWindowController.shared.show()
+            SettingsWindowManager.shared.show()
         }
         NSApp.activate(ignoringOtherApps: true)
         return true
@@ -130,7 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !knownTablets.isEmpty {
             menu.addItem(.separator())
             let connectedIDs = TabletManager.shared.connectedProductIDs
-            let pwc = PreferencesWindowController.shared
+            let pwc = SettingsWindowManager.shared
             let tm = TabletManager.shared
             for tablet in knownTablets {
                 let connected = connectedIDs.contains(tablet.id)
@@ -156,11 +156,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func dockShowTabletArea() {
-        PreferencesWindowController.shared.showTab(at: 0)
+        SettingsWindowManager.shared.showTab(at: 0)
     }
 
     @objc private func dockShowButtonMapping() {
-        PreferencesWindowController.shared.showTab(at: 2)
+        SettingsWindowManager.shared.showTab(at: 2)
     }
 
     @objc private func dockDetectTablet() {
@@ -168,7 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func dockOpenTablet(_ sender: NSMenuItem) {
-        PreferencesWindowController.shared.openWindow(forProductID: sender.tag)
+        SettingsWindowManager.shared.openWindow(forProductID: sender.tag)
         NSApp.activate(ignoringOtherApps: true)
     }
 }

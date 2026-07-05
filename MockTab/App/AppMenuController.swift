@@ -60,7 +60,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     // MARK: - View menu item actions (targets for MainMenuBuilder's ⌘1–⌘8 items)
 
     @objc func showTabFromMainMenu(_ sender: NSMenuItem) {
-        PreferencesWindowController.shared.showTab(at: sender.tag)
+        SettingsWindowManager.shared.showTab(at: sender.tag)
     }
 
     @objc func showHelpFromMainMenu() {
@@ -504,9 +504,9 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     private func performFactoryReset() {
-        // Tell PreferencesWindowController not to save when willTerminate fires.
+        // Tell SettingsWindowManager not to save when willTerminate fires.
         // This prevents the window state from being re-populated after we clear it.
-        PreferencesWindowController.shared.skipNextWindowSave()
+        SettingsWindowManager.shared.skipNextWindowSave()
 
         // Wipe the entire UserDefaults domain in one call.  This removes every
         // key ever written: device settings, presets, tool settings, registry,
@@ -598,7 +598,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             for tablet in registry.knownTablets {
                 let connected = tm.connectedProductIDs.contains(tablet.id)
                 let suffix = connected ? (tm.contexts[tablet.id]?.batteryMenuSuffix ?? "") : ""
-                let label = PreferencesWindowController.shared.menuLabel(forProductID: tablet.id) + suffix
+                let label = SettingsWindowManager.shared.menuLabel(forProductID: tablet.id) + suffix
                 let item = NSMenuItem(
                     title: label,
                     action: #selector(openDeviceWindow(_:)),
@@ -615,11 +615,11 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func newSettingsWindow() {
-        PreferencesWindowController.shared.openNewWindow()
+        SettingsWindowManager.shared.openNewWindow()
     }
 
     @objc private func openDeviceWindow(_ sender: NSMenuItem) {
-        PreferencesWindowController.shared.openWindow(forProductID: sender.tag)
+        SettingsWindowManager.shared.openWindow(forProductID: sender.tag)
     }
 
     @objc private func detectTablet() {
@@ -639,7 +639,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             ?? tm.connectedProductIDs.first
             ?? DeviceRegistry.shared.knownTablets.first?.id
         guard let pid else { return }
-        PreferencesWindowController.shared.openWindow(forProductID: pid)
+        SettingsWindowManager.shared.openWindow(forProductID: pid)
     }
 
     // MARK: - **Profiles menu
@@ -751,7 +751,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     // MARK: - Configuration import / export / reveal
 
     @objc private func menuImportConfiguration() {
-        PreferencesWindowController.shared.showTab(.profiles)
+        SettingsWindowManager.shared.showTab(.profiles)
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.allowsMultipleSelection = false
@@ -769,7 +769,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func menuExportConfiguration() {
-        PreferencesWindowController.shared.showTab(.profiles)
+        SettingsWindowManager.shared.showTab(.profiles)
         let exporter = PresetExporter(
             registry: DeviceRegistry.shared,
             tabletManager: TabletManager.shared)
@@ -923,7 +923,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func showPresetsTab() {
-        PreferencesWindowController.shared.showTab(.profiles)
+        SettingsWindowManager.shared.showTab(.profiles)
     }
 
 }

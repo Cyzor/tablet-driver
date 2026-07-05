@@ -64,7 +64,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
 
-        let pwc = PreferencesWindowController.shared
+        let pwc = SettingsWindowManager.shared
         let tm = TabletManager.shared
         let settings = pwc.settings
 
@@ -177,11 +177,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     // MARK: - Actions
 
     @objc private func showTabletArea() {
-        PreferencesWindowController.shared.showTab(at: 0)
+        SettingsWindowManager.shared.showTab(at: 0)
     }
 
     @objc private func showButtonMapping() {
-        PreferencesWindowController.shared.showTab(at: 2)
+        SettingsWindowManager.shared.showTab(at: 2)
     }
 
     @objc private func detectTablet() {
@@ -189,20 +189,20 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openTablet(_ sender: NSMenuItem) {
-        PreferencesWindowController.shared.openWindow(forProductID: sender.tag)
+        SettingsWindowManager.shared.openWindow(forProductID: sender.tag)
     }
 
     @objc private func focusWindow(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? Int else { return }
-        PreferencesWindowController.shared.focusWindow(id: id)
+        SettingsWindowManager.shared.focusWindow(id: id)
     }
 
     @objc private func activateDeviceDefaults() {
-        PreferencesWindowController.shared.settings.activate(nil)
+        SettingsWindowManager.shared.settings.activate(nil)
     }
 
     @objc private func activateProfile(_ sender: NSMenuItem) {
-        let settings = PreferencesWindowController.shared.settings
+        let settings = SettingsWindowManager.shared.settings
         guard let uuid = sender.representedObject as? UUID,
               let profile = settings.profiles.first(where: { $0.id == uuid })
         else { return }

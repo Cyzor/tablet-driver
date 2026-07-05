@@ -130,7 +130,7 @@ final class DeviceRegistry: ObservableObject {
     }
 
     /// Last-known vendor ID for a previously-connected product, or nil if
-    /// never recorded. Used by `PreferencesWindowController` to reconstruct a
+    /// never recorded. Used by `SettingsWindowManager` to reconstruct a
     /// stub `DeviceContext` with the correct vendor when restoring a window
     /// at launch, before the real device has reconnected this session.
     func vendorID(forProductID productID: Int) -> Int? {

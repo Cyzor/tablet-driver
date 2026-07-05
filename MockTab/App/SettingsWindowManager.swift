@@ -7,9 +7,9 @@ import Combine
 import SwiftUI
 
 @MainActor
-final class PreferencesWindowController: ObservableObject {
+final class SettingsWindowManager: ObservableObject {
 
-    static let shared = PreferencesWindowController()
+    static let shared = SettingsWindowManager()
 
     let settings = TabletSettings()
 
@@ -74,7 +74,7 @@ final class PreferencesWindowController: ObservableObject {
         }
     }
 
-    /// Tell PreferencesWindowController to skip the next window state save.
+    /// Tell SettingsWindowManager to skip the next window state save.
     /// Used by Factory Reset to prevent willTerminate from re-saving cleared state.
     func skipNextWindowSave() {
         skipWindowSave = true

@@ -27,7 +27,7 @@
 		AA000014 /* ButtonMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ButtonMappingView.swift */; };
 		AA000015 /* DisplayMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* DisplayMappingView.swift */; };
 		AA000016 /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* ScratchpadView.swift */; };
-		AA000017 /* PreferencesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* PreferencesWindowController.swift */; };
+		AA000017 /* SettingsWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* SettingsWindowManager.swift */; };
 		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* Assets.xcassets */; };
 		AA000033 /* InfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* InfoView.swift */; };
 		AA000034 /* ProfilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* ProfilesView.swift */; };
@@ -108,7 +108,7 @@
 		AB000014 /* ButtonMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingView.swift; sourceTree = "<group>"; };
 		AB000015 /* DisplayMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMappingView.swift; sourceTree = "<group>"; };
 		AB000016 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
-		AB000017 /* PreferencesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesWindowController.swift; sourceTree = "<group>"; };
+		AB000017 /* SettingsWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowManager.swift; sourceTree = "<group>"; };
 		AB000020 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AB000021 /* MockTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MockTab.entitlements; sourceTree = "<group>"; };
 		AB000030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -207,7 +207,7 @@
 				AB000001 /* MockTabApp.swift */,
 				AB000002 /* StatusItemController.swift */,
 				AB000074 /* MainMenuBuilder.swift */,
-				AB000017 /* PreferencesWindowController.swift */,
+				AB000017 /* SettingsWindowManager.swift */,
 				AB000043 /* SettingsWindowController.swift */,
 				AB000036 /* AppMenuController.swift */,
 				05BFE59B2F79FE5200782B9E /* AboutWindowController.swift */,
@@ -433,7 +433,7 @@
 				AA000001 /* MockTabApp.swift in Sources */,
 				AA000002 /* StatusItemController.swift in Sources */,
 				AA000074 /* MainMenuBuilder.swift in Sources */,
-				AA000017 /* PreferencesWindowController.swift in Sources */,
+				AA000017 /* SettingsWindowManager.swift in Sources */,
 				AA000043 /* SettingsWindowController.swift in Sources */,
 				AA000036 /* AppMenuController.swift in Sources */,
 				057B24D82F899E3A0032B29E /* Path+SVGData.swift in Sources */,

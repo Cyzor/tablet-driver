@@ -182,7 +182,7 @@ struct DisplayMappingView: View {
                     if let wc = NSApp.keyWindow?.windowController as? SettingsWindowController {
                         wc.showTab(.buttons)
                     } else {
-                        PreferencesWindowController.shared.showTab(.buttons)
+                        SettingsWindowManager.shared.showTab(.buttons)
                     }
                 }
                 .buttonStyle(.bordered)
