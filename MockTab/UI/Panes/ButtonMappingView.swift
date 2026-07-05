@@ -583,7 +583,18 @@ struct ButtonMappingView: View {
         let isMouse = toolSpec?.toolType == .mouse
         // For mice, show all 5 HID-path button slots regardless of spec.buttonCount
         // (spec.buttonCount describes only the digitizer path, not the full HID mouse report)
-        let btnCount = isMouse ? 5 : (toolSpec?.buttonCount ?? 2)
+        //
+        // toolSpec is nil whenever no pen has reported in yet (before first
+        // proximity, or between proximity events — TabletManager zeroes
+        // activeToolCode on every proximity exit). The fallback used to be a
+        // flat 2, which meant the Xencelabs 3-button pen's pane reverted to a
+        // 2-button view any time the pen lifted off — hiding the 3rd slot even
+        // though it's a real assignable button on that hardware. Both
+        // Xencelabs pens share one spec (buttonCount: 3, see WacomToolSpec's
+        // Xencelabs section) since the wire protocol can't tell them apart,
+        // so defaulting to 3 here is correct for either pen; a genuine
+        // 2-button pen just leaves the 3rd slot unused.
+        let btnCount = isMouse ? 5 : (toolSpec?.buttonCount ?? (spec?.parser == .xencelabs ? 3 : 2))
         let hasWheel = toolSpec?.hasWheel == true
 
         Section {

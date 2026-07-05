@@ -113,6 +113,9 @@ final class InputInjector: @unchecked Sendable {
         if let tap = flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: false) }
         watchdogTimer.map { CFRunLoopTimerInvalidate($0) }
         pendingMouseUp.map { CFRunLoopTimerInvalidate($0) }
+        proximityExitDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+        button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+        button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
     }
 
     // MARK: - State
@@ -226,6 +229,44 @@ final class InputInjector: @unchecked Sendable {
     /// HIDThread-owned modifier state without crossing a thread boundary.
     private var watchdogTimer: CFRunLoopTimer?
     private let watchdogInterval: TimeInterval = 0.4
+
+    /// Xencelabs-only: holds off the proximity-exit cleanup below so range
+    /// loss doesn't cut a held barrel-button click/modifier short. This
+    /// hardware's out-of-range tag (`XencelabsDecoder.tagOutOfRange`) trips
+    /// at a noticeably shorter distance than Wacom's, so ordinary tilt/lift
+    /// during a gesture crosses it far more readily; confirmed against
+    /// Xencelabs's own driver, which visibly keeps a barrel-button click
+    /// (e.g. a context menu opened via right-click) held through range loss
+    /// and only releases it once the pen returns and reports the button
+    /// actually up. Wacom tablets don't need this — gated to vendorID
+    /// 0x28BD to avoid adding mouse-up latency to every pen lift elsewhere.
+    ///
+    /// Two regimes, chosen when the exit is scheduled (see the scheduling
+    /// site): if no tip/barrel/mouse button is held, a short fixed debounce
+    /// just absorbs a stray hover blip. If one *is* held, cleanup is deferred
+    /// for much longer — genuinely indefinitely, in spirit — because the
+    /// correct resolution is "wait for the pen to come back and tell us
+    /// the real button state," not "guess after some safe delay." The long
+    /// interval is purely a safety net (disconnect, pen set down and
+    /// forgotten) so a click can't get stuck forever.
+    private var proximityExitDebounceTimer: CFRunLoopTimer?
+    private let proximityExitDebounceInterval: TimeInterval = 0.15
+    private let proximityExitHeldButtonSafetyInterval: TimeInterval = 4.0
+
+    /// Xencelabs-only: debounces the barrel-button *bits themselves*, not
+    /// just full proximity loss. This hardware's button-contact sensing
+    /// range is shorter than its position-sensing range — a button can
+    /// report released while the pen is still tracked and fully in
+    /// proximity, then reassert a moment later, so hovering right at that
+    /// boundary makes a held click flicker off and on even without a
+    /// proximity transition at all. Only the up edge is deferred (a press
+    /// should always feel instant); if the button reasserts before the
+    /// timer fires, the release never happened as far as anything
+    /// downstream is concerned. Gated to vendorID 0x28BD; Wacom hardware's
+    /// button and position sensing share one range, so this doesn't apply.
+    private var button1UpDebounceTimer: CFRunLoopTimer?
+    private var button2UpDebounceTimer: CFRunLoopTimer?
+    private let buttonUpDebounceInterval: TimeInterval = 0.08
 
     // MARK: - Time-based leak watchdog
     //
@@ -386,6 +427,58 @@ final class InputInjector: @unchecked Sendable {
             ? (usbMouseLeftHeld ? false : point.penButton1)
             : pressure > 0.004
 
+        // ── Xencelabs proximity-dropout debounce ────────────────────────────────
+        // See proximityExitDebounceTimer's declaration for why. A lone
+        // out-of-range report defers the exit cleanup instead of running it
+        // immediately; a real report reappearing before the timer fires
+        // cancels the deferral and this frame is processed as a normal
+        // in-proximity sample (lastProximity never flipped, so nothing else
+        // downstream notices the blip).
+        if deviceVendorID == 0x28BD {
+            if point.inProximity {
+                if let timer = proximityExitDebounceTimer {
+                    CFRunLoopTimerInvalidate(timer)
+                    proximityExitDebounceTimer = nil
+                }
+            } else if lastProximity && proximityExitDebounceTimer == nil {
+                // A held tip/barrel/mouse button gets the long safety-net delay
+                // instead of the short blip debounce — see the property's doc.
+                let anyButtonHeld =
+                    lastTipDown || lastButton1Down || lastButton2Down
+                    || lastMiddleDown || usbMouseLeftHeld || lastUSBMouseMask != 0
+                let delay = anyButtonHeld
+                    ? proximityExitHeldButtonSafetyInterval : proximityExitDebounceInterval
+                if anyButtonHeld {
+                    // The button-level up-debounce (handleXencelabsBarrelButton) runs on
+                    // its own short timer and would otherwise fire a release out from
+                    // under this longer wait — e.g. a transient hover-blip up-edge right
+                    // before crossing fully out of range armed its 80ms timer, which would
+                    // still fire mid-wait and release the button behind our back. Once
+                    // proximity itself is the thing being waited on, it alone decides.
+                    if let t = button1UpDebounceTimer {
+                        CFRunLoopTimerInvalidate(t)
+                        button1UpDebounceTimer = nil
+                    }
+                    if let t = button2UpDebounceTimer {
+                        CFRunLoopTimerInvalidate(t)
+                        button2UpDebounceTimer = nil
+                    }
+                }
+                let timer = CFRunLoopTimerCreateWithHandler(
+                    kCFAllocatorDefault,
+                    CFAbsoluteTimeGetCurrent() + delay,
+                    0, 0, 0
+                ) { [weak self] _ in
+                    guard let self else { return }
+                    self.proximityExitDebounceTimer = nil
+                    self.commitProximityExit(snap: snap)
+                }
+                CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+                proximityExitDebounceTimer = timer
+                return
+            }
+        }
+
         let enteringProximity = point.inProximity && !lastProximity
         let eraserFlipped = point.inProximity && lastProximity && (point.eraser != lastEraserMode)
 
@@ -405,91 +498,10 @@ final class InputInjector: @unchecked Sendable {
                 lastEraserMode = point.eraser
                 let s = tool.smoothingStrength
                 smoother.smoothingAlpha = s > 0 ? 1.0 - s * 0.85 : 1.0
+                lastProximity = true
             } else {
-                activeToolIsEraser = false
-                lastEraserMode = false
-                let exitPoint = smoother.smoothedPoint
-                if lastTipDown {
-                    postMouseUp(
-                        button: activeButton, at: exitPoint,
-                        clickCount: activeClickCount,
-                        snapshot: snap)
-                    lastTipDown = false
-                }
-                // Release any USB HID mouse buttons that were held when the tool left
-                // the tablet (e.g. user yanked the KC-100 off the surface mid-drag).
-                if lastUSBMouseMask != 0 {
-                    if usbMouseLeftHeld {
-                        postMouseUp(
-                            button: .left, at: exitPoint,
-                            clickCount: activeClickCount,
-                            snapshot: snap)
-                        usbMouseLeftHeld = false
-                    }
-                    if (lastUSBMouseMask & 0x02) != 0 {
-                        postMouseUp(
-                            button: .right, at: exitPoint, clickCount: 1,
-                            snapshot: snap)
-                    }
-                    if (lastUSBMouseMask & 0x04) != 0 {
-                        if let e = CGEvent(
-                            mouseEventSource: sessionSource, mouseType: .otherMouseUp,
-                            mouseCursorPosition: exitPoint, mouseButton: .center)
-                        {
-                            e.flags = currentEventFlags
-                            finalizeAndPost(e)
-                        }
-                    }
-                    lastUSBMouseMask = 0
-                }
-                if lastMiddleDown {
-                    if let e = CGEvent(
-                        mouseEventSource: sessionSource, mouseType: .otherMouseUp,
-                        mouseCursorPosition: exitPoint, mouseButton: .center)
-                    {
-                        e.flags = currentEventFlags
-                        finalizeAndPost(e)
-                    }
-                    lastMiddleDown = false
-                }
-                // Safety valve: release any modifier keys stranded by a missed decoder
-                // release event (e.g. BT packet drop leaving lastBTPadKeys non-zero).
-                // Per-transport fixes (Defect A/B) prevent accumulation; this ensures
-                // proximity exit is always a clean slate regardless.
-                releaseAllSyntheticModifiers()
-
-                // Do NOT post proximity-exit flagsChanged events for physical modifiers.
-                // flagsChanged events posted via cghidEventTap update the system keyboard
-                // state (Keyboard Viewer, hidSystemState), so posting one with a modifier
-                // bit SET because tapLastPhysicalFlags still reflects a held key causes the
-                // Keyboard Viewer to show it as stuck.  The physical keyboard's own
-                // flagsChanged events are the authoritative source for physical modifier
-                // state; apps receive them independently of our event stream.
-                // The race this sync tried to fix (our last move event arriving after the
-                // physical key-up, leaving apps with stale modifier state) is now handled
-                // by moveSafeEventFlags including tapLastPhysicalFlags, so the last move
-                // event already carries the correct physical state.
-                lastLoggedManagedFlags = 0  // reset for clean logging on next proximity entry
-
-                // Reset aux state so the next injectAux fires fresh transitions.
-                cancelPendingMouseUp()
-                hoverDragButton = nil
-                lastAuxButtons = [Bool](repeating: false, count: 16)
-                lastRingButtonDown = false
-                hasPostedPoint = false
-                displayMapper.clearRelativeAnchor()
-                lastPostedPressure = -1.0
-                smoother.resetOnProximityExit()
+                commitProximityExit(snap: snap)
             }
-            // Record the moment the pen leaves proximity so finger-touch can
-            // apply a short grace window (touchArbitrationGrace) before
-            // accepting contacts again — prevents the palm rejection failure
-            // pattern where lifting the pen drops a stray finger on the
-            // tablet and the touch path races the pen-up.
-            if lastProximity && !point.inProximity {
-                penProximityExitTime = CFAbsoluteTimeGetCurrent()
-            }
-            lastProximity = point.inProximity
         }
 
         // ── Eraser/tip flip (while in proximity) ───────────────────────────────
@@ -643,25 +655,39 @@ final class InputInjector: @unchecked Sendable {
         }
         lastTipDown = tipDown
 
-        // ── Pen button transitions (always immediate) ──────────────────────────
+        // ── Pen button transitions (always immediate, except Xencelabs's
+        //    deferred-release debounce — see button1/2UpDebounceTimer) ─────────
         let btn1 = tool.penButton1Binding
         let btn2 = tool.penButton2Binding
 
-        if point.penButton1 != lastButton1Down {
-            // Update tracking state first so the quiescent check inside
-            // fireButtonAction sees the current button state, not the pre-transition state.
-            lastButton1Down = point.penButton1
-            // For mouse tools button1 drives the primary click (tipDown above);
-            // dispatching it again as a button action would double-fire.
+        if deviceVendorID == 0x28BD {
             if !activeToolIsMouse {
-                fireButtonAction(btn1, down: point.penButton1, at: screenPoint,
+                handleXencelabsBarrelButton(
+                    slot: .one, down: point.penButton1, binding: btn1,
+                    at: screenPoint, snap: snap, settings: settings)
+            } else {
+                lastButton1Down = point.penButton1
+            }
+            handleXencelabsBarrelButton(
+                slot: .two, down: point.penButton2, binding: btn2,
+                at: screenPoint, snap: snap, settings: settings)
+        } else {
+            if point.penButton1 != lastButton1Down {
+                // Update tracking state first so the quiescent check inside
+                // fireButtonAction sees the current button state, not the pre-transition state.
+                lastButton1Down = point.penButton1
+                // For mouse tools button1 drives the primary click (tipDown above);
+                // dispatching it again as a button action would double-fire.
+                if !activeToolIsMouse {
+                    fireButtonAction(btn1, down: point.penButton1, at: screenPoint,
+                                     snapshot: snap, settings: settings)
+                }
+            }
+            if point.penButton2 != lastButton2Down {
+                lastButton2Down = point.penButton2
+                fireButtonAction(btn2, down: point.penButton2, at: screenPoint,
                                  snapshot: snap, settings: settings)
             }
-        }
-        if point.penButton2 != lastButton2Down {
-            lastButton2Down = point.penButton2
-            fireButtonAction(btn2, down: point.penButton2, at: screenPoint,
-                             snapshot: snap, settings: settings)
         }
 
         // ── Middle button (mouse tool only, always immediate) ──────────────────
@@ -680,6 +706,187 @@ final class InputInjector: @unchecked Sendable {
         // ── Scroll wheel (mouse tool only, always immediate) ───────────────────
         if point.mouseWheelDelta != 0 {
             postScrollWheelEvent(delta: point.mouseWheelDelta, at: screenPoint)
+        }
+    }
+
+    /// Runs the proximity-exit cleanup: releases the tip, any held USB/middle
+    /// mouse buttons, and synthetic modifiers, then resets per-proximity
+    /// state. Called immediately from `inject()` for every device, or from
+    /// `proximityExitDebounceTimer`'s handler for Xencelabs once a real exit
+    /// has been confirmed (see that property's declaration).
+    private func commitProximityExit(snap: InjectionSnapshot) {
+        activeToolIsEraser = false
+        lastEraserMode = false
+        let exitPoint = smoother.smoothedPoint
+        if lastTipDown {
+            postMouseUp(
+                button: activeButton, at: exitPoint,
+                clickCount: activeClickCount,
+                snapshot: snap)
+            lastTipDown = false
+        }
+        // Release any USB HID mouse buttons that were held when the tool left
+        // the tablet (e.g. user yanked the KC-100 off the surface mid-drag).
+        if lastUSBMouseMask != 0 {
+            if usbMouseLeftHeld {
+                postMouseUp(
+                    button: .left, at: exitPoint,
+                    clickCount: activeClickCount,
+                    snapshot: snap)
+                usbMouseLeftHeld = false
+            }
+            if (lastUSBMouseMask & 0x02) != 0 {
+                postMouseUp(
+                    button: .right, at: exitPoint, clickCount: 1,
+                    snapshot: snap)
+            }
+            if (lastUSBMouseMask & 0x04) != 0 {
+                if let e = CGEvent(
+                    mouseEventSource: sessionSource, mouseType: .otherMouseUp,
+                    mouseCursorPosition: exitPoint, mouseButton: .center)
+                {
+                    e.flags = currentEventFlags
+                    finalizeAndPost(e)
+                }
+            }
+            lastUSBMouseMask = 0
+        }
+        if lastMiddleDown {
+            if let e = CGEvent(
+                mouseEventSource: sessionSource, mouseType: .otherMouseUp,
+                mouseCursorPosition: exitPoint, mouseButton: .center)
+            {
+                e.flags = currentEventFlags
+                finalizeAndPost(e)
+            }
+            lastMiddleDown = false
+        }
+        // Safety valve: release any modifier keys stranded by a missed decoder
+        // release event (e.g. BT packet drop leaving lastBTPadKeys non-zero).
+        // Per-transport fixes (Defect A/B) prevent accumulation; this ensures
+        // proximity exit is always a clean slate regardless.
+        releaseAllSyntheticModifiers()
+
+        // Do NOT post proximity-exit flagsChanged events for physical modifiers.
+        // flagsChanged events posted via cghidEventTap update the system keyboard
+        // state (Keyboard Viewer, hidSystemState), so posting one with a modifier
+        // bit SET because tapLastPhysicalFlags still reflects a held key causes the
+        // Keyboard Viewer to show it as stuck.  The physical keyboard's own
+        // flagsChanged events are the authoritative source for physical modifier
+        // state; apps receive them independently of our event stream.
+        // The race this sync tried to fix (our last move event arriving after the
+        // physical key-up, leaving apps with stale modifier state) is now handled
+        // by moveSafeEventFlags including tapLastPhysicalFlags, so the last move
+        // event already carries the correct physical state.
+        lastLoggedManagedFlags = 0  // reset for clean logging on next proximity entry
+
+        // Reset aux state so the next injectAux fires fresh transitions.
+        cancelPendingMouseUp()
+        hoverDragButton = nil
+        lastAuxButtons = [Bool](repeating: false, count: 16)
+        lastRingButtonDown = false
+        hasPostedPoint = false
+        displayMapper.clearRelativeAnchor()
+        lastPostedPressure = -1.0
+        smoother.resetOnProximityExit()
+
+        // Record the moment the pen leaves proximity so finger-touch can
+        // apply a short grace window (touchArbitrationGrace) before
+        // accepting contacts again — prevents the palm rejection failure
+        // pattern where lifting the pen drops a stray finger on the
+        // tablet and the touch path races the pen-up.
+        if lastProximity {
+            penProximityExitTime = CFAbsoluteTimeGetCurrent()
+        }
+        lastProximity = false
+
+        // Finalize any barrel-button release still pending its debounce window
+        // (see button1/2UpDebounceTimer) — a full commit is happening anyway,
+        // so there's no more benefit to waiting the rest of the window out.
+        let exitScreenPoint = smoother.smoothedPoint
+        if let t = button1UpDebounceTimer {
+            CFRunLoopTimerInvalidate(t)
+            button1UpDebounceTimer = nil
+            if lastButton1Down {
+                lastButton1Down = false
+                if !activeToolIsMouse {
+                    fireButtonAction(
+                        snap.activeTool.penButton1Binding, down: false, at: exitScreenPoint,
+                        snapshot: snap, settings: nil)
+                }
+            }
+        }
+        if let t = button2UpDebounceTimer {
+            CFRunLoopTimerInvalidate(t)
+            button2UpDebounceTimer = nil
+            if lastButton2Down {
+                lastButton2Down = false
+                fireButtonAction(
+                    snap.activeTool.penButton2Binding, down: false, at: exitScreenPoint,
+                    snapshot: snap, settings: nil)
+            }
+        }
+    }
+
+    /// Which barrel button a debounced-release timer handler is resolving —
+    /// used instead of `inout` state (escaping closures can't capture `inout`
+    /// parameters), so the handler can read/write the right stored properties
+    /// by branching on this instead of holding a reference to them directly.
+    private enum BarrelButtonSlot { case one, two }
+
+    /// Xencelabs-only barrel-button handling: presses fire immediately;
+    /// releases are debounced (see `button1UpDebounceTimer`/
+    /// `button2UpDebounceTimer`'s declaration) so a button re-asserting
+    /// within `buttonUpDebounceInterval` never produces a release/press pair.
+    private func handleXencelabsBarrelButton(
+        slot: BarrelButtonSlot, down: Bool,
+        binding: ButtonBinding, at location: CGPoint,
+        snap: InjectionSnapshot, settings: TabletSettings?
+    ) {
+        let wasDown = slot == .one ? lastButton1Down : lastButton2Down
+        let pendingTimer = slot == .one ? button1UpDebounceTimer : button2UpDebounceTimer
+
+        if down {
+            // Reasserted (or still down) — cancel any pending release; if it
+            // hadn't already committed, nothing downstream ever saw a release.
+            if let t = pendingTimer {
+                CFRunLoopTimerInvalidate(t)
+                setBarrelButtonTimer(slot, nil)
+            }
+            if !wasDown {
+                setBarrelButtonDown(slot, true)
+                fireButtonAction(binding, down: true, at: location, snapshot: snap, settings: settings)
+            }
+            return
+        }
+        guard wasDown, pendingTimer == nil else { return }
+        let timer = CFRunLoopTimerCreateWithHandler(
+            kCFAllocatorDefault,
+            CFAbsoluteTimeGetCurrent() + buttonUpDebounceInterval,
+            0, 0, 0
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.setBarrelButtonTimer(slot, nil)
+            let stillDown = slot == .one ? self.lastButton1Down : self.lastButton2Down
+            guard stillDown else { return }
+            self.setBarrelButtonDown(slot, false)
+            self.fireButtonAction(binding, down: false, at: location, snapshot: snap, settings: settings)
+        }
+        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+        setBarrelButtonTimer(slot, timer)
+    }
+
+    private func setBarrelButtonDown(_ slot: BarrelButtonSlot, _ down: Bool) {
+        switch slot {
+        case .one: lastButton1Down = down
+        case .two: lastButton2Down = down
+        }
+    }
+
+    private func setBarrelButtonTimer(_ slot: BarrelButtonSlot, _ timer: CFRunLoopTimer?) {
+        switch slot {
+        case .one: button1UpDebounceTimer = timer
+        case .two: button2UpDebounceTimer = timer
         }
     }
 
