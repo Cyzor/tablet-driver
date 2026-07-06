@@ -84,6 +84,28 @@ final class WacomKnownDevice: TabletDevice {
     /// is registered so the LED syncs even if the companion connects after init.
     private var pendingLEDIndex: Int = 0
 
+    /// The Xencelabs Quick Keys/Pen Tablet family enumerates as several separate
+    /// IOHIDDevices for one physical product (digitizer usage page 0x0D/0x02,
+    /// generic-desktop mouse usage page 0x01/0x02, and the real vendor tunnel
+    /// on usage page 0xFF0A — see XencelabsDecoder's header comment). Only the
+    /// vendor-page interface ever carries real reports; the others sit in
+    /// mouse-emulation/decorative-digitizer modes. `handleReport` doesn't know
+    /// which physical interface delivered a report, so registering the decode
+    /// callback on the non-vendor interfaces let their unrelated HID traffic
+    /// (real mouse button/motion bytes) get run through XencelabsDecoder,
+    /// which occasionally produced a report starting with byte 0x02 (the pen
+    /// report ID) — misdecoded as an aux frame with an arbitrary express-key
+    /// bit set, and never released since no matching "up" report ever arrives
+    /// on that channel. Confirmed 2026-07-05: a modifier stuck permanently on
+    /// with no corresponding physical press.
+    private static let xencelabsVendorUsagePage = 0xFF0A
+
+    private func acceptsReports(from candidate: IOHIDDevice) -> Bool {
+        guard deviceSpec.parser == .xencelabs else { return true }
+        return hidIntProperty(candidate, kIOHIDPrimaryUsagePageKey)
+            == Self.xencelabsVendorUsagePage
+    }
+
     // ── Wireless dongle (ACK-40401) support ──────────────────────────────────
     // When isWireless is true, pen events are suppressed until the RF link is
     // confirmed by a 0x80 wireless status report (d[1] bit 0 set = connected).
@@ -204,9 +226,13 @@ final class WacomKnownDevice: TabletDevice {
             queryHardwareSerial()
         }
 
-        IOHIDDeviceRegisterInputReportWithTimeStampCallback(
-            device, &reportBuffer, reportBuffer.count,
-            WacomKnownDevice.reportCallback, callbackContext())
+        if acceptsReports(from: device) {
+            IOHIDDeviceRegisterInputReportWithTimeStampCallback(
+                device, &reportBuffer, reportBuffer.count,
+                WacomKnownDevice.reportCallback, callbackContext())
+        } else {
+            logger.info("\(name, privacy: .public): primary interface is not the vendor tunnel — decode disabled on it, waiting for the real interface via registerDevice()")
+        }
         IOHIDDeviceScheduleWithRunLoop(
             device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
     }
@@ -216,16 +242,23 @@ final class WacomKnownDevice: TabletDevice {
     /// enumerate separate IOHIDDevices for each interface (digitizer, wireless status, etc).
     func registerDevice(_ device: IOHIDDevice) {
         registeredInterfaces.append(device)
-        IOHIDDeviceRegisterInputReportWithTimeStampCallback(
-            device, &reportBuffer, reportBuffer.count,
-            WacomKnownDevice.reportCallback, callbackContext())
+        if acceptsReports(from: device) {
+            IOHIDDeviceRegisterInputReportWithTimeStampCallback(
+                device, &reportBuffer, reportBuffer.count,
+                WacomKnownDevice.reportCallback, callbackContext())
+        }
         IOHIDDeviceScheduleWithRunLoop(
             device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
         let name = deviceSpec.name
-        logger.info("\(name, privacy: .public): registered interface (transport=\(transport, privacy: .public))")
-        if secondaryDevice == nil {
+        logger.info("\(name, privacy: .public): registered interface (transport=\(transport, privacy: .public))\(self.acceptsReports(from: device) ? "" : " — non-vendor interface, decode disabled on it")")
+        // Xencelabs: only the vendor-tunnel interface should ever become
+        // secondaryDevice, since that's the one hidSetReport (OLED/dial LED)
+        // needs to target. Non-vendor interfaces are tracked for cleanup only.
+        if deviceSpec.parser == .xencelabs {
+            if acceptsReports(from: device) { secondaryDevice = device }
+        } else if secondaryDevice == nil {
             // Do NOT seize here — seizing 0x01 causes the PTH-660/860 firmware to stop
             // sending pen reports entirely. The IOHIDManager already holds the device open
             // for input delivery; that same open is sufficient for IOHIDDeviceSetReport.
@@ -246,7 +279,7 @@ final class WacomKnownDevice: TabletDevice {
         // device's tablet-mode init was addressed to the now-superseded
         // handle, so the live interface never actually left mouse-emulation
         // mode. Re-run init against the interface that's actually live.
-        if deviceSpec.parser == .xencelabs && !isBluetooth {
+        if deviceSpec.parser == .xencelabs && !isBluetooth && acceptsReports(from: device) {
             executeInitSteps(on: device)
             // The fresh firmware state lost any OLED text and dial color the
             // superseded handle received. Re-apply the LED now; dropping the
@@ -463,12 +496,21 @@ final class WacomKnownDevice: TabletDevice {
     /// declared MaxOutputReportSize (short writes return success but are
     /// silently ignored by this firmware — same rule as the init path).
     private func sendXencelabsOutput(_ bytes: [UInt8], tag: String) {
-        let declared = hidIntProperty(device, kIOHIDMaxOutputReportSizeKey)
+        // `device` is fixed at construction to whichever interface arrived
+        // first — for Quick Keys that's usually the decorative digitizer
+        // interface, not the vendor tunnel (0xFF0A). `secondaryDevice` is
+        // updated in registerDevice() to the vendor interface once it's seen
+        // (see acceptsReports(from:)), so prefer it here; this was still
+        // pointed at the wrong interface even after that fix landed, which is
+        // why OLED/dial-LED writes kept failing with 0xe0005000. Confirmed
+        // 2026-07-05.
+        let target = (deviceSpec.parser == .xencelabs ? secondaryDevice : nil) ?? device
+        let declared = hidIntProperty(target, kIOHIDMaxOutputReportSizeKey)
         var padded = bytes
         if declared > padded.count {
             padded += [UInt8](repeating: 0, count: declared - padded.count)
         }
-        hidSetReport(device, type: kIOHIDReportTypeOutput,
+        hidSetReport(target, type: kIOHIDReportTypeOutput,
                      reportID: CFIndex(padded[0]), bytes: &padded,
                      tag: "\(deviceSpec.name) \(tag)", severity: .bestEffort, log: logger)
     }
@@ -611,17 +653,18 @@ final class WacomKnownDevice: TabletDevice {
 
     // MARK: - C callback
 
-    private static let reportCallback: IOHIDReportWithTimeStampCallback = { ctx, _, _, _, _, report, length, timestamp in
+    private static let reportCallback: IOHIDReportWithTimeStampCallback = { ctx, _, sender, _, _, report, length, timestamp in
         guard let ctx else { return }
         // Kernel-receipt → here. Spikes mean the scheduler starved HIDThread.
         LatencyProbe.shared.record(kernelTimestamp: timestamp)
+        let senderDevice = sender.map { Unmanaged<IOHIDDevice>.fromOpaque($0).takeUnretainedValue() }
         Unmanaged<WacomKnownDevice>.fromOpaque(ctx).takeUnretainedValue()
-            .handleReport(report: report, length: length)
+            .handleReport(report: report, length: length, sender: senderDevice)
     }
 
     // MARK: - Report dispatch
 
-    private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex) {
+    private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex, sender: IOHIDDevice? = nil) {
         let name = deviceSpec.name
         HIDCapture.shared.record(tag: name, report: report, length: length)
         // Delta capture — only fires when CaptureEngine.isRunning is true.
@@ -673,6 +716,17 @@ final class WacomKnownDevice: TabletDevice {
                 guard !isWireless || wirelessReady else { break }
                 onToolEnter?(identity)
             case .aux(let buttons):
+                // Diagnostic for the Xencelabs stuck-Command investigation (2026-07-05):
+                // log which physical device/PID produced this aux frame and the raw
+                // bytes that decoded to it, so a phantom button-down can be traced back
+                // to its source instead of guessed at. Remove once resolved.
+                if deviceSpec.parser == .xencelabs {
+                    let hex = (0..<length).map { String(format: "%02x", report[$0]) }.joined(separator: " ")
+                    let mask = (0..<16).map { buttons[$0] ? "1" : "0" }.joined()
+                    let pidHex = String(deviceSpec.productID, radix: 16, uppercase: true)
+                    let usagePage = sender.map { String(hidIntProperty($0, kIOHIDPrimaryUsagePageKey), radix: 16) } ?? "?"
+                    logger.notice("\(name, privacy: .public) (0x\(pidHex, privacy: .public)) usagePage=0x\(usagePage, privacy: .public): aux decode — bytes=[\(hex, privacy: .public)] mask=\(mask, privacy: .public) mech=0x\(String(buttons.mechanicalMask, radix: 16), privacy: .public)")
+                }
                 onAux?(buttons)
             case .wireless(let ws):
                 switch ws {
