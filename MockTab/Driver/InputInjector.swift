@@ -10,6 +10,29 @@ import TabletKit
 private let modLog = Logger(subsystem: "com.cyzor.mocktab", category: "modifiers")
 private let injectLog = Logger(subsystem: "com.cyzor.mocktab", category: "inject")
 
+/// Synthetic-modifier ground truth contributed by aux/express-key bindings
+/// (Wacom pad Express Keys, touch-ring center click, and standalone accessories
+/// like Xencelabs's QuickKeys puck), shared across every `InputInjector` instance.
+///
+/// Each physical device gets its own `InputInjector` (see `DeviceContext`), but
+/// an aux-only accessory such as QuickKeys is its own device — a Shift it holds
+/// has to be visible to whichever *other* InputInjector is actually posting the
+/// pointer-drag events (the pen tablet's). Pen-barrel-button modifiers stay on
+/// each instance's own `groundTruthSyntheticFlags` instead of here because
+/// they're reconciled against that device's own active tool
+/// (`InputInjector.reconcileSyntheticFlags`); sharing them globally would let an
+/// unrelated device's tool change strip them.
+///
+/// HIDThread-confined, like the per-instance state it mirrors — all devices'
+/// hot paths run on the one shared `HIDThread.shared` run loop.
+final class SharedAuxModifierState {
+    static let shared = SharedAuxModifierState()
+    private init() {}
+    var groundTruthFlags = CGEventFlags()
+    var refCounts: [UInt64: Int] = [:]
+    var lastChangeAt: Date = .distantPast
+}
+
 /// Converts raw TabletPoint reports into CGEvents and posts them to the HID event tap.
 ///
 /// Event sequence per report:
@@ -78,10 +101,40 @@ final class InputInjector: @unchecked Sendable {
         set { _isActive.withLock { $0 = newValue } }
     }
 
+    /// Every live `InputInjector` (weakly held), so the shared-aux-modifier leak
+    /// watchdog can ask "is any device anywhere still holding an aux button?"
+    /// before releasing a bit contributed by a *different* device's aux binding.
+    /// `add()` happens on main (init); the read happens on HIDThread (leak
+    /// watchdog) — `NSHashTable` itself isn't synchronized across that, so both
+    /// sides go through this lock. (Per-instance fields it reads, like
+    /// `lastAuxButtons`, are safe to read unlocked here because every device's
+    /// hot path is confined to the one shared `HIDThread.shared` run loop, so
+    /// the reader and the writer of those fields are always the same thread.)
+    private static let liveInjectorsLock = OSAllocatedUnfairLock<NSHashTable<InputInjector>>(
+        initialState: .weakObjects())
+
+    /// True while any registered device still shows an aux button, touch-ring
+    /// center click, or touch-ring/strip contact held — the shared aux-modifier
+    /// release check must not fire while this is true, even if the specific
+    /// device that raised the modifier has gone idle (QuickKeys-style accessories
+    /// only report on state change, so idle IS the normal shape of a long hold).
+    fileprivate static var anyAuxControlHeld: Bool {
+        liveInjectorsLock.withLock { table in
+            for case let injector as InputInjector in table.allObjects {
+                if injector.lastAuxButtons.contains(true) || injector.lastRingButtonDown
+                    || injector.lastRingPos != 0x7F || injector.lastRing2Pos != 0x7F
+                    || injector.lastStrip1Pos != 0xFF || injector.lastStrip2Pos != 0xFF
+                { return true }
+            }
+            return false
+        }
+    }
+
     @MainActor
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
         self.deviceProductID = productID
+        Self.liveInjectorsLock.withLock { $0.add(self) }
         recomputeVirtualScreenBounds()
         displayObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -337,6 +390,15 @@ final class InputInjector: @unchecked Sendable {
             0, 0
         ) { [weak self] _ in
             guard let self, !self.groundTruthSyntheticFlags.isEmpty else { return }
+            // Wacom pads stream reports continuously while a key is held (~133 Hz),
+            // so reaching this timeout there unambiguously means the stream stopped
+            // (proximity loss, disconnect). Xencelabs's QuickKeys puck instead sends
+            // one report per state change and nothing while a button sits held — the
+            // same idle gap is the *normal* shape of a long hold, not a stall. Trust
+            // the last known button state instead of pure idle time; a genuine leak
+            // (state stuck with nothing actually down) still gets caught here, and a
+            // stuck-but-"held" leak is caught later by the 1 Hz leak watchdog.
+            guard self.tabletIsQuiescent else { return }
             self.releaseAllSyntheticModifiers()
         }
         watchdogTimer = timer
@@ -347,9 +409,11 @@ final class InputInjector: @unchecked Sendable {
     /// (e.g. USB disconnect mid-press), a scenario where the DispatchWorkItem watchdog
     /// above is never rearmed and therefore never fires.
     ///
-    /// Condition: synthetic flags have been stuck in the same state for > 3 s AND the
-    /// tablet has been completely idle for > 3 s. A legitimately held express-key keeps
-    /// resetting `lastInjectCallAt` via `rearmWatchdog`, so this never fires during real use.
+    /// Condition: synthetic flags have been stuck in the same state for > 3 s, the
+    /// tablet has been completely idle for > 3 s, AND `tabletIsQuiescent` — i.e. no
+    /// known button/aux state is still down. That last check matters for devices like
+    /// Xencelabs's QuickKeys puck that only report on state change: a long legitimate
+    /// hold looks idle by elapsed time alone, but `lastAuxButtons` still shows it down.
     /// Called from main (Timer fires on the runloop the timer was scheduled on).
     /// Hops to HIDThread to read/mutate modifier state without races.
     private func checkLeakWatchdog() {
@@ -357,9 +421,25 @@ final class InputInjector: @unchecked Sendable {
             guard let self, !self.groundTruthSyntheticFlags.isEmpty else { return }
             let heldInterval = Date().timeIntervalSince(self.lastSyntheticFlagChangeAt)
             let idleInterval = Date().timeIntervalSince(self.lastInjectCallAt)
-            if heldInterval > 3.0 && idleInterval > 3.0 {
+            // As with the idle watchdog above, a device that only reports on state
+            // change (Xencelabs QuickKeys) can sit idle for a long legitimate hold —
+            // trust the last known button state, not just elapsed time.
+            if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
                 modLog.notice("leak-watchdog: releasing stuck synthetic flags 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
                 self.releaseAllSyntheticModifiers()
+            }
+
+            // Same leak check for the shared aux-modifier store, but the "is anything
+            // still held" question has to look across every device, not just this one —
+            // the accessory that raised the bit (e.g. QuickKeys) may be a different
+            // InputInjector than the one whose timer happens to be ticking right now.
+            let shared = SharedAuxModifierState.shared
+            if !shared.groundTruthFlags.isEmpty {
+                let sharedHeldInterval = Date().timeIntervalSince(shared.lastChangeAt)
+                if sharedHeldInterval > 3.0 && idleInterval > 3.0 && !Self.anyAuxControlHeld {
+                    modLog.notice("leak-watchdog: releasing stuck shared aux flags 0x\(String(shared.groundTruthFlags.rawValue, radix: 16), privacy: .public) (held \(Int(sharedHeldInterval))s)")
+                    self.releaseSharedAuxModifiers()
+                }
             }
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
@@ -1059,15 +1139,15 @@ final class InputInjector: @unchecked Sendable {
                 // fireButtonAction sees the current button state, not the pre-transition state.
                 lastAuxButtons[i] = down
                 fireButtonAction(bindings[i], down: down, at: cursorPos,
-                                 snapshot: snap, settings: settings)
+                                 snapshot: snap, settings: settings, isAux: true)
             } else if down && hasMechanicalPulse {
                 // Button is already tracked as down, but a new mechanical pulse arrived —
                 // the user re-pressed before the release event was seen. Force a complete
                 // up→down cycle so the key fires correctly without getting swallowed.
                 fireButtonAction(bindings[i], down: false, at: cursorPos,
-                                 snapshot: snap, settings: settings)
+                                 snapshot: snap, settings: settings, isAux: true)
                 fireButtonAction(bindings[i], down: true, at: cursorPos,
-                                 snapshot: snap, settings: settings)
+                                 snapshot: snap, settings: settings, isAux: true)
                 // lastAuxButtons[i] stays true — the button is still down after this cycle
             }
         }
@@ -1077,7 +1157,7 @@ final class InputInjector: @unchecked Sendable {
         if ringButtonDown != lastRingButtonDown {
             lastRingButtonDown = ringButtonDown
             fireButtonAction(snap.touchRingButtonBinding, down: ringButtonDown,
-                             at: cursorPos, snapshot: snap, settings: settings)
+                             at: cursorPos, snapshot: snap, settings: settings, isAux: true)
         }
 
         // ── Touch ring ─────────────────────────────────────────────────────────
@@ -1405,7 +1485,8 @@ final class InputInjector: @unchecked Sendable {
         let result = CGEventFlags(rawValue: ModifierMath.currentEventFlags(
             systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
             tapPhysicalManaged: tapLastPhysicalFlags,
-            syntheticFlags: groundTruthSyntheticFlags.rawValue))
+            syntheticFlags: groundTruthSyntheticFlags.rawValue
+                | SharedAuxModifierState.shared.groundTruthFlags.rawValue))
         let managedNow = result.rawValue & ModifierMath.managedMask
         if managedNow != lastLoggedManagedFlags {
             _ = groundTruthSyntheticFlags.rawValue & ModifierMath.managedMask
@@ -1426,7 +1507,8 @@ final class InputInjector: @unchecked Sendable {
     private var moveSafeEventFlags: CGEventFlags {
         CGEventFlags(rawValue:
             (tapLastPhysicalFlags & ModifierMath.managedMask)
-            | groundTruthSyntheticFlags.rawValue)
+            | groundTruthSyntheticFlags.rawValue
+            | SharedAuxModifierState.shared.groundTruthFlags.rawValue)
     }
 
     /// The union of modifier flags justified by currently-held pen barrel buttons.
@@ -1485,6 +1567,33 @@ final class InputInjector: @unchecked Sendable {
             e.type = .flagsChanged
             e.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
             e.flags = reconcileFlags
+            e.post(tap: .cghidEventTap)
+        }
+    }
+
+    /// Releases any synthetic modifier keys currently held by an aux/express-key
+    /// binding on ANY device (see `SharedAuxModifierState`). Mirrors
+    /// `releaseAllSyntheticModifiers` but clears the shared store instead of this
+    /// instance's own ground truth. Safe to call from any instance — the shared
+    /// state, and hidSystemState, don't belong to a particular device.
+    private func releaseSharedAuxModifiers() {
+        let shared = SharedAuxModifierState.shared
+        guard !shared.groundTruthFlags.isEmpty else { return }
+        let toRelease = shared.groundTruthFlags
+
+        shared.groundTruthFlags = []
+        for key in shared.refCounts.keys { shared.refCounts[key] = 0 }
+        shared.lastChangeAt = Date()
+
+        let releaseFlags = CGEventFlags(rawValue: ModifierMath.releaseEventFlags(
+            systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
+            remainingSyntheticFlags: groundTruthSyntheticFlags.rawValue))
+
+        for (bit, keyCode) in Self.modifierKeyCodes where toRelease.contains(bit) {
+            guard let e = CGEvent(source: sessionSource) else { continue }
+            e.type = .flagsChanged
+            e.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
+            e.flags = releaseFlags
             e.post(tap: .cghidEventTap)
         }
     }
@@ -1935,7 +2044,8 @@ final class InputInjector: @unchecked Sendable {
         _ binding: ButtonBinding, down: Bool,
         at location: CGPoint,
         snapshot: InjectionSnapshot,
-        settings: TabletSettings? = nil
+        settings: TabletSettings? = nil,
+        isAux: Bool = false
     ) {
         switch binding.kind {
         case .none:
@@ -2030,24 +2140,58 @@ final class InputInjector: @unchecked Sendable {
             guard let e = event else { break }
 
             // Event created successfully — now commit the state delta.
-            let flagsBefore = groundTruthSyntheticFlags
-            for bit in modBits {
-                if bindingFlags.contains(bit) {
-                    let raw = bit.rawValue
-                    let currentCount = modifierRefCounts[raw] ?? 0
-                    if down {
-                        modifierRefCounts[raw] = currentCount + 1
-                        groundTruthSyntheticFlags.insert(bit)
-                    } else {
-                        let newCount = Swift.max(0, currentCount - 1)
-                        modifierRefCounts[raw] = newCount
-                        if newCount == 0 { groundTruthSyntheticFlags.remove(bit) }
+            //
+            // Aux-sourced bindings (express keys, touch-ring center click) go to the
+            // process-wide shared store instead of this instance's own ground truth.
+            // An aux-only accessory (Xencelabs QuickKeys) is its own physical device
+            // with its own InputInjector — a Shift it asserts must still show up in
+            // the flags on drag events posted by whichever InputInjector is actually
+            // driving the pointer (the pen tablet's), which never sees this instance's
+            // local groundTruthSyntheticFlags. Pen-button bindings (barrel buttons)
+            // keep using local state because they're reconciled against this device's
+            // own active tool (see reconcileSyntheticFlags) — sharing them globally
+            // would let an unrelated device's tool change strip them.
+            if isAux {
+                let shared = SharedAuxModifierState.shared
+                let flagsBefore = shared.groundTruthFlags
+                for bit in modBits {
+                    if bindingFlags.contains(bit) {
+                        let raw = bit.rawValue
+                        let currentCount = shared.refCounts[raw] ?? 0
+                        if down {
+                            shared.refCounts[raw] = currentCount + 1
+                            shared.groundTruthFlags.insert(bit)
+                        } else {
+                            let newCount = Swift.max(0, currentCount - 1)
+                            shared.refCounts[raw] = newCount
+                            if newCount == 0 { shared.groundTruthFlags.remove(bit) }
+                        }
                     }
                 }
-            }
-            if groundTruthSyntheticFlags != flagsBefore {
-                lastSyntheticFlagChangeAt = Date()
-                modLog.debug("keyCombo \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) groundTruth: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public)")
+                if shared.groundTruthFlags != flagsBefore {
+                    shared.lastChangeAt = Date()
+                    modLog.debug("keyCombo(aux) \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) shared: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(shared.groundTruthFlags.rawValue, radix: 16), privacy: .public)")
+                }
+            } else {
+                let flagsBefore = groundTruthSyntheticFlags
+                for bit in modBits {
+                    if bindingFlags.contains(bit) {
+                        let raw = bit.rawValue
+                        let currentCount = modifierRefCounts[raw] ?? 0
+                        if down {
+                            modifierRefCounts[raw] = currentCount + 1
+                            groundTruthSyntheticFlags.insert(bit)
+                        } else {
+                            let newCount = Swift.max(0, currentCount - 1)
+                            modifierRefCounts[raw] = newCount
+                            if newCount == 0 { groundTruthSyntheticFlags.remove(bit) }
+                        }
+                    }
+                }
+                if groundTruthSyntheticFlags != flagsBefore {
+                    lastSyntheticFlagChangeAt = Date()
+                    modLog.debug("keyCombo \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) groundTruth: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public)")
+                }
             }
             e.flags = currentEventFlags
             finalizeAndPost(e)
