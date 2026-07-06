@@ -2195,6 +2195,17 @@ final class InputInjector: @unchecked Sendable {
             }
             e.flags = currentEventFlags
             finalizeAndPost(e)
+            // Diagnostic for the "modifier shows down but drag/click gestures don't
+            // honor it" investigation (2026-07-05): capture the two system-level
+            // modifier snapshots right after our post lands, so we can see whether
+            // the injected flagsChanged actually reached combinedSessionState (what
+            // most apps sample for live gesture state) or only hidSystemState (what
+            // our own passive tap/UI reads). Remove once resolved.
+            if isAux {
+                let combined = CGEventSource.flagsState(.combinedSessionState).rawValue
+                let hidState = CGEventSource.flagsState(.hidSystemState).rawValue
+                modLog.notice("keyCombo(aux) post-check: posted event.flags=0x\(String(e.flags.rawValue, radix: 16), privacy: .public) combinedSessionState=0x\(String(combined, radix: 16), privacy: .public) hidSystemState=0x\(String(hidState, radix: 16), privacy: .public)")
+            }
 
         case .displayToggle:
             guard down else { break }
