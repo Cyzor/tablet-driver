@@ -788,7 +788,7 @@ final class TabletManager: ObservableObject {
             }
             context.observeRingLED()  // after open() so initial LED sync reaches the device
             context.observeInjectionSnapshot()
-            context.settings.applyExpressKeyDefaults()
+            context.settings.applyExpressKeyDefaults(vendorID: context.vendorID)
             refreshConnectedIDs(mostRecent: productID)
 
             if productID == 0x00F4 {

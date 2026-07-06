@@ -1304,7 +1304,7 @@ final class TabletSettings: ObservableObject {
     ///     3  ⌥      Eyedropper   (all major painting apps; hold for sample)
     ///     4  ⌃      Control      (brush-size modifier in Krita / Blender)
     ///     5–7  —    None          (leave open for user assignment)
-    func applyExpressKeyDefaults() {
+    func applyExpressKeyDefaults(vendorID: Int = 0x056A) {
         guard ud.string(forKey: devicePrefix + "expressKeyBindings") == nil else { return }
         // Default express key bindings: keys 1-4 are modifier keys (⌘ ⌥ ⌃ ⇧).
         // Rest are unbound (.none).
@@ -1312,13 +1312,20 @@ final class TabletSettings: ObservableObject {
         // Indices 0–2  = left  toggle buttons (near ring), 3–7  = left  express keys.
         // Indices 8–10 = right toggle buttons (near ring), 11–15 = right express keys.
         // Devices with only 8 buttons use indices 0–7; the upper 8 entries are ignored.
+        //
+        // Xencelabs Quick Keys is the one exception: its index 8 isn't a mirrored
+        // express key at all — XencelabsDecoder.decodeAux maps it to the puck's
+        // physical mode button (see that file's header comment), which this driver
+        // treats as "Ring: Cycle". Defaulting it to ⌘ like the Cintiq mirror slot
+        // meant every mode-button press quietly asserted Command, which then rode
+        // along with whichever express key the user pressed next and wouldn't let go.
         expressKeyBindings = [
             ButtonBinding(modifierOnly: .command),  // 0  left key 1 → ⌘
             ButtonBinding(modifierOnly: .option),  // 1  left key 2 → ⌥
             ButtonBinding(modifierOnly: .control),  // 2  left key 3 → ⌃
             ButtonBinding(modifierOnly: .shift),  // 3  left key 4 → ⇧
             .none, .none, .none, .none,  // 4–7 left keys 5–8
-            ButtonBinding(modifierOnly: .command),  // 8  right key 1 (mirror) → ⌘
+            vendorID == 0x28BD ? .none : ButtonBinding(modifierOnly: .command),  // 8
             ButtonBinding(modifierOnly: .option),  // 9  right key 2 (mirror) → ⌥
             ButtonBinding(modifierOnly: .control),  // 10 right key 3 (mirror) → ⌃
             ButtonBinding(modifierOnly: .shift),  // 11 right key 4 (mirror) → ⇧
