@@ -16,11 +16,15 @@ All currently confirmed Xencelabs devices share **Vendor ID `0x28BD`** (decimal 
 | Dongle (wireless receiver) | ACD12-A | `0x28BD` | `0x5203` | 20995 | `HANVON UGEE` |
 | Pen Display 24 | LPH2412U-A | `0x28BD` | `0x520A` | 21002 | `hanvon ugee` |
 | Pen Display 16 (requested) | LPH1612U-A | `0x28BD` | *(not yet in OTD)* | — | — |
+| Quick Keys Remote (puck) | K02-A | `0x28BD` | `0x5202` | 20994 | — |
+| Pen Display (MockTab-confirmed) | — | `0x28BD` | `0x520D` | 21005 | — |
 
 > **Notes:**
 > - PID `0x5201` and `0x5204` are **not** present in the mainline Linux kernel `hid-ids.h` or any `hid-uclogic` / `wacom` device table as of kernel 6.15. No in-tree kernel driver exists for these devices.[^1]
 > - The Pen Display 24 (PID `0x520A`) was confirmed via a live HID diagnostic dump on Linux 6.15.7.[^2]
 > - The dongle (PID `0x5203`) enumerates as **two** HID interfaces (interface 0 and interface 1) with different report lengths — see Section 3.
+> - **`0x520A` vs `0x520D`:** MockTab's own macOS captures (2026-07) consistently report the Pen Display at PID `0x520D`, not `0x520A`. Left both rows in the table rather than assuming they're the same hardware — could be a distinct pen-display model/revision, unconfirmed either way.
+> - Section 10 below (Quick Keys) predates MockTab's own protocol work and is now superseded for the puck/dongle — see the note there.
 
 ***
 
@@ -221,6 +225,8 @@ From the driver perspective, **both pens use the same report format**. The `Eras
 
 ## 10. Quick Keys Remote
 
+> **Superseded 2026-07:** the claims below (no confirmed PID, no open-source parser, Bluetooth wireless) predate MockTab's own reverse-engineering work and are no longer accurate for this transport. MockTab has fully decoded and implemented the wired and wireless-dongle protocol on macOS: puck PID `0x5202`, dongle PID `0x5203`, wireless transport is **2.4 GHz RF via the bundled dongle, not Bluetooth**. Full opcode-level detail lives in `Notes/Xencelabs-Quick-Keys-Puck-Reference.md`; the living implementation is `TabletKit/Sources/TabletKit/Decoders/XencelabsDecoder.swift`, `TabletKit/Sources/TabletKit/XencelabsControl.swift`, and `MockTab/Driver/WacomKnownDevice.swift`. Left the original text below for historical context (it may still be accurate for Linux/OpenTabletDriver's Bluetooth path, which MockTab has not tested).
+
 The Quick Keys (model K02-A) is a **separate HID device** — it does not share a PID with the pen tablet. Its USB/wireless VID/PID is not present in the OTD configuration tree as of v0.6.x, meaning OTD does not natively support it. Linux users have reported it functions as a standard HID consumer-control device when connected via USB, but wireless connectivity (Bluetooth 5.0) can be unstable under certain compositors.[^6][^2]
 
 | Parameter | Value |
@@ -297,7 +303,7 @@ The following data requires a live HID descriptor capture (`sudo usbhid-dump -d 
 
 - **Full HID Report Descriptor** for each interface (usage pages, logical min/max, unit exponents)
 - **Feature reports**: Whether any feature report controls tablet configuration (e.g., pen pressure curve, tilt enable/disable)
-- **Quick Keys VID/PID**: Not yet confirmed in any open-source record
+- **Quick Keys VID/PID**: confirmed by MockTab (`0x5202` puck, `0x5203` dongle) — see Section 10 note and `Notes/Xencelabs-Quick-Keys-Puck-Reference.md`
 - **Pen Display 16 PID**: Issue #3904 filed but no diagnostic dump attached[^1]
 - **Firmware version query command**: Whether a vendor-specific HID report exists to read firmware version
 - **Wireless protocol details**: Whether the RF dongle protocol differs from wired in any way beyond the interface layout

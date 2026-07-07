@@ -120,6 +120,30 @@ final class WacomKnownDevice: TabletDevice {
     /// Prevents resending feature init on subsequent status reports.
     private var wirelessLinkConfirmed: Bool = false
 
+    // ── Xencelabs wireless dongle (PID 0x5203) relink ────────────────────────
+    // Confirmed 2026-07-06: the dongle only relays a paired puck's live 0xF0
+    // aux data once the driver re-sends the tablet-mode init
+    // ([0x02, 0xB0, 0x04]) with the puck's own 6-byte hardware identifier
+    // appended at offset 10-15 — without it the dongle sits sending
+    // connect-time status frames (tags 0xF8/0xF2) forever and never
+    // upgrades to real button data. That identifier isn't available from any
+    // GetReport call or from the dongle's own descriptors — but the puck
+    // broadcasts it unprompted, unconditionally, in the trailer of every
+    // single report it sends (status or real data alike, over the dongle
+    // *and* direct USB), so we can read it off the wire instead of needing
+    // any prior pairing record. One-shot per dongle connection.
+    private var xencelabsDongleRelinked = false
+    /// True once the OLED/dial-LED state has been resent after confirming
+    /// the relink actually took (see the `.aux` case in `handleReport`).
+    private var xencelabsPostRelinkResynced = false
+    /// The puck's 6-byte identity read off the relink report, kept so the
+    /// resync's label-reset write can address the same puck.
+    private var xencelabsDongleIdentity: [UInt8]?
+
+    private static let xencelabsDongleProductID = 0x5203
+    private static let xencelabsIdentityOffset = 10
+    private static let xencelabsIdentityLength = 6
+
     init(
         device: IOHIDDevice,
         deviceSpec: WacomDeviceSpec,
@@ -453,11 +477,24 @@ final class WacomKnownDevice: TabletDevice {
             // own per-mode factory palette so the ring reads the same way it
             // does under their software. Best-effort: the Pen Display has no
             // dial and ignores/rejects the write harmlessly.
+            //
+            // Dongle-relayed dongle/puck traffic must carry the puck's 6-byte
+            // identity in the address field or the dongle has nothing to
+            // route the write to — confirmed 2026-07-07 via dtrace on
+            // XencelabsDriver: every 0xB4/0xB1 write it sends over the dongle
+            // carries the identity, none carry an all-zero address.
+            let address = xencelabsDongleIdentity ?? []
             let colors = XencelabsControl.defaultSlotColors
             let c = colors[((index % colors.count) + colors.count) % colors.count]
             sendXencelabsOutput(
-                XencelabsControl.dialColorPayload(r: c.r, g: c.g, b: c.b),
+                XencelabsControl.dialColorPayload(r: c.r, g: c.g, b: c.b, address: address),
                 tag: "dial LED slot=\(index)")
+            // The native driver always pairs a dial-color write with a
+            // sensitivity write (0xB4 sub-op 0x04); we'd never sent this one
+            // before. Default matches the vendor default of 3.
+            sendXencelabsOutput(
+                XencelabsControl.dialSensitivityPayload(3, address: address),
+                tag: "dial sensitivity slot=\(index)")
 
         default:
             break
@@ -476,7 +513,9 @@ final class WacomKnownDevice: TabletDevice {
         guard deviceSpec.parser == .xencelabs else { return }
         guard xencelabsSentText["mode"] != label else { return }
         xencelabsSentText["mode"] = label
-        for payload in XencelabsControl.textPayloads(field: .modeName, text: label) {
+        for payload in XencelabsControl.textPayloads(
+            field: .modeName, text: label, address: xencelabsDongleIdentity ?? [])
+        {
             sendXencelabsOutput(payload, tag: "OLED mode label")
         }
     }
@@ -487,9 +526,43 @@ final class WacomKnownDevice: TabletDevice {
         let joined = labels.joined(separator: "\u{1F}")
         guard xencelabsSentText["keys"] != joined else { return }
         xencelabsSentText["keys"] = joined
-        for payload in XencelabsControl.keyLabelPayloads(labels) {
+        for payload in XencelabsControl.keyLabelPayloads(labels, address: xencelabsDongleIdentity ?? []) {
             sendXencelabsOutput(payload, tag: "OLED key labels")
         }
+    }
+
+    /// Resend the ring LED and OLED labels once a dongle relink is confirmed
+    /// live. `setRingLED` has no dedup, so it's safe to call as-is; the OLED
+    /// label setters dedup against `xencelabsSentText`, so that cache is
+    /// cleared first to force the resend of whatever was last requested.
+    private func resyncXencelabsOutputsAfterRelink() {
+        // The native driver's own reconnect sequence sends a "reset labels"
+        // write (0xB1 sub-op 0x01, identity appended) between the relink and
+        // its label pushes — confirmed 2026-07-06 in the dtrace capture.
+        // Our earlier label pushes (sent before the link existed) may be
+        // stuck in whatever state the puck was showing pre-relink; try
+        // clearing that state first before resending.
+        if let identity = xencelabsDongleIdentity {
+            let reset: [UInt8] = [0x02, 0xB1, 0x01, 0, 0, 0, 0, 0, 0, 0] + identity
+            sendXencelabsOutput(reset, tag: "OLED label reset")
+            // Three opcodes of unknown purpose that XencelabsDriver always
+            // sends at this exact point in its resync sequence — identity
+            // appended, no other payload. Semantics unconfirmed (not in
+            // XencelabsControl's documented opcode set), but they're cheap
+            // and every native full-resync capture consistently includes
+            // them, so we replicate them best-effort. Confirmed 2026-07-07
+            // via dtrace.
+            sendXencelabsOutput([0x02, 0xB4, 0x08, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "unknown b4 08")
+            sendXencelabsOutput([0x02, 0xB4, 0x10, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "unknown b4 10")
+            sendXencelabsOutput([0x02, 0xB1, 0x0A, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "unknown b1 0a")
+        }
+        let ledIndex = pendingLEDIndex
+        let modeLabel = xencelabsSentText["mode"]
+        let keysJoined = xencelabsSentText["keys"]
+        xencelabsSentText.removeAll()
+        setRingLED(index: ledIndex)
+        if let modeLabel { setRingModeLabel(modeLabel) }
+        if let keysJoined { setAuxKeyLabels(keysJoined.components(separatedBy: "\u{1F}")) }
     }
 
     /// Send a Xencelabs vendor output report, zero-padded to the device's
@@ -698,6 +771,48 @@ final class WacomKnownDevice: TabletDevice {
                 pairedPID = pairedTabletPID
                 onPairedPID?(pairedTabletPID)
                 logger.info("\(name, privacy: .public): paired tablet 0x\(String(pairedTabletPID, radix: 16, uppercase: true), privacy: .public) — maxX=\(pairedSpec.maxX, privacy: .public) maxY=\(pairedSpec.maxY, privacy: .public) maxPressure=\(pairedSpec.maxPressure, privacy: .public)")
+            }
+        }
+
+        // Xencelabs wireless dongle relink: send the tablet-mode init once
+        // with the puck's own identifier appended, read straight off this
+        // report's trailer (see the property doc above). Any report ID 0x02
+        // frame of at least this length carries it once a puck is paired,
+        // including the connect-time status frames that arrive before real
+        // aux data flows.
+        if deviceSpec.parser == .xencelabs, deviceSpec.productID == Self.xencelabsDongleProductID,
+            !xencelabsDongleRelinked, length >= Self.xencelabsIdentityOffset + Self.xencelabsIdentityLength,
+            report[0] == 0x02  // XencelabsDecoder.penReportID (internal, not visible here)
+        {
+            let identity = (0..<Self.xencelabsIdentityLength).map {
+                report[Self.xencelabsIdentityOffset + $0]
+            }
+            if identity.contains(where: { $0 != 0 }) {
+                xencelabsDongleRelinked = true
+                xencelabsDongleIdentity = identity
+                let target = secondaryDevice ?? device
+                var relink: [UInt8] = [0x02, 0xB0, 0x04, 0, 0, 0, 0, 0, 0, 0] + identity
+                let declared = hidIntProperty(target, kIOHIDMaxOutputReportSizeKey)
+                if declared > relink.count {
+                    relink += [UInt8](repeating: 0, count: declared - relink.count)
+                }
+                let ret = hidSetReport(
+                    target, type: kIOHIDReportTypeOutput, reportID: CFIndex(relink[0]),
+                    bytes: &relink, tag: "\(name) dongle relink", log: logger)
+                logger.info("\(name, privacy: .public): dongle relink sent, result=0x\(String(ret, radix: 16), privacy: .public)")
+                // Previously this waited for the first real aux frame to prove
+                // the link was live before resending OLED/LED state, because
+                // those writes went out unaddressed and had nowhere reliable
+                // to land. Now that they carry the puck's identity (see
+                // XencelabsControl call sites above), a successful relink
+                // write is enough — resyncing here means the display is
+                // correct immediately instead of only after the user
+                // happens to press a button. Confirmed 2026-07-07: still
+                // one-shot per dongle connection via xencelabsPostRelinkResynced.
+                if ret == kIOReturnSuccess, !xencelabsPostRelinkResynced {
+                    xencelabsPostRelinkResynced = true
+                    resyncXencelabsOutputsAfterRelink()
+                }
             }
         }
 
