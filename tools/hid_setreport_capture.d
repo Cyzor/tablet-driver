@@ -63,3 +63,14 @@ pid$target:IOKit:IOHIDDeviceGetReport:return
         self->grplen = 0;
         self->grlen = 0;
 }
+
+/*
+ * IOHIDDeviceGetReportWithCallback is async — the response only lands in the
+ * caller's buffer once the callback fires, on a different call frame we have
+ * no symbol to hook. This entry probe only proves *whether* the driver makes
+ * an async GetReport call at all, and for which report ID, not its contents.
+ */
+pid$target:IOKit:IOHIDDeviceGetReportWithCallback:entry
+{
+        printf("\n[GetReportWithCallback] type=%d id=0x%02x reqlen=%d\n", arg1, arg2, arg4);
+}
