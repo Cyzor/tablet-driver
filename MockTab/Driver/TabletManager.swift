@@ -332,8 +332,13 @@ final class TabletManager: ObservableObject {
             // hasTouchRing reuses the entire Wacom touch-ring UI/LED
             // architecture for the Quick Keys dial (4 modes on both,
             // ringSlotCount defaults to 4) — see XencelabsDecoder's
-            // touchRingButtonDown/buttons[8] mapping.
-            hasTouchRing: true, hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
+            // touchRingButtonDown/buttons[8] mapping. Only the aux-only
+            // puck/dongle has a dial; the pen tablets/display themselves
+            // have neither express keys nor a ring of their own (those are
+            // the companion's, folded into the tablet's Buttons pane
+            // instead — see ButtonMappingView's Quick Keys section), so
+            // this must not be forced on for every Xencelabs PID.
+            hasTouchRing: isAuxOnly, hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
             isPenDisplay: profile.isPenDisplay,
             seizeUSB: false,
             // Tablet-mode handshake; without it the device stays in

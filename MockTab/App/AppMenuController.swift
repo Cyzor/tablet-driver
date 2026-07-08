@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import AppKit
+import TabletKit
 import UniformTypeIdentifiers
 
 /// Standard responder-chain actions that have no public `#selector`-able
@@ -596,6 +597,14 @@ final class AppMenuController: NSObject, NSMenuDelegate {
             menu.addItem(.separator())
 
             for tablet in registry.knownTablets {
+                // A companion peripheral (Xencelabs Quick Keys puck/dongle)
+                // is folded into its owning tablet's window while connected —
+                // don't list it as its own selectable device.
+                if VendorDeviceRegistry.isConnectedCompanion(
+                    productID: tablet.id, connectedProductIDs: tm.connectedProductIDs)
+                {
+                    continue
+                }
                 let connected = tm.connectedProductIDs.contains(tablet.id)
                 let suffix = connected ? (tm.contexts[tablet.id]?.batteryMenuSuffix ?? "") : ""
                 let label = SettingsWindowManager.shared.menuLabel(forProductID: tablet.id) + suffix

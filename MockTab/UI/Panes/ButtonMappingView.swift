@@ -546,6 +546,35 @@ struct ButtonMappingView: View {
     private var hasDualRings: Bool { spec?.hasDualRings == true }
     private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
 
+    // MARK: - Companion peripheral (e.g. Xencelabs Quick Keys puck/dongle)
+
+    /// PID of a connected aux-only companion peripheral for this tablet
+    /// (currently only the Xencelabs Quick Keys puck/dongle), or nil if
+    /// none is connected. Resolved live from `VendorDeviceRegistry`'s
+    /// static companion hint plus which devices are actually connected —
+    /// see `VendorDeviceRegistry.connectedCompanion`.
+    private var companionProductID: Int? {
+        guard let pid = productID else { return nil }
+        return VendorDeviceRegistry.connectedCompanion(
+            forProductID: pid, connectedProductIDs: tabletManager.connectedProductIDs)
+    }
+
+    private var companionContext: DeviceContext? {
+        companionProductID.flatMap { tabletManager.contexts[$0] }
+    }
+
+    private var companionSpec: WacomDeviceSpec? {
+        guard let pid = companionProductID, let ctx = companionContext else { return nil }
+        return TabletManager.vendorDeviceSpec(forVendorID: ctx.vendorID, productID: pid)
+    }
+
+    /// Live button state for the companion, zeroed under the same
+    /// not-key/live-resizing conditions as the tablet's own `liveButtons`.
+    private var companionLiveButtons: LiveButtonState {
+        guard controlActiveState == .key, !isLiveResizing else { return LiveButtonState() }
+        return companionContext?.liveButtons ?? LiveButtonState()
+    }
+
     /// Number of express-key rows to display in the single-sided section.
     /// Driven by the active device spec so PTK-670/870 (10 keys) and DTU
     /// (4 keys) get the right row count instead of a hard-coded 8. Clamped
@@ -691,16 +720,21 @@ struct ButtonMappingView: View {
     private func singleSidedSection(lb: LiveButtonState) -> some View {
         // DeviceNameLabel heads this section so it sits between the pen section
         // and the hardware button rows, matching the original visual intent.
-        Section {
-            ForEach(0..<expressKeyCount, id: \.self) { i in
-                expressKeyRow(
-                    index: i,
-                    label: String(localized: "Key \(i + 1)", comment: "Express key N label, e.g. 'Key 1'"),
-                    lb: lb)
-            }
-        } header: {
-            PaneSectionHeader("Express Keys") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
+        // Xencelabs tablets/displays report 0 here — their express keys live
+        // on the puck/dongle companion instead (see quickKeysSection below) —
+        // so skip an empty section rather than showing a header with no rows.
+        if expressKeyCount > 0 {
+            Section {
+                ForEach(0..<expressKeyCount, id: \.self) { i in
+                    expressKeyRow(
+                        index: i,
+                        label: String(localized: "Key \(i + 1)", comment: "Express key N label, e.g. 'Key 1'"),
+                        lb: lb)
+                }
+            } header: {
+                PaneSectionHeader("Express Keys") {
+                    DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
+                }
             }
         }
 
@@ -733,6 +767,162 @@ struct ButtonMappingView: View {
                     isActive: lb.touchStrip2Active)
             }
         }
+
+        quickKeysSection()
+    }
+
+    // MARK: - Companion "Quick Keys" section
+
+    /// Express keys + dial for a connected companion puck/dongle, folded
+    /// into the tablet's own Buttons pane instead of the companion getting
+    /// a window (and settings) of its own — see `companionProductID`.
+    /// Bindings read/write the companion's *own* `TabletSettings` instance
+    /// (its own `DeviceContext`, keyed by its own PID), not the tablet's —
+    /// each physical device keeps its own independent binding storage,
+    /// exactly as if the companion still had its own pane; only the window
+    /// is merged.
+    @ViewBuilder
+    private func quickKeysSection() -> some View {
+        if let companionSettings = companionContext?.settings {
+            let lb = companionLiveButtons
+            let keyCount = min(max(companionSpec?.buttonCount ?? 8, 0) - 1, 16)
+
+            Section("Quick Keys") {
+                ForEach(0..<max(keyCount, 0), id: \.self) { i in
+                    buttonRow(
+                        String(localized: "Key \(i + 1)", comment: "Quick Keys express key N label"),
+                        isActive: lb.expressKeys[i],
+                        binding: companionSettings.recordingBinding(
+                            "Quick Keys Key \(i + 1)",
+                            get: { companionSettings.expressKeyBindings[i] },
+                            set: { newValue in
+                                var updated = companionSettings.expressKeyBindings
+                                updated[i] = newValue
+                                companionSettings.expressKeyBindings = updated
+                            }
+                        ))
+                }
+                // The bottom mode button rides the same indexed express-key
+                // array as the last slot (buttons[8] in AuxButtons — see
+                // XencelabsDecoder.decodeAux).
+                buttonRow(
+                    String(localized: "Mode", comment: "Quick Keys bottom mode button label"),
+                    isActive: lb.expressKeys[keyCount],
+                    binding: companionSettings.recordingBinding(
+                        "Quick Keys Mode Button",
+                        get: { companionSettings.expressKeyBindings[keyCount] },
+                        set: { newValue in
+                            var updated = companionSettings.expressKeyBindings
+                            updated[keyCount] = newValue
+                            companionSettings.expressKeyBindings = updated
+                        }
+                    ))
+                // Dial center click — reuses the touch-ring center-button
+                // slot, mirroring how XencelabsDecoder reports it via
+                // AuxButtons.touchRingButtonDown rather than an indexed key.
+                buttonRow(
+                    String(localized: "Dial", comment: "Quick Keys dial center-click row label"),
+                    isActive: lb.touchRingButtonDown,
+                    binding: companionSettings.recordingBinding(
+                        "Quick Keys Dial Button",
+                        get: { companionSettings.touchRingButtonBinding },
+                        set: { companionSettings.touchRingButtonBinding = $0 }
+                    ))
+                // Dial rotation (CW/CCW detents) — same ControlSlot model
+                // used by a real touch ring; not pre-allocated per-property
+                // like the tablet's own ring bindings above since this pane
+                // renders far less often (rendered only while a companion is
+                // connected, one Section, no independent hot redraw path).
+                let ringSlotCount = companionSpec?.ringSlotCount ?? 4
+                let slotCount = min(companionSettings.touchRingSlots.count, ringSlotCount)
+                ForEach(
+                    Array(companionSettings.touchRingSlots.prefix(slotCount).enumerated()),
+                    id: \.element.id
+                ) { idx, slot in
+                    TouchRingSlotRowView(
+                        slot: slot,
+                        idx: idx,
+                        isActiveSlot: false,
+                        ringSlotCount: ringSlotCount,
+                        actionBinding: companionSlotActionBinding(companionSettings, at: idx),
+                        speedBinding: companionSlotSpeedBinding(companionSettings, at: idx),
+                        cwBinding: companionSlotBinding(companionSettings, at: idx, direction: .cw),
+                        ccwBinding: companionSlotBinding(companionSettings, at: idx, direction: .ccw)
+                    )
+                    .equatable()
+                }
+                companionTouchRingDiagramRow(companionSettings, ringSlotCount: ringSlotCount)
+            }
+        }
+    }
+
+    /// Companion-scoped counterpart to `touchRingDiagramRow`, reading the
+    /// puck/dongle's own settings and live state instead of the tablet's.
+    private func companionTouchRingDiagramRow(
+        _ companionSettings: TabletSettings, ringSlotCount: Int
+    ) -> some View {
+        TouchRingDiagramView(
+            activeSlotIndex: companionSettings.touchRingActiveSlotIndex,
+            centerDown: companionLiveButtons.touchRingButtonDown,
+            slotCount: ringSlotCount
+        )
+        .equatable()
+        .frame(maxWidth: .infinity, minHeight: 96, maxHeight: 140)
+        .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
+        .listRowBackground(Color.clear)
+    }
+
+    private func companionSlotActionBinding(
+        _ companionSettings: TabletSettings, at index: Int
+    ) -> Binding<ControlSlot.Action> {
+        Binding(
+            get: {
+                guard companionSettings.touchRingSlots.indices.contains(index) else { return .scroll }
+                return companionSettings.touchRingSlots[index].action
+            },
+            set: { newValue in
+                guard companionSettings.touchRingSlots.indices.contains(index) else { return }
+                var updated = companionSettings.touchRingSlots
+                updated[index].action = newValue
+                companionSettings.touchRingSlots = updated
+            }
+        )
+    }
+
+    private func companionSlotSpeedBinding(
+        _ companionSettings: TabletSettings, at index: Int
+    ) -> Binding<Double> {
+        Binding(
+            get: {
+                guard companionSettings.touchRingSlots.indices.contains(index) else { return 1.0 }
+                return companionSettings.touchRingSlots[index].speed
+            },
+            set: { newValue in
+                guard companionSettings.touchRingSlots.indices.contains(index) else { return }
+                var updated = companionSettings.touchRingSlots
+                updated[index].speed = newValue
+                companionSettings.touchRingSlots = updated
+            }
+        )
+    }
+
+    private func companionSlotBinding(
+        _ companionSettings: TabletSettings, at index: Int, direction: SlotDirection
+    ) -> Binding<ButtonBinding> {
+        Binding(
+            get: {
+                guard companionSettings.touchRingSlots.indices.contains(index) else { return .none }
+                let slot = companionSettings.touchRingSlots[index]
+                return direction == .cw ? slot.cwBinding : slot.ccwBinding
+            },
+            set: { newValue in
+                guard companionSettings.touchRingSlots.indices.contains(index) else { return }
+                var updated = companionSettings.touchRingSlots
+                if direction == .cw { updated[index].cwBinding = newValue }
+                else { updated[index].ccwBinding = newValue }
+                companionSettings.touchRingSlots = updated
+            }
+        )
     }
 
     // MARK: - Dual-sided layout (Cintiq 24HD and similar)

@@ -5,6 +5,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import TabletKit
 
 @MainActor
 final class SettingsWindowManager: ObservableObject {
@@ -53,8 +54,20 @@ final class SettingsWindowManager: ObservableObject {
                     self.replaceWindow(dw, withDeviceID: pid)
                     return  // replaceWindow handled this pid; loop below skips it
                 }
-                // For every connected tablet with no open window, open one.
-                for pid in ids where !self.windows.contains(where: { $0.productID == pid }) {
+                // For every connected tablet with no open window, open one —
+                // except a companion peripheral (e.g. the Xencelabs Quick
+                // Keys puck/dongle) whose owning tablet is also connected;
+                // that one is folded into the tablet's own Buttons pane
+                // instead (see ButtonMappingView's companion section). This
+                // re-evaluates on every change to `ids`, so a companion
+                // whose owning tablet later disconnects gets its own window
+                // on the very next publish (it's still in `ids`, still has
+                // no window, and is no longer claimed).
+                for pid in ids
+                where !self.windows.contains(where: { $0.productID == pid })
+                    && !VendorDeviceRegistry.isConnectedCompanion(
+                        productID: pid, connectedProductIDs: ids)
+                {
                     self.openWindow(forProductID: pid)
                 }
             }
@@ -105,6 +118,15 @@ final class SettingsWindowManager: ObservableObject {
 
     @discardableResult
     func openWindow(forProductID productID: Int) -> SettingsWindowController {
+        // A companion peripheral (Xencelabs Quick Keys puck/dongle) never
+        // gets a window of its own while its owning tablet is connected —
+        // redirect to the owner instead. Covers every caller (menus, status
+        // item, "Detect Tablet"), not just the auto-open sink.
+        if let ownerPID = VendorDeviceRegistry.connectedCompanionOwner(
+            forProductID: productID, connectedProductIDs: TabletManager.shared.connectedProductIDs)
+        {
+            return openWindow(forProductID: ownerPID)
+        }
         if let existing = windows.first(where: { $0.productID == productID }) {
             NSApp.activate(ignoringOtherApps: true)
             existing.show()
@@ -182,10 +204,21 @@ final class SettingsWindowManager: ObservableObject {
         else { return }
 
         var created: [(wc: SettingsWindowController, entry: [String: Any])] = []
+        // A companion's own window shouldn't be restored alongside its
+        // owning tablet's — mirrors the live-connect suppression below.
+        // Resolved against the saved set itself since actual connection
+        // state isn't known yet at launch.
+        let savedProductIDs = entries.compactMap { $0["productID"] as? Int }
 
         for (index, entry) in entries.enumerated() {
             let productID = entry["productID"] as? Int
             let tabIndex  = entry["tabIndex"]  as? Int ?? 0
+            if let pid = productID,
+                VendorDeviceRegistry.isConnectedCompanion(
+                    productID: pid, connectedProductIDs: savedProductIDs)
+            {
+                continue
+            }
             let frame: NSRect? = {
                 guard let x = entry["x"] as? CGFloat,
                       let y = entry["y"] as? CGFloat,

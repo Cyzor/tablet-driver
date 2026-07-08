@@ -5,6 +5,7 @@
 import AppKit
 import Combine
 import ServiceManagement
+import TabletKit
 
 /// Owns the menu-bar status item, replacing the SwiftUI `MenuBarExtra`. The
 /// menu is rebuilt in full on every open (`menuNeedsUpdate`) rather than kept
@@ -80,6 +81,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         if !knownTablets.isEmpty {
             menu.addItem(.separator())
             for tablet in knownTablets {
+                // A companion peripheral (Xencelabs Quick Keys puck/dongle)
+                // is folded into its owning tablet's window while connected —
+                // don't list it as its own selectable device.
+                if VendorDeviceRegistry.isConnectedCompanion(
+                    productID: tablet.id, connectedProductIDs: tm.connectedProductIDs)
+                {
+                    continue
+                }
                 let connected = tm.connectedProductIDs.contains(tablet.id)
                 let suffix = connected ? (tm.contexts[tablet.id]?.batteryMenuSuffix ?? "") : ""
                 let item = NSMenuItem(title: pwc.menuLabel(forProductID: tablet.id) + suffix,
