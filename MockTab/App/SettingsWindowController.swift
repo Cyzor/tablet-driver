@@ -85,6 +85,12 @@ final class ResizableTabViewController: NSTabViewController {
     /// could reflect a user-chosen large size and produce an inflated floor).
     private var hasAppliedMinSize = false
 
+    /// True while this controller is itself resizing the window (tab-switch
+    /// auto-size, min-size clamp) — `windowDidResize` must not mistake these
+    /// for a user drag, or `userHasResized` latches true on the very first
+    /// programmatic resize and every future tab switch stops auto-sizing.
+    private var isProgrammaticResize = false
+
     /// Called when the active tab changes — used to notify TabletManager
     /// whether the Info tab is currently visible.
     var onTabSelected: ((String?) -> Void)?
@@ -100,16 +106,20 @@ final class ResizableTabViewController: NSTabViewController {
     }
 
     override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
-        // NSTabViewController (.toolbar style) natively resizes the window to
-        // the incoming tab's preferredContentSize as part of `super`'s handling
-        // below — a second, unguarded resize path alongside applyDefaultSize.
-        // Once the user has taken ownership of the window's size (resized it
-        // manually, or it was restored/reopened at an explicit size), report
-        // the window's current size instead of the tab's authored default so
-        // that native resize is a no-op and doesn't fight the restored size.
-        if userHasResized, let window = view.window, let vc = tabViewItem?.viewController {
-            vc.preferredContentSize = window.contentView?.frame.size ?? window.frame.size
-        }
+        // Root cause of the long-standing "window permanently unresizable after
+        // switching tabs" bug (introduced in 7c01f64): this used to also set
+        // `tabViewItem.viewController.preferredContentSize` to the window's
+        // *current* frame size whenever `userHasResized` was true, to stop
+        // NSTabViewController's native per-tab auto-resize from fighting a
+        // user-resized window. But `showTab(at:)` calls `suppressAutoResize()`
+        // (which sets `userHasResized = true`) *before* the window is ever
+        // shown — including on the very first tab display — so that line could
+        // fire before the window had been laid out, capturing a bogus/zero
+        // frame size and pinning the tab's preferredContentSize to it
+        // permanently. `applyDefaultSize`'s own `!userHasResized` guard below
+        // already prevents the window from being force-resized back to
+        // per-tab defaults once the user has taken ownership of the size, so
+        // this extra line was both redundant and the actual source of the bug.
         super.tabView(tabView, didSelect: tabViewItem)
         applyDefaultSize(for: tabViewItem)
         onTabSelected?(tabViewItem?.label)
@@ -136,16 +146,20 @@ final class ResizableTabViewController: NSTabViewController {
             hasAppliedMinSize = true
             DispatchQueue.main.async { [weak self, weak window] in
                 guard let self, let window else { return }
-                window.minSize = NSSize(width: self.toolbarMinWidth(in: window), height: 500)
+                let minWidth = self.toolbarMinWidth(in: window)
+                window.minSize = NSSize(width: minWidth, height: 500)
                 // The measurement above is authoritative for this window's toolbar
                 // layout — widen an already-narrower restored/last-known frame now,
                 // since setFrame/setContentSize don't enforce minSize on their own.
+                self.isProgrammaticResize = true
                 window.clampToMinSize()
+                self.isProgrammaticResize = false
             }
         }
     }
 
     @objc private func windowDidResize(_ notification: Notification) {
+        guard !isProgrammaticResize else { return }
         userHasResized = true
     }
 
@@ -158,7 +172,9 @@ final class ResizableTabViewController: NSTabViewController {
         if abs(window.frame.width - size.width) > 2
             || abs(window.frame.height - size.height) > 2
         {
+            isProgrammaticResize = true
             window.setContentSize(size)
+            isProgrammaticResize = false
         }
     }
 
