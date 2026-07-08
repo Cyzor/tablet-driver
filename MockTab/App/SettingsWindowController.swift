@@ -209,12 +209,12 @@ final class ResizableTabViewController: NSTabViewController {
         // sibling inside the window frame view, spanning most of the window width.
         let expectedCount = tabViewItems.count
         if let contentView = window.contentView,
-           let frameView = contentView.superview
+            let frameView = contentView.superview
         {
             let contentTop = contentView.frame.maxY
             for candidate in frameView.subviews where candidate !== contentView {
                 guard candidate.frame.minY >= contentTop - 2,
-                      candidate.frame.width > window.frame.width * 0.5
+                    candidate.frame.width > window.frame.width * 0.5
                 else { continue }
                 // Sort children left-to-right; skip hairlines and zero-size views.
                 let items = candidate.subviews
@@ -257,7 +257,13 @@ private final class LazyHostingViewController: NSViewController {
 
     override var preferredContentSize: NSSize {
         get { inner?.preferredContentSize ?? super.preferredContentSize }
-        set { if let inner { inner.preferredContentSize = newValue } else { super.preferredContentSize = newValue } }
+        set {
+            if let inner {
+                inner.preferredContentSize = newValue
+            } else {
+                super.preferredContentSize = newValue
+            }
+        }
     }
 
     override func loadView() {
@@ -273,59 +279,6 @@ private final class LazyHostingViewController: NSViewController {
         built.view.autoresizingMask = [.width, .height]
         view.addSubview(built.view)
         inner = built
-    }
-}
-
-// MARK: - LiveResizeFreezeView / LiveResizeFreezeViewController
-
-/// Container NSView that pins its content at its current size when live resize
-/// starts — the content is clipped to the shrinking window and shows empty space
-/// when the window grows — then snaps to the final size on mouse release.
-private final class LiveResizeFreezeView: NSView {
-    override func viewWillStartLiveResize() {
-        super.viewWillStartLiveResize()
-        subviews.first?.autoresizingMask = [.minYMargin, .maxXMargin]   // freeze size, anchor top-left
-        wantsLayer = true
-        layer?.masksToBounds = true             // clip overflow when window shrinks
-    }
-
-    override func viewDidEndLiveResize() {
-        if let content = subviews.first {
-            content.autoresizingMask = [.width, .height]
-            content.frame = bounds              // snap to final size
-        }
-        layer?.masksToBounds = false
-        super.viewDidEndLiveResize()
-    }
-}
-
-/// Thin NSViewController that hosts the pane's NSHostingController inside a
-/// LiveResizeFreezeView and forwards the properties NSTabViewController reads.
-private final class LiveResizeFreezeViewController: NSViewController {
-    private let inner: NSViewController
-
-    override var preferredContentSize: NSSize {
-        get { inner.preferredContentSize }
-        set { inner.preferredContentSize = newValue }
-    }
-
-    init(wrapping inner: NSViewController) {
-        self.inner = inner
-        super.init(nibName: nil, bundle: nil)
-        addChild(inner)
-    }
-
-    required init?(coder: NSCoder) { fatalError() }
-
-    override func loadView() {
-        view = LiveResizeFreezeView()
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        inner.view.autoresizingMask = [.width, .height]
-        inner.view.frame = view.bounds
-        view.addSubview(inner.view)
     }
 }
 
@@ -346,7 +299,8 @@ final class SettingsWindowController: NSWindowController {
     private let tabVC = ResizableTabViewController()
 
     enum Tab: Int {
-        case tabletArea = 0, penFeel, buttons, touch, display, devices, profiles, scratchpad, info
+        case tabletArea = 0
+        case penFeel, buttons, touch, display, devices, profiles, scratchpad, info
     }
 
     static let tabLabels = [
@@ -390,7 +344,8 @@ final class SettingsWindowController: NSWindowController {
         // from the registry at this point; formula: ~70 pt per tab + ~80 pt chrome.
         // The deferred measurement in viewDidAppear will refine this once the
         // toolbar is fully laid out.
-        let hasTouchTab = productID.flatMap { WacomDeviceRegistry.spec(for: $0) }?.hasFingerTouch == true
+        let hasTouchTab =
+            productID.flatMap { WacomDeviceRegistry.spec(for: $0) }?.hasFingerTouch == true
         window.minSize = NSSize(width: CGFloat(hasTouchTab ? 9 : 8) * 70 + 80, height: 500)
 
         // Don't auto-save frame for device-specific windows — SettingsWindowManager
@@ -420,7 +375,10 @@ final class SettingsWindowController: NSWindowController {
                 self.tabVC.tabViewItems[safe: self.tabVC.selectedTabViewItemIndex]?.label ?? ""
             // Use tabLabels indices via the Tab enum so adding/reordering tabs
             // doesn't break the visibility gate.
-            let isInfoTab = (label == Self.tabLabels[Tab.info.rawValue] || label == Self.tabLabels[Tab.buttons.rawValue] || label == Self.tabLabels[Tab.scratchpad.rawValue])
+            let isInfoTab =
+                (label == Self.tabLabels[Tab.info.rawValue]
+                    || label == Self.tabLabels[Tab.buttons.rawValue]
+                    || label == Self.tabLabels[Tab.scratchpad.rawValue])
             let isKeyWindow = window?.isKeyWindow ?? false
             Task { @MainActor in
                 TabletManager.shared.infoViewVisible = isInfoTab && isKeyWindow
@@ -465,15 +423,21 @@ final class SettingsWindowController: NSWindowController {
             SettingsWindowManager.shared.replaceWindow(self, withDeviceID: pid)
         }
 
-        addTab(label: Self.tabLabels[Tab.tabletArea.rawValue], symbol: "rectangle.dashed", height: 790) {
+        addTab(
+            label: Self.tabLabels[Tab.tabletArea.rawValue], symbol: "rectangle.dashed", height: 790
+        ) {
             TabletAreaView(
                 settings: s, tabletManager: tm, registry: dr,
                 onDeviceSelected: onDevice, boundProductID: productID)
         }
-        addTab(label: Self.tabLabels[Tab.penFeel.rawValue], symbol: "scribble.variable", height: 480, freezeOnResize: true) {
+        addTab(
+            label: Self.tabLabels[Tab.penFeel.rawValue], symbol: "scribble.variable", height: 480
+        ) {
             PenFeelView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: Self.tabLabels[Tab.buttons.rawValue], symbol: "square.grid.2x2.fill", height: 575, freezeOnResize: true) {
+        addTab(
+            label: Self.tabLabels[Tab.buttons.rawValue], symbol: "square.grid.2x2.fill", height: 575
+        ) {
             ButtonMappingView(
                 settings: s, tabletManager: tm, registry: dr,
                 productID: productID)
@@ -483,22 +447,31 @@ final class SettingsWindowController: NSWindowController {
         // (defence-in-depth in case the spec lookup changes).
         let touchSpec = productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
         if touchSpec?.hasFingerTouch == true {
-            addTab(label: Self.tabLabels[Tab.touch.rawValue], symbol: "hand.point.up.left", height: 480) {
+            addTab(
+                label: Self.tabLabels[Tab.touch.rawValue], symbol: "hand.point.up.left", height: 480
+            ) {
                 TouchView(settings: s, tabletManager: tm, registry: dr, productID: productID)
             }
         }
         addTab(label: Self.tabLabels[Tab.display.rawValue], symbol: "display", height: 370) {
             DisplayMappingView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: Self.tabLabels[Tab.devices.rawValue], symbol: "rectangle.on.rectangle", height: 480, width: 620)
-        {
-            DevicesView(settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
+        addTab(
+            label: Self.tabLabels[Tab.devices.rawValue], symbol: "rectangle.on.rectangle",
+            height: 480, width: 620
+        ) {
+            DevicesView(
+                settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
         }
         addTab(label: Self.tabLabels[Tab.profiles.rawValue], symbol: "star.circle", height: 450) {
             ProfilesView(settings: s, tabletManager: tm, registry: dr, productID: productID)
         }
-        addTab(label: Self.tabLabels[Tab.scratchpad.rawValue], symbol: "pencil.and.outline", height: 360) {
-            ScratchpadView(settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
+        addTab(
+            label: Self.tabLabels[Tab.scratchpad.rawValue], symbol: "pencil.and.outline",
+            height: 360
+        ) {
+            ScratchpadView(
+                settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
         }
         addTab(label: Self.tabLabels[Tab.info.rawValue], symbol: "info.circle", height: 430) {
             InfoView(tabletManager: tm, settings: s, productID: productID)
@@ -526,7 +499,9 @@ final class SettingsWindowController: NSWindowController {
         // Only set true if the window is key (in focus) and tab is Info or Buttons.
         let label = tabVC.tabViewItems[safe: tabVC.selectedTabViewItemIndex]?.label
         TabletManager.shared.infoViewVisible =
-            (label == Self.tabLabels[Tab.info.rawValue] || label == Self.tabLabels[Tab.buttons.rawValue] || label == Self.tabLabels[Tab.scratchpad.rawValue])
+            (label == Self.tabLabels[Tab.info.rawValue]
+                || label == Self.tabLabels[Tab.buttons.rawValue]
+                || label == Self.tabLabels[Tab.scratchpad.rawValue])
             && window?.isKeyWindow == true
     }
 
@@ -558,7 +533,6 @@ final class SettingsWindowController: NSWindowController {
         symbol: String,
         height: CGFloat,
         width: CGFloat = 500,
-        freezeOnResize: Bool = false,
         @ViewBuilder content: @escaping () -> Content
     ) {
         let isDeviceTab = Self.deviceSpecificTabIndices.contains(nextTabIndex)
@@ -582,15 +556,7 @@ final class SettingsWindowController: NSWindowController {
         lazy.title = title
         lazy.preferredContentSize = NSSize(width: width, height: 0)
 
-        let vc: NSViewController
-        if freezeOnResize {
-            let frozen = LiveResizeFreezeViewController(wrapping: lazy)
-            frozen.title = title
-            vc = frozen
-        } else {
-            vc = lazy
-        }
-        let item = NSTabViewItem(viewController: vc)
+        let item = NSTabViewItem(viewController: lazy)
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
         tabVC.addTabViewItem(item)
