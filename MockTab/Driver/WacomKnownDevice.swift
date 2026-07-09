@@ -140,7 +140,14 @@ final class WacomKnownDevice: TabletDevice {
     /// resync's label-reset write can address the same puck.
     private var xencelabsDongleIdentity: [UInt8]?
 
-    private static let xencelabsDongleProductID = 0x5203
+    /// Devices whose report-2 tunnel can relay a wireless Quick Keys puck and
+    /// therefore need the relink/re-arm/resync handling: the standalone USB
+    /// dongle, and the Pen Display — no radio of its own, but when the dongle
+    /// sits in the display's USB slot the display firmware aggregates the
+    /// puck traffic into its own vendor tunnel (confirmed 2026-07-08 via two
+    /// discovery captures — 0xF8/0xF2 status frames with the puck's identity
+    /// trailer, plus live 0xF0 aux data, all arriving on 0x520D).
+    private static let xencelabsRelayProductIDs: Set<Int> = [0x5203, 0x520D]
     private static let xencelabsIdentityOffset = 10
     private static let xencelabsIdentityLength = 6
 
@@ -538,6 +545,23 @@ final class WacomKnownDevice: TabletDevice {
         }
     }
 
+    /// Send the tablet-mode relink handshake ([0x02, 0xB0, 0x04] with the
+    /// puck's identity appended) to the dongle's vendor interface, padded to
+    /// the declared output size. Used at first sight of the puck and again
+    /// after its ~5 s wake window (see the relink block in `handleReport`).
+    @discardableResult
+    private func sendXencelabsRelink(identity: [UInt8]) -> IOReturn {
+        let target = secondaryDevice ?? device
+        var relink: [UInt8] = [0x02, 0xB0, 0x04, 0, 0, 0, 0, 0, 0, 0] + identity
+        let declared = hidIntProperty(target, kIOHIDMaxOutputReportSizeKey)
+        if declared > relink.count {
+            relink += [UInt8](repeating: 0, count: declared - relink.count)
+        }
+        return hidSetReport(
+            target, type: kIOHIDReportTypeOutput, reportID: CFIndex(relink[0]),
+            bytes: &relink, tag: "\(deviceSpec.name) dongle relink", log: logger)
+    }
+
     /// Resend the ring LED and OLED labels once a dongle relink is confirmed
     /// live. `setRingLED` has no dedup, so it's safe to call as-is; the OLED
     /// label setters dedup against `xencelabsSentText`, so that cache is
@@ -781,13 +805,31 @@ final class WacomKnownDevice: TabletDevice {
             }
         }
 
+        // Puck power-cycle detection: the dongle emits status frames (tags
+        // 0xF8/0xF2) only while a paired puck is present but not yet upgraded
+        // to live aux data — the state a puck lands in when its power switch
+        // is cycled while the dongle stays enumerated. Seeing one *after* a
+        // successful relink therefore means the puck restarted and lost the
+        // tablet-mode handshake (and its OLED/LED state); re-arm the one-shot
+        // latches so the block below re-sends both. Without this, only
+        // reseating the dongle (fresh WacomKnownDevice, fresh latches)
+        // recovered the puck — the power switch alone left it dead.
+        if deviceSpec.parser == .xencelabs, Self.xencelabsRelayProductIDs.contains(deviceSpec.productID),
+            xencelabsDongleRelinked, length >= 2, report[0] == 0x02,
+            report[1] == 0xF8 || report[1] == 0xF2
+        {
+            logger.info("\(name, privacy: .public): dongle status frame after relink (tag=0x\(String(report[1], radix: 16), privacy: .public)) — puck restarted, re-arming relink")
+            xencelabsDongleRelinked = false
+            xencelabsPostRelinkResynced = false
+        }
+
         // Xencelabs wireless dongle relink: send the tablet-mode init once
         // with the puck's own identifier appended, read straight off this
         // report's trailer (see the property doc above). Any report ID 0x02
         // frame of at least this length carries it once a puck is paired,
         // including the connect-time status frames that arrive before real
         // aux data flows.
-        if deviceSpec.parser == .xencelabs, deviceSpec.productID == Self.xencelabsDongleProductID,
+        if deviceSpec.parser == .xencelabs, Self.xencelabsRelayProductIDs.contains(deviceSpec.productID),
             !xencelabsDongleRelinked, length >= Self.xencelabsIdentityOffset + Self.xencelabsIdentityLength,
             report[0] == 0x02  // XencelabsDecoder.penReportID (internal, not visible here)
         {
@@ -797,15 +839,7 @@ final class WacomKnownDevice: TabletDevice {
             if identity.contains(where: { $0 != 0 }) {
                 xencelabsDongleRelinked = true
                 xencelabsDongleIdentity = identity
-                let target = secondaryDevice ?? device
-                var relink: [UInt8] = [0x02, 0xB0, 0x04, 0, 0, 0, 0, 0, 0, 0] + identity
-                let declared = hidIntProperty(target, kIOHIDMaxOutputReportSizeKey)
-                if declared > relink.count {
-                    relink += [UInt8](repeating: 0, count: declared - relink.count)
-                }
-                let ret = hidSetReport(
-                    target, type: kIOHIDReportTypeOutput, reportID: CFIndex(relink[0]),
-                    bytes: &relink, tag: "\(name) dongle relink", log: logger)
+                let ret = sendXencelabsRelink(identity: identity)
                 logger.info("\(name, privacy: .public): dongle relink sent, result=0x\(String(ret, radix: 16), privacy: .public)")
                 // Previously this waited for the first real aux frame to prove
                 // the link was live before resending OLED/LED state, because
@@ -819,6 +853,25 @@ final class WacomKnownDevice: TabletDevice {
                 if ret == kIOReturnSuccess, !xencelabsPostRelinkResynced {
                     xencelabsPostRelinkResynced = true
                     resyncXencelabsOutputsAfterRelink()
+                    // A power-cycled puck accepts the relink while its firmware
+                    // is still waking (measured ~5.25 s to logo + "Please
+                    // connect" text), so the immediate handshake and resync
+                    // above land in the void — buttons come back but the puck
+                    // still believes it's unconnected and shows a stale
+                    // display, looking like a failed handshake. Repeat the
+                    // *full* relink + display resync after the wake window
+                    // passes (all writes addressed and idempotent; at
+                    // dongle-connect time, when the puck is already awake,
+                    // the repeats are harmless).
+                    for delay in [6.5, 10.0] {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                            guard let self, self.xencelabsPostRelinkResynced,
+                                let identity = self.xencelabsDongleIdentity else { return }
+                            let ret = self.sendXencelabsRelink(identity: identity)
+                            logger.info("\(self.deviceSpec.name, privacy: .public): post-wake relink retry (+\(delay, privacy: .public)s), result=0x\(String(ret, radix: 16), privacy: .public)")
+                            self.resyncXencelabsOutputsAfterRelink()
+                        }
+                    }
                 }
             }
         }
