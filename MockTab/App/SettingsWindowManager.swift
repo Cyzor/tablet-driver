@@ -358,8 +358,14 @@ final class SettingsWindowManager: ObservableObject {
             if let lastSize = lastKnownSizes[sizeKey(productID: productID)] {
                 wc.window?.setContentSize(lastSize)
                 wc.window?.clampToMinSize()
-                wc.suppressAutoResize()
             }
+            // Whether or not we had a last-known size, don't let a later
+            // showTab(at:) snap the window to that tab's per-tab default —
+            // that's the old System-Preferences-style resize-per-tab
+            // behavior, and it can fire on restore whenever saved frame
+            // data is missing/incomplete even though this isn't really a
+            // brand-new window.
+            wc.suppressAutoResize()
 
             let screen = NSScreen.main ?? NSScreen.screens.first
             let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
