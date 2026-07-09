@@ -247,7 +247,14 @@ final class WacomKnownDevice: TabletDevice {
 
             // Query hardware serial from WACOM_REPORT_USB (Report ID 0x03) for device
             // unification: same physical tablet via USB, BT, or dongle has the same serial.
-            queryHardwareSerial()
+            // Wacom only — Xencelabs firmware never answers report 0x03, and the
+            // synchronous IOHIDDeviceGetReport blocks the main thread ~4–5 s
+            // (beachball on connect) waiting for the kernel HID timeout.
+            if deviceSpec.parser != .xencelabs {
+                queryHardwareSerial()
+            } else {
+                onHardwareSerial?(0)
+            }
         }
 
         if acceptsReports(from: device) {
