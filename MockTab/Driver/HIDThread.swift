@@ -4,6 +4,7 @@
 
 import CoreFoundation
 import Foundation
+import os
 
 /// Dedicated high-priority run-loop thread for IOHIDManager callbacks.
 ///
@@ -32,6 +33,7 @@ final class HIDThread {
         let thread = Thread {
             captured = CFRunLoopGetCurrent()
             sema.signal()
+            HIDThread.promoteToTimeConstraintPolicy()
             // Add a keep-alive source so the run loop doesn't exit when idle.
             let source = CFRunLoopSourceCreate(
                 nil, 0,
@@ -51,6 +53,40 @@ final class HIDThread {
             fatalError("HIDThread: run loop capture failed — thread never started")
         }
         runLoop = rl
+    }
+
+    /// Promote the calling thread to `THREAD_TIME_CONSTRAINT_POLICY` so HID
+    /// report delivery keeps its scheduling priority under system load
+    /// (LatencyProbe showed 5–9 ms delivery stalls during I/O storms that
+    /// ordinary `.userInteractive` QoS didn't prevent). Parameters sized for
+    /// a 133 Hz report stream: period ≈7.5 ms, computation ≈500 µs per
+    /// report, constraint 2 ms, preemptible. On failure the thread simply
+    /// stays at `.userInteractive` QoS.
+    private static func promoteToTimeConstraintPolicy() {
+        var timebase = mach_timebase_info_data_t()
+        mach_timebase_info(&timebase)
+        let ticksPerNs = Double(timebase.denom) / Double(timebase.numer)
+        func ticks(_ ms: Double) -> UInt32 { UInt32(ms * 1_000_000.0 * ticksPerNs) }
+
+        var policy = thread_time_constraint_policy(
+            period: ticks(7.5),
+            computation: ticks(0.5),
+            constraint: ticks(2.0),
+            preemptible: 1)
+        let count = mach_msg_type_number_t(
+            MemoryLayout<thread_time_constraint_policy>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &policy) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                thread_policy_set(mach_thread_self(), thread_policy_flavor_t(THREAD_TIME_CONSTRAINT_POLICY),
+                                  $0, count)
+            }
+        }
+        let log = Logger(subsystem: "com.mocktab.latency", category: "policy")
+        if result == KERN_SUCCESS {
+            log.info("HIDThread promoted to time-constraint scheduling policy")
+        } else {
+            log.warning("time-constraint policy rejected (kern \(result)); staying at userInteractive QoS")
+        }
     }
 
     // A do-nothing CFRunLoopSourceContext used to keep the run loop alive.
@@ -97,6 +133,18 @@ final class LatencyProbe {
     private(set) var stallCount: UInt64 = 0
     private(set) var reportCount: UInt64 = 0
 
+    /// Unified-log channel for stall episodes, so evidence survives without
+    /// the diagnostics pane being open. Retrieve after the fact with:
+    ///   log show --last 1h --predicate 'subsystem == "com.mocktab.latency"'
+    private static let log = Logger(subsystem: "com.mocktab.latency", category: "stall")
+
+    /// Stalls arrive in bursts during load storms; log the burst, not every
+    /// report. At most one line per second (mach ticks), each summarizing
+    /// the worst latency seen since the previous line.
+    private var lastLogTime: UInt64 = 0
+    private var burstWorstMs: Double = 0
+    private var burstStallCount: UInt64 = 0
+
     /// Called on HIDThread for every input report from the known-device path.
     func record(kernelTimestamp: UInt64) {
         let now = mach_absolute_time()
@@ -105,6 +153,17 @@ final class LatencyProbe {
         reportCount &+= 1
         averageMs += (ms - averageMs) / 64.0
         if ms > worstMs { worstMs = ms }
-        if ms > Self.stallThresholdMs { stallCount &+= 1 }
+        if ms > Self.stallThresholdMs {
+            stallCount &+= 1
+            burstStallCount &+= 1
+            if ms > burstWorstMs { burstWorstMs = ms }
+            let oneSecondTicks = UInt64(1_000_000_000.0 / Self.timebaseFactor)
+            if now &- lastLogTime > oneSecondTicks {
+                Self.log.warning("delivery stall: worst \(self.burstWorstMs, format: .fixed(precision: 1)) ms over \(self.burstStallCount) report(s); avg \(self.averageMs, format: .fixed(precision: 2)) ms, total stalls \(self.stallCount)")
+                lastLogTime = now
+                burstWorstMs = 0
+                burstStallCount = 0
+            }
+        }
     }
 }
