@@ -325,10 +325,18 @@ final class InputInjector: @unchecked Sendable {
     /// timer fires, the release never happened as far as anything
     /// downstream is concerned. Gated to vendorID 0x28BD; Wacom hardware's
     /// button and position sensing share one range, so this doesn't apply.
+    ///
+    /// The window is sized for sweeping, loosely-held gestures (e.g. a
+    /// barrel-button pan), where the pen can ride the button-sensing
+    /// boundary for well over the ~80 ms a stationary hover blip lasts;
+    /// a held button that drops out should stay engaged until the pen
+    /// settles and reports a sustained release. The cost is that every
+    /// genuine barrel release commits this much later, which is invisible
+    /// for drags and acceptable for clicks/modifiers.
     private var button1UpDebounceTimer: CFRunLoopTimer?
     private var button2UpDebounceTimer: CFRunLoopTimer?
     private var button3UpDebounceTimer: CFRunLoopTimer?
-    private let buttonUpDebounceInterval: TimeInterval = 0.08
+    private let buttonUpDebounceInterval: TimeInterval = 0.25
 
     // MARK: - Time-based leak watchdog
     //
