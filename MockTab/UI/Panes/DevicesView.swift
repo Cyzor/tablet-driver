@@ -180,8 +180,11 @@ struct DevicesView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .scaledFrame(maxWidth: 280, alignment: .leading)
 
-                // Kind column
-                Text(tablet.modelName)
+                // Kind column — just the model number when the catalog name
+                // carries one; the full name stays in the tooltip. The Name
+                // column already defaults to the full catalog name, so
+                // repeating it here read as a duplicate.
+                Text(Self.shortKind(tablet.modelName))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .scaledFrame(width: 130, alignment: .leading)
@@ -375,6 +378,18 @@ struct DevicesView: View {
     }
 
     // MARK: - Shared layout helpers
+
+    /// Extracts the model number from a catalog name like
+    /// "Intuos Pro L (PTH-860)" → "PTH-860". Only parentheticals shaped
+    /// like a Wacom model code count — size ("4×5") and pairing notes
+    /// pass through untouched, as do names with no parenthetical at all
+    /// (e.g. Xencelabs devices).
+    static func shortKind(_ catalogName: String) -> String {
+        if let match = catalogName.firstMatch(of: /\(([A-Z]{2,4}-[0-9]+[A-Z0-9]*)\)/) {
+            return String(match.1)
+        }
+        return catalogName
+    }
 
     private func toolIcon(for tool: DeviceRegistry.KnownTool) -> String {
         let toolCode = tool.toolCode ?? 0
