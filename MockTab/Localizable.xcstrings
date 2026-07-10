@@ -221,12 +221,6 @@
         }
       }
     },
-    "Dial LED color" : {
-
-    },
-    "Dial LED color while this mode is active." : {
-
-    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -3920,6 +3914,12 @@
     },
     "Dial" : {
       "comment" : "Quick Keys dial center-click row label"
+    },
+    "Dial LED color" : {
+
+    },
+    "Dial LED color while this mode is active." : {
+
     },
     "Disable this button" : {
       "comment" : "A button label that disables a button.",
@@ -10301,6 +10301,29 @@
         }
       }
     },
+    "Remove All" : {
+      "comment" : "Override banner button while Option is held — removes every app's overrides for this tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle entfernen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar todo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべて削除"
+          }
+        }
+      }
+    },
     "Remove all %@ overrides for this tab" : {
       "comment" : "Help: remove all per-app overrides for current tab",
       "localizations" : {
@@ -10323,6 +10346,9 @@
           }
         }
       }
+    },
+    "Remove every app's overrides for this tablet" : {
+      "comment" : "Help: Option-click removes all per-app overrides for this tablet"
     },
     "Remove from List…" : {
       "comment" : "Context menu option to remove a tablet from the list of connected devices.",
@@ -10570,7 +10596,7 @@
       }
     },
     "Reset" : {
-      "comment" : "Button label: confirm factory reset",
+      "comment" : "Button label: confirm factory reset\nOverride banner button — removes this app's overrides for this tab",
       "localizations" : {
         "de" : {
           "stringUnit" : {

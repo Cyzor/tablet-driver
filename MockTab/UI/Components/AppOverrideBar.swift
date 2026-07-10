@@ -159,6 +159,11 @@ struct AppOverrideBar: View {
     @State private var pendingDropURLs: [URL] = []
     @State private var showMultiDropAlert = false
     @State private var cachedRunningApps: [NSRunningApplication] = []
+    /// True while the Option key is held — the banner's Reset button becomes
+    /// Remove All. Tracked via a local flagsChanged monitor that lives only
+    /// while the banner is on screen.
+    @State private var optionKeyDown = false
+    @State private var optionKeyMonitor: Any? = nil
     /// True after the first refresh fires. Prevents refreshRunningApps() from
     /// re-running on every pane switch (i.e., every time this bar re-appears
     /// because its tab became the selected one). Without this guard the @State
@@ -846,21 +851,55 @@ struct AppOverrideBar: View {
 
             Spacer()
 
-            Button("Reset") {
-                settings.removeAppOverride(bundleID: override.bundleID, keyScope: domainKeys)
+            Button(
+                optionKeyDown
+                    ? String(
+                        localized: "Remove All",
+                        comment: "Override banner button while Option is held — removes every app's overrides for this tablet"
+                    )
+                    : String(
+                        localized: "Reset",
+                        comment: "Override banner button — removes this app's overrides for this tab"
+                    )
+            ) {
+                // Read the modifier at click time rather than trusting the
+                // displayed state, so a release between render and click
+                // can't remove more than the label promised.
+                if NSEvent.modifierFlags.contains(.option) {
+                    settings.removeAllAppOverrides()
+                } else {
+                    settings.removeAppOverride(bundleID: override.bundleID, keyScope: domainKeys)
+                }
             }
             .appFont(.settingsLabel)
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .controlSize(.small)
             .help(
-                String(
-                    localized: "Remove all \(override.appName) overrides for this tab",
-                    comment: "Help: remove all per-app overrides for current tab"
-                )
+                optionKeyDown
+                    ? String(
+                        localized: "Remove every app's overrides for this tablet",
+                        comment: "Help: Option-click removes all per-app overrides for this tablet"
+                    )
+                    : String(
+                        localized: "Remove all \(override.appName) overrides for this tab",
+                        comment: "Help: remove all per-app overrides for current tab"
+                    )
             )
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 5)
         .background(Color.accentColor.opacity(0.08))
+        .onAppear {
+            optionKeyDown = NSEvent.modifierFlags.contains(.option)
+            guard optionKeyMonitor == nil else { return }
+            optionKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
+                optionKeyDown = event.modifierFlags.contains(.option)
+                return event
+            }
+        }
+        .onDisappear {
+            if let optionKeyMonitor { NSEvent.removeMonitor(optionKeyMonitor) }
+            optionKeyMonitor = nil
+            optionKeyDown = false
+        }
     }
 }
