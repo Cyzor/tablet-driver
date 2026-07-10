@@ -268,6 +268,27 @@ final class DeviceRegistry: ObservableObject {
         guard let idx = knownTools.firstIndex(where: { $0.id == id }) else { return }
         knownTools[idx].nickname = name
         saveTools(forDevice: deviceID)
+        rebuildAllTools()
+    }
+
+    /// Renames a tool in every tablet's persisted list. Used by the
+    /// all-tablets section of the Devices pane, where the edited tool may
+    /// not belong to the currently selected tablet (so `renameTool(_:to:forDevice:)`,
+    /// which operates on `knownTools`, could not find it).
+    func renameToolEverywhere(id: String, to name: String) {
+        for tablet in knownTablets {
+            guard let data = ud.data(forKey: toolsKey(tablet.id)),
+                var list = try? JSONDecoder().decode([KnownTool].self, from: data),
+                let idx = list.firstIndex(where: { $0.id == id })
+            else { continue }
+            list[idx].nickname = name
+            guard let saved = try? JSONEncoder().encode(list) else { continue }
+            ud.set(saved, forKey: toolsKey(tablet.id))
+        }
+        if let idx = knownTools.firstIndex(where: { $0.id == id }) {
+            knownTools[idx].nickname = name
+        }
+        rebuildAllTools()
     }
 
     /// Captured state needed to reverse a tool removal. Opaque to callers;

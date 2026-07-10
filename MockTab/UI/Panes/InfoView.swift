@@ -21,47 +21,56 @@ struct InfoView: View {
     @State private var showCaptureGuide = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    if fallbackDevice != nil || genericDigitizer != nil {
-                        unknownDeviceBanner
-                    }
-                    statusTable
-                    Divider()
-                    LiveInputView(
-                        livePoint: tabletManager.contexts[productID ?? 0]?.livePoint,
-                        liveButtons: tabletManager.contexts[productID ?? 0]?.liveButtons
-                            ?? LiveButtonState(),
-                        activeToolID: tabletManager.contexts[productID ?? 0]?.activeToolID,
-                        registry: DeviceRegistry.shared,
-                        hasDualRings: WacomDeviceRegistry.spec(for: productID ?? 0)?.hasDualRings
-                            == true
-                    )
-                    Divider()
-                    captureSection
-                    Divider()
-                    diagnosticSection
+        SettingsPane(
+            settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared,
+            productID: productID
+        ) {
+            if fallbackDevice != nil || genericDigitizer != nil {
+                Section {
+                    unknownDeviceBanner
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                 }
-                .padding()
             }
-            .onAppear { refresh() }
-            .onReceive(
-                NotificationCenter.default.publisher(
-                    for: NSApplication.didBecomeActiveNotification)
-            ) { _ in refresh() }
-            DeviceStatusBar(
-                settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared,
-                productID: productID ?? 0
-            )
-            .sheet(isPresented: $showCaptureGuide) {
-                CaptureGuideView(
-                    engine: CaptureEngine.shared,
-                    tabletManager: tabletManager,
-                    productID: productID ?? 0,
-                    onDismiss: { showCaptureGuide = false }
+            Section {
+                statusTable
+            } header: {
+                Text("Status").appFont(.headline)
+            }
+            Section {
+                LiveInputView(
+                    livePoint: tabletManager.contexts[productID ?? 0]?.livePoint,
+                    liveButtons: tabletManager.contexts[productID ?? 0]?.liveButtons
+                        ?? LiveButtonState(),
+                    activeToolID: tabletManager.contexts[productID ?? 0]?.activeToolID,
+                    registry: DeviceRegistry.shared,
+                    hasDualRings: WacomDeviceRegistry.spec(for: productID ?? 0)?.hasDualRings
+                        == true
                 )
+            } header: {
+                Text(String(localized: "Live Input", comment: "Section header: live input state and pen position"))
+                    .appFont(.headline)
             }
+            Section {
+                captureSection
+                diagnosticSection
+            } header: {
+                Text(String(localized: "Diagnostics", comment: "Section header: device diagnostics and data collection"))
+                    .appFont(.headline)
+            }
+        }
+        .onAppear { refresh() }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: NSApplication.didBecomeActiveNotification)
+        ) { _ in refresh() }
+        .sheet(isPresented: $showCaptureGuide) {
+            CaptureGuideView(
+                engine: CaptureEngine.shared,
+                tabletManager: tabletManager,
+                productID: productID ?? 0,
+                onDismiss: { showCaptureGuide = false }
+            )
         }
     }
 
@@ -83,7 +92,7 @@ struct InfoView: View {
         deviceContext?.tabletDevice as? GenericHIDDigitizer
     }
 
-    /// Brand/category guessed from USB strings for an unrecognised device,
+    /// Brand/category guessed from USB strings for an unrecognized device,
     /// when available — `WacomFallbackDevice` already knows it's Wacom, so
     /// only `GenericHIDDigitizer` carries a heuristic guess.
     private var detectedBrand: String? {
@@ -96,10 +105,10 @@ struct InfoView: View {
                 .foregroundStyle(.orange)
                 .imageScale(.large)
             VStack(alignment: .leading, spacing: 4) {
-                Text(String(localized: "Unrecognised tablet", comment: "Banner title shown when active device is on the generic fallback driver"))
+                Text(String(localized: "Unrecognized tablet", comment: "Banner title shown when active device is on the generic fallback driver"))
                     .appFont(.headline)
                 if let detectedBrand {
-                    Text(String(localized: "This looks like \(detectedBrand), but MockTab doesn't recognise this specific model yet.", comment: "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand"))
+                    Text(String(localized: "This looks like \(detectedBrand), but MockTab doesn't recognize this specific model yet.", comment: "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand"))
                         .appFont(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -199,7 +208,10 @@ struct InfoView: View {
                     : String(localized: "Disabled", comment: "Launch at Login status value"),
                 ok: launchAtLogin ? true : nil,
                 fix: launchAtLogin ? nil : enableLaunchAtLogin,
-                fixHelp: String(localized: "Enable MockTab to start automatically when you log in.", comment: "Tooltip on Fix button for Launch at Login"))
+                // A disabled preference isn't a fault — label the action for
+                // what it does instead of the repair-framed "Fix".
+                fixLabel: String(localized: "Enable", comment: "Button that turns on Launch at Login from the Info tab"),
+                fixHelp: String(localized: "Enable MockTab to start automatically when you log in.", comment: "Tooltip on Enable button for Launch at Login"))
 
             row(
                 String(localized: "Conflicts", comment: "Row label in Info tab status table"),
@@ -220,6 +232,7 @@ struct InfoView: View {
         leadingSymbol: String? = nil,
         symbolColor: Color? = nil,
         fix: (() -> Void)? = nil,
+        fixLabel: String? = nil,
         fixHelp: String? = nil
     ) -> some View {
         GridRow {
@@ -238,7 +251,7 @@ struct InfoView: View {
                 }
                 Text(value)
                 if let fix {
-                    Button("Fix", action: fix)
+                    Button(fixLabel ?? String(localized: "Fix", comment: "Default button label for repairing a failed status row in the Info tab"), action: fix)
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .help(fixHelp ?? "")
@@ -269,9 +282,6 @@ struct InfoView: View {
 
     private var captureSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(String(localized: "Diagnostics", comment: "Section header: device diagnostics and data collection"))
-                .appFont(.headline)
-
             HStack(spacing: 12) {
                 Button(String(localized: "Collect Device Data…", comment: "Button label: start device data collection")) {
                     showCaptureGuide = true
@@ -282,7 +292,7 @@ struct InfoView: View {
                 Spacer()
             }
 
-            Text(String(localized: "Use this if your device is unrecognised or a feature isn't working as expected. The collection takes about one minute.", comment: "Description below the Collect Device Data button"))
+            Text(String(localized: "Use this if your device is unrecognized or a feature isn't working as expected. The collection takes about one minute.", comment: "Description below the Collect Device Data button"))
                 .appFont(.settingsLabel)
                 .foregroundStyle(.tertiary)
         }
@@ -530,9 +540,6 @@ private struct LiveInputView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "Live Input", comment: "Section header: live input state and pen position"))
-                .appFont(.headline)
-
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                 let tool: DeviceRegistry.KnownTool? = {
                     guard let id = activeToolID else { return nil }
@@ -657,15 +664,9 @@ private struct LiveInputView: View {
                     }
                 }
             }
-            .padding(12)
+            // The enclosing grouped-form section supplies the card chrome.
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(minWidth: 380)
-            .background(Color(NSColor.controlBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
-            )
         }
     }
 

@@ -33,49 +33,54 @@ struct ProfilesView: View {
     @State private var importError: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    activeBanner
-                    Divider()
-                    PresetListView(
-                        profiles: settings.profiles,
-                        activeProfile: settings.activeProfile,
-                        appOverrides: settings.appOverrides,
-                        editingPreset: $editingPreset,
-                        editingName: $editingName,
-                        onActivate: { settings.activate($0) },
-                        onDelete: {
-                            if settings.activeProfile?.id == $0.id { settings.activeProfile = nil }
-                            settings.deletePreset($0)
-                        },
-                        onRenameBegin: { editingPreset = $0; editingName = $0.name },
-                        onRenameCommit: commitRename,
-                        onRenameCancel: { editingPreset = nil; editingName = "" }
-                    )
-                    Divider()
-                    createRow
-                    Divider()
-                    autoSwitchSection
-                    Divider()
-                    ConfigurationSummaryView(
-                        tablets: registry.knownTablets,
-                        tabletManager: tabletManager,
-                        offlineSettings: offlineSettings,
-                        toolsForDevice: registry.tools(forDevice:),
-                        isExpanded: $summaryExpanded
-                    )
-                    Divider()
-                    exportSection
-                }
-                .padding()
+        SettingsPane(
+            settings: settings, tabletManager: tabletManager, registry: registry,
+            productID: productID
+        ) {
+            Section {
+                activeBanner
+                PresetListView(
+                    profiles: settings.profiles,
+                    activeProfile: settings.activeProfile,
+                    appOverrides: settings.appOverrides,
+                    editingPreset: $editingPreset,
+                    editingName: $editingName,
+                    onActivate: { settings.activate($0) },
+                    onDelete: {
+                        if settings.activeProfile?.id == $0.id { settings.activeProfile = nil }
+                        settings.deletePreset($0)
+                    },
+                    onRenameBegin: { editingPreset = $0; editingName = $0.name },
+                    onRenameCommit: commitRename,
+                    onRenameCancel: { editingPreset = nil; editingName = "" }
+                )
+            } header: {
+                Text("Profiles").appFont(.headline)
             }
-            DeviceStatusBar(
-                settings: settings,
-                tabletManager: tabletManager,
-                registry: registry,
-                productID: productID ?? 0
-            )
+            Section {
+                createRow
+            } header: {
+                Text("New Profile").appFont(.headline)
+            }
+            Section {
+                autoSwitchSection
+            } header: {
+                Text("Auto-Switch").appFont(.headline)
+            }
+            Section {
+                ConfigurationSummaryView(
+                    tablets: registry.knownTablets,
+                    tabletManager: tabletManager,
+                    offlineSettings: offlineSettings,
+                    toolsForDevice: registry.tools(forDevice:),
+                    isExpanded: $summaryExpanded
+                )
+            }
+            Section {
+                exportSection
+            } header: {
+                Text("Backup & Restore").appFont(.headline)
+            }
         }
         .contentShape(Rectangle())
         .onTapGesture {
@@ -130,20 +135,19 @@ struct ProfilesView: View {
 
     private var createRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("New Profile")
-                .appFont(.headline)
-                .foregroundStyle(.secondary)
-
             if isCreating {
                 HStack(spacing: 8) {
                     TextField("Profile name", text: $newName)
+                        .labelsHidden()
                         .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.leading)
                         .frame(maxWidth: 200)
                         .onSubmit { commitCreate() }
 
                     Button("Create") { commitCreate() }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
+                        .fixedSize()
                         .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
                         .help("Save this new profile with the current settings")
 
@@ -153,6 +157,7 @@ struct ProfilesView: View {
                     }
                     .controlSize(.small)
                     .keyboardShortcut(.cancelAction)
+                    .fixedSize()
                     .help("Cancel creating a new profile")
                 }
             } else {
@@ -180,10 +185,6 @@ struct ProfilesView: View {
     @ViewBuilder
     private var autoSwitchSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Auto-Switch")
-                .appFont(.headline)
-                .foregroundStyle(.secondary)
-
             Toggle(
                 String(
                     localized:
@@ -204,9 +205,6 @@ struct ProfilesView: View {
 
     private var exportSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Backup & Restore")
-                .fontWeight(.medium)
-
             Text(
                 String(
                     localized:
@@ -474,10 +472,6 @@ private struct PresetListView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Profiles")
-                .appFont(.headline)
-                .foregroundStyle(.secondary)
-
             if profiles.isEmpty {
                 Text(
                     String(
@@ -508,18 +502,22 @@ private struct PresetListView: View {
 
             if isEditing {
                 TextField("Profile name", text: $editingName)
+                    .labelsHidden()
                     .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 200)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity)
                     .onSubmit { onRenameCommit() }
 
-                Button("Save") { onRenameCommit() }
+                Button("Rename") { onRenameCommit() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    .fixedSize()
                     .help("Save the profile name")
 
                 Button("Cancel") { onRenameCancel() }
                     .controlSize(.small)
                     .keyboardShortcut(.cancelAction)
+                    .fixedSize()
                     .help("Cancel renaming")
             } else {
                 VStack(alignment: .leading, spacing: 2) {

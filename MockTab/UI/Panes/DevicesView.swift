@@ -23,6 +23,10 @@ struct DevicesView: View {
 
     @State private var editingTabletID: Int? = nil
     @State private var editingToolID: String? = nil
+    /// Which section the tool edit lives in. The same tool appears in both
+    /// the per-tablet Tools list and Tools (All Tablets); without this,
+    /// starting a rename in one section put both rows into edit mode.
+    @State private var editingToolInAllSection = false
     @State private var editingName = ""
     @FocusState private var editFieldFocused: Bool
 
@@ -41,23 +45,13 @@ struct DevicesView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    tabletsSection
-                    Divider()
-                    toolsSection
-                    Divider()
-                    allToolsSection
-                }
-                .padding()
-            }
-            DeviceStatusBar(
-                settings: settings,
-                tabletManager: tabletManager,
-                registry: registry,
-                productID: productID ?? 0
-            )
+        SettingsPane(
+            settings: settings, tabletManager: tabletManager, registry: registry,
+            productID: productID
+        ) {
+            tabletsSection
+            toolsSection
+            allToolsSection
         }
         .contentShape(Rectangle())
         .onTapGesture {
@@ -77,8 +71,7 @@ struct DevicesView: View {
                 set: { if !$0 { pendingForgetTool = nil } }
             )
         ) {
-            // No .destructive role so "Remove" is the default (blue) button — Enter confirms.
-            Button("Remove") {
+            Button("Remove", role: .destructive) {
                 guard let tool = pendingForgetTool else { return }
                 let snapshot: DeviceRegistry.ToolRemovalSnapshot?
                 if let did = pendingForgetDeviceID {
@@ -96,6 +89,7 @@ struct DevicesView: View {
                 editingToolID = nil
             }
             Button("Cancel", role: .cancel) { pendingForgetTool = nil }
+                .keyboardShortcut(.defaultAction)
         } message: {
             Text(String(localized: "This tool will reappear with its default name next time the tablet detects it.", comment: "Message explaining that removed tool nicknames are temporary"))
         }
@@ -106,7 +100,7 @@ struct DevicesView: View {
                 set: { if !$0 { pendingRemoveTablet = nil } }
             )
         ) {
-            Button("Remove") {
+            Button("Remove", role: .destructive) {
                 guard let tablet = pendingRemoveTablet else { return }
                 if let snapshot = registry.removeTablet(id: tablet.id) {
                     undoManager?.registerUndo(withTarget: registry) { target in
@@ -117,6 +111,7 @@ struct DevicesView: View {
                 pendingRemoveTablet = nil
             }
             Button("Cancel", role: .cancel) { pendingRemoveTablet = nil }
+                .keyboardShortcut(.defaultAction)
         } message: {
             Text(String(localized: "This will discard all settings, profiles, button mappings, and the saved tool list for this tablet. The tablet will be re-added with defaults the next time it connects.", comment: "Message explaining what gets wiped when removing a tablet"))
         }
@@ -125,21 +120,17 @@ struct DevicesView: View {
     // MARK: - Tablets
 
     private var tabletsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Tablets").appFont(.headline)
+        Section {
             columnHeader("Name", "Kind", "Identifier")
             if registry.knownTablets.isEmpty {
                 emptyState(String(localized: "No tablets have been connected yet.", comment: "Empty state message when no tablets have been detected"))
             } else {
-                card {
-                    ForEach(registry.knownTablets) { tablet in
-                        tabletRow(tablet)
-                        if tablet.id != registry.knownTablets.last?.id {
-                            Divider().padding(.leading, 40)
-                        }
-                    }
+                ForEach(registry.knownTablets) { tablet in
+                    tabletRow(tablet)
                 }
             }
+        } header: {
+            Text("Tablets").appFont(.headline)
         }
     }
 
@@ -161,39 +152,50 @@ struct DevicesView: View {
                 .frame(width: 20, alignment: .center)
                 .accessibilityHidden(true)
 
-            // Editable name
             if editingTabletID == tablet.id {
+                // Inline rename, Finder-style: the field takes over the row
+                // (Kind/Identifier hide so nothing wraps or shifts) and the
+                // buttons keep their natural width in every locale.
                 TextField(String(localized: "Device name", comment: "Placeholder text in rename tablet field"), text: $editingName)
+                    .labelsHidden()
                     .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity)
                     .focused($editFieldFocused)
                     .onSubmit { commitTabletRename() }
                     .onAppear { focusAndSelectAll() }
-            } else {
-                Text(tablet.nickname)
-                    .fontWeight(isActive ? .semibold : .regular)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            // Kind column
-            Text(tablet.modelName)
-                .foregroundStyle(.secondary)
-                .frame(width: 100, alignment: .leading)
-
-            // Serial / ID column
-            Text(tablet.displayID)
-                .foregroundStyle(.secondary)
-                .appFont(.monospaced)
-                .frame(width: 110, alignment: .leading)
-
-            // Actions
-            if editingTabletID == tablet.id {
-                Button("Save") { commitTabletRename() }
+                Button("Rename") { commitTabletRename() }
                     .buttonStyle(.borderedProminent).controlSize(.small)
+                    .fixedSize()
                 Button("Cancel") { editingTabletID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
                     .keyboardShortcut(.cancelAction)
+                    .fixedSize()
             } else {
+                // Name column: flexible but capped (~32 characters) so long
+                // identifiers get the leftover width instead of truncating.
+                Text(tablet.nickname)
+                    .fontWeight(isActive ? .semibold : .regular)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: 280, alignment: .leading)
+
+                // Kind column
+                Text(tablet.modelName)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(width: 130, alignment: .leading)
+                    .help(tablet.modelName)
+
+                // Serial / ID column
+                Text(tablet.displayID)
+                    .foregroundStyle(.secondary)
+                    .appFont(.monospaced)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
+                    .help(tablet.displayID)
+
                 Button {
                     editingTabletID = tablet.id
                     editingName = tablet.nickname
@@ -205,9 +207,8 @@ struct DevicesView: View {
                 .accessibilityLabel("Rename")
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(isSelected ? Color.accentColor.opacity(0.08) : Color.clear)
+        .padding(.vertical, 2)
+        .listRowBackground(isSelected ? Color.accentColor.opacity(0.08) : nil)
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { beginTabletEdit(tablet) }
         .onTapGesture {
@@ -219,7 +220,7 @@ struct DevicesView: View {
         .contextMenu {
             Button("Rename…") { beginTabletEdit(tablet) }
             Divider()
-            Button("Remove from List…") {
+            Button("Remove from List…", role: .destructive) {
                 pendingRemoveTablet = tablet
             }
             .disabled(isActive)
@@ -234,18 +235,28 @@ struct DevicesView: View {
         editingName = tablet.nickname
     }
 
-    private func beginToolEdit(_ tool: DeviceRegistry.KnownTool) {
+    private func beginToolEdit(_ tool: DeviceRegistry.KnownTool, inAllSection: Bool) {
         commitTabletRename()
         commitToolRename()
         editingTabletID = nil
         editingToolID = tool.id
+        editingToolInAllSection = inAllSection
         editingName = tool.nickname
     }
 
     // MARK: - Tools
 
     private var toolsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        Section {
+            columnHeader("Name", "Kind", "Identifier")
+            if registry.knownTools.isEmpty {
+                emptyState(String(localized: "No tools detected yet.\nMove the pen over the tablet to register it.", comment: "Empty state message in tools list — singular tablet"))
+            } else {
+                ForEach(registry.knownTools) { tool in
+                    toolRow(tool, forDevice: effectiveTabletID)
+                }
+            }
+        } header: {
             // Header shows which tablet's tools are listed
             HStack(spacing: 0) {
                 Text("Tools").appFont(.headline)
@@ -257,25 +268,14 @@ struct DevicesView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            columnHeader("Name", "Kind", "Identifier")
-            if registry.knownTools.isEmpty {
-                emptyState(String(localized: "No tools detected yet.\nMove the pen over the tablet to register it.", comment: "Empty state message in tools list — singular tablet"))
-            } else {
-                card {
-                    ForEach(registry.knownTools) { tool in
-                        toolRow(tool, forDevice: effectiveTabletID)
-                        if tool.id != registry.knownTools.last?.id {
-                            Divider().padding(.leading, 40)
-                        }
-                    }
-                }
-            }
         }
     }
 
     @ViewBuilder
     private func toolRow(_ tool: DeviceRegistry.KnownTool, forDevice deviceID: Int?) -> some View {
         let isInProximity = tool.id == tabletManager.activeContext?.activeToolID
+        let inAllSection = deviceID == nil
+        let isEditing = editingToolID == tool.id && editingToolInAllSection == inAllSection
         HStack(spacing: 8) {
             // Proximity indicator
             Image(systemName: isInProximity ? "checkmark.circle.fill" : "circle")
@@ -289,59 +289,68 @@ struct DevicesView: View {
                 .frame(width: 20, alignment: .center)
                 .accessibilityHidden(true)
 
-            if editingToolID == tool.id {
+            if isEditing {
+                // Inline rename, Finder-style — see tabletRow.
                 TextField(String(localized: "Tool name", comment: "Placeholder text in rename tool field"), text: $editingName)
+                    .labelsHidden()
                     .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity)
                     .focused($editFieldFocused)
                     .onSubmit { commitToolRename() }
                     .onAppear { focusAndSelectAll() }
-            } else {
-                Text(tool.nickname)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Text(tool.kind)
-                .foregroundStyle(.secondary)
-                .frame(width: 100, alignment: .leading)
-
-            Text(tool.displayID)
-                .foregroundStyle(.secondary)
-                .appFont(.monospaced)
-                .frame(width: 110, alignment: .leading)
-
-            if editingToolID == tool.id {
                 Button("Rename") { commitToolRename() }
                     .buttonStyle(.borderedProminent).controlSize(.small)
-                Button("Forget…") {
+                    .fixedSize()
+                Button("Forget…", role: .destructive) {
                     pendingForgetTool = tool
                     pendingForgetDeviceID = deviceID
                 }
                 .buttonStyle(.bordered).controlSize(.small)
-                .foregroundStyle(.red)
+                .fixedSize()
                 .help("Remove this tool from the registry. It will reappear with its default name next time it is detected.")
                 Button("Cancel") { editingToolID = nil }
                     .buttonStyle(.bordered).controlSize(.small)
                     .keyboardShortcut(.cancelAction)
+                    .fixedSize()
             } else {
+                // Name column: flexible but capped (~32 characters) so long
+                // identifiers get the leftover width instead of truncating.
+                Text(tool.nickname)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: 280, alignment: .leading)
+
+                Text(tool.kind)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(width: 130, alignment: .leading)
+                    .help(tool.kind)
+
+                Text(tool.displayID)
+                    .foregroundStyle(.secondary)
+                    .appFont(.monospaced)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
+                    .help(tool.displayID)
+
                 Button {
-                    editingToolID = tool.id
-                    editingName = tool.nickname
+                    beginToolEdit(tool, inAllSection: inAllSection)
                 } label: {
                     Image(systemName: "pencil")
                 }
                 .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(isInProximity ? Color.accentColor.opacity(0.08) : Color.clear)
+        .padding(.vertical, 2)
+        .listRowBackground(isInProximity ? Color.accentColor.opacity(0.08) : nil)
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) { beginToolEdit(tool) }
+        .onTapGesture(count: 2) { beginToolEdit(tool, inAllSection: inAllSection) }
         .contextMenu {
-            Button("Rename…") { beginToolEdit(tool) }
+            Button("Rename…") { beginToolEdit(tool, inAllSection: inAllSection) }
             Divider()
-            Button("Remove from List…") {
+            Button("Remove from List…", role: .destructive) {
                 pendingForgetTool = tool
                 pendingForgetDeviceID = deviceID
             }
@@ -351,21 +360,17 @@ struct DevicesView: View {
     // MARK: - All Tools
 
     private var allToolsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Tools (All Tablets)").appFont(.headline)
+        Section {
             columnHeader("Name", "Kind", "Identifier")
             if registry.allKnownTools.isEmpty {
                 emptyState(String(localized: "No tools detected yet.\nMove the pen over a tablet to register it.", comment: "Empty state message in tools list — multiple tablets"))
             } else {
-                card {
-                    ForEach(registry.allKnownTools) { tool in
-                        toolRow(tool, forDevice: nil)
-                        if tool.id != registry.allKnownTools.last?.id {
-                            Divider().padding(.leading, 40)
-                        }
-                    }
+                ForEach(registry.allKnownTools) { tool in
+                    toolRow(tool, forDevice: nil)
                 }
             }
+        } header: {
+            Text("Tools (All Tablets)").appFont(.headline)
         }
     }
 
@@ -389,28 +394,16 @@ struct DevicesView: View {
             Text(nameCol)
                 .padding(.leading, 56)  // Room for kind icon + active indicator
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: 280 + 56, alignment: .leading)  // mirrors the rows' name cap
             Text(kindCol)
-                .frame(width: 100, alignment: .leading)
+                .frame(width: 130, alignment: .leading)
             Text(idCol)
-                .frame(width: 110, alignment: .leading)
-            Spacer(minLength: 60)  // room for the action buttons
+                .frame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
+            Spacer(minLength: 28)  // room for the rename pencil
         }
         .appFont(.settingsLabel)
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 12)
         .padding(.top, 2)
-    }
-
-    @ViewBuilder
-    private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 0) {
-            content()
-        }
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1))
     }
 
     private func emptyState(_ message: String) -> some View {
@@ -425,10 +418,12 @@ struct DevicesView: View {
     // MARK: - Actions
 
     private func commitTabletRename() {
-        guard let id = editingTabletID,
-            let tablet = registry.knownTablets.first(where: { $0.id == id })
-        else { return }
+        guard let id = editingTabletID else { return }
+        // End the edit before the lookup so a vanished tablet can't leave
+        // the row stuck in edit mode (same hardening as commitToolRename).
         editingTabletID = nil
+        guard let tablet = registry.knownTablets.first(where: { $0.id == id })
+        else { return }
         let trimmed = editingName.trimmingCharacters(in: .whitespaces)
         // Empty or unchanged names end the edit and keep the old name.
         guard !trimmed.isEmpty, trimmed != tablet.nickname else { return }
@@ -442,12 +437,31 @@ struct DevicesView: View {
     }
 
     private func commitToolRename() {
-        guard let toolID = editingToolID,
-            let deviceID = effectiveTabletID,
-            let tool = registry.knownTools.first(where: { $0.id == toolID })
-        else { return }
+        guard let toolID = editingToolID else { return }
+        // End the edit unconditionally — a failed lookup below must not
+        // leave the row stuck in edit mode (click-away used to do exactly
+        // that for all-tablets tools, which aren't in `knownTools`).
         editingToolID = nil
         let trimmed = editingName.trimmingCharacters(in: .whitespaces)
+
+        if editingToolInAllSection {
+            // The all-tablets list can hold tools belonging to any tablet,
+            // so rename across every tablet's persisted list.
+            guard let tool = registry.allKnownTools.first(where: { $0.id == toolID }),
+                !trimmed.isEmpty, trimmed != tool.nickname
+            else { return }
+            let oldName = tool.nickname
+            registry.renameToolEverywhere(id: toolID, to: trimmed)
+            undoManager?.registerUndo(withTarget: registry) { target in
+                target.renameToolEverywhere(id: toolID, to: oldName)
+            }
+            undoManager?.setActionName(String(localized: "Rename Tool", comment: "Undo action name when renaming a tool"))
+            return
+        }
+
+        guard let deviceID = effectiveTabletID,
+            let tool = registry.knownTools.first(where: { $0.id == toolID })
+        else { return }
         // Empty or unchanged names end the edit and keep the old name.
         guard !trimmed.isEmpty, trimmed != tool.nickname else { return }
         let oldName = tool.nickname
