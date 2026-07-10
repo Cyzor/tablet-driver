@@ -1517,10 +1517,12 @@ final class InputInjector: @unchecked Sendable {
     /// read on one thread — the cross-thread race that previously caused stuck modifiers
     /// is eliminated at the source rather than worked around by dropping physical state.
     private var moveSafeEventFlags: CGEventFlags {
-        CGEventFlags(rawValue:
+        let synth = groundTruthSyntheticFlags.rawValue
+            | SharedAuxModifierState.shared.groundTruthFlags.rawValue
+        return CGEventFlags(rawValue:
             (tapLastPhysicalFlags & ModifierMath.managedMask)
-            | groundTruthSyntheticFlags.rawValue
-            | SharedAuxModifierState.shared.groundTruthFlags.rawValue)
+            | synth
+            | ModifierMath.leftDeviceBits(for: synth))
     }
 
     /// The union of modifier flags justified by currently-held pen barrel buttons.
@@ -1539,6 +1541,9 @@ final class InputInjector: @unchecked Sendable {
         }
         if lastButton2Down {
             flags.formUnion(CGEventFlags(rawValue: snap.activeTool.penButton2Binding.modifierFlags))
+        }
+        if lastButton3Down {
+            flags.formUnion(CGEventFlags(rawValue: snap.activeTool.penButton3Binding.modifierFlags))
         }
         return flags
     }
@@ -2133,8 +2138,9 @@ final class InputInjector: @unchecked Sendable {
             // can happen under memory pressure or CoreGraphics saturation), we bail without
             // touching groundTruthSyntheticFlags or modifierRefCounts. The old code mutated
             // state first, leaving orphaned modifier bits when the event never reached the OS.
+            let isModifierOnly = binding.keyLabel.isEmpty && binding.modifierFlags != 0
             let event: CGEvent?
-            if binding.keyLabel.isEmpty && binding.modifierFlags != 0 {
+            if isModifierOnly {
                 let e = CGEvent(source: sessionSource)
                 e?.type = .flagsChanged
                 e?.setIntegerValueField(.keyboardEventKeycode, value: Int64(binding.keyCode))
@@ -2150,6 +2156,20 @@ final class InputInjector: @unchecked Sendable {
                 modLog.error("CGEvent creation failed — keyCombo '\(binding.keyLabel, privacy: .public)' down=\(down); state NOT mutated")
             }
             guard let e = event else { break }
+
+            // Real keyboards bracket a modified keystroke with flagsChanged
+            // events (⌘ down → Space down → Space up → ⌘ up); apps that track
+            // modifier state from flagsChanged transitions alone (Rebelle)
+            // never saw a modifier release when we only stamped flags on the
+            // keyDown/keyUp pair. Post in hardware order: modifiers assert
+            // before the keyDown; the keyUp still carries the held modifiers
+            // (so it goes out before the state decrement below); the release
+            // flagsChanged comes last.
+            let bracketModifiers = !isModifierOnly && binding.modifierFlags != 0
+            if bracketModifiers && !down {
+                e.flags = currentEventFlags
+                finalizeAndPost(e)
+            }
 
             // Event created successfully — now commit the state delta.
             //
@@ -2205,20 +2225,25 @@ final class InputInjector: @unchecked Sendable {
                     modLog.debug("keyCombo \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) groundTruth: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public)")
                 }
             }
-            e.flags = currentEventFlags
-            finalizeAndPost(e)
-            // Diagnostic for the "modifier shows down but drag/click gestures don't
-            // honor it" investigation (2026-07-05): capture the two system-level
-            // modifier snapshots right after our post lands, so we can see whether
-            // the injected flagsChanged actually reached combinedSessionState (what
-            // most apps sample for live gesture state) or only hidSystemState (what
-            // our own passive tap/UI reads). Remove once resolved.
-            if isAux {
-                let combined = CGEventSource.flagsState(.combinedSessionState).rawValue
-                let hidState = CGEventSource.flagsState(.hidSystemState).rawValue
-                modLog.notice("keyCombo(aux) post-check: posted event.flags=0x\(String(e.flags.rawValue, radix: 16), privacy: .public) combinedSessionState=0x\(String(combined, radix: 16), privacy: .public) hidSystemState=0x\(String(hidState, radix: 16), privacy: .public)")
+            // State is committed — post the flagsChanged bracket(s) with the
+            // post-commit flags: on DOWN they assert the modifiers ahead of the
+            // keyDown; on UP they carry the released state after the keyUp that
+            // already went out above. One event per modifier bit with its
+            // canonical left-hand keycode (keycode-0 events are ignored by
+            // many apps — see modifierKeyCodes).
+            if bracketModifiers {
+                for (bit, keyCode) in Self.modifierKeyCodes where bindingFlags.contains(bit) {
+                    guard let fc = CGEvent(source: sessionSource) else { continue }
+                    fc.type = .flagsChanged
+                    fc.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
+                    fc.flags = currentEventFlags
+                    finalizeAndPost(fc)
+                }
             }
-
+            if !(bracketModifiers && !down) {
+                e.flags = currentEventFlags
+                finalizeAndPost(e)
+            }
         case .displayToggle:
             guard down else { break }
             // Cache invalidation is local to HIDThread; only the persisted
