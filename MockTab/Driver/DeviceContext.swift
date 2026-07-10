@@ -115,8 +115,15 @@ final class DeviceContext: ObservableObject, Identifiable {
         if settings.touchRingSlots.indices.contains(index) {
             device.setRingModeLabel(settings.touchRingSlots[index].label)
         }
+        // Brightness (the panel's opacity) is premultiplied into the RGB
+        // here — the dial LED has no brightness register, the vendor stack
+        // scales the color bytes the same way.
         device.setRingLEDColors(settings.touchRingSlots.map { slot in
-            slot.ledColor.map { (r: $0.r, g: $0.g, b: $0.b) }
+            slot.ledColor.map { c in
+                (r: UInt8(Int(c.r) * Int(c.a) / 255),
+                 g: UInt8(Int(c.g) * Int(c.a) / 255),
+                 b: UInt8(Int(c.b) * Int(c.a) / 255))
+            }
         })
         device.setAuxKeyLabels(settings.expressKeyBindings.map { $0.displayLabel })
     }

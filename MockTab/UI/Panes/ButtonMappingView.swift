@@ -847,16 +847,8 @@ struct ButtonMappingView: View {
                         actionBinding: companionSlotActionBinding(companionSettings, at: idx),
                         speedBinding: companionSlotSpeedBinding(companionSettings, at: idx),
                         cwBinding: companionSlotBinding(companionSettings, at: idx, direction: .cw),
-                        ccwBinding: companionSlotBinding(companionSettings, at: idx, direction: .ccw)
-                        // Dial-LED color wells unplugged for now: a row of four
-                        // looked cluttered, and the LED didn't reliably track
-                        // the active mode on hardware. The full pipeline
-                        // (ControlSlot.ledColor → setRingLEDColors → device)
-                        // and companionSlotColorBinding below remain live;
-                        // re-plug by passing
-                        //   colorBinding: companionSlotColorBinding(companionSettings, at: idx)
-                        // once a nicer access point exists and the sync issue
-                        // is understood.
+                        ccwBinding: companionSlotBinding(companionSettings, at: idx, direction: .ccw),
+                        colorBinding: companionSlotColorBinding(companionSettings, at: idx)
                     )
                     .equatable()
                 }
@@ -963,6 +955,9 @@ struct ButtonMappingView: View {
     /// Dial-LED color for one mode slot, bridged to SwiftUI Color. Reads the
     /// stored custom color or the factory palette default; writes store raw
     /// sRGB bytes (no LED calibration — close enough to tell modes apart).
+    /// The panel's opacity slider doubles as LED brightness: it's stored as
+    /// the alpha and premultiplied into the RGB when pushed to the device,
+    /// exactly how the vendor stack scales brightness.
     private func companionSlotColorBinding(
         _ companionSettings: TabletSettings, at index: Int
     ) -> Binding<Color> {
@@ -972,9 +967,10 @@ struct ButtonMappingView: View {
                 let d = defaults[((index % defaults.count) + defaults.count) % defaults.count]
                 let c = companionSettings.touchRingSlots.indices.contains(index)
                     ? companionSettings.touchRingSlots[index].ledColor : nil
-                let (r, g, b) = c.map { ($0.r, $0.g, $0.b) } ?? (d.r, d.g, d.b)
+                let (r, g, b, a) = c.map { ($0.r, $0.g, $0.b, $0.a) } ?? (d.r, d.g, d.b, 255)
                 return Color(
-                    red: Double(r) / 255, green: Double(g) / 255, blue: Double(b) / 255)
+                    red: Double(r) / 255, green: Double(g) / 255, blue: Double(b) / 255,
+                    opacity: Double(a) / 255)
             },
             set: { newValue in
                 guard companionSettings.touchRingSlots.indices.contains(index),
@@ -987,7 +983,8 @@ struct ButtonMappingView: View {
                 updated[index].ledColor = ControlSlot.LEDColor(
                     r: UInt8((rgb.redComponent * 255).rounded()),
                     g: UInt8((rgb.greenComponent * 255).rounded()),
-                    b: UInt8((rgb.blueComponent * 255).rounded()))
+                    b: UInt8((rgb.blueComponent * 255).rounded()),
+                    a: UInt8((rgb.alphaComponent * 255).rounded()))
                 companionSettings.touchRingSlots = updated
             }
         )
@@ -1224,18 +1221,6 @@ private struct TouchRingSlotRowView: View, Equatable {
                 .controlSize(.small)
                 .fixedSize()
 
-                if let colorBinding {
-                    // Standard macOS color well → system color panel,
-                    // TextEdit-style. Sets the dial's LED for this mode.
-                    ColorPicker("", selection: colorBinding, supportsOpacity: false)
-                        .labelsHidden()
-                        .controlSize(.small)
-                        .fixedSize()
-                        .padding(.leading, 6)
-                        .help("Dial LED color while this mode is active.")
-                        .accessibilityLabel("Dial LED color")
-                }
-
                 if slot.action != .off {
                     let speedLabel = slot.speed < 0.01
                         ? String(
@@ -1252,9 +1237,26 @@ private struct TouchRingSlotRowView: View, Equatable {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .layoutPriority(1)
                         .help("Adjust how fast the ring scrolls or repeats key presses.")
-                        .padding(.trailing, 40)
+                        .padding(.trailing, colorBinding == nil ? 40 : 12)
                 } else {
                     Spacer(minLength: 10)
+                }
+
+                if let colorBinding {
+                    // Standard macOS color well → system color panel,
+                    // TextEdit-style. Sets the dial's LED for this mode; the
+                    // panel's opacity slider doubles as LED brightness.
+                    // Trailing-edge placement after the flexible slider/spacer
+                    // keeps every row's well on one vertical line — inline
+                    // placement next to the action picker made them wander
+                    // with the picker's width.
+                    ColorPicker("", selection: colorBinding, supportsOpacity: true)
+                        .labelsHidden()
+                        .controlSize(.small)
+                        .fixedSize()
+                        .padding(.trailing, 40)
+                        .help("Dial LED color and brightness while this mode is active.")
+                        .accessibilityLabel("Dial LED color")
                 }
             }
 

@@ -1492,14 +1492,35 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     var speed: Double = 1.0
     /// Custom dial-LED color for this mode slot (Xencelabs Quick Keys only;
     /// ignored by Wacom hardware, whose LEDs are single-color). nil = the
-    /// factory per-mode palette. Raw sRGB bytes, sent to the device as-is —
-    /// the LED isn't colorimetrically calibrated, but modes stay tellable apart.
+    /// factory per-mode palette. Raw sRGB bytes (no LED calibration — modes
+    /// stay tellable apart); the color panel's opacity is kept separately so
+    /// the picked hue round-trips intact.
     var ledColor: LEDColor?
 
     struct LEDColor: Codable, Equatable {
         var r: UInt8
         var g: UInt8
         var b: UInt8
+        /// Brightness, from the color panel's opacity slider (255 = full).
+        /// The LED has no brightness register — the vendor stack scales it
+        /// into the RGB bytes, so this is premultiplied at send time.
+        var a: UInt8
+
+        init(r: UInt8, g: UInt8, b: UInt8, a: UInt8 = 255) {
+            self.r = r
+            self.g = g
+            self.b = b
+            self.a = a
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            r = try c.decode(UInt8.self, forKey: .r)
+            g = try c.decode(UInt8.self, forKey: .g)
+            b = try c.decode(UInt8.self, forKey: .b)
+            // Colors saved before brightness existed are full-strength.
+            a = try c.decodeIfPresent(UInt8.self, forKey: .a) ?? 255
+        }
     }
 
     /// Four-slot default used on init, reset, and legacy migration.
