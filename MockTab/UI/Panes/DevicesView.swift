@@ -121,7 +121,6 @@ struct DevicesView: View {
 
     private var tabletsSection: some View {
         Section {
-            columnHeader("Name", "Kind", "Identifier")
             if registry.knownTablets.isEmpty {
                 emptyState(String(localized: "No tablets have been connected yet.", comment: "Empty state message when no tablets have been detected"))
             } else {
@@ -172,32 +171,26 @@ struct DevicesView: View {
                     .keyboardShortcut(.cancelAction)
                     .fixedSize()
             } else {
-                // Name column: flexible but capped (~32 characters) so long
-                // identifiers get the leftover width instead of truncating.
-                Text(tablet.nickname)
-                    .fontWeight(isActive ? .semibold : .regular)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .scaledFrame(maxWidth: 280, alignment: .leading)
-
-                // Kind column — just the model number when the catalog name
-                // carries one; the full name stays in the tooltip. The Name
-                // column already defaults to the full catalog name, so
-                // repeating it here read as a duplicate.
-                Text(Self.shortKind(tablet.modelName))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .scaledFrame(width: 130, alignment: .leading)
-                    .help(tablet.modelName)
-
-                // Serial / ID column
-                Text(tablet.displayID)
-                    .foregroundStyle(.secondary)
-                    .appFont(.monospaced)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .scaledFrame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
-                    .help(tablet.displayID)
+                // Two-line row: nickname on top, catalog name and identifier
+                // in a small gray subtitle. Nothing competes for width, so
+                // long names and identifiers stop truncating each other.
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(tablet.nickname)
+                        .fontWeight(isActive ? .semibold : .regular)
+                        .lineLimit(1)
+                    let subtitle = Self.subtitle(
+                        kind: tablet.modelName, id: tablet.displayID,
+                        nickname: tablet.nickname)
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
+                            .appFont(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help("\(tablet.modelName) · \(tablet.displayID)")
 
                 Button {
                     editingTabletID = tablet.id
@@ -251,7 +244,6 @@ struct DevicesView: View {
 
     private var toolsSection: some View {
         Section {
-            columnHeader("Name", "Kind", "Identifier")
             if registry.knownTools.isEmpty {
                 emptyState(String(localized: "No tools detected yet.\nMove the pen over the tablet to register it.", comment: "Empty state message in tools list — singular tablet"))
             } else {
@@ -317,26 +309,23 @@ struct DevicesView: View {
                     .keyboardShortcut(.cancelAction)
                     .fixedSize()
             } else {
-                // Name column: flexible but capped (~32 characters) so long
-                // identifiers get the leftover width instead of truncating.
-                Text(tool.nickname)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .scaledFrame(maxWidth: 280, alignment: .leading)
-
-                Text(tool.kind)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .scaledFrame(width: 130, alignment: .leading)
-                    .help(tool.kind)
-
-                Text(tool.displayID)
-                    .foregroundStyle(.secondary)
-                    .appFont(.monospaced)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .scaledFrame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
-                    .help(tool.displayID)
+                // Two-line row — see tabletRow.
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(tool.nickname)
+                        .lineLimit(1)
+                    let subtitle = Self.subtitle(
+                        kind: tool.kind, id: tool.displayID,
+                        nickname: tool.nickname)
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
+                            .appFont(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help("\(tool.kind) · \(tool.displayID)")
 
                 Button {
                     beginToolEdit(tool, inAllSection: inAllSection)
@@ -364,7 +353,6 @@ struct DevicesView: View {
 
     private var allToolsSection: some View {
         Section {
-            columnHeader("Name", "Kind", "Identifier")
             if registry.allKnownTools.isEmpty {
                 emptyState(String(localized: "No tools detected yet.\nMove the pen over a tablet to register it.", comment: "Empty state message in tools list — multiple tablets"))
             } else {
@@ -379,16 +367,24 @@ struct DevicesView: View {
 
     // MARK: - Shared layout helpers
 
-    /// Extracts the model number from a catalog name like
-    /// "Intuos Pro L (PTH-860)" → "PTH-860". Only parentheticals shaped
-    /// like a Wacom model code count — size ("4×5") and pairing notes
-    /// pass through untouched, as do names with no parenthetical at all
-    /// (e.g. Xencelabs devices).
-    static func shortKind(_ catalogName: String) -> String {
-        if let match = catalogName.firstMatch(of: /\(([A-Z]{2,4}-[0-9]+[A-Z0-9]*)\)/) {
-            return String(match.1)
+    /// Builds the subtitle line under a nickname: catalog name and hardware
+    /// identifier, dot-separated. The catalog name is omitted while the
+    /// nickname still contains it (the default nickname *is* the catalog
+    /// name, so showing it again read as a duplicate); it reappears once the
+    /// user assigns a memorable name. Identifiers with no real content —
+    /// e.g. a dongle whose serial is all zeros — are dropped entirely.
+    /// The full, unfiltered pair stays available in the row's tooltip.
+    static func subtitle(kind: String, id: String, nickname: String) -> String {
+        var parts: [String] = []
+        if !kind.isEmpty, !nickname.localizedCaseInsensitiveContains(kind) {
+            parts.append(kind)
         }
-        return catalogName
+        // Meaningful = something left after stripping zeros and the
+        // punctuation of hex/MAC/serial formatting.
+        if id.contains(where: { !"0x:- ".contains($0) }) {
+            parts.append(id)
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func toolIcon(for tool: DeviceRegistry.KnownTool) -> String {
@@ -402,23 +398,6 @@ struct DevicesView: View {
         default:
             return "camera.metering.unknown"
         }
-    }
-
-    private func columnHeader(_ nameCol: LocalizedStringKey, _ kindCol: LocalizedStringKey, _ idCol: LocalizedStringKey) -> some View {
-        HStack {
-            Text(nameCol)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .scaledFrame(maxWidth: 280, alignment: .leading)  // mirrors the rows' name cap
-                .padding(.leading, 56)  // Room for kind icon + active indicator (fixed — icons don't scale)
-            Text(kindCol)
-                .scaledFrame(width: 130, alignment: .leading)
-            Text(idCol)
-                .scaledFrame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
-            Spacer(minLength: 28)  // room for the rename pencil
-        }
-        .appFont(.settingsLabel)
-        .foregroundStyle(.secondary)
-        .padding(.top, 2)
     }
 
     private func emptyState(_ message: String) -> some View {
