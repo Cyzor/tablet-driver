@@ -45,28 +45,6 @@ final class ResizableWindow: NSWindow {
         get { NSSize(width: super.maxSize.width, height: .greatestFiniteMagnitude) }
         set { super.maxSize = NSSize(width: newValue.width, height: .greatestFiniteMagnitude) }
     }
-
-    override func toggleFullScreen(_ sender: Any?) { zoom(sender) }
-
-    override func zoom(_ sender: Any?) {
-        guard let screen = screen ?? NSScreen.main else {
-            super.zoom(sender)
-            return
-        }
-        let visible = screen.visibleFrame
-        let alreadyMaximised =
-            abs(frame.height - visible.height) < 2
-            && abs(frame.minY - visible.minY) < 2
-        if alreadyMaximised {
-            super.zoom(sender)
-        } else {
-            setFrame(
-                NSRect(
-                    x: frame.minX, y: visible.minY,
-                    width: frame.width, height: visible.height),
-                display: true, animate: true)
-        }
-    }
 }
 
 // MARK: - ResizableTabViewController
