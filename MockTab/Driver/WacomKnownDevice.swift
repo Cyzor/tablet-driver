@@ -83,6 +83,9 @@ final class WacomKnownDevice: TabletDevice {
     /// Last index requested via setRingLED. Applied immediately when ledDevice
     /// is registered so the LED syncs even if the companion connects after init.
     private var pendingLEDIndex: Int = 0
+    /// Per-slot custom dial colors pushed from settings via setRingLEDColors
+    /// (Xencelabs Quick Keys only). nil entries fall back to the factory palette.
+    private var dialSlotColors: [(r: UInt8, g: UInt8, b: UInt8)?] = []
 
     /// The Xencelabs Quick Keys/Pen Tablet family enumerates as several separate
     /// IOHIDDevices for one physical product (digitizer usage page 0x0D/0x02,
@@ -499,7 +502,8 @@ final class WacomKnownDevice: TabletDevice {
             // carries the identity, none carry an all-zero address.
             let address = xencelabsDongleIdentity ?? []
             let colors = XencelabsControl.defaultSlotColors
-            let c = colors[((index % colors.count) + colors.count) % colors.count]
+            let custom = dialSlotColors.indices.contains(index) ? dialSlotColors[index] : nil
+            let c = custom ?? colors[((index % colors.count) + colors.count) % colors.count]
             sendXencelabsOutput(
                 XencelabsControl.dialColorPayload(r: c.r, g: c.g, b: c.b, address: address),
                 tag: "dial LED slot=\(index)")
@@ -521,6 +525,18 @@ final class WacomKnownDevice: TabletDevice {
     /// the settings pipeline re-fires on every settings change, and the OLED
     /// only needs traffic when something it shows actually changed.
     private var xencelabsSentText: [String: String] = [:]
+
+    /// Adopt per-slot custom dial colors (nil = factory palette) and re-send
+    /// the active slot's color if anything changed. Deduped here because the
+    /// settings pipeline re-fires this on every settings change.
+    func setRingLEDColors(_ colors: [(r: UInt8, g: UInt8, b: UInt8)?]) {
+        guard deviceSpec.parser == .xencelabs else { return }
+        guard !dialSlotColors.elementsEqual(colors, by: { a, b in
+            a?.r == b?.r && a?.g == b?.g && a?.b == b?.b
+        }) else { return }
+        dialSlotColors = colors
+        setRingLED(index: pendingLEDIndex)
+    }
 
     /// Show the active dial mode's name on the Quick Keys OLED mode line.
     func setRingModeLabel(_ label: String) {

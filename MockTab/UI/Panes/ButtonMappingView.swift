@@ -848,6 +848,15 @@ struct ButtonMappingView: View {
                         speedBinding: companionSlotSpeedBinding(companionSettings, at: idx),
                         cwBinding: companionSlotBinding(companionSettings, at: idx, direction: .cw),
                         ccwBinding: companionSlotBinding(companionSettings, at: idx, direction: .ccw)
+                        // Dial-LED color wells unplugged for now: a row of four
+                        // looked cluttered, and the LED didn't reliably track
+                        // the active mode on hardware. The full pipeline
+                        // (ControlSlot.ledColor → setRingLEDColors → device)
+                        // and companionSlotColorBinding below remain live;
+                        // re-plug by passing
+                        //   colorBinding: companionSlotColorBinding(companionSettings, at: idx)
+                        // once a nicer access point exists and the sync issue
+                        // is understood.
                     )
                     .equatable()
                 }
@@ -920,6 +929,65 @@ struct ButtonMappingView: View {
                 var updated = companionSettings.touchRingSlots
                 if direction == .cw { updated[index].cwBinding = newValue }
                 else { updated[index].ccwBinding = newValue }
+                companionSettings.touchRingSlots = updated
+            }
+        )
+    }
+
+    /// Coalesces a burst of color-wheel updates into one undo entry, registered
+    /// once the wheel goes quiet — the system color panel fires the binding
+    /// continuously during a drag, and only the finished designation is worth
+    /// an undo step (TextEdit-style). Reference type so the snapshot and timer
+    /// survive view re-renders; @State preserves the instance.
+    private final class DialColorUndoCoalescer {
+        private var snapshot: [ControlSlot]?
+        private var pending: DispatchWorkItem?
+
+        func noteChange(settings: TabletSettings, before slots: [ControlSlot]) {
+            if snapshot == nil { snapshot = slots }
+            pending?.cancel()
+            let work = DispatchWorkItem { [weak self, weak settings] in
+                MainActor.assumeIsolated {
+                    guard let self, let settings, let snap = self.snapshot else { return }
+                    self.snapshot = nil
+                    settings.record("Dial Color") { settings.touchRingSlots = snap }
+                }
+            }
+            pending = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
+        }
+    }
+
+    @State private var dialColorUndo = DialColorUndoCoalescer()
+
+    /// Dial-LED color for one mode slot, bridged to SwiftUI Color. Reads the
+    /// stored custom color or the factory palette default; writes store raw
+    /// sRGB bytes (no LED calibration — close enough to tell modes apart).
+    private func companionSlotColorBinding(
+        _ companionSettings: TabletSettings, at index: Int
+    ) -> Binding<Color> {
+        Binding(
+            get: {
+                let defaults = XencelabsControl.defaultSlotColors
+                let d = defaults[((index % defaults.count) + defaults.count) % defaults.count]
+                let c = companionSettings.touchRingSlots.indices.contains(index)
+                    ? companionSettings.touchRingSlots[index].ledColor : nil
+                let (r, g, b) = c.map { ($0.r, $0.g, $0.b) } ?? (d.r, d.g, d.b)
+                return Color(
+                    red: Double(r) / 255, green: Double(g) / 255, blue: Double(b) / 255)
+            },
+            set: { newValue in
+                guard companionSettings.touchRingSlots.indices.contains(index),
+                      let rgb = NSColor(newValue).usingColorSpace(.sRGB)
+                else { return }
+                dialColorUndo.noteChange(
+                    settings: companionSettings,
+                    before: companionSettings.touchRingSlots)
+                var updated = companionSettings.touchRingSlots
+                updated[index].ledColor = ControlSlot.LEDColor(
+                    r: UInt8((rgb.redComponent * 255).rounded()),
+                    g: UInt8((rgb.greenComponent * 255).rounded()),
+                    b: UInt8((rgb.blueComponent * 255).rounded()))
                 companionSettings.touchRingSlots = updated
             }
         )
@@ -1124,6 +1192,9 @@ private struct TouchRingSlotRowView: View, Equatable {
     let speedBinding: Binding<Double>
     let cwBinding: Binding<ButtonBinding>
     let ccwBinding: Binding<ButtonBinding>
+    /// Dial-LED color for this mode slot; nil (all Wacom call sites) hides
+    /// the color well entirely. Xencelabs Quick Keys only.
+    var colorBinding: Binding<Color>? = nil
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.slot == rhs.slot
@@ -1152,6 +1223,18 @@ private struct TouchRingSlotRowView: View, Equatable {
                 .labelsHidden()
                 .controlSize(.small)
                 .fixedSize()
+
+                if let colorBinding {
+                    // Standard macOS color well → system color panel,
+                    // TextEdit-style. Sets the dial's LED for this mode.
+                    ColorPicker("", selection: colorBinding, supportsOpacity: false)
+                        .labelsHidden()
+                        .controlSize(.small)
+                        .fixedSize()
+                        .padding(.leading, 6)
+                        .help("Dial LED color while this mode is active.")
+                        .accessibilityLabel("Dial LED color")
+                }
 
                 if slot.action != .off {
                     let speedLabel = slot.speed < 0.01

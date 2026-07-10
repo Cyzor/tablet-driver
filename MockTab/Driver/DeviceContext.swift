@@ -115,6 +115,9 @@ final class DeviceContext: ObservableObject, Identifiable {
         if settings.touchRingSlots.indices.contains(index) {
             device.setRingModeLabel(settings.touchRingSlots[index].label)
         }
+        device.setRingLEDColors(settings.touchRingSlots.map { slot in
+            slot.ledColor.map { (r: $0.r, g: $0.g, b: $0.b) }
+        })
         device.setAuxKeyLabels(settings.expressKeyBindings.map { $0.displayLabel })
     }
 

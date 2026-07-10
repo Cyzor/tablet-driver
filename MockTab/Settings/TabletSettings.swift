@@ -71,8 +71,10 @@ final class TabletSettings: ObservableObject {
     @Published var activeTool: ToolSettings = ToolSettings(prefix: "device-default.") {
         didSet {
             activeTool.undoManager = undoManager
-            // Sync current override to the newly active tool
-            activeTool.overridePrefix = activeAppOverride.map { appOverrideKeyPrefix($0) }
+            // Sync current override to the newly active tool. Tool swaps can
+            // happen while any app is frontmost, so use the effective source,
+            // not the chip-bar selection.
+            activeTool.overridePrefix = effectiveOverride.map { appOverrideKeyPrefix($0) }
             activeTool.reload()
 
             activeTool.onOverrideKeyWritten = { [weak self] key in
@@ -438,10 +440,23 @@ final class TabletSettings: ObservableObject {
     /// Used by reloadAll() / load helpers so the injector reads the right values.
     private var driverOverride: AppOverride? = nil
 
+    /// True while MockTab itself is the frontmost app.
+    /// Set exclusively by handleAppOverrideActivation (AppWatcher).
+    private var isSelfFrontmost = true
+
     /// The override selected in the UI chip bar for editing.
-    /// Set by selectAppOverride (chip tap) or synced from driverOverride on app switch.
+    /// Set only by explicit user actions (chip tap, add/remove) — app-focus
+    /// changes never move it, so the bar stays exactly as the user left it.
     /// Controls which prefix persist() writes to and which chip is highlighted.
     @Published var activeAppOverride: AppOverride? = nil
+
+    /// The override whose values the published settings (and therefore the
+    /// injector) should reflect right now: the chip-bar selection while the
+    /// user is in MockTab editing, the frontmost app's override otherwise.
+    /// All load-time override resolution must go through this.
+    private var effectiveOverride: AppOverride? {
+        isSelfFrontmost ? activeAppOverride : driverOverride
+    }
 
     // MARK: - Init
 
@@ -650,23 +665,22 @@ final class TabletSettings: ObservableObject {
     /// Called by AppWatcher on every app-focus change.
     /// Updates the driver override so the injector applies the right settings.
     ///
-    /// When MockTab itself is frontmost (the user is editing settings), only
-    /// `driverOverride` is updated and the UI editing context is left alone —
-    /// `activeAppOverride`, `activeTool.overridePrefix`, and all @Published values
-    /// keep their current state so the user can freely edit any chip without
-    /// losing their selection when they switch between apps.
-    ///
-    /// When a drawing app becomes frontmost, the UI chip bar is synced to the
-    /// driver's active app and settings are reloaded for the injector.
+    /// The UI editing context (`activeAppOverride`, the chip-bar highlight) is
+    /// never touched here — it belongs to the user and must stay exactly as
+    /// they left it across app switches. Only `driverOverride` tracks the
+    /// frontmost app, and `effectiveOverride` picks between the two: the
+    /// chip-bar selection while MockTab is frontmost (so edits preview live),
+    /// the frontmost app's override otherwise (so the injector applies the
+    /// right values). Values are reloaded only when that effective source
+    /// actually changes — including on return to MockTab, which swaps the
+    /// published values back to the user's selection.
     func handleAppOverrideActivation(bundleID: String, appName: String) {
         let isSelf = bundleID == (Bundle.main.bundleIdentifier ?? "")
-        let newOverride = isSelf ? nil : appOverrides.first { $0.bundleID == bundleID }
-        guard newOverride?.bundleID != driverOverride?.bundleID else { return }
-        driverOverride = newOverride
-        guard !isSelf else { return }
-        // Drawing app became frontmost — sync UI chip bar to driver state and reload.
-        activeAppOverride = driverOverride
-        activeTool.overridePrefix = driverOverride.map { appOverrideKeyPrefix($0) }
+        let previousEffective = effectiveOverride?.bundleID
+        isSelfFrontmost = isSelf
+        driverOverride = isSelf ? nil : appOverrides.first { $0.bundleID == bundleID }
+        guard effectiveOverride?.bundleID != previousEffective else { return }
+        activeTool.overridePrefix = effectiveOverride.map { appOverrideKeyPrefix($0) }
         reloadAll()
     }
 
@@ -781,6 +795,46 @@ final class TabletSettings: ObservableObject {
                 self.appOverrides.append(capturedOverride)
                 self.saveAppOverrides()
             }
+        }
+    }
+
+    /// Removes every app override for this tablet — all apps, all keys, not
+    /// just the current tab's. Registers a single undo action that restores
+    /// the full set (Option-click "Remove All" in the override banner).
+    func removeAllAppOverrides() {
+        guard !appOverrides.isEmpty else { return }
+        let capturedOverrides = appOverrides
+
+        // Snapshot every stored override value before deleting so one undo
+        // can restore all of them.
+        var snapshot: [String: Any] = [:]
+        for override in capturedOverrides {
+            let prefix = appOverrideKeyPrefix(override)
+            for key in override.overriddenKeys {
+                if let value = ud.object(forKey: prefix + key) {
+                    snapshot[prefix + key] = value
+                }
+            }
+        }
+
+        for override in capturedOverrides {
+            let prefix = appOverrideKeyPrefix(override)
+            for key in override.overriddenKeys { ud.removeObject(forKey: prefix + key) }
+        }
+        appOverrides.removeAll()
+        saveAppOverrides()
+
+        if activeAppOverride != nil {
+            activeAppOverride = nil
+            activeTool.overridePrefix = nil
+            reloadAll()
+        }
+
+        record("Remove All App Overrides") { [weak self] in
+            guard let self else { return }
+            for (key, value) in snapshot { self.ud.set(value, forKey: key) }
+            self.appOverrides = capturedOverrides
+            self.saveAppOverrides()
         }
     }
 
@@ -945,7 +999,7 @@ final class TabletSettings: ObservableObject {
 
         // Sync resolved pressure values and app overrides into activeTool so PenFeel
         // and ButtonMappingView reflect the active override or profile.
-        let op = activeAppOverride.map { appOverrideKeyPrefix($0) }
+        let op = effectiveOverride.map { appOverrideKeyPrefix($0) }
         activeTool.overridePrefix = op
         activeTool.reload()
         activeTool.applyExternalValues(
@@ -964,16 +1018,21 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Persistence helpers
 
-    /// Routes a write to the active app override, then profile, then device namespace.
-    /// Marks the key as overridden in whichever layer receives the write.
+    /// Routes a write to the effective app override, then profile, then device
+    /// namespace. Marks the key as overridden in whichever layer receives the
+    /// write. Uses `effectiveOverride` (not the chip-bar selection) because
+    /// some writes originate from hardware while another app is frontmost —
+    /// display-toggle express key, touch-ring mode cycle — and must land in
+    /// the frontmost app's override, not whichever chip the user left selected.
     /// No-ops while `isLoading` to avoid echoing values back during reload.
     private func persist(_ key: String, _ value: Any) {
         guard !isLoading else { return }
-        if var override = activeAppOverride {
+        if var override = effectiveOverride {
             ud.set(value, forKey: appOverrideKeyPrefix(override) + key)
             guard !override.overriddenKeys.contains(key) else { return }
             override.overriddenKeys.insert(key)
-            activeAppOverride = override
+            if activeAppOverride?.bundleID == override.bundleID { activeAppOverride = override }
+            if driverOverride?.bundleID == override.bundleID { driverOverride = override }
             if let idx = appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
                 appOverrides[idx] = override
             }
@@ -1010,13 +1069,7 @@ final class TabletSettings: ObservableObject {
     /// All `load*` helpers below MUST go through this function. Adding a new
     /// inheritance layer requires editing this method and nowhere else.
     private func resolveLayer(for key: String) -> String? {
-        // When the user is editing a non-active app, show that app's values in
-        // the UI. Otherwise show the driver's active values.
-        let sourceOverride =
-            (activeAppOverride?.bundleID != driverOverride?.bundleID)
-            ? activeAppOverride
-            : driverOverride
-        if let override = sourceOverride,
+        if let override = effectiveOverride,
             override.overriddenKeys.contains(key),
             ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
         {
@@ -1087,11 +1140,7 @@ final class TabletSettings: ObservableObject {
 
     private func loadPressureCurve() {
         let data: Data?
-        let sourceOverride =
-            (activeAppOverride?.bundleID != driverOverride?.bundleID)
-            ? activeAppOverride
-            : driverOverride
-        if let override = sourceOverride, override.overriddenKeys.contains("pressureCurve") {
+        if let override = effectiveOverride, override.overriddenKeys.contains("pressureCurve") {
             data =
                 ud.data(forKey: appOverrideKeyPrefix(override) + "pressureCurve")
                 ?? ud.data(forKey: devicePrefix + "pressureCurve")
@@ -1144,12 +1193,8 @@ final class TabletSettings: ObservableObject {
     /// Loads touchRingSlots with migration from legacy touchRingMode/touchStrip*Mode keys.
     private func loadTouchRingSlots() {
         // Try override, then preset, then device, then legacy keys.
-        let sourceOverride =
-            (activeAppOverride?.bundleID != driverOverride?.bundleID)
-            ? activeAppOverride
-            : driverOverride
         var data: Data?
-        if let override = sourceOverride, override.overriddenKeys.contains("touchRingSlotsJSON") {
+        if let override = effectiveOverride, override.overriddenKeys.contains("touchRingSlotsJSON") {
             data = ud.data(forKey: appOverrideKeyPrefix(override) + "touchRingSlotsJSON")
         } else if let preset = activeProfile, preset.overriddenKeys.contains("touchRingSlotsJSON") {
             data = ud.data(forKey: profileKeyPrefix(preset) + "touchRingSlotsJSON")
@@ -1445,6 +1490,17 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     /// Speed multiplier applied to ring/strip delta before scroll/key dispatch.
     /// 1.0 = native one-line-per-detent; 0.25 = slowest; 3.0 = fastest.
     var speed: Double = 1.0
+    /// Custom dial-LED color for this mode slot (Xencelabs Quick Keys only;
+    /// ignored by Wacom hardware, whose LEDs are single-color). nil = the
+    /// factory per-mode palette. Raw sRGB bytes, sent to the device as-is —
+    /// the LED isn't colorimetrically calibrated, but modes stay tellable apart.
+    var ledColor: LEDColor?
+
+    struct LEDColor: Codable, Equatable {
+        var r: UInt8
+        var g: UInt8
+        var b: UInt8
+    }
 
     /// Four-slot default used on init, reset, and legacy migration.
     /// Matches Wacom's standard 4-LED toggle ring layout; unused slots default to Off.
