@@ -45,7 +45,12 @@ struct InfoView: View {
                     activeToolID: tabletManager.contexts[productID ?? 0]?.activeToolID,
                     registry: DeviceRegistry.shared,
                     hasDualRings: WacomDeviceRegistry.spec(for: productID ?? 0)?.hasDualRings
-                        == true
+                        == true,
+                    // Only Wacom's protocol carries a hover height; every other
+                    // decoder hardcodes 0, so show plain in/out instead of a
+                    // number that reads as a measured zero.
+                    reportsHoverDistance: (tabletManager.contexts[productID ?? 0]?.vendorID
+                        ?? 0x056A) == 0x056A
                 )
             } header: {
                 Text(String(localized: "Live Input", comment: "Section header: live input state and pen position"))
@@ -507,6 +512,7 @@ private struct LiveInputView: View {
     let activeToolID: String?
     let registry: DeviceRegistry
     var hasDualRings: Bool = false
+    var reportsHoverDistance: Bool = true
 
     // MARK: - Rotation gauge
 
@@ -554,7 +560,7 @@ private struct LiveInputView: View {
                 stylusRow(label: String(localized: "Serial", comment: "Live Input table row label — tool serial number"), value: tool?.displayID ?? "—")
 
                 Divider()
-                    .gridCellColumns(3)
+                    .gridCellColumns(2)
                     .padding(.vertical, 4)
 
                 let point = livePoint
@@ -624,9 +630,13 @@ private struct LiveInputView: View {
                 }
 
                 liveRow(label: String(localized: "Hover", comment: "Live Input table row label — hover distance")) {
-                    if let p = point {
+                    if let p = point, reportsHoverDistance {
                         Text("\(p.hoverDistance)   \(p.inProximity ? String(localized: "(In Range)", comment: "Hover proximity state") : String(localized: "(Out)", comment: "Hover proximity state — out of range"))")
                             .monospacedDigit()
+                    } else if let p = point {
+                        Text(p.inProximity
+                            ? String(localized: "In Range", comment: "Hover state without a height value — device reports only in/out")
+                            : String(localized: "Out of Range", comment: "Hover state without a height value — device reports only in/out"))
                     } else {
                         Text("—").monospacedDigit()
                     }
@@ -684,7 +694,7 @@ private struct LiveInputView: View {
                 .gridColumnAlignment(.trailing)
             Text(value)
                 .monospacedDigit()
-                .gridCellColumns(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -700,7 +710,6 @@ private struct LiveInputView: View {
                 .gridColumnAlignment(.trailing)
             value()
                 .monospacedDigit()
-                .gridCellColumns(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
