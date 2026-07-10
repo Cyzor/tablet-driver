@@ -326,17 +326,21 @@ final class InputInjector: @unchecked Sendable {
     /// downstream is concerned. Gated to vendorID 0x28BD; Wacom hardware's
     /// button and position sensing share one range, so this doesn't apply.
     ///
-    /// The window is sized for sweeping, loosely-held gestures (e.g. a
-    /// barrel-button pan), where the pen can ride the button-sensing
-    /// boundary for well over the ~80 ms a stationary hover blip lasts;
-    /// a held button that drops out should stay engaged until the pen
-    /// settles and reports a sustained release. The cost is that every
-    /// genuine barrel release commits this much later, which is invisible
-    /// for drags and acceptable for clicks/modifiers.
+    /// The window trades two feels against each other: too short and a
+    /// sweeping, loosely-held pan (which rides the button-sensing boundary
+    /// far longer than the ~80 ms a stationary hover blip lasts) flickers
+    /// its held click off mid-drag; too long and every genuine release —
+    /// including the end of that same pan — commits noticeably late. The
+    /// frames carry no signal that separates a boundary flicker from a
+    /// deliberate release, so this is a hand-tuned compromise: 0.25 made
+    /// release feel sticky in practice, 0.15 keeps roughly double the
+    /// original forgiveness while staying under the lag most hands notice.
+    /// (Full proximity loss with a button held is handled separately by
+    /// `proximityExitHeldButtonSafetyInterval` and can afford to be long.)
     private var button1UpDebounceTimer: CFRunLoopTimer?
     private var button2UpDebounceTimer: CFRunLoopTimer?
     private var button3UpDebounceTimer: CFRunLoopTimer?
-    private let buttonUpDebounceInterval: TimeInterval = 0.25
+    private let buttonUpDebounceInterval: TimeInterval = 0.15
 
     // MARK: - Time-based leak watchdog
     //
