@@ -705,7 +705,7 @@ private struct ConfigurationSummaryView: View {
             Text(toolKind)
                 .appFont(.settingsBadge)
                 .foregroundStyle(.secondary)
-                .frame(width: 50, alignment: .leading)
+                .scaledFrame(width: 50, alignment: .leading)
             Text(tool.nickname.isEmpty ? tool.displayID : tool.nickname)
                 .appFont(.settingsBadge)
                 .foregroundStyle(.secondary)

@@ -238,7 +238,7 @@ struct InfoView: View {
         GridRow {
             Text(label)
                 .foregroundStyle(.secondary)
-                .frame(minWidth: 150, alignment: .trailing)
+                .scaledFrame(minWidth: 150, alignment: .trailing)
                 .gridColumnAlignment(.trailing)
 
             HStack(spacing: 8) {
@@ -582,7 +582,7 @@ private struct LiveInputView: View {
                     HStack {
                         Text(point != nil ? "\(point!.pressure)" : "0")
                             .monospacedDigit()
-                            .frame(width: 48, alignment: .trailing)
+                            .scaledFrame(width: 48, alignment: .trailing)
 
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
@@ -680,7 +680,7 @@ private struct LiveInputView: View {
         GridRow {
             Text(label)
                 .foregroundStyle(.secondary)
-                .frame(minWidth: 90, alignment: .trailing)
+                .scaledFrame(minWidth: 90, alignment: .trailing)
                 .gridColumnAlignment(.trailing)
             Text(value)
                 .monospacedDigit()
@@ -696,7 +696,7 @@ private struct LiveInputView: View {
         GridRow {
             Text(label)
                 .foregroundStyle(.secondary)
-                .frame(minWidth: 90, alignment: .trailing)
+                .scaledFrame(minWidth: 90, alignment: .trailing)
                 .gridColumnAlignment(.trailing)
             value()
                 .monospacedDigit()

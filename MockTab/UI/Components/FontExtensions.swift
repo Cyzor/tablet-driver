@@ -131,6 +131,57 @@ extension View {
     }
 }
 
+// MARK: - Scaled frames
+//
+// `.frame` variants whose dimensions track the text-size preference.
+// Any fixed frame that exists to hold *text* (numeric fields, label
+// columns, value readouts) should use these instead of `.frame`;
+// otherwise Large/Extra Large text truncates in boxes sized for
+// Standard. Frames sized for graphics (icons, status dots, diagrams,
+// window chrome) should keep plain `.frame`.
+
+private struct ScaledFixedFrame: ViewModifier {
+    @Environment(\.textScale) private var scale
+    let width: CGFloat?
+    let height: CGFloat?
+    let alignment: Alignment
+
+    func body(content: Content) -> some View {
+        content.frame(width: width.map { $0 * scale },
+                      height: height.map { $0 * scale },
+                      alignment: alignment)
+    }
+}
+
+private struct ScaledFlexibleFrame: ViewModifier {
+    @Environment(\.textScale) private var scale
+    let minWidth: CGFloat?
+    let maxWidth: CGFloat?
+    let alignment: Alignment
+
+    func body(content: Content) -> some View {
+        content.frame(minWidth: minWidth.map { $0 * scale },
+                      maxWidth: maxWidth.map { $0.isFinite ? $0 * scale : $0 },
+                      alignment: alignment)
+    }
+}
+
+extension View {
+    /// `.frame(width:height:alignment:)` that scales with the user's
+    /// Text Size choice.
+    func scaledFrame(width: CGFloat? = nil, height: CGFloat? = nil,
+                     alignment: Alignment = .center) -> some View {
+        modifier(ScaledFixedFrame(width: width, height: height, alignment: alignment))
+    }
+
+    /// `.frame(minWidth:maxWidth:alignment:)` that scales with the user's
+    /// Text Size choice. `.infinity` passes through unscaled.
+    func scaledFrame(minWidth: CGFloat? = nil, maxWidth: CGFloat? = nil,
+                     alignment: Alignment = .center) -> some View {
+        modifier(ScaledFlexibleFrame(minWidth: minWidth, maxWidth: maxWidth, alignment: alignment))
+    }
+}
+
 extension Font {
     /// Resolve an `AppFontRole` to a concrete `Font` at a given scale.
     /// Use at Canvas `ctx.resolve(Text(...).font(_))` sites where the

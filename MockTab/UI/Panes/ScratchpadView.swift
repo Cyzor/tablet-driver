@@ -162,7 +162,7 @@ struct ScratchpadView: View {
             Text(String(format: "%.0f%%", currentPressure * 100))
                 .appFont(.monospaced)
                 .foregroundStyle(.secondary)
-                .frame(width: 44, alignment: .trailing)
+                .scaledFrame(width: 44, alignment: .trailing)
 
             Spacer()
 

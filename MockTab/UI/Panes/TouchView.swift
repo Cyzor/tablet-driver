@@ -103,7 +103,7 @@ struct TouchView: View {
                 Text(String(format: "%.2f×", settings.touchSensitivity))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
-                    .frame(width: 56, alignment: .trailing)
+                    .scaledFrame(width: 56, alignment: .trailing)
             }
             .help("Multiplier for cursor motion from finger drag. 1.00× is the natural mapping through the touch area; raise to move faster across the screen, lower for finer control.")
         } header: {

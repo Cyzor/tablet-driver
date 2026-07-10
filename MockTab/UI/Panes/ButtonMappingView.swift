@@ -1078,7 +1078,7 @@ struct ButtonMappingView: View {
             // Fixed minimum width with trailing alignment so the binding control
             // starts at a consistent x position regardless of label length.
             labelText(label, isActive: isActive)
-                .frame(minWidth: 100, alignment: .trailing)
+                .scaledFrame(minWidth: 100, alignment: .trailing)
             ButtonBindingControl(binding: binding, ringSlotCount: ringSlotCount)
                 .equatable()
             Spacer(minLength: 0)
@@ -1142,7 +1142,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                     .accessibilityHidden(true)
                 Text("Mode \(idx + 1)")
                     .foregroundStyle(.secondary)
-                    .frame(minWidth: 100, alignment: .trailing)
+                    .scaledFrame(minWidth: 100, alignment: .trailing)
                     .padding(.horizontal, 5)
                 Picker("", selection: actionBinding) {
                     ForEach(ControlSlot.Action.allCases, id: \.self) { action in
@@ -1162,7 +1162,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                     Text(speedLabel)
                         .appFont(.caption)
                         .foregroundStyle(.secondary)
-                        .frame(width: 36, alignment: .trailing)
+                        .scaledFrame(width: 36, alignment: .trailing)
                         .monospacedDigit()
                         .padding(.leading, 8)
                     Slider(value: speedBinding, in: 0...3.0, step: 0.25)

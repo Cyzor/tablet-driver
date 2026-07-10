@@ -221,7 +221,7 @@ struct TabletAreaView: View {
                                     TextField("", value: parallaxXBinding,
                                               format: .number.precision(.fractionLength(1)))
                                         .textFieldStyle(.roundedBorder)
-                                        .frame(width: 60)
+                                        .scaledFrame(width: 60)
                                         .multilineTextAlignment(.trailing)
                                     Text("pt").foregroundStyle(.secondary)
                                 }
@@ -231,7 +231,7 @@ struct TabletAreaView: View {
                                     TextField("", value: parallaxYBinding,
                                               format: .number.precision(.fractionLength(1)))
                                         .textFieldStyle(.roundedBorder)
-                                        .frame(width: 60)
+                                        .scaledFrame(width: 60)
                                         .multilineTextAlignment(.trailing)
                                     Text("pt").foregroundStyle(.secondary)
                                 }
@@ -412,13 +412,13 @@ struct TabletAreaView: View {
         Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
             GridRow {
                 Text("Width").foregroundStyle(.secondary)
-                    .frame(width: 60, alignment: .trailing)
+                    .scaledFrame(width: 60, alignment: .trailing)
                 pixelField(fraction: $settings.activeAreaWidth,
                            maxValue: activeDeviceMaxX,
                            minFraction: Self.minFraction,
                            maxFraction: 1 - settings.activeAreaX)
                 Text("Height").foregroundStyle(.secondary)
-                    .frame(width: 60, alignment: .trailing)
+                    .scaledFrame(width: 60, alignment: .trailing)
                 pixelField(fraction: $settings.activeAreaHeight,
                            maxValue: activeDeviceMaxY,
                            minFraction: Self.minFraction,
@@ -432,7 +432,7 @@ struct TabletAreaView: View {
     private func percentField(_ binding: Binding<Double>) -> some View {
         TextField("", value: binding, format: .percent.precision(.fractionLength(1)))
             .textFieldStyle(.roundedBorder)
-            .frame(width: 80)
+            .scaledFrame(width: 80)
             .multilineTextAlignment(.trailing)
     }
 
@@ -455,7 +455,7 @@ struct TabletAreaView: View {
         )
         return TextField("", value: pixelBinding, format: .number)
             .textFieldStyle(.roundedBorder)
-            .frame(width: 80)
+            .scaledFrame(width: 80)
             .multilineTextAlignment(.trailing)
     }
 

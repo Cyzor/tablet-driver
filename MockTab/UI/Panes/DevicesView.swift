@@ -178,13 +178,13 @@ struct DevicesView: View {
                     .fontWeight(isActive ? .semibold : .regular)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .frame(maxWidth: 280, alignment: .leading)
+                    .scaledFrame(maxWidth: 280, alignment: .leading)
 
                 // Kind column
                 Text(tablet.modelName)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .frame(width: 130, alignment: .leading)
+                    .scaledFrame(width: 130, alignment: .leading)
                     .help(tablet.modelName)
 
                 // Serial / ID column
@@ -193,7 +193,7 @@ struct DevicesView: View {
                     .appFont(.monospaced)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .frame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
+                    .scaledFrame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
                     .help(tablet.displayID)
 
                 Button {
@@ -319,12 +319,12 @@ struct DevicesView: View {
                 Text(tool.nickname)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .frame(maxWidth: 280, alignment: .leading)
+                    .scaledFrame(maxWidth: 280, alignment: .leading)
 
                 Text(tool.kind)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .frame(width: 130, alignment: .leading)
+                    .scaledFrame(width: 130, alignment: .leading)
                     .help(tool.kind)
 
                 Text(tool.displayID)
@@ -332,7 +332,7 @@ struct DevicesView: View {
                     .appFont(.monospaced)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .frame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
+                    .scaledFrame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
                     .help(tool.displayID)
 
                 Button {
@@ -392,13 +392,13 @@ struct DevicesView: View {
     private func columnHeader(_ nameCol: LocalizedStringKey, _ kindCol: LocalizedStringKey, _ idCol: LocalizedStringKey) -> some View {
         HStack {
             Text(nameCol)
-                .padding(.leading, 56)  // Room for kind icon + active indicator
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(maxWidth: 280 + 56, alignment: .leading)  // mirrors the rows' name cap
+                .scaledFrame(maxWidth: 280, alignment: .leading)  // mirrors the rows' name cap
+                .padding(.leading, 56)  // Room for kind icon + active indicator (fixed — icons don't scale)
             Text(kindCol)
-                .frame(width: 130, alignment: .leading)
+                .scaledFrame(width: 130, alignment: .leading)
             Text(idCol)
-                .frame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
+                .scaledFrame(minWidth: 135, maxWidth: .infinity, alignment: .leading)
             Spacer(minLength: 28)  // room for the rename pencil
         }
         .appFont(.settingsLabel)
