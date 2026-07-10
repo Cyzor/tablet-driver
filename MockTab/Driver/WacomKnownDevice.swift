@@ -501,6 +501,12 @@ final class WacomKnownDevice: TabletDevice {
             // XencelabsDriver: every 0xB4/0xB1 write it sends over the dongle
             // carries the identity, none carry an all-zero address.
             let address = xencelabsDongleIdentity ?? []
+            // Reassert upright screen orientation, as the vendor stack does
+            // during its own reconnect init. Sending anything else here
+            // visibly rotates the OLED text (confirmed on hardware).
+            sendXencelabsOutput(
+                XencelabsControl.orientationPayload(rotationSteps: 0, address: address),
+                tag: "screen orientation upright")
             let colors = XencelabsControl.defaultSlotColors
             let custom = dialSlotColors.indices.contains(index) ? dialSlotColors[index] : nil
             let c = custom ?? colors[((index % colors.count) + colors.count) % colors.count]
@@ -573,6 +579,7 @@ final class WacomKnownDevice: TabletDevice {
         if declared > relink.count {
             relink += [UInt8](repeating: 0, count: declared - relink.count)
         }
+        paceXencelabsWrite()
         return hidSetReport(
             target, type: kIOHIDReportTypeOutput, reportID: CFIndex(relink[0]),
             bytes: &relink, tag: "\(deviceSpec.name) dongle relink", log: logger)
@@ -583,25 +590,20 @@ final class WacomKnownDevice: TabletDevice {
     /// label setters dedup against `xencelabsSentText`, so that cache is
     /// cleared first to force the resend of whatever was last requested.
     private func resyncXencelabsOutputsAfterRelink() {
-        // The native driver's own reconnect sequence sends a "reset labels"
-        // write (0xB1 sub-op 0x01, identity appended) between the relink and
-        // its label pushes — confirmed 2026-07-06 in the dtrace capture.
-        // Our earlier label pushes (sent before the link existed) may be
-        // stuck in whatever state the puck was showing pre-relink; try
-        // clearing that state first before resending.
+        // What captures showed as a "reset labels" write here (0xB1 0x01)
+        // is really the screen orientation command set to upright —
+        // `setRingLED` below reasserts it, so no separate write is needed.
+        // The three extra opcodes in every native resync capture turned
+        // out to be status GET polls (0xB4 0x08 sleep time, 0xB4 0x10
+        // battery, 0xB1 0x0A OLED brightness; byte 3 = 0x01 set / 0x00
+        // get) — decoded 2026-07-10 from the vendor agent's disassembly.
+        // Replaying them is kept: they're cheap, present in every native
+        // capture, and may double as wake pokes during the reconnect
+        // window.
         if let identity = xencelabsDongleIdentity {
-            let reset: [UInt8] = [0x02, 0xB1, 0x01, 0, 0, 0, 0, 0, 0, 0] + identity
-            sendXencelabsOutput(reset, tag: "OLED label reset")
-            // Three opcodes of unknown purpose that XencelabsDriver always
-            // sends at this exact point in its resync sequence — identity
-            // appended, no other payload. Semantics unconfirmed (not in
-            // XencelabsControl's documented opcode set), but they're cheap
-            // and every native full-resync capture consistently includes
-            // them, so we replicate them best-effort. Confirmed 2026-07-07
-            // via dtrace.
-            sendXencelabsOutput([0x02, 0xB4, 0x08, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "unknown b4 08")
-            sendXencelabsOutput([0x02, 0xB4, 0x10, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "unknown b4 10")
-            sendXencelabsOutput([0x02, 0xB1, 0x0A, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "unknown b1 0a")
+            sendXencelabsOutput([0x02, 0xB4, 0x08, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "sleep-time poll")
+            sendXencelabsOutput([0x02, 0xB4, 0x10, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "battery poll")
+            sendXencelabsOutput([0x02, 0xB1, 0x0A, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "OLED brightness poll")
         }
         let ledIndex = pendingLEDIndex
         let modeLabel = xencelabsSentText["mode"]
@@ -610,6 +612,29 @@ final class WacomKnownDevice: TabletDevice {
         setRingLED(index: ledIndex)
         if let modeLabel { setRingModeLabel(modeLabel) }
         if let keysJoined { setAuxKeyLabels(keysJoined.components(separatedBy: "\u{1F}")) }
+    }
+
+    /// Uptime of the most recent Xencelabs vendor write, for pacing.
+    private var lastXencelabsWriteUptime: UInt64 = 0
+
+    /// Space vendor writes at least 3 ms apart. The vendor stack sleeps
+    /// after every frame it sends (3 ms in its driver's color path, 1.3 ms
+    /// between OLED label chunks, 10 ms between the color/sensitivity/label
+    /// blocks on an app change — confirmed 2026-07-10 by disassembling
+    /// XencelabsAgent/XencelabsDriver). The firmware silently drops output
+    /// reports that arrive while it is busy repainting, and the transport
+    /// still returns success, so back-to-back writes "succeed" without ever
+    /// reaching the display.
+    private func paceXencelabsWrite() {
+        let gap: UInt64 = 3_000_000  // 3 ms in nanoseconds
+        let now = DispatchTime.now().uptimeNanoseconds
+        if lastXencelabsWriteUptime != 0 {
+            let elapsed = now &- lastXencelabsWriteUptime
+            if elapsed < gap {
+                usleep(UInt32((gap - elapsed) / 1_000))
+            }
+        }
+        lastXencelabsWriteUptime = DispatchTime.now().uptimeNanoseconds
     }
 
     /// Send a Xencelabs vendor output report, zero-padded to the device's
@@ -630,6 +655,7 @@ final class WacomKnownDevice: TabletDevice {
         if declared > padded.count {
             padded += [UInt8](repeating: 0, count: declared - padded.count)
         }
+        paceXencelabsWrite()
         hidSetReport(target, type: kIOHIDReportTypeOutput,
                      reportID: CFIndex(padded[0]), bytes: &padded,
                      tag: "\(deviceSpec.name) \(tag)", severity: .bestEffort, log: logger)
