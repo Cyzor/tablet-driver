@@ -203,7 +203,7 @@ struct CaptureGuideView: View {
     /// Recording-status indicator dot, shared by `recordingView` and
     /// `guidedRecordingView`. When Differentiate-Without-Color is enabled,
     /// uses an SF Symbol that distinguishes state by glyph (filled-vs-hollow
-    /// record glyph) in addition to red-vs-grey colour.
+    /// record glyph) in addition to red-vs-gray color.
     @ViewBuilder
     private var recordingDot: some View {
         if differentiateWithoutColor {

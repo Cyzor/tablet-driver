@@ -184,7 +184,7 @@ enum AppearancePrefs {
 
 // MARK: - Appearance root
 
-/// Wraps a SwiftUI root view to honour the user-controllable text-size
+/// Wraps a SwiftUI root view to honor the user-controllable text-size
 /// preference. Apply at every `NSHostingController(rootView:)` /
 /// `NSHostingView(rootView:)` call site via `.withAppearance()` so each
 /// window updates live when the menu choice changes.

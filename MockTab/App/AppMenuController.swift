@@ -30,7 +30,7 @@ extension Notification.Name {
 /// **Profiles menu** — inserted after the Tablet menu.  Rebuilt on every open.
 ///
 /// **Edit menu** — SwiftUI's Button-based items are always enabled; replaced
-/// with nil-target selector items so AppKit responder-chain validation greys
+/// with nil-target selector items so AppKit responder-chain validation grays
 /// out inapplicable commands, Finder-style.  Same for Show/Hide Tab Bar in
 /// the View menu.
 ///
@@ -78,7 +78,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
 
     /// Replaces the SwiftUI-generated Edit menu's contents with native items
     /// that use nil-target standard selectors. AppKit's responder-chain
-    /// validation then greys out whatever has no effect — clipboard items
+    /// validation then grays out whatever has no effect — clipboard items
     /// without a focused text field, Undo/Redo without recorded actions —
     /// and gives Undo/Redo their contextual titles from the key window's
     /// UndoManager (vended by SettingsWindowController via

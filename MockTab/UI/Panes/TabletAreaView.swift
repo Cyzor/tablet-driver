@@ -140,6 +140,8 @@ struct TabletAreaView: View {
 
                     HStack {
 
+                        // Deliberately a checkbox, not a switch: Finder still
+                        // uses checkboxes for inline options like this.
                         Toggle("Proportional mapping", isOn: proportionalMappingBinding)
                             .toggleStyle(.checkbox)
                             .help("Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed.")
@@ -460,7 +462,7 @@ struct TabletAreaView: View {
     // MARK: - Badge
 
     /// Draws a dark translucent badge with the tablet nickname and model name
-    /// centred inside `areaRect`, matching the display-pane caption style.
+    /// centered inside `areaRect`, matching the display-pane caption style.
     private func tabletBadge(ctx: GraphicsContext, areaRect: CGRect) {
         let label = deviceLabel
 

@@ -8,7 +8,7 @@ import TabletKit
 // MARK: - PenDiagramView
 
 /// Renders a schematic side-view of the stylus pen, rotated 90° so the tip
-/// faces right and the eraser faces left.  Segments illuminate in accent colour
+/// faces right and the eraser faces left.  Segments illuminate in accent color
 /// when the corresponding physical input is active.
 struct PenDiagramView: View, Equatable {
     let liveButtons: LiveButtonState

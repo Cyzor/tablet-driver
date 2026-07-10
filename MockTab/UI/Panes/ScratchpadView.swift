@@ -469,7 +469,7 @@ final class ScratchpadNSView: NSView {
     override var isOpaque: Bool { false }
     override var acceptsFirstResponder: Bool { true }
 
-    // Ring cursor: white halo + black stroke for visibility on any background colour.
+    // Ring cursor: white halo + black stroke for visibility on any background color.
     private static let ringCursor: NSCursor = {
         let size: CGFloat = 20
         let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in

@@ -528,7 +528,7 @@ struct DisplayInfo {
     var bounds: CGRect  // in CGDisplayBounds / Quartz coordinates
     var name: String  // localised device name if available
     var resolution: String  // e.g. "2560×1440"
-    var wallpaper: NSImage?  // desktop image, or nil for solid colour / animated backdrops
+    var wallpaper: NSImage?  // desktop image, or nil for solid color / animated backdrops
 
     var pickerLabel: String { "\(name) (\(resolution))" }
 

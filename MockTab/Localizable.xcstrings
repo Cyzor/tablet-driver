@@ -4595,6 +4595,9 @@
         }
       }
     },
+    "Enable" : {
+      "comment" : "Button that turns on Launch at Login from the Info tab"
+    },
     "Enable finger touch" : {
       "comment" : "Touch pane: master toggle for capacitive touch input",
       "localizations" : {
@@ -4619,7 +4622,7 @@
       }
     },
     "Enable MockTab to start automatically when you log in." : {
-      "comment" : "Tooltip on Fix button for Launch at Login",
+      "comment" : "Tooltip on Enable button for Launch at Login",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5427,7 +5430,7 @@
       }
     },
     "Fix" : {
-      "comment" : "Small Fix button next to rows that have a corrective action",
+      "comment" : "Default button label for repairing a failed status row in the Info tab",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10648,7 +10651,7 @@
         }
       }
     },
-    "Reset to full surface" : {
+    "Reset to Full Surface" : {
       "comment" : "Touch pane: reset the touch area to cover the entire touch surface",
       "localizations" : {
         "de" : {
@@ -11184,6 +11187,7 @@
     },
     "Save" : {
       "comment" : "Confirm button when renaming a profile inline",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12896,7 +12900,7 @@
         }
       }
     },
-    "This looks like %@, but MockTab doesn't recognise this specific model yet." : {
+    "This looks like %@, but MockTab doesn't recognize this specific model yet." : {
       "comment" : "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand"
     },
     "This tool will reappear with its default name next time the tablet detects it." : {
@@ -13828,7 +13832,7 @@
         }
       }
     },
-    "Unrecognised tablet" : {
+    "Unrecognized tablet" : {
       "comment" : "Banner title shown when active device is on the generic fallback driver",
       "localizations" : {
         "de" : {
@@ -13881,7 +13885,7 @@
         }
       }
     },
-    "Use this if your device is unrecognised or a feature isn't working as expected. The collection takes about one minute." : {
+    "Use this if your device is unrecognized or a feature isn't working as expected. The collection takes about one minute." : {
       "comment" : "Description below the Collect Device Data button",
       "localizations" : {
         "de" : {
@@ -13893,7 +13897,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Use this if your device is unrecognised or a feature isn't working as expected. The collection takes about one minute."
+            "value" : "Use this if your device is unrecognized or a feature isn't working as expected. The collection takes about one minute."
           }
         },
         "es" : {

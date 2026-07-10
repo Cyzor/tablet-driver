@@ -154,7 +154,7 @@ struct TouchView: View {
 
             HStack {
                 Spacer()
-                Button(String(localized: "Reset to full surface",
+                Button(String(localized: "Reset to Full Surface",
                               comment: "Touch pane: reset the touch area to cover the entire touch surface")) {
                     let old = (settings.touchAreaX, settings.touchAreaY,
                                settings.touchAreaWidth, settings.touchAreaHeight)

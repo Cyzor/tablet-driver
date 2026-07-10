@@ -4,7 +4,7 @@
 
 import SwiftUI
 
-/// Stylus feel settings: pressure curve, stabilization, click behaviour, and rotation.
+/// Stylus feel settings: pressure curve, stabilization, click behavior, and rotation.
 struct PenFeelView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager

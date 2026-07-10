@@ -10,7 +10,7 @@ import AppKit
 ///
 /// The Edit and Window menus are left as empty placeholders: `AppMenuController`
 /// replaces their contents wholesale (`hookEditMenu`, `hookWindowMenu`) so
-/// responder-chain validation greys items out Finder-style. Tablet and
+/// responder-chain validation grays items out Finder-style. Tablet and
 /// Profiles menus are inserted by `AppMenuController` as well.
 @MainActor
 enum MainMenuBuilder {

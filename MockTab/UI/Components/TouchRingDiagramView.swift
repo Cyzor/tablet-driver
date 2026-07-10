@@ -7,7 +7,7 @@ import SwiftUI
 // MARK: - TouchRingDiagramView
 
 /// Schematic top-down view of a touch ring.  The currently selected slot
-/// (`activeSlotIndex`) fills in accent colour; the centre button fills in
+/// (`activeSlotIndex`) fills in accent color; the center button fills in
 /// accent when `centerDown` is true.
 ///
 /// Mirrors PenDiagramView's perf model: static pre-parsed paths, single
@@ -17,7 +17,7 @@ import SwiftUI
 struct TouchRingDiagramView: View, Equatable {
     /// 0-based slot index of the currently active ring mode (0..<slotCount).
     let activeSlotIndex: Int
-    /// True while the ring centre button is physically held.
+    /// True while the ring center button is physically held.
     let centerDown: Bool
     /// Number of visual slots: 4 for most tablets, 3 for Cintiq 24HD-class.
     let slotCount: Int
@@ -59,7 +59,7 @@ struct TouchRingDiagramView: View, Equatable {
 
     var body: some View {
         Canvas { context, size in
-            // Square ring centred in available space, preserving aspect ratio.
+            // Square ring centered in available space, preserving aspect ratio.
             let scale = min(size.width, size.height) / Self.svgSize
             let drawn = Self.svgSize * scale
             let tx = (size.width - drawn) / 2.0

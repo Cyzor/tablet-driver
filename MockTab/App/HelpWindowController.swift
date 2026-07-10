@@ -57,7 +57,7 @@ final class HelpWindowController: NSWindowController, ObservableObject {
         let view = HelpPanelView(controller: self)
         window.contentViewController = NSHostingController(rootView: view.withAppearance())
 
-        // Restore saved frame, or centre on first launch.
+        // Restore saved frame, or center on first launch.
         if let frameString = UserDefaults.standard.string(forKey: Self.frameKey) {
             window.setFrame(NSRectFromString(frameString), display: false)
         } else {

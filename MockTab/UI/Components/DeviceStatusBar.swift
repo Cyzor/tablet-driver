@@ -6,7 +6,7 @@ import SwiftUI
 
 // MARK: - StatusCaptionLabel
 
-/// A compact caption line: green/grey presence dot plus a name.  Shared
+/// A compact caption line: green/gray presence dot plus a name.  Shared
 /// shape behind `DeviceNameLabel` and `ToolNameLabel`.
 private struct StatusCaptionLabel: View {
     let name: String
@@ -27,8 +27,8 @@ private struct StatusCaptionLabel: View {
     @ViewBuilder
     private var statusDot: some View {
         if differentiateWithoutColor {
-            // Filled-vs-hollow glyph conveys state without colour for users
-            // who can't reliably distinguish the green/grey fill.
+            // Filled-vs-hollow glyph conveys state without color for users
+            // who can't reliably distinguish the green/gray fill.
             Image(systemName: isLive ? "circle.fill" : "circle")
                 .font(.system(size: 6))
                 .foregroundStyle(isLive ? Color.green : Color.secondary.opacity(0.5))
@@ -44,7 +44,7 @@ private struct StatusCaptionLabel: View {
 // MARK: - DeviceNameLabel
 
 /// A compact caption line showing a specific device's user-assigned nickname
-/// plus a green/grey presence dot.  Pass the window's `productID` so the label
+/// plus a green/gray presence dot.  Pass the window's `productID` so the label
 /// reflects that device rather than whichever device is globally active.
 struct DeviceNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
@@ -75,7 +75,7 @@ struct DeviceNameLabel: View {
 // MARK: - ToolNameLabel
 
 /// A compact caption line showing a device's active tool nickname plus a
-/// green/grey proximity dot.  Pass the window's `productID` so the label
+/// green/gray proximity dot.  Pass the window's `productID` so the label
 /// reflects that device's in-proximity tool rather than the globally active one.
 struct ToolNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
@@ -181,9 +181,10 @@ struct DeviceStatusBar: View {
 
     private var batteryItem: (String, String)? {
         guard let context = context, let pct = context.batteryPercent else { return nil }
+        // Charging is conveyed by the bolt variant of the battery symbol —
+        // no literal glyph in the text label.
         let sym = BatteryIndicator.symbolName(pct: pct, charging: context.batteryCharging)
-        let label = context.batteryCharging ? "\(pct)% ⚡" : "\(pct)%"
-        return (sym, label)
+        return (sym, "\(pct)%")
     }
 
     private var batteryTint: Color {
