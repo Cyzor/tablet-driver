@@ -16,6 +16,7 @@ Several Wacom models across multiple families:
 - **Cintiq** pen displays (CintiqV1 and IntuosV2-format models)
 - **DTU / DTUS** small pen displays — USB, experimental
 - **Bamboo** and consumer CTL/CTH tablets
+- **Xencelabs Pen Display** bundle — pen and Quick Keys puck, wired and wireless
 
 Full list: [mocktab.org/hardware](https://mocktab.org/hardware.html)
 
@@ -87,10 +88,9 @@ To run the decoder test suite: `cd TabletKit && swift test`.
 
 ## Incomplete or unsupported
 
-- Huion, XP-Pen, or any other non-Wacom hardware
+- Huion, XP-Pen, or any other non-Wacom hardware besides Xencelabs
 - Wacom tablets from recent product cycles not listed above (Cintiq Pro 2023 refresh, etc.)
 - Windows, Linux, or iPad
-- **Xencelabs** — pen and Quick Keys work, but support is still experimental and incomplete (no dial LED control, no dongle-relay wireless path yet)
 
 ---
 
