@@ -103,6 +103,16 @@ final class DeviceContext: ObservableObject, Identifiable {
                 self.pushDeviceDisplayState(activeSlotIndex: index)
             }
             .store(in: &cancellables)
+        // Panel brightness (Xencelabs pen displays). Fires once on subscribe,
+        // which replays the saved value to the hardware on (re)connect; -1
+        // means the user has never touched the slider, so the panel keeps
+        // its own stored value.
+        settings.$displayBrightness
+            .sink { [weak self] value in
+                guard value >= 0 else { return }
+                self?.tabletDevice?.setDisplayBrightness(value)
+            }
+            .store(in: &cancellables)
     }
 
     /// Push host-side display state (mode name, key labels) to devices with

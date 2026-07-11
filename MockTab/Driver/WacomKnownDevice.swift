@@ -567,6 +567,28 @@ final class WacomKnownDevice: TabletDevice {
         }
     }
 
+    /// Panel brightness is exposed on Xencelabs pen displays via the vendor
+    /// 0xB5 display-control frame family (see XencelabsControl).
+    var hasDisplayBrightnessControl: Bool {
+        deviceSpec.parser == .xencelabs && deviceSpec.isPenDisplay
+    }
+
+    /// Last panel brightness sent, to suppress redundant writes while a
+    /// slider drags.
+    private var lastDisplayBrightness: Int = -1
+
+    /// Set the pen display's panel backlight brightness (0–100).
+    func setDisplayBrightness(_ percent: Int) {
+        guard hasDisplayBrightnessControl else { return }
+        let clamped = min(max(percent, 0), 100)
+        guard clamped != lastDisplayBrightness else { return }
+        lastDisplayBrightness = clamped
+        sendXencelabsOutput(
+            XencelabsControl.displayBrightnessPayload(
+                UInt8(clamped), address: xencelabsDongleIdentity ?? []),
+            tag: "panel brightness \(clamped)")
+    }
+
     /// Send the tablet-mode relink handshake ([0x02, 0xB0, 0x04] with the
     /// puck's identity appended) to the dongle's vendor interface, padded to
     /// the declared output size. Used at first sight of the puck and again

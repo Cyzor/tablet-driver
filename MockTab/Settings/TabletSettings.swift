@@ -192,6 +192,18 @@ final class TabletSettings: ObservableObject {
         didSet { persist("targetDisplayIndex", targetDisplayIndex) }
     }
 
+    /// Panel backlight brightness (0–100) for pen displays with on-device
+    /// control (Xencelabs). -1 = never set here; nothing is sent to the
+    /// hardware so the panel keeps its own stored value. Persisted straight
+    /// into the device namespace — this is hardware state shared with the
+    /// panel's bezel buttons, not a per-profile preference.
+    @Published var displayBrightness: Int = -1 {
+        didSet {
+            guard !isLoading else { return }
+            ud.set(displayBrightness, forKey: devicePrefix + "displayBrightness")
+        }
+    }
+
     /// CGDirectDisplayID values (comma-separated) included in the toggle rotation.
     /// Empty string means all connected displays are included.
     @Published var toggleDisplayIDs: String = "" {
@@ -973,6 +985,7 @@ final class TabletSettings: ObservableObject {
         tabletOrientation =
             TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape
         targetDisplayIndex = loadInt("targetDisplayIndex", default: 0)
+        displayBrightness = loadInt("displayBrightness", default: -1)
         toggleDisplayIDs = loadString("toggleDisplayIDs", default: "")
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
         doubleClickDistance = loadDouble("doubleClickDistance", default: 10.0)

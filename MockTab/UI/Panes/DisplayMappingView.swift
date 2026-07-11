@@ -6,6 +6,7 @@ import AppKit
 import CoreGraphics
 import ImageIO
 import SwiftUI
+import TabletKit
 
 struct DisplayMappingView: View {
     @ObservedObject var settings: TabletSettings
@@ -40,8 +41,60 @@ struct DisplayMappingView: View {
         ) {
             displayMappingSection
             canvasSection
+            if hasBrightnessControl {
+                brightnessSection
+            }
         }
         .onAppear { displays = DisplayInfo.all() }
+    }
+
+    // MARK: - Built-in display brightness
+
+    /// True when the selected tablet is a pen display whose panel brightness
+    /// the driver can set (Xencelabs). Decided from the device spec, not the
+    /// live connection, so the section stays visible — disabled — while the
+    /// display is unplugged or asleep.
+    private var hasBrightnessControl: Bool {
+        guard let pid = productID, let spec = TabletManager.staticSpec(forProductID: pid)
+        else { return false }
+        return spec.parser == .xencelabs && spec.isPenDisplay
+    }
+
+    private var brightnessDeviceConnected: Bool {
+        guard let pid = productID, let ctx = tabletManager.contexts[pid] else { return false }
+        return ctx.isConnected
+    }
+
+    private var brightnessSection: some View {
+        Section {
+            HStack {
+                Image(systemName: "sun.max")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Slider(
+                    value: settings.recordingBinding(
+                        "Display Brightness",
+                        // Before the user ever touches the slider (-1), park
+                        // the knob at the vendor default without sending.
+                        get: { Double(settings.displayBrightness >= 0 ? settings.displayBrightness : 75) },
+                        set: { settings.displayBrightness = Int($0.rounded()) }),
+                    in: 0...100)
+                Text(settings.displayBrightness >= 0 ? "\(settings.displayBrightness)%" : "—")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .scaledFrame(width: 48, alignment: .trailing)
+            }
+            .disabled(!brightnessDeviceConnected)
+            .help("Backlight brightness of the tablet's built-in display. The hardware keeps its own value until you move the slider.")
+        } header: {
+            Text("Built-in Display").appFont(.headline)
+        } footer: {
+            Text(brightnessDeviceConnected
+                ? "Changes the panel's own backlight, like the buttons on the display bezel."
+                : "Available when the display is connected.")
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
     }
 
     private var displayMappingSection: some View {
