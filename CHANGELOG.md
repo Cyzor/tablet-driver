@@ -3,6 +3,7 @@
 Full details for each release live in [`release-notes/`](release-notes/). This
 file is a one-line index.
 
+- [v0.3.0](release-notes/v0.3.0.md) — full Xencelabs Pen Display bundle support, wired and wireless; input reliability under load; interface polish.
 - [v0.2.6](release-notes/v0.2.6.md) — Wacom CTH-690 support; Accessibility permission prompt fix.
 - [v0.2.5](release-notes/v0.2.5.md) — expanded wireless accessory support; UI behavior improvements.
 - [v0.2.4](release-notes/v0.2.4.md) — first steps toward non-Wacom tablets via a universal HID pen fallback; menu refinements.
