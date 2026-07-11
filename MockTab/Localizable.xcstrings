@@ -221,6 +221,97 @@
         }
       }
     },
+    "%lld%%" : {
+      "shouldTranslate" : false
+    },
+    "Available when the display is connected." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verfügbar, wenn das Display verbunden ist."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disponible cuando la pantalla está conectada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイ接続時に使用できます。"
+          }
+        }
+      }
+    },
+    "Backlight brightness of the tablet's built-in display. The hardware keeps its own value until you move the slider." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hintergrundbeleuchtung des im Tablett integrierten Displays. Die Hardware behält ihren eigenen Wert, bis der Regler bewegt wird."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brillo de la retroiluminación de la pantalla integrada de la tableta. El hardware conserva su propio valor hasta que muevas el control."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレット内蔵ディスプレイのバックライトの明るさ。スライダを動かすまで、ハードウェア側の値が維持されます。"
+          }
+        }
+      }
+    },
+    "Built-in Display" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Integriertes Display"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantalla integrada"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内蔵ディスプレイ"
+          }
+        }
+      }
+    },
+    "Changes the panel's own backlight, like the buttons on the display bezel." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ändert die Hintergrundbeleuchtung des Panels selbst, wie die Tasten am Displayrahmen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia la retroiluminación del propio panel, igual que los botones del marco de la pantalla."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイ枠のボタンと同様に、パネル自体のバックライトを変更します。"
+          }
+        }
+      }
+    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -524,7 +615,8 @@
             "value" : "%1$@ · %2$@"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "%@ transform, %.1f px max error" : {
       "comment" : "A caption that describes the type of transformation applied to the display and the maximum pixel error observed during calibration. The first argument is the type of transformation applied (e.g., \"2x3 grid\"). The second argument is the maximum pixel error (e.g., \"12.3 px\").",
@@ -1091,7 +1183,27 @@
       }
     },
     "About %@" : {
-      "comment" : "App menu: show About panel"
+      "comment" : "App menu: show About panel",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acerca de %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@について"
+          }
+        }
+      }
     },
     "About MockTab" : {
       "comment" : "Window title: about view",
@@ -3913,13 +4025,71 @@
       }
     },
     "Dial" : {
-      "comment" : "Quick Keys dial center-click row label"
+      "comment" : "Quick Keys dial center-click row label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drehregler"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dial"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤル"
+          }
+        }
+      }
     },
     "Dial LED color" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LED-Farbe des Drehreglers"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color del LED del dial"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤルのLEDカラー"
+          }
+        }
+      }
     },
     "Dial LED color and brightness while this mode is active." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LED-Farbe und -Helligkeit des Drehreglers, solange dieser Modus aktiv ist."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color y brillo del LED del dial mientras este modo está activo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このモードが有効な間のダイヤルのLEDカラーと明るさ。"
+          }
+        }
+      }
     },
     "Disable this button" : {
       "comment" : "A button label that disables a button.",
@@ -4550,7 +4720,27 @@
       }
     },
     "Edit" : {
-      "comment" : "Menu header: edit actions"
+      "comment" : "Menu header: edit actions",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bearbeiten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edición"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "編集"
+          }
+        }
+      }
     },
     "Edit the profile name" : {
       "comment" : "Help text for renaming a profile.",
@@ -4612,7 +4802,27 @@
       }
     },
     "Enable" : {
-      "comment" : "Button that turns on Launch at Login from the Info tab"
+      "comment" : "Button that turns on Launch at Login from the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktivieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有効にする"
+          }
+        }
+      }
     },
     "Enable finger touch" : {
       "comment" : "Touch pane: master toggle for capacitive touch input",
@@ -5755,7 +5965,27 @@
       }
     },
     "Help" : {
-      "comment" : "Menu header: app help"
+      "comment" : "Menu header: app help",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hilfe"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayuda"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ヘルプ"
+          }
+        }
+      }
     },
     "Helps add support for your device by capturing its HID report layout." : {
       "comment" : "Subtitle for device data collection when tablet is not yet supported",
@@ -5795,7 +6025,8 @@
             "value" : "HID latency    : %1$@ ms avg, %2$@ ms worst, %3$llu stalls >%4$lld ms"
           }
         }
-      }
+      },
+      "shouldTranslate" : false
     },
     "HID Manager" : {
       "comment" : "Row label in Info tab status table",
@@ -5850,7 +6081,27 @@
       }
     },
     "Hide %@" : {
-      "comment" : "App menu: hide the app"
+      "comment" : "App menu: hide the app",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ausblenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@を非表示"
+          }
+        }
+      }
     },
     "Hide Dock Icon" : {
       "comment" : "Button label: confirm hide Dock icon",
@@ -5940,7 +6191,27 @@
       }
     },
     "Hide Others" : {
-      "comment" : "App menu: hide other apps"
+      "comment" : "App menu: hide other apps",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andere ausblenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar otros"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ほかを非表示"
+          }
+        }
+      }
     },
     "Hide Tab Bar" : {
       "comment" : "View menu: hide the window tab bar (shown when tab bar is visible)",
@@ -7827,7 +8098,27 @@
       }
     },
     "Mode" : {
-      "comment" : "Quick Keys bottom mode button label"
+      "comment" : "Quick Keys bottom mode button label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modus"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モード"
+          }
+        }
+      }
     },
     "Mode %lld" : {
       "comment" : "A label showing the mode number (e.g. \"Mode 1\") and a dropdown menu for selecting an action for that mode.",
@@ -10012,10 +10303,30 @@
       }
     },
     "Quick Keys" : {
-
+      "shouldTranslate" : false
     },
     "Quit %@" : {
-      "comment" : "App menu: quit the app"
+      "comment" : "App menu: quit the app",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ beenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir de %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@を終了"
+          }
+        }
+      }
     },
     "Quit MockTab" : {
       "comment" : "Menu button: quit the application",
@@ -10348,7 +10659,27 @@
       }
     },
     "Remove every app's overrides for this tablet" : {
-      "comment" : "Help: Option-click removes all per-app overrides for this tablet"
+      "comment" : "Help: Option-click removes all per-app overrides for this tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle App-Overrides für dieses Tablett entfernen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar todas las excepciones de app para esta tableta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このタブレットのアプリ別設定をすべて削除"
+          }
+        }
+      }
     },
     "Remove from List…" : {
       "comment" : "Context menu option to remove a tablet from the list of connected devices.",
@@ -11626,7 +11957,27 @@
       }
     },
     "Services" : {
-      "comment" : "App menu: Services submenu"
+      "comment" : "App menu: Services submenu",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dienste"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Servicios"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービス"
+          }
+        }
+      }
     },
     "Set Up" : {
       "comment" : "Button in Display tab hint row — go to Buttons tab",
@@ -11658,7 +12009,27 @@
       }
     },
     "Show All" : {
-      "comment" : "App menu: show all apps"
+      "comment" : "App menu: show all apps",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle einblenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar todo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてを表示"
+          }
+        }
+      }
     },
     "Show details about detected conflicts with other tablet drivers and how to resolve them." : {
       "comment" : "Tooltip on Fix button for Conflicts row",
@@ -12992,7 +13363,27 @@
       }
     },
     "This looks like %@, but MockTab doesn't recognize this specific model yet." : {
-      "comment" : "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand"
+      "comment" : "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dies sieht nach %@ aus, aber MockTab erkennt dieses spezifische Modell noch nicht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto parece %@, pero MockTab aún no reconoce este modelo específico."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@のようですが、MockTabはこの特定のモデルをまだ認識していません。"
+          }
+        }
+      }
     },
     "This tool will reappear with its default name next time the tablet detects it." : {
       "comment" : "Message explaining that removed tool nicknames are temporary",
@@ -14249,7 +14640,8 @@
       }
     },
     "X: +0.0   Y: +0.0" : {
-      "comment" : "Default tilt display when no pen is detected"
+      "comment" : "Default tilt display when no pen is detected",
+      "shouldTranslate" : false
     },
     "X: 0   Y: 0" : {
       "comment" : "Default coordinate display when no pen is detected",
