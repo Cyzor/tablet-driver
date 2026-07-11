@@ -304,6 +304,21 @@ final class TabletManager: ObservableObject {
 
     // MARK: - Device lifecycle
 
+    /// Best-available spec for a product ID with no live connection required:
+    /// the Wacom registry row if one exists, otherwise a spec synthesized from
+    /// the device's vendor profile. Lets UI decide capability-based layout
+    /// (tab set, pane sections) for recognized-but-unplugged devices of any
+    /// vendor — `WacomDeviceRegistry.spec(for:)` alone returns nil for
+    /// non-Wacom hardware.
+    @MainActor
+    static func staticSpec(forProductID productID: Int) -> WacomDeviceSpec? {
+        if let spec = WacomDeviceRegistry.spec(for: productID) { return spec }
+        let vendorID = DeviceRegistry.shared.vendorID(forProductID: productID)
+            ?? lastSeenVendorID[productID]
+            ?? 0x056A
+        return vendorDeviceSpec(forVendorID: vendorID, productID: productID)
+    }
+
     /// Synthesizes the `WacomDeviceSpec` for a drivable non-Wacom device from
     /// its `VendorDeviceRegistry` profile. Shared by `deviceConnected` (which
     /// needs it live, to attach a driver) and UI callers like

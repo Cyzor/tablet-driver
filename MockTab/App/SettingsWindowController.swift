@@ -322,9 +322,21 @@ final class SettingsWindowController: NSWindowController {
         // from the registry at this point; formula: ~70 pt per tab + ~80 pt chrome.
         // The deferred measurement in viewDidAppear will refine this once the
         // toolbar is fully laid out.
-        let hasTouchTab =
-            productID.flatMap { WacomDeviceRegistry.spec(for: $0) }?.hasFingerTouch == true
-        window.minSize = NSSize(width: CGFloat(hasTouchTab ? 9 : 8) * 70 + 80, height: 500)
+        // staticSpec resolves non-Wacom devices too (the Wacom registry alone
+        // returns nil for them). An aux-only device — Quick Keys puck/dongle:
+        // express keys and dial, no pen digitizer — gets a trimmed window:
+        // Buttons, Devices, and Info for the puck; just Devices and Info for
+        // the dongle, which is only a wireless relay for the puck and has no
+        // controls of its own to map. The pen-oriented tabs are structurally
+        // inapplicable there, so hiding (not disabling) is the right
+        // treatment. Scoped to the Xencelabs parser so no Wacom window
+        // changes shape.
+        let staticSpec = productID.flatMap { TabletManager.staticSpec(forProductID: $0) }
+        let isAuxOnly = staticSpec?.parser == .xencelabs && staticSpec?.maxX == 0
+        let isDongle = isAuxOnly && productID == 0x5203
+        let hasTouchTab = staticSpec?.hasFingerTouch == true
+        let tabCount = isDongle ? 2 : isAuxOnly ? 3 : (hasTouchTab ? 9 : 8)
+        window.minSize = NSSize(width: CGFloat(tabCount) * 70 + 80, height: 500)
 
         // Don't auto-save frame for device-specific windows — SettingsWindowManager
         // handles manual persistence to support per-device window positions.
@@ -401,38 +413,47 @@ final class SettingsWindowController: NSWindowController {
             SettingsWindowManager.shared.replaceWindow(self, withDeviceID: pid)
         }
 
-        addTab(
-            label: Self.tabLabels[Tab.tabletArea.rawValue], symbol: "rectangle.dashed", height: 790
-        ) {
-            TabletAreaView(
-                settings: s, tabletManager: tm, registry: dr,
-                onDeviceSelected: onDevice, boundProductID: productID)
+        if !isAuxOnly {
+            addTab(
+                label: Self.tabLabels[Tab.tabletArea.rawValue], symbol: "rectangle.dashed",
+                height: 790
+            ) {
+                TabletAreaView(
+                    settings: s, tabletManager: tm, registry: dr,
+                    onDeviceSelected: onDevice, boundProductID: productID)
+            }
+            addTab(
+                label: Self.tabLabels[Tab.penFeel.rawValue], symbol: "scribble.variable",
+                height: 480
+            ) {
+                PenFeelView(settings: s, tabletManager: tm, registry: dr, productID: productID)
+            }
         }
-        addTab(
-            label: Self.tabLabels[Tab.penFeel.rawValue], symbol: "scribble.variable", height: 480
-        ) {
-            PenFeelView(settings: s, tabletManager: tm, registry: dr, productID: productID)
-        }
-        addTab(
-            label: Self.tabLabels[Tab.buttons.rawValue], symbol: "square.grid.2x2.fill", height: 575
-        ) {
-            ButtonMappingView(
-                settings: s, tabletManager: tm, registry: dr,
-                productID: productID)
+        if !isDongle {
+            addTab(
+                label: Self.tabLabels[Tab.buttons.rawValue], symbol: "square.grid.2x2.fill",
+                height: 575
+            ) {
+                ButtonMappingView(
+                    settings: s, tabletManager: tm, registry: dr,
+                    productID: productID)
+            }
         }
         // Touch tab is only registered for devices whose spec declares finger touch.
         // The pane itself also guards against being shown for a non-touch device
         // (defence-in-depth in case the spec lookup changes).
-        let touchSpec = productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
-        if touchSpec?.hasFingerTouch == true {
+        if hasTouchTab {
             addTab(
                 label: Self.tabLabels[Tab.touch.rawValue], symbol: "hand.point.up.left", height: 480
             ) {
                 TouchView(settings: s, tabletManager: tm, registry: dr, productID: productID)
             }
         }
-        addTab(label: Self.tabLabels[Tab.display.rawValue], symbol: "display", height: 370) {
-            DisplayMappingView(settings: s, tabletManager: tm, registry: dr, productID: productID)
+        if !isAuxOnly {
+            addTab(label: Self.tabLabels[Tab.display.rawValue], symbol: "display", height: 370) {
+                DisplayMappingView(
+                    settings: s, tabletManager: tm, registry: dr, productID: productID)
+            }
         }
         addTab(
             label: Self.tabLabels[Tab.devices.rawValue], symbol: "rectangle.on.rectangle",
@@ -441,15 +462,22 @@ final class SettingsWindowController: NSWindowController {
             DevicesView(
                 settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
         }
-        addTab(label: Self.tabLabels[Tab.profiles.rawValue], symbol: "star.circle", height: 450) {
-            ProfilesView(settings: s, tabletManager: tm, registry: dr, productID: productID)
+        if !isAuxOnly {
+            addTab(
+                label: Self.tabLabels[Tab.profiles.rawValue], symbol: "star.circle", height: 450
+            ) {
+                ProfilesView(settings: s, tabletManager: tm, registry: dr, productID: productID)
+            }
         }
-        addTab(
-            label: Self.tabLabels[Tab.scratchpad.rawValue], symbol: "pencil.and.outline",
-            height: 360
-        ) {
-            ScratchpadView(
-                settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
+        if !isAuxOnly {
+            addTab(
+                label: Self.tabLabels[Tab.scratchpad.rawValue], symbol: "pencil.and.outline",
+                height: 360
+            ) {
+                ScratchpadView(
+                    settings: s, tabletManager: tm, registry: dr, productID: productID,
+                    undoManager: um)
+            }
         }
         addTab(label: Self.tabLabels[Tab.info.rawValue], symbol: "info.circle", height: 430) {
             InfoView(tabletManager: tm, settings: s, productID: productID)

@@ -44,12 +44,29 @@ final class SettingsWindowManager: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] ids in
                 guard let self else { return }
+                // Close any open window whose device has just become a
+                // claimed companion — devices enumerate one at a time, so a
+                // puck/dongle that arrived before its owning tablet got a
+                // window while momentarily unowned. The loop below then
+                // opens (or keeps) the owner's window in its place.
+                for wc in self.windows {
+                    if let pid = wc.productID,
+                        VendorDeviceRegistry.isConnectedCompanion(
+                            productID: pid, connectedProductIDs: ids)
+                    {
+                        wc.window?.close()
+                    }
+                }
                 // Migrate a generic (no-device) default window to the first
-                // newly-connected tablet that doesn't already have a window.
+                // newly-connected tablet that doesn't already have a window —
+                // skipping claimed companions, which fold into their owner's
+                // window instead of receiving one of their own.
                 if let dw = self.defaultWindow,
                    dw.productID == nil,
                    let pid = ids.first(where: { id in
                        !self.windows.contains(where: { $0.productID == id })
+                           && !VendorDeviceRegistry.isConnectedCompanion(
+                               productID: id, connectedProductIDs: ids)
                    }) {
                     self.replaceWindow(dw, withDeviceID: pid)
                     return  // replaceWindow handled this pid; loop below skips it
@@ -308,8 +325,15 @@ final class SettingsWindowManager: ObservableObject {
     // MARK: - Private
 
     private func activeDeviceProductID() -> Int? {
-        TabletManager.shared.activeContext?.productID
-            ?? TabletManager.shared.connectedProductIDs.first
+        let connected = TabletManager.shared.connectedProductIDs
+        // Never hand out a claimed companion (puck/dongle whose owning
+        // tablet is connected) — its UI lives in the owner's window.
+        return TabletManager.shared.activeContext?.productID
+            ?? connected.first(where: {
+                !VendorDeviceRegistry.isConnectedCompanion(
+                    productID: $0, connectedProductIDs: connected)
+            })
+            ?? connected.first
             ?? DeviceRegistry.shared.knownTablets.first?.id
     }
 

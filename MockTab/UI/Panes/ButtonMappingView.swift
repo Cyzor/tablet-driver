@@ -591,11 +591,22 @@ struct ButtonMappingView: View {
             settings: settings, tabletManager: tabletManager, registry: registry,
             productID: productID, overrideKeys: AppOverrideBar.buttonKeys
         ) {
-            penButtonsSection(lb: liveButtons)
-            if hasDualRings {
-                dualSidedSection(lb: liveButtons)
+            // Aux-only devices (Quick Keys puck/dongle) have no pen digitizer,
+            // so the pen-buttons section is structurally inapplicable — and
+            // instead of the generic express-key/ring layout they get the
+            // exact same Quick Keys content that quickKeysSection folds into
+            // a tablet's window, just fed from this window's own settings and
+            // live state. One component, identical look and behavior (LED
+            // color wells included) wherever the puck's controls appear.
+            if spec?.parser == .xencelabs && spec?.maxX == 0 {
+                quickKeysContent(settings, qkSpec: spec, lb: liveButtons)
             } else {
-                singleSidedSection(lb: liveButtons)
+                penButtonsSection(lb: liveButtons)
+                if hasDualRings {
+                    dualSidedSection(lb: liveButtons)
+                } else {
+                    singleSidedSection(lb: liveButtons)
+                }
             }
         }
         .background(
@@ -784,10 +795,22 @@ struct ButtonMappingView: View {
     @ViewBuilder
     private func quickKeysSection() -> some View {
         if let companionSettings = companionContext?.settings {
-            let lb = companionLiveButtons
-            let keyCount = min(max(companionSpec?.buttonCount ?? 8, 0) - 1, 16)
+            quickKeysContent(companionSettings, qkSpec: companionSpec, lb: companionLiveButtons)
+        }
+    }
 
-            Section("Quick Keys") {
+    /// The Quick Keys UI itself, parameterized on whose settings/spec/live
+    /// state it renders: the companion's (folded into a tablet's window via
+    /// `quickKeysSection`) or this window's own (the puck's standalone
+    /// window). Keeps the puck's controls — including the dial-LED color
+    /// wells — identical wherever they appear.
+    @ViewBuilder
+    private func quickKeysContent(
+        _ companionSettings: TabletSettings, qkSpec: WacomDeviceSpec?, lb: LiveButtonState
+    ) -> some View {
+        let keyCount = min(max(qkSpec?.buttonCount ?? 8, 0) - 1, 16)
+
+        Section("Quick Keys") {
                 ForEach(0..<max(keyCount, 0), id: \.self) { i in
                     buttonRow(
                         String(localized: "Key \(i + 1)", comment: "Quick Keys express key N label"),
@@ -833,7 +856,7 @@ struct ButtonMappingView: View {
                 // like the tablet's own ring bindings above since this pane
                 // renders far less often (rendered only while a companion is
                 // connected, one Section, no independent hot redraw path).
-                let ringSlotCount = companionSpec?.ringSlotCount ?? 4
+                let ringSlotCount = qkSpec?.ringSlotCount ?? 4
                 let slotCount = min(companionSettings.touchRingSlots.count, ringSlotCount)
                 ForEach(
                     Array(companionSettings.touchRingSlots.prefix(slotCount).enumerated()),
@@ -852,19 +875,20 @@ struct ButtonMappingView: View {
                     )
                     .equatable()
                 }
-                companionTouchRingDiagramRow(companionSettings, ringSlotCount: ringSlotCount)
-            }
+                companionTouchRingDiagramRow(
+                    companionSettings, ringSlotCount: ringSlotCount,
+                    centerDown: lb.touchRingButtonDown)
         }
     }
 
     /// Companion-scoped counterpart to `touchRingDiagramRow`, reading the
     /// puck/dongle's own settings and live state instead of the tablet's.
     private func companionTouchRingDiagramRow(
-        _ companionSettings: TabletSettings, ringSlotCount: Int
+        _ companionSettings: TabletSettings, ringSlotCount: Int, centerDown: Bool
     ) -> some View {
         TouchRingDiagramView(
             activeSlotIndex: companionSettings.touchRingActiveSlotIndex,
-            centerDown: companionLiveButtons.touchRingButtonDown,
+            centerDown: centerDown,
             slotCount: ringSlotCount
         )
         .equatable()
