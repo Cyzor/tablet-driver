@@ -2293,8 +2293,19 @@ final class InputInjector: @unchecked Sendable {
             guard down else { break }
             if let s = settings {
                 Task { @MainActor in
-                    let nextIndex = (s.touchRingActiveSlotIndex + 1) % max(1, s.touchRingSlots.count)
-                    s.touchRingActiveSlotIndex = nextIndex
+                    // Slots set to Skip are left out of the rotation —
+                    // Wacom's native way to shorten the mode cycle when only
+                    // one or two modes matter. If every slot is set to Skip,
+                    // stay where we are.
+                    let count = max(1, s.touchRingSlots.count)
+                    var next = s.touchRingActiveSlotIndex
+                    for _ in 0..<count {
+                        next = (next + 1) % count
+                        if s.touchRingSlots.indices.contains(next),
+                            s.touchRingSlots[next].action != .skip
+                        { break }
+                    }
+                    s.touchRingActiveSlotIndex = next
                 }
             }
         case .ringSelectSlot:
@@ -2355,7 +2366,7 @@ final class InputInjector: @unchecked Sendable {
             for _ in 0..<count {
                 fireKeyTap(binding, at: location, snapshot: snapshot, settings: settings)
             }
-        case .off:
+        case .off, .skip:
             break
         }
     }

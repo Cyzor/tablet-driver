@@ -1245,7 +1245,7 @@ private struct TouchRingSlotRowView: View, Equatable {
                 .controlSize(.small)
                 .fixedSize()
 
-                if slot.action != .off {
+                if slot.action != .off && slot.action != .skip {
                     let speedLabel = slot.speed < 0.01
                         ? String(
                             localized: "Off",

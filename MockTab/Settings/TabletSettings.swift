@@ -319,7 +319,7 @@ final class TabletSettings: ObservableObject {
             guard touchRingSlots.indices.contains(touchRingActiveSlotIndex) else { return .scroll }
             switch touchRingSlots[touchRingActiveSlotIndex].action {
             case .scroll: return .scroll
-            case .off: return .off
+            case .off, .skip: return .off
             case .keyPress: return .scroll
             }
         }
@@ -1549,12 +1549,20 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         case scroll
         case keyPress
         case off
+        /// Left out of the mode rotation entirely — the mode button passes
+        /// over this slot (Wacom's native way to shorten the cycle when only
+        /// one or two modes matter). Behaves like `off` if somehow active.
+        case skip
 
         var displayLabel: String {
             switch self {
             case .scroll: return String(localized: "Scroll", comment: "Ring/strip action: scroll")
             case .keyPress: return String(localized: "Key", comment: "Ring/strip action: key press")
             case .off: return String(localized: "Off", comment: "Ring/strip action: disabled")
+            case .skip:
+                return String(
+                    localized: "Skip",
+                    comment: "Ring/strip action: slot left out of the mode cycle")
             }
         }
     }
