@@ -808,6 +808,16 @@ final class TabletManager: ObservableObject {
             }
             context.observeRingLED()  // after open() so initial LED sync reaches the device
             context.observeInjectionSnapshot()
+            // Aux-only accessories (Xencelabs Quick Keys puck/dongle,
+            // spec.maxX == 0) move no pointer, so a display-toggle press on
+            // them must steer the tablet driving the cursor, not the
+            // accessory's own — invisible — mapping. Pen-bearing devices
+            // (all Wacom hardware) never get a forwarder.
+            if wacomDevice.spec.maxX == 0 {
+                context.injector.displayToggleForwarder = { [weak self] in
+                    Task { @MainActor in self?.toggleDisplayOnPenTablet() }
+                }
+            }
             context.settings.applyExpressKeyDefaults(vendorID: context.vendorID)
             refreshConnectedIDs(mostRecent: productID)
 
@@ -849,6 +859,32 @@ final class TabletManager: ObservableObject {
             activeContext = hidDeviceMap.values.first
             updateDockBadge()
         }
+    }
+
+    /// Performs a display toggle on behalf of an aux-only accessory (Quick
+    /// Keys): targets the pen-bearing context currently driving the cursor,
+    /// falling back to any connected pen-bearing tablet. Mirrors the two
+    /// steps of the injector's own `.displayToggle` handling — cycle the
+    /// target's mapper on HIDThread, persist the mode on main.
+    private func toggleDisplayOnPenTablet() {
+        let isPenBearing: (DeviceContext) -> Bool = {
+            $0.isConnected && ($0.tabletDevice.map { $0.spec.maxX > 0 } ?? false)
+        }
+        var target: DeviceContext?
+        if let active = activeContext, isPenBearing(active) {
+            target = active
+        } else {
+            target = contexts.values.first(where: isPenBearing)
+        }
+        guard let target else { return }
+        let injector = target.injector
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            if let snap = injector.injectionSnapshot {
+                injector.cycleToggleDisplay(snapshot: snap)
+            }
+        }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+        target.settings.targetDisplayIndex = TabletSettings.displayModeToggle
     }
 
     private func refreshConnectedIDs(mostRecent: Int?) {

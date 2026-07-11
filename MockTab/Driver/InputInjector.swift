@@ -2246,6 +2246,15 @@ final class InputInjector: @unchecked Sendable {
             }
         case .displayToggle:
             guard down else { break }
+            // Aux-only accessories (Xencelabs Quick Keys) move no pointer of
+            // their own, so cycling this injector's mapping would do nothing
+            // visible — TabletManager wires a forwarder that steers the
+            // tablet actually driving the cursor. Never set on pen-bearing
+            // devices, so their toggle path below is unchanged.
+            if let forward = displayToggleForwarder {
+                forward()
+                break
+            }
             // Cache invalidation is local to HIDThread; only the persisted
             // index needs to round-trip through main.
             cycleToggleDisplay(snapshot: snapshot)
@@ -2341,6 +2350,11 @@ final class InputInjector: @unchecked Sendable {
     // mapping live in DisplayMapper.swift. These forward to it for the
     // handful of call sites outside inject()/injectTouch (button actions,
     // settings/calibration edits from main).
+
+    /// When set, `.displayToggle` presses are forwarded here instead of
+    /// cycling this injector's own display mapping. Assigned once at connect
+    /// by TabletManager for aux-only accessory devices; called on HIDThread.
+    var displayToggleForwarder: (() -> Void)?
 
     /// Advances the toggle rotation to the next display in the sequence.
     /// Called from fireButtonAction (HIDThread) when a `.displayToggle` binding fires.
