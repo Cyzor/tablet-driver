@@ -120,7 +120,7 @@ final class InputInjector: @unchecked Sendable {
     /// only report on state change, so idle IS the normal shape of a long hold).
     fileprivate static var anyAuxControlHeld: Bool {
         liveInjectorsLock.withLock { table in
-            for case let injector as InputInjector in table.allObjects {
+            for injector in table.allObjects {
                 if injector.lastAuxButtons.contains(true) || injector.lastRingButtonDown
                     || injector.lastRingPos != 0x7F || injector.lastRing2Pos != 0x7F
                     || injector.lastStrip1Pos != 0xFF || injector.lastStrip2Pos != 0xFF

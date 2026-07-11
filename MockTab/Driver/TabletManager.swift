@@ -489,7 +489,7 @@ final class TabletManager: ObservableObject {
         // Called on HIDThread — hop to main before touching @Published properties.
         let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
             Task { @MainActor [weak self, weak context] in
-            guard let self, let context else { return }
+            guard self != nil, let context else { return }
             context.activeToolSerial = identity.serial
             context.activeToolIsMouse = identity.isMouse
             context.activeToolCode = identity.toolCode

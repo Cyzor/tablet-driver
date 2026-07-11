@@ -860,9 +860,13 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         // monitors, so poll the modifier state with a timer instead. Scheduling
         // in .eventTracking mode keeps it firing while the menu is open.
         flagsTimer?.invalidate()
-        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self, weak menu] _ in
+        // The timer block is @Sendable, but it only ever fires on the main
+        // run loop; the unsafe capture just carries the non-Sendable NSMenu
+        // across into MainActor.assumeIsolated.
+        nonisolated(unsafe) weak let menuRef = menu
+        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
-                if let menu { self?.updateFactoryResetVisibility(in: menu) }
+                if let menu = menuRef { self?.updateFactoryResetVisibility(in: menu) }
             }
         }
         RunLoop.main.add(timer, forMode: .eventTracking)
