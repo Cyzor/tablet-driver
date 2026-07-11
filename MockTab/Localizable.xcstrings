@@ -221,97 +221,6 @@
         }
       }
     },
-    "%lld%%" : {
-      "shouldTranslate" : false
-    },
-    "Available when the display is connected." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verfügbar, wenn das Display verbunden ist."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Disponible cuando la pantalla está conectada."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ディスプレイ接続時に使用できます。"
-          }
-        }
-      }
-    },
-    "Backlight brightness of the tablet's built-in display. The hardware keeps its own value until you move the slider." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hintergrundbeleuchtung des im Tablett integrierten Displays. Die Hardware behält ihren eigenen Wert, bis der Regler bewegt wird."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Brillo de la retroiluminación de la pantalla integrada de la tableta. El hardware conserva su propio valor hasta que muevas el control."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タブレット内蔵ディスプレイのバックライトの明るさ。スライダを動かすまで、ハードウェア側の値が維持されます。"
-          }
-        }
-      }
-    },
-    "Built-in Display" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Integriertes Display"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pantalla integrada"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "内蔵ディスプレイ"
-          }
-        }
-      }
-    },
-    "Changes the panel's own backlight, like the buttons on the display bezel." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ändert die Hintergrundbeleuchtung des Panels selbst, wie die Tasten am Displayrahmen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cambia la retroiluminación del propio panel, igual que los botones del marco de la pantalla."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ディスプレイ枠のボタンと同様に、パネル自体のバックライトを変更します。"
-          }
-        }
-      }
-    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -939,6 +848,9 @@
           }
         }
       }
+    },
+    "%lld%%" : {
+      "shouldTranslate" : false
     },
     "•" : {
       "comment" : "A bullet point character used in list items.",
@@ -1996,6 +1908,50 @@
         }
       }
     },
+    "Available when the display is connected." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verfügbar, wenn das Display verbunden ist."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disponible cuando la pantalla está conectada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイ接続時に使用できます。"
+          }
+        }
+      }
+    },
+    "Backlight brightness of the tablet's built-in display. The hardware keeps its own value until you move the slider." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hintergrundbeleuchtung des im Tablett integrierten Displays. Die Hardware behält ihren eigenen Wert, bis der Regler bewegt wird."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brillo de la retroiluminación de la pantalla integrada de la tableta. El hardware conserva su propio valor hasta que muevas el control."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレット内蔵ディスプレイのバックライトの明るさ。スライダを動かすまで、ハードウェア側の値が維持されます。"
+          }
+        }
+      }
+    },
     "Backup & Restore" : {
       "comment" : "Section heading in Profiles tab",
       "localizations" : {
@@ -2108,6 +2064,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "すべてを前面へ"
+          }
+        }
+      }
+    },
+    "Built-in Display" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Integriertes Display"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantalla integrada"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内蔵ディスプレイ"
           }
         }
       }
@@ -2589,6 +2567,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "センター"
+          }
+        }
+      }
+    },
+    "Changes the panel's own backlight, like the buttons on the display bezel." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ändert die Hintergrundbeleuchtung des Panels selbst, wie die Tasten am Displayrahmen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia la retroiluminación del propio panel, igual que los botones del marco de la pantalla."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイ枠のボタンと同様に、パネル自体のバックライトを変更します。"
           }
         }
       }
@@ -4701,20 +4701,20 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Die Einstellungen jedes Tabletts werden als neues Profil hinzugefügt. Die aktuellen Einstellungen ändern sich erst, wenn ein Profil aktiviert wird."
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Los ajustes de cada tableta se añadirán como un perfil nuevo. Tus ajustes actuales no cambian hasta que actives un perfil."
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "各タブレットの設定が新しいプロファイルとして追加されます。プロファイルを有効にするまで、現在の設定は変更されません。"
           }
         }
       }
@@ -12345,7 +12345,7 @@
       }
     },
     "Skip" : {
-      "comment" : "Guided capture: skip the current step",
+      "comment" : "Guided capture: skip the current step\nRing/strip action: slot left out of the mode cycle",
       "localizations" : {
         "de" : {
           "stringUnit" : {
