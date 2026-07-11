@@ -68,7 +68,61 @@ final class DeviceRegistry: ObservableObject {
 
     private let ud = UserDefaults.standard
 
-    private init() { loadTablets() }
+    private init() {
+        loadTablets()
+        mergeQuickKeysDongleIdentity()
+    }
+
+    /// One-time migration for the Xencelabs Quick Keys transport merge: the
+    /// wireless dongle (0x5203) used to be its own device, so a puck set up
+    /// over both transports has two settings namespaces (the "LED colors
+    /// differ between wired and wireless" symptom). Fold the dongle's
+    /// persisted state into the wired puck's (0x5202) — wired values win,
+    /// dongle values fill only keys the wired side never set — and retire
+    /// the dongle's device row. New connects always arrive under the
+    /// canonical PID (see `VendorDeviceRegistry.canonicalProductID(for:)`).
+    private func mergeQuickKeysDongleIdentity() {
+        let flag = "_quickKeysDongleIdentityMerged"
+        guard !ud.bool(forKey: flag) else { return }
+
+        let oldPrefix = "device-0x5203."
+        let newPrefix = "device-0x5202."
+        for (key, value) in ud.dictionaryRepresentation() where key.hasPrefix(oldPrefix) {
+            let target = newPrefix + key.dropFirst(oldPrefix.count)
+            if ud.object(forKey: target) == nil { ud.set(value, forKey: target) }
+            ud.removeObject(forKey: key)
+        }
+
+        if let idx = knownTablets.firstIndex(where: { $0.id == 0x5203 }) {
+            let dongleRow = knownTablets.remove(at: idx)
+            if !knownTablets.contains(where: { $0.id == 0x5202 }) {
+                // The puck was only ever seen wirelessly — carry its row over
+                // under the canonical identity. Default nicknames follow the
+                // model name; a custom one is kept.
+                let modelName = TabletManager.deviceName(
+                    forProductID: 0x5202, vendorID: dongleRow.vendorID ?? 0x28BD)
+                knownTablets.append(
+                    KnownTablet(
+                        id: 0x5202,
+                        nickname: dongleRow.nickname == dongleRow.modelName
+                            ? modelName : dongleRow.nickname,
+                        modelName: modelName,
+                        usbSerial: dongleRow.usbSerial,
+                        vendorID: dongleRow.vendorID))
+            }
+            saveTablets()
+        }
+
+        var serialMap = hardwareSerialMap()
+        if serialMap.values.contains(0x5203) {
+            for (serial, pid) in serialMap where pid == 0x5203 {
+                serialMap[serial] = 0x5202
+            }
+            saveHardwareSerialMap(serialMap)
+        }
+
+        ud.set(true, forKey: flag)
+    }
 
     // MARK: - Pen model lookup
 

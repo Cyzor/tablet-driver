@@ -323,19 +323,18 @@ final class SettingsWindowController: NSWindowController {
         // The deferred measurement in viewDidAppear will refine this once the
         // toolbar is fully laid out.
         // staticSpec resolves non-Wacom devices too (the Wacom registry alone
-        // returns nil for them). An aux-only device — Quick Keys puck/dongle:
-        // express keys and dial, no pen digitizer — gets a trimmed window:
-        // Buttons, Devices, and Info for the puck; just Devices and Info for
-        // the dongle, which is only a wireless relay for the puck and has no
-        // controls of its own to map. The pen-oriented tabs are structurally
+        // returns nil for them). An aux-only device — the Quick Keys puck:
+        // express keys and dial, no pen digitizer — gets a trimmed window of
+        // Buttons, Devices, and Info. The pen-oriented tabs are structurally
         // inapplicable there, so hiding (not disabling) is the right
         // treatment. Scoped to the Xencelabs parser so no Wacom window
-        // changes shape.
+        // changes shape. (The wireless dongle no longer has a window
+        // identity of its own — it folds into the puck's canonical PID, see
+        // `VendorDeviceRegistry.canonicalProductID(for:)`.)
         let staticSpec = productID.flatMap { TabletManager.staticSpec(forProductID: $0) }
         let isAuxOnly = staticSpec?.parser == .xencelabs && staticSpec?.maxX == 0
-        let isDongle = isAuxOnly && productID == 0x5203
         let hasTouchTab = staticSpec?.hasFingerTouch == true
-        let tabCount = isDongle ? 2 : isAuxOnly ? 3 : (hasTouchTab ? 9 : 8)
+        let tabCount = isAuxOnly ? 3 : (hasTouchTab ? 9 : 8)
         window.minSize = NSSize(width: CGFloat(tabCount) * 70 + 80, height: 500)
 
         // Don't auto-save frame for device-specific windows — SettingsWindowManager
@@ -429,15 +428,13 @@ final class SettingsWindowController: NSWindowController {
                 PenFeelView(settings: s, tabletManager: tm, registry: dr, productID: productID)
             }
         }
-        if !isDongle {
-            addTab(
-                label: Self.tabLabels[Tab.buttons.rawValue], symbol: "square.grid.2x2.fill",
-                height: 575
-            ) {
-                ButtonMappingView(
-                    settings: s, tabletManager: tm, registry: dr,
-                    productID: productID)
-            }
+        addTab(
+            label: Self.tabLabels[Tab.buttons.rawValue], symbol: "square.grid.2x2.fill",
+            height: 575
+        ) {
+            ButtonMappingView(
+                settings: s, tabletManager: tm, registry: dr,
+                productID: productID)
         }
         // Touch tab is only registered for devices whose spec declares finger touch.
         // The pane itself also guards against being shown for a non-touch device

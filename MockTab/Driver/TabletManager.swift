@@ -426,7 +426,15 @@ final class TabletManager: ObservableObject {
             }
         }
 
-        let productID = WacomDeviceRegistry.canonicalProductID(for: rawProductID)
+        // Fold transport variants into one device identity — the context,
+        // settings namespace, and window all key off the canonical PID.
+        // Wacom BT/dongle PIDs map to the USB PID; the Xencelabs Quick Keys
+        // dongle maps to the wired puck. The driver layer keeps the raw PID
+        // (via `vendorSpec` above) because relay handling is
+        // transport-specific.
+        let productID = vendorID == 0x056A
+            ? WacomDeviceRegistry.canonicalProductID(for: rawProductID)
+            : VendorDeviceRegistry.canonicalProductID(for: rawProductID)
         Self.lastSeenVendorID[productID] = vendorID
         let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
         let usage = hidIntProperty(device, kIOHIDPrimaryUsageKey)

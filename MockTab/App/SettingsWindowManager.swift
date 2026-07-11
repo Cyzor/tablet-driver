@@ -225,16 +225,27 @@ final class SettingsWindowManager: ObservableObject {
         // owning tablet's — mirrors the live-connect suppression below.
         // Resolved against the saved set itself since actual connection
         // state isn't known yet at launch.
-        let savedProductIDs = entries.compactMap { $0["productID"] as? Int }
+        // Entries saved before a transport merge may carry a retired PID
+        // (Quick Keys dongle) — fold to canonical before restoring, and
+        // restore at most one window per canonical device since a pre-merge
+        // save can hold both faces of what is now one identity.
+        let savedProductIDs = entries.compactMap {
+            ($0["productID"] as? Int).map(VendorDeviceRegistry.canonicalProductID(for:))
+        }
+        var restoredPIDs = Set<Int>()
 
         for (index, entry) in entries.enumerated() {
-            let productID = entry["productID"] as? Int
+            let productID = (entry["productID"] as? Int)
+                .map(VendorDeviceRegistry.canonicalProductID(for:))
             let tabIndex  = entry["tabIndex"]  as? Int ?? 0
-            if let pid = productID,
-                VendorDeviceRegistry.isConnectedCompanion(
+            if let pid = productID {
+                if restoredPIDs.contains(pid) { continue }
+                if VendorDeviceRegistry.isConnectedCompanion(
                     productID: pid, connectedProductIDs: savedProductIDs)
-            {
-                continue
+                {
+                    continue
+                }
+                restoredPIDs.insert(pid)
             }
             let frame: NSRect? = {
                 guard let x = entry["x"] as? CGFloat,
