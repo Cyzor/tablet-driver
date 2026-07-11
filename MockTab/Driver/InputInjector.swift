@@ -515,7 +515,8 @@ final class InputInjector: @unchecked Sendable {
                 displayMapper.clearRelativeAnchor()
                 return
             }
-            rawPoint = absPoint
+            rawPoint = Self.pinNearScreenEdges(
+                absPoint, in: displayMapper.displayBounds(for: snap))
         }
         let lutIdx = Swift.min(Swift.max(Int((point.normalizedPressure * 255.0).rounded()), 0), 255)
         let pressure = tool.pressureLUT[lutIdx]
@@ -1344,9 +1345,36 @@ final class InputInjector: @unchecked Sendable {
         }
     }
 
+    // ── Screen-edge pinning (Dock reveal / hot corners) ─────────────────────
+    // A hidden Dock and hot corners never trigger from injected moves that
+    // stop at the integer bounds edge; the OS detector wants the pointer
+    // fractionally *at* the edge. Xencelabs' own driver works around this the
+    // same way (PostTabletDockMove posts a sub-pixel Y pinned against the
+    // display-bounds bottom), which is where these constants come from.
+
+    /// How close (points) a mapped position must get to a bounds edge
+    /// before it is pinned onto that edge.
+    private static let edgePinThreshold: CGFloat = 2.0
+    /// Sub-pixel inset from the exact edge, matching the vendor driver.
+    private static let edgePinInset: CGFloat = 0.1196
+
+    /// Pins coordinates within `edgePinThreshold` of a bounds edge to a
+    /// fractional position hard against that edge.
+    private static func pinNearScreenEdges(_ p: CGPoint, in bounds: CGRect) -> CGPoint {
+        var p = p
+        if p.x - bounds.minX < edgePinThreshold { p.x = bounds.minX + edgePinInset }
+        else if bounds.maxX - p.x < edgePinThreshold { p.x = bounds.maxX - edgePinInset }
+        if p.y - bounds.minY < edgePinThreshold { p.y = bounds.minY + edgePinInset }
+        else if bounds.maxY - p.y < edgePinThreshold { p.y = bounds.maxY - edgePinInset }
+        return p
+    }
+
     private func postTouchPointerMove(dx: Double, dy: Double) {
         let loc = currentCursorPosition()
-        let target = CGPoint(x: loc.x + dx, y: loc.y + dy)
+        var target = CGPoint(x: loc.x + dx, y: loc.y + dy)
+        if let snap = injectionSnapshot {
+            target = Self.pinNearScreenEdges(target, in: displayMapper.displayBounds(for: snap))
+        }
         guard let e = CGEvent(
             mouseEventSource: sessionSource,
             mouseType: .mouseMoved,
