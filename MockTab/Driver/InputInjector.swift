@@ -110,8 +110,13 @@ final class InputInjector: @unchecked Sendable {
     /// `lastAuxButtons`, are safe to read unlocked here because every device's
     /// hot path is confined to the one shared `HIDThread.shared` run loop, so
     /// the reader and the writer of those fields are always the same thread.)
-    private static let liveInjectorsLock = OSAllocatedUnfairLock<NSHashTable<InputInjector>>(
-        initialState: .weakObjects())
+    ///
+    /// `NSHashTable` isn't `Sendable`; the wrapper vouches for it because
+    /// every access goes through the lock.
+    private struct LiveInjectors: @unchecked Sendable {
+        let table: NSHashTable<InputInjector> = .weakObjects()
+    }
+    private static let liveInjectorsLock = OSAllocatedUnfairLock(initialState: LiveInjectors())
 
     /// True while any registered device still shows an aux button, touch-ring
     /// center click, or touch-ring/strip contact held — the shared aux-modifier
@@ -119,8 +124,8 @@ final class InputInjector: @unchecked Sendable {
     /// device that raised the modifier has gone idle (QuickKeys-style accessories
     /// only report on state change, so idle IS the normal shape of a long hold).
     fileprivate static var anyAuxControlHeld: Bool {
-        liveInjectorsLock.withLock { table in
-            for injector in table.allObjects {
+        liveInjectorsLock.withLock { live in
+            for injector in live.table.allObjects {
                 if injector.lastAuxButtons.contains(true) || injector.lastRingButtonDown
                     || injector.lastRingPos != 0x7F || injector.lastRing2Pos != 0x7F
                     || injector.lastStrip1Pos != 0xFF || injector.lastStrip2Pos != 0xFF
@@ -134,7 +139,7 @@ final class InputInjector: @unchecked Sendable {
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
         self.deviceProductID = productID
-        Self.liveInjectorsLock.withLock { $0.add(self) }
+        Self.liveInjectorsLock.withLock { $0.table.add(self) }
         recomputeVirtualScreenBounds()
         displayObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
