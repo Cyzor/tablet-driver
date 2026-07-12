@@ -12,9 +12,10 @@ open MockTab.xcodeproj
 ```
 
 Requires Xcode 15 or later. Select the **MockTab** scheme and build. Run the
-decoder test suite with `cd TabletKit && swift test`. See the
-[README's Building from source section](README.md#building-from-source) for
-more detail.
+decoder test suite with `cd TabletKit && swift test`. The app-side calibration
+fitting math has its own standalone checks — run `tools/calibration-tests/run.sh`.
+See the [README's Building from source section](README.md#building-from-source)
+for more detail.
 
 ## Reading the code
 

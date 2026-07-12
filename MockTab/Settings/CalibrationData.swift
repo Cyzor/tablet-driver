@@ -179,6 +179,55 @@ extension CalibrationEntry {
     }
 }
 
+// MARK: - Scale + Translation Fitting (default, robust model)
+
+extension CalibrationEntry {
+
+    /// Sane range for a per-axis calibration scale factor. A factor outside this
+    /// band means the taps were too noisy to trust; the axis falls back to unit
+    /// scale (translation only). Mirrors the vendor driver's outlier guard.
+    static let scaleBounds = 0.5...2.0
+
+    /// Fit a per-axis scale + translation transform from calibration samples.
+    ///
+    /// This is the default model for a pen display whose surface is physically
+    /// coincident with the screen: the honest degrees of freedom are translation
+    /// and scale, not rotation or shear. Each axis is solved independently by
+    /// 1-D least squares, and any scale factor outside `scaleBounds` is rejected
+    /// in favor of 1.0 (keeping the translation term), so an imprecise tap can
+    /// never skew the mapping the way a full affine or homography fit can.
+    ///
+    /// Returns affine coefficients [sx, 0, tx, 0, sy, ty] — a restricted affine,
+    /// so it flows through the same apply/residual path — or nil if < 2 samples.
+    static func fitScaleTranslate(samples: [CalibrationSample]) -> [Double]? {
+        guard samples.count >= 2 else { return nil }
+        let (sx, tx) = fitAxis(obs: samples.map(\.observedX), target: samples.map(\.targetX))
+        let (sy, ty) = fitAxis(obs: samples.map(\.observedY), target: samples.map(\.targetY))
+        return [sx, 0, tx, 0, sy, ty]
+    }
+
+    /// 1-D least-squares fit of `target ≈ scale * obs + offset`, with an outlier
+    /// clamp: a degenerate spread or an out-of-range scale collapses to unit
+    /// scale, preserving the (dominant) translation correction.
+    private static func fitAxis(obs: [Double], target: [Double]) -> (scale: Double, offset: Double) {
+        let n = Double(obs.count)
+        let meanO = obs.reduce(0, +) / n
+        let meanT = target.reduce(0, +) / n
+        var cov = 0.0, varO = 0.0
+        for i in obs.indices {
+            let dO = obs[i] - meanO
+            cov += dO * (target[i] - meanT)
+            varO += dO * dO
+        }
+        guard varO > 1e-12 else { return (1.0, meanT - meanO) }
+        let scale = cov / varO
+        guard scale.isFinite, scaleBounds.contains(scale) else {
+            return (1.0, meanT - meanO)
+        }
+        return (scale, meanT - scale * meanO)
+    }
+}
+
 // MARK: - Affine Least-Squares Fitting
 
 extension CalibrationEntry {
@@ -361,8 +410,20 @@ extension CalibrationEntry {
     static let homographyEscalationThreshold = 0.004
 
     /// Fit the best transform for the given samples.
-    /// Tries affine first; escalates to homography if corner residuals exceed threshold.
-    static func fitBest(samples: [CalibrationSample]) -> CalibrationTransform {
+    ///
+    /// The default (simple) path fits a constrained per-axis scale + translation,
+    /// which is well-conditioned and cannot express the shear/rotation/perspective
+    /// errors that imprecise taps introduce into a full fit. Only when
+    /// `allowHigherOrder` is set — the advanced, non-coincident case — does it try
+    /// affine and escalate to homography if corner residuals exceed the threshold.
+    static func fitBest(samples: [CalibrationSample], allowHigherOrder: Bool = false) -> CalibrationTransform {
+        if !allowHigherOrder {
+            if let coeffs = fitScaleTranslate(samples: samples) {
+                return .affine(coefficients: coeffs)
+            }
+            return .none
+        }
+
         guard let affineCoeffs = fitAffine(samples: samples) else { return .none }
         let affineTransform = CalibrationTransform.affine(coefficients: affineCoeffs)
         let affineMax = maxResidual(transform: affineTransform, samples: samples)
