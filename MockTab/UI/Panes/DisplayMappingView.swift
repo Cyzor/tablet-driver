@@ -65,12 +65,36 @@ struct DisplayMappingView: View {
         return ctx.isConnected
     }
 
+    /// True only once the user has explicitly picked Custom/User Mode —
+    /// contrast/gamma stay hidden under the parked default (a named preset)
+    /// since writing them there corrupts the preset's own color transform.
+    private var isCustomColorModeSelected: Bool {
+        settings.displayColorMode == TabletSettings.displayColorModeCustomIndex
+    }
+
+    /// Gamma choices offered in the dropdown, stored as gamma × 10.
+    private let gammaChoices: [Int] = [18, 20, 22, 24]
+
+    /// Color-space presets, in the panel's on-screen order (row index = wire
+    /// value for `colorModePayload`). Descriptions condensed from the vendor
+    /// driver's own tooltips.
+    private let colorModeChoices: [(name: String, description: String)] = [
+        ("Adobe RGB", "A wide color space covering most colors achievable on CMYK printers. Common for print-bound artwork."),
+        ("sRGB", "The standard color space for the web and most consumer displays. Common for web-bound artwork."),
+        ("REC 709", "A video color space for broadcast and web media; the HDTV standard, with a gamut matching sRGB."),
+        ("DCI-P3", "A wide-gamut video color space used mainly for professional cinema projection."),
+        ("REC 2020", "A broadcast video color space for ultra-high-resolution 4K/8K displays."),
+        ("Pantone®", "A proprietary color space used in the creative industry from design through production."),
+        ("Custom", "The panel's user-adjustable color mode."),
+    ]
+
     private var brightnessSection: some View {
         Section {
             HStack {
                 Image(systemName: "sun.max")
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
+                Text("Brightness")
                 Slider(
                     value: settings.recordingBinding(
                         "Display Brightness",
@@ -84,17 +108,86 @@ struct DisplayMappingView: View {
                     .foregroundStyle(.secondary)
                     .scaledFrame(width: 48, alignment: .trailing)
             }
-            .disabled(!brightnessDeviceConnected)
             .help("Backlight brightness of the tablet's built-in display. The hardware keeps its own value until you move the slider.")
+
+            HStack {
+                Image(systemName: "paintpalette")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text("Color Space")
+                Spacer()
+                Picker("Color Space", selection: settings.recordingBinding(
+                    "Display Color Space",
+                    get: { settings.displayColorMode >= 0 ? settings.displayColorMode : 0 },
+                    set: { settings.displayColorMode = $0 })) {
+                    ForEach(colorModeChoices.indices, id: \.self) { i in
+                        Text(colorModeChoices[i].name).tag(i)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            .help(colorModeChoices[
+                settings.displayColorMode >= 0 && settings.displayColorMode < colorModeChoices.count
+                    ? settings.displayColorMode : 0
+            ].description)
+
+            // Contrast/gamma are only meaningful in Custom mode — named
+            // presets (Adobe RGB, sRGB, etc.) own these internally, and the
+            // vendor driver doesn't expose them outside Custom either.
+            if isCustomColorModeSelected {
+                HStack {
+                    Image(systemName: "circle.lefthalf.filled")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text("Contrast")
+                    Slider(
+                        value: settings.recordingBinding(
+                            "Display Contrast",
+                            get: { Double(settings.displayContrast >= 0 ? settings.displayContrast : 50) },
+                            set: { settings.displayContrast = Int($0.rounded()) }),
+                        in: 0...100)
+                    Text(settings.displayContrast >= 0 ? "\(settings.displayContrast)%" : "—")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .scaledFrame(width: 48, alignment: .trailing)
+                }
+                .help("Contrast of the tablet's built-in display. The hardware keeps its own value until you change it.")
+
+                HStack {
+                    Image(systemName: "circle.dotted")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text("Gamma")
+                    Spacer()
+                    Picker("Gamma", selection: settings.recordingBinding(
+                        "Display Gamma",
+                        get: { settings.displayGamma >= 0 ? settings.displayGamma : 22 },
+                        set: { settings.displayGamma = $0 })) {
+                        ForEach(gammaChoices, id: \.self) { value in
+                            Text(gammaLabel(value)).tag(value)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                .help("Display gamma. The hardware keeps its own value until you change it.")
+            }
         } header: {
             Text("Built-in Display").appFont(.headline)
         } footer: {
             Text(brightnessDeviceConnected
-                ? "Changes the panel's own backlight, like the buttons on the display bezel."
+                ? "Changes the panel's own image controls, like the buttons on the display bezel."
                 : "Available when the display is connected.")
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
         }
+        .disabled(!brightnessDeviceConnected)
+    }
+
+    /// Format a gamma-×10 value as its decimal label (22 → "2.2").
+    private func gammaLabel(_ timesTen: Int) -> String {
+        String(format: "%.1f", Double(timesTen) / 10.0)
     }
 
     private var displayMappingSection: some View {

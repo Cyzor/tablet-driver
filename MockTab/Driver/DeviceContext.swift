@@ -93,6 +93,12 @@ final class DeviceContext: ObservableObject, Identifiable {
     private var snapshotCancellables: Set<AnyCancellable> = []
     private var activeToolObserver: AnyCancellable?
 
+    /// True when the panel's color-space preset is Custom/User Mode — the
+    /// only mode where contrast/gamma writes are valid on the hardware.
+    private var isCustomColorMode: Bool {
+        settings.displayColorMode == TabletSettings.displayColorModeCustomIndex
+    }
+
     /// Subscribe to ring slot changes so the physical LED tracks the active mode.
     /// Call this once after `tabletDevice` is assigned.
     func observeRingLED() {
@@ -111,6 +117,39 @@ final class DeviceContext: ObservableObject, Identifiable {
             .sink { [weak self] value in
                 guard value >= 0 else { return }
                 self?.tabletDevice?.setDisplayBrightness(value)
+            }
+            .store(in: &cancellables)
+        // Panel contrast and gamma ride the same 0xB5 control family and
+        // replay-on-connect the same way; -1 means untouched, leave the panel's
+        // own value alone. Named color presets (Adobe RGB, sRGB, etc.) own
+        // their own contrast/gamma internally — the vendor driver only
+        // exposes these controls in Custom/User Mode, and writing them under
+        // a named preset visibly corrupts its color transform.
+        settings.$displayContrast
+            .sink { [weak self] value in
+                guard value >= 0, self?.isCustomColorMode == true else { return }
+                self?.tabletDevice?.setDisplayContrast(value)
+            }
+            .store(in: &cancellables)
+        settings.$displayGamma
+            .sink { [weak self] value in
+                guard value >= 0, self?.isCustomColorMode == true else { return }
+                self?.tabletDevice?.setDisplayGamma(value)
+            }
+            .store(in: &cancellables)
+        settings.$displayColorMode
+            .sink { [weak self] value in
+                guard let self, value >= 0 else { return }
+                self.tabletDevice?.setColorMode(value)
+                // Entering Custom mode re-applies any contrast/gamma the user
+                // already set, since presets don't accept those writes.
+                guard self.isCustomColorMode else { return }
+                if self.settings.displayContrast >= 0 {
+                    self.tabletDevice?.setDisplayContrast(self.settings.displayContrast)
+                }
+                if self.settings.displayGamma >= 0 {
+                    self.tabletDevice?.setDisplayGamma(self.settings.displayGamma)
+                }
             }
             .store(in: &cancellables)
     }

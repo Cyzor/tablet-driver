@@ -589,6 +589,69 @@ final class WacomKnownDevice: TabletDevice {
             tag: "panel brightness \(clamped)")
     }
 
+    /// Last panel contrast sent, to suppress redundant writes during a drag.
+    private var lastDisplayContrast: Int = -1
+
+    /// Set the pen display's panel contrast (0–100). Same 0xB5 control family
+    /// as brightness (see XencelabsControl.DisplayControl).
+    func setDisplayContrast(_ percent: Int) {
+        guard hasDisplayBrightnessControl else { return }
+        let clamped = min(max(percent, 0), 100)
+        guard clamped != lastDisplayContrast else { return }
+        lastDisplayContrast = clamped
+        sendXencelabsOutput(
+            XencelabsControl.displayContrastPayload(
+                UInt8(clamped), address: xencelabsDongleIdentity ?? []),
+            tag: "panel contrast \(clamped)")
+    }
+
+    /// Last gamma sent (as gamma × 10), to suppress redundant writes.
+    private var lastDisplayGamma: Int = -1
+
+    /// Set the pen display's gamma, passed as gamma × 10 (e.g. 22 = 2.2).
+    func setDisplayGamma(_ gammaTimesTen: Int) {
+        guard hasDisplayBrightnessControl else { return }
+        let clamped = min(max(gammaTimesTen, 0), 255)
+        guard clamped != lastDisplayGamma else { return }
+        lastDisplayGamma = clamped
+        sendXencelabsOutput(
+            XencelabsControl.displayGammaPayload(
+                UInt8(clamped), address: xencelabsDongleIdentity ?? []),
+            tag: "panel gamma \(clamped)")
+    }
+
+    /// Last color-mode index sent, to suppress redundant writes.
+    private var lastColorMode: Int = -1
+
+    /// Select one of the panel's built-in color-space presets (Adobe RGB,
+    /// sRGB, REC 709, DCI-P3, REC 2020, Pantone, Custom), by row index (0 =
+    /// Adobe RGB ... 6 = Custom, matching `DisplayMappingView.colorModeChoices`).
+    ///
+    /// Empirically confirmed 2026-07-12 by cycling MockTab's list against the
+    /// vendor driver's own preset selector on the same panel: wire byte 0
+    /// isn't a valid preset (it produced the original "too dark/warm" Adobe
+    /// RGB bug), and every named preset is one byte higher than its row
+    /// index — Adobe RGB=1, sRGB=2, REC 709=3, DCI-P3=4, REC 2020=5,
+    /// Pantone=6, Custom presumed=7 (untested — one past anything we'd sent
+    /// before this fix, consistent with never having matched Pantone).
+    ///
+    /// Followed by the apply-batch commit frame the vendor also sends after
+    /// a preset switch — without it, a prior stray gamma/contrast write can
+    /// linger on the panel instead of being reset to the new preset's own
+    /// stored values (found 2026-07-12 comparing against the vendor driver).
+    func setColorMode(_ index: Int) {
+        guard hasDisplayBrightnessControl else { return }
+        guard index != lastColorMode else { return }
+        lastColorMode = index
+        let address = xencelabsDongleIdentity ?? []
+        sendXencelabsOutput(
+            XencelabsControl.colorModePayload(UInt8(index + 1), address: address),
+            tag: "panel color mode \(index)")
+        sendXencelabsOutput(
+            XencelabsControl.displayCommitPayload(address: address),
+            tag: "panel color mode commit")
+    }
+
     /// Send the tablet-mode relink handshake ([0x02, 0xB0, 0x04] with the
     /// puck's identity appended) to the dongle's vendor interface, padded to
     /// the declared output size. Used at first sight of the puck and again

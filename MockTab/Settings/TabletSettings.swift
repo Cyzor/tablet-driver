@@ -204,6 +204,42 @@ final class TabletSettings: ObservableObject {
         }
     }
 
+    /// Panel contrast (0–100) for pen displays with host-controllable panel
+    /// controls (Xencelabs). -1 = never set here; nothing is sent so the panel
+    /// keeps its own stored value. Hardware state shared with the bezel buttons,
+    /// like `displayBrightness`.
+    @Published var displayContrast: Int = -1 {
+        didSet {
+            guard !isLoading else { return }
+            ud.set(displayContrast, forKey: devicePrefix + "displayContrast")
+        }
+    }
+
+    /// Panel gamma stored as gamma × 10 (e.g. 22 = 2.2). -1 = never set here.
+    /// Same hardware-state semantics as `displayBrightness`.
+    @Published var displayGamma: Int = -1 {
+        didSet {
+            guard !isLoading else { return }
+            ud.set(displayGamma, forKey: devicePrefix + "displayGamma")
+        }
+    }
+
+    /// Row index of the panel's "Custom"/User Mode color preset — the only
+    /// mode where the vendor's own driver exposes contrast/gamma controls.
+    /// Named presets (Adobe RGB, sRGB, etc.) own their contrast/gamma
+    /// internally and don't accept independent writes to them.
+    static let displayColorModeCustomIndex = 6
+
+    /// Panel color-space preset row index (Adobe RGB, sRGB, REC 709, DCI-P3,
+    /// REC 2020, Pantone, Custom). -1 = never set here. Same hardware-state
+    /// semantics as `displayBrightness`.
+    @Published var displayColorMode: Int = -1 {
+        didSet {
+            guard !isLoading else { return }
+            ud.set(displayColorMode, forKey: devicePrefix + "displayColorMode")
+        }
+    }
+
     /// CGDirectDisplayID values (comma-separated) included in the toggle rotation.
     /// Empty string means all connected displays are included.
     @Published var toggleDisplayIDs: String = "" {
@@ -986,6 +1022,9 @@ final class TabletSettings: ObservableObject {
             TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape
         targetDisplayIndex = loadInt("targetDisplayIndex", default: 0)
         displayBrightness = loadInt("displayBrightness", default: -1)
+        displayContrast = loadInt("displayContrast", default: -1)
+        displayGamma = loadInt("displayGamma", default: -1)
+        displayColorMode = loadInt("displayColorMode", default: -1)
         toggleDisplayIDs = loadString("toggleDisplayIDs", default: "")
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
         doubleClickDistance = loadDouble("doubleClickDistance", default: 10.0)
