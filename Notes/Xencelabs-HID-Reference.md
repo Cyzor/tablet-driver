@@ -308,6 +308,56 @@ The following data requires a live HID descriptor capture (`sudo usbhid-dump -d 
 - **Firmware version query command**: Whether a vendor-specific HID report exists to read firmware version
 - **Wireless protocol details**: Whether the RF dongle protocol differs from wired in any way beyond the interface layout
 
+## 15. Display Color Controls (Pen Display, MockTab reverse-engineering)
+
+> **MockTab-original, not from OTD/community sources.** Decoded 2026-07-10 through 2026-07-12 from static analysis of the XencelabsAgent vendor app plus hardware cross-testing. Uses the same `02 B5` vendor output-report pipe as the dial LED work (`Notes/Xencelabs-Quick-Keys-Puck-Reference.md`) — same pacing requirements apply (see Section 4 above / the dial-LED write-pacing note): writes need ~3 ms spacing or they desync. Living implementation: `TabletKit/Sources/TabletKit/XencelabsControl.swift`, pipeline in `MockTab/Driver/WacomKnownDevice.swift`, UI in `MockTab/UI/Panes/DisplayMappingView.swift`.
+
+### Frame format
+
+8-byte vendor output report on the Pen Display's vendor HID interface: `02 B5 b1 b2 b3 b4 b5 b6`.
+
+| Sub-command | Bytes | Meaning |
+|---|---|---|
+| Color-space preset select | `1,1,1,0,presetIndex,0` | see wire index note below |
+| Color temperature | `1,1,2,0,temp,0` | not yet implemented |
+| RGB gain | `1,1,3,1,{1\|2\|3},value` | not yet implemented |
+| Gamma | `1,2,0,0,gamma×10,0` | scalar, single byte |
+| Contrast | `1,4,0,0,value,0` | scalar, single byte |
+| Brightness | `1,3,0,0,value,0` | scalar, single byte |
+| Commit/refresh | `0,0xF0,0,0,0,0` | **required** after a preset switch — see bug below |
+
+### Bug 1 — gamma/contrast bleeding into named presets
+
+The vendor only exposes gamma/contrast/color-temperature controls in Custom (User) mode — confirmed from a screenshot of the vendor's own "Set User Mode Preferences" dialog. Named presets (Adobe RGB, sRGB, etc.) own their gamma/contrast internally and the vendor never lets the user touch them directly. MockTab's first implementation wrote gamma/contrast unconditionally regardless of which preset was active, corrupting the panel's built-in preset curves (symptom: Adobe RGB looked "too dark, contrasted, and warm"). Fix: gate gamma/contrast writes behind `displayColorMode == customIndex`; re-apply saved values when switching *into* Custom.
+
+### Bug 2 — missing commit frame causes stale values to persist across preset switches and power cycles
+
+Switching color-space presets without sending the trailing `02 B5 00 F0 00 00 00 00` commit frame left previously-written gamma/contrast values silently attached to the new preset — confirmed to survive a full panel power cycle (rules out volatile RAM; the corruption is written into whatever the panel treats as persistent state). Reselecting the same preset from the *vendor's own* driver on the same hardware instantly fixed it, proving the panel's stored curve for that preset wasn't itself damaged — it was a wire protocol correctness issue, not a data-corruption issue. Fix: send the commit frame immediately after every `colorModePayload` preset switch.
+
+### Bug 3 — off-by-one wire index for color-space presets
+
+The `presetIndex` byte in the preset-select sub-command does not match the vendor UI's row order 1:1. Empirically cross-matched by cycling every MockTab preset against the vendor driver's preset list on the same panel, by eye:
+
+```
+vendor Adobe RGB → wire byte 1   (was sending byte 0 — invalid, root cause of Bug 1's visible symptom)
+vendor sRGB      → wire byte 2
+vendor REC 709   → wire byte 3
+vendor DCI-P3    → wire byte 4
+vendor REC 2020  → wire byte 5
+vendor Pantone   → wire byte 6
+Custom           → wire byte 7   (still unverified on hardware — one past anything confirmed)
+```
+
+Fix: send `UI row index + 1`. Wire byte `0` is presumed invalid/reserved and is never sent.
+
+### Still open
+
+- **Custom mode's wire byte (7)** is unverified — the +1 pattern holds for every named preset tested but hasn't been confirmed for Custom itself.
+- **Continuous gamma** (vendor range 1.1–3.0; MockTab ships a 4-choice dropdown: 1.8/2.0/2.2/2.4) and **color temperature** (5000K–10000K) are decoded in the sub-command table above but not wired into the UI — deferred pending a Custom-mode-parity pass.
+- Default preset is **Adobe RGB** (wire byte 1), not sRGB — matches macOS's own Displays-pane default for this panel.
+
+***
+
 ---
 
 ## References
