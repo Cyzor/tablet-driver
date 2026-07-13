@@ -4,6 +4,8 @@ Native Mac driver for Wacom drawing tablets that no longer have official support
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue) ![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue)
 
+MockTab is an independent, community-built project. It is not affiliated with, endorsed by, or sponsored by Wacom Co., Ltd. or Xencelabs. Product names are used only to describe hardware compatibility.
+
 ---
 
 ## Supported hardware
