@@ -2040,7 +2040,26 @@
       }
     },
     "Brightness" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Helligkeit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brillo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明るさ"
+          }
+        }
+      }
     },
     "Bring All to Front" : {
       "comment" : "Window menu",
@@ -2598,7 +2617,26 @@
       }
     },
     "Changes the panel's own image controls, like the buttons on the display bezel." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ändert die Bildeinstellungen des Panels selbst, wie die Tasten am Displayrahmen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia los controles de imagen del propio panel, igual que los botones del marco de la pantalla."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイ枠のボタンと同様に、パネル自体の画質設定を変更します。"
+          }
+        }
+      }
     },
     "Choose a MockTab backup file to import" : {
       "comment" : "File picker message for importing backup",
@@ -3051,7 +3089,26 @@
       }
     },
     "Color Space" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Farbraum"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espacio de color"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "色空間"
+          }
+        }
+      }
     },
     "Computing calibration…" : {
       "comment" : "A message displayed while the app is computing the user's eye tracking calibration.",
@@ -3247,10 +3304,48 @@
       }
     },
     "Contrast" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontrast"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraste"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コントラスト"
+          }
+        }
+      }
     },
     "Contrast of the tablet's built-in display. The hardware keeps its own value until you change it." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontrast des integrierten Tablet-Displays. Die Hardware behält ihren Wert, bis du ihn änderst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraste de la pantalla integrada de la tableta. El hardware conserva su propio valor hasta que lo cambies."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレット内蔵ディスプレイのコントラストです。変更するまでハードウェア側の値がそのまま保持されます。"
+          }
+        }
+      }
     },
     "Coordinate" : {
       "comment" : "Live Input table row label — raw X/Y position",
@@ -4283,7 +4378,26 @@
       }
     },
     "Display gamma. The hardware keeps its own value until you change it." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display-Gamma. Die Hardware behält ihren Wert, bis du ihn änderst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gamma de la pantalla. El hardware conserva su propio valor hasta que lo cambies."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイのガンマ値です。変更するまでハードウェア側の値がそのまま保持されます。"
+          }
+        }
+      }
     },
     "Display Mapping" : {
       "comment" : "Section header in Display tab",
@@ -5792,7 +5906,26 @@
       }
     },
     "Gamma" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gamma"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gamma"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ガンマ"
+          }
+        }
+      }
     },
     "Generated : %@" : {
       "comment" : "Diagnostic: timestamp when info was generated",
