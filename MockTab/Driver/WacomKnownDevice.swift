@@ -142,6 +142,12 @@ final class WacomKnownDevice: TabletDevice {
     /// The puck's 6-byte identity read off the relink report, kept so the
     /// resync's label-reset write can address the same puck.
     private var xencelabsDongleIdentity: [UInt8]?
+    /// Repeating battery-level poll, started once the dongle relink
+    /// succeeds and invalidated in `close()`. The reply (tag 0xF2,
+    /// XencelabsDecoder) is unsolicited-looking but is actually only ever
+    /// sent in response to this poll — there's no push update on this
+    /// hardware.
+    private var xencelabsBatteryPollTimer: DispatchSourceTimer?
 
     /// Devices whose report-2 tunnel can relay a wireless Quick Keys puck and
     /// therefore need the relink/re-arm/resync handling: the standalone USB
@@ -151,7 +157,6 @@ final class WacomKnownDevice: TabletDevice {
     /// discovery captures — 0xF8/0xF2 status frames with the puck's identity
     /// trailer, plus live 0xF0 aux data, all arriving on 0x520D).
     private static let xencelabsRelayProductIDs: Set<Int> = [0x5203, 0x520D]
-    private static let xencelabsIdentityOffset = 10
     private static let xencelabsIdentityLength = 6
 
     init(
@@ -331,6 +336,8 @@ final class WacomKnownDevice: TabletDevice {
     }
 
     func close() {
+        xencelabsBatteryPollTimer?.cancel()
+        xencelabsBatteryPollTimer = nil
         IOHIDDeviceUnscheduleFromRunLoop(
             device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportWithTimeStampCallback(
@@ -699,6 +706,23 @@ final class WacomKnownDevice: TabletDevice {
         if let keysJoined { setAuxKeyLabels(keysJoined.components(separatedBy: "\u{1F}")) }
     }
 
+    /// Starts (or restarts) the repeating battery-level poll once a dongle
+    /// relink is confirmed live. 60 s cadence: battery drains slowly enough
+    /// that this is purely a "keep the status bar honest" refresh, not a
+    /// latency-sensitive read. Runs on a background queue rather than main
+    /// since `sendXencelabsOutput` can block for a few ms on write pacing.
+    private func startXencelabsBatteryPolling() {
+        xencelabsBatteryPollTimer?.cancel()
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "xencelabs.battery.poll"))
+        timer.schedule(deadline: .now() + 60, repeating: 60)
+        timer.setEventHandler { [weak self] in
+            guard let self, let identity = self.xencelabsDongleIdentity else { return }
+            self.sendXencelabsOutput([0x02, 0xB4, 0x10, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "battery poll")
+        }
+        timer.resume()
+        xencelabsBatteryPollTimer = timer
+    }
+
     /// Uptime of the most recent Xencelabs vendor write, for pacing.
     private var lastXencelabsWriteUptime: UInt64 = 0
 
@@ -941,9 +965,15 @@ final class WacomKnownDevice: TabletDevice {
         // latches so the block below re-sends both. Without this, only
         // reseating the dongle (fresh WacomKnownDevice, fresh latches)
         // recovered the puck — the power switch alone left it dead.
+        //
+        // Tag 0xF2 with byte[2] == 0x01 is also the solicited battery GET
+        // reply (see XencelabsDecoder), which now arrives every periodic
+        // poll rather than once — exclude that shape here so a routine
+        // battery reply doesn't get misread as a restart and trigger a
+        // spurious full resync.
         if deviceSpec.parser == .xencelabs, Self.xencelabsRelayProductIDs.contains(deviceSpec.productID),
-            xencelabsDongleRelinked, length >= 2, report[0] == 0x02,
-            report[1] == 0xF8 || report[1] == 0xF2
+            xencelabsDongleRelinked, length >= 3, report[0] == 0x02,
+            (report[1] == 0xF8 || report[1] == 0xF2), !(report[1] == 0xF2 && report[2] == 0x01)
         {
             logger.info("\(name, privacy: .public): dongle status frame after relink (tag=0x\(String(report[1], radix: 16), privacy: .public)) — puck restarted, re-arming relink")
             xencelabsDongleRelinked = false
@@ -952,22 +982,38 @@ final class WacomKnownDevice: TabletDevice {
 
         // Xencelabs wireless dongle relink: send the tablet-mode init once
         // with the puck's own identifier appended, read straight off this
-        // report's trailer (see the property doc above). Any report ID 0x02
-        // frame of at least this length carries it once a puck is paired,
-        // including the connect-time status frames that arrive before real
-        // aux data flows.
+        // report's trailer (see the property doc above). The offset isn't
+        // constant across frame shapes: the one-off connect/restart
+        // announcement (tag 0xF8, byte[2]==0x02, byte[3]==0x01) carries it
+        // at offset 10, but ordinary ongoing traffic (live 0xF0 aux/button
+        // frames, and the 0xF2 battery-poll reply) carries it two bytes
+        // later, at offset 12 — confirmed 2026-07-14 by diffing a captured
+        // aux frame against the announce frame byte-for-byte. Getting this
+        // wrong silently "succeeds": the wrong offset still yields a
+        // nonzero-looking value (it overlaps the real identity, just
+        // shifted), so every subsequent write gets addressed to a garbled
+        // identity that the puck quietly drops — no relink ever visibly
+        // fails, but nothing it addresses ever arrives either. This is why
+        // battery (and potentially OLED/LED) only worked right after a
+        // power-cycle: only the announce frame happened to use the offset
+        // this code originally assumed.
+        let xencelabsIdentityOffset: Int = {
+            guard length > 3, report[1] == 0xF8, report[2] == 0x02, report[3] == 0x01 else { return 12 }
+            return 10
+        }()
         if deviceSpec.parser == .xencelabs, Self.xencelabsRelayProductIDs.contains(deviceSpec.productID),
-            !xencelabsDongleRelinked, length >= Self.xencelabsIdentityOffset + Self.xencelabsIdentityLength,
+            !xencelabsDongleRelinked, length >= xencelabsIdentityOffset + Self.xencelabsIdentityLength,
             report[0] == 0x02  // XencelabsDecoder.penReportID (internal, not visible here)
         {
             let identity = (0..<Self.xencelabsIdentityLength).map {
-                report[Self.xencelabsIdentityOffset + $0]
+                report[xencelabsIdentityOffset + $0]
             }
             if identity.contains(where: { $0 != 0 }) {
                 xencelabsDongleRelinked = true
                 xencelabsDongleIdentity = identity
                 let ret = sendXencelabsRelink(identity: identity)
                 logger.info("\(name, privacy: .public): dongle relink sent, result=0x\(String(ret, radix: 16), privacy: .public)")
+                startXencelabsBatteryPolling()
                 // Previously this waited for the first real aux frame to prove
                 // the link was live before resending OLED/LED state, because
                 // those writes went out unaddressed and had nowhere reliable

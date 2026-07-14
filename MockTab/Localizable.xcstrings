@@ -2016,7 +2016,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Akku      : %1$lld%%%2$@"
+            "value" : "Batterie  : %1$lld%%%2$@"
           }
         },
         "en" : {
@@ -10459,6 +10459,35 @@
     },
     "Quick Keys" : {
       "shouldTranslate" : false
+    },
+    "Quick Keys Battery" : {
+      "comment" : "Row label in Info tab status table — connected companion peripheral's battery",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Keys-Batterie"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Quick Keys Battery"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batería de Quick Keys"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Keys バッテリー"
+          }
+        }
+      }
     },
     "Quit %@" : {
       "comment" : "App menu: quit the app",

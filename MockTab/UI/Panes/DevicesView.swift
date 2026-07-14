@@ -145,8 +145,13 @@ struct DevicesView: View {
                 .frame(width: 20, alignment: .center)
                 .accessibilityHidden(true)
 
-            // Kind icon
-            Image(systemName: "rectangle")
+            // Kind icon. The puck glyph reads much smaller than the plain
+            // rectangle at the same point size (it's a thin outline shape,
+            // not a filled block), so it gets a 50% size bump — the
+            // surrounding frame stays fixed at 20pt so row spacing/alignment
+            // with every other row is unaffected.
+            Image(systemName: kindSymbolName(forProductID: tablet.id))
+                .appFont(size: isPuckKind(forProductID: tablet.id) ? 19.5 : 13)
                 .foregroundStyle(.secondary)
                 .frame(width: 20, alignment: .center)
                 .accessibilityHidden(true)
@@ -221,6 +226,19 @@ struct DevicesView: View {
             }
             .disabled(isActive)
         }
+    }
+
+    /// SF Symbol for a device's row icon, by product kind. Aux-only
+    /// companion peripherals (currently just the Xencelabs Quick Keys puck)
+    /// use a symbol that actually resembles their shape; everything else
+    /// keeps the generic tablet rectangle.
+    private func kindSymbolName(forProductID productID: Int) -> String {
+        isPuckKind(forProductID: productID) ? "appletvremote.gen4.fill" : "rectangle"
+    }
+
+    private func isPuckKind(forProductID productID: Int) -> Bool {
+        guard let profile = VendorDeviceRegistry.profile(forProductID: productID) else { return false }
+        return profile.maxX == nil
     }
 
     private func beginTabletEdit(_ tablet: DeviceRegistry.KnownTablet) {

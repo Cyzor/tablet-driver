@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import TabletKit
 
 // MARK: - StatusCaptionLabel
 
@@ -122,6 +123,10 @@ struct DeviceStatusBar: View {
                     Divider().frame(height: 12)
                     statusItem(symbol: sym, text: label, tint: batteryTint)
                 }
+                if let (sym, label) = companionBatteryItem {
+                    Divider().frame(height: 12)
+                    statusItem(symbol: sym, text: label, tint: companionBatteryTint)
+                }
                 Divider().frame(height: 12)
                 statusItem(symbol: "pencil.tip.crop.circle", text: toolName)
                 if let appName = activeAppName {
@@ -191,6 +196,34 @@ struct DeviceStatusBar: View {
         guard let context = context, let pct = context.batteryPercent else { return .secondary }
         // Neutral when healthy — the slim footer shouldn't draw the eye.
         return BatteryIndicator.tint(pct: pct, charging: context.batteryCharging, healthy: .secondary)
+    }
+
+    /// PID of a connected aux-only companion peripheral (currently only the
+    /// Xencelabs Quick Keys puck/dongle) — same resolution `ButtonMappingView`
+    /// uses for its companion section, kept independent here rather than
+    /// shared, since this view has no other companion state to coordinate.
+    private var companionProductID: Int? {
+        VendorDeviceRegistry.connectedCompanion(
+            forProductID: productID, connectedProductIDs: tabletManager.connectedProductIDs)
+    }
+
+    private var companionContext: DeviceContext? {
+        companionProductID.flatMap { tabletManager.contexts[$0] }
+    }
+
+    /// A second, compact battery item for the companion, appended after the
+    /// tablet's own — shown only once a connected companion has actually
+    /// reported a level, so the bar stays unchanged when none is present.
+    private var companionBatteryItem: (String, String)? {
+        guard let pct = companionContext?.batteryPercent else { return nil }
+        let sym = BatteryIndicator.symbolName(pct: pct, charging: companionContext?.batteryCharging == true)
+        return (sym, "\(pct)%")
+    }
+
+    private var companionBatteryTint: Color {
+        guard let pct = companionContext?.batteryPercent else { return .secondary }
+        return BatteryIndicator.tint(
+            pct: pct, charging: companionContext?.batteryCharging == true, healthy: .secondary)
     }
 
     private var toolName: String {

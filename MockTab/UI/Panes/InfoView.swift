@@ -89,6 +89,16 @@ struct InfoView: View {
         deviceContext?.isConnected ?? false
     }
 
+    /// Connected aux-only companion peripheral (currently only the Xencelabs
+    /// Quick Keys puck/dongle) — same resolution `DeviceStatusBar` and
+    /// `ButtonMappingView` use for their own companion sections.
+    private var companionContext: DeviceContext? {
+        guard let productID else { return nil }
+        let companionPID = VendorDeviceRegistry.connectedCompanion(
+            forProductID: productID, connectedProductIDs: tabletManager.connectedProductIDs)
+        return companionPID.flatMap { tabletManager.contexts[$0] }
+    }
+
     private var fallbackDevice: WacomFallbackDevice? {
         deviceContext?.tabletDevice as? WacomFallbackDevice
     }
@@ -169,6 +179,22 @@ struct InfoView: View {
                     symbolColor: BatteryIndicator.tint(
                         pct: pct,
                         charging: deviceContext?.batteryCharging ?? false,
+                        healthy: .green))
+            }
+
+            if let pct = companionContext?.batteryPercent {
+                row(
+                    String(localized: "Quick Keys Battery", comment: "Row label in Info tab status table — connected companion peripheral's battery"),
+                    value: (companionContext?.batteryCharging ?? false)
+                        ? "\(pct)%  \(String(localized: "(Charging)", comment: "Suffix when device is charging, e.g. '85%  (Charging)'"))"
+                        : "\(pct)%",
+                    ok: pct < 20 ? false : nil,
+                    leadingSymbol: BatteryIndicator.symbolName(
+                        pct: pct,
+                        charging: companionContext?.batteryCharging ?? false),
+                    symbolColor: BatteryIndicator.tint(
+                        pct: pct,
+                        charging: companionContext?.batteryCharging ?? false,
                         healthy: .green))
             }
 
