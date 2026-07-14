@@ -86,10 +86,13 @@ private struct ChipKeyboardProxy: NSViewRepresentable {
 /// The hovered drop-target chip springs open a gap to its left before the drop lands.
 ///
 /// Chip appearance:
-/// Unselected chips use a dynamic fill with explicit light/dark values so they read
-/// clearly against the bar background in both appearances. Selected chips now also
+/// Unselected chips use the system `.quaternary` hierarchical fill, which tracks
+/// light/dark, vibrancy, and Increase Contrast automatically. Selected chips use a
+/// tinted-accent treatment (translucent accent fill, accent-colored label) rather
+/// than a full opaque accent fill — a Global chip is visible almost continuously,
+/// so it should read as "current" without demanding attention. Selected chips also
 /// respect whether the containing control is in the key window, so inactive windows
-/// get a Finder-like softened selection treatment rather than a full accent fill.
+/// get a further-softened selection treatment.
 ///
 /// Icon-size plumbing:
 /// All chip icon geometry derives from `chipIconSize`. Bumping it scales chip height
@@ -198,25 +201,6 @@ struct AppOverrideBar: View {
     private var chipAreaHeight: CGFloat {
         chipVerticalPadding * 2 + chipIconSize + chipInternalVPadding * 2
     }
-
-    private static let unselectedChipFill = Color(
-        NSColor(
-            name: nil,
-            dynamicProvider: { appearance in
-                let isDark = [
-                    NSAppearance.Name.darkAqua,
-                    .vibrantDark,
-                    .accessibilityHighContrastDarkAqua,
-                    .accessibilityHighContrastVibrantDark,
-                ].contains(appearance.name)
-
-                return isDark
-                    ? NSColor(white: 0.30, alpha: 1.0)
-                    : NSColor(white: 0.90, alpha: 1.0)
-            }
-        )
-    )
-
 
     // MARK: - Body
 
@@ -503,7 +487,6 @@ struct AppOverrideBar: View {
                         isWindowActive: true,
                         domainKeyCount: 0
                     )
-                    .shadow(radius: 0, y: 0)
                 }
             } else {
                 chipContent(
@@ -568,15 +551,20 @@ struct AppOverrideBar: View {
         let showsActiveSelection = isSelected && isWindowActive
         let showsInactiveSelection = isSelected && !isWindowActive
 
-        let background: Color = {
-            if showsActiveSelection { return Color(NSColor.controlAccentColor) }
-            if showsInactiveSelection { return Color(NSColor.unemphasizedSelectedContentBackgroundColor) }
-            return Self.unselectedChipFill
+        // Active selection uses a translucent accent tint rather than a full
+        // accent fill — the Global chip is visible almost continuously, and a
+        // solid accent pill reads as louder than a near-permanent element
+        // should. Unselected chips use the system hierarchical fill so light/
+        // dark, vibrancy, and Increase Contrast are handled for free.
+        let background: AnyShapeStyle = {
+            if showsActiveSelection { return AnyShapeStyle(Color(nsColor: .controlAccentColor).opacity(0.22)) }
+            if showsInactiveSelection { return AnyShapeStyle(Color(nsColor: .unemphasizedSelectedContentBackgroundColor)) }
+            return AnyShapeStyle(.quaternary)
         }()
 
         let foreground: Color = {
-            if showsActiveSelection { return .white }
-            if showsInactiveSelection { return Color(NSColor.selectedControlTextColor) }
+            if showsActiveSelection { return Color(nsColor: .controlAccentColor) }
+            if showsInactiveSelection { return Color(nsColor: .unemphasizedSelectedTextColor) }
             return .primary
         }()
 
@@ -592,7 +580,7 @@ struct AppOverrideBar: View {
                     .frame(width: chipIconSize, height: chipIconSize)
                     .foregroundStyle(
                         showsActiveSelection
-                            ? .white
+                            ? Color(nsColor: .controlAccentColor)
                             : Color.secondary
                     )
                     .accessibilityHidden(true)
@@ -610,16 +598,12 @@ struct AppOverrideBar: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, chipInternalVPadding)
-        .shadow(
-            color: showsActiveSelection ? .black.opacity(0.35) : .clear,
-            radius: 1.5, x: 0, y: 0
-        )
         .background(background)
         .foregroundStyle(foreground)
         .clipShape(Capsule())
         .overlay(
             Capsule().strokeBorder(
-                showsActiveSelection ? Color.clear : Color(NSColor.separatorColor),
+                showsActiveSelection ? Color(nsColor: .controlAccentColor).opacity(0.5) : Color(NSColor.separatorColor),
                 lineWidth: 0.5
             )
         )
