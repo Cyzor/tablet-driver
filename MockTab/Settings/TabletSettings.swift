@@ -386,6 +386,13 @@ final class TabletSettings: ObservableObject {
         }
     }
     private var _expressKeyCache: [ButtonBinding]?
+    @Published private var bezelButtonRaw: String = "" {
+        didSet {
+            persist("bezelButtonBindings", bezelButtonRaw)
+            _bezelButtonCache = nil
+        }
+    }
+    private var _bezelButtonCache: [ButtonBinding]?
     @Published private var touchRingButtonRaw: String = "" {
         didSet { persist("touchRingButtonBinding", touchRingButtonRaw) }
     }
@@ -427,6 +434,35 @@ final class TabletSettings: ObservableObject {
                 let s = String(data: data, encoding: .utf8)
             else { return }
             expressKeyRaw = s
+        }
+    }
+
+    /// Bindings for a device's built-in bezel buttons (e.g. the Xencelabs
+    /// Pen Display's 3 capacitive touch buttons, the Cintiq DTK-2400's OSD
+    /// buttons) — kept separate from `expressKeyBindings` since some devices
+    /// (DTK-2400) already use all 16 of those slots for toggle/express keys.
+    var bezelButtonBindings: [ButtonBinding] {
+        get {
+            if let cached = _bezelButtonCache { return cached }
+            let result: [ButtonBinding]
+            if !bezelButtonRaw.isEmpty,
+                let data = bezelButtonRaw.data(using: .utf8),
+                let arr = try? JSONDecoder().decode([ButtonBinding].self, from: data)
+            {
+                var r = arr
+                while r.count < 3 { r.append(.none) }
+                result = Array(r.prefix(3))
+            } else {
+                result = Array(repeating: .none, count: 3)
+            }
+            _bezelButtonCache = result
+            return result
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue),
+                let s = String(data: data, encoding: .utf8)
+            else { return }
+            bezelButtonRaw = s
         }
     }
 
@@ -579,6 +615,7 @@ final class TabletSettings: ObservableObject {
         ud.set(pen1Raw, forKey: prefix + "penButton1Binding")
         ud.set(pen2Raw, forKey: prefix + "penButton2Binding")
         ud.set(expressKeyRaw, forKey: prefix + "expressKeyBindings")
+        ud.set(bezelButtonRaw, forKey: prefix + "bezelButtonBindings")
         ud.set(touchRingButtonRaw, forKey: prefix + "touchRingButtonBinding")
         if let data = try? JSONEncoder().encode(touchRingSlots) {
             ud.set(data, forKey: prefix + "touchRingSlotsJSON")
@@ -593,7 +630,7 @@ final class TabletSettings: ObservableObject {
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
             "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
             "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
-            "expressKeyBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
+            "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
             "touchRingActiveSlotIndex", "pressureCurve", "calibrationJSON",
         ]
 
@@ -647,7 +684,7 @@ final class TabletSettings: ObservableObject {
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
             "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
             "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
-            "expressKeyBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
+            "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
             "touchRingActiveSlotIndex", "pressureCurve", "calibrationJSON",
         ]
         for key in allKeys { ud.removeObject(forKey: prefix + key) }
@@ -1031,6 +1068,7 @@ final class TabletSettings: ObservableObject {
         pen1Raw = loadString("penButton1Binding", default: "")
         pen2Raw = loadString("penButton2Binding", default: "")
         expressKeyRaw = loadString("expressKeyBindings", default: "")
+        bezelButtonRaw = loadString("bezelButtonBindings", default: "")
         touchRingButtonRaw = loadString("touchRingButtonBinding", default: "")
         loadTouchRingSlots()
         touchRingActiveSlotIndex = loadInt("touchRingActiveSlotIndex", default: 0)
@@ -1291,6 +1329,7 @@ final class TabletSettings: ObservableObject {
         pen1Raw = ""
         pen2Raw = ""
         expressKeyRaw = ""
+        bezelButtonRaw = ""
         touchRingButtonRaw = ""
         touchRingSlots = ControlSlot.defaults
         touchRingActiveSlotIndex = 0
@@ -1318,6 +1357,7 @@ final class TabletSettings: ObservableObject {
         var pen1Raw: String
         var pen2Raw: String
         var expressKeyRaw: String
+        var bezelButtonRaw: String
         var touchRingButtonRaw: String
         var touchRingSlots: [ControlSlot]
         var touchRingActiveSlotIndex: Int
@@ -1344,6 +1384,7 @@ final class TabletSettings: ObservableObject {
             pen1Raw: pen1Raw,
             pen2Raw: pen2Raw,
             expressKeyRaw: expressKeyRaw,
+            bezelButtonRaw: bezelButtonRaw,
             touchRingButtonRaw: touchRingButtonRaw,
             touchRingSlots: touchRingSlots,
             touchRingActiveSlotIndex: touchRingActiveSlotIndex,
@@ -1381,6 +1422,7 @@ final class TabletSettings: ObservableObject {
         pen1Raw = snap.pen1Raw
         pen2Raw = snap.pen2Raw
         expressKeyRaw = snap.expressKeyRaw
+        bezelButtonRaw = snap.bezelButtonRaw
         touchRingButtonRaw = snap.touchRingButtonRaw
         touchRingSlots = snap.touchRingSlots
         touchRingActiveSlotIndex = snap.touchRingActiveSlotIndex

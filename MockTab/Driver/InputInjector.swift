@@ -264,7 +264,7 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Express key / touch ring state
 
-    private var lastAuxButtons = [Bool](repeating: false, count: 16)
+    private var lastAuxButtons = [Bool](repeating: false, count: 19)
     private var lastRingButtonDown = false
     /// Last observed touch ring position (0–71). 0x7F = no contact.
     private var lastRingPos: UInt8 = 0x7F
@@ -905,7 +905,7 @@ final class InputInjector: @unchecked Sendable {
         // Reset aux state so the next injectAux fires fresh transitions.
         cancelPendingMouseUp()
         hoverDragButton = nil
-        lastAuxButtons = [Bool](repeating: false, count: 16)
+        lastAuxButtons = [Bool](repeating: false, count: 19)
         lastRingButtonDown = false
         hasPostedPoint = false
         displayMapper.clearRelativeAnchor()
@@ -1167,6 +1167,22 @@ final class InputInjector: @unchecked Sendable {
                 fireButtonAction(bindings[i], down: true, at: cursorPos,
                                  snapshot: snap, settings: settings, isAux: true)
                 // lastAuxButtons[i] stays true — the button is still down after this cycle
+            }
+        }
+
+        // ── Bezel buttons (device's own onboard capacitive buttons; e.g. the
+        // Cintiq DTK-2400's OSD keys) — decoded into `buttons[16..18]` by the
+        // relevant decoder but routed through their own binding set rather
+        // than `expressKeyBindings`, since some devices already use all 16
+        // express-key slots. ─────────────────────────────────────────────────
+        let bezelBindings = snap.bezelButtonBindings
+        for i in 0..<3 {
+            let auxIndex = 16 + i
+            let down = buttons[auxIndex]
+            if down != lastAuxButtons[auxIndex] {
+                lastAuxButtons[auxIndex] = down
+                fireButtonAction(bezelBindings[i], down: down, at: cursorPos,
+                                 snapshot: snap, settings: settings, isAux: true)
             }
         }
 

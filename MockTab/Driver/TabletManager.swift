@@ -342,6 +342,7 @@ final class TabletManager: ObservableObject {
             maxY: profile.maxY ?? 0,
             maxPressure: profile.maxPressure ?? 8191,
             buttonCount: profile.auxButtonCount ?? 0,
+            bezelButtonCount: profile.bezelButtonCount ?? 0,
             // Tilt confirmed live in report 2 (signed bytes at
             // offsets 8–9); degree scale still unverified.
             // hasTouchRing reuses the entire Wacom touch-ring UI/LED
@@ -635,6 +636,7 @@ final class TabletManager: ObservableObject {
                 button4Down: point.penButton4,
                 button5Down: point.penButton5,
                 expressKeys: context.liveButtons.expressKeys,
+                bezelButtons: context.liveButtons.bezelButtons,
                 touchRingActive: context.liveButtons.touchRingActive,
                 touchRingButtonDown: context.liveButtons.touchRingButtonDown,
                 touchRing2Active: context.liveButtons.touchRing2Active,
@@ -665,6 +667,10 @@ final class TabletManager: ObservableObject {
             let keys = (0..<16).map { aux[$0] }
             if keys != context.liveButtons.expressKeys {
                 context.liveButtons.expressKeys = keys
+            }
+            let bezelKeys = (16..<19).map { aux[$0] }
+            if bezelKeys != context.liveButtons.bezelButtons {
+                context.liveButtons.bezelButtons = bezelKeys
             }
             if aux.touchRingActive != context.liveButtons.touchRingActive {
                 context.liveButtons.touchRingActive = aux.touchRingActive

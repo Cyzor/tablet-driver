@@ -1063,17 +1063,36 @@ final class WacomKnownDevice: TabletDevice {
             case .toolEnter(let identity):
                 guard !isWireless || wirelessReady else { break }
                 onToolEnter?(identity)
-            case .aux(let buttons):
-                // Diagnostic for the Xencelabs stuck-Command investigation (2026-07-05):
-                // log which physical device/PID produced this aux frame and the raw
-                // bytes that decoded to it, so a phantom button-down can be traced back
-                // to its source instead of guessed at. Remove once resolved.
+            case .aux(var buttons):
+                // Diagnostic from the Xencelabs stuck-Command investigation
+                // (2026-07-05): which physical device/PID produced this aux
+                // frame and the raw bytes that decoded to it, so a phantom
+                // button-down can be traced back to its source instead of
+                // guessed at. Dropped to .debug (2026-07-14) — useful again
+                // for future Xencelabs aux work, but too noisy at .notice
+                // for routine use once the original investigation closed.
                 if deviceSpec.parser == .xencelabs {
                     let hex = (0..<length).map { String(format: "%02x", report[$0]) }.joined(separator: " ")
                     let mask = (0..<16).map { buttons[$0] ? "1" : "0" }.joined()
                     let pidHex = String(deviceSpec.productID, radix: 16, uppercase: true)
                     let usagePage = sender.map { String(hidIntProperty($0, kIOHIDPrimaryUsagePageKey), radix: 16) } ?? "?"
-                    logger.notice("\(name, privacy: .public) (0x\(pidHex, privacy: .public)) usagePage=0x\(usagePage, privacy: .public): aux decode — bytes=[\(hex, privacy: .public)] mask=\(mask, privacy: .public) mech=0x\(String(buttons.mechanicalMask, radix: 16), privacy: .public)")
+                    logger.debug("\(name, privacy: .public) (0x\(pidHex, privacy: .public)) usagePage=0x\(usagePage, privacy: .public): aux decode — bytes=[\(hex, privacy: .public)] mask=\(mask, privacy: .public) mech=0x\(String(buttons.mechanicalMask, radix: 16), privacy: .public)")
+                }
+                // The pen display's own 3 onboard bezel buttons ride the same
+                // aux frame format as the Quick Keys puck's express keys —
+                // this device has no puck of its own, so bits 0-2 are
+                // unambiguously the bezel buttons (confirmed 2026-07-14 via
+                // live capture: three clean one-hot taps, bits 0/1/2).
+                // Mirror them into the bezel-button slots (indices 16-18)
+                // that TabletManager/InputInjector already read for onboard
+                // bezel buttons, following the DTK-2400 precedent.
+                if deviceSpec.parser == .xencelabs && deviceSpec.isPenDisplay {
+                    var raw = buttons.buttons
+                    while raw.count < 19 { raw.append(false) }
+                    raw[16] = buttons[0]
+                    raw[17] = buttons[1]
+                    raw[18] = buttons[2]
+                    buttons.buttons = raw
                 }
                 onAux?(buttons)
             case .wireless(let ws):

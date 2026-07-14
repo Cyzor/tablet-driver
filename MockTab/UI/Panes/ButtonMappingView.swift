@@ -545,6 +545,7 @@ struct ButtonMappingView: View {
     private var hasTouchRing: Bool { spec?.hasTouchRing == true }
     private var hasDualRings: Bool { spec?.hasDualRings == true }
     private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
+    private var bezelButtonCount: Int { spec?.bezelButtonCount ?? 0 }
 
     // MARK: - Companion peripheral (e.g. Xencelabs Quick Keys puck/dongle)
 
@@ -606,6 +607,9 @@ struct ButtonMappingView: View {
                     dualSidedSection(lb: liveButtons)
                 } else {
                     singleSidedSection(lb: liveButtons)
+                }
+                if bezelButtonCount > 0 {
+                    bezelButtonsSection(lb: liveButtons)
                 }
             }
         }
@@ -1080,6 +1084,46 @@ struct ButtonMappingView: View {
                 isActive: lb.touchRing2Active)
             touchRingDiagramRow
         }
+    }
+
+    // MARK: - Bezel buttons (device's own onboard capacitive buttons, e.g.
+    // the Cintiq DTK-2400's OSD keys or the Xencelabs display's touch
+    // buttons) — a fixed-size section folded onto the bottom of the pane,
+    // independent of expressKeyBindings since some devices already use all
+    // 16 of those slots.
+
+    @ViewBuilder
+    private func bezelButtonsSection(lb: LiveButtonState) -> some View {
+        Section {
+            ForEach(0..<bezelButtonCount, id: \.self) { i in
+                bezelButtonRow(
+                    index: i,
+                    label: String(
+                        localized: "Bezel Button \(i + 1)",
+                        comment: "Bezel button N label, e.g. 'Bezel Button 1'"), lb: lb)
+            }
+        } header: {
+            PaneSectionHeader("Bezel Buttons") {
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func bezelButtonRow(index: Int, label: String, lb: LiveButtonState) -> some View {
+        buttonRow(
+            label,
+            isActive: lb.bezelButtons[index],
+            binding: settings.recordingBinding(
+                "Bezel Button \(index + 1)",
+                get: { settings.bezelButtonBindings[index] },
+                set: { newValue in
+                    var updated = settings.bezelButtonBindings
+                    updated[index] = newValue
+                    settings.bezelButtonBindings = updated
+                }
+            )
+        )
     }
 
     // MARK: - Express key row helper

@@ -49,6 +49,7 @@ struct InjectionSnapshot: Sendable, Equatable {
     // MARK: - Express keys & touch ring
 
     var expressKeyBindings: [ButtonBinding]
+    var bezelButtonBindings: [ButtonBinding]
     var touchRingButtonBinding: ButtonBinding
     var touchRingSlots: [ControlSlot]
     var touchRingActiveSlotIndex: Int
@@ -125,6 +126,7 @@ extension TabletSettings {
             doubleClickInterval: NSEvent.doubleClickInterval,
             activeTool: activeTool.injectionSnapshot(),
             expressKeyBindings: expressKeyBindings,
+            bezelButtonBindings: bezelButtonBindings,
             touchRingButtonBinding: touchRingButtonBinding,
             touchRingSlots: touchRingSlots,
             touchRingActiveSlotIndex: touchRingActiveSlotIndex,

@@ -2112,6 +2112,52 @@
         }
       }
     },
+    "Bezel Button %lld" : {
+      "comment" : "Bezel button N label, e.g. 'Bezel Button 1'",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rahmentaste %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botón del marco %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ベゼルボタン %lld"
+          }
+        }
+      }
+    },
+    "Bezel Buttons" : {
+      "comment" : "Section header in Buttons tab — device's own onboard bezel buttons (e.g. Cintiq DTK-2400 OSD keys)",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rahmentasten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botones del marco"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ベゼルボタン"
+          }
+        }
+      }
+    },
     "Button %lld" : {
       "comment" : "Toggle button N label, e.g. 'Button 1'",
       "localizations" : {
