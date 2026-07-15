@@ -61,6 +61,7 @@
 		AA000072 /* OTDImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000072 /* OTDImporter.swift */; };
 		AA000073 /* OrientationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000073 /* OrientationPickerView.swift */; };
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
+		AA000206 /* TabletSettings+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000206 /* TabletSettings+Persistence.swift */; };
 		AA000205 /* TabletSettings+AppOverrides.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000205 /* TabletSettings+AppOverrides.swift */; };
 		AA000204 /* TabletSettings+Presets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000204 /* TabletSettings+Presets.swift */; };
 		AA000201 /* ButtonBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000201 /* ButtonBinding.swift */; };
@@ -161,6 +162,7 @@
 		AB000073 /* OrientationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationPickerView.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB000100 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
+		AB000206 /* TabletSettings+Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+Persistence.swift"; sourceTree = "<group>"; };
 		AB000205 /* TabletSettings+AppOverrides.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+AppOverrides.swift"; sourceTree = "<group>"; };
 		AB000204 /* TabletSettings+Presets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+Presets.swift"; sourceTree = "<group>"; };
 		AB000201 /* ButtonBinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonBinding.swift; sourceTree = "<group>"; };
@@ -286,6 +288,7 @@
 				AB000044 /* ToolSettings.swift */,
 				AB000010 /* BezierCurve.swift */,
 				AB000100 /* Profile.swift */,
+				AB000206 /* TabletSettings+Persistence.swift */,
 				AB000205 /* TabletSettings+AppOverrides.swift */,
 				AB000204 /* TabletSettings+Presets.swift */,
 				AB000201 /* ButtonBinding.swift */,
@@ -515,6 +518,7 @@
 				AA000044 /* ToolSettings.swift in Sources */,
 				AA000010 /* BezierCurve.swift in Sources */,
 				AA000100 /* Profile.swift in Sources */,
+				AA000206 /* TabletSettings+Persistence.swift in Sources */,
 				AA000205 /* TabletSettings+AppOverrides.swift in Sources */,
 				AA000204 /* TabletSettings+Presets.swift in Sources */,
 				AA000201 /* ButtonBinding.swift in Sources */,
