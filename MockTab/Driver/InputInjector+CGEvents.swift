@@ -236,6 +236,13 @@ extension InputInjector {
             "groundTruthSyntheticFlags contains bits outside ModifierMath.managedMask"
         )
         #endif
+        // Stamp with the kernel receipt time of the driving HID report so
+        // inter-event timing reflects the pen's actual motion, not our
+        // scheduling jitter — brush engines derive stroke velocity from
+        // event timestamps. Timer-fired posts carry 0 and keep the default.
+        if Self.currentReportTimestampNs != 0 {
+            event.timestamp = Self.currentReportTimestampNs
+        }
         event.post(tap: .cghidEventTap)
     }
 
@@ -289,7 +296,7 @@ extension InputInjector {
     /// When useRotationAsTilt is true on the active tool, real tilt is suppressed and
     /// barrel rotation is sent as synthetic tilt instead — a "bait and switch" so
     /// Photoshop's Pen Tilt brush dynamics respond to barrel twist.
-    private func resolveEffectivePose(
+    func resolveEffectivePose(
         point: TabletPoint,
         snapshot: InjectionSnapshot
     ) -> (tiltX: Double, tiltY: Double, rotation: Double) {
@@ -407,6 +414,7 @@ extension InputInjector {
     func postMouseDrag(
         button: CGMouseButton, at location: CGPoint,
         pressure: Double, point: TabletPoint? = nil,
+        pose: (tiltX: Double, tiltY: Double, rotation: Double),
         snapshot: InjectionSnapshot
     ) {
         let type: CGEventType
@@ -426,8 +434,7 @@ extension InputInjector {
             e.setIntegerValueField(.tabletEventPointButtons, value: pressure > 0.004 ? 1 : 0)
             e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
             e.setDoubleValueField(.mouseEventPressure, value: pressure)
-            if let p = point {
-                let pose = resolveEffectivePose(point: p, snapshot: snapshot)
+            if point != nil {
                 e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
                 e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
                 e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
@@ -446,7 +453,9 @@ extension InputInjector {
     }
 
     func postMouseMoved(
-        at location: CGPoint, point: TabletPoint? = nil, snapshot: InjectionSnapshot
+        at location: CGPoint, point: TabletPoint? = nil,
+        pose: (tiltX: Double, tiltY: Double, rotation: Double),
+        snapshot: InjectionSnapshot
     ) {
         guard
             let e = CGEvent(
@@ -454,8 +463,7 @@ extension InputInjector {
                 mouseCursorPosition: location, mouseButton: .left)
         else { return }
         if activeAppProfile != .pagesPlainMouse {
-            if let p = point {
-                let pose = resolveEffectivePose(point: p, snapshot: snapshot)
+            if point != nil {
                 e.setIntegerValueField(.mouseEventSubtype, value: 1)
                 e.setIntegerValueField(.tabletEventDeviceID, value: 1)
                 e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
@@ -475,7 +483,9 @@ extension InputInjector {
 
     func postTabletPointerEvent(
         at location: CGPoint, pressure: Double,
-        point: TabletPoint, snapshot: InjectionSnapshot
+        point: TabletPoint,
+        pose: (tiltX: Double, tiltY: Double, rotation: Double),
+        snapshot: InjectionSnapshot
     ) {
         guard let e = CGEvent(source: sessionSource) else {
             injectLog.error("postTabletPointerEvent: CGEvent creation failed — pen point dropped")
@@ -487,7 +497,6 @@ extension InputInjector {
         e.setIntegerValueField(.tabletEventPointX, value: Int64(point.x))
         e.setIntegerValueField(.tabletEventPointY, value: Int64(point.y))
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
-        let pose = resolveEffectivePose(point: point, snapshot: snapshot)
         e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
         e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
         e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)

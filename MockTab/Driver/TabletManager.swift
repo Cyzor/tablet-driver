@@ -366,6 +366,9 @@ final class TabletManager: ObservableObject {
     }
 
     private func deviceConnected(_ device: IOHIDDevice) {
+        // Connect-phase work (handshakes, paced writes) stalls report
+        // delivery; keep those episodes out of the steady-state latency stats.
+        LatencyProbe.shared.noteDeviceConnected()
         let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
         let rawProductID = hidIntProperty(device, kIOHIDProductIDKey)
         Self.lastSeenVendorID[rawProductID] = vendorID

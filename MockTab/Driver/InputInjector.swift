@@ -220,6 +220,20 @@ final class InputInjector: @unchecked Sendable {
     var lastUSBMouseMask: UInt8 = 0
     var usbMouseLeftHeld: Bool = false
 
+    // MARK: - Report timestamp carrier
+    //
+    // Kernel receipt time of the HID report currently being handled, already
+    // converted to CGEventTimestamp nanoseconds; 0 when the current post is
+    // not driven by a timestamped report (timer-fired deferred mouseUps,
+    // debounce releases, proximity-exit commits — those correctly keep the
+    // default now-timestamp, and clearing on report exit guarantees a stale
+    // stamp is never replayed after fresher events have posted).
+    //
+    // Static and HIDThread-confined: one HIDThread serves every device
+    // context, set by WacomKnownDevice.handleReport around each report and
+    // read only in finalizeAndPost on the same thread.
+    static var currentReportTimestampNs: UInt64 = 0
+
     // MARK: - Cursor smoothing, jitter, velocity
     //
     // Per-report position smoothing (EMA), rolling jitter window, and short-window
@@ -517,15 +531,17 @@ final class InputInjector: @unchecked Sendable {
     /// Apple Event from Adobe Photoshop / Illustrator.
     func replayPointerEvent() {
         guard let point = shimLastPoint, let snap = injectionSnapshot else { return }
+        let pose = resolveEffectivePose(point: point, snapshot: snap)
         postTabletPointerEvent(
-            at: shimLastScreen, pressure: shimLastPressure, point: point, snapshot: snap)
+            at: shimLastScreen, pressure: shimLastPressure, point: point, pose: pose,
+            snapshot: snap)
         let dragging = lastTipDown || (activeToolIsMouse && usbMouseLeftHeld)
         if dragging {
             postMouseDrag(
                 button: activeButton, at: shimLastScreen, pressure: shimLastPressure, point: point,
-                snapshot: snap)
+                pose: pose, snapshot: snap)
         } else {
-            postMouseMoved(at: shimLastScreen, point: point, snapshot: snap)
+            postMouseMoved(at: shimLastScreen, point: point, pose: pose, snapshot: snap)
         }
     }
 

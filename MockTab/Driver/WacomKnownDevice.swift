@@ -914,12 +914,24 @@ final class WacomKnownDevice: TabletDevice {
         LatencyProbe.shared.record(kernelTimestamp: timestamp)
         let senderDevice = sender.map { Unmanaged<IOHIDDevice>.fromOpaque($0).takeUnretainedValue() }
         Unmanaged<WacomKnownDevice>.fromOpaque(ctx).takeUnretainedValue()
-            .handleReport(report: report, length: length, sender: senderDevice)
+            .handleReport(
+                report: report, length: length, sender: senderDevice,
+                kernelTimestamp: timestamp)
     }
 
     // MARK: - Report dispatch
 
-    private func handleReport(report: UnsafePointer<UInt8>, length: CFIndex, sender: IOHIDDevice? = nil) {
+    private func handleReport(
+        report: UnsafePointer<UInt8>, length: CFIndex, sender: IOHIDDevice? = nil,
+        kernelTimestamp: UInt64 = 0
+    ) {
+        // Publish this report's kernel receipt time (mach ticks → ns) for
+        // finalizeAndPost, and clear it on every exit path so timer-fired
+        // posts after this frame never inherit a stale stamp.
+        InputInjector.currentReportTimestampNs =
+            kernelTimestamp == 0
+            ? 0 : UInt64(Double(kernelTimestamp) * LatencyProbe.timebaseFactor)
+        defer { InputInjector.currentReportTimestampNs = 0 }
         let name = deviceSpec.name
         HIDCapture.shared.record(tag: name, report: report, length: length)
         // Delta capture — only fires when CaptureEngine.isRunning is true.
@@ -1137,6 +1149,12 @@ final class WacomKnownDevice: TabletDevice {
             case .toolCompatibility(let message):
                 logger.info("\(name, privacy: .public): \(message, privacy: .public)")
             }
+        }
+        // Stage-2: decode + all injection callbacks have returned; CGEvents
+        // for this report are posted. Kernel receipt → here is the total
+        // in-app pipeline cost surfaced in the diagnostics pane.
+        if kernelTimestamp != 0 {
+            LatencyProbe.shared.recordPipelineComplete(kernelTimestamp: kernelTimestamp)
         }
     }
 }

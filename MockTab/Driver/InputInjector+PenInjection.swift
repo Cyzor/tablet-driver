@@ -149,6 +149,9 @@ extension InputInjector {
         // ── Position smoothing (every report) ─────────────────────────────────
         let screenPoint = smoother.applySmoothing(
             rawPoint: rawPoint, enteringProximity: enteringProximity)
+        // Pose is per-report constant; computed once here and passed to every
+        // post call below instead of each recomputing it.
+        let pose = resolveEffectivePose(point: point, snapshot: snap)
         shimLastPoint = point
         shimLastScreen = screenPoint
         shimLastPressure = pressure
@@ -164,7 +167,8 @@ extension InputInjector {
         if tipDown != lastTipDown {
             if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
                 postTabletPointerEvent(
-                    at: screenPoint, pressure: pressure, point: point, snapshot: snap)
+                    at: screenPoint, pressure: pressure, point: point, pose: pose,
+                    snapshot: snap)
             }
             if tipDown {
                 // Cancel any pending deferred mouseUp — tip is back down.
@@ -259,22 +263,23 @@ extension InputInjector {
                 }
                 if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
                     postTabletPointerEvent(
-                        at: screenPoint, pressure: pressure, point: point, snapshot: snap)
+                        at: screenPoint, pressure: pressure, point: point, pose: pose,
+                        snapshot: snap)
                 }
                 if dragging {
                     postMouseDrag(
                         button: activeButton, at: screenPoint, pressure: pressure, point: point,
-                        snapshot: snap)
+                        pose: pose, snapshot: snap)
                     didEmitDragSinceDown = true
                 } else if let dragBtn = hoverDragButton {
                     // Barrel button held while hovering — send otherMouseDragged /
                     // rightMouseDragged so apps like SketchUp receive a proper drag stream.
                     postMouseDrag(
                         button: dragBtn, at: screenPoint, pressure: 0, point: point,
-                        snapshot: snap)
+                        pose: pose, snapshot: snap)
                 } else {
                     postMouseMoved(
-                        at: screenPoint, point: point,
+                        at: screenPoint, point: point, pose: pose,
                         snapshot: snap)
                 }
                 lastPostedPoint = screenPoint

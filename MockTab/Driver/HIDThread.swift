@@ -116,7 +116,9 @@ final class LatencyProbe {
     static let shared = LatencyProbe()
 
     /// mach timebase → nanoseconds conversion factor, computed once.
-    private static let timebaseFactor: Double = {
+    /// Non-private: the injection path reuses it to convert kernel report
+    /// timestamps (mach ticks) into CGEventTimestamp nanoseconds.
+    static let timebaseFactor: Double = {
         var info = mach_timebase_info_data_t()
         mach_timebase_info(&info)
         return Double(info.numer) / Double(info.denom)
@@ -125,13 +127,45 @@ final class LatencyProbe {
     /// Delivery latency above this counts as a scheduling stall.
     static let stallThresholdMs: Double = 5.0
 
+    /// Reports arriving within this window after a device connect are
+    /// attributed to connect-phase work (handshakes, paced settings writes,
+    /// serial queries) rather than steady-state usage. Those episodes are
+    /// real but don't reflect what a user feels mid-stroke, so they're
+    /// bucketed separately and kept out of the headline numbers.
+    static let settleWindowSeconds: Double = 5.0
+
     /// EMA of delivery latency (α = 1/64 ≈ 0.5 s settling at 133 Hz).
     private(set) var averageMs: Double = 0
-    /// Worst latency observed since launch.
+    /// Worst latency observed since launch, steady-state reports only.
     private(set) var worstMs: Double = 0
-    /// Reports delivered later than `stallThresholdMs`.
+    /// Steady-state reports delivered later than `stallThresholdMs`.
     private(set) var stallCount: UInt64 = 0
     private(set) var reportCount: UInt64 = 0
+
+    /// Connect-phase counterparts, tracked so handshake regressions stay
+    /// visible without polluting the steady-state figures.
+    private(set) var connectWorstMs: Double = 0
+    private(set) var connectStallCount: UInt64 = 0
+
+    /// Stage-2: kernel receipt → injection complete (decode + all injection
+    /// callbacks returned, CGEvents posted). Measured at the end of report
+    /// handling, so `totalAverageMs − averageMs` is the app's own share of
+    /// the pipeline. Steady-state only, same settling-window gate as above.
+    private(set) var totalAverageMs: Double = 0
+    private(set) var totalWorstMs: Double = 0
+
+    /// Mach deadline until which reports count as connect-phase. Written on
+    /// the main thread by `noteDeviceConnected()`, read on HIDThread — same
+    /// tolerated-torn-read pattern as the counters above; a stale read just
+    /// misattributes a handful of reports.
+    private var settlingDeadline: UInt64 = 0
+
+    /// Call when a device connects (or reconnects) to open the settling
+    /// window during which stalls are attributed to connect-phase work.
+    func noteDeviceConnected() {
+        let ticks = UInt64(Self.settleWindowSeconds * 1_000_000_000.0 / Self.timebaseFactor)
+        settlingDeadline = mach_absolute_time() &+ ticks
+    }
 
     /// Unified-log channel for stall episodes, so evidence survives without
     /// the diagnostics pane being open. Retrieve after the fact with:
@@ -150,6 +184,18 @@ final class LatencyProbe {
         let now = mach_absolute_time()
         guard now > kernelTimestamp else { return }
         let ms = Double(now - kernelTimestamp) * Self.timebaseFactor / 1_000_000.0
+        if now < settlingDeadline {
+            if ms > connectWorstMs { connectWorstMs = ms }
+            if ms > Self.stallThresholdMs {
+                connectStallCount &+= 1
+                let oneSecondTicks = UInt64(1_000_000_000.0 / Self.timebaseFactor)
+                if now &- lastLogTime > oneSecondTicks {
+                    Self.log.info("connect-phase stall: \(ms, format: .fixed(precision: 1)) ms; connect stalls \(self.connectStallCount)")
+                    lastLogTime = now
+                }
+            }
+            return
+        }
         reportCount &+= 1
         averageMs += (ms - averageMs) / 64.0
         if ms > worstMs { worstMs = ms }
@@ -165,5 +211,17 @@ final class LatencyProbe {
                 burstStallCount = 0
             }
         }
+    }
+
+    /// Called on HIDThread after a report has been fully handled (decoded and
+    /// all injection callbacks returned). Pairs with the `record` call made at
+    /// callback entry for the same report; connect-phase reports are skipped
+    /// entirely so both stages cover the same population.
+    func recordPipelineComplete(kernelTimestamp: UInt64) {
+        let now = mach_absolute_time()
+        guard now > kernelTimestamp, now >= settlingDeadline else { return }
+        let ms = Double(now - kernelTimestamp) * Self.timebaseFactor / 1_000_000.0
+        totalAverageMs += (ms - totalAverageMs) / 64.0
+        if ms > totalWorstMs { totalWorstMs = ms }
     }
 }
