@@ -48,6 +48,7 @@
 		AA000077 /* Live resize detector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000077 /* Live resize detector.swift */; };
 		AA000078 /* Button row.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000078 /* Button row.swift */; };
 		AA000079 /* Button mapping quick keys.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000079 /* Button mapping quick keys.swift */; };
+		AA000080 /* Button mapping bindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000080 /* Button mapping bindings.swift */; };
 		AA000053 /* FontExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000053 /* FontExtensions.swift */; };
 		AA000054 /* PenDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000054 /* PenDiagramView.swift */; };
 		AA000055 /* DisclosureRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000055 /* DisclosureRow.swift */; };
@@ -137,6 +138,7 @@
 		AB000077 /* Live resize detector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Live resize detector.swift"; sourceTree = "<group>"; };
 		AB000078 /* Button row.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Button row.swift"; sourceTree = "<group>"; };
 		AB000079 /* Button mapping quick keys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Button mapping quick keys.swift"; sourceTree = "<group>"; };
+		AB000080 /* Button mapping bindings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Button mapping bindings.swift"; sourceTree = "<group>"; };
 		AB000053 /* FontExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontExtensions.swift; sourceTree = "<group>"; };
 		AB000054 /* PenDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenDiagramView.swift; sourceTree = "<group>"; };
 		AB000055 /* DisclosureRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisclosureRow.swift; sourceTree = "<group>"; };
@@ -287,6 +289,7 @@
 				AB000013 /* PenFeelView.swift */,
 				AB000014 /* ButtonMappingView.swift */,
 				AB000079 /* Button mapping quick keys.swift */,
+				AB000080 /* Button mapping bindings.swift */,
 				AB000015 /* DisplayMappingView.swift */,
 				AB000016 /* ScratchpadView.swift */,
 				AB000033 /* InfoView.swift */,
@@ -497,6 +500,7 @@
 				AA000077 /* Live resize detector.swift in Sources */,
 				AA000078 /* Button row.swift in Sources */,
 				AA000079 /* Button mapping quick keys.swift in Sources */,
+				AA000080 /* Button mapping bindings.swift in Sources */,
 				AA000054 /* PenDiagramView.swift in Sources */,
 				AA000154 /* TouchRingDiagramView.swift in Sources */,
 				AA000053 /* FontExtensions.swift in Sources */,
