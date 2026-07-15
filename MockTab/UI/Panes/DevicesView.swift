@@ -12,8 +12,12 @@ import TabletKit
 /// semi-bold with a green checkmark.  Clicking any row loads that device's
 /// tool list below.  Every row's name is user-editable inline.
 ///
-/// Lower section: tools and peripherals seen on the selected tablet
-/// (stylus, eraser, etc.).  Names are also user-editable.
+/// Lower section: tools and peripherals seen on the selected tablet.
+/// Names are also user-editable.  The registry stores a pen's tip and
+/// eraser ends as separate entries (they have distinct tool codes and
+/// ids), but the list folds the eraser into its pen's row — one physical
+/// object, one row, matching how vendors present it.  Renaming or
+/// removing the row applies to both ends.
 struct DevicesView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
@@ -73,15 +77,23 @@ struct DevicesView: View {
         ) {
             Button("Remove", role: .destructive) {
                 guard let tool = pendingForgetTool else { return }
-                let snapshot: DeviceRegistry.ToolRemovalSnapshot?
-                if let did = pendingForgetDeviceID {
-                    snapshot = registry.forgetTool(id: tool.id, forDevice: did)
-                } else {
-                    snapshot = registry.forgetToolEverywhere(id: tool.id)
+                // A pen row stands in for both ends — remove the folded-in
+                // eraser entry along with the tip, in one undoable action.
+                var ids = [tool.id]
+                if let eraserID = Self.eraserSiblingID(of: tool.id) { ids.append(eraserID) }
+                var snapshots: [DeviceRegistry.ToolRemovalSnapshot] = []
+                for id in ids {
+                    let snapshot: DeviceRegistry.ToolRemovalSnapshot?
+                    if let did = pendingForgetDeviceID {
+                        snapshot = registry.forgetTool(id: id, forDevice: did)
+                    } else {
+                        snapshot = registry.forgetToolEverywhere(id: id)
+                    }
+                    if let snapshot { snapshots.append(snapshot) }
                 }
-                if let snapshot {
+                if !snapshots.isEmpty {
                     undoManager?.registerUndo(withTarget: registry) { target in
-                        target.restoreTool(snapshot)
+                        for snapshot in snapshots { target.restoreTool(snapshot) }
                     }
                     undoManager?.setActionName(String(localized: "Remove Tool", comment: "Undo action name when removing a tool"))
                 }
@@ -260,12 +272,39 @@ struct DevicesView: View {
 
     // MARK: - Tools
 
+    /// The eraser-end entry paired with a tip entry's id, or nil for ids
+    /// that can't have one. Generic serial-less entries with a counter
+    /// suffix ("stylus-1") stay unpaired — with no serial there's no way
+    /// to know which eraser belongs to which pen body.
+    static func eraserSiblingID(of id: String) -> String? {
+        if id == "stylus" { return "eraser" }
+        if id.hasPrefix("0x") { return "eraser-" + id }
+        return nil
+    }
+
+    /// Inverse of `eraserSiblingID(of:)`.
+    static func tipSiblingID(of id: String) -> String? {
+        if id == "eraser" { return "stylus" }
+        if id.hasPrefix("eraser-0x") { return String(id.dropFirst("eraser-".count)) }
+        return nil
+    }
+
+    /// Hides eraser entries whose pen tip is also in the list, so each
+    /// physical pen gets one row. An orphaned eraser (tip never seen)
+    /// still shows on its own.
+    private func displayTools(_ list: [DeviceRegistry.KnownTool]) -> [DeviceRegistry.KnownTool] {
+        list.filter { tool in
+            guard let tipID = Self.tipSiblingID(of: tool.id) else { return true }
+            return !list.contains { $0.id == tipID }
+        }
+    }
+
     private var toolsSection: some View {
         Section {
             if registry.knownTools.isEmpty {
                 emptyState(String(localized: "No tools detected yet.\nMove the pen over the tablet to register it.", comment: "Empty state message in tools list — singular tablet"))
             } else {
-                ForEach(registry.knownTools) { tool in
+                ForEach(displayTools(registry.knownTools)) { tool in
                     toolRow(tool, forDevice: effectiveTabletID)
                 }
             }
@@ -286,7 +325,12 @@ struct DevicesView: View {
 
     @ViewBuilder
     private func toolRow(_ tool: DeviceRegistry.KnownTool, forDevice deviceID: Int?) -> some View {
-        let isInProximity = tool.id == tabletManager.activeContext?.activeToolID
+        // The merged row also lights up when the folded-in eraser end is
+        // the one in proximity.
+        let activeID = tabletManager.activeContext?.activeToolID
+        let isInProximity =
+            activeID == tool.id
+            || (activeID != nil && activeID == Self.eraserSiblingID(of: tool.id))
         let inAllSection = deviceID == nil
         let isEditing = editingToolID == tool.id && editingToolInAllSection == inAllSection
         HStack(spacing: 8) {
@@ -374,7 +418,7 @@ struct DevicesView: View {
             if registry.allKnownTools.isEmpty {
                 emptyState(String(localized: "No tools detected yet.\nMove the pen over a tablet to register it.", comment: "Empty state message in tools list — multiple tablets"))
             } else {
-                ForEach(registry.allKnownTools) { tool in
+                ForEach(displayTools(registry.allKnownTools)) { tool in
                     toolRow(tool, forDevice: nil)
                 }
             }
@@ -468,6 +512,19 @@ struct DevicesView: View {
                 target.renameToolEverywhere(id: toolID, to: oldName)
             }
             undoManager?.setActionName(String(localized: "Rename Tool", comment: "Undo action name when renaming a tool"))
+            // Carry the new name to the folded-in eraser entry so places
+            // that surface the active tool by id (status bar, Info pane)
+            // stay consistent with the merged row. Both undos land in the
+            // same runloop group, so one Undo reverts the pair.
+            if let eraserID = Self.eraserSiblingID(of: toolID),
+                let eraser = registry.allKnownTools.first(where: { $0.id == eraserID })
+            {
+                let oldEraserName = eraser.nickname
+                registry.renameToolEverywhere(id: eraserID, to: "\(trimmed) (Eraser)")
+                undoManager?.registerUndo(withTarget: registry) { target in
+                    target.renameToolEverywhere(id: eraserID, to: oldEraserName)
+                }
+            }
             return
         }
 
@@ -483,6 +540,17 @@ struct DevicesView: View {
             target.renameTool(id: toolID, to: oldName, forDevice: deviceID)
         }
         undoManager?.setActionName(String(localized: "Rename Tool", comment: "Undo action name when renaming a tool"))
+        // Carry the new name to the folded-in eraser entry — see the
+        // all-tablets branch above.
+        if let eraserID = Self.eraserSiblingID(of: toolID),
+            let eraser = registry.knownTools.first(where: { $0.id == eraserID })
+        {
+            let oldEraserName = eraser.nickname
+            registry.renameTool(id: eraserID, to: "\(trimmed) (Eraser)", forDevice: deviceID)
+            undoManager?.registerUndo(withTarget: registry) { target in
+                target.renameTool(id: eraserID, to: oldEraserName, forDevice: deviceID)
+            }
+        }
     }
 
     private func syncTools() {
