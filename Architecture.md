@@ -92,15 +92,15 @@ Adding a new family means writing a new decoder under `Sources/TabletKit/Decoder
 
 ### Injection
 
-`InputInjector` converts a `TabletPoint` into the CGEvent sequence apps expect: a proximity event, then a `.tabletPointer` event (which Krita, GIMP, and other Qt/GTK apps consume directly), then a mouse event carrying pressure via `.mouseEventPressure` and `.mouseEventSubtype = .tabletPoint`. Two pieces of this are split into their own files — position smoothing (`CursorSmoother`, in TabletKit) and display selection/orientation/calibration (`DisplayMapper.swift`, in this repo) — because both are self-contained transforms with no dependency on the rest of the class. What's left in `InputInjector` itself:
+`InputInjector` converts a `TabletPoint` into the CGEvent sequence apps expect: a proximity event, then a `.tabletPointer` event (which Krita, GIMP, and other Qt/GTK apps consume directly), then a mouse event carrying pressure via `.mouseEventPressure` and `.mouseEventSubtype = .tabletPoint`. Two self-contained transforms live outside the class entirely — position smoothing (`CursorSmoother`, in TabletKit) and display selection/orientation/calibration (`DisplayMapper.swift`, in this repo). The class itself spans five files. `InputInjector.swift` holds every stored property (Swift extensions can't) plus the concerns that read broadly across that state:
 
 - click-count resolution for double- and triple-clicks
-- synthesizing keyboard modifiers when a tablet button is bound to one
 - a brief mouse-up delay so fast pen lifts don't cut strokes short
 - a watchdog that releases buttons left stuck by a dropped report
 - a system-level tap that tracks physical modifier-key state
+- the Adobe shim replay and USB mouse-button injection
 
-The class header in `InputInjector.swift` documents the threading rules; the MARK sections divide the file by concern.
+Four sibling extensions divide the rest of the class by concern: `InputInjector+PenInjection.swift` (the per-report pen hot path), `InputInjector+Touch.swift` (capacitive finger touch), `InputInjector+AuxInput.swift` (express keys, rings, wheels), and `InputInjector+CGEvents.swift` (modifier synthesis and reconciliation, the event constructors, button-binding execution, and scroll dispatch). The class header in `InputInjector.swift` documents the threading rules; the main file's MARK sections cross-reference the extension that owns each state block's logic.
 
 ### Aux inputs
 
@@ -142,7 +142,8 @@ The decoder test suite lives in `TabletKit/Tests/TabletKitTests/` and runs via `
 | Add a new pen tool | `TabletKit/Sources/TabletKit/WacomToolSpec.swift` |
 | Add a non-Wacom vendor | `TabletKit/Sources/TabletKit/VendorDeviceRegistry.swift` |
 | Add a new protocol family | `TabletKit/Sources/TabletKit/Decoders/` + `WacomDeviceRegistry.decoder(for:)` |
-| Tweak click resolution or button dispatch | `MockTab/Driver/InputInjector.swift` (read the header) |
+| Tweak click resolution | `MockTab/Driver/InputInjector.swift` (read the header) |
+| Tweak button dispatch or modifier synthesis | `MockTab/Driver/InputInjector+CGEvents.swift` |
 | Tweak position smoothing | `TabletKit/Sources/TabletKit/CursorSmoother.swift` |
 | Tweak display mapping or calibration | `MockTab/Driver/DisplayMapper.swift` |
 | Add a settings knob | `Settings/TabletSettings.swift` + relevant pane |

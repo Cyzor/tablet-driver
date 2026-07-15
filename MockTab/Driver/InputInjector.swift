@@ -58,6 +58,13 @@ final class SharedAuxModifierState {
 ///
 /// `@unchecked Sendable`: cross-thread access is synchronized manually per the
 /// scheme above (HIDThread confinement for hot-path state, locks elsewhere).
+///
+/// The class spans five files: this one holds every stored property (Swift
+/// extensions can't) plus init/teardown and the cross-cutting helpers, while
+/// the sibling `InputInjector+*.swift` extensions hold the pen hot path
+/// (+PenInjection), finger touch (+Touch), express keys/rings/wheels
+/// (+AuxInput), and the CGEvent posting layer (+CGEvents). The threading rules
+/// above apply unchanged across all of them.
 final class InputInjector: @unchecked Sendable {
 
     // MARK: - Device identity
