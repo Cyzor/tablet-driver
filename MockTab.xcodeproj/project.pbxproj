@@ -61,6 +61,9 @@
 		AA000072 /* OTDImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000072 /* OTDImporter.swift */; };
 		AA000073 /* OrientationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000073 /* OrientationPickerView.swift */; };
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
+		AA000201 /* ButtonBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000201 /* ButtonBinding.swift */; };
+		AA000202 /* ControlSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000202 /* ControlSlot.swift */; };
+		AA000203 /* TabletOrientation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000203 /* TabletOrientation.swift */; };
 		AA000101 /* CaptureModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000101 /* CaptureModels.swift */; };
 		AA000102 /* CaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000102 /* CaptureEngine.swift */; };
 		AA000103 /* CaptureGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000103 /* CaptureGuideView.swift */; };
@@ -156,6 +159,9 @@
 		AB000073 /* OrientationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationPickerView.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB000100 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
+		AB000201 /* ButtonBinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonBinding.swift; sourceTree = "<group>"; };
+		AB000202 /* ControlSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlSlot.swift; sourceTree = "<group>"; };
+		AB000203 /* TabletOrientation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletOrientation.swift; sourceTree = "<group>"; };
 		AB000101 /* CaptureModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureModels.swift; sourceTree = "<group>"; };
 		AB000102 /* CaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEngine.swift; sourceTree = "<group>"; };
 		AB000103 /* CaptureGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGuideView.swift; sourceTree = "<group>"; };
@@ -276,6 +282,9 @@
 				AB000044 /* ToolSettings.swift */,
 				AB000010 /* BezierCurve.swift */,
 				AB000100 /* Profile.swift */,
+				AB000201 /* ButtonBinding.swift */,
+				AB000202 /* ControlSlot.swift */,
+				AB000203 /* TabletOrientation.swift */,
 				AAAAAA01 /* PresetExporter.swift */,
 				AAAAAA03 /* PresetImporter.swift */,
 				AAAAAA05 /* ImportPlan.swift */,
@@ -500,6 +509,9 @@
 				AA000044 /* ToolSettings.swift in Sources */,
 				AA000010 /* BezierCurve.swift in Sources */,
 				AA000100 /* Profile.swift in Sources */,
+				AA000201 /* ButtonBinding.swift in Sources */,
+				AA000202 /* ControlSlot.swift in Sources */,
+				AA000203 /* TabletOrientation.swift in Sources */,
 				AA000012 /* TabletAreaView.swift in Sources */,
 				AA000073 /* OrientationPickerView.swift in Sources */,
 				AA000200 /* NormalizedAreaEditor.swift in Sources */,
