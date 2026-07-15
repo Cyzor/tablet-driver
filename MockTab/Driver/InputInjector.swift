@@ -178,6 +178,13 @@ final class InputInjector: @unchecked Sendable {
     }
 
     // MARK: - State
+    //
+    // Several fields below are `internal` (no `private`) rather than truly
+    // private: the injection paths were split across InputInjector+*.swift
+    // extension files, and Swift's `private` is file-scoped, so state shared
+    // with those extensions has to be visible module-wide. It's still
+    // conceptually owned here and HIDThread-confined exactly as each comment
+    // describes — the access level widened, the ownership contract did not.
 
     private(set) var lastProximity = false
     private var lastTipDown = false
@@ -395,7 +402,7 @@ final class InputInjector: @unchecked Sendable {
 
     /// Must run on HIDThread (where `watchdogTimer`, `lastInjectCallAt`, and
     /// `groundTruthSyntheticFlags` are owned).
-    private func rearmWatchdog() {
+    func rearmWatchdog() {
         lastInjectCallAt = Date()
         if let t = watchdogTimer { CFRunLoopTimerInvalidate(t) }
         watchdogTimer = nil
@@ -487,13 +494,13 @@ final class InputInjector: @unchecked Sendable {
     /// unchanged from when this state lived directly on InputInjector: reads
     /// and writes happen on HIDThread except `recomputeVirtualScreenBounds()`,
     /// which callers must invoke on main.
-    private var displayMapper = DisplayMapper()
+    var displayMapper = DisplayMapper()
 
     /// Cached touch coordinate maximums, invalidated when `deviceProductID`
     /// changes.  Saves a per-frame linear scan over `WacomDeviceRegistry`.
-    private var cachedTouchMaxX: Int = 1
-    private var cachedTouchMaxY: Int = 1
-    private var cachedTouchSpecPID: Int = -1
+    var cachedTouchMaxX: Int = 1
+    var cachedTouchMaxY: Int = 1
+    var cachedTouchSpecPID: Int = -1
     private var displayObserver: NSObjectProtocol?
 
     // MARK: - Pen injection
@@ -1266,105 +1273,14 @@ final class InputInjector: @unchecked Sendable {
     // MARK: - Finger-touch injection
 
     /// Mutable per-sequence state for capacitive touch.  HIDThread-owned.
-    private var touchTracker = TouchStateTracker()
+    var touchTracker = TouchStateTracker()
     /// CFAbsoluteTime when the pen last left proximity.  Touch is suppressed
     /// while the pen is in proximity and for a brief grace window after exit
     /// so palm-rejection bounces (finger contact arriving 1–2 frames after
     /// pen-up) don't slip through as cursor jumps.
-    private var penProximityExitTime: CFAbsoluteTime = 0
+    var penProximityExitTime: CFAbsoluteTime = 0
     /// Per-Wacom-driver convention; tunable if reports show false positives.
-    private static let touchArbitrationGrace: CFAbsoluteTime = 0.08
-
-    /// Inject a touch contact frame.
-    ///
-    /// Behaviour:
-    ///   • `touchEnabled == false` → no-op.
-    ///   • Pen in proximity, or pen lifted within `touchArbitrationGrace`
-    ///     → drop the frame (and reset tracker so a stale gesture mid-touch
-    ///     doesn't persist when the pen interrupts).
-    ///   • Otherwise project each contact through the user's touch-area
-    ///     mapping into screen-space, hand to `TouchStateTracker`, and
-    ///     translate its `Intent` into CGEvents:
-    ///       - `.pointerMove` → `mouseMoved`
-    ///       - `.scrollDelta` → smooth scroll-wheel event with phase
-    ///       - `.tapClick`    → left-click at the current cursor position
-    ///
-    /// No shipping decoder produces touch frames yet; this is hot-path
-    /// plumbing for when a per-family touch decoder lands.
-    func injectTouch(contacts: [TouchContact], settings: TabletSettings?) {
-        rearmWatchdog()
-        guard let snap = injectionSnapshot, snap.touchEnabled else { return }
-
-        // Cache touch coordinate maximums per device.  Without this, the
-        // registry lookup (linear scan over ~80 specs) ran on every HID
-        // frame — at 100 Hz with a palm on the tablet, that alone was a
-        // measurable CPU contributor.  (Before the arbitration gate because
-        // palm classification needs the maximums.)
-        if cachedTouchSpecPID != deviceProductID {
-            let spec = WacomDeviceRegistry.spec(for: deviceProductID)
-            cachedTouchMaxX = Swift.max(1, spec?.touchMaxX ?? 1)
-            cachedTouchMaxY = Swift.max(1, spec?.touchMaxY ?? 1)
-            cachedTouchSpecPID = deviceProductID
-        }
-
-        // Pen arbitration: pen takes priority.  Drop frames and reset tracker
-        // so a half-formed gesture doesn't resume after the pen lifts.
-        //
-        // An iPad-style "scroll while the pen is in use" mode was prototyped
-        // and removed (2026-06): firmware does stream touch with the pen busy,
-        // but palm rejection wasn't shippable — scrolls died mid-gesture and
-        // per-app event arbitration was inconsistent.  Git history has the
-        // prototype if another attempt is ever made.
-        let now = CFAbsoluteTimeGetCurrent()
-        let penBusy = lastProximity ||
-            now - penProximityExitTime < Self.touchArbitrationGrace
-        if penBusy {
-            if !contacts.isEmpty {
-                _ = touchTracker.process(
-                    contacts: [], tapToClick: false, twoFingerScroll: false,
-                    reverseScrollDirection: false, sensitivity: 1.0, now: now)
-            }
-            return
-        }
-
-        // Resolve display bounds — touch shares the pen's target display.
-        let displayBounds = displayMapper.displayBounds(for: snap)
-
-        // Project each contact to screen-space using the touch-area mapping.
-        // Contacts whose raw position falls outside the crop rect return nil
-        // and are dropped entirely (no clamping to the rect edge — that would
-        // leave the deadzone partially responsive).
-        var projected: [(id: Int, screen: CGPoint)] = []
-        projected.reserveCapacity(contacts.count)
-        for c in contacts {
-            guard let p = TouchStateTracker.screenPoint(
-                for: c, maxX: cachedTouchMaxX, maxY: cachedTouchMaxY,
-                areaX: snap.touchAreaX, areaY: snap.touchAreaY,
-                areaWidth: snap.touchAreaWidth, areaHeight: snap.touchAreaHeight,
-                displayBounds: displayBounds)
-            else { continue }
-            projected.append((id: c.id, screen: p))
-        }
-
-        let intent = touchTracker.process(
-            contacts: projected,
-            tapToClick: snap.tapToClick,
-            twoFingerScroll: snap.twoFingerScroll,
-            reverseScrollDirection: snap.reverseScrollDirection,
-            sensitivity: snap.touchSensitivity,
-            now: now)
-
-        switch intent {
-        case .none:
-            return
-        case .pointerMove(let dx, let dy):
-            postTouchPointerMove(dx: dx, dy: dy)
-        case .scrollDelta(let dx, let dy, let phase):
-            postTouchScroll(dx: dx, dy: dy, phase: phase)
-        case .tapClick:
-            postTouchTapClick(snapshot: snap, settings: settings)
-        }
-    }
+    static let touchArbitrationGrace: CFAbsoluteTime = 0.08
 
     // ── Screen-edge pinning (Dock reveal / hot corners) ─────────────────────
     // A hidden Dock and hot corners never trigger from injected moves that
@@ -1375,63 +1291,19 @@ final class InputInjector: @unchecked Sendable {
 
     /// How close (points) a mapped position must get to a bounds edge
     /// before it is pinned onto that edge.
-    private static let edgePinThreshold: CGFloat = 2.0
+    static let edgePinThreshold: CGFloat = 2.0
     /// Sub-pixel inset from the exact edge, matching the vendor driver.
-    private static let edgePinInset: CGFloat = 0.1196
+    static let edgePinInset: CGFloat = 0.1196
 
     /// Pins coordinates within `edgePinThreshold` of a bounds edge to a
     /// fractional position hard against that edge.
-    private static func pinNearScreenEdges(_ p: CGPoint, in bounds: CGRect) -> CGPoint {
+    static func pinNearScreenEdges(_ p: CGPoint, in bounds: CGRect) -> CGPoint {
         var p = p
         if p.x - bounds.minX < edgePinThreshold { p.x = bounds.minX + edgePinInset }
         else if bounds.maxX - p.x < edgePinThreshold { p.x = bounds.maxX - edgePinInset }
         if p.y - bounds.minY < edgePinThreshold { p.y = bounds.minY + edgePinInset }
         else if bounds.maxY - p.y < edgePinThreshold { p.y = bounds.maxY - edgePinInset }
         return p
-    }
-
-    private func postTouchPointerMove(dx: Double, dy: Double) {
-        let loc = currentCursorPosition()
-        var target = CGPoint(x: loc.x + dx, y: loc.y + dy)
-        if let snap = injectionSnapshot {
-            target = Self.pinNearScreenEdges(target, in: displayMapper.displayBounds(for: snap))
-        }
-        guard let e = CGEvent(
-            mouseEventSource: sessionSource,
-            mouseType: .mouseMoved,
-            mouseCursorPosition: target,
-            mouseButton: .left)
-        else { return }
-        e.flags = moveSafeEventFlags
-        finalizeAndPost(e)
-    }
-
-    private func postTouchScroll(dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase) {
-        let loc = currentCursorPosition()
-        // .pixel units + the scroll-phase field is what makes apps treat the
-        // stream as a trackpad scroll (smooth, with rubber-banding) rather
-        // than a discrete wheel-tick scroll.
-        guard let e = CGEvent(
-            scrollWheelEvent2Source: sessionSource,
-            units: .pixel,
-            wheelCount: 2,
-            wheel1: Int32(dy.rounded()),
-            wheel2: Int32(dx.rounded()),
-            wheel3: 0)
-        else { return }
-        e.location = loc
-        e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
-        e.flags = moveSafeEventFlags
-        finalizeAndPost(e)
-    }
-
-    private func postTouchTapClick(snapshot: InjectionSnapshot, settings: TabletSettings?) {
-        let loc = currentCursorPosition()
-        let (clickPt, count) = resolveClick(loc, snapshot: snapshot)
-        postMouseDown(
-            button: .left, at: clickPt, pressure: 1.0, clickCount: count, snapshot: snapshot)
-        postMouseUp(button: .left, at: clickPt, clickCount: count, snapshot: snapshot)
     }
 
     func injectWheel(index: Int, delta: Int, settings: TabletSettings?) {
@@ -1461,7 +1333,7 @@ final class InputInjector: @unchecked Sendable {
         }
     }
 
-    private func currentCursorPosition() -> CGPoint {
+    func currentCursorPosition() -> CGPoint {
         // CGEvent(source: nil).location is the cursor in CG global (top-left
         // origin) coordinates and is safe off the main thread — unlike
         // NSEvent.mouseLocation (AppKit, main-thread) which this previously
@@ -1473,7 +1345,7 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Click resolution
 
-    private func resolveClick(
+    func resolveClick(
         _ candidate: CGPoint,
         snapshot: InjectionSnapshot
     ) -> (CGPoint, Int) {
@@ -1565,7 +1437,7 @@ final class InputInjector: @unchecked Sendable {
     /// scheduled on HIDThread (same as inject()), so tapLastPhysicalFlags is written and
     /// read on one thread — the cross-thread race that previously caused stuck modifiers
     /// is eliminated at the source rather than worked around by dropping physical state.
-    private var moveSafeEventFlags: CGEventFlags {
+    var moveSafeEventFlags: CGEventFlags {
         let synth = groundTruthSyntheticFlags.rawValue
             | SharedAuxModifierState.shared.groundTruthFlags.rawValue
         return CGEventFlags(rawValue:
@@ -1742,7 +1614,7 @@ final class InputInjector: @unchecked Sendable {
     /// movement events (mouseMoved, leftMouseDragged, tabletPointer).
     /// Keeping the flags decision at the call site avoids invoking
     /// `CGEventSource.flagsState` — a kernel round-trip — on every pen report.
-    private func finalizeAndPost(_ event: CGEvent) {
+    func finalizeAndPost(_ event: CGEvent) {
         #if DEBUG
         assert(
             groundTruthSyntheticFlags.rawValue & ModifierMath.managedMask
@@ -1807,7 +1679,7 @@ final class InputInjector: @unchecked Sendable {
     /// Stored once at init — NOT a computed property.  Creating a new CGEventSource on
     /// every event (400+/s at 133 Hz) allocates a private-state slab in the WindowServer
     /// on each call, causing the memory leak observed when a pen is in proximity.
-    private let sessionSource: CGEventSource? = CGEventSource(stateID: .privateState)
+    let sessionSource: CGEventSource? = CGEventSource(stateID: .privateState)
 
     /// Resolves effective pen pose for CGEvent stamping.
     /// When useRotationAsTilt is true on the active tool, real tilt is suppressed and
@@ -1843,7 +1715,7 @@ final class InputInjector: @unchecked Sendable {
         return (tiltX, tiltY, rotation)
     }
 
-    private func postMouseDown(
+    func postMouseDown(
         button: CGMouseButton, at location: CGPoint,
         pressure: Double, clickCount: Int,
         point: TabletPoint? = nil,
@@ -1892,7 +1764,7 @@ final class InputInjector: @unchecked Sendable {
         finalizeAndPost(e)
     }
 
-    private func postMouseUp(
+    func postMouseUp(
         button: CGMouseButton, at location: CGPoint,
         clickCount: Int, point: TabletPoint? = nil,
         snapshot: InjectionSnapshot

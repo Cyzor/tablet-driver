@@ -20,6 +20,7 @@
 		AA000002 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000002 /* StatusItemController.swift */; };
 		AA000074 /* MainMenuBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000074 /* MainMenuBuilder.swift */; };
 		AA000008 /* InputInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000008 /* InputInjector.swift */; };
+		AA000083 /* InputInjector+Touch.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000083 /* InputInjector+Touch.swift */; };
 		AA0000DM /* DisplayMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000DM /* DisplayMapper.swift */; };
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
 		AA000010 /* BezierCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* BezierCurve.swift */; };
@@ -108,6 +109,7 @@
 		AB000002 /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
 		AB000074 /* MainMenuBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuBuilder.swift; sourceTree = "<group>"; };
 		AB000008 /* InputInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputInjector.swift; sourceTree = "<group>"; };
+		AB000083 /* InputInjector+Touch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InputInjector+Touch.swift"; sourceTree = "<group>"; };
 		AB0000DM /* DisplayMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMapper.swift; sourceTree = "<group>"; };
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
 		AB000010 /* BezierCurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BezierCurve.swift; sourceTree = "<group>"; };
@@ -249,6 +251,7 @@
 				AB00HH01 /* HIDHelpers.swift */,
 				AB00TT01 /* TouchStateTracker.swift */,
 				AB000008 /* InputInjector.swift */,
+				AB000083 /* InputInjector+Touch.swift */,
 				AB0000DM /* DisplayMapper.swift */,
 				AB00IS01 /* InjectionSnapshot.swift */,
 				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
@@ -478,6 +481,7 @@
 				AA00HT01 /* HIDThread.swift in Sources */,
 				05BFE59C2F79FE5200782B9E /* AboutWindowController.swift in Sources */,
 				AA000008 /* InputInjector.swift in Sources */,
+				AA000083 /* InputInjector+Touch.swift in Sources */,
 				AA0000DM /* DisplayMapper.swift in Sources */,
 				AA00IS01 /* InjectionSnapshot.swift in Sources */,
 				AA000009 /* TabletSettings.swift in Sources */,
