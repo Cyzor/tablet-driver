@@ -16,9 +16,9 @@ struct TouchRingSlotRowView: View, Equatable {
     let speedBinding: Binding<Double>
     let cwBinding: Binding<ButtonBinding>
     let ccwBinding: Binding<ButtonBinding>
-    /// Dial-LED color for this mode slot; nil (all Wacom call sites) hides
+    /// Dial-LED control for this mode slot; nil (all Wacom call sites) hides
     /// the color well entirely. Xencelabs Quick Keys only.
-    var colorBinding: Binding<Color>? = nil
+    var ledWell: LEDColorControl? = nil
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.slot == rhs.slot
@@ -64,22 +64,19 @@ struct TouchRingSlotRowView: View, Equatable {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .layoutPriority(1)
                         .help("Adjust how fast the ring scrolls or repeats key presses.")
-                        .padding(.trailing, colorBinding == nil ? 40 : 12)
+                        .padding(.trailing, ledWell == nil ? 40 : 12)
                 } else {
                     Spacer(minLength: 10)
                 }
 
-                if let colorBinding {
-                    // Standard macOS color well → system color panel,
-                    // TextEdit-style. Sets the dial's LED for this mode; the
-                    // panel's opacity slider doubles as LED brightness.
-                    // Trailing-edge placement after the flexible slider/spacer
-                    // keeps every row's well on one vertical line — inline
-                    // placement next to the action picker made them wander
-                    // with the picker's width.
-                    ColorPicker("", selection: colorBinding, supportsOpacity: true)
-                        .labelsHidden()
-                        .controlSize(.small)
+                if let ledWell {
+                    // Compact light dot → the shared swatch/brightness
+                    // editor in a popover (LEDColorControl). Sets the dial's
+                    // LED for this mode. Trailing-edge placement after the
+                    // flexible slider/spacer keeps every row's well on one
+                    // vertical line — inline placement next to the action
+                    // picker made them wander with the picker's width.
+                    ledWell
                         .fixedSize()
                         .padding(.trailing, 40)
                         .help("Dial LED color and brightness while this mode is active.")

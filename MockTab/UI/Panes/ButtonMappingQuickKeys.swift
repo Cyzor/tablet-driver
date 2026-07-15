@@ -88,7 +88,7 @@ struct QuickKeysSectionView: View {
                     speedBinding: slotSpeedBinding(at: idx),
                     cwBinding: slotBinding(at: idx, direction: .cw),
                     ccwBinding: slotBinding(at: idx, direction: .ccw),
-                    colorBinding: slotColorBinding(at: idx)
+                    ledWell: slotLEDWell(at: idx)
                 )
                 .equatable()
             }
@@ -155,63 +155,28 @@ struct QuickKeysSectionView: View {
         )
     }
 
-    /// Coalesces a burst of color-wheel updates into one undo entry, registered
-    /// once the wheel goes quiet — the system color panel fires the binding
-    /// continuously during a drag, and only the finished designation is worth
-    /// an undo step (TextEdit-style). Reference type so the snapshot and timer
-    /// survive view re-renders; @State preserves the instance.
-    private final class DialColorUndoCoalescer {
-        private var snapshot: [ControlSlot]?
-        private var pending: DispatchWorkItem?
-
-        func noteChange(settings: TabletSettings, before slots: [ControlSlot]) {
-            if snapshot == nil { snapshot = slots }
-            pending?.cancel()
-            let work = DispatchWorkItem { [weak self, weak settings] in
-                MainActor.assumeIsolated {
-                    guard let self, let settings, let snap = self.snapshot else { return }
-                    self.snapshot = nil
-                    settings.record("Dial Color") { settings.touchRingSlots = snap }
-                }
-            }
-            pending = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
-        }
-    }
-
-    @State private var dialColorUndo = DialColorUndoCoalescer()
-
-    /// Dial-LED color for one mode slot, bridged to SwiftUI Color. Reads the
-    /// stored custom color or the factory palette default; writes store raw
-    /// sRGB bytes (no LED calibration — close enough to tell modes apart).
-    /// The panel's opacity slider doubles as LED brightness: it's stored as
-    /// the alpha and premultiplied into the RGB when pushed to the device,
-    /// exactly how the vendor stack scales brightness.
-    private func slotColorBinding(at index: Int) -> Binding<Color> {
-        Binding(
-            get: {
-                let defaults = XencelabsControl.defaultSlotColors
-                let d = defaults[((index % defaults.count) + defaults.count) % defaults.count]
-                let c = settings.touchRingSlots.indices.contains(index)
-                    ? settings.touchRingSlots[index].ledColor : nil
-                let (r, g, b, a) = c.map { ($0.r, $0.g, $0.b, $0.a) } ?? (d.r, d.g, d.b, 255)
-                return Color(
-                    red: Double(r) / 255, green: Double(g) / 255, blue: Double(b) / 255,
-                    opacity: Double(a) / 255)
-            },
-            set: { newValue in
-                guard settings.touchRingSlots.indices.contains(index),
-                      let rgb = NSColor(newValue).usingColorSpace(.sRGB)
-                else { return }
-                dialColorUndo.noteChange(settings: settings, before: settings.touchRingSlots)
-                var updated = settings.touchRingSlots
-                updated[index].ledColor = ControlSlot.LEDColor(
-                    r: UInt8((rgb.redComponent * 255).rounded()),
-                    g: UInt8((rgb.greenComponent * 255).rounded()),
-                    b: UInt8((rgb.blueComponent * 255).rounded()),
-                    a: UInt8((rgb.alphaComponent * 255).rounded()))
-                settings.touchRingSlots = updated
-            }
-        )
+    /// The shared light editor for one mode slot's dial LED, in compact well
+    /// form (a color dot opening the swatch/brightness popover). Undo
+    /// coalescing lives inside LEDColorControl; the binding just reads and
+    /// writes the slot's stored color (nil = factory palette default).
+    private func slotLEDWell(at index: Int) -> LEDColorControl {
+        let defaults = XencelabsControl.defaultSlotColors
+        let d = defaults[((index % defaults.count) + defaults.count) % defaults.count]
+        return LEDColorControl(
+            style: .well,
+            color: Binding(
+                get: {
+                    guard settings.touchRingSlots.indices.contains(index) else { return nil }
+                    return settings.touchRingSlots[index].ledColor
+                },
+                set: { newValue in
+                    guard settings.touchRingSlots.indices.contains(index) else { return }
+                    var updated = settings.touchRingSlots
+                    updated[index].ledColor = newValue
+                    settings.touchRingSlots = updated
+                }),
+            defaultWire: d,
+            undoLabel: "Dial Color",
+            settings: settings)
     }
 }

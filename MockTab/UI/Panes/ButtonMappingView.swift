@@ -63,15 +63,26 @@ struct ButtonMappingView: View {
 
     // MARK: - Companion peripheral (e.g. Xencelabs Quick Keys puck/dongle)
 
-    /// PID of a connected aux-only companion peripheral for this tablet
-    /// (currently only the Xencelabs Quick Keys puck/dongle), or nil if
-    /// none is connected. Resolved live from `VendorDeviceRegistry`'s
-    /// static companion hint plus which devices are actually connected —
-    /// see `VendorDeviceRegistry.connectedCompanion`.
+    /// PID of an aux-only companion peripheral for this tablet (currently
+    /// only the Xencelabs Quick Keys puck/dongle). A live connection wins
+    /// (`VendorDeviceRegistry.connectedCompanion`); failing that, a
+    /// companion seen earlier this session still resolves so its section
+    /// stays visible — greyed via `companionIsConnected` — instead of
+    /// vanishing while the accessory is detached (disable-vs-hide rule:
+    /// disconnection is temporary state, not a capability change).
     private var companionProductID: Int? {
         guard let pid = productID else { return nil }
-        return VendorDeviceRegistry.connectedCompanion(
+        if let live = VendorDeviceRegistry.connectedCompanion(
             forProductID: pid, connectedProductIDs: tabletManager.connectedProductIDs)
+        {
+            return live
+        }
+        return VendorDeviceRegistry.profile(forProductID: pid)?.companions
+            .first { tabletManager.contexts[$0] != nil }
+    }
+
+    private var companionIsConnected: Bool {
+        companionContext?.isConnected == true
     }
 
     private var companionContext: DeviceContext? {
@@ -313,6 +324,10 @@ struct ButtonMappingView: View {
         if let companionSettings = companionContext?.settings {
             QuickKeysSectionView(
                 settings: companionSettings, spec: companionSpec, liveButtons: companionLiveButtons)
+                // Greyed, not hidden, while the puck is detached — edits
+                // still land in its settings and replay on reconnect, so
+                // there's no reason to let the section vanish mid-session.
+                .disabled(!companionIsConnected)
         }
     }
 
@@ -401,15 +416,22 @@ struct ButtonMappingView: View {
                         comment: "Bezel button N label, e.g. 'Bezel Button 1'"), lb: lb)
             }
             if hasBezelLED {
-                HStack {
+                HStack(alignment: .top) {
                     Text("Button Backlight")
                     Spacer()
-                    ColorPicker(
-                        "Backlight", selection: bezelLEDBinding,
-                        supportsOpacity: true)
-                        .labelsHidden()
+                    LEDColorControl(
+                        style: .inline,
+                        color: Binding(
+                            get: { settings.bezelLEDColorValue },
+                            set: { settings.bezelLEDColorValue = $0 }),
+                        defaultWire: (r: 0xF7, g: 0x00, b: 0x00),
+                        undoLabel: "Bezel Button Backlight",
+                        settings: settings)
+                        // Ease off the window edge a touch — flush-trailing
+                        // reads cramped next to the bordered rows above.
+                        .padding(.trailing, 12)
                 }
-                .help("Color of the light behind the bezel buttons. Opacity sets its brightness. The hardware keeps its own color until you change it.")
+                .help("Color and brightness of the light behind the bezel buttons. The hardware keeps its own color until you change it.")
             }
         } header: {
             PaneSectionHeader("Bezel Buttons") {
@@ -428,55 +450,6 @@ struct ButtonMappingView: View {
         return spec.parser == .xencelabs && spec.isPenDisplay
     }
 
-    /// Coalesces a continuous color-picker drag into one undo step
-    /// (same pattern as the Quick Keys dial-color wells).
-    private final class BezelColorUndoCoalescer {
-        private var snapshot: String?
-        private var pending: DispatchWorkItem?
-
-        func noteChange(settings: TabletSettings, before value: String) {
-            if snapshot == nil { snapshot = value }
-            pending?.cancel()
-            let work = DispatchWorkItem { [weak self, weak settings] in
-                MainActor.assumeIsolated {
-                    guard let self, let settings, let snap = self.snapshot else { return }
-                    self.snapshot = nil
-                    settings.record("Bezel Button Backlight") { settings.bezelLEDColor = snap }
-                }
-            }
-            pending = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
-        }
-    }
-
-    @State private var bezelColorUndo = BezelColorUndoCoalescer()
-
-    /// Bezel-LED color bridged to SwiftUI Color. Reads the stored color or,
-    /// before the user ever touches it, parks the well at the vendor's
-    /// default red without sending. Writes store raw sRGB bytes (no LED
-    /// calibration — same trade as the dial wells); the opacity slider
-    /// doubles as LED brightness, stored as the alpha and premultiplied
-    /// into the RGB when pushed to the device.
-    private var bezelLEDBinding: Binding<Color> {
-        Binding(
-            get: {
-                let c = settings.bezelLEDColorValue
-                    ?? ControlSlot.LEDColor(r: 0xF7, g: 0, b: 0, a: 255)
-                return Color(
-                    red: Double(c.r) / 255, green: Double(c.g) / 255,
-                    blue: Double(c.b) / 255, opacity: Double(c.a) / 255)
-            },
-            set: { newValue in
-                guard let rgb = NSColor(newValue).usingColorSpace(.sRGB) else { return }
-                bezelColorUndo.noteChange(settings: settings, before: settings.bezelLEDColor)
-                settings.bezelLEDColorValue = ControlSlot.LEDColor(
-                    r: UInt8((rgb.redComponent * 255).rounded()),
-                    g: UInt8((rgb.greenComponent * 255).rounded()),
-                    b: UInt8((rgb.blueComponent * 255).rounded()),
-                    a: UInt8((rgb.alphaComponent * 255).rounded()))
-            }
-        )
-    }
 
     @ViewBuilder
     private func bezelButtonRow(index: Int, label: String, lb: LiveButtonState) -> some View {

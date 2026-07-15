@@ -62,6 +62,7 @@
 		AA000073 /* OrientationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000073 /* OrientationPickerView.swift */; };
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
 		AA000206 /* TabletSettings+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000206 /* TabletSettings+Persistence.swift */; };
+		AA000207 /* LEDColorControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000207 /* LEDColorControl.swift */; };
 		AA000205 /* TabletSettings+AppOverrides.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000205 /* TabletSettings+AppOverrides.swift */; };
 		AA000204 /* TabletSettings+Presets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000204 /* TabletSettings+Presets.swift */; };
 		AA000201 /* ButtonBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000201 /* ButtonBinding.swift */; };
@@ -163,6 +164,7 @@
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB000100 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		AB000206 /* TabletSettings+Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+Persistence.swift"; sourceTree = "<group>"; };
+		AB000207 /* LEDColorControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LEDColorControl.swift; sourceTree = "<group>"; };
 		AB000205 /* TabletSettings+AppOverrides.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+AppOverrides.swift"; sourceTree = "<group>"; };
 		AB000204 /* TabletSettings+Presets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+Presets.swift"; sourceTree = "<group>"; };
 		AB000201 /* ButtonBinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonBinding.swift; sourceTree = "<group>"; };
@@ -335,6 +337,7 @@
 			children = (
 				AB000052 /* AppOverrideBar.swift */,
 				AB000075 /* TouchRingSlotRow.swift */,
+				AB000207 /* LEDColorControl.swift */,
 				AB000076 /* ButtonBindingControl.swift */,
 				AB000077 /* LiveResizeDetector.swift */,
 				AB000078 /* ButtonRow.swift */,
@@ -519,6 +522,7 @@
 				AA000010 /* BezierCurve.swift in Sources */,
 				AA000100 /* Profile.swift in Sources */,
 				AA000206 /* TabletSettings+Persistence.swift in Sources */,
+				AA000207 /* LEDColorControl.swift in Sources */,
 				AA000205 /* TabletSettings+AppOverrides.swift in Sources */,
 				AA000204 /* TabletSettings+Presets.swift in Sources */,
 				AA000201 /* ButtonBinding.swift in Sources */,

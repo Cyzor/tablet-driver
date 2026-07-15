@@ -2096,6 +2096,9 @@
         }
       }
     },
+    "Blue" : {
+      "comment" : "LED swatch name"
+    },
     "Brightness" : {
       "localizations" : {
         "de" : {
@@ -2117,6 +2120,9 @@
           }
         }
       }
+    },
+    "Brightness of the light." : {
+
     },
     "Bring All to Front" : {
       "comment" : "Window menu",
@@ -3148,7 +3154,7 @@
         }
       }
     },
-    "Color of the light behind the display's bezel buttons. Opacity sets its brightness. The hardware keeps its own color until you change it." : {
+    "Color and brightness of the light behind the bezel buttons. The hardware keeps its own color until you change it." : {
 
     },
     "Color Space" : {
@@ -3749,6 +3755,9 @@
         }
       }
     },
+    "Custom color" : {
+
+    },
     "Cut" : {
       "comment" : "Edit menu: cut selection",
       "localizations" : {
@@ -3777,6 +3786,9 @@
           }
         }
       }
+    },
+    "Cyan" : {
+      "comment" : "LED swatch name"
     },
     "Cycle" : {
       "comment" : "A menu item that cycles through touch ring modes.",
@@ -6124,6 +6136,9 @@
         }
       }
     },
+    "Green" : {
+      "comment" : "LED swatch name"
+    },
     "Guides you through a short set of actions to capture how your device communicates. Produces a small JSON file you can share to add or fix device support." : {
       "comment" : "Help text for the Collect Device Data button",
       "localizations" : {
@@ -7467,6 +7482,12 @@
         }
       }
     },
+    "LED brightness" : {
+
+    },
+    "LED color" : {
+
+    },
     "Left" : {
       "comment" : "Left touch strip row label",
       "localizations" : {
@@ -7748,6 +7769,9 @@
           }
         }
       }
+    },
+    "Magenta" : {
+      "comment" : "LED swatch name"
     },
     "Manual Fine-Tune" : {
       "comment" : "Disclosure group label for manual parallax offset controls",
@@ -9339,6 +9363,9 @@
         }
       }
     },
+    "Orange" : {
+      "comment" : "LED swatch name"
+    },
     "Orientation" : {
       "comment" : "Section header in Tablet Area tab",
       "localizations" : {
@@ -10672,6 +10699,9 @@
           }
         }
       }
+    },
+    "Red" : {
+      "comment" : "LED swatch name"
     },
     "Redo" : {
       "comment" : "Edit menu: redo last undone action",
@@ -14839,6 +14869,9 @@
         }
       }
     },
+    "White" : {
+      "comment" : "LED swatch name"
+    },
     "Width" : {
       "comment" : "Coordinate readout label in Tablet Area tab",
       "localizations" : {
@@ -14929,6 +14962,9 @@
           }
         }
       }
+    },
+    "Yellow" : {
+      "comment" : "LED swatch name"
     },
     "You dropped %lld apps. Add all of them as overrides?" : {
       "comment" : "Alert when user drag-drops multiple apps into the override bar",
