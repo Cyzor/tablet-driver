@@ -6,6 +6,11 @@ import AppKit
 import Foundation
 import SwiftUI
 
+// Preset (named profile) handling, split out of TabletSettings.swift:
+// preset management and persistence, the full-state snapshots used for
+// preset-activation undo, and profile import/export. The preset stored
+// state lives on the main class body (Swift class extensions can't hold
+// stored properties).
 extension TabletSettings {
 
     // MARK: - Preset management

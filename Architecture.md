@@ -114,7 +114,7 @@ Standalone aux-only peripherals (currently the Xencelabs Quick Keys puck) are *c
 
 ## Settings
 
-`TabletSettings` lives on the main thread and acts as the single source of truth that SwiftUI views observe: pen-feel curves, button bindings, calibration, display mapping, per-app overrides, profiles. `Settings/Profile.swift` and `Settings/PresetExporter/Importer` handle the JSON shape that ships in releases (`example-profile.json`).
+`TabletSettings` lives on the main thread and acts as the single source of truth that SwiftUI views observe: pen-feel curves, button bindings, calibration, display mapping, per-app overrides, profiles. The class spans four files: `TabletSettings.swift` holds the stored properties, init, per-device loading, and undo/redo, while `TabletSettings+Presets.swift`, `TabletSettings+AppOverrides.swift`, and `TabletSettings+Persistence.swift` hold preset handling, per-app behavior, and the UserDefaults layer. The value types it stores (`ButtonBinding`, `ControlSlot`, `TabletOrientation`) each have their own file. `Settings/Profile.swift` and `Settings/PresetExporter/Importer` handle the JSON shape that ships in releases (`example-profile.json`).
 
 The settings layer calls `DeviceContext.observeInjectionSnapshot(…)` whenever a relevant value changes; `DeviceContext` packages the snapshot and hands it across.
 

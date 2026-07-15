@@ -6,6 +6,11 @@ import AppKit
 import Foundation
 import SwiftUI
 
+// Per-app behavior, split out of TabletSettings.swift: auto-switching on
+// app focus, per-app override management and persistence, and the
+// app-to-preset binding persistence auto-switching consumes. The override
+// stored state lives on the main class body (Swift class extensions can't
+// hold stored properties).
 extension TabletSettings {
 
     // MARK: - App auto-switching

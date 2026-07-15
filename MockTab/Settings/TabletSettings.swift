@@ -42,6 +42,12 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "settings"
 ///
 /// Activating/deactivating any overlay republishes all @Published properties
 /// so SwiftUI views re-render against the effective composed value.
+///
+/// The class spans four files: this one holds every stored property (Swift
+/// extensions can't) plus init, per-device loading, and undo/redo, while the
+/// sibling `TabletSettings+*.swift` extensions hold preset handling
+/// (+Presets), per-app overrides and auto-switching (+AppOverrides), and the
+/// UserDefaults layer (+Persistence). Everything runs on the main actor.
 @MainActor
 final class TabletSettings: ObservableObject {
 
