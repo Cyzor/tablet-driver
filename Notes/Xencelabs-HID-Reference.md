@@ -191,6 +191,25 @@ OTD configures **3 auxiliary buttons** (`AuxiliaryButtons.ButtonCount: 3`) for b
 
 The Pen Display's three capacitive buttons built into its bezel ride **the exact same aux frame format** as the Quick Keys puck's express keys: report ID 2, tag `0xF0`, with bits 0–2 of the button bytes going one-hot on a clean tap. The wire format gives no way to tell a bezel-button frame from a puck express-key frame; the display has no puck of its own, so its driver-side handling remaps these frames to dedicated bezel-button slots (16–18 in the shared slot convention) rather than express-key slots. Confirmed by live capture during field testing.
 
+#### Bezel-button LED (confirmed 2026-07-15)
+
+The three bezel buttons share a single backlight LED, and it speaks **the same command as the puck's dial LED**: `02 B4 01 01 00 00 R G B 00 …` on the report-2 vendor pipe, with the vendor's brightness slider premultiplied into the RGB values host-side — no separate brightness field. Captured live while driving the vendor UI's "Tasten zur Gerätesteuerung" color/brightness controls (the frames surfaced on the *input* side of the capture, consistent with the Pen Display's known habit of echoing vendor handshake frames back to the host).
+
+Vendor palette as captured at full brightness (LED-calibrated, not sRGB — and calibrated differently from the puck's dial palette in `XencelabsControl.defaultSlotColors`):
+
+| Vendor swatch | Wire RGB |
+|---|---|
+| White | `FF 78 5A` (warm-compensated; at ~60% brightness: `96 4D 2F`) |
+| Magenta | `FF 00 42` |
+| Blue | `00 00 FE` |
+| Cyan | `00 FF C8` |
+| Green | `3C FF 00` |
+| Yellow | `FF 55 00` |
+| Orange | `FD 14 00` |
+| Red | `F7 00 00` |
+
+Implication: `XencelabsControl.dialLEDPayload` (or equivalent `B4 01 01` builder) should work as-is against the Pen Display's vendor interface; only the palette constants differ. Not yet exercised from MockTab.
+
 ***
 
 ## 8. Pen Hardware Specifications
