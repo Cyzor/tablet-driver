@@ -28,7 +28,7 @@ struct ButtonMappingView: View {
     }
 
     // Not private: read from the ButtonMappingView extension in
-    // "Button mapping bindings.swift".
+    // ButtonMappingBindings.swift.
     var tool: ToolSettings { settings.activeTool }
 
     private var spec: WacomDeviceSpec? {
@@ -497,11 +497,11 @@ struct ButtonMappingView: View {
     }
 
     // buttonRow / activeIndicator / labelText now live in
-    // UI/Components/Button row.swift, shared with QuickKeysSectionView.
+    // UI/Components/ButtonRow.swift, shared with QuickKeysSectionView.
 
 }
 
 // Touch ring slot rows, the shortcut-recorder control, and the live-resize
 // detector used above all live in UI/Components/ now — see
-// "Touch ring slot row.swift", "Button binding control.swift", and
-// "Live resize detector.swift".
+// TouchRingSlotRow.swift, ButtonBindingControl.swift, and
+// LiveResizeDetector.swift.

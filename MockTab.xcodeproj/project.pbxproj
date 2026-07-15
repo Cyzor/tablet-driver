@@ -47,12 +47,12 @@
 		AA000045 /* WacomFallbackDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000045 /* WacomFallbackDevice.swift */; };
 		AA000049 /* WacomKnownDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomKnownDevice.swift */; };
 		AA000052 /* AppOverrideBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* AppOverrideBar.swift */; };
-		AA000075 /* Touch ring slot row.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000075 /* Touch ring slot row.swift */; };
-		AA000076 /* Button binding control.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000076 /* Button binding control.swift */; };
-		AA000077 /* Live resize detector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000077 /* Live resize detector.swift */; };
-		AA000078 /* Button row.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000078 /* Button row.swift */; };
-		AA000079 /* Button mapping quick keys.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000079 /* Button mapping quick keys.swift */; };
-		AA000080 /* Button mapping bindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000080 /* Button mapping bindings.swift */; };
+		AA000075 /* TouchRingSlotRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000075 /* TouchRingSlotRow.swift */; };
+		AA000076 /* ButtonBindingControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000076 /* ButtonBindingControl.swift */; };
+		AA000077 /* LiveResizeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000077 /* LiveResizeDetector.swift */; };
+		AA000078 /* ButtonRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000078 /* ButtonRow.swift */; };
+		AA000079 /* ButtonMappingQuickKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000079 /* ButtonMappingQuickKeys.swift */; };
+		AA000080 /* ButtonMappingBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000080 /* ButtonMappingBindings.swift */; };
 		AA000053 /* FontExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000053 /* FontExtensions.swift */; };
 		AA000054 /* PenDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000054 /* PenDiagramView.swift */; };
 		AA000055 /* DisclosureRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000055 /* DisclosureRow.swift */; };
@@ -141,12 +141,12 @@
 		AB000045 /* WacomFallbackDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomFallbackDevice.swift; sourceTree = "<group>"; };
 		AB000049 /* WacomKnownDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomKnownDevice.swift; sourceTree = "<group>"; };
 		AB000052 /* AppOverrideBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverrideBar.swift; sourceTree = "<group>"; };
-		AB000075 /* Touch ring slot row.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Touch ring slot row.swift"; sourceTree = "<group>"; };
-		AB000076 /* Button binding control.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Button binding control.swift"; sourceTree = "<group>"; };
-		AB000077 /* Live resize detector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Live resize detector.swift"; sourceTree = "<group>"; };
-		AB000078 /* Button row.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Button row.swift"; sourceTree = "<group>"; };
-		AB000079 /* Button mapping quick keys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Button mapping quick keys.swift"; sourceTree = "<group>"; };
-		AB000080 /* Button mapping bindings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Button mapping bindings.swift"; sourceTree = "<group>"; };
+		AB000075 /* TouchRingSlotRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchRingSlotRow.swift; sourceTree = "<group>"; };
+		AB000076 /* ButtonBindingControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonBindingControl.swift; sourceTree = "<group>"; };
+		AB000077 /* LiveResizeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveResizeDetector.swift; sourceTree = "<group>"; };
+		AB000078 /* ButtonRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonRow.swift; sourceTree = "<group>"; };
+		AB000079 /* ButtonMappingQuickKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingQuickKeys.swift; sourceTree = "<group>"; };
+		AB000080 /* ButtonMappingBindings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingBindings.swift; sourceTree = "<group>"; };
 		AB000053 /* FontExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontExtensions.swift; sourceTree = "<group>"; };
 		AB000054 /* PenDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenDiagramView.swift; sourceTree = "<group>"; };
 		AB000055 /* DisclosureRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisclosureRow.swift; sourceTree = "<group>"; };
@@ -300,8 +300,8 @@
 				AB000012 /* TabletAreaView.swift */,
 				AB000013 /* PenFeelView.swift */,
 				AB000014 /* ButtonMappingView.swift */,
-				AB000079 /* Button mapping quick keys.swift */,
-				AB000080 /* Button mapping bindings.swift */,
+				AB000079 /* ButtonMappingQuickKeys.swift */,
+				AB000080 /* ButtonMappingBindings.swift */,
 				AB000015 /* DisplayMappingView.swift */,
 				AB000016 /* ScratchpadView.swift */,
 				AB000033 /* InfoView.swift */,
@@ -316,10 +316,10 @@
 			isa = PBXGroup;
 			children = (
 				AB000052 /* AppOverrideBar.swift */,
-				AB000075 /* Touch ring slot row.swift */,
-				AB000076 /* Button binding control.swift */,
-				AB000077 /* Live resize detector.swift */,
-				AB000078 /* Button row.swift */,
+				AB000075 /* TouchRingSlotRow.swift */,
+				AB000076 /* ButtonBindingControl.swift */,
+				AB000077 /* LiveResizeDetector.swift */,
+				AB000078 /* ButtonRow.swift */,
 				05D7EB7A2F79E6E30086E03F /* AboutView.swift */,
 				AB000103 /* CaptureGuideView.swift */,
 				AB000055 /* DisclosureRow.swift */,
@@ -511,12 +511,12 @@
 				AA000033 /* InfoView.swift in Sources */,
 				AA000034 /* ProfilesView.swift in Sources */,
 				AA000052 /* AppOverrideBar.swift in Sources */,
-				AA000075 /* Touch ring slot row.swift in Sources */,
-				AA000076 /* Button binding control.swift in Sources */,
-				AA000077 /* Live resize detector.swift in Sources */,
-				AA000078 /* Button row.swift in Sources */,
-				AA000079 /* Button mapping quick keys.swift in Sources */,
-				AA000080 /* Button mapping bindings.swift in Sources */,
+				AA000075 /* TouchRingSlotRow.swift in Sources */,
+				AA000076 /* ButtonBindingControl.swift in Sources */,
+				AA000077 /* LiveResizeDetector.swift in Sources */,
+				AA000078 /* ButtonRow.swift in Sources */,
+				AA000079 /* ButtonMappingQuickKeys.swift in Sources */,
+				AA000080 /* ButtonMappingBindings.swift in Sources */,
 				AA000054 /* PenDiagramView.swift in Sources */,
 				AA000154 /* TouchRingDiagramView.swift in Sources */,
 				AA000053 /* FontExtensions.swift in Sources */,
