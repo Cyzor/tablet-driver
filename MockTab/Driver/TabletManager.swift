@@ -476,8 +476,7 @@ final class TabletManager: ObservableObject {
             context.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
             context.injector.activeAppNeedsTabletPointerEvents =
                 AppWatcher.qtGtkBundleIDs.contains(bundleID)
-            context.injector.activeAppProfile =
-                AppWatcher.plainMouseBundleIDs.contains(bundleID) ? .pagesPlainMouse : .generic
+            context.injector.activeAppProfile = AppWatcher.inputProfile(for: bundleID)
         }
 
         // Propagate context.objectWillChange to TabletManager so SwiftUI observers

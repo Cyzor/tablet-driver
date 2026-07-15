@@ -237,11 +237,16 @@ extension InputInjector {
 
         } else {
             // ── Continuous movement: delta gate ────────────────────────────────
+            // Pressure-only changes count as movement so drawing apps receive
+            // pressure updates from a stationary pen (airbrush buildup) — but
+            // not for Finder, where the resulting drag events cancel desktop
+            // rename-edit (see AppInputProfile.finderPlainMouse).
             let moved =
                 !hasPostedPoint
                 || (screenPoint.x - lastPostedPoint.x).magnitude > Self.positionEpsilon
                 || (screenPoint.y - lastPostedPoint.y).magnitude > Self.positionEpsilon
-                || (tipDown && (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon)
+                || (tipDown && activeAppProfile != .finderPlainMouse
+                    && (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon)
 
             // USB mouse left button held (KC-100): injectMouseButtons() already sent
             // leftMouseDown; use leftMouseDragged so apps receive proper drag events.

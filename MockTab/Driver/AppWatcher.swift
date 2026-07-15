@@ -34,6 +34,14 @@ final class AppWatcher {
         "com.apple.Numbers",
     ]
 
+    /// Maps the frontmost app to its input profile. Also used by
+    /// TabletManager when a device connects after launch.
+    static func inputProfile(for bundleID: String) -> InputInjector.AppInputProfile {
+        if plainMouseBundleIDs.contains(bundleID) { return .pagesPlainMouse }
+        if bundleID == "com.apple.finder" { return .finderPlainMouse }
+        return .generic
+    }
+
     private var observerToken: (any NSObjectProtocol)?
     private var releaseTokens: [any NSObjectProtocol] = []
 
@@ -46,8 +54,7 @@ final class AppWatcher {
         else { return }
         let name = app.localizedName ?? bundleID
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
-        let profile: InputInjector.AppInputProfile =
-            Self.plainMouseBundleIDs.contains(bundleID) ? .pagesPlainMouse : .generic
+        let profile = Self.inputProfile(for: bundleID)
         for ctx in TabletManager.shared.contexts.values {
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
             ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
@@ -111,8 +118,7 @@ final class AppWatcher {
         else { return }
         let name = app.localizedName ?? bundleID
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
-        let profile: InputInjector.AppInputProfile =
-            Self.plainMouseBundleIDs.contains(bundleID) ? .pagesPlainMouse : .generic
+        let profile = Self.inputProfile(for: bundleID)
         for ctx in TabletManager.shared.contexts.values {
             ctx.settings.handleAppActivation(bundleID: bundleID, appName: name)
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)

@@ -94,7 +94,16 @@ final class InputInjector: @unchecked Sendable {
     var activeAppNeedsTabletPointerEvents: Bool = false
 
     /// Per-app input profile, set by AppWatcher on every app switch.
-    enum AppInputProfile { case generic, pagesPlainMouse }
+    ///
+    /// `finderPlainMouse` (Finder): pressure fluctuation while the tip is held
+    /// on one spot must not emit drag events — Finder's desktop icon view
+    /// cancels its pending rename-edit on any leftMouseDragged after the
+    /// down, so a stationary pen click could never enter rename mode (window
+    /// views tolerate the sub-threshold drags; the desktop does not). Like
+    /// `pagesPlainMouse`, it also opts out of proximity events and tip-up
+    /// assist (the `== .generic` gates); unlike it, tablet fields stay on
+    /// the events — Finder ignores them and the smaller diff is safer.
+    enum AppInputProfile { case generic, pagesPlainMouse, finderPlainMouse }
     var activeAppProfile: AppInputProfile = .generic
 
     /// True when this device is the active context (TabletManager.activeContext === me).
