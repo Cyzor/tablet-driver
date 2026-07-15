@@ -2307,6 +2307,9 @@
         }
       }
     },
+    "Button Backlight" : {
+
+    },
     "Button Mapping" : {
       "comment" : "Dock menu: open Button Mapping tab\nMenu item: open Button Mapping tab",
       "localizations" : {
@@ -3144,6 +3147,9 @@
           }
         }
       }
+    },
+    "Color of the light behind the display's bezel buttons. Opacity sets its brightness. The hardware keeps its own color until you change it." : {
+
     },
     "Color Space" : {
       "localizations" : {

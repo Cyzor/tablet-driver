@@ -596,6 +596,24 @@ final class WacomKnownDevice: TabletDevice {
             tag: "panel brightness \(clamped)")
     }
 
+    /// Last bezel LED color sent, to suppress redundant writes while the
+    /// color picker drags.
+    private var lastBezelLED: (r: UInt8, g: UInt8, b: UInt8)?
+
+    /// Set the shared backlight LED behind the pen display's bezel buttons.
+    /// Same wire command as the Quick Keys dial LED; brightness arrives
+    /// premultiplied into the RGB (the LED has no brightness register).
+    func setBezelLEDColor(r: UInt8, g: UInt8, b: UInt8) {
+        guard hasDisplayBrightnessControl else { return }
+        guard lastBezelLED?.r != r || lastBezelLED?.g != g || lastBezelLED?.b != b
+        else { return }
+        lastBezelLED = (r, g, b)
+        sendXencelabsOutput(
+            XencelabsControl.dialColorPayload(
+                r: r, g: g, b: b, address: xencelabsDongleIdentity ?? []),
+            tag: "bezel LED")
+    }
+
     /// Last panel contrast sent, to suppress redundant writes during a drag.
     private var lastDisplayContrast: Int = -1
 

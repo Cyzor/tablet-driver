@@ -137,6 +137,21 @@ final class DeviceContext: ObservableObject, Identifiable {
                 self?.tabletDevice?.setDisplayGamma(value)
             }
             .store(in: &cancellables)
+        // Bezel-button backlight LED (Xencelabs pen displays). Same wire
+        // command as the Quick Keys dial LED; the stored alpha is the
+        // brightness and gets premultiplied into the RGB here, matching how
+        // the vendor stack scales it. Empty/unset leaves the panel's own
+        // stored color alone.
+        settings.$bezelLEDColor
+            .sink { [weak self] value in
+                guard let self, let c = TabletSettings.bezelLEDColor(from: value)
+                else { return }
+                self.tabletDevice?.setBezelLEDColor(
+                    r: UInt8(Int(c.r) * Int(c.a) / 255),
+                    g: UInt8(Int(c.g) * Int(c.a) / 255),
+                    b: UInt8(Int(c.b) * Int(c.a) / 255))
+            }
+            .store(in: &cancellables)
         settings.$displayColorMode
             .sink { [weak self] value in
                 guard let self, value >= 0 else { return }

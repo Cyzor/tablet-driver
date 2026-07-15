@@ -246,6 +246,34 @@ final class TabletSettings: ObservableObject {
         }
     }
 
+    /// Color of the shared backlight LED behind the pen display's bezel
+    /// buttons, stored as "R,G,B,A" sRGB bytes (alpha doubles as LED
+    /// brightness, premultiplied into the RGB on the way to the hardware —
+    /// same scheme as the Quick Keys dial LED). Empty = never set here; the
+    /// panel keeps its own stored color. Same hardware-state semantics as
+    /// `displayBrightness`.
+    @Published var bezelLEDColor: String = "" {
+        didSet {
+            guard !isLoading else { return }
+            ud.set(bezelLEDColor, forKey: devicePrefix + "bezelLEDColor")
+        }
+    }
+
+    /// Parse a `bezelLEDColor` string. nil when unset or malformed. Static
+    /// so subscribers can decode the value a `$bezelLEDColor` publisher
+    /// emits (which arrives before the stored property updates).
+    nonisolated static func bezelLEDColor(from string: String) -> ControlSlot.LEDColor? {
+        let parts = string.split(separator: ",").compactMap { UInt8($0) }
+        guard parts.count == 4 else { return nil }
+        return ControlSlot.LEDColor(r: parts[0], g: parts[1], b: parts[2], a: parts[3])
+    }
+
+    /// Typed view of `bezelLEDColor`. nil when unset or malformed.
+    var bezelLEDColorValue: ControlSlot.LEDColor? {
+        get { Self.bezelLEDColor(from: bezelLEDColor) }
+        set { bezelLEDColor = newValue.map { "\($0.r),\($0.g),\($0.b),\($0.a)" } ?? "" }
+    }
+
     /// CGDirectDisplayID values (comma-separated) included in the toggle rotation.
     /// Empty string means all connected displays are included.
     @Published var toggleDisplayIDs: String = "" {

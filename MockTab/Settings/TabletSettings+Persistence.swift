@@ -35,6 +35,7 @@ extension TabletSettings {
         displayContrast = loadInt("displayContrast", default: -1)
         displayGamma = loadInt("displayGamma", default: -1)
         displayColorMode = loadInt("displayColorMode", default: -1)
+        bezelLEDColor = loadString("bezelLEDColor", default: "")
         toggleDisplayIDs = loadString("toggleDisplayIDs", default: "")
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
         doubleClickDistance = loadDouble("doubleClickDistance", default: 10.0)

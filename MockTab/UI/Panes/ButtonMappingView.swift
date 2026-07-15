@@ -400,11 +400,82 @@ struct ButtonMappingView: View {
                         localized: "Bezel Button \(i + 1)",
                         comment: "Bezel button N label, e.g. 'Bezel Button 1'"), lb: lb)
             }
+            if hasBezelLED {
+                HStack {
+                    Text("Button Backlight")
+                    Spacer()
+                    ColorPicker(
+                        "Backlight", selection: bezelLEDBinding,
+                        supportsOpacity: true)
+                        .labelsHidden()
+                }
+                .help("Color of the light behind the bezel buttons. Opacity sets its brightness. The hardware keeps its own color until you change it.")
+            }
         } header: {
             PaneSectionHeader("Bezel Buttons") {
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
             }
         }
+    }
+
+    /// Whether the bezel buttons have a host-controllable backlight LED —
+    /// Xencelabs pen displays only; the Cintiq's OSD keys have no light of
+    /// their own. Static capability, so the well stays put while the
+    /// display is unplugged (writes replay on reconnect).
+    private var hasBezelLED: Bool {
+        guard let pid = productID, let spec = TabletManager.staticSpec(forProductID: pid)
+        else { return false }
+        return spec.parser == .xencelabs && spec.isPenDisplay
+    }
+
+    /// Coalesces a continuous color-picker drag into one undo step
+    /// (same pattern as the Quick Keys dial-color wells).
+    private final class BezelColorUndoCoalescer {
+        private var snapshot: String?
+        private var pending: DispatchWorkItem?
+
+        func noteChange(settings: TabletSettings, before value: String) {
+            if snapshot == nil { snapshot = value }
+            pending?.cancel()
+            let work = DispatchWorkItem { [weak self, weak settings] in
+                MainActor.assumeIsolated {
+                    guard let self, let settings, let snap = self.snapshot else { return }
+                    self.snapshot = nil
+                    settings.record("Bezel Button Backlight") { settings.bezelLEDColor = snap }
+                }
+            }
+            pending = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
+        }
+    }
+
+    @State private var bezelColorUndo = BezelColorUndoCoalescer()
+
+    /// Bezel-LED color bridged to SwiftUI Color. Reads the stored color or,
+    /// before the user ever touches it, parks the well at the vendor's
+    /// default red without sending. Writes store raw sRGB bytes (no LED
+    /// calibration — same trade as the dial wells); the opacity slider
+    /// doubles as LED brightness, stored as the alpha and premultiplied
+    /// into the RGB when pushed to the device.
+    private var bezelLEDBinding: Binding<Color> {
+        Binding(
+            get: {
+                let c = settings.bezelLEDColorValue
+                    ?? ControlSlot.LEDColor(r: 0xF7, g: 0, b: 0, a: 255)
+                return Color(
+                    red: Double(c.r) / 255, green: Double(c.g) / 255,
+                    blue: Double(c.b) / 255, opacity: Double(c.a) / 255)
+            },
+            set: { newValue in
+                guard let rgb = NSColor(newValue).usingColorSpace(.sRGB) else { return }
+                bezelColorUndo.noteChange(settings: settings, before: settings.bezelLEDColor)
+                settings.bezelLEDColorValue = ControlSlot.LEDColor(
+                    r: UInt8((rgb.redComponent * 255).rounded()),
+                    g: UInt8((rgb.greenComponent * 255).rounded()),
+                    b: UInt8((rgb.blueComponent * 255).rounded()),
+                    a: UInt8((rgb.alphaComponent * 255).rounded()))
+            }
+        )
     }
 
     @ViewBuilder
