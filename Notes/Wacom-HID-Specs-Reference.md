@@ -605,5 +605,5 @@ Earlier protocol used by Intuos1/2/3 pucks:
 1. **Feature report 0x05** — Purpose unclear; some Intuos3 devices respond but data format undocumented
 2. **I2C HID descriptors** — Not publicly available; decoded via kernel driver reverse-engineering
 3. **Bluetooth battery reporting** — Encoding varies by device; some use HID feature report, others embed in pad data
-4. **OSD controls** — Some Cintiq devices support on-screen display via USB feature reports; encoding not documented in driver source
+4. **OSD controls** — Some Cintiq devices support on-screen display via USB feature reports; encoding not documented in driver source. (Distinct from the capacitive OSD *buttons* as input — those are decoded; see the Cintiq 24HD section of Wacom-HID-Family-Reference.md for the 2026-07-14 confirmed bit layout.)
 5. **Firmware update protocol** — Wacom does not publish; driver support varies by device generation

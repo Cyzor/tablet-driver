@@ -333,6 +333,16 @@ keys = ((d  & 0x1C) ? 1<<2 : 0) | ((d[4] & 0xE0) ? 1<<1 : 0) | ((d[4] & 0x07) ? 
 ABS_WHEEL (left ring): `(ring1 & 0x80) ? (ring1 & 0x7F) : 0`
 ABS_THROTTLE (right ring): `(ring2 & 0x80) ? (ring2 & 0x7F) : 0`
 
+> **Capacitive OSD buttons, empirical refinement (live capture, DTK-2400, 2026-07-14):**
+> the OSD area is one continuous capacitive slider under three printed icons, not three
+> discrete sensors. A clean tap on an icon lands on a fixed bit — byte[3] bit 4 = left
+> (info), byte[4] bit 6 = middle (keyboard), byte[4] bit 0 = right (wrench) — while a
+> swipe walks a single active bit through byte[3] bits 4–0 and byte[4] bits 7–0 in
+> sequence. The other bits in those bytes are therefore transient way-points, not
+> independent buttons; decode only the three fixed bits. The kernel's group masks above
+> (`d[3]&0x1C`, `d[4]&0xE0`, `d[4]&0x07`) are consistent with this — they treat any bit
+> in an icon's slider region as that key — but OR-ing whole bytes misfires during swipes.
+
 **Cintiq 22HD (`WACOM_22HD`, 0x00FA/0x00F9)**
 ```
 buttons = (d[8] << 10) | ((d[7] & 0x01) << 9) | (d[6] << 1) | (d[5] & 0x01)   // 18 bits

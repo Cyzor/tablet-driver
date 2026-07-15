@@ -187,6 +187,10 @@ Bytes 8–9: (padding)
 
 OTD configures **3 auxiliary buttons** (`AuxiliaryButtons.ButtonCount: 3`) for both the Small and Medium tablets. This matches the 3 physical express keys on the tablet body. The remaining button bits in the aux report structure are unused in the Xencelabs context, though the struct technically supports up to 20.[^3]
 
+### Pen Display onboard bezel buttons (confirmed 2026-07-14)
+
+The Pen Display's three capacitive buttons built into its bezel ride **the exact same aux frame format** as the Quick Keys puck's express keys: report ID 2, tag `0xF0`, with bits 0–2 of the button bytes going one-hot on a clean tap. The wire format gives no way to tell a bezel-button frame from a puck express-key frame; the display has no puck of its own, so its driver-side handling remaps these frames to dedicated bezel-button slots (16–18 in the shared slot convention) rather than express-key slots. Confirmed by live capture during field testing.
+
 ***
 
 ## 8. Pen Hardware Specifications
