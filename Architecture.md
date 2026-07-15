@@ -102,6 +102,12 @@ Adding a new family means writing a new decoder under `Sources/TabletKit/Decoder
 
 The class header in `InputInjector.swift` documents the threading rules; the MARK sections divide the file by concern.
 
+### Aux inputs
+
+Everything that isn't the pen — express keys, touch rings, dials, and a device's own onboard bezel buttons — decodes into `AuxButtons` and flows through `TabletManager.onAux` into `InputInjector.injectAux`. Slot layout is a shared convention: indices 0–15 are express keys, 16–18 are bezel buttons (e.g. the Cintiq DTK-2400's capacitive OSD keys or the Xencelabs Pen Display's bezel buttons), and each range has its own binding array in `TabletSettings` (`expressKeyBindings`, `bezelButtonBindings`).
+
+Standalone aux-only peripherals (currently the Xencelabs Quick Keys puck) are *companion devices*: `VendorDeviceRegistry.connectedCompanion` pairs them with the pen-bearing device they belong to, and their controls fold into that device's settings window instead of getting their own. Battery status from wireless devices arrives as a `.battery` decode result and surfaces in the UI the same way.
+
 ### Routing
 
 `TabletManager` runs on the main thread, owns the set of live devices, decides which one is the active context, and forwards decoded events into that context's `InputInjector`. `DeviceContext` holds the per-device state that the injector needs and is the object that pushes snapshots onto HIDThread.
