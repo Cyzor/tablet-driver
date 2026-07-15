@@ -165,23 +165,6 @@ extension TabletSettings {
         }
     }
 
-    private var appBindingsKey: String { devicePrefix + "_appBindings" }
-
-    func saveAppBindings() {
-        guard let data = try? JSONEncoder().encode(appBindings) else { return }
-        ud.set(data, forKey: appBindingsKey)
-    }
-
-    func loadAppBindings() {
-        guard let data = ud.data(forKey: appBindingsKey),
-            let list = try? JSONDecoder().decode([AppProfileBinding].self, from: data)
-        else {
-            appBindings = []
-            return
-        }
-        appBindings = list
-    }
-
     // MARK: - Full state snapshots (for preset activation undo)
 
     /// Captures all current in-memory setting values for undo/redo of structural
