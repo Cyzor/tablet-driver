@@ -595,12 +595,12 @@ struct ButtonMappingView: View {
             // Aux-only devices (Quick Keys puck/dongle) have no pen digitizer,
             // so the pen-buttons section is structurally inapplicable — and
             // instead of the generic express-key/ring layout they get the
-            // exact same Quick Keys content that quickKeysSection folds into
+            // exact same QuickKeysSectionView that quickKeysSection folds into
             // a tablet's window, just fed from this window's own settings and
             // live state. One component, identical look and behavior (LED
             // color wells included) wherever the puck's controls appear.
             if spec?.parser == .xencelabs && spec?.maxX == 0 {
-                quickKeysContent(settings, qkSpec: spec, lb: liveButtons)
+                QuickKeysSectionView(settings: settings, spec: spec, liveButtons: liveButtons)
             } else {
                 penButtonsSection(lb: liveButtons)
                 if hasDualRings {
@@ -783,239 +783,23 @@ struct ButtonMappingView: View {
             }
         }
 
-        quickKeysSection()
+        quickKeysSection
     }
-
-    // MARK: - Companion "Quick Keys" section
 
     /// Express keys + dial for a connected companion puck/dongle, folded
     /// into the tablet's own Buttons pane instead of the companion getting
     /// a window (and settings) of its own — see `companionProductID`.
-    /// Bindings read/write the companion's *own* `TabletSettings` instance
-    /// (its own `DeviceContext`, keyed by its own PID), not the tablet's —
-    /// each physical device keeps its own independent binding storage,
-    /// exactly as if the companion still had its own pane; only the window
-    /// is merged.
+    /// `QuickKeysSectionView` reads/writes the companion's *own*
+    /// `TabletSettings` instance (its own `DeviceContext`, keyed by its own
+    /// PID), not the tablet's — each physical device keeps its own
+    /// independent binding storage, exactly as if the companion still had
+    /// its own pane; only the window is merged.
     @ViewBuilder
-    private func quickKeysSection() -> some View {
+    private var quickKeysSection: some View {
         if let companionSettings = companionContext?.settings {
-            quickKeysContent(companionSettings, qkSpec: companionSpec, lb: companionLiveButtons)
+            QuickKeysSectionView(
+                settings: companionSettings, spec: companionSpec, liveButtons: companionLiveButtons)
         }
-    }
-
-    /// The Quick Keys UI itself, parameterized on whose settings/spec/live
-    /// state it renders: the companion's (folded into a tablet's window via
-    /// `quickKeysSection`) or this window's own (the puck's standalone
-    /// window). Keeps the puck's controls — including the dial-LED color
-    /// wells — identical wherever they appear.
-    @ViewBuilder
-    private func quickKeysContent(
-        _ companionSettings: TabletSettings, qkSpec: WacomDeviceSpec?, lb: LiveButtonState
-    ) -> some View {
-        let keyCount = min(max(qkSpec?.buttonCount ?? 8, 0) - 1, 16)
-
-        Section("Quick Keys") {
-                ForEach(0..<max(keyCount, 0), id: \.self) { i in
-                    buttonRow(
-                        String(localized: "Key \(i + 1)", comment: "Quick Keys express key N label"),
-                        isActive: lb.expressKeys[i],
-                        binding: companionSettings.recordingBinding(
-                            "Quick Keys Key \(i + 1)",
-                            get: { companionSettings.expressKeyBindings[i] },
-                            set: { newValue in
-                                var updated = companionSettings.expressKeyBindings
-                                updated[i] = newValue
-                                companionSettings.expressKeyBindings = updated
-                            }
-                        ))
-                }
-                // The bottom mode button rides the same indexed express-key
-                // array as the last slot (buttons[8] in AuxButtons — see
-                // XencelabsDecoder.decodeAux).
-                buttonRow(
-                    String(localized: "Mode", comment: "Quick Keys bottom mode button label"),
-                    isActive: lb.expressKeys[keyCount],
-                    binding: companionSettings.recordingBinding(
-                        "Quick Keys Mode Button",
-                        get: { companionSettings.expressKeyBindings[keyCount] },
-                        set: { newValue in
-                            var updated = companionSettings.expressKeyBindings
-                            updated[keyCount] = newValue
-                            companionSettings.expressKeyBindings = updated
-                        }
-                    ))
-                // Dial center click — reuses the touch-ring center-button
-                // slot, mirroring how XencelabsDecoder reports it via
-                // AuxButtons.touchRingButtonDown rather than an indexed key.
-                buttonRow(
-                    String(localized: "Dial", comment: "Quick Keys dial center-click row label"),
-                    isActive: lb.touchRingButtonDown,
-                    binding: companionSettings.recordingBinding(
-                        "Quick Keys Dial Button",
-                        get: { companionSettings.touchRingButtonBinding },
-                        set: { companionSettings.touchRingButtonBinding = $0 }
-                    ))
-                // Dial rotation (CW/CCW detents) — same ControlSlot model
-                // used by a real touch ring; not pre-allocated per-property
-                // like the tablet's own ring bindings above since this pane
-                // renders far less often (rendered only while a companion is
-                // connected, one Section, no independent hot redraw path).
-                let ringSlotCount = qkSpec?.ringSlotCount ?? 4
-                let slotCount = min(companionSettings.touchRingSlots.count, ringSlotCount)
-                ForEach(
-                    Array(companionSettings.touchRingSlots.prefix(slotCount).enumerated()),
-                    id: \.element.id
-                ) { idx, slot in
-                    TouchRingSlotRowView(
-                        slot: slot,
-                        idx: idx,
-                        isActiveSlot: false,
-                        ringSlotCount: ringSlotCount,
-                        actionBinding: companionSlotActionBinding(companionSettings, at: idx),
-                        speedBinding: companionSlotSpeedBinding(companionSettings, at: idx),
-                        cwBinding: companionSlotBinding(companionSettings, at: idx, direction: .cw),
-                        ccwBinding: companionSlotBinding(companionSettings, at: idx, direction: .ccw),
-                        colorBinding: companionSlotColorBinding(companionSettings, at: idx)
-                    )
-                    .equatable()
-                }
-                companionTouchRingDiagramRow(
-                    companionSettings, ringSlotCount: ringSlotCount,
-                    centerDown: lb.touchRingButtonDown)
-        }
-    }
-
-    /// Companion-scoped counterpart to `touchRingDiagramRow`, reading the
-    /// puck/dongle's own settings and live state instead of the tablet's.
-    private func companionTouchRingDiagramRow(
-        _ companionSettings: TabletSettings, ringSlotCount: Int, centerDown: Bool
-    ) -> some View {
-        TouchRingDiagramView(
-            activeSlotIndex: companionSettings.touchRingActiveSlotIndex,
-            centerDown: centerDown,
-            slotCount: ringSlotCount
-        )
-        .equatable()
-        .frame(maxWidth: .infinity, minHeight: 96, maxHeight: 140)
-        .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
-        .listRowBackground(Color.clear)
-    }
-
-    private func companionSlotActionBinding(
-        _ companionSettings: TabletSettings, at index: Int
-    ) -> Binding<ControlSlot.Action> {
-        Binding(
-            get: {
-                guard companionSettings.touchRingSlots.indices.contains(index) else { return .scroll }
-                return companionSettings.touchRingSlots[index].action
-            },
-            set: { newValue in
-                guard companionSettings.touchRingSlots.indices.contains(index) else { return }
-                var updated = companionSettings.touchRingSlots
-                updated[index].action = newValue
-                companionSettings.touchRingSlots = updated
-            }
-        )
-    }
-
-    private func companionSlotSpeedBinding(
-        _ companionSettings: TabletSettings, at index: Int
-    ) -> Binding<Double> {
-        Binding(
-            get: {
-                guard companionSettings.touchRingSlots.indices.contains(index) else { return 1.0 }
-                return companionSettings.touchRingSlots[index].speed
-            },
-            set: { newValue in
-                guard companionSettings.touchRingSlots.indices.contains(index) else { return }
-                var updated = companionSettings.touchRingSlots
-                updated[index].speed = newValue
-                companionSettings.touchRingSlots = updated
-            }
-        )
-    }
-
-    private func companionSlotBinding(
-        _ companionSettings: TabletSettings, at index: Int, direction: SlotDirection
-    ) -> Binding<ButtonBinding> {
-        Binding(
-            get: {
-                guard companionSettings.touchRingSlots.indices.contains(index) else { return .none }
-                let slot = companionSettings.touchRingSlots[index]
-                return direction == .cw ? slot.cwBinding : slot.ccwBinding
-            },
-            set: { newValue in
-                guard companionSettings.touchRingSlots.indices.contains(index) else { return }
-                var updated = companionSettings.touchRingSlots
-                if direction == .cw { updated[index].cwBinding = newValue }
-                else { updated[index].ccwBinding = newValue }
-                companionSettings.touchRingSlots = updated
-            }
-        )
-    }
-
-    /// Coalesces a burst of color-wheel updates into one undo entry, registered
-    /// once the wheel goes quiet — the system color panel fires the binding
-    /// continuously during a drag, and only the finished designation is worth
-    /// an undo step (TextEdit-style). Reference type so the snapshot and timer
-    /// survive view re-renders; @State preserves the instance.
-    private final class DialColorUndoCoalescer {
-        private var snapshot: [ControlSlot]?
-        private var pending: DispatchWorkItem?
-
-        func noteChange(settings: TabletSettings, before slots: [ControlSlot]) {
-            if snapshot == nil { snapshot = slots }
-            pending?.cancel()
-            let work = DispatchWorkItem { [weak self, weak settings] in
-                MainActor.assumeIsolated {
-                    guard let self, let settings, let snap = self.snapshot else { return }
-                    self.snapshot = nil
-                    settings.record("Dial Color") { settings.touchRingSlots = snap }
-                }
-            }
-            pending = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
-        }
-    }
-
-    @State private var dialColorUndo = DialColorUndoCoalescer()
-
-    /// Dial-LED color for one mode slot, bridged to SwiftUI Color. Reads the
-    /// stored custom color or the factory palette default; writes store raw
-    /// sRGB bytes (no LED calibration — close enough to tell modes apart).
-    /// The panel's opacity slider doubles as LED brightness: it's stored as
-    /// the alpha and premultiplied into the RGB when pushed to the device,
-    /// exactly how the vendor stack scales brightness.
-    private func companionSlotColorBinding(
-        _ companionSettings: TabletSettings, at index: Int
-    ) -> Binding<Color> {
-        Binding(
-            get: {
-                let defaults = XencelabsControl.defaultSlotColors
-                let d = defaults[((index % defaults.count) + defaults.count) % defaults.count]
-                let c = companionSettings.touchRingSlots.indices.contains(index)
-                    ? companionSettings.touchRingSlots[index].ledColor : nil
-                let (r, g, b, a) = c.map { ($0.r, $0.g, $0.b, $0.a) } ?? (d.r, d.g, d.b, 255)
-                return Color(
-                    red: Double(r) / 255, green: Double(g) / 255, blue: Double(b) / 255,
-                    opacity: Double(a) / 255)
-            },
-            set: { newValue in
-                guard companionSettings.touchRingSlots.indices.contains(index),
-                      let rgb = NSColor(newValue).usingColorSpace(.sRGB)
-                else { return }
-                dialColorUndo.noteChange(
-                    settings: companionSettings,
-                    before: companionSettings.touchRingSlots)
-                var updated = companionSettings.touchRingSlots
-                updated[index].ledColor = ControlSlot.LEDColor(
-                    r: UInt8((rgb.redComponent * 255).rounded()),
-                    g: UInt8((rgb.greenComponent * 255).rounded()),
-                    b: UInt8((rgb.blueComponent * 255).rounded()),
-                    a: UInt8((rgb.alphaComponent * 255).rounded()))
-                companionSettings.touchRingSlots = updated
-            }
-        )
     }
 
     // MARK: - Dual-sided layout (Cintiq 24HD and similar)
@@ -1198,49 +982,8 @@ struct ButtonMappingView: View {
         }
     }
 
-    // MARK: - Button binding row
-
-    @ViewBuilder
-    private func buttonRow(
-        _ label: String, isActive: Bool,
-        binding: Binding<ButtonBinding>,
-        ringSlotCount: Int = 4
-    ) -> some View {
-        HStack(spacing: 0) {
-            activeIndicator(isActive)
-            // Fixed minimum width with trailing alignment so the binding control
-            // starts at a consistent x position regardless of label length.
-            labelText(label, isActive: isActive)
-                .scaledFrame(minWidth: 100, alignment: .trailing)
-            ButtonBindingControl(binding: binding, ringSlotCount: ringSlotCount)
-                .equatable()
-            Spacer(minLength: 0)
-        }
-    }
-
-    // MARK: - Shared row subviews
-
-    /// Green checkmark when a hardware button is currently held; invisible
-    /// when idle so the label column stays stable without a ghost shape.
-    private func activeIndicator(_ isActive: Bool) -> some View {
-        Image(systemName: "checkmark.circle.fill")
-            .foregroundStyle(Color.green)
-            .imageScale(.small)
-            .opacity(isActive ? 1 : 0)
-            .accessibilityHidden(true)
-    }
-
-    private func labelText(_ label: String, isActive: Bool) -> some View {
-        Text(label)
-            .foregroundStyle(Color.primary)
-            .fontWeight(isActive ? .semibold : .regular)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .fill(Color.accentColor.opacity(isActive ? 0.12 : 0))
-            )
-    }
+    // buttonRow / activeIndicator / labelText now live in
+    // UI/Components/Button row.swift, shared with QuickKeysSectionView.
 
 }
 
