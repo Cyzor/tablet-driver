@@ -593,13 +593,34 @@ final class TabletSettings: ObservableObject {
         reloadAll()
     }
 
+    /// Instance-aware variant of `init(productID:)`: resolves the namespace
+    /// through the registry's claim rule (see `loadForDevice(_:)` below).
+    convenience init(instanceKey: DeviceInstanceKey) {
+        self.init()
+        loadForDevice(instanceKey)
+    }
+
     // MARK: - Per-device loading
 
     /// Switches the settings backing store to the given device's namespace
     /// and reloads all values.  Called by TabletManager when a device connects.
     func loadForDevice(_ productID: Int) {
         let hex = String(productID, radix: 16, uppercase: true)
-        devicePrefix = "device-0x\(hex)."
+        loadForDevice(prefix: "device-0x\(hex).")
+    }
+
+    /// Instance-aware variant: resolves the namespace through the registry's
+    /// claim-the-legacy-prefix rule, so the first physical unit of a model
+    /// keeps the historical `device-0x{PID}.` prefix and later identical
+    /// units get their own. The PID-only overload above stays for callers
+    /// that predate instance identity (it always resolves to the legacy
+    /// prefix, matching an empty instance token).
+    func loadForDevice(_ instanceKey: DeviceInstanceKey) {
+        loadForDevice(prefix: DeviceRegistry.shared.settingsPrefix(for: instanceKey))
+    }
+
+    private func loadForDevice(prefix: String) {
+        devicePrefix = prefix
         toolCache.removeAll()
         activeTool = ToolSettings(prefix: devicePrefix)
         // Clear undo stack to prevent cross-device undo entries

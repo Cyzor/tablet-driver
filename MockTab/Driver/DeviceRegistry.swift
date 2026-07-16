@@ -124,6 +124,49 @@ final class DeviceRegistry: ObservableObject {
         ud.set(true, forKey: flag)
     }
 
+    // MARK: - Instance claims
+
+    /// Resolves the UserDefaults settings prefix for one physical device
+    /// instance under the claim-the-legacy-prefix rule: the first instance
+    /// ever seen for a PID permanently claims the historical
+    /// `device-0x{PID}.` prefix (so existing installs keep every setting,
+    /// preset, and calibration untouched); any other instance of the same
+    /// PID gets a fresh `device-0x{PID}#{instance}.` namespace. Instances
+    /// with no token (no serial, no locationID) always resolve to the
+    /// legacy prefix — today's PID-only behavior.
+    ///
+    /// The claim is persisted (`_instanceClaims`, JSON `[pidHex: instance]`)
+    /// so it is deterministic across reboots and ports, not connect-order
+    /// dependent.
+    func settingsPrefix(for key: DeviceInstanceKey) -> String {
+        let pidHex = String(key.productID, radix: 16, uppercase: true)
+        let legacyPrefix = "device-0x\(pidHex)."
+        guard !key.instance.isEmpty else { return legacyPrefix }
+
+        var claims = instanceClaims()
+        if let owner = claims[pidHex] {
+            return owner == key.instance
+                ? legacyPrefix
+                : "device-0x\(pidHex)#\(key.instance)."
+        }
+        claims[pidHex] = key.instance
+        saveInstanceClaims(claims)
+        logger.info("DeviceRegistry: instance claimed legacy prefix for PID 0x\(pidHex, privacy: .public)")
+        return legacyPrefix
+    }
+
+    private func instanceClaims() -> [String: String] {
+        guard let data = ud.data(forKey: "_instanceClaims"),
+            let map = try? JSONDecoder().decode([String: String].self, from: data)
+        else { return [:] }
+        return map
+    }
+
+    private func saveInstanceClaims(_ map: [String: String]) {
+        guard let data = try? JSONEncoder().encode(map) else { return }
+        ud.set(data, forKey: "_instanceClaims")
+    }
+
     // MARK: - Pen model lookup
 
     /// Full name for a Wacom tool code, including "(Eraser)" suffix when appropriate.
