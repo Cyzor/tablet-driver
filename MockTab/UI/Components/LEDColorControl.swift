@@ -104,8 +104,19 @@ extension LEDSwatch {
 /// is the brightness (premultiplied into the RGB on the way to the device),
 /// and the RGB bytes are wire values for swatches or raw sRGB for custom
 /// picks. Undo is coalesced internally — callers pass a plain binding.
-struct LEDColorControl: View {
+struct LEDColorControl: View, Equatable {
     enum Style { case inline, well }
+
+    /// Equatable over the displayed values so `.equatable()` call sites skip
+    /// re-rendering during the pane's ~16 Hz hover invalidations. The
+    /// binding and settings references are ignored — recreated identical
+    /// each parent evaluation, always targeting the same stored value.
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.style == rhs.style
+            && lhs.color == rhs.color
+            && lhs.defaultWire == rhs.defaultWire
+            && lhs.undoLabel == rhs.undoLabel
+    }
 
     let style: Style
     @Binding var color: ControlSlot.LEDColor?

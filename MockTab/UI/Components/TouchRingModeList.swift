@@ -41,7 +41,71 @@ struct TouchRingModeListView: View {
 
     /// Mode currently expanded for editing; nil = all collapsed (pure
     /// overview). Session-scoped view state, deliberately not persisted.
+    /// Lives in this thin non-equatable wrapper — NOT in the equatable core
+    /// below — because a Form row swallows @State-driven re-renders inside
+    /// an EquatableView (selection clicks stopped disclosing anything).
+    /// Here the state change re-runs this cheap body, the core receives a
+    /// different `selected` value, its `==` fails, and it re-renders.
     @State private var selected: Int? = nil
+
+    var body: some View {
+        TouchRingModeListCore(
+            slots: slots,
+            shownSlotCount: shownSlotCount,
+            ringSlotCount: ringSlotCount,
+            isRingActive: isRingActive,
+            activeSlotIndex: activeSlotIndex,
+            centerDown: centerDown,
+            showsDiagram: showsDiagram,
+            selected: selected,
+            setSelected: { selected = $0 },
+            actionBinding: actionBinding,
+            speedBinding: speedBinding,
+            cwBinding: cwBinding,
+            ccwBinding: ccwBinding,
+            ledEditor: ledEditor,
+            onCenterTap: onCenterTap
+        )
+        .equatable()
+    }
+}
+
+/// The rendered mode list, equatable over its value inputs so the wrapper's
+/// `.equatable()` short-circuits the ~16 Hz liveButtons/livePoint
+/// invalidations that stream through the pane while the pen hovers — the
+/// same shield the old slot rows carried. The binding factories and tap
+/// closures are deliberately ignored in `==`: they're recreated identical
+/// on every parent body evaluation but always capture the same stable
+/// settings object.
+private struct TouchRingModeListCore: View, Equatable {
+    let slots: [ControlSlot]
+    let shownSlotCount: Int
+    let ringSlotCount: Int
+    let isRingActive: Bool
+    let activeSlotIndex: Int
+    let centerDown: Bool
+    let showsDiagram: Bool
+    let selected: Int?
+    let setSelected: (Int?) -> Void
+    let actionBinding: (Int) -> Binding<ControlSlot.Action>
+    let speedBinding: (Int) -> Binding<Double>
+    let cwBinding: (Int) -> Binding<ButtonBinding>
+    let ccwBinding: (Int) -> Binding<ButtonBinding>
+    let ledEditor: ((Int) -> LEDColorControl)?
+    let onCenterTap: (() -> Void)?
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.slots == rhs.slots
+            && lhs.shownSlotCount == rhs.shownSlotCount
+            && lhs.ringSlotCount == rhs.ringSlotCount
+            && lhs.isRingActive == rhs.isRingActive
+            && lhs.activeSlotIndex == rhs.activeSlotIndex
+            && lhs.centerDown == rhs.centerDown
+            && lhs.showsDiagram == rhs.showsDiagram
+            && lhs.selected == rhs.selected
+            && (lhs.ledEditor == nil) == (rhs.ledEditor == nil)
+            && (lhs.onCenterTap == nil) == (rhs.onCenterTap == nil)
+    }
 
     var body: some View {
         Group {
@@ -79,7 +143,7 @@ struct TouchRingModeListView: View {
 
     private func summaryRow(_ idx: Int) -> some View {
         Button {
-            selected = selected == idx ? nil : idx
+            setSelected(selected == idx ? nil : idx)
         } label: {
             HStack(spacing: 0) {
                 Image(systemName: "checkmark.circle.fill")
@@ -274,7 +338,7 @@ struct TouchRingModeListView: View {
                         .contentShape(Rectangle())
                         .gesture(SpatialTapGesture().onEnded { value in
                             if let idx = wedgeIndex(at: value.location, in: geo.size) {
-                                selected = selected == idx ? nil : idx
+                                setSelected(selected == idx ? nil : idx)
                             } else if isCenter(value.location, in: geo.size) {
                                 onCenterTap?()
                             }

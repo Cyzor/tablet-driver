@@ -27,6 +27,29 @@ func buttonRow(
             .equatable()
         Spacer(minLength: 0)
     }
+    .background(RecordFlash(token: recordRequestToken))
+}
+
+/// Brief accent flash across a binding row when a diagram click targets it.
+/// Clicking the diagram with the pen also lights the tip row's live-press
+/// checkmark (honestly — the tip really is down), so the *chosen* row needs
+/// the louder signal or the eye lands on the wrong one.
+private struct RecordFlash: View {
+    let token: Int
+    @State private var flash = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .fill(Color.accentColor.opacity(flash ? 0.22 : 0))
+            .padding(.horizontal, -4)
+            .allowsHitTesting(false)
+            .onChange(of: token) { _ in
+                var t = Transaction()
+                t.disablesAnimations = true
+                withTransaction(t) { flash = true }
+                withAnimation(.easeOut(duration: 0.9).delay(0.1)) { flash = false }
+            }
+    }
 }
 
 /// Green checkmark when a hardware button is currently held; invisible

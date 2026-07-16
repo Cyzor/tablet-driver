@@ -12,6 +12,19 @@ import TabletKit
 /// when the corresponding physical input is active.
 struct PenDiagramView: View, Equatable {
     let liveButtons: LiveButtonState
+    /// Called when a pen part is clicked — callers use it to start recording
+    /// in that part's binding field (direct manipulation, same pattern as
+    /// TouchRingModeListView's diagram). nil leaves the diagram inert.
+    var onPartTap: ((Part) -> Void)? = nil
+
+    /// The clickable parts, matching the pane's binding rows.
+    enum Part {
+        case tip, eraser, button1, button2, button3
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.liveButtons == rhs.liveButtons
+    }
 
     // SVG viewBox origin and dimensions (tablet-generic-stylus.svg: 0 0 44.6 344.8)
     private static let svgW = 44.6
@@ -85,6 +98,43 @@ struct PenDiagramView: View, Equatable {
             draw(
                 Self.tipPath, fill: liveButtons.tipDown ? accent : passive,
                 stroke: liveButtons.tipDown ? accent : strokeDim)
+        }
+        .overlay {
+            if onPartTap != nil {
+                GeometryReader { geo in
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .gesture(SpatialTapGesture().onEnded { value in
+                            if let part = part(at: value.location, in: geo.size) {
+                                onPartTap?(part)
+                            }
+                        })
+                }
+            }
+        }
+    }
+
+    /// Maps a click in the rendered diagram back to a pen part by inverting
+    /// the body's transform into SVG space, then splitting along the pen's
+    /// long axis (0 = eraser end, 344.8 = tip). Ranges come from the path
+    /// data above, padded a little — the barrel buttons and the round third
+    /// button are thin targets at this display size.
+    private func part(at point: CGPoint, in size: CGSize) -> Part? {
+        let scale = min(size.width / Self.svgH, size.height / Self.svgW)
+        guard scale > 0 else { return nil }
+        let tx = (size.width + Self.svgH * scale) / 2.0
+        let ty = (size.height - Self.svgW * scale) / 2.0
+        let svgX = (point.y - ty) / scale
+        let svgY = (tx - point.x) / scale
+        // Reject clicks off the pen's width (SVG x spans 0…44.6).
+        guard svgX > -6, svgX < Self.svgW + 6 else { return nil }
+        switch svgY {
+        case ..<24: return .eraser
+        case 226..<258: return .button2
+        case 258..<292: return .button1
+        case 292..<310: return .button3
+        case 315...: return .tip
+        default: return nil
         }
     }
 }

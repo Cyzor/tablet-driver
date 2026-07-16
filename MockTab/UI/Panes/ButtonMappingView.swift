@@ -19,6 +19,8 @@ struct ButtonMappingView: View {
     /// Bumped when the ring diagram's center is clicked, starting recording
     /// in the Center row's binding field — direct manipulation on the diagram.
     @State private var centerRecordToken = 0
+    /// Same for the pen diagram's parts: tip, eraser, buttons 1–3.
+    @State private var penRecordTokens = [0, 0, 0, 0, 0]
 
     /// Live button state, zeroed when this window is not key or is live-resizing.
     /// Zeroing during resize stops ~100 Hz tablet events from compounding the
@@ -175,7 +177,8 @@ struct ButtonMappingView: View {
                 buttonRow(
                     String(localized: "Tip", comment: "Pen tip button row label in Buttons tab"),
                     isActive: lb.tipDown,
-                    binding: tipBinding)
+                    binding: tipBinding,
+                    recordRequestToken: penRecordTokens[0])
             }
 
             // Eraser — only for non-mouse tools
@@ -183,7 +186,8 @@ struct ButtonMappingView: View {
                 buttonRow(
                     String(localized: "Eraser", comment: "Eraser button row label in Buttons tab"),
                     isActive: lb.eraserDown,
-                    binding: eraserBinding)
+                    binding: eraserBinding,
+                    recordRequestToken: penRecordTokens[1])
             }
 
             // Button 1
@@ -195,7 +199,8 @@ struct ButtonMappingView: View {
                             ? String(localized: "Side button", comment: "Pen button row label: single side button")
                             : String(localized: "Side button 1", comment: "Pen button row label: first side button")),
                     isActive: lb.button1Down,
-                    binding: pen1Binding)
+                    binding: pen1Binding,
+                    recordRequestToken: penRecordTokens[2])
             }
             // Button 2
             if btnCount >= 2 {
@@ -204,7 +209,8 @@ struct ButtonMappingView: View {
                         ? String(localized: "Button 2", comment: "Pen button row label: mouse button 2")
                         : String(localized: "Side button 2", comment: "Pen button row label: second side button"),
                     isActive: lb.button2Down,
-                    binding: pen2Binding)
+                    binding: pen2Binding,
+                    recordRequestToken: penRecordTokens[3])
             }
             // Button 3
             if btnCount >= 3 {
@@ -213,7 +219,8 @@ struct ButtonMappingView: View {
                         ? String(localized: "Button 3", comment: "Pen button row label: mouse button 3")
                         : String(localized: "Side button 3", comment: "Pen button row label: third side button"),
                     isActive: lb.button3Down,
-                    binding: pen3Binding)
+                    binding: pen3Binding,
+                    recordRequestToken: penRecordTokens[4])
             }
             // Button 4
             if btnCount >= 4 {
@@ -244,8 +251,18 @@ struct ButtonMappingView: View {
             }
 
             // Diagram row: no label column; transparent so the section
-            // background shows through unchanged.
-            PenDiagramView(liveButtons: lb)
+            // background shows through unchanged. Clicking a part starts
+            // recording in its binding row — parts whose row isn't shown
+            // (mouse tools, missing buttons) stay inert.
+            PenDiagramView(liveButtons: lb, onPartTap: { part in
+                switch part {
+                case .tip: if !isMouse { penRecordTokens[0] += 1 }
+                case .eraser: if !isMouse { penRecordTokens[1] += 1 }
+                case .button1: if btnCount >= 1 { penRecordTokens[2] += 1 }
+                case .button2: if btnCount >= 2 { penRecordTokens[3] += 1 }
+                case .button3: if btnCount >= 3 { penRecordTokens[4] += 1 }
+                }
+            })
                 .equatable()
                 .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 64)
                 .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
@@ -429,6 +446,7 @@ struct ButtonMappingView: View {
                         defaultWire: (r: 0xF7, g: 0x00, b: 0x00),
                         undoLabel: "Bezel Button Backlight",
                         settings: settings)
+                        .equatable()
                         // Ease off the window edge a touch — flush-trailing
                         // reads cramped next to the bordered rows above.
                         .padding(.trailing, 12)
