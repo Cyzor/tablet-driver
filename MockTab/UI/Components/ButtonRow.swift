@@ -40,7 +40,7 @@ private struct RecordFlash: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 6, style: .continuous)
-            .fill(Color.accentColor.opacity(flash ? 0.22 : 0))
+            .fill(Color.accentColor.opacity(flash ? 0.165 : 0))
             .padding(.horizontal, -4)
             .allowsHitTesting(false)
             .onChange(of: token) { _ in
