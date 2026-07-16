@@ -289,21 +289,27 @@ private struct TouchRingModeListCore: View, Equatable {
             .disabled(slot.action == .off || slot.action == .skip)
 
             if slot.action == .keyPress {
-                labeledRow(
-                    String(localized: "Clockwise", comment: "Ring mode editor row label"),
-                    symbol: "arrow.clockwise"
-                ) {
-                    ButtonBindingControl(
-                        binding: cwBinding(idx), ringSlotCount: ringSlotCount)
+                // Switching the action to Key adds these rows mid-editor, so
+                // they get their own reveal — same below-the-fold problem as
+                // the editor itself when the mode sits near the pane bottom.
+                VStack(alignment: .leading, spacing: 10) {
+                    labeledRow(
+                        String(localized: "Clockwise", comment: "Ring mode editor row label"),
+                        symbol: "arrow.clockwise"
+                    ) {
+                        ButtonBindingControl(
+                            binding: cwBinding(idx), ringSlotCount: ringSlotCount)
+                    }
+                    labeledRow(
+                        String(
+                            localized: "Counterclockwise", comment: "Ring mode editor row label"),
+                        symbol: "arrow.counterclockwise"
+                    ) {
+                        ButtonBindingControl(
+                            binding: ccwBinding(idx), ringSlotCount: ringSlotCount)
+                    }
                 }
-                labeledRow(
-                    String(
-                        localized: "Counterclockwise", comment: "Ring mode editor row label"),
-                    symbol: "arrow.counterclockwise"
-                ) {
-                    ButtonBindingControl(
-                        binding: ccwBinding(idx), ringSlotCount: ringSlotCount)
-                }
+                .background(ScrollIntoViewOnAppear())
             }
 
             if let ledEditor {
