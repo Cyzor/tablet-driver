@@ -448,11 +448,18 @@ final class TabletManager: ObservableObject {
         let productString =
             IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? ""
         let isBLE = transport.lowercased().contains("bluetooth")
+        // Instance-identity probe: serial and locationID are logged per
+        // interface to establish, on real hardware, whether the interfaces of
+        // one USB device share a locationID (serial is uniform; locationID is
+        // unverified) before DeviceInstanceKey's fallback relies on it.
+        let usbSerial =
+            IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
+        let locationID = hidIntProperty(device, kIOHIDLocationIDKey)
         let pidStr =
             rawProductID == productID
             ? "0x\(String(productID, radix:16))"
             : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
-        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public) product=\"\(productString, privacy: .public)\"")
+        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public) product=\"\(productString, privacy: .public)\" serial=\(usbSerial ?? "—", privacy: .public) locationID=0x\(String(locationID, radix:16), privacy: .public)")
 
         // BLE tablets expose multiple interfaces. Log all of them; skip ghost mouse only.
         if isBLE && usagePage == 0x01 {
@@ -846,8 +853,6 @@ final class TabletManager: ObservableObject {
 
             if activeContext == nil { activeContext = context }
 
-            let usbSerial =
-                IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
             DeviceRegistry.shared.recordTablet(
                 productID: productID, usbSerial: usbSerial,
                 vendorID: vendorID, productString: productString)

@@ -73,6 +73,7 @@
 		AA000103 /* CaptureGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000103 /* CaptureGuideView.swift */; };
 		AA000154 /* TouchRingDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000154 /* TouchRingDiagramView.swift */; };
 		AA000200 /* NormalizedAreaEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000200 /* NormalizedAreaEditor.swift */; };
+		AA00DK01 /* DeviceInstanceKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DK01 /* DeviceInstanceKey.swift */; };
 		AA00DR01 /* DeviceRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DR01 /* DeviceRouter.swift */; };
 		AA00GD01 /* GenericHIDDigitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00GD01 /* GenericHIDDigitizer.swift */; };
 		AA00HD01 /* HIDDescriptorReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HD01 /* HIDDescriptorReader.swift */; };
@@ -185,6 +186,7 @@
 		AB002014 /* de.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = de.md; sourceTree = "<group>"; };
 		AB002016 /* es.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = es.md; sourceTree = "<group>"; };
 		AB002018 /* ja.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ja.md; sourceTree = "<group>"; };
+		AB00DK01 /* DeviceInstanceKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInstanceKey.swift; sourceTree = "<group>"; };
 		AB00DR01 /* DeviceRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRouter.swift; sourceTree = "<group>"; };
 		AB00GD01 /* GenericHIDDigitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenericHIDDigitizer.swift; sourceTree = "<group>"; };
 		AB00HD01 /* HIDDescriptorReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDDescriptorReader.swift; sourceTree = "<group>"; };
@@ -257,6 +259,7 @@
 			children = (
 				AB000045 /* WacomFallbackDevice.swift */,
 				AB00DR01 /* DeviceRouter.swift */,
+				AB00DK01 /* DeviceInstanceKey.swift */,
 				AB00GD01 /* GenericHIDDigitizer.swift */,
 				AB000070 /* HIDCapture.swift */,
 				AB000101 /* CaptureModels.swift */,
@@ -494,6 +497,7 @@
 				05D7EB7B2F79E6E30086E03F /* AboutView.swift in Sources */,
 				AA000045 /* WacomFallbackDevice.swift in Sources */,
 				AA00DR01 /* DeviceRouter.swift in Sources */,
+				AA00DK01 /* DeviceInstanceKey.swift in Sources */,
 				AA00GD01 /* GenericHIDDigitizer.swift in Sources */,
 				AA000070 /* HIDCapture.swift in Sources */,
 				AA000101 /* CaptureModels.swift in Sources */,
