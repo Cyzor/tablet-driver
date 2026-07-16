@@ -607,13 +607,15 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 }
                 let connected = tm.connectedProductIDs.contains(tablet.productID)
                 let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
-                let label = SettingsWindowManager.shared.menuLabel(forProductID: tablet.productID) + suffix
+                let label = SettingsWindowManager.shared.menuLabel(forKey: tablet.instanceKey) + suffix
                 let item = NSMenuItem(
                     title: label,
                     action: #selector(openDeviceWindow(_:)),
                     keyEquivalent: "")
                 item.target = self
-                item.tag = tablet.productID
+                // Composite instance identity doesn't fit NSMenuItem.tag
+                // (an Int) — carry it via representedObject instead.
+                item.representedObject = tablet.instanceKey.stringValue
                 // Show the native state checkmark for currently connected tablets,
                 // matching the flush-left alignment of the other checkmarked items
                 // (toggles, active profile) in the same menu.
@@ -628,7 +630,10 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openDeviceWindow(_ sender: NSMenuItem) {
-        SettingsWindowManager.shared.openWindow(forProductID: sender.tag)
+        guard let id = sender.representedObject as? String,
+            let key = DeviceInstanceKey(stringValue: id)
+        else { return }
+        SettingsWindowManager.shared.openWindow(forInstanceKey: key)
     }
 
     @objc private func detectTablet() {
@@ -641,14 +646,18 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     @MainActor
     static func activateBestDevice() {
         let tm = TabletManager.shared
-        // Prefer the pen-in-proximity context; fall back to first connected,
+        // Prefer the pen-in-proximity unit; fall back to first connected,
         // then first ever-seen device.
-        let pid =
-            tm.activeContext?.productID
-            ?? tm.connectedProductIDs.first
-            ?? DeviceRegistry.shared.knownTablets.first?.productID
-        guard let pid else { return }
-        SettingsWindowManager.shared.openWindow(forProductID: pid)
+        if let key = tm.activeContext?.instanceKey
+            ?? DeviceRegistry.shared.knownTablets.first(where: {
+                tm.connectedProductIDs.contains($0.productID)
+            })?.instanceKey
+            ?? DeviceRegistry.shared.knownTablets.first?.instanceKey
+        {
+            SettingsWindowManager.shared.openWindow(forInstanceKey: key)
+        } else if let pid = tm.connectedProductIDs.first {
+            SettingsWindowManager.shared.openWindow(forProductID: pid)
+        }
     }
 
     // MARK: - **Profiles menu

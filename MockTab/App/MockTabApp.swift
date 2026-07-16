@@ -136,11 +136,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let connected = connectedIDs.contains(tablet.productID)
                 let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
                 let item = NSMenuItem(
-                    title: pwc.menuLabel(forProductID: tablet.productID) + suffix,
+                    title: pwc.menuLabel(forKey: tablet.instanceKey) + suffix,
                     action: #selector(dockOpenTablet(_:)),
                     keyEquivalent: "")
                 item.target = self
-                item.tag = tablet.productID
+                // Composite instance identity doesn't fit NSMenuItem.tag
+                // (an Int) — carry it via representedObject instead.
+                item.representedObject = tablet.instanceKey.stringValue
                 // Dock menus reliably honor NSMenuItem.state (left-gutter
                 // checkmark) but not all NSMenuItem.image values render in the
                 // Dock's restricted menu pipeline, so use the canonical
@@ -168,7 +170,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func dockOpenTablet(_ sender: NSMenuItem) {
-        SettingsWindowManager.shared.openWindow(forProductID: sender.tag)
+        guard let id = sender.representedObject as? String,
+            let key = DeviceInstanceKey(stringValue: id)
+        else { return }
+        SettingsWindowManager.shared.openWindow(forInstanceKey: key)
         NSApp.activate(ignoringOtherApps: true)
     }
 }

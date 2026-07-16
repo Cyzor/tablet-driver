@@ -91,10 +91,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                 }
                 let connected = tm.connectedProductIDs.contains(tablet.productID)
                 let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
-                let item = NSMenuItem(title: pwc.menuLabel(forProductID: tablet.productID) + suffix,
+                let item = NSMenuItem(title: pwc.menuLabel(forKey: tablet.instanceKey) + suffix,
                                        action: #selector(openTablet(_:)), keyEquivalent: "")
                 item.target = self
-                item.tag = tablet.productID
+                // Composite instance identity doesn't fit NSMenuItem.tag
+                // (an Int) — carry it via representedObject instead.
+                item.representedObject = tablet.instanceKey.stringValue
                 item.state = connected ? .on : .off
                 menu.addItem(item)
             }
@@ -198,11 +200,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openTablet(_ sender: NSMenuItem) {
-        SettingsWindowManager.shared.openWindow(forProductID: sender.tag)
+        guard let id = sender.representedObject as? String,
+            let key = DeviceInstanceKey(stringValue: id)
+        else { return }
+        SettingsWindowManager.shared.openWindow(forInstanceKey: key)
     }
 
     @objc private func focusWindow(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? Int else { return }
+        guard let id = sender.representedObject as? String else { return }
         SettingsWindowManager.shared.focusWindow(id: id)
     }
 

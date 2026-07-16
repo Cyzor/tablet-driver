@@ -205,7 +205,12 @@ final class DeviceRegistry: ObservableObject {
             : "device-0x\(pidHex)#\(key.instance)."
     }
 
-    private func normalizedKey(_ key: DeviceInstanceKey) -> DeviceInstanceKey {
+    /// Claim-normalized form: the claimed unit's key folds to the empty
+    /// instance (legacy identity), any other unit keeps its token. Two keys
+    /// that normalize equal refer to the same physical device — window
+    /// matching and restore use this so a pre-instance saved identity
+    /// (empty token) and the live claimed device compare equal.
+    func normalizedKey(_ key: DeviceInstanceKey) -> DeviceInstanceKey {
         DeviceInstanceKey(productID: key.productID, instance: rowInstance(for: key) ?? "")
     }
 

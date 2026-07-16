@@ -267,7 +267,13 @@ final class SettingsWindowController: NSWindowController {
 
     let settings: TabletSettings
     let deviceLabel: String
-    let productID: Int?
+    /// Physical-unit identity this window is bound to; nil for the generic
+    /// (no-device) window. Window matching, restore, and the size cache all
+    /// key on this.
+    let instanceKey: DeviceInstanceKey?
+    /// Model axis of the bound device — what spec lookups and the panes
+    /// (which predate instance identity) consume.
+    var productID: Int? { instanceKey?.productID }
     let docUndoManager = UndoManager()
 
     /// Expose docUndoManager through the NSResponder chain so AppKit's standard
@@ -297,10 +303,11 @@ final class SettingsWindowController: NSWindowController {
 
     private static let deviceSpecificTabIndices: Set<Int> = [0, 1, 2, 3, 4, 5, 6, 7, 8]
 
-    init(settings: TabletSettings, deviceLabel: String, productID: Int?) {
+    init(settings: TabletSettings, deviceLabel: String, instanceKey: DeviceInstanceKey?) {
         self.settings = settings
         self.deviceLabel = deviceLabel
-        self.productID = productID
+        self.instanceKey = instanceKey
+        let productID = instanceKey?.productID
 
         tabVC.tabStyle = .toolbar
 

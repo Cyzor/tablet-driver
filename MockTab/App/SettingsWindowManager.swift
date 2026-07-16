@@ -26,23 +26,59 @@ final class SettingsWindowManager: ObservableObject {
     private var isTerminating = false
     private var skipWindowSave = false
 
-    /// Last-known window size per logical window, keyed by productID (as string)
-    /// or "generic". Captured when a window closes so re-opening it restores the
-    /// size the user last had, even though the closed window is no longer in
-    /// `windows` and therefore absent from `saveWindowState()`.
+    /// Last-known window size per logical window, keyed by the device's
+    /// instance-key string or "generic". Captured when a window closes so
+    /// re-opening it restores the size the user last had, even though the
+    /// closed window is no longer in `windows` and therefore absent from
+    /// `saveWindowState()`.
     private var lastKnownSizes: [String: NSSize] = [:]
 
-    private func sizeKey(productID: Int?) -> String {
-        productID.map(String.init) ?? "generic"
+    private func sizeKey(_ key: DeviceInstanceKey?) -> String {
+        key.map { DeviceRegistry.shared.normalizedKey($0).stringValue } ?? "generic"
+    }
+
+    /// Whether two window identities denote the same physical unit, folding
+    /// the claimed instance and the legacy empty-instance form together — a
+    /// window restored from a pre-instance save must match the same device
+    /// once it connects with its real serial.
+    private func sameDevice(_ a: DeviceInstanceKey?, _ b: DeviceInstanceKey?) -> Bool {
+        guard let a, let b else { return a == nil && b == nil }
+        let registry = DeviceRegistry.shared
+        return registry.normalizedKey(a) == registry.normalizedKey(b)
+    }
+
+    private func window(for key: DeviceInstanceKey) -> SettingsWindowController? {
+        windows.first(where: { sameDevice($0.instanceKey, key) })
+    }
+
+    /// Resolves a bare model PID (menus, legacy callers, old saved state) to
+    /// a physical unit: the connected unit holding the model's claimed
+    /// namespace when one is live, else the registry's first row for that
+    /// model, else the legacy empty-instance identity.
+    private func resolveKey(forProductID productID: Int) -> DeviceInstanceKey {
+        let tm = TabletManager.shared
+        if let context = tm.contexts[productID] {
+            return context.instanceKey
+        }
+        if let row = DeviceRegistry.shared.knownTablets.first(
+            where: { $0.productID == productID })
+        {
+            return row.instanceKey
+        }
+        return DeviceInstanceKey(productID: productID, instance: "")
     }
 
     private static let restorationKey = "MockTab_OpenWindows"
 
     private init() {
+        // Also observe the context store: a second unit of an already-
+        // connected model changes `deviceContexts` without changing the
+        // model-level `connectedProductIDs` set.
         deviceObserver = TabletManager.shared.$connectedProductIDs
+            .combineLatest(TabletManager.shared.$deviceContexts)
             .dropFirst()
             .receive(on: RunLoop.main)
-            .sink { [weak self] ids in
+            .sink { [weak self] ids, deviceContexts in
                 guard let self else { return }
                 // Close any open window whose device has just become a
                 // claimed companion — devices enumerate one at a time, so a
@@ -62,7 +98,7 @@ final class SettingsWindowManager: ObservableObject {
                 // skipping claimed companions, which fold into their owner's
                 // window instead of receiving one of their own.
                 if let dw = self.defaultWindow,
-                   dw.productID == nil,
+                   dw.instanceKey == nil,
                    let pid = ids.first(where: { id in
                        !self.windows.contains(where: { $0.productID == id })
                            && !VendorDeviceRegistry.isConnectedCompanion(
@@ -71,21 +107,23 @@ final class SettingsWindowManager: ObservableObject {
                     self.replaceWindow(dw, withDeviceID: pid)
                     return  // replaceWindow handled this pid; loop below skips it
                 }
-                // For every connected tablet with no open window, open one —
-                // except a companion peripheral (e.g. the Xencelabs Quick
-                // Keys puck/dongle) whose owning tablet is also connected;
-                // that one is folded into the tablet's own Buttons pane
-                // instead (see ButtonMappingView's companion section). This
-                // re-evaluates on every change to `ids`, so a companion
-                // whose owning tablet later disconnects gets its own window
-                // on the very next publish (it's still in `ids`, still has
-                // no window, and is no longer claimed).
-                for pid in ids
-                where !self.windows.contains(where: { $0.productID == pid })
+                // For every connected unit with no open window, open one —
+                // per physical instance, so two identical tablets each get
+                // their own window — except a companion peripheral (e.g.
+                // the Xencelabs Quick Keys puck/dongle) whose owning tablet
+                // is also connected; that one is folded into the tablet's
+                // own Buttons pane instead (see ButtonMappingView's
+                // companion section). This re-evaluates on every publish,
+                // so a companion whose owning tablet later disconnects gets
+                // its own window on the very next one (it's still
+                // connected, still has no window, and is no longer claimed).
+                for context in deviceContexts.values
+                where context.isConnected
+                    && self.window(for: context.instanceKey) == nil
                     && !VendorDeviceRegistry.isConnectedCompanion(
-                        productID: pid, connectedProductIDs: ids)
+                        productID: context.productID, connectedProductIDs: ids)
                 {
-                    self.openWindow(forProductID: pid)
+                    self.openWindow(forInstanceKey: context.instanceKey)
                 }
             }
 
@@ -134,32 +172,40 @@ final class SettingsWindowManager: ObservableObject {
     // MARK: - Multi-window
 
     @discardableResult
-    func openWindow(forProductID productID: Int) -> SettingsWindowController {
+    func openWindow(forInstanceKey key: DeviceInstanceKey) -> SettingsWindowController {
         // A companion peripheral (Xencelabs Quick Keys puck/dongle) never
         // gets a window of its own while its owning tablet is connected —
         // redirect to the owner instead. Covers every caller (menus, status
-        // item, "Detect Tablet"), not just the auto-open sink.
+        // item, "Detect Tablet"), not just the auto-open sink. Ownership is
+        // a model-level relation; the owner resolves to its connected unit.
         if let ownerPID = VendorDeviceRegistry.connectedCompanionOwner(
-            forProductID: productID, connectedProductIDs: TabletManager.shared.connectedProductIDs)
+            forProductID: key.productID,
+            connectedProductIDs: TabletManager.shared.connectedProductIDs)
         {
-            return openWindow(forProductID: ownerPID)
+            return openWindow(forInstanceKey: resolveKey(forProductID: ownerPID))
         }
-        if let existing = windows.first(where: { $0.productID == productID }) {
+        if let existing = window(for: key) {
             NSApp.activate(ignoringOtherApps: true)
             existing.show()
             return existing
         }
-        let wc = makeWindow(productID: productID, tabIndex: 0, frame: nil)
+        let wc = makeWindow(instanceKey: key, tabIndex: 0, frame: nil)
         NSApp.activate(ignoringOtherApps: true)
         wc.show()
         saveWindowState()
         return wc
     }
 
+    /// Model-PID entry point for callers with no instance in hand
+    /// ("Detect Tablet", device-picker callbacks).
+    @discardableResult
+    func openWindow(forProductID productID: Int) -> SettingsWindowController {
+        openWindow(forInstanceKey: resolveKey(forProductID: productID))
+    }
+
     @discardableResult
     func openNewWindow() -> SettingsWindowController {
-        let pid = activeDeviceProductID()
-        let wc = makeWindow(productID: pid, tabIndex: 0, frame: nil)
+        let wc = makeWindow(instanceKey: activeDeviceKey(), tabIndex: 0, frame: nil)
         NSApp.activate(ignoringOtherApps: true)
         wc.show()
         saveWindowState()
@@ -173,7 +219,7 @@ final class SettingsWindowManager: ObservableObject {
 
         old.window?.close()
 
-        let wc = makeWindow(productID: pid, tabIndex: tabIndex, frame: frame)
+        let wc = makeWindow(instanceKey: resolveKey(forProductID: pid), tabIndex: tabIndex, frame: frame)
         if wasDefault { defaultWindow = wc }
         wc.showTab(at: tabIndex)
         saveWindowState()
@@ -198,7 +244,7 @@ final class SettingsWindowManager: ObservableObject {
                 "w": frame.size.width,
                 "h": frame.size.height,
             ]
-            if let pid = wc.productID { entry["productID"] = pid }
+            if let key = wc.instanceKey { entry["deviceID"] = key.stringValue }
             if let tg = win.tabGroup {
                 let key = ObjectIdentifier(tg)
                 if tabGroupMap[key] == nil {
@@ -221,31 +267,48 @@ final class SettingsWindowManager: ObservableObject {
         else { return }
 
         var created: [(wc: SettingsWindowController, entry: [String: Any])] = []
+        // Saved identity: composite "deviceID" string (current format), with
+        // pre-instance saves falling back to the bare "productID" Int (read
+        // as the legacy empty-instance identity). Either way the PID folds
+        // to canonical — entries saved before a transport merge may carry a
+        // retired PID (Quick Keys dongle).
+        func savedKey(_ entry: [String: Any]) -> DeviceInstanceKey? {
+            let raw: DeviceInstanceKey?
+            if let s = entry["deviceID"] as? String {
+                raw = DeviceInstanceKey(stringValue: s)
+            } else {
+                raw = (entry["productID"] as? Int).map {
+                    DeviceInstanceKey(productID: $0, instance: "")
+                }
+            }
+            return raw.map {
+                DeviceInstanceKey(
+                    productID: VendorDeviceRegistry.canonicalProductID(for: $0.productID),
+                    instance: $0.instance)
+            }
+        }
         // A companion's own window shouldn't be restored alongside its
         // owning tablet's — mirrors the live-connect suppression below.
         // Resolved against the saved set itself since actual connection
         // state isn't known yet at launch.
-        // Entries saved before a transport merge may carry a retired PID
-        // (Quick Keys dongle) — fold to canonical before restoring, and
-        // restore at most one window per canonical device since a pre-merge
-        // save can hold both faces of what is now one identity.
-        let savedProductIDs = entries.compactMap {
-            ($0["productID"] as? Int).map(VendorDeviceRegistry.canonicalProductID(for:))
-        }
-        var restoredPIDs = Set<Int>()
+        let savedProductIDs = entries.compactMap { savedKey($0)?.productID }
+        // Restore at most one window per physical unit (claim-normalized, so
+        // a pre-merge or pre-instance save holding two faces of what is now
+        // one identity restores a single window).
+        var restoredKeys = Set<DeviceInstanceKey>()
 
         for (index, entry) in entries.enumerated() {
-            let productID = (entry["productID"] as? Int)
-                .map(VendorDeviceRegistry.canonicalProductID(for:))
+            let instanceKey = savedKey(entry)
             let tabIndex  = entry["tabIndex"]  as? Int ?? 0
-            if let pid = productID {
-                if restoredPIDs.contains(pid) { continue }
+            if let key = instanceKey {
+                let normalized = DeviceRegistry.shared.normalizedKey(key)
+                if restoredKeys.contains(normalized) { continue }
                 if VendorDeviceRegistry.isConnectedCompanion(
-                    productID: pid, connectedProductIDs: savedProductIDs)
+                    productID: key.productID, connectedProductIDs: savedProductIDs)
                 {
                     continue
                 }
-                restoredPIDs.insert(pid)
+                restoredKeys.insert(normalized)
             }
             let frame: NSRect? = {
                 guard let x = entry["x"] as? CGFloat,
@@ -256,7 +319,7 @@ final class SettingsWindowManager: ObservableObject {
                 return NSRect(x: x, y: y, width: w, height: h)
             }()
 
-            let wc = makeWindow(productID: productID, tabIndex: tabIndex, frame: frame)
+            let wc = makeWindow(instanceKey: instanceKey, tabIndex: tabIndex, frame: frame)
             if index == 0 { defaultWindow = wc }
             wc.show()
             wc.showTab(at: tabIndex)
@@ -289,22 +352,24 @@ final class SettingsWindowManager: ObservableObject {
     // MARK: - Window list (for menu bar / dock menus)
 
     struct WindowDescriptor: Identifiable {
-        let id: Int  // productID, or -1 for the generic window
+        let id: String  // instance-key string, or "generic" for the generic window
         let label: String
     }
 
     private func publishWindowDescriptors() {
         windowDescriptors = windows.map { wc in
-            let pid = wc.productID
-            return WindowDescriptor(id: pid ?? -1, label: displayLabel(forProductID: pid))
+            WindowDescriptor(
+                id: wc.instanceKey?.stringValue ?? "generic",
+                label: displayLabel(forKey: wc.instanceKey))
         }
     }
 
-    /// Bring an open window to front by its productID (-1 = generic window).
-    func focusWindow(id: Int) {
-        if id == -1 {
+    /// Bring an open window to front by its descriptor ID
+    /// ("generic" = the no-device window).
+    func focusWindow(id: String) {
+        if id == "generic" {
             ensureDefaultWindow().show()
-        } else if let wc = windows.first(where: { ($0.productID ?? -1) == id }) {
+        } else if let key = DeviceInstanceKey(stringValue: id), let wc = window(for: key) {
             NSApp.activate(ignoringOtherApps: true)
             wc.show()
         }
@@ -312,40 +377,48 @@ final class SettingsWindowManager: ObservableObject {
 
     // MARK: - Labels
 
-    func displayLabel(forProductID productID: Int?) -> String {
-        guard let productID else { return "MockTab" }
+    private func row(forKey key: DeviceInstanceKey) -> DeviceRegistry.KnownTablet? {
         let registry = DeviceRegistry.shared
-        if let tablet = registry.knownTablets.first(where: { $0.productID == productID }) {
+        let normalized = registry.normalizedKey(key)
+        return registry.knownTablets.first(
+            where: { registry.normalizedKey($0.instanceKey) == normalized })
+            ?? registry.knownTablets.first(where: { $0.productID == key.productID })
+    }
+
+    func displayLabel(forKey key: DeviceInstanceKey?) -> String {
+        guard let key else { return "MockTab" }
+        if let tablet = row(forKey: key) {
             if tablet.nickname != tablet.modelName { return tablet.nickname }
             return tablet.modelName
         }
-        return TabletManager.deviceName(forProductID: productID)
+        return TabletManager.deviceName(forProductID: key.productID)
     }
 
-    func menuLabel(forProductID productID: Int) -> String {
-        let registry = DeviceRegistry.shared
-        if let tablet = registry.knownTablets.first(where: { $0.productID == productID }) {
+    func menuLabel(forKey key: DeviceInstanceKey) -> String {
+        if let tablet = row(forKey: key) {
             if tablet.nickname != tablet.modelName {
                 return "\(tablet.nickname) — \(tablet.modelName)"
             }
             return tablet.modelName
         }
-        return TabletManager.deviceName(forProductID: productID)
+        return TabletManager.deviceName(forProductID: key.productID)
     }
 
     // MARK: - Private
 
-    private func activeDeviceProductID() -> Int? {
-        let connected = TabletManager.shared.connectedProductIDs
+    private func activeDeviceKey() -> DeviceInstanceKey? {
+        let tm = TabletManager.shared
+        let connected = tm.connectedProductIDs
         // Never hand out a claimed companion (puck/dongle whose owning
         // tablet is connected) — its UI lives in the owner's window.
-        return TabletManager.shared.activeContext?.productID
-            ?? connected.first(where: {
-                !VendorDeviceRegistry.isConnectedCompanion(
-                    productID: $0, connectedProductIDs: connected)
-            })
-            ?? connected.first
-            ?? DeviceRegistry.shared.knownTablets.first?.productID
+        return tm.activeContext?.instanceKey
+            ?? tm.deviceContexts.values.first(where: {
+                $0.isConnected
+                    && !VendorDeviceRegistry.isConnectedCompanion(
+                        productID: $0.productID, connectedProductIDs: connected)
+            })?.instanceKey
+            ?? connected.first.map { resolveKey(forProductID: $0) }
+            ?? DeviceRegistry.shared.knownTablets.first?.instanceKey
     }
 
     private func frontmostSettingsWindow() -> SettingsWindowController {
@@ -356,12 +429,12 @@ final class SettingsWindowManager: ObservableObject {
         if let dw = defaultWindow, windows.contains(where: { $0 === dw }) {
             return dw
         }
-        let pid = activeDeviceProductID()
-        let wc = makeWindow(productID: pid, tabIndex: 0, frame: nil)
+        let key = activeDeviceKey()
+        let wc = makeWindow(instanceKey: key, tabIndex: 0, frame: nil)
         // SettingsWindowController.init already sets this autosave name when
-        // productID == nil; only needed here for the pid != nil case, where
+        // no device is bound; only needed here for the bound case, where
         // this "default" window is standing in for a specific device.
-        if pid != nil {
+        if key != nil {
             wc.window?.setFrameAutosaveName("PreferencesWindow")
         }
         defaultWindow = wc
@@ -370,13 +443,13 @@ final class SettingsWindowManager: ObservableObject {
 
     @discardableResult
     private func makeWindow(
-        productID: Int?,
+        instanceKey: DeviceInstanceKey?,
         tabIndex: Int,
         frame: NSRect?
     ) -> SettingsWindowController {
-        let (s, label) = settingsAndLabel(forProductID: productID)
+        let (s, label) = settingsAndLabel(forKey: instanceKey)
         let wc = SettingsWindowController(
-            settings: s, deviceLabel: label, productID: productID)
+            settings: s, deviceLabel: label, instanceKey: instanceKey)
 
         if let frame {
             // Explicit frame passed (from restore or replace operations).
@@ -390,7 +463,7 @@ final class SettingsWindowManager: ObservableObject {
             // otherwise land in the upper-left area of the primary display.
             // If we have a last-known size for this device, restore it so the
             // window comes back at the same size the user last had.
-            if let lastSize = lastKnownSizes[sizeKey(productID: productID)] {
+            if let lastSize = lastKnownSizes[sizeKey(instanceKey)] {
                 wc.window?.setContentSize(lastSize)
                 wc.window?.clampToMinSize()
             }
@@ -435,24 +508,32 @@ final class SettingsWindowManager: ObservableObject {
         return wc
     }
 
-    private func settingsAndLabel(forProductID productID: Int?) -> (TabletSettings, String) {
-        if let pid = productID {
+    private func settingsAndLabel(forKey key: DeviceInstanceKey?) -> (TabletSettings, String) {
+        if let key {
             let tm = TabletManager.shared
-            // Pre-create the DeviceContext if the device hasn't connected yet so the
-            // window and driver share the same TabletSettings instance.  connectDevice()
-            // adopts any pre-existing context via `contexts[pid] ?? DeviceContext(...)`,
-            // ensuring writes from the UI are immediately visible to the driver.
-            if tm.contexts[pid] == nil {
-                // Use the last-known vendor for this product (persisted from a
-                // prior live connect) so the stub doesn't default to Wacom for
-                // a non-Wacom device — TabletManager.deviceConnected() reuses
-                // whatever context already occupies this key, so a wrong
-                // vendorID here would stick (it's a `let`) for the rest of
-                // this launch, breaking vendor-specific spec lookups.
-                let vendorID = DeviceRegistry.shared.vendorID(forProductID: pid) ?? 0x056A
-                tm.registerRestoredContext(DeviceContext(productID: pid, vendorID: vendorID))
+            // Pre-create the DeviceContext if the device hasn't connected yet
+            // so the window and driver share the same TabletSettings instance.
+            // deviceConnected() adopts a pre-existing context for the same
+            // instance (or, for an empty-instance stub, re-keys it on the
+            // model's first connect), ensuring writes from the UI are
+            // immediately visible to the driver.
+            let existing = tm.deviceContexts[key]
+                ?? tm.deviceContexts.values.first(where: {
+                    sameDevice($0.instanceKey, key)
+                })
+            if let existing {
+                return (existing.settings, displayLabel(forKey: key))
             }
-            return (tm.contexts[pid]!.settings, displayLabel(forProductID: pid))
+            // Use the last-known vendor for this product (persisted from a
+            // prior live connect) so the stub doesn't default to Wacom for
+            // a non-Wacom device — TabletManager.deviceConnected() reuses
+            // whatever context already occupies this key, so a wrong
+            // vendorID here would stick (it's a `let`) for the rest of
+            // this launch, breaking vendor-specific spec lookups.
+            let vendorID = DeviceRegistry.shared.vendorID(forProductID: key.productID) ?? 0x056A
+            let stub = DeviceContext(instanceKey: key, vendorID: vendorID)
+            tm.registerRestoredContext(stub)
+            return (stub.settings, displayLabel(forKey: key))
         }
         return (settings, "MockTab")
     }
@@ -467,7 +548,7 @@ final class SettingsWindowManager: ObservableObject {
                 guard let self, let wc else { return }
                 // Capture size before removing so re-opening restores it.
                 if let size = wc.window?.frame.size {
-                    self.lastKnownSizes[self.sizeKey(productID: wc.productID)] = size
+                    self.lastKnownSizes[self.sizeKey(wc.instanceKey)] = size
                 }
                 self.windows.removeAll(where: { $0 === wc })
                 if self.defaultWindow === wc { self.defaultWindow = nil }
