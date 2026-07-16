@@ -22,6 +22,40 @@ enum RingDiagramRegion: Equatable {
     case center
 }
 
+/// Zero-size backing view that scrolls its position into view once, when it
+/// first lands in a window. Placed behind each mode's expanded editor: the
+/// editor opens below the fold whenever its summary row sits near the bottom
+/// of the pane (grouped Forms give no room past the last row), so without
+/// this every disclosure means a manual scroll. ScrollViewReader can't reach
+/// it — the whole mode block is a single Form row — so the enclosing
+/// NSScrollView is asked directly.
+private struct ScrollIntoViewOnAppear: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { RevealView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    final class RevealView: NSView {
+        private var revealed = false
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard window != nil, !revealed else { return }
+            revealed = true
+            // Let the expansion animation (0.15 s) finish so the frame being
+            // revealed is the editor's settled height.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                guard let self, self.window != nil else { return }
+                let reduceMotion =
+                    NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = reduceMotion ? 0 : 0.2
+                    context.allowsImplicitAnimation = true
+                    self.scrollToVisible(self.bounds.insetBy(dx: 0, dy: -8))
+                }
+            }
+        }
+    }
+}
+
 struct TouchRingModeListView: View {
     let slots: [ControlSlot]
     /// How many of `slots` this device exposes (model always stores 4).
@@ -292,6 +326,7 @@ private struct TouchRingModeListCore: View, Equatable {
         // hangs under its summary row.
         .padding(.leading, 26)
         .padding(.vertical, 2)
+        .background(ScrollIntoViewOnAppear())
         .transition(.opacity)
     }
 
