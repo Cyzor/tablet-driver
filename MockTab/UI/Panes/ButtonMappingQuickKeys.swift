@@ -23,6 +23,10 @@ struct QuickKeysSectionView: View {
     let spec: WacomDeviceSpec?
     let liveButtons: LiveButtonState
 
+    /// Bumped when the dial diagram's center is clicked, starting recording
+    /// in the Dial row's binding field — direct manipulation on the diagram.
+    @State private var dialRecordToken = 0
+
     /// Direction for slotBinding(at:direction:).
     private enum SlotDirection { case cw, ccw }
 
@@ -70,7 +74,8 @@ struct QuickKeysSectionView: View {
                     "Quick Keys Dial Button",
                     get: { settings.touchRingButtonBinding },
                     set: { settings.touchRingButtonBinding = $0 }
-                ))
+                ),
+                recordRequestToken: dialRecordToken)
             // Dial rotation (CW/CCW detents) — same ControlSlot model used
             // by a real touch ring. Summary list + per-mode editor, with
             // the clickable dial diagram beneath.
@@ -87,7 +92,8 @@ struct QuickKeysSectionView: View {
                 speedBinding: slotSpeedBinding(at:),
                 cwBinding: { slotBinding(at: $0, direction: .cw) },
                 ccwBinding: { slotBinding(at: $0, direction: .ccw) },
-                ledEditor: slotLEDWell(at:)
+                ledEditor: slotLEDWell(at:),
+                onCenterTap: { dialRecordToken += 1 }
             )
         }
     }

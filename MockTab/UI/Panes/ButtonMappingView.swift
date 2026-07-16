@@ -16,6 +16,9 @@ struct ButtonMappingView: View {
 
     @Environment(\.controlActiveState) private var controlActiveState
     @State private var isLiveResizing = false
+    /// Bumped when the ring diagram's center is clicked, starting recording
+    /// in the Center row's binding field — direct manipulation on the diagram.
+    @State private var centerRecordToken = 0
 
     /// Live button state, zeroed when this window is not key or is live-resizing.
     /// Zeroing during resize stops ~100 Hz tablet events from compounding the
@@ -287,12 +290,14 @@ struct ButtonMappingView: View {
                         "Touch Ring Button",
                         get: { settings.touchRingButtonBinding },
                         set: { settings.touchRingButtonBinding = $0 }),
-                    ringSlotCount: spec?.ringSlotCount ?? 4)
+                    ringSlotCount: spec?.ringSlotCount ?? 4,
+                    recordRequestToken: centerRecordToken)
                 touchRingSlotsSection(
                     String(
                         localized: "Touch Ring",
                         comment: "Section header / row label for touch ring"),
-                    isActive: lb.touchRingActive, showsDiagram: true)
+                    isActive: lb.touchRingActive, showsDiagram: true,
+                    onCenterTap: { centerRecordToken += 1 })
             }
         }
 
@@ -492,7 +497,8 @@ struct ButtonMappingView: View {
     /// `showsDiagram` is set — rings only, strips have no round schematic).
     @ViewBuilder
     private func touchRingSlotsSection(
-        _ label: String, isActive: Bool, showsDiagram: Bool = false
+        _ label: String, isActive: Bool, showsDiagram: Bool = false,
+        onCenterTap: (() -> Void)? = nil
     ) -> some View {
         // Label row — shows "Touch Ring", "Left", or "Right" with live-active indicator.
         HStack(spacing: 6) {
@@ -514,7 +520,8 @@ struct ButtonMappingView: View {
             actionBinding: slotBinding(at:),
             speedBinding: slotSpeedBinding(at:),
             cwBinding: { self.slotBinding(for: $0, direction: .cw) },
-            ccwBinding: { self.slotBinding(for: $0, direction: .ccw) }
+            ccwBinding: { self.slotBinding(for: $0, direction: .ccw) },
+            onCenterTap: onCenterTap
         )
     }
 

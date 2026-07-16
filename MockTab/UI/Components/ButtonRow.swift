@@ -12,7 +12,8 @@ import SwiftUI
 func buttonRow(
     _ label: String, isActive: Bool,
     binding: Binding<ButtonBinding>,
-    ringSlotCount: Int = 4
+    ringSlotCount: Int = 4,
+    recordRequestToken: Int = 0
 ) -> some View {
     HStack(spacing: 0) {
         activeIndicator(isActive)
@@ -20,7 +21,9 @@ func buttonRow(
         // starts at a consistent x position regardless of label length.
         labelText(label, isActive: isActive)
             .scaledFrame(minWidth: 100, alignment: .trailing)
-        ButtonBindingControl(binding: binding, ringSlotCount: ringSlotCount)
+        ButtonBindingControl(
+            binding: binding, ringSlotCount: ringSlotCount,
+            recordRequestToken: recordRequestToken)
             .equatable()
         Spacer(minLength: 0)
     }

@@ -14,6 +14,9 @@ struct ButtonBindingControl: View, Equatable {
     @Binding var binding: ButtonBinding
     var compact: Bool = false
     var ringSlotCount: Int = 4
+    /// Incremented by an external control (the ring diagram's center button)
+    /// to begin recording in this field, exactly as if it had been clicked.
+    var recordRequestToken: Int = 0
     @State private var isRecording = false
     @State private var monitor: Any?
     /// Modifier keys accumulated while recording (before any base key is pressed).
@@ -27,6 +30,7 @@ struct ButtonBindingControl: View, Equatable {
         lhs.binding == rhs.binding
             && lhs.compact == rhs.compact
             && lhs.ringSlotCount == rhs.ringSlotCount
+            && lhs.recordRequestToken == rhs.recordRequestToken
     }
 
     var body: some View {
@@ -71,6 +75,9 @@ struct ButtonBindingControl: View, Equatable {
             clickMenu
         }
         .onDisappear { if isRecording { stopRecording() } }
+        .onChange(of: recordRequestToken) { _ in
+            if !isRecording { startRecording() }
+        }
     }
 
     // MARK: - Menu
