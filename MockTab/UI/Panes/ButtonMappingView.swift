@@ -262,8 +262,14 @@ struct ButtonMappingView: View {
                 case .button2: if btnCount >= 2 { penRecordTokens[3] += 1 }
                 case .button3: if btnCount >= 3 { penRecordTokens[4] += 1 }
                 }
-            })
-                .equatable()
+            }, enabledParts: {
+                var parts: Set<PenDiagramView.Part> = []
+                if !isMouse { parts.insert(.tip); parts.insert(.eraser) }
+                if btnCount >= 1 { parts.insert(.button1) }
+                if btnCount >= 2 { parts.insert(.button2) }
+                if btnCount >= 3 { parts.insert(.button3) }
+                return parts
+            }())
                 .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 64)
                 .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
                 .listRowBackground(Color.clear)

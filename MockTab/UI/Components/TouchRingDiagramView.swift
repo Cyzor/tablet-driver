@@ -24,6 +24,12 @@ struct TouchRingDiagramView: View, Equatable {
     /// Slot currently selected for editing in the mode list (outlined),
     /// distinct from the hardware-active slot (filled). nil = none.
     var selectedIndex: Int? = nil
+    /// Wedge under a mouse press that started on it — darkened like a pushed
+    /// AppKit button. Press state lives in the caller (the equatable-core
+    /// trap); this view only renders it.
+    var pressedIndex: Int? = nil
+    /// True while the mouse is pressed on the center button.
+    var centerPressed: Bool = false
 
     // SVG viewBox is 0 0 137.63 137.63 for both quarters and thirds variants.
     private static let svgSize = 137.63
@@ -69,10 +75,15 @@ struct TouchRingDiagramView: View, Equatable {
             let ty = (size.height - drawn) / 2.0
             var t = CGAffineTransform(a: scale, b: 0, c: 0, d: scale, tx: tx, ty: ty)
 
-            func draw(_ path: Path, fill: Color, stroke: Color) {
+            func draw(_ path: Path, fill: Color, stroke: Color, pressed: Bool = false) {
                 guard let xp = path.cgPath.copy(using: &t) else { return }
                 let p = Path(xp)
                 context.fill(p, with: .color(fill))
+                if pressed {
+                    // Pushed-button feedback: primary darkens in light mode
+                    // and lightens in dark mode, like AppKit's press state.
+                    context.fill(p, with: .color(.primary.opacity(0.15)))
+                }
                 context.stroke(p, with: .color(stroke), style: StrokeStyle(lineWidth: 0.1))
             }
 
@@ -90,7 +101,8 @@ struct TouchRingDiagramView: View, Equatable {
                 let isActive = idx == activeSlotIndex
                 draw(path,
                      fill: isActive ? accent : passive,
-                     stroke: isActive ? accent : strokeDim)
+                     stroke: isActive ? accent : strokeDim,
+                     pressed: idx == pressedIndex)
             }
             // Editing selection: a heavier outline, independent of the
             // hardware-active fill so both states stay readable at once.
@@ -102,7 +114,8 @@ struct TouchRingDiagramView: View, Equatable {
             }
             draw(centerPath,
                  fill: centerDown ? accent : bodyFill,
-                 stroke: centerDown ? accent : strokeDim)
+                 stroke: centerDown ? accent : strokeDim,
+                 pressed: centerPressed)
         }
     }
 }

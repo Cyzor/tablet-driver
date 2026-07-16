@@ -16,6 +16,12 @@ import TabletKit
 /// Bindings come in as per-index factories so the caller keeps owning its
 /// settings plumbing; `ledEditor` is non-nil only where the hardware has a
 /// per-mode light (Xencelabs Quick Keys dial).
+/// Clickable region of the ring diagram, for press-feedback tracking.
+enum RingDiagramRegion: Equatable {
+    case wedge(Int)
+    case center
+}
+
 struct TouchRingModeListView: View {
     let slots: [ControlSlot]
     /// How many of `slots` this device exposes (model always stores 4).
@@ -48,6 +54,11 @@ struct TouchRingModeListView: View {
     /// different `selected` value, its `==` fails, and it re-renders.
     @State private var selected: Int? = nil
 
+    /// Diagram region under a mouse press that started on it — darkened like
+    /// a pushed AppKit button; dragging off cancels. Same wrapper-owned
+    /// placement as `selected`, for the same equatable-core reason.
+    @State private var pressed: RingDiagramRegion? = nil
+
     var body: some View {
         TouchRingModeListCore(
             slots: slots,
@@ -59,6 +70,8 @@ struct TouchRingModeListView: View {
             showsDiagram: showsDiagram,
             selected: selected,
             setSelected: { selected = $0 },
+            pressed: pressed,
+            setPressed: { if pressed != $0 { pressed = $0 } },
             actionBinding: actionBinding,
             speedBinding: speedBinding,
             cwBinding: cwBinding,
@@ -87,6 +100,8 @@ private struct TouchRingModeListCore: View, Equatable {
     let showsDiagram: Bool
     let selected: Int?
     let setSelected: (Int?) -> Void
+    let pressed: RingDiagramRegion?
+    let setPressed: (RingDiagramRegion?) -> Void
     let actionBinding: (Int) -> Binding<ControlSlot.Action>
     let speedBinding: (Int) -> Binding<Double>
     let cwBinding: (Int) -> Binding<ButtonBinding>
@@ -103,6 +118,7 @@ private struct TouchRingModeListCore: View, Equatable {
             && lhs.centerDown == rhs.centerDown
             && lhs.showsDiagram == rhs.showsDiagram
             && lhs.selected == rhs.selected
+            && lhs.pressed == rhs.pressed
             && (lhs.ledEditor == nil) == (rhs.ledEditor == nil)
             && (lhs.onCenterTap == nil) == (rhs.onCenterTap == nil)
     }
@@ -328,7 +344,9 @@ private struct TouchRingModeListCore: View, Equatable {
                 activeSlotIndex: activeSlotIndex,
                 centerDown: centerDown,
                 slotCount: ringSlotCount,
-                selectedIndex: selected
+                selectedIndex: selected,
+                pressedIndex: { if case .wedge(let idx) = pressed { idx } else { nil } }(),
+                centerPressed: pressed == .center
             )
             .equatable()
             .frame(width: 104, height: 104)
@@ -336,13 +354,22 @@ private struct TouchRingModeListCore: View, Equatable {
                 GeometryReader { geo in
                     Color.clear
                         .contentShape(Rectangle())
-                        .gesture(SpatialTapGesture().onEnded { value in
-                            if let idx = wedgeIndex(at: value.location, in: geo.size) {
-                                setSelected(selected == idx ? nil : idx)
-                            } else if isCenter(value.location, in: geo.size) {
-                                onCenterTap?()
+                        .gesture(DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                let start = region(at: value.startLocation, in: geo.size)
+                                let current = region(at: value.location, in: geo.size)
+                                setPressed(start != nil && current == start ? start : nil)
                             }
-                        })
+                            .onEnded { value in
+                                setPressed(nil)
+                                guard let start = region(at: value.startLocation, in: geo.size),
+                                      region(at: value.location, in: geo.size) == start
+                                else { return }
+                                switch start {
+                                case .wedge(let idx): setSelected(selected == idx ? nil : idx)
+                                case .center: onCenterTap?()
+                                }
+                            })
                 }
             }
             // Sighted-only affordance: wedge/center clicks duplicate the
@@ -402,5 +429,14 @@ private struct TouchRingModeListCore: View, Equatable {
         let dx = point.x - size.width / 2
         let dy = point.y - size.height / 2
         return (dx * dx + dy * dy).squareRoot() <= side * 0.22
+    }
+
+    /// The clickable region under `point`, for press feedback and click
+    /// dispatch. The center only counts when a center action exists, so an
+    /// actionless disc never darkens as if it were pushable.
+    private func region(at point: CGPoint, in size: CGSize) -> RingDiagramRegion? {
+        if let idx = wedgeIndex(at: point, in: size) { return .wedge(idx) }
+        if onCenterTap != nil, isCenter(point, in: size) { return .center }
+        return nil
     }
 }

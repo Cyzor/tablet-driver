@@ -10,25 +10,103 @@ import TabletKit
 /// Renders a schematic side-view of the stylus pen, rotated 90° so the tip
 /// faces right and the eraser faces left.  Segments illuminate in accent color
 /// when the corresponding physical input is active.
-struct PenDiagramView: View, Equatable {
+///
+/// Thin non-equatable wrapper owning the pressed-part state — NOT in the
+/// equatable core below — because a Form row swallows @State-driven
+/// re-renders inside an EquatableView (same trap as TouchRingModeListView).
+struct PenDiagramView: View {
     let liveButtons: LiveButtonState
     /// Called when a pen part is clicked — callers use it to start recording
     /// in that part's binding field (direct manipulation, same pattern as
     /// TouchRingModeListView's diagram). nil leaves the diagram inert.
     var onPartTap: ((Part) -> Void)? = nil
+    /// Parts that respond to clicks (and show press feedback). nil = all.
+    /// Callers pass the parts whose binding rows are actually shown, so a
+    /// missing button or a mouse tool never darkens as if it were pushable.
+    var enabledParts: Set<Part>? = nil
 
     /// The clickable parts, matching the pane's binding rows.
     enum Part {
         case tip, eraser, button1, button2, button3
     }
 
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.liveButtons == rhs.liveButtons
+    /// Part under a mouse press that started on it — darkened like a pushed
+    /// AppKit button; dragging off the part cancels, matching button
+    /// semantics.
+    @State private var pressedPart: Part? = nil
+
+    var body: some View {
+        PenDiagramCore(liveButtons: liveButtons, pressedPart: pressedPart)
+            .equatable()
+            .overlay {
+                if onPartTap != nil {
+                    GeometryReader { geo in
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .gesture(DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    let start = part(at: value.startLocation, in: geo.size)
+                                    let current = part(at: value.location, in: geo.size)
+                                    let held = (start != nil && current == start) ? start : nil
+                                    if pressedPart != held { pressedPart = held }
+                                }
+                                .onEnded { value in
+                                    pressedPart = nil
+                                    if let start = part(at: value.startLocation, in: geo.size),
+                                       part(at: value.location, in: geo.size) == start {
+                                        onPartTap?(start)
+                                    }
+                                })
+                    }
+                }
+            }
+            // Sighted-only affordance: press highlights and part-clicks are
+            // both redundant with the binding rows, which carry the accessible
+            // interface for this section.
+            .accessibilityHidden(true)
     }
 
+    /// Maps a click in the rendered diagram back to a pen part by inverting
+    /// the body's transform into SVG space, then splitting along the pen's
+    /// long axis (0 = eraser end, 344.8 = tip). Ranges come from the path
+    /// data in the core, padded a little — the barrel buttons and the round
+    /// third button are thin targets at this display size.
+    private func part(at point: CGPoint, in size: CGSize) -> Part? {
+        let scale = min(size.width / PenDiagramCore.svgH, size.height / PenDiagramCore.svgW)
+        guard scale > 0 else { return nil }
+        let tx = (size.width + PenDiagramCore.svgH * scale) / 2.0
+        let ty = (size.height - PenDiagramCore.svgW * scale) / 2.0
+        let svgX = (point.y - ty) / scale
+        let svgY = (tx - point.x) / scale
+        // Reject clicks off the pen's width (SVG x spans 0…44.6).
+        guard svgX > -6, svgX < PenDiagramCore.svgW + 6 else { return nil }
+        let hit: Part?
+        switch svgY {
+        case ..<24: hit = .eraser
+        case 226..<258: hit = .button2
+        case 258..<292: hit = .button1
+        case 292..<310: hit = .button3
+        case 315...: hit = .tip
+        default: hit = nil
+        }
+        guard let hit else { return nil }
+        if let enabledParts, !enabledParts.contains(hit) { return nil }
+        return hit
+    }
+}
+
+// MARK: - PenDiagramCore
+
+/// The drawn diagram, equatable over its visible state so the ~16 Hz
+/// liveButtons/livePoint invalidations streaming through the pane
+/// short-circuit when nothing visible has changed.
+private struct PenDiagramCore: View, Equatable {
+    let liveButtons: LiveButtonState
+    let pressedPart: PenDiagramView.Part?
+
     // SVG viewBox origin and dimensions (tablet-generic-stylus.svg: 0 0 44.6 344.8)
-    private static let svgW = 44.6
-    private static let svgH = 344.8
+    fileprivate static let svgW = 44.6
+    fileprivate static let svgH = 344.8
 
     // Pre-parse once at app launch (static let is lazy in Swift)
     // swiftlint:disable:next line_length
@@ -69,10 +147,15 @@ struct PenDiagramView: View, Equatable {
             let ty = (size.height - Self.svgW * scale) / 2.0
             var t = CGAffineTransform(a: 0, b: scale, c: -scale, d: 0, tx: tx, ty: ty)
 
-            func draw(_ path: Path, fill: Color, stroke: Color) {
+            func draw(_ path: Path, fill: Color, stroke: Color, pressed: Bool = false) {
                 guard let xp = path.cgPath.copy(using: &t) else { return }
                 let p = Path(xp)
                 context.fill(p, with: .color(fill))
+                if pressed {
+                    // Pushed-button feedback: primary darkens in light mode
+                    // and lightens in dark mode, like AppKit's press state.
+                    context.fill(p, with: .color(.primary.opacity(0.15)))
+                }
                 context.stroke(p, with: .color(stroke), style: StrokeStyle(lineWidth: 0.1))
             }
 
@@ -85,60 +168,24 @@ struct PenDiagramView: View, Equatable {
             draw(Self.bodyPath, fill: bodyFill, stroke: strokeDim)
             draw(
                 Self.eraserPath, fill: liveButtons.eraserDown ? accent : passive,
-                stroke: liveButtons.eraserDown ? accent : strokeDim)
+                stroke: liveButtons.eraserDown ? accent : strokeDim,
+                pressed: pressedPart == .eraser)
             draw(
                 Self.btn2Path, fill: liveButtons.button2Down ? accent : passive,
-                stroke: liveButtons.button2Down ? accent : strokeDim)
+                stroke: liveButtons.button2Down ? accent : strokeDim,
+                pressed: pressedPart == .button2)
             draw(
                 Self.btn1Path, fill: liveButtons.button1Down ? accent : passive,
-                stroke: liveButtons.button1Down ? accent : strokeDim)
+                stroke: liveButtons.button1Down ? accent : strokeDim,
+                pressed: pressedPart == .button1)
             draw(
                 Self.btn3Path, fill: liveButtons.button3Down ? accent : passive,
-                stroke: liveButtons.button3Down ? accent : strokeDim)
+                stroke: liveButtons.button3Down ? accent : strokeDim,
+                pressed: pressedPart == .button3)
             draw(
                 Self.tipPath, fill: liveButtons.tipDown ? accent : passive,
-                stroke: liveButtons.tipDown ? accent : strokeDim)
-        }
-        .overlay {
-            if onPartTap != nil {
-                GeometryReader { geo in
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .gesture(SpatialTapGesture().onEnded { value in
-                            if let part = part(at: value.location, in: geo.size) {
-                                onPartTap?(part)
-                            }
-                        })
-                }
-            }
-        }
-        // Sighted-only affordance: press highlights and part-clicks are
-        // both redundant with the binding rows, which carry the accessible
-        // interface for this section.
-        .accessibilityHidden(true)
-    }
-
-    /// Maps a click in the rendered diagram back to a pen part by inverting
-    /// the body's transform into SVG space, then splitting along the pen's
-    /// long axis (0 = eraser end, 344.8 = tip). Ranges come from the path
-    /// data above, padded a little — the barrel buttons and the round third
-    /// button are thin targets at this display size.
-    private func part(at point: CGPoint, in size: CGSize) -> Part? {
-        let scale = min(size.width / Self.svgH, size.height / Self.svgW)
-        guard scale > 0 else { return nil }
-        let tx = (size.width + Self.svgH * scale) / 2.0
-        let ty = (size.height - Self.svgW * scale) / 2.0
-        let svgX = (point.y - ty) / scale
-        let svgY = (tx - point.x) / scale
-        // Reject clicks off the pen's width (SVG x spans 0…44.6).
-        guard svgX > -6, svgX < Self.svgW + 6 else { return nil }
-        switch svgY {
-        case ..<24: return .eraser
-        case 226..<258: return .button2
-        case 258..<292: return .button1
-        case 292..<310: return .button3
-        case 315...: return .tip
-        default: return nil
+                stroke: liveButtons.tipDown ? accent : strokeDim,
+                pressed: pressedPart == .tip)
         }
     }
 }
