@@ -26,6 +26,11 @@ struct QuickKeysSectionView: View {
     @ObservedObject var settings: TabletSettings
     let spec: WacomDeviceSpec?
     let liveButtons: LiveButtonState
+    /// Set only when folded into a tablet's Buttons pane, where the pane's
+    /// own `DeviceStatusBar` reflects the tablet, not this companion — so
+    /// the section needs its own connection cue. The standalone puck/dongle
+    /// window leaves this `false`; its `DeviceStatusBar` already covers it.
+    var isCompanionDisconnected = false
 
     /// Bumped when the dial diagram's center is clicked, starting recording
     /// in the Dial row's binding field — direct manipulation on the diagram.
@@ -38,7 +43,7 @@ struct QuickKeysSectionView: View {
         let lb = liveButtons
         let keyCount = min(max(spec?.buttonCount ?? 8, 0) - 1, 16)
 
-        Section("Quick Keys") {
+        Section {
             ForEach(0..<max(keyCount, 0), id: \.self) { i in
                 buttonRow(
                     String(localized: "Key \(i + 1)", comment: "Quick Keys express key N label"),
@@ -99,6 +104,17 @@ struct QuickKeysSectionView: View {
                 ledEditor: slotLEDWell(at:),
                 onCenterTap: { dialRecordToken += 1 }
             )
+        } header: {
+            if isCompanionDisconnected {
+                HStack {
+                    Text("Quick Keys")
+                    Spacer()
+                    Text("Not connected", comment: "Device connection status value")
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Quick Keys")
+            }
         }
     }
 

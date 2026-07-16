@@ -80,6 +80,23 @@ final class TabletManager: ObservableObject {
         deviceContexts[context.instanceKey] = context
     }
 
+    /// Pre-creates contexts for a tablet's companion peripherals (Xencelabs
+    /// Quick Keys puck) that the registry has seen in an earlier session but
+    /// that haven't connected in this one. Lets the owner's Buttons pane keep
+    /// the companion's section visible and editable instead of hiding it — the same
+    /// stub mechanism window restore uses; the real connect adopts the stub.
+    func ensureCompanionStubs(forOwnerProductID productID: Int) {
+        guard let companions = VendorDeviceRegistry.profile(forProductID: productID)?.companions
+        else { return }
+        for cpid in companions where contexts[cpid] == nil {
+            guard let row = DeviceRegistry.shared.knownTablets.first(
+                where: { $0.productID == cpid })
+            else { continue }
+            registerRestoredContext(
+                DeviceContext(productID: cpid, vendorID: row.vendorID ?? 0x056A))
+        }
+    }
+
     /// Context for a registry row. A row with an instance token matches the
     /// exact instance; the legacy row (nil/empty token) matches the unit
     /// holding the model's claimed namespace, via the compatibility view.

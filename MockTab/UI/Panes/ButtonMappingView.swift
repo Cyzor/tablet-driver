@@ -147,6 +147,17 @@ struct ButtonMappingView: View {
             LiveResizeDetector(isResizing: $isLiveResizing)
                 .allowsHitTesting(false)
         )
+        // A companion seen in a *previous* session has a registry row but no
+        // context yet, and `companionProductID` resolves through contexts —
+        // without this the Quick Keys section vanishes until the puck powers
+        // on (or its standalone window happens to create the context). Stub
+        // it up front so the section renders (editable, with a "Not
+        // connected" header hint) instead of disappearing.
+        .onAppear {
+            if let pid = productID {
+                tabletManager.ensureCompanionStubs(forOwnerProductID: pid)
+            }
+        }
     }
 
     // MARK: - Pen buttons section
@@ -354,12 +365,16 @@ struct ButtonMappingView: View {
             // window undo manager — the companion borrows it here or its
             // edits record no undo actions at all.
             let _ = (companionSettings.undoManager = settings.undoManager)
+            // Editable regardless of connection, same as the pen/bezel
+            // sections — the companion's capability spec is already known
+            // from its stub, so there's no reason to block edits just
+            // because the puck happens to be detached right now. The
+            // header shows a "Not connected" hint instead of disabling
+            // the section (disable-vs-hide rule: connection is temporary
+            // state, not a capability change).
             QuickKeysSectionView(
-                settings: companionSettings, spec: companionSpec, liveButtons: companionLiveButtons)
-                // Greyed, not hidden, while the puck is detached — edits
-                // still land in its settings and replay on reconnect, so
-                // there's no reason to let the section vanish mid-session.
-                .disabled(!companionIsConnected)
+                settings: companionSettings, spec: companionSpec, liveButtons: companionLiveButtons,
+                isCompanionDisconnected: !companionIsConnected)
         }
     }
 
