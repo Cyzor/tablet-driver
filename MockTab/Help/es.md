@@ -6,7 +6,7 @@ Una tableta gráfica es un dispositivo de entrada con lápiz que registra posici
 
 ## MockTab
 
-MockTab es un driver nativo de macOS para tabletas Wacom. Compatible con USB y Bluetooth en Intuos, Cintiq, Bamboo e Intuos Pro — hardware que Wacom ya no soporta en macOS moderno.
+MockTab es un driver nativo de macOS para tabletas Wacom y Xencelabs. Compatible con USB y Bluetooth en Wacom Intuos, Cintiq, Bamboo e Intuos Pro — hardware que Wacom ya no soporta en macOS moderno — además de las tabletas, pantallas interactivas y el mando Quick Keys de Xencelabs.
 
 [tabletArea]
 
@@ -46,7 +46,7 @@ Define cuán cerca deben estar dos toques para ser doble clic. Aumenta si no se 
 
 ## Diagrama del lápiz
 
-El diagrama muestra los botones del lápiz. Pulsa uno para verlo resaltado — identifica qué botón corresponde a qué asignación.
+El diagrama muestra los botones del lápiz. Pulsa uno para verlo resaltado — identifica qué botón corresponde a qué asignación. Al hacer clic en una parte del diagrama — la punta, el borrador o un botón del barrel — se empieza a grabar una nueva asignación para ella.
 
 **Arrastre en hover** — Botón 1 (barrel inferior) + flotación = mueve cursor sin tocar punta.
 
@@ -57,9 +57,13 @@ El diagrama muestra los botones del lápiz. Pulsa uno para verlo resaltado — i
 - **Modificadores mantenidos** — ⌘ ⌥ ⇧ ⌃ se mantienen mientras el botón esté pulsado
 - **Acciones especiales** — Display Toggle, Eraser, selección de modo del Touch Ring
 
-## Touch Ring
+## Touch Ring y dial
 
-El anillo admite múltiples slots. Cada uno tiene acciones en sentido horario/antihorario — scroll, teclas, o apagado. **Ring Cycle** recorre modos; **Ring: Slot N** salta directo. **Multiplicador de velocidad** controla eventos por grado.
+Anillos, diales y tiras táctiles admiten múltiples slots de modo. Cada modo aparece como un resumen de una línea; haz clic en una fila — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el sitio: la acción, su velocidad y los atajos de cada dirección. **Ring Cycle** en un botón recorre los modos; **Ring: Slot N** salta directo a un slot.
+
+## Iluminación
+
+Algunos dispositivos tienen luces configurables. En hardware con anillo de dial iluminado, los ajustes de cada modo incluyen el color y el brillo mostrados mientras ese modo está activo. Las pantallas interactivas con botones retroiluminados en el marco tienen una fila **Retroiluminación de los botones**. El hardware conserva su último color hasta que lo cambies.
 
 ## Borrador
 

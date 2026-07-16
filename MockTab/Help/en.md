@@ -6,7 +6,7 @@ A drawing tablet is an input device with a stylus that reports absolute position
 
 ## MockTab
 
-MockTab is a native macOS driver for Wacom drawing tablets. It targets USB and Bluetooth tablets from the Intuos, Cintiq, Bamboo, and Intuos Pro families, focusing on hardware that Wacom's own driver no longer supports on modern macOS releases.
+MockTab is a native macOS driver for Wacom and Xencelabs drawing tablets. It targets USB and Bluetooth tablets from the Wacom Intuos, Cintiq, Bamboo, and Intuos Pro families — focusing on hardware that Wacom's own driver no longer supports on modern macOS releases — as well as Xencelabs pen tablets, pen displays, and the Quick Keys remote.
 
 [tabletArea]
 
@@ -46,7 +46,7 @@ This setting controls how close two taps must be to count as a double-click. Inc
 
 ## Pen Diagram
 
-Press any button while the window is open to highlight its position; this helps identify which physical button maps to which assignment slot.
+Press any button while the window is open to highlight its position; this helps identify which physical button maps to which assignment slot. Clicking a part of the diagram — the tip, the eraser, or a barrel button — starts recording a new assignment for it.
 
 **Hover drag** – Hold Button 1 (the lower barrel button) while the pen hovers above the surface to move the cursor without tip contact and perform drag gestures in mid-air.
 
@@ -57,9 +57,13 @@ Press any button while the window is open to highlight its position; this helps 
 - **Modifier holds** – ⌘ ⌥ ⇧ ⌃ held for as long as the button remains pressed  
 - **Special actions** – Display Toggle, Eraser, Touch Ring mode selection  
 
-## Touch Ring
+## Touch Ring and Dial
 
-The ring supports multiple mode slots.  Assign **Ring Cycle** to a button to step through modes, or **Ring: Slot N** to jump directly to a specific slot.
+Rings, dials, and touch strips support multiple mode slots. Each mode appears as a one-line summary; click a mode row — or its wedge in the diagram beside the list — to open its settings in place: the action, its speed, and the shortcuts for each direction. Assign **Ring Cycle** to a button to step through modes, or **Ring: Slot N** to jump directly to a specific slot.
+
+## Lighting
+
+Some devices have configurable lights. On hardware with a lit dial ring, each mode's settings include the color and brightness shown while that mode is active. Pen displays with backlit bezel buttons have a **Button Backlight** row. The hardware keeps its last color until you change it.
 
 ## Eraser
 

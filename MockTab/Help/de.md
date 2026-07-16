@@ -6,7 +6,7 @@ Ein Grafiktablett ist ein Eingabegerät mit Stift, das absolute Position, Druck,
 
 ## MockTab
 
-MockTab ist ein nativer macOS-Treiber für Wacom-Tabletts. USB- und Bluetooth-Unterstützung für Intuos, Cintiq, Bamboo und Intuos Pro — Hardware, die Wacoms Treiber nicht mehr unterstützt.
+MockTab ist ein nativer macOS-Treiber für Wacom- und Xencelabs-Tabletts. USB- und Bluetooth-Unterstützung für Wacom Intuos, Cintiq, Bamboo und Intuos Pro — Hardware, die Wacoms Treiber nicht mehr unterstützt — sowie für Xencelabs-Stifttabletts, Stift-Displays und die Quick-Keys-Fernbedienung.
 
 [tabletArea]
 
@@ -46,7 +46,7 @@ Legt fest, wie nah zwei Antipper sein müssen. Erhöhe, wenn nicht erkannt; senk
 
 ## Stift-Diagramm
 
-Das Diagramm zeigt die Tasten. Drücke eine zum Sehen der Hervorhebung — identifiziert physische Taste zu Zuordnung.
+Das Diagramm zeigt die Tasten. Drücke eine zum Sehen der Hervorhebung — identifiziert physische Taste zu Zuordnung. Ein Klick auf einen Teil des Diagramms — Spitze, Radiergummi oder eine Barrel-Taste — startet die Aufnahme einer neuen Zuordnung dafür.
 
 **Hover Drag** — Taste 1 (untere Barrel) + Schwebeflug = Zeiger ohne Spitzenkontakt.
 
@@ -57,9 +57,13 @@ Das Diagramm zeigt die Tasten. Drücke eine zum Sehen der Hervorhebung — ident
 - **Modifikator-Halten** — ⌘ ⌥ ⇧ ⌃ werden so lange gehalten, wie die Taste gedrückt ist
 - **Sonderaktionen** — Bildschirm umschalten, Eraser, Touch-Ring-Modusauswahl
 
-## Touch-Ring
+## Touch-Ring und Dial
 
-Der Ring unterstützt mehrere Slots. Jeder hat Uhrzeiger- und gegen-Uhrzeiger-Aktionen — Scroll, Tastenkürzel, oder Aus.
+Ringe, Dials und Touch-Streifen unterstützen mehrere Modus-Slots. Jeder Modus erscheint als einzeilige Zusammenfassung; ein Klick auf eine Zeile — oder auf ihr Segment im Diagramm neben der Liste — öffnet die Einstellungen an Ort und Stelle: Aktion, Geschwindigkeit und die Kürzel für beide Richtungen. **Ring Cycle** auf einer Taste schaltet durch die Modi, **Ring: Slot N** springt direkt zu einem Slot.
+
+## Beleuchtung
+
+Manche Geräte haben konfigurierbare Beleuchtung. Bei Hardware mit beleuchtetem Dial-Ring enthalten die Einstellungen jedes Modus Farbe und Helligkeit, die angezeigt werden, solange der Modus aktiv ist. Stift-Displays mit beleuchteten Rahmentasten haben eine Zeile **Tastenbeleuchtung**. Die Hardware behält ihre letzte Farbe, bis sie geändert wird.
 
 ## Radiergummi
 
