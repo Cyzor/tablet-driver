@@ -10,7 +10,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "registry"
 
 /// Persistent registry of tablets and tools the user has ever connected.
 ///
-/// Tablets are stored globally (one entry per product ID).
+/// Tablets are stored globally (one entry per physical unit).
 /// Tools are stored per-device under the device-scoped UserDefaults namespace,
 /// and are loaded/swapped when the active device changes.
 ///
@@ -158,51 +158,31 @@ final class DeviceRegistry: ObservableObject {
     /// The claim is persisted (`_instanceClaims`, JSON `[pidHex: instance]`)
     /// so it is deterministic across reboots and ports, not connect-order
     /// dependent.
-    func settingsPrefix(for key: DeviceInstanceKey) -> String {
-        let pidHex = String(key.productID, radix: 16, uppercase: true)
-        let legacyPrefix = "device-0x\(pidHex)."
-        guard !key.instance.isEmpty else { return legacyPrefix }
-
-        var claims = instanceClaims()
-        if let owner = claims[pidHex] {
-            return owner == key.instance
-                ? legacyPrefix
-                : prefix(for: key)
+    /// The claim logic itself lives in `DeviceInstanceClaims` (Foundation-
+    /// only, injectable UserDefaults) so the standalone harness in
+    /// `tools/instance-identity-tests/` can exercise it; this is the app's
+    /// live instance.
+    private var claims: DeviceInstanceClaims {
+        DeviceInstanceClaims(ud: ud) { pidHex in
+            logger.info("DeviceRegistry: instance claimed legacy prefix for PID 0x\(pidHex, privacy: .public)")
         }
-        claims[pidHex] = key.instance
-        saveInstanceClaims(claims)
-        logger.info("DeviceRegistry: instance claimed legacy prefix for PID 0x\(pidHex, privacy: .public)")
-        return legacyPrefix
     }
 
-    private func instanceClaims() -> [String: String] {
-        guard let data = ud.data(forKey: "_instanceClaims"),
-            let map = try? JSONDecoder().decode([String: String].self, from: data)
-        else { return [:] }
-        return map
-    }
-
-    private func saveInstanceClaims(_ map: [String: String]) {
-        guard let data = try? JSONEncoder().encode(map) else { return }
-        ud.set(data, forKey: "_instanceClaims")
+    func settingsPrefix(for key: DeviceInstanceKey) -> String {
+        claims.settingsPrefix(for: key)
     }
 
     /// Row-normalized instance token: nil for the claimed unit (its row and
     /// namespace stay in the legacy, un-suffixed form), the raw token for
     /// any additional unit of the same model.
     private func rowInstance(for key: DeviceInstanceKey) -> String? {
-        guard !key.instance.isEmpty else { return nil }
-        let pidHex = String(key.productID, radix: 16, uppercase: true)
-        return instanceClaims()[pidHex] == key.instance ? nil : key.instance
+        claims.rowInstance(for: key)
     }
 
     /// Pure prefix formatting for a row-normalized key (no claim lookup —
     /// use `settingsPrefix(for:)` for live-device resolution).
     private func prefix(for key: DeviceInstanceKey) -> String {
-        let pidHex = String(key.productID, radix: 16, uppercase: true)
-        return key.instance.isEmpty
-            ? "device-0x\(pidHex)."
-            : "device-0x\(pidHex)#\(key.instance)."
+        claims.prefix(for: key)
     }
 
     /// Claim-normalized form: the claimed unit's key folds to the empty
@@ -211,7 +191,7 @@ final class DeviceRegistry: ObservableObject {
     /// matching and restore use this so a pre-instance saved identity
     /// (empty token) and the live claimed device compare equal.
     func normalizedKey(_ key: DeviceInstanceKey) -> DeviceInstanceKey {
-        DeviceInstanceKey(productID: key.productID, instance: rowInstance(for: key) ?? "")
+        claims.normalizedKey(key)
     }
 
     /// The registry row for a physical unit, matched claim-normalized so the
