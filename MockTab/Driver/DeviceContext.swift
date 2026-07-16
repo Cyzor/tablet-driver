@@ -11,13 +11,25 @@ import TabletKit
 ///
 /// Each connected tablet gets its own context so that smoothing history,
 /// click counters, proximity state, and user preferences are fully isolated.
-/// `TabletManager` keeps a dictionary of these keyed by product ID and
-/// tracks which one is currently active (posting CGEvents).
+/// `TabletManager` keeps a dictionary of these keyed by physical instance
+/// (`DeviceInstanceKey`) and tracks which one is currently active (posting
+/// CGEvents).
 @MainActor
 final class DeviceContext: ObservableObject, Identifiable {
 
-    let id: Int  // productID — also serves as Identifiable key
-    let productID: Int  // canonical (USB) product ID
+    /// Physical-instance identity. Mutable only through `adoptInstance` —
+    /// a window-restore stub is created before the device connects (empty
+    /// instance token) and adopts the real identity at first connect so the
+    /// window and driver keep sharing one settings object.
+    private(set) var instanceKey: DeviceInstanceKey
+    private(set) var usbSerial: String?  // IOKit serial at last connect; nil if none
+    private(set) var locationID: Int = 0  // IOKit port location at last connect; 0 if none
+
+    /// Identifiable key. Stored (not derived from `instanceKey`) so it is
+    /// nonisolated for the protocol and stays stable when a restore stub
+    /// adopts its real instance mid-session.
+    nonisolated let id: String
+    let productID: Int  // canonical (USB) product ID — model identity
     let rawProductID: Int  // actual transport-specific PID from hardware
     let vendorID: Int  // 0x056A (Wacom) unless a non-Wacom drivable device
 
@@ -248,14 +260,39 @@ final class DeviceContext: ObservableObject, Identifiable {
             .store(in: &snapshotCancellables)
     }
 
-    init(productID: Int, rawProductID: Int? = nil, vendorID: Int = 0x056A) {
-        self.id = productID
-        self.productID = productID
-        self.rawProductID = rawProductID ?? productID
+    init(
+        instanceKey: DeviceInstanceKey, rawProductID: Int? = nil,
+        vendorID: Int = 0x056A, usbSerial: String? = nil, locationID: Int = 0
+    ) {
+        self.instanceKey = instanceKey
+        self.id = instanceKey.stringValue
+        self.usbSerial = usbSerial
+        self.locationID = locationID
+        self.productID = instanceKey.productID
+        self.rawProductID = rawProductID ?? instanceKey.productID
         self.vendorID = vendorID
-        let s = TabletSettings(productID: productID)
+        let s = TabletSettings(instanceKey: instanceKey)
         self.settings = s
-        self.injector = InputInjector(vendorID: vendorID, productID: productID)
+        self.injector = InputInjector(vendorID: vendorID, productID: instanceKey.productID)
         self.activeTool = s.activeTool
+    }
+
+    /// Model-only construction: window-restore stubs and callers that predate
+    /// instance identity. The empty instance token resolves to the model's
+    /// legacy settings namespace, matching pre-instance behavior.
+    convenience init(productID: Int, rawProductID: Int? = nil, vendorID: Int = 0x056A) {
+        self.init(
+            instanceKey: DeviceInstanceKey(productID: productID, instance: ""),
+            rawProductID: rawProductID, vendorID: vendorID)
+    }
+
+    /// Fills in the physical identity on a context created before the device
+    /// connected (window-restore stub). No-op once an instance is known.
+    /// The caller re-keys its dictionary and reconciles the settings prefix.
+    func adoptInstance(_ key: DeviceInstanceKey, usbSerial: String?, locationID: Int) {
+        guard instanceKey.instance.isEmpty, key.productID == productID else { return }
+        instanceKey = key
+        self.usbSerial = usbSerial
+        self.locationID = locationID
     }
 }

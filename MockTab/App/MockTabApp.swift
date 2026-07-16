@@ -81,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // Release any held synthetic modifiers before exit. Prevents Shift/Cmd/Opt/Ctrl
         // appearing stuck system-wide after a force-quit or crash-then-relaunch cycle.
-        for ctx in TabletManager.shared.contexts.values {
+        for ctx in TabletManager.shared.deviceContexts.values {
             ctx.injector.releaseOnAppSwitch()
         }
         HelpWindowController.shared.saveState()

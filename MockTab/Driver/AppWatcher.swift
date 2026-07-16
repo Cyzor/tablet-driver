@@ -55,7 +55,7 @@ final class AppWatcher {
         let name = app.localizedName ?? bundleID
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
         let profile = Self.inputProfile(for: bundleID)
-        for ctx in TabletManager.shared.contexts.values {
+        for ctx in TabletManager.shared.deviceContexts.values {
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
             ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
             ctx.injector.activeAppProfile = profile
@@ -89,7 +89,7 @@ final class AppWatcher {
         for (center, name) in releaseSources {
             let token = center.addObserver(forName: name, object: nil, queue: .main) { _ in
                 Task { @MainActor in
-                    for ctx in TabletManager.shared.contexts.values {
+                    for ctx in TabletManager.shared.deviceContexts.values {
                         ctx.injector.releaseOnAppSwitch()
                     }
                 }
@@ -119,7 +119,7 @@ final class AppWatcher {
         let name = app.localizedName ?? bundleID
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
         let profile = Self.inputProfile(for: bundleID)
-        for ctx in TabletManager.shared.contexts.values {
+        for ctx in TabletManager.shared.deviceContexts.values {
             ctx.settings.handleAppActivation(bundleID: bundleID, appName: name)
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
             ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer

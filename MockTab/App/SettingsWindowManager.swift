@@ -450,7 +450,7 @@ final class SettingsWindowManager: ObservableObject {
                 // vendorID here would stick (it's a `let`) for the rest of
                 // this launch, breaking vendor-specific spec lookups.
                 let vendorID = DeviceRegistry.shared.vendorID(forProductID: pid) ?? 0x056A
-                tm.contexts[pid] = DeviceContext(productID: pid, vendorID: vendorID)
+                tm.registerRestoredContext(DeviceContext(productID: pid, vendorID: vendorID))
             }
             return (tm.contexts[pid]!.settings, displayLabel(forProductID: pid))
         }

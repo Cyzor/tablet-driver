@@ -58,7 +58,28 @@ final class TabletManager: ObservableObject {
 
     // MARK: - Per-device state
 
-    @Published var contexts: [Int: DeviceContext] = [:]
+    /// The real context store, keyed by physical instance so two identical
+    /// devices (same PID) each get their own settings, injector, and state.
+    @Published var deviceContexts: [DeviceInstanceKey: DeviceContext] = [:]
+
+    /// PID-keyed compatibility view for callers that predate instance
+    /// identity (all the settings panes). When a model has several connected
+    /// instances, the one holding the legacy settings namespace wins —
+    /// deterministic, and identical to the old collapse behavior.
+    var contexts: [Int: DeviceContext] {
+        Dictionary(
+            deviceContexts.values.map { ($0.productID, $0) },
+            uniquingKeysWith: { a, b in
+                a.settings.devicePrefix.contains("#") ? b : a
+            })
+    }
+    /// Inserts a window-restore stub context created before the device has
+    /// connected this session. Keyed under its empty-instance key; the first
+    /// real connect of that model adopts and re-keys it.
+    func registerRestoredContext(_ context: DeviceContext) {
+        deviceContexts[context.instanceKey] = context
+    }
+
     /// The device whose injector is currently posting CGEvents.
     /// `didSet` keeps `injector.isActive` in lockstep so the HIDThread fast path in
     /// `onTablet` is gated by a flag that exactly mirrors `activeContext`. Without
@@ -295,7 +316,7 @@ final class TabletManager: ObservableObject {
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         for (_, ctx) in hidDeviceMap { ctx.tabletDevice?.close() }
         hidDeviceMap.removeAll()
-        contexts.removeAll()
+        deviceContexts.removeAll()
         activeContext = nil
         connectedProductIDs = []
         connectedProductID = 0
@@ -467,10 +488,42 @@ final class TabletManager: ObservableObject {
             return
         }
 
-        let context =
-            contexts[productID]
-            ?? DeviceContext(productID: productID, rawProductID: rawProductID, vendorID: vendorID)
-        contexts[productID] = context
+        // Instance identity: token is serial-only for now — the locationID
+        // fallback stays off until the probe log above confirms whether the
+        // interfaces of one USB device share a locationID. An empty token
+        // degrades to PID-only identity, exactly the old behavior.
+        let instanceKey = DeviceInstanceKey(
+            productID: productID, usbSerial: usbSerial, locationID: 0)
+        let context: DeviceContext
+        if let existing = deviceContexts[instanceKey] {
+            context = existing
+        } else if instanceKey.instance.isEmpty {
+            // No serial on this interface: fall back to the model's existing
+            // context (claimed-namespace instance first), as PID keying did.
+            context = contexts[productID]
+                ?? DeviceContext(
+                    instanceKey: instanceKey, rawProductID: rawProductID, vendorID: vendorID)
+        } else if let stub = deviceContexts.first(where: {
+            $0.key.productID == productID && $0.key.instance.isEmpty
+        })?.value {
+            // A window-restore stub (created before connect, no instance
+            // token) exists for this model — adopt it so the open window and
+            // the driver keep sharing one settings object, then re-key it.
+            deviceContexts.removeValue(forKey: stub.instanceKey)
+            stub.adoptInstance(instanceKey, usbSerial: usbSerial, locationID: locationID)
+            // Register the claim for this instance; if another unit already
+            // owns the legacy namespace, move the stub's settings off it.
+            let prefix = DeviceRegistry.shared.settingsPrefix(for: instanceKey)
+            if prefix != stub.settings.devicePrefix {
+                stub.settings.loadForDevice(instanceKey)
+            }
+            context = stub
+        } else {
+            context = DeviceContext(
+                instanceKey: instanceKey, rawProductID: rawProductID,
+                vendorID: vendorID, usbSerial: usbSerial, locationID: locationID)
+        }
+        deviceContexts[context.instanceKey] = context
         context.hidDevice = device
 
         // Seed the per-app override for whatever app is currently frontmost.
@@ -803,7 +856,7 @@ final class TabletManager: ObservableObject {
 
         switch DeviceRouter.route(
             device: device, productID: productID, usagePage: usagePage,
-            isBLE: isBLE, contexts: contexts, callbacks: callbacks,
+            isBLE: isBLE, contexts: deviceContexts, callbacks: callbacks,
             overrideSpec: vendorSpec)
         {
         case .deferred:
@@ -895,7 +948,7 @@ final class TabletManager: ObservableObject {
         if let active = activeContext, isPenBearing(active) {
             target = active
         } else {
-            target = contexts.values.first(where: isPenBearing)
+            target = deviceContexts.values.first(where: isPenBearing)
         }
         guard let target else { return }
         let injector = target.injector
@@ -954,7 +1007,7 @@ final class TabletManager: ObservableObject {
     /// Schedules assertion drop after `proximityIdleDelay` seconds, unless another
     /// connected device still has a pen in proximity.
     private func penExitedProximity() {
-        let anyStillDown = contexts.values.contains { $0.isConnected && $0.injector.lastProximity }
+        let anyStillDown = deviceContexts.values.contains { $0.isConnected && $0.injector.lastProximity }
         guard !anyStillDown else { return }
         proximityIdleTimer?.invalidate()
         proximityIdleTimer = Timer.scheduledTimer(
@@ -963,7 +1016,7 @@ final class TabletManager: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.proximityIdleTimer = nil
-                let anyDown = self.contexts.values.contains { $0.isConnected && $0.injector.lastProximity }
+                let anyDown = self.deviceContexts.values.contains { $0.isConnected && $0.injector.lastProximity }
                 guard !anyDown, let token = self.latencyActivityToken else { return }
                 ProcessInfo.processInfo.endActivity(token)
                 self.latencyActivityToken = nil
@@ -1013,7 +1066,7 @@ final class TabletManager: ObservableObject {
     }
 
     private func updateDockBadge() {
-        let anyLow = contexts.values.contains {
+        let anyLow = deviceContexts.values.contains {
             guard let pct = $0.batteryPercent else { return false }
             return pct < 20 && !$0.batteryCharging
         }

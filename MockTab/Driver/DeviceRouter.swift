@@ -84,7 +84,7 @@ enum DeviceRouter {
         productID: Int,
         usagePage: Int,
         isBLE: Bool,
-        contexts: [Int: DeviceContext],
+        contexts: [DeviceInstanceKey: DeviceContext],
         callbacks: Callbacks,
         overrideSpec: WacomDeviceSpec? = nil
     ) -> Routed {
