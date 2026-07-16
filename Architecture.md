@@ -112,6 +112,14 @@ Standalone aux-only peripherals (currently the Xencelabs Quick Keys puck) are *c
 
 `TabletManager` runs on the main thread, owns the set of live devices, decides which one is the active context, and forwards decoded events into that context's `InputInjector`. `DeviceContext` holds the per-device state that the injector needs and is the object that pushes snapshots onto HIDThread.
 
+### Device identity
+
+Identity has two axes. The **model** axis is the USB product ID: decoders, `DigitizerSpec` lookups, capability tables, and companion relationships all key on it, matching how Wacom's own tables and libwacom work. The **instance** axis is `DeviceInstanceKey` (`MockTab/Driver/DeviceInstanceKey.swift`): the canonical PID plus an instance token (USB serial, with a locationID fallback held in reserve), so two physical units of the same model stay distinct. Contexts (`TabletManager.deviceContexts`), registry rows, settings windows, menu entries, and the panes all key on the instance; `TabletManager.contexts` remains as a PID-keyed compatibility view for model-level callers.
+
+Settings storage follows the *claim-the-legacy-prefix* rule (`DeviceRegistry.settingsPrefix(for:)`): the first unit ever seen for a model permanently claims the historical `device-0x{PID}.` UserDefaults prefix — existing installs keep every setting without migration — and any additional unit of the same model gets a fresh `device-0x{PID}#{instance}.` namespace. A key with no instance token resolves to the legacy prefix, which is exactly the old PID-only behavior.
+
+One known limitation: a companion peripheral (Quick Keys puck) is paired to its owner at the model level, because nothing in the wire protocol identifies *which* unit it belongs to. With two identical pen tablets and one puck, the app picks the first pen-bearing unit — inherently ambiguous, documented rather than papered over with pairing UI.
+
 ## Settings
 
 `TabletSettings` lives on the main thread and acts as the single source of truth that SwiftUI views observe: pen-feel curves, button bindings, calibration, display mapping, per-app overrides, profiles. The class spans four files: `TabletSettings.swift` holds the stored properties, init, per-device loading, and undo/redo, while `TabletSettings+Presets.swift`, `TabletSettings+AppOverrides.swift`, and `TabletSettings+Persistence.swift` hold preset handling, per-app behavior, and the UserDefaults layer. The value types it stores (`ButtonBinding`, `ControlSlot`, `TabletOrientation`) each have their own file. `Settings/Profile.swift` and `Settings/PresetExporter/Importer` handle the JSON shape that ships in releases (`example-profile.json`).
