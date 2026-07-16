@@ -112,6 +112,10 @@ struct PenDiagramView: View, Equatable {
                 }
             }
         }
+        // Sighted-only affordance: press highlights and part-clicks are
+        // both redundant with the binding rows, which carry the accessible
+        // interface for this section.
+        .accessibilityHidden(true)
     }
 
     /// Maps a click in the rendered diagram back to a pen part by inverting

@@ -345,6 +345,10 @@ private struct TouchRingModeListCore: View, Equatable {
                         })
                 }
             }
+            // Sighted-only affordance: wedge/center clicks duplicate the
+            // mode rows and the center recorder, and the caption below
+            // already names the active mode for VoiceOver.
+            .accessibilityHidden(true)
             Text(activeCaption)
                 .appFont(.caption)
                 .foregroundStyle(.secondary)
