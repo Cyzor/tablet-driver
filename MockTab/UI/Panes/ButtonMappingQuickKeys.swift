@@ -19,7 +19,11 @@ import TabletKit
 /// puck has its own window. Each physical device keeps its own independent
 /// binding storage regardless of where its controls are drawn.
 struct QuickKeysSectionView: View {
-    let settings: TabletSettings
+    /// Observed, not just referenced: when folded into a tablet's window,
+    /// this is the companion's own settings object, which no enclosing view
+    /// observes — without the subscription its edits (and undo replays)
+    /// would persist but never re-render these rows.
+    @ObservedObject var settings: TabletSettings
     let spec: WacomDeviceSpec?
     let liveButtons: LiveButtonState
 
@@ -105,10 +109,14 @@ struct QuickKeysSectionView: View {
                 return settings.touchRingSlots[index].action
             },
             set: { newValue in
-                guard settings.touchRingSlots.indices.contains(index) else { return }
-                var updated = settings.touchRingSlots
+                let oldSlots = settings.touchRingSlots
+                guard oldSlots.indices.contains(index) else { return }
+                var updated = oldSlots
                 updated[index].action = newValue
                 settings.touchRingSlots = updated
+                settings.record("Dial Slot \(index + 1) Action") {
+                    settings.touchRingSlots = oldSlots
+                }
             }
         )
     }
@@ -120,10 +128,14 @@ struct QuickKeysSectionView: View {
                 return settings.touchRingSlots[index].speed
             },
             set: { newValue in
-                guard settings.touchRingSlots.indices.contains(index) else { return }
-                var updated = settings.touchRingSlots
+                let oldSlots = settings.touchRingSlots
+                guard oldSlots.indices.contains(index) else { return }
+                var updated = oldSlots
                 updated[index].speed = newValue
                 settings.touchRingSlots = updated
+                settings.record("Dial Slot \(index + 1) Speed") {
+                    settings.touchRingSlots = oldSlots
+                }
             }
         )
     }
@@ -136,11 +148,17 @@ struct QuickKeysSectionView: View {
                 return direction == .cw ? slot.cwBinding : slot.ccwBinding
             },
             set: { newValue in
-                guard settings.touchRingSlots.indices.contains(index) else { return }
-                var updated = settings.touchRingSlots
+                let oldSlots = settings.touchRingSlots
+                guard oldSlots.indices.contains(index) else { return }
+                var updated = oldSlots
                 if direction == .cw { updated[index].cwBinding = newValue }
                 else { updated[index].ccwBinding = newValue }
                 settings.touchRingSlots = updated
+                settings.record(
+                    "Dial Slot \(index + 1) \(direction == .cw ? "CW" : "CCW")"
+                ) {
+                    settings.touchRingSlots = oldSlots
+                }
             }
         )
     }

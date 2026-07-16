@@ -349,6 +349,11 @@ struct ButtonMappingView: View {
     @ViewBuilder
     private var quickKeysSection: some View {
         if let companionSettings = companionContext?.settings {
+            // The companion's settings instance never passes through this
+            // window's controller, which wires only its own settings to the
+            // window undo manager — the companion borrows it here or its
+            // edits record no undo actions at all.
+            let _ = (companionSettings.undoManager = settings.undoManager)
             QuickKeysSectionView(
                 settings: companionSettings, spec: companionSpec, liveButtons: companionLiveButtons)
                 // Greyed, not hidden, while the puck is detached — edits
