@@ -22,7 +22,9 @@ struct DevicesView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
-    var productID: Int?
+    let instanceKey: DeviceInstanceKey?
+    /// Model axis of the bound unit — spec/catalog lookups key on this.
+    private var productID: Int? { instanceKey?.productID }
     var undoManager: UndoManager?
 
     @State private var editingTabletID: String? = nil
@@ -53,7 +55,7 @@ struct DevicesView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            productID: productID
+            instanceKey: instanceKey
         ) {
             tabletsSection
             toolsSection

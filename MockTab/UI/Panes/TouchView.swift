@@ -29,7 +29,9 @@ struct TouchView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
-    var productID: Int?
+    let instanceKey: DeviceInstanceKey?
+    /// Model axis of the bound unit — spec/catalog lookups key on this.
+    private var productID: Int? { instanceKey?.productID }
 
     private var spec: WacomDeviceSpec? {
         productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
@@ -41,7 +43,7 @@ struct TouchView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            productID: productID
+            instanceKey: instanceKey
         ) {
             if hasFingerTouch {
                 enableSection
@@ -74,7 +76,7 @@ struct TouchView: View {
                 .help("When off, the tablet's touch surface is ignored. Pen input is unaffected.")
         } header: {
             PaneSectionHeader("Touch") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
             }
         }
     }

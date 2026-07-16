@@ -19,18 +19,20 @@ struct ScratchpadView: View {
     /// This view only writes gating state (`isPublishingEnabled`, clearing
     /// `contacts`); it never reads `contacts` in `body`.
     private let liveTouch: LiveTouchPublisher
-    var productID: Int?
+    let instanceKey: DeviceInstanceKey?
+    /// Model axis of the bound unit — spec/catalog lookups key on this.
+    private var productID: Int? { instanceKey?.productID }
     var undoManager: UndoManager?
 
     init(settings: TabletSettings,
          tabletManager: TabletManager,
          registry: DeviceRegistry,
-         productID: Int? = nil,
+         instanceKey: DeviceInstanceKey? = nil,
          undoManager: UndoManager? = nil) {
         self.settings = settings
         self.tabletManager = tabletManager
         self.registry = registry
-        self.productID = productID
+        self.instanceKey = instanceKey
         self.undoManager = undoManager
         // Derive the touch publisher from the bound manager so the view isn't
         // tied to the singleton — the only `TabletManager` in practice today,
@@ -60,7 +62,7 @@ struct ScratchpadView: View {
                 settings: settings,
                 tabletManager: tabletManager,
                 registry: registry,
-                productID: productID ?? 0
+                instanceKey: instanceKey
             )
             .layoutPriority(1)
         }

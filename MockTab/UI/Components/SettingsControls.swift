@@ -77,20 +77,20 @@ struct SettingsPane<Content: View>: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
-    var productID: Int?
+    var instanceKey: DeviceInstanceKey?
     var overrideKeys: Set<String>?
     @ViewBuilder let content: () -> Content
 
     init(settings: TabletSettings,
          tabletManager: TabletManager,
          registry: DeviceRegistry,
-         productID: Int?,
+         instanceKey: DeviceInstanceKey?,
          overrideKeys: Set<String>? = nil,
          @ViewBuilder content: @escaping () -> Content) {
         self.settings = settings
         self.tabletManager = tabletManager
         self.registry = registry
-        self.productID = productID
+        self.instanceKey = instanceKey
         self.overrideKeys = overrideKeys
         self.content = content
     }
@@ -98,14 +98,16 @@ struct SettingsPane<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             if let overrideKeys {
-                AppOverrideBar(settings: settings, domainKeys: overrideKeys, productID: productID)
+                AppOverrideBar(
+                    settings: settings, domainKeys: overrideKeys,
+                    productID: instanceKey?.productID)
             }
             Form { content() }
                 .formStyle(.grouped)
                 .scrollContentBackground(.hidden)
             DeviceStatusBar(
                 settings: settings, tabletManager: tabletManager, registry: registry,
-                productID: productID ?? 0)
+                instanceKey: instanceKey)
         }
     }
 }

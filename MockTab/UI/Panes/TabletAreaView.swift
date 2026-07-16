@@ -18,8 +18,10 @@ struct TabletAreaView: View {
     /// Called when the user selects a different tablet from the picker.
     var onDeviceSelected: ((Int) -> Void)?
 
-    /// The product ID this view is currently showing.
-    var boundProductID: Int?
+    /// The physical unit this view is currently showing.
+    let boundKey: DeviceInstanceKey?
+    /// Model axis of the bound unit — spec/catalog lookups key on this.
+    private var boundProductID: Int? { boundKey?.productID }
 
     @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
     private var textScale: CGFloat { AppearancePrefs.scale(forIndex: textSizeIndex) }
@@ -29,7 +31,7 @@ struct TabletAreaView: View {
     /// Digitizer width for the currently-shown device, in hardware line-units.
     private var activeDeviceMaxX: Int {
         if let pid = boundProductID {
-            if let s = tabletManager.contexts[pid]?.tabletDevice?.spec { return s.maxX }
+            if let s = tabletManager.context(forKey: boundKey)?.tabletDevice?.spec { return s.maxX }
             if let s = WacomDeviceRegistry.spec(for: pid) { return s.maxX }
         }
         return 44800
@@ -38,7 +40,7 @@ struct TabletAreaView: View {
     /// Digitizer height for the currently-shown device, in hardware line-units.
     private var activeDeviceMaxY: Int {
         if let pid = boundProductID {
-            if let s = tabletManager.contexts[pid]?.tabletDevice?.spec { return s.maxY }
+            if let s = tabletManager.context(forKey: boundKey)?.tabletDevice?.spec { return s.maxY }
             if let s = WacomDeviceRegistry.spec(for: pid) { return s.maxY }
         }
         return 29600
@@ -47,7 +49,7 @@ struct TabletAreaView: View {
     /// True if the connected device is a pen display (Cintiq-class).
     private var activeDeviceIsPenDisplay: Bool {
         if let pid = boundProductID {
-            if let s = tabletManager.contexts[pid]?.tabletDevice?.spec { return s.isPenDisplay }
+            if let s = tabletManager.context(forKey: boundKey)?.tabletDevice?.spec { return s.isPenDisplay }
             if let s = WacomDeviceRegistry.spec(for: pid) { return s.isPenDisplay }
         }
         return false
@@ -55,8 +57,8 @@ struct TabletAreaView: View {
 
     /// True if the bound device is currently physically connected.
     private var activeDeviceIsConnected: Bool {
-        guard let pid = boundProductID else { return false }
-        return tabletManager.contexts[pid]?.isConnected == true
+        guard boundKey != nil else { return false }
+        return tabletManager.context(forKey: boundKey)?.isConnected == true
     }
 
     /// Raw digitizer coordinate density isn't always the same on both axes
@@ -114,7 +116,7 @@ struct TabletAreaView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            productID: boundProductID, overrideKeys: AppOverrideBar.areaKeys
+            instanceKey: boundKey, overrideKeys: AppOverrideBar.areaKeys
         ) {
                 Section {
                     NormalizedAreaEditor(
@@ -288,7 +290,7 @@ struct TabletAreaView: View {
 
     private var sectionHeading: some View {
         PaneSectionHeader("Active Surface Area") {
-            DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: boundProductID)
+            DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: boundKey)
         }
     }
 

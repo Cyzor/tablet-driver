@@ -101,10 +101,18 @@ final class TabletManager: ObservableObject {
     /// exact instance; the legacy row (nil/empty token) matches the unit
     /// holding the model's claimed namespace, via the compatibility view.
     func context(for tablet: DeviceRegistry.KnownTablet) -> DeviceContext? {
-        if let inst = tablet.instance, !inst.isEmpty {
-            return deviceContexts[tablet.instanceKey]
+        context(forKey: tablet.instanceKey)
+    }
+
+    /// Context for a window/pane identity. An exact instance matches its own
+    /// unit; the legacy empty-instance identity resolves the way PID keying
+    /// did — to the unit holding the model's claimed namespace.
+    func context(forKey key: DeviceInstanceKey?) -> DeviceContext? {
+        guard let key else { return nil }
+        if !key.instance.isEmpty {
+            return deviceContexts[key]
         }
-        return contexts[tablet.productID]
+        return contexts[key.productID]
     }
 
     /// The device whose injector is currently posting CGEvents.

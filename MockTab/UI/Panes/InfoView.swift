@@ -12,7 +12,9 @@ import TabletKit
 struct InfoView: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var settings: TabletSettings
-    var productID: Int?
+    let instanceKey: DeviceInstanceKey?
+    /// Model axis of the bound unit — spec/catalog lookups key on this.
+    private var productID: Int? { instanceKey?.productID }
 
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var launchAtLogin = false
@@ -23,7 +25,7 @@ struct InfoView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared,
-            productID: productID
+            instanceKey: instanceKey
         ) {
             if fallbackDevice != nil || genericDigitizer != nil {
                 Section {
@@ -39,17 +41,17 @@ struct InfoView: View {
             }
             Section {
                 LiveInputView(
-                    livePoint: tabletManager.contexts[productID ?? 0]?.livePoint,
-                    liveButtons: tabletManager.contexts[productID ?? 0]?.liveButtons
+                    livePoint: tabletManager.context(forKey: instanceKey)?.livePoint,
+                    liveButtons: tabletManager.context(forKey: instanceKey)?.liveButtons
                         ?? LiveButtonState(),
-                    activeToolID: tabletManager.contexts[productID ?? 0]?.activeToolID,
+                    activeToolID: tabletManager.context(forKey: instanceKey)?.activeToolID,
                     registry: DeviceRegistry.shared,
                     hasDualRings: WacomDeviceRegistry.spec(for: productID ?? 0)?.hasDualRings
                         == true,
                     // Only Wacom's protocol carries a hover height; every other
                     // decoder hardcodes 0, so show plain in/out instead of a
                     // number that reads as a measured zero.
-                    reportsHoverDistance: (tabletManager.contexts[productID ?? 0]?.vendorID
+                    reportsHoverDistance: (tabletManager.context(forKey: instanceKey)?.vendorID
                         ?? 0x056A) == 0x056A
                 )
             } header: {
@@ -82,7 +84,7 @@ struct InfoView: View {
     // MARK: - Status table
 
     private var deviceContext: DeviceContext? {
-        tabletManager.contexts[productID ?? 0]
+        tabletManager.context(forKey: instanceKey)
     }
 
     private var isConnected: Bool {

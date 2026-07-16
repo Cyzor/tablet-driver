@@ -12,7 +12,9 @@ struct ButtonMappingView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
-    var productID: Int?
+    let instanceKey: DeviceInstanceKey?
+    /// Model axis of the bound unit — spec/catalog lookups key on this.
+    private var productID: Int? { instanceKey?.productID }
 
     @Environment(\.controlActiveState) private var controlActiveState
     @State private var isLiveResizing = false
@@ -27,7 +29,7 @@ struct ButtonMappingView: View {
     /// window-geometry invalidations that already occur every resize frame.
     private var liveButtons: LiveButtonState {
         guard controlActiveState == .key, !isLiveResizing else { return LiveButtonState() }
-        let context = productID.flatMap { tabletManager.contexts[$0] }
+        let context = tabletManager.context(forKey: instanceKey)
             ?? tabletManager.activeContext
         return context?.liveButtons ?? LiveButtonState()
     }
@@ -44,20 +46,20 @@ struct ButtonMappingView: View {
         // and fall back to the paired tablet's PID reported over the RF
         // link instead of showing an empty Buttons pane.
         if let s = WacomDeviceRegistry.spec(for: pid), s.maxX > 0 { return s }
-        if let ctx = tabletManager.contexts[pid], ctx.pairedProductID > 0 {
+        if let ctx = tabletManager.context(forKey: instanceKey), ctx.pairedProductID > 0 {
             return WacomDeviceRegistry.spec(for: ctx.pairedProductID)
         }
         // Non-Wacom drivable devices (Xencelabs) aren't in WacomDeviceRegistry
         // at all — synthesize the same spec shape TabletManager attached the
         // live driver with.
-        if let ctx = tabletManager.contexts[pid] {
+        if let ctx = tabletManager.context(forKey: instanceKey) {
             return TabletManager.vendorDeviceSpec(forVendorID: ctx.vendorID, productID: pid)
         }
         return nil
     }
 
     private var activeToolSpec: WacomToolSpec? {
-        guard let productID, let ctx = tabletManager.contexts[productID] else { return nil }
+        guard let ctx = tabletManager.context(forKey: instanceKey) else { return nil }
         return WacomToolCatalog.spec(forToolCode: ctx.activeToolCode)
     }
 
@@ -120,7 +122,7 @@ struct ButtonMappingView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            productID: productID, overrideKeys: AppOverrideBar.buttonKeys
+            instanceKey: instanceKey, overrideKeys: AppOverrideBar.buttonKeys
         ) {
             // Aux-only devices (Quick Keys puck/dongle) have no pen digitizer,
             // so the pen-buttons section is structurally inapplicable — and
@@ -286,7 +288,7 @@ struct ButtonMappingView: View {
                 .listRowBackground(Color.clear)
         } header: {
             PaneSectionHeader(isMouse ? "Mouse Buttons" : "Pen Buttons") {
-                ToolNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
+                ToolNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
             }
         }
     }
@@ -310,7 +312,7 @@ struct ButtonMappingView: View {
                 }
             } header: {
                 PaneSectionHeader("Express Keys") {
-                    DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
+                    DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
                 }
             }
         }
@@ -397,7 +399,7 @@ struct ButtonMappingView: View {
             }
         } header: {
             PaneSectionHeader("Toggle Buttons — Left") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
             }
         }
 
@@ -481,7 +483,7 @@ struct ButtonMappingView: View {
             }
         } header: {
             PaneSectionHeader("Bezel Buttons") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
             }
         }
     }

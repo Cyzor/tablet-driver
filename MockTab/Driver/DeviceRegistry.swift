@@ -214,6 +214,13 @@ final class DeviceRegistry: ObservableObject {
         DeviceInstanceKey(productID: key.productID, instance: rowInstance(for: key) ?? "")
     }
 
+    /// The registry row for a physical unit, matched claim-normalized so the
+    /// legacy empty-instance identity and the claimed unit compare equal.
+    func row(forKey key: DeviceInstanceKey) -> KnownTablet? {
+        let normalized = normalizedKey(key)
+        return knownTablets.first(where: { normalizedKey($0.instanceKey) == normalized })
+    }
+
     // MARK: - Pen model lookup
 
     /// Full name for a Wacom tool code, including "(Eraser)" suffix when appropriate.

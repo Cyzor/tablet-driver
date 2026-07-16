@@ -45,19 +45,19 @@ private struct StatusCaptionLabel: View {
 // MARK: - DeviceNameLabel
 
 /// A compact caption line showing a specific device's user-assigned nickname
-/// plus a green/gray presence dot.  Pass the window's `productID` so the label
-/// reflects that device rather than whichever device is globally active.
+/// plus a green/gray presence dot.  Pass the window's `instanceKey` so the
+/// label reflects that unit rather than whichever device is globally active.
 struct DeviceNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
-    var productID: Int?
+    var instanceKey: DeviceInstanceKey?
 
     var body: some View {
         StatusCaptionLabel(name: displayName, isLive: isConnected)
     }
 
     private var context: DeviceContext? {
-        productID.flatMap { tabletManager.contexts[$0] }
+        tabletManager.context(forKey: instanceKey)
     }
 
     private var isConnected: Bool {
@@ -65,30 +65,30 @@ struct DeviceNameLabel: View {
     }
 
     private var displayName: String {
-        guard let pid = productID, isConnected else {
+        guard let key = instanceKey, isConnected else {
             return String(localized: "No device connected", comment: "Device name label when no tablet is connected")
         }
-        if let t = registry.knownTablets.first(where: { $0.productID == pid }) { return t.nickname }
-        return TabletManager.deviceName(forProductID: pid)
+        if let t = registry.row(forKey: context?.instanceKey ?? key) { return t.nickname }
+        return TabletManager.deviceName(forProductID: key.productID)
     }
 }
 
 // MARK: - ToolNameLabel
 
 /// A compact caption line showing a device's active tool nickname plus a
-/// green/gray proximity dot.  Pass the window's `productID` so the label
-/// reflects that device's in-proximity tool rather than the globally active one.
+/// green/gray proximity dot.  Pass the window's `instanceKey` so the label
+/// reflects that unit's in-proximity tool rather than the globally active one.
 struct ToolNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
-    var productID: Int?
+    var instanceKey: DeviceInstanceKey?
 
     var body: some View {
         StatusCaptionLabel(name: displayName, isLive: context?.activeToolID != nil)
     }
 
     private var context: DeviceContext? {
-        productID.flatMap { tabletManager.contexts[$0] }
+        tabletManager.context(forKey: instanceKey)
     }
 
     private var displayName: String {
@@ -105,12 +105,12 @@ struct ToolNameLabel: View {
 
 /// Slim sticky footer showing live device context: tablet name, connection
 /// type, battery (BT only), last-seen tool, and active app override.
-/// All data is sourced from the device context bound to this window's productID.
+/// All data is sourced from the device context bound to this window's unit.
 struct DeviceStatusBar: View {
     @ObservedObject var settings:      TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
-    let productID: Int
+    let instanceKey: DeviceInstanceKey?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -159,15 +159,15 @@ struct DeviceStatusBar: View {
     // MARK: - Computed values
 
     private var context: DeviceContext? {
-        tabletManager.contexts[productID]
+        tabletManager.context(forKey: instanceKey)
     }
 
     private var tabletName: String {
         guard let context = context, context.isConnected else {
             return String(localized: "No device", comment: "Device name in status bar when no tablet is connected")
         }
-        if let t = registry.knownTablets.first(where: { $0.productID == productID }) { return t.nickname }
-        return TabletManager.deviceName(forProductID: productID)
+        if let t = registry.row(forKey: context.instanceKey) { return t.nickname }
+        return TabletManager.deviceName(forProductID: context.productID)
     }
 
     private var connectionSymbol: String {
@@ -203,8 +203,9 @@ struct DeviceStatusBar: View {
     /// uses for its companion section, kept independent here rather than
     /// shared, since this view has no other companion state to coordinate.
     private var companionProductID: Int? {
-        VendorDeviceRegistry.connectedCompanion(
-            forProductID: productID, connectedProductIDs: tabletManager.connectedProductIDs)
+        guard let key = instanceKey else { return nil }
+        return VendorDeviceRegistry.connectedCompanion(
+            forProductID: key.productID, connectedProductIDs: tabletManager.connectedProductIDs)
     }
 
     private var companionContext: DeviceContext? {

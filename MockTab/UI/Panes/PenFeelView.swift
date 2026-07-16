@@ -9,7 +9,9 @@ struct PenFeelView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
-    var productID: Int?
+    let instanceKey: DeviceInstanceKey?
+    /// Model axis of the bound unit — spec/catalog lookups key on this.
+    private var productID: Int? { instanceKey?.productID }
 
     private var tool: ToolSettings { settings.activeTool }
 
@@ -18,7 +20,7 @@ struct PenFeelView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            productID: productID, overrideKeys: AppOverrideBar.pressureKeys
+            instanceKey: instanceKey, overrideKeys: AppOverrideBar.pressureKeys
         ) {
             pressureCurveSection
 
@@ -170,7 +172,7 @@ struct PenFeelView: View {
             .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
         } header: {
             PaneSectionHeader("Pressure Curve") {
-                ToolNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
+                ToolNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
             }
         }
     }

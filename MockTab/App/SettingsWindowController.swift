@@ -426,13 +426,13 @@ final class SettingsWindowController: NSWindowController {
             ) {
                 TabletAreaView(
                     settings: s, tabletManager: tm, registry: dr,
-                    onDeviceSelected: onDevice, boundProductID: productID)
+                    onDeviceSelected: onDevice, boundKey: instanceKey)
             }
             addTab(
                 label: Self.tabLabels[Tab.penFeel.rawValue], symbol: "scribble.variable",
                 height: 480
             ) {
-                PenFeelView(settings: s, tabletManager: tm, registry: dr, productID: productID)
+                PenFeelView(settings: s, tabletManager: tm, registry: dr, instanceKey: instanceKey)
             }
         }
         addTab(
@@ -441,7 +441,7 @@ final class SettingsWindowController: NSWindowController {
         ) {
             ButtonMappingView(
                 settings: s, tabletManager: tm, registry: dr,
-                productID: productID)
+                instanceKey: instanceKey)
         }
         // Touch tab is only registered for devices whose spec declares finger touch.
         // The pane itself also guards against being shown for a non-touch device
@@ -450,13 +450,13 @@ final class SettingsWindowController: NSWindowController {
             addTab(
                 label: Self.tabLabels[Tab.touch.rawValue], symbol: "hand.point.up.left", height: 480
             ) {
-                TouchView(settings: s, tabletManager: tm, registry: dr, productID: productID)
+                TouchView(settings: s, tabletManager: tm, registry: dr, instanceKey: instanceKey)
             }
         }
         if !isAuxOnly {
             addTab(label: Self.tabLabels[Tab.display.rawValue], symbol: "display", height: 370) {
                 DisplayMappingView(
-                    settings: s, tabletManager: tm, registry: dr, productID: productID)
+                    settings: s, tabletManager: tm, registry: dr, instanceKey: instanceKey)
             }
         }
         addTab(
@@ -464,13 +464,14 @@ final class SettingsWindowController: NSWindowController {
             height: 480, width: 620
         ) {
             DevicesView(
-                settings: s, tabletManager: tm, registry: dr, productID: productID, undoManager: um)
+                settings: s, tabletManager: tm, registry: dr, instanceKey: instanceKey,
+                undoManager: um)
         }
         if !isAuxOnly {
             addTab(
                 label: Self.tabLabels[Tab.profiles.rawValue], symbol: "star.circle", height: 450
             ) {
-                ProfilesView(settings: s, tabletManager: tm, registry: dr, productID: productID)
+                ProfilesView(settings: s, tabletManager: tm, registry: dr, instanceKey: instanceKey)
             }
         }
         if !isAuxOnly {
@@ -479,12 +480,12 @@ final class SettingsWindowController: NSWindowController {
                 height: 360
             ) {
                 ScratchpadView(
-                    settings: s, tabletManager: tm, registry: dr, productID: productID,
+                    settings: s, tabletManager: tm, registry: dr, instanceKey: instanceKey,
                     undoManager: um)
             }
         }
         addTab(label: Self.tabLabels[Tab.info.rawValue], symbol: "info.circle", height: 430) {
-            InfoView(tabletManager: tm, settings: s, productID: productID)
+            InfoView(tabletManager: tm, settings: s, instanceKey: instanceKey)
         }
 
     }

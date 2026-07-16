@@ -12,7 +12,9 @@ struct DisplayMappingView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
-    var productID: Int?
+    let instanceKey: DeviceInstanceKey?
+    /// Model axis of the bound unit — spec/catalog lookups key on this.
+    private var productID: Int? { instanceKey?.productID }
     @State private var displays: [DisplayInfo] = []
     @State private var rangeStart: Int = -1
 
@@ -37,7 +39,7 @@ struct DisplayMappingView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            productID: productID
+            instanceKey: instanceKey
         ) {
             displayMappingSection
             canvasSection
@@ -61,7 +63,7 @@ struct DisplayMappingView: View {
     }
 
     private var brightnessDeviceConnected: Bool {
-        guard let pid = productID, let ctx = tabletManager.contexts[pid] else { return false }
+        guard let ctx = tabletManager.context(forKey: instanceKey) else { return false }
         return ctx.isConnected
     }
 
@@ -231,7 +233,7 @@ struct DisplayMappingView: View {
             }
         } header: {
             PaneSectionHeader("Display Mapping") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry, productID: productID)
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
             }
         } footer: {
             Text("The active tablet area maps to the selected display.")
