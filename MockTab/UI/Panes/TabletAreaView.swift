@@ -277,7 +277,7 @@ struct TabletAreaView: View {
             return DeviceLabel(primary: String(localized: "No device", comment: "Fallback label when no tablet is connected"), secondary: nil)
         }
         let modelName = TabletManager.deviceName(forProductID: pid)
-        if let tablet = registry.knownTablets.first(where: { $0.id == pid }),
+        if let tablet = registry.knownTablets.first(where: { $0.productID == pid }),
            tablet.nickname != tablet.modelName {
             return DeviceLabel(primary: tablet.nickname, secondary: modelName)
         }

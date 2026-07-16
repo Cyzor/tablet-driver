@@ -50,7 +50,7 @@ struct PresetImporter {
                   let pid = Int(pidStr.dropFirst(2), radix: 16) else { continue }
             let modelName = tabletDict["modelName"] as? String ?? pidStr
             let nickname = tabletDict["nickname"] as? String ?? modelName
-            let isKnown = registry.knownTablets.contains { $0.id == pid }
+            let isKnown = registry.knownTablets.contains { $0.productID == pid }
 
             var values: [String: Any] = [:]
             if let s = tabletDict["settings"] as? [String: Any] {

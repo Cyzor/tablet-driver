@@ -26,7 +26,7 @@ struct ProfilesView: View {
 
     /// TabletSettings for tablets that aren't currently connected.
     /// Populated lazily in onAppear so we don't rebuild on every render.
-    @State private var offlineSettings: [Int: TabletSettings] = [:]
+    @State private var offlineSettings: [String: TabletSettings] = [:]
 
     // Import state
     @State private var pendingImport: ImportPlan?
@@ -72,7 +72,7 @@ struct ProfilesView: View {
                     tablets: registry.knownTablets,
                     tabletManager: tabletManager,
                     offlineSettings: offlineSettings,
-                    toolsForDevice: registry.tools(forDevice:),
+                    toolsForDevice: { registry.tools(for: $0.instanceKey) },
                     isExpanded: $summaryExpanded
                 )
             }
@@ -99,10 +99,10 @@ struct ProfilesView: View {
     // MARK: - Offline Settings
 
     private func populateOfflineSettings() {
-        var result: [Int: TabletSettings] = [:]
+        var result: [String: TabletSettings] = [:]
         for tablet in registry.knownTablets {
-            if tabletManager.contexts[tablet.id] == nil {
-                result[tablet.id] = TabletSettings(productID: tablet.id)
+            if tabletManager.context(for: tablet) == nil {
+                result[tablet.id] = TabletSettings(instanceKey: tablet.instanceKey)
             }
         }
         offlineSettings = result
@@ -623,8 +623,8 @@ private struct PresetListView: View {
 private struct ConfigurationSummaryView: View {
     let tablets: [DeviceRegistry.KnownTablet]
     let tabletManager: TabletManager
-    let offlineSettings: [Int: TabletSettings]
-    let toolsForDevice: (Int) -> [DeviceRegistry.KnownTool]
+    let offlineSettings: [String: TabletSettings]
+    let toolsForDevice: (DeviceRegistry.KnownTablet) -> [DeviceRegistry.KnownTool]
     @Binding var isExpanded: Bool
 
     var body: some View {
@@ -644,9 +644,9 @@ private struct ConfigurationSummaryView: View {
     @ViewBuilder
     private func tabletSummaryCard(_ tablet: DeviceRegistry.KnownTablet) -> some View {
         let ts: TabletSettings =
-            tabletManager.contexts[tablet.id]?.settings
+            tabletManager.context(for: tablet)?.settings
             ?? offlineSettings[tablet.id]
-            ?? TabletSettings(productID: tablet.id)
+            ?? TabletSettings(instanceKey: tablet.instanceKey)
         let nonDefault = deviceNonDefaultLines(ts)
 
         VStack(alignment: .leading, spacing: 6) {
@@ -675,7 +675,7 @@ private struct ConfigurationSummaryView: View {
                 }
             }
 
-            let tools = toolsForDevice(tablet.id)
+            let tools = toolsForDevice(tablet)
             if !tools.isEmpty {
                 ForEach(tools, id: \.id) { tool in
                     toolSummaryRow(tool, deviceSettings: ts, isLast: tool.id == tools.last?.id)

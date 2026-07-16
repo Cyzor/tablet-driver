@@ -32,7 +32,7 @@ final class PresetExporter {
 
     /// Exports a single tablet's full configuration.
     func exportTablet(_ tablet: DeviceRegistry.KnownTablet) -> [String: Any] {
-        let pid = tablet.id
+        let pid = tablet.productID
         let hexPID = "0x\(String(pid, radix: 16, uppercase: true))"
         let devicePrefix = "device-\(hexPID)."
         let ts: TabletSettings = tabletManager.contexts[pid]?.settings ?? TabletSettings(productID: pid)

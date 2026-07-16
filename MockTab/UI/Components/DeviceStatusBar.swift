@@ -68,7 +68,7 @@ struct DeviceNameLabel: View {
         guard let pid = productID, isConnected else {
             return String(localized: "No device connected", comment: "Device name label when no tablet is connected")
         }
-        if let t = registry.knownTablets.first(where: { $0.id == pid }) { return t.nickname }
+        if let t = registry.knownTablets.first(where: { $0.productID == pid }) { return t.nickname }
         return TabletManager.deviceName(forProductID: pid)
     }
 }
@@ -166,7 +166,7 @@ struct DeviceStatusBar: View {
         guard let context = context, context.isConnected else {
             return String(localized: "No device", comment: "Device name in status bar when no tablet is connected")
         }
-        if let t = registry.knownTablets.first(where: { $0.id == productID }) { return t.nickname }
+        if let t = registry.knownTablets.first(where: { $0.productID == productID }) { return t.nickname }
         return TabletManager.deviceName(forProductID: productID)
     }
 

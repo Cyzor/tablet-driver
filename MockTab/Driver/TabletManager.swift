@@ -80,6 +80,16 @@ final class TabletManager: ObservableObject {
         deviceContexts[context.instanceKey] = context
     }
 
+    /// Context for a registry row. A row with an instance token matches the
+    /// exact instance; the legacy row (nil/empty token) matches the unit
+    /// holding the model's claimed namespace, via the compatibility view.
+    func context(for tablet: DeviceRegistry.KnownTablet) -> DeviceContext? {
+        if let inst = tablet.instance, !inst.isEmpty {
+            return deviceContexts[tablet.instanceKey]
+        }
+        return contexts[tablet.productID]
+    }
+
     /// The device whose injector is currently posting CGEvents.
     /// `didSet` keeps `injector.isActive` in lockstep so the HIDThread fast path in
     /// `onTablet` is gated by a flag that exactly mirrors `activeContext`. Without
@@ -566,7 +576,8 @@ final class TabletManager: ObservableObject {
             context.activeToolCode = identity.toolCode
             // Propagate tool code to calibration session so tool changes are tracked.
             CaptureEngine.shared.updateToolCode(identity.toolCode)
-            let toolID = DeviceRegistry.shared.recordTool(identity: identity, forDevice: productID)
+            let toolID = DeviceRegistry.shared.recordTool(
+                identity: identity, forDevice: context.instanceKey)
             let toolSets = context.settings.toolSettings(forID: toolID, isMouse: identity.isMouse)
             context.activeTool = toolSets
             context.settings.activeTool = toolSets
@@ -907,7 +918,7 @@ final class TabletManager: ObservableObject {
             if activeContext == nil { activeContext = context }
 
             DeviceRegistry.shared.recordTablet(
-                productID: productID, usbSerial: usbSerial,
+                instanceKey: context.instanceKey, usbSerial: usbSerial,
                 vendorID: vendorID, productString: productString)
         }
     }

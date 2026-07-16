@@ -133,14 +133,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let pwc = SettingsWindowManager.shared
             let tm = TabletManager.shared
             for tablet in knownTablets {
-                let connected = connectedIDs.contains(tablet.id)
-                let suffix = connected ? (tm.contexts[tablet.id]?.batteryMenuSuffix ?? "") : ""
+                let connected = connectedIDs.contains(tablet.productID)
+                let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
                 let item = NSMenuItem(
-                    title: pwc.menuLabel(forProductID: tablet.id) + suffix,
+                    title: pwc.menuLabel(forProductID: tablet.productID) + suffix,
                     action: #selector(dockOpenTablet(_:)),
                     keyEquivalent: "")
                 item.target = self
-                item.tag = tablet.id
+                item.tag = tablet.productID
                 // Dock menus reliably honor NSMenuItem.state (left-gutter
                 // checkmark) but not all NSMenuItem.image values render in the
                 // Dock's restricted menu pipeline, so use the canonical

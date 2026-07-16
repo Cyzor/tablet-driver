@@ -25,7 +25,7 @@ struct DevicesView: View {
     var productID: Int?
     var undoManager: UndoManager?
 
-    @State private var editingTabletID: Int? = nil
+    @State private var editingTabletID: String? = nil
     @State private var editingToolID: String? = nil
     /// Which section the tool edit lives in. The same tool appears in both
     /// the per-tablet Tools list and Tools (All Tablets); without this,
@@ -35,16 +35,18 @@ struct DevicesView: View {
     @FocusState private var editFieldFocused: Bool
 
     @State private var pendingForgetTool: DeviceRegistry.KnownTool? = nil
-    @State private var pendingForgetDeviceID: Int? = nil
+    @State private var pendingForgetDeviceID: String? = nil
     @State private var pendingRemoveTablet: DeviceRegistry.KnownTablet? = nil
 
     /// Tablet explicitly selected by the user to view its tools.
     /// Nil = auto-follow the currently active device.
-    @State private var selectedTabletID: Int? = nil
+    @State private var selectedTabletID: String? = nil
 
-    private var effectiveTabletID: Int? {
+    private var effectiveTabletID: String? {
         selectedTabletID
-            ?? (tabletManager.connectedProductID != 0 ? tabletManager.connectedProductID : nil)
+            ?? registry.knownTablets.first(where: {
+                $0.productID == tabletManager.connectedProductID
+            })?.id
             ?? registry.knownTablets.first?.id
     }
 
@@ -147,7 +149,7 @@ struct DevicesView: View {
 
     @ViewBuilder
     private func tabletRow(_ tablet: DeviceRegistry.KnownTablet) -> some View {
-        let isActive = tabletManager.connectedProductIDs.contains(tablet.id)
+        let isActive = tabletManager.connectedProductIDs.contains(tablet.productID)
         let isSelected = effectiveTabletID == tablet.id
 
         HStack(spacing: 8) {
@@ -162,8 +164,8 @@ struct DevicesView: View {
             // not a filled block), so it gets a 50% size bump — the
             // surrounding frame stays fixed at 20pt so row spacing/alignment
             // with every other row is unaffected.
-            Image(systemName: kindSymbolName(forProductID: tablet.id))
-                .appFont(size: isPuckKind(forProductID: tablet.id) ? 19.5 : 13)
+            Image(systemName: kindSymbolName(forProductID: tablet.productID))
+                .appFont(size: isPuckKind(forProductID: tablet.productID) ? 19.5 : 13)
                 .foregroundStyle(.secondary)
                 .frame(width: 20, alignment: .center)
                 .accessibilityHidden(true)
@@ -324,7 +326,7 @@ struct DevicesView: View {
     }
 
     @ViewBuilder
-    private func toolRow(_ tool: DeviceRegistry.KnownTool, forDevice deviceID: Int?) -> some View {
+    private func toolRow(_ tool: DeviceRegistry.KnownTool, forDevice deviceID: String?) -> some View {
         // The merged row also lights up when the folded-in eraser end is
         // the one in proximity.
         let activeID = tabletManager.activeContext?.activeToolID

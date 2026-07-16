@@ -10,7 +10,13 @@ struct ImportPreviewSheet: View {
     let plan: ImportPlan
     @ObservedObject var registry: DeviceRegistry
     @ObservedObject var tabletManager: TabletManager
-    let offlineSettings: [Int: TabletSettings]
+    /// Keyed by registry row id; import archives are model-keyed, so
+    /// lookups go through the model's legacy row id (see `offline(_:)`).
+    let offlineSettings: [String: TabletSettings]
+
+    private func offline(_ productID: Int) -> TabletSettings? {
+        offlineSettings[DeviceInstanceKey(productID: productID, instance: "").stringValue]
+    }
     let onDismiss: () -> Void
 
     @State private var excluded: Set<Int> = []
@@ -123,7 +129,7 @@ struct ImportPreviewSheet: View {
         let isExcluded = excluded.contains(entry.productID)
         let ts: TabletSettings? =
             tabletManager.contexts[entry.productID]?.settings ??
-            offlineSettings[entry.productID]
+            offline(entry.productID)
         let finalName = ts?.uniqueProfileName(entry.resolvedProfileName) ?? entry.resolvedProfileName
         let renamed = finalName != entry.resolvedProfileName
 
@@ -184,7 +190,7 @@ struct ImportPreviewSheet: View {
             let ts: TabletSettings
             if let live = tabletManager.contexts[entry.productID]?.settings {
                 ts = live
-            } else if let offline = offlineSettings[entry.productID] {
+            } else if let offline = offline(entry.productID) {
                 ts = offline
             } else {
                 ts = TabletSettings(productID: entry.productID)

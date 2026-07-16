@@ -85,16 +85,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                 // is folded into its owning tablet's window while connected —
                 // don't list it as its own selectable device.
                 if VendorDeviceRegistry.isConnectedCompanion(
-                    productID: tablet.id, connectedProductIDs: tm.connectedProductIDs)
+                    productID: tablet.productID, connectedProductIDs: tm.connectedProductIDs)
                 {
                     continue
                 }
-                let connected = tm.connectedProductIDs.contains(tablet.id)
-                let suffix = connected ? (tm.contexts[tablet.id]?.batteryMenuSuffix ?? "") : ""
-                let item = NSMenuItem(title: pwc.menuLabel(forProductID: tablet.id) + suffix,
+                let connected = tm.connectedProductIDs.contains(tablet.productID)
+                let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
+                let item = NSMenuItem(title: pwc.menuLabel(forProductID: tablet.productID) + suffix,
                                        action: #selector(openTablet(_:)), keyEquivalent: "")
                 item.target = self
-                item.tag = tablet.id
+                item.tag = tablet.productID
                 item.state = connected ? .on : .off
                 menu.addItem(item)
             }

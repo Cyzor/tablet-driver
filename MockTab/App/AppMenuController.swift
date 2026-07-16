@@ -601,19 +601,19 @@ final class AppMenuController: NSObject, NSMenuDelegate {
                 // is folded into its owning tablet's window while connected —
                 // don't list it as its own selectable device.
                 if VendorDeviceRegistry.isConnectedCompanion(
-                    productID: tablet.id, connectedProductIDs: tm.connectedProductIDs)
+                    productID: tablet.productID, connectedProductIDs: tm.connectedProductIDs)
                 {
                     continue
                 }
-                let connected = tm.connectedProductIDs.contains(tablet.id)
-                let suffix = connected ? (tm.contexts[tablet.id]?.batteryMenuSuffix ?? "") : ""
-                let label = SettingsWindowManager.shared.menuLabel(forProductID: tablet.id) + suffix
+                let connected = tm.connectedProductIDs.contains(tablet.productID)
+                let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
+                let label = SettingsWindowManager.shared.menuLabel(forProductID: tablet.productID) + suffix
                 let item = NSMenuItem(
                     title: label,
                     action: #selector(openDeviceWindow(_:)),
                     keyEquivalent: "")
                 item.target = self
-                item.tag = tablet.id
+                item.tag = tablet.productID
                 // Show the native state checkmark for currently connected tablets,
                 // matching the flush-left alignment of the other checkmarked items
                 // (toggles, active profile) in the same menu.
@@ -646,7 +646,7 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         let pid =
             tm.activeContext?.productID
             ?? tm.connectedProductIDs.first
-            ?? DeviceRegistry.shared.knownTablets.first?.id
+            ?? DeviceRegistry.shared.knownTablets.first?.productID
         guard let pid else { return }
         SettingsWindowManager.shared.openWindow(forProductID: pid)
     }

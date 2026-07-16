@@ -315,7 +315,7 @@ final class SettingsWindowManager: ObservableObject {
     func displayLabel(forProductID productID: Int?) -> String {
         guard let productID else { return "MockTab" }
         let registry = DeviceRegistry.shared
-        if let tablet = registry.knownTablets.first(where: { $0.id == productID }) {
+        if let tablet = registry.knownTablets.first(where: { $0.productID == productID }) {
             if tablet.nickname != tablet.modelName { return tablet.nickname }
             return tablet.modelName
         }
@@ -324,7 +324,7 @@ final class SettingsWindowManager: ObservableObject {
 
     func menuLabel(forProductID productID: Int) -> String {
         let registry = DeviceRegistry.shared
-        if let tablet = registry.knownTablets.first(where: { $0.id == productID }) {
+        if let tablet = registry.knownTablets.first(where: { $0.productID == productID }) {
             if tablet.nickname != tablet.modelName {
                 return "\(tablet.nickname) — \(tablet.modelName)"
             }
@@ -345,7 +345,7 @@ final class SettingsWindowManager: ObservableObject {
                     productID: $0, connectedProductIDs: connected)
             })
             ?? connected.first
-            ?? DeviceRegistry.shared.knownTablets.first?.id
+            ?? DeviceRegistry.shared.knownTablets.first?.productID
     }
 
     private func frontmostSettingsWindow() -> SettingsWindowController {
