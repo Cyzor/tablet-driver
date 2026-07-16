@@ -21,6 +21,9 @@ struct TouchRingDiagramView: View, Equatable {
     let centerDown: Bool
     /// Number of visual slots: 4 for most tablets, 3 for Cintiq 24HD-class.
     let slotCount: Int
+    /// Slot currently selected for editing in the mode list (outlined),
+    /// distinct from the hardware-active slot (filled). nil = none.
+    var selectedIndex: Int? = nil
 
     // SVG viewBox is 0 0 137.63 137.63 for both quarters and thirds variants.
     private static let svgSize = 137.63
@@ -88,6 +91,14 @@ struct TouchRingDiagramView: View, Equatable {
                 draw(path,
                      fill: isActive ? accent : passive,
                      stroke: isActive ? accent : strokeDim)
+            }
+            // Editing selection: a heavier outline, independent of the
+            // hardware-active fill so both states stay readable at once.
+            if let sel = selectedIndex, slotPaths.indices.contains(sel),
+               let xp = slotPaths[sel].cgPath.copy(using: &t) {
+                context.stroke(
+                    Path(xp), with: .color(accent),
+                    style: StrokeStyle(lineWidth: 2, lineJoin: .round))
             }
             draw(centerPath,
                  fill: centerDown ? accent : bodyFill,

@@ -251,6 +251,17 @@ struct LEDColorControl: View {
     /// white), the raw sRGB for custom picks, the default wire color while
     /// untouched.
     private var currentDisplayColor: Color {
+        Self.displayColor(for: color, defaultWire: defaultWire, palette: palette)
+    }
+
+    /// The perceptual color a stored light value should render as — shared
+    /// with read-only indicators (mode-list summary dots) so they agree with
+    /// the editor's wells.
+    static func displayColor(
+        for color: ControlSlot.LEDColor?,
+        defaultWire: (r: UInt8, g: UInt8, b: UInt8),
+        palette: [LEDSwatch] = LEDSwatch.xencelabsPalette
+    ) -> Color {
         if let c = color {
             if let swatch = palette.first(where: {
                 $0.wire.r == c.r && $0.wire.g == c.g && $0.wire.b == c.b

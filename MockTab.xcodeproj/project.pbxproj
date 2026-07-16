@@ -47,7 +47,6 @@
 		AA000045 /* WacomFallbackDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000045 /* WacomFallbackDevice.swift */; };
 		AA000049 /* WacomKnownDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomKnownDevice.swift */; };
 		AA000052 /* AppOverrideBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* AppOverrideBar.swift */; };
-		AA000075 /* TouchRingSlotRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000075 /* TouchRingSlotRow.swift */; };
 		AA000076 /* ButtonBindingControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000076 /* ButtonBindingControl.swift */; };
 		AA000077 /* LiveResizeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000077 /* LiveResizeDetector.swift */; };
 		AA000078 /* ButtonRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000078 /* ButtonRow.swift */; };
@@ -63,6 +62,7 @@
 		AA000100 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000100 /* Profile.swift */; };
 		AA000206 /* TabletSettings+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000206 /* TabletSettings+Persistence.swift */; };
 		AA000207 /* LEDColorControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000207 /* LEDColorControl.swift */; };
+		AA000208 /* TouchRingModeList.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000208 /* TouchRingModeList.swift */; };
 		AA000205 /* TabletSettings+AppOverrides.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000205 /* TabletSettings+AppOverrides.swift */; };
 		AA000204 /* TabletSettings+Presets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000204 /* TabletSettings+Presets.swift */; };
 		AA000201 /* ButtonBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000201 /* ButtonBinding.swift */; };
@@ -148,7 +148,6 @@
 		AB000045 /* WacomFallbackDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomFallbackDevice.swift; sourceTree = "<group>"; };
 		AB000049 /* WacomKnownDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomKnownDevice.swift; sourceTree = "<group>"; };
 		AB000052 /* AppOverrideBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverrideBar.swift; sourceTree = "<group>"; };
-		AB000075 /* TouchRingSlotRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchRingSlotRow.swift; sourceTree = "<group>"; };
 		AB000076 /* ButtonBindingControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonBindingControl.swift; sourceTree = "<group>"; };
 		AB000077 /* LiveResizeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveResizeDetector.swift; sourceTree = "<group>"; };
 		AB000078 /* ButtonRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonRow.swift; sourceTree = "<group>"; };
@@ -165,6 +164,7 @@
 		AB000100 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		AB000206 /* TabletSettings+Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+Persistence.swift"; sourceTree = "<group>"; };
 		AB000207 /* LEDColorControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LEDColorControl.swift; sourceTree = "<group>"; };
+		AB000208 /* TouchRingModeList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchRingModeList.swift; sourceTree = "<group>"; };
 		AB000205 /* TabletSettings+AppOverrides.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+AppOverrides.swift"; sourceTree = "<group>"; };
 		AB000204 /* TabletSettings+Presets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+Presets.swift"; sourceTree = "<group>"; };
 		AB000201 /* ButtonBinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonBinding.swift; sourceTree = "<group>"; };
@@ -336,8 +336,8 @@
 			isa = PBXGroup;
 			children = (
 				AB000052 /* AppOverrideBar.swift */,
-				AB000075 /* TouchRingSlotRow.swift */,
 				AB000207 /* LEDColorControl.swift */,
+				AB000208 /* TouchRingModeList.swift */,
 				AB000076 /* ButtonBindingControl.swift */,
 				AB000077 /* LiveResizeDetector.swift */,
 				AB000078 /* ButtonRow.swift */,
@@ -523,6 +523,7 @@
 				AA000100 /* Profile.swift in Sources */,
 				AA000206 /* TabletSettings+Persistence.swift in Sources */,
 				AA000207 /* LEDColorControl.swift in Sources */,
+				AA000208 /* TouchRingModeList.swift in Sources */,
 				AA000205 /* TabletSettings+AppOverrides.swift in Sources */,
 				AA000204 /* TabletSettings+Presets.swift in Sources */,
 				AA000201 /* ButtonBinding.swift in Sources */,
@@ -539,7 +540,6 @@
 				AA000033 /* InfoView.swift in Sources */,
 				AA000034 /* ProfilesView.swift in Sources */,
 				AA000052 /* AppOverrideBar.swift in Sources */,
-				AA000075 /* TouchRingSlotRow.swift in Sources */,
 				AA000076 /* ButtonBindingControl.swift in Sources */,
 				AA000077 /* LiveResizeDetector.swift in Sources */,
 				AA000078 /* ButtonRow.swift in Sources */,

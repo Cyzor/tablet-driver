@@ -292,8 +292,7 @@ struct ButtonMappingView: View {
                     String(
                         localized: "Touch Ring",
                         comment: "Section header / row label for touch ring"),
-                    isActive: lb.touchRingActive)
-                touchRingDiagramRow
+                    isActive: lb.touchRingActive, showsDiagram: true)
             }
         }
 
@@ -367,8 +366,7 @@ struct ButtonMappingView: View {
             touchRingSlotsSection(
                 String(
                     localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-                isActive: lb.touchRingActive)
-            touchRingDiagramRow
+                isActive: lb.touchRingActive, showsDiagram: true)
         }
 
         Section("Toggle Buttons — Right") {
@@ -394,8 +392,7 @@ struct ButtonMappingView: View {
             touchRingSlotsSection(
                 String(
                     localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-                isActive: lb.touchRing2Active)
-            touchRingDiagramRow
+                isActive: lb.touchRing2Active, showsDiagram: true)
         }
     }
 
@@ -488,30 +485,14 @@ struct ButtonMappingView: View {
         )
     }
 
-    // MARK: - Touch ring diagram row
-
-    /// Schematic ring graphic, mirrored visual treatment of PenDiagramView.
-    /// Equatable inputs (activeSlotIndex + centerDown + slotCount) ensure the
-    /// row short-circuits during ~16 Hz liveButtons invalidations.
-    private var touchRingDiagramRow: some View {
-        TouchRingDiagramView(
-            activeSlotIndex: settings.touchRingActiveSlotIndex,
-            centerDown: liveButtons.touchRingButtonDown,
-            slotCount: spec?.ringSlotCount ?? 4
-        )
-        .equatable()
-        .frame(maxWidth: .infinity, minHeight: 96, maxHeight: 140)
-        .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
-        .listRowBackground(Color.clear)
-    }
-
     // MARK: - Touch ring / strip slots section
 
-    /// Renders the ring/strip slot rows as individual list rows.
-    /// Each slot becomes a separate Form row, visually consistent with buttonRow().
+    /// The mode block for a ring or strip: label row, then the summary-list/
+    /// detail-editor component (which carries the clickable ring diagram when
+    /// `showsDiagram` is set — rings only, strips have no round schematic).
     @ViewBuilder
     private func touchRingSlotsSection(
-        _ label: String, isActive: Bool
+        _ label: String, isActive: Bool, showsDiagram: Bool = false
     ) -> some View {
         // Label row — shows "Touch Ring", "Left", or "Right" with live-active indicator.
         HStack(spacing: 6) {
@@ -520,24 +501,21 @@ struct ButtonMappingView: View {
             Spacer(minLength: 0)
         }
 
-        // One list row per slot — matches buttonRow() visual language.
         // Show only as many slots as the spec declares (default 4); model always stores 4.
-        let slotCount = min(settings.touchRingSlots.count, spec?.ringSlotCount ?? 4)
         let ringSlotCount = spec?.ringSlotCount ?? 4
-        ForEach(Array(settings.touchRingSlots.prefix(slotCount).enumerated()), id: \.element.id)
-        { idx, slot in
-            TouchRingSlotRowView(
-                slot: slot,
-                idx: idx,
-                isActiveSlot: isActive && settings.touchRingActiveSlotIndex == idx,
-                ringSlotCount: ringSlotCount,
-                actionBinding: slotBinding(at: idx),
-                speedBinding: slotSpeedBinding(at: idx),
-                cwBinding: slotBinding(for: idx, direction: .cw),
-                ccwBinding: slotBinding(for: idx, direction: .ccw)
-            )
-            .equatable()
-        }
+        TouchRingModeListView(
+            slots: settings.touchRingSlots,
+            shownSlotCount: min(settings.touchRingSlots.count, ringSlotCount),
+            ringSlotCount: ringSlotCount,
+            isRingActive: isActive,
+            activeSlotIndex: settings.touchRingActiveSlotIndex,
+            centerDown: liveButtons.touchRingButtonDown,
+            showsDiagram: showsDiagram,
+            actionBinding: slotBinding(at:),
+            speedBinding: slotSpeedBinding(at:),
+            cwBinding: { self.slotBinding(for: $0, direction: .cw) },
+            ccwBinding: { self.slotBinding(for: $0, direction: .ccw) }
+        )
     }
 
     // buttonRow / activeIndicator / labelText now live in

@@ -72,40 +72,24 @@ struct QuickKeysSectionView: View {
                     set: { settings.touchRingButtonBinding = $0 }
                 ))
             // Dial rotation (CW/CCW detents) — same ControlSlot model used
-            // by a real touch ring.
+            // by a real touch ring. Summary list + per-mode editor, with
+            // the clickable dial diagram beneath.
             let ringSlotCount = spec?.ringSlotCount ?? 4
-            let slotCount = min(settings.touchRingSlots.count, ringSlotCount)
-            ForEach(
-                Array(settings.touchRingSlots.prefix(slotCount).enumerated()),
-                id: \.element.id
-            ) { idx, slot in
-                TouchRingSlotRowView(
-                    slot: slot,
-                    idx: idx,
-                    isActiveSlot: false,
-                    ringSlotCount: ringSlotCount,
-                    actionBinding: slotActionBinding(at: idx),
-                    speedBinding: slotSpeedBinding(at: idx),
-                    cwBinding: slotBinding(at: idx, direction: .cw),
-                    ccwBinding: slotBinding(at: idx, direction: .ccw),
-                    ledWell: slotLEDWell(at: idx)
-                )
-                .equatable()
-            }
-            touchRingDiagramRow(ringSlotCount: ringSlotCount, centerDown: lb.touchRingButtonDown)
+            TouchRingModeListView(
+                slots: settings.touchRingSlots,
+                shownSlotCount: min(settings.touchRingSlots.count, ringSlotCount),
+                ringSlotCount: ringSlotCount,
+                isRingActive: true,
+                activeSlotIndex: settings.touchRingActiveSlotIndex,
+                centerDown: lb.touchRingButtonDown,
+                showsDiagram: true,
+                actionBinding: slotActionBinding(at:),
+                speedBinding: slotSpeedBinding(at:),
+                cwBinding: { slotBinding(at: $0, direction: .cw) },
+                ccwBinding: { slotBinding(at: $0, direction: .ccw) },
+                ledEditor: slotLEDWell(at:)
+            )
         }
-    }
-
-    private func touchRingDiagramRow(ringSlotCount: Int, centerDown: Bool) -> some View {
-        TouchRingDiagramView(
-            activeSlotIndex: settings.touchRingActiveSlotIndex,
-            centerDown: centerDown,
-            slotCount: ringSlotCount
-        )
-        .equatable()
-        .frame(maxWidth: .infinity, minHeight: 96, maxHeight: 140)
-        .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
-        .listRowBackground(Color.clear)
     }
 
     private func slotActionBinding(at index: Int) -> Binding<ControlSlot.Action> {
@@ -155,8 +139,9 @@ struct QuickKeysSectionView: View {
         )
     }
 
-    /// The shared light editor for one mode slot's dial LED, in compact well
-    /// form (a color dot opening the swatch/brightness popover). Undo
+    /// The shared light editor for one mode slot's dial LED: a compact well
+    /// in the mode's expanded editor, opening the swatch/brightness popover
+    /// — the full inline swatch row overloaded the editor visually. Undo
     /// coalescing lives inside LEDColorControl; the binding just reads and
     /// writes the slot's stored color (nil = factory palette default).
     private func slotLEDWell(at index: Int) -> LEDColorControl {
