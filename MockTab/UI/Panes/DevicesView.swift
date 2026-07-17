@@ -172,57 +172,57 @@ struct DevicesView: View {
                 .frame(width: 20, alignment: .center)
                 .accessibilityHidden(true)
 
-            if editingTabletID == tablet.id {
-                // Inline rename, Finder-style: the field takes over the row
-                // (Kind/Identifier hide so nothing wraps or shifts) and the
-                // buttons keep their natural width in every locale.
-                TextField(String(localized: "Device name", comment: "Placeholder text in rename tablet field"), text: $editingName)
-                    .labelsHidden()
-                    .textFieldStyle(.roundedBorder)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity)
-                    .focused($editFieldFocused)
-                    .onSubmit { commitTabletRename() }
-                    .onAppear { focusAndSelectAll() }
-                Button("Rename") { commitTabletRename() }
-                    .buttonStyle(.borderedProminent).controlSize(.small)
-                    .fixedSize()
-                Button("Cancel") { editingTabletID = nil }
-                    .buttonStyle(.bordered).controlSize(.small)
-                    .keyboardShortcut(.cancelAction)
-                    .fixedSize()
-            } else {
-                // Two-line row: nickname on top, catalog name and identifier
-                // in a small gray subtitle. Nothing competes for width, so
-                // long names and identifiers stop truncating each other.
-                VStack(alignment: .leading, spacing: 1) {
+            // Two-line row: nickname on top, catalog name and identifier
+            // in a small gray subtitle. Nothing competes for width, so
+            // long names and identifiers stop truncating each other.
+            // Renaming swaps only the nickname Text for a plain-style
+            // TextField with the same metrics (Finder-style): no border
+            // chrome, no inline buttons, so nothing in the row moves.
+            // Return commits, Esc cancels, click-away commits.
+            VStack(alignment: .leading, spacing: 1) {
+                if editingTabletID == tablet.id {
+                    TextField(String(localized: "Device name", comment: "Placeholder text in rename tablet field"), text: $editingName)
+                        .labelsHidden()
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.leading)
+                        .focused($editFieldFocused)
+                        .renameFieldRing()
+                        .onSubmit { commitTabletRename() }
+                        .onExitCommand { editingTabletID = nil }
+                        .onAppear { focusAndSelectAll() }
+                } else {
                     Text(tablet.nickname)
                         .fontWeight(isActive ? .semibold : .regular)
                         .lineLimit(1)
-                    let subtitle = Self.subtitle(
-                        kind: tablet.modelName, id: tablet.displayID,
-                        nickname: tablet.nickname)
-                    if !subtitle.isEmpty {
-                        Text(subtitle)
-                            .appFont(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .help("\(tablet.modelName) · \(tablet.displayID)")
-
-                Button {
-                    editingTabletID = tablet.id
-                    editingName = tablet.nickname
-                } label: {
-                    Image(systemName: "pencil")
-                        .accessibilityHidden(true)
+                let subtitle = Self.subtitle(
+                    kind: tablet.modelName, id: tablet.displayID,
+                    nickname: tablet.nickname)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .appFont(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
-                .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
-                .accessibilityLabel("Rename")
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .help("\(tablet.modelName) · \(tablet.displayID)")
+
+            // Always present so the row's trailing edge never moves; while
+            // editing it commits instead of re-entering edit mode.
+            Button {
+                if editingTabletID == tablet.id {
+                    commitTabletRename()
+                } else {
+                    beginTabletEdit(tablet)
+                }
+            } label: {
+                Image(systemName: "pencil")
+                    .accessibilityHidden(true)
+            }
+            .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
+            .accessibilityLabel("Rename")
         }
         .padding(.vertical, 2)
         .listRowBackground(isSelected ? Color.accentColor.opacity(0.08) : nil)
@@ -350,56 +350,49 @@ struct DevicesView: View {
                 .frame(width: 20, alignment: .center)
                 .accessibilityHidden(true)
 
-            if isEditing {
-                // Inline rename, Finder-style — see tabletRow.
-                TextField(String(localized: "Tool name", comment: "Placeholder text in rename tool field"), text: $editingName)
-                    .labelsHidden()
-                    .textFieldStyle(.roundedBorder)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity)
-                    .focused($editFieldFocused)
-                    .onSubmit { commitToolRename() }
-                    .onAppear { focusAndSelectAll() }
-                Button("Rename") { commitToolRename() }
-                    .buttonStyle(.borderedProminent).controlSize(.small)
-                    .fixedSize()
-                Button("Forget…", role: .destructive) {
-                    pendingForgetTool = tool
-                    pendingForgetDeviceID = deviceID
-                }
-                .buttonStyle(.bordered).controlSize(.small)
-                .fixedSize()
-                .help("Remove this tool from the registry. It will reappear with its default name next time it is detected.")
-                Button("Cancel") { editingToolID = nil }
-                    .buttonStyle(.bordered).controlSize(.small)
-                    .keyboardShortcut(.cancelAction)
-                    .fixedSize()
-            } else {
-                // Two-line row — see tabletRow.
-                VStack(alignment: .leading, spacing: 1) {
+            // Two-line row — see tabletRow. Renaming swaps only the nickname
+            // Text for a metrically identical plain TextField (Finder-style);
+            // Return commits, Esc cancels, click-away commits. Forget stays
+            // available in the context menu.
+            VStack(alignment: .leading, spacing: 1) {
+                if isEditing {
+                    TextField(String(localized: "Tool name", comment: "Placeholder text in rename tool field"), text: $editingName)
+                        .labelsHidden()
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.leading)
+                        .focused($editFieldFocused)
+                        .renameFieldRing()
+                        .onSubmit { commitToolRename() }
+                        .onExitCommand { editingToolID = nil }
+                        .onAppear { focusAndSelectAll() }
+                } else {
                     Text(tool.nickname)
                         .lineLimit(1)
-                    let subtitle = Self.subtitle(
-                        kind: tool.kind, id: tool.displayID,
-                        nickname: tool.nickname)
-                    if !subtitle.isEmpty {
-                        Text(subtitle)
-                            .appFont(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .help("\(tool.kind) · \(tool.displayID)")
-
-                Button {
-                    beginToolEdit(tool, inAllSection: inAllSection)
-                } label: {
-                    Image(systemName: "pencil")
+                let subtitle = Self.subtitle(
+                    kind: tool.kind, id: tool.displayID,
+                    nickname: tool.nickname)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .appFont(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
-                .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .help("\(tool.kind) · \(tool.displayID)")
+
+            Button {
+                if isEditing {
+                    commitToolRename()
+                } else {
+                    beginToolEdit(tool, inAllSection: inAllSection)
+                }
+            } label: {
+                Image(systemName: "pencil")
+            }
+            .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
         }
         .padding(.vertical, 2)
         .listRowBackground(isInProximity ? Color.accentColor.opacity(0.08) : nil)
@@ -570,5 +563,26 @@ struct DevicesView: View {
             NSApp.keyWindow?.firstResponder?
                 .tryToPerform(#selector(NSText.selectAll(_:)), with: nil)
         }
+    }
+}
+
+/// Finder-style rename affordance: a snug text-background fill and a focus
+/// ring drawn *outside* the field's layout bounds (negative insets), so the
+/// ring overlaps neighboring whitespace instead of pushing the row apart.
+private extension View {
+    func renameFieldRing() -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color(nsColor: .textBackgroundColor))
+                    .padding(.horizontal, -4)
+                    .padding(.vertical, -1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 3)
+                    .strokeBorder(
+                        Color(nsColor: .keyboardFocusIndicatorColor),
+                        lineWidth: 2)
+                    .padding(.horizontal, -4)
+                    .padding(.vertical, -1))
     }
 }
