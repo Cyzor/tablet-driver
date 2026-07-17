@@ -565,24 +565,3 @@ struct DevicesView: View {
         }
     }
 }
-
-/// Finder-style rename affordance: a snug text-background fill and a focus
-/// ring drawn *outside* the field's layout bounds (negative insets), so the
-/// ring overlaps neighboring whitespace instead of pushing the row apart.
-private extension View {
-    func renameFieldRing() -> some View {
-        self
-            .background(
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(Color(nsColor: .textBackgroundColor))
-                    .padding(.horizontal, -4)
-                    .padding(.vertical, -1))
-            .overlay(
-                RoundedRectangle(cornerRadius: 3)
-                    .strokeBorder(
-                        Color(nsColor: .keyboardFocusIndicatorColor),
-                        lineWidth: 2)
-                    .padding(.horizontal, -4)
-                    .padding(.vertical, -1))
-    }
-}

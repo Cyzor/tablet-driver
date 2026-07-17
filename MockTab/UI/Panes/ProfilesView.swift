@@ -22,6 +22,7 @@ struct ProfilesView: View {
     @State private var newName = ""
     @State private var editingPreset: TabletSettings.Profile?
     @State private var editingName = ""
+    @FocusState private var createFieldFocused: Bool
 
     // Summary + export state
     @State private var summaryExpanded = false
@@ -144,7 +145,9 @@ struct ProfilesView: View {
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: 200)
+                        .focused($createFieldFocused)
                         .onSubmit { commitCreate() }
+                        .onAppear { createFieldFocused = true }
 
                     Button("Create") { commitCreate() }
                         .buttonStyle(.borderedProminent)
@@ -472,6 +475,8 @@ private struct PresetListView: View {
     let onRenameCommit: () -> Void
     let onRenameCancel: () -> Void
 
+    @FocusState private var editFieldFocused: Bool
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if profiles.isEmpty {
@@ -502,77 +507,63 @@ private struct PresetListView: View {
                 .frame(width: 20)
                 .accessibilityHidden(true)
 
-            if isEditing {
-                TextField("Profile name", text: $editingName)
-                    .labelsHidden()
-                    .textFieldStyle(.roundedBorder)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity)
-                    .onSubmit { onRenameCommit() }
-
-                Button("Rename") { onRenameCommit() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .fixedSize()
-                    .help("Save the profile name")
-
-                Button("Cancel") { onRenameCancel() }
-                    .controlSize(.small)
-                    .keyboardShortcut(.cancelAction)
-                    .fixedSize()
-                    .help("Cancel renaming")
-            } else {
-                VStack(alignment: .leading, spacing: 2) {
+            // Renaming swaps only the name Text for a plain-style TextField
+            // with the same metrics (Finder-style): no border chrome, no
+            // inline buttons, so nothing in the row moves. Return commits,
+            // Esc cancels, click-away commits.
+            VStack(alignment: .leading, spacing: 2) {
+                if isEditing {
+                    TextField("Profile name", text: $editingName)
+                        .labelsHidden()
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.leading)
+                        .focused($editFieldFocused)
+                        .renameFieldRing()
+                        .onSubmit { onRenameCommit() }
+                        .onExitCommand { onRenameCancel() }
+                        .onAppear { focusAndSelectAll() }
+                } else {
                     Text(preset.name)
                         .fontWeight(.medium)
                         .foregroundStyle(Color.primary)
-
-                    if !preset.overriddenKeys.isEmpty {
-                        Text(String(localized: "\(preset.overriddenKeys.count) setting", comment: "Count of overridden settings in a profile"))
-                        .appFont(.settingsBadge)
-                        .foregroundStyle(.tertiary)
-                    }
-                }
-
-                Spacer()
-
-                if !isActive {
-                    Button("Activate") { onActivate(preset) }
-                        .controlSize(.small)
-                        .help("Switch to this profile immediately")
-                } else {
-                    Text(String(localized: "Active", comment: "Badge label when profile is active"))
-                        .appFont(.settingsBadge)
-                        .foregroundStyle(.green)
+                        .lineLimit(1)
                 }
 
                 if !preset.overriddenKeys.isEmpty {
-                    appBindingsForPreset(preset)
+                    Text(String(localized: "\(preset.overriddenKeys.count) setting", comment: "Count of overridden settings in a profile"))
+                    .appFont(.settingsBadge)
+                    .foregroundStyle(.tertiary)
                 }
-
-                Menu {
-                    Button { onRenameBegin(preset) } label: {
-                        Label("Rename", systemImage: "pencil")
-                    }
-                    .help("Edit the profile name")
-                    Divider()
-                    Button(role: .destructive) { onDelete(preset) } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                    .disabled(preset.name == "Default")
-                    .help("Permanently delete this profile (cannot be undone)")
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .appFont(.settingsBadge)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 4)
-                        .accessibilityHidden(true)
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .frame(width: 24)
-                .accessibilityLabel("Profile actions")
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !isActive {
+                Button("Activate") { onActivate(preset) }
+                    .controlSize(.small)
+                    .help("Switch to this profile immediately")
+            } else {
+                Text(String(localized: "Active", comment: "Badge label when profile is active"))
+                    .appFont(.settingsBadge)
+                    .foregroundStyle(.green)
+            }
+
+            if !preset.overriddenKeys.isEmpty {
+                appBindingsForPreset(preset)
+            }
+
+            Menu {
+                menuEntries(preset)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .appFont(.settingsBadge)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 4)
+                    .accessibilityHidden(true)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .frame(width: 24)
+            .accessibilityLabel("Profile actions")
         }
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor))
@@ -581,6 +572,32 @@ private struct PresetListView: View {
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
         )
+        .contextMenu { menuEntries(preset) }
+    }
+
+    /// Shared entries for the row's "…" flyout and right-click context menu.
+    @ViewBuilder
+    private func menuEntries(_ preset: TabletSettings.Profile) -> some View {
+        Button { onRenameBegin(preset) } label: {
+            Label("Rename", systemImage: "pencil")
+        }
+        .help("Edit the profile name")
+        Divider()
+        Button(role: .destructive) { onDelete(preset) } label: {
+            Label("Delete", systemImage: "trash")
+        }
+        .disabled(preset.name == "Default")
+        .help("Permanently delete this profile (cannot be undone)")
+    }
+
+    /// Focuses the rename text field and selects its full contents so the user
+    /// can immediately type a replacement. Called from the field's `.onAppear`.
+    private func focusAndSelectAll() {
+        editFieldFocused = true
+        DispatchQueue.main.async {
+            NSApp.keyWindow?.firstResponder?
+                .tryToPerform(#selector(NSText.selectAll(_:)), with: nil)
+        }
     }
 
     @ViewBuilder
