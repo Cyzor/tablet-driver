@@ -422,6 +422,7 @@ private struct TouchRingModeListCore: View, Equatable {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 4)
         }
         .frame(width: 120)
         .padding(.top, 2)
