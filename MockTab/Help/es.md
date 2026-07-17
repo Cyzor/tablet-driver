@@ -174,3 +174,7 @@ El panel Info muestra valores en tiempo real: X/Y, presión, inclinación, rotac
 ## GitHub
 
 Reportes y preguntas a [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver/issues). Adjunta el archivo JSON de **Collect Device Data** a tus solicitudes de soporte.
+
+## Agradecimientos
+
+Los datos de dispositivos y la investigación de protocolo provienen en parte de [OpenTabletDriver](https://opentabletdriver.net/) y el [Linux Wacom Project](https://linuxwacom.github.io/).

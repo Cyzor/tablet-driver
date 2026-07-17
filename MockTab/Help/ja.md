@@ -174,3 +174,7 @@ Infoペインはペンのリアルタイム値を表示：X/Y位置、筆圧、�
 ## GitHub
 
 バグレポートや質問は [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver/issues) へ。サポートリクエストには **Collect Device Data** のJSONファイルを添付してください。
+
+## 謝辞
+
+デバイスデータとプロトコル調査の一部は [OpenTabletDriver](https://opentabletdriver.net/) と [Linux Wacom Project](https://linuxwacom.github.io/) によるものです。

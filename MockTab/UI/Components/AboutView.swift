@@ -112,7 +112,7 @@ struct AboutView: View {
             // Links
             HStack(spacing: 24) {
                 Link(destination: URL(string: "https://mocktab.org")!) {
-                    Label(String(localized: "Source Code", comment: "Link label: view source code on GitHub"), systemImage: "chevron.left.forwardslash.chevron.right")
+                    Label(String(localized: "mocktab.org", comment: "Link label: MockTab's website"), systemImage: "chevron.left.forwardslash.chevron.right")
                 }
                 .buttonStyle(.link)
 
@@ -122,6 +122,18 @@ struct AboutView: View {
                 .buttonStyle(.link)
             }
             .appFont(.settingsBadge)
+
+            // Acknowledgments — device data and protocol research MockTab draws on.
+            HStack(spacing: 4) {
+                Text(String(localized: "Device data from", comment: "Acknowledgment line prefix, followed by linked project names"))
+                    .foregroundColor(.secondary)
+                Link("OpenTabletDriver", destination: URL(string: "https://opentabletdriver.net/")!)
+                Text(String(localized: "and", comment: "Conjunction between two linked project names in the acknowledgment line"))
+                    .foregroundColor(.secondary)
+                Link(String(localized: "the Linux Wacom Project", comment: "Link label: the Linux Wacom Project (libwacom's parent project)"), destination: URL(string: "https://linuxwacom.github.io/")!)
+            }
+            .appFont(.badgeSubtitle)
+            .buttonStyle(.link)
 
             // Copyright
             Text(String(localized: "Copyright © \(copyrightYears) MockTab Contributors", comment: "Copyright notice with year range"))

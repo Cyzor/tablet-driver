@@ -170,3 +170,7 @@ Der Bereich zeigt Echtzeit-Werte: X/Y, Druck, Neigung, Rotation, Schwebeabstand,
 ## GitHub
 
 Fehlerberichte und Fragen zu [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver/issues).
+
+## Danksagung
+
+Gerätedaten und Protokoll-Recherche stammen teilweise von [OpenTabletDriver](https://opentabletdriver.net/) und dem [Linux Wacom Project](https://linuxwacom.github.io/).

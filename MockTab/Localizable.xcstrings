@@ -1660,6 +1660,9 @@
         }
       }
     },
+    "and" : {
+      "comment" : "Conjunction between two linked project names in the acknowledgment line"
+    },
     "Any data collected so far will be discarded." : {
       "comment" : "Data collection alert message",
       "localizations" : {
@@ -4174,6 +4177,9 @@
           }
         }
       }
+    },
+    "Device data from" : {
+      "comment" : "Acknowledgment line prefix, followed by linked project names"
     },
     "Device Defaults" : {
       "comment" : "Profile option: use device's default settings",
@@ -8503,6 +8509,9 @@
         }
       }
     },
+    "mocktab.org" : {
+      "comment" : "Link label: MockTab's website"
+    },
     "Mode" : {
       "comment" : "Quick Keys bottom mode button label",
       "localizations" : {
@@ -9548,6 +9557,9 @@
           }
         }
       }
+    },
+    "OpenTabletDriver" : {
+
     },
     "Orange" : {
       "comment" : "LED swatch name",
@@ -13046,6 +13058,7 @@
     },
     "Source Code" : {
       "comment" : "Link label: view source code on GitHub",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13868,6 +13881,9 @@
           }
         }
       }
+    },
+    "the Linux Wacom Project" : {
+      "comment" : "Link label: the Linux Wacom Project (libwacom's parent project)"
     },
     "This looks like %@, but MockTab doesn't recognize this specific model yet." : {
       "comment" : "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand",

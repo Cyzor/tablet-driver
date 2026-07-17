@@ -176,3 +176,7 @@ The MockTab website at [mocktab.org](https://mocktab.org) provides documentation
 ## GitHub
 
 Bug reports and questions go to [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver/issues).
+
+## Acknowledgments
+
+MockTab's device data and protocol research draw on the work of two open-source projects: [OpenTabletDriver](https://opentabletdriver.net/), whose device configurations cover tablet models across many vendors, and [the Linux Wacom Project](https://linuxwacom.github.io/), the authoritative source for Wacom device dimensions via its libwacom library.
