@@ -74,24 +74,18 @@ extension InputInjector {
                 let delay = anyButtonHeld
                     ? proximityExitHeldButtonSafetyInterval : proximityExitDebounceInterval
                 if anyButtonHeld {
-                    // The button-level up-debounce (handleXencelabsBarrelButton) runs on
-                    // its own short timer and would otherwise fire a release out from
-                    // under this longer wait — e.g. a transient hover-blip up-edge right
-                    // before crossing fully out of range armed its 80ms timer, which would
-                    // still fire mid-wait and release the button behind our back. Once
-                    // proximity itself is the thing being waited on, it alone decides.
-                    if let t = button1UpDebounceTimer {
-                        CFRunLoopTimerInvalidate(t)
-                        button1UpDebounceTimer = nil
-                    }
-                    if let t = button2UpDebounceTimer {
-                        CFRunLoopTimerInvalidate(t)
-                        button2UpDebounceTimer = nil
-                    }
-                    if let t = button3UpDebounceTimer {
-                        CFRunLoopTimerInvalidate(t)
-                        button3UpDebounceTimer = nil
-                    }
+                    // A held button's own up-debounce (handleXencelabsBarrelButton)
+                    // runs on its own short timer; a hover-blip up-edge just before
+                    // crossing fully out of range could have armed it, and it would
+                    // otherwise fire mid-wait and release the button behind this
+                    // longer deferral's back. Once full proximity loss is the thing
+                    // being waited on, it alone decides — cancel the pending release.
+                    button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+                    button1UpDebounceTimer = nil
+                    button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+                    button2UpDebounceTimer = nil
+                    button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+                    button3UpDebounceTimer = nil
                 }
                 let timer = CFRunLoopTimerCreateWithHandler(
                     kCFAllocatorDefault,
@@ -294,8 +288,7 @@ extension InputInjector {
         }
         lastTipDown = tipDown
 
-        // ── Pen button transitions (always immediate, except Xencelabs's
-        //    deferred-release debounce — see button1/2UpDebounceTimer) ─────────
+        // ── Pen button transitions (always immediate) ───────────────────────────
         let btn1 = tool.penButton1Binding
         let btn2 = tool.penButton2Binding
         let btn3 = tool.penButton3Binding
@@ -305,13 +298,13 @@ extension InputInjector {
                 handleXencelabsBarrelButton(
                     slot: .one, down: point.penButton1, binding: btn1,
                     at: screenPoint, snap: snap, settings: settings)
-                // The 3-button pen's dedicated lower button (barrelLowBit in
+                // barrelLowBit (3-button pen's dedicated lower button, see
                 // XencelabsDecoder) arrives in the same digitizer stream as
-                // button1/2 but was never dispatched here — it only reached
-                // TabletManager's live UI display, never fireButtonAction, so
-                // a binding assigned to it had no effect anywhere else on the
-                // system. Shares the same debounce treatment as button1/2
-                // since it rides the same short button-sensing range.
+                // button1/2 but previously wasn't dispatched here — it only
+                // reached TabletManager's live UI display, never
+                // fireButtonAction, so a binding assigned to it had no
+                // effect anywhere else on the system. Same debounce as the
+                // others since it rides the same short button-sensing range.
                 handleXencelabsBarrelButton(
                     slot: .three, down: point.penButton3, binding: btn3,
                     at: screenPoint, snap: snap, settings: settings)
@@ -450,56 +443,51 @@ extension InputInjector {
         }
         lastProximity = false
 
-        // Finalize any barrel-button release still pending its debounce window
-        // (see button1/2UpDebounceTimer) — a full commit is happening anyway,
-        // so there's no more benefit to waiting the rest of the window out.
+        // Release any barrel buttons still down at exit, finalizing any
+        // pending up-debounce timer immediately — a full commit is happening
+        // anyway, so there's no benefit to waiting the window out, and a
+        // live timer must not fire after cleanup.
         let exitScreenPoint = smoother.smoothedPoint
-        if let t = button1UpDebounceTimer {
-            CFRunLoopTimerInvalidate(t)
-            button1UpDebounceTimer = nil
-            if lastButton1Down {
-                lastButton1Down = false
-                if !activeToolIsMouse {
-                    fireButtonAction(
-                        snap.activeTool.penButton1Binding, down: false, at: exitScreenPoint,
-                        snapshot: snap, settings: nil)
-                }
-            }
-        }
-        if let t = button2UpDebounceTimer {
-            CFRunLoopTimerInvalidate(t)
-            button2UpDebounceTimer = nil
-            if lastButton2Down {
-                lastButton2Down = false
+        button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+        button1UpDebounceTimer = nil
+        if lastButton1Down {
+            lastButton1Down = false
+            if !activeToolIsMouse {
                 fireButtonAction(
-                    snap.activeTool.penButton2Binding, down: false, at: exitScreenPoint,
+                    snap.activeTool.penButton1Binding, down: false, at: exitScreenPoint,
                     snapshot: snap, settings: nil)
             }
         }
-        if let t = button3UpDebounceTimer {
-            CFRunLoopTimerInvalidate(t)
-            button3UpDebounceTimer = nil
-            if lastButton3Down {
-                lastButton3Down = false
-                if !activeToolIsMouse {
-                    fireButtonAction(
-                        snap.activeTool.penButton3Binding, down: false, at: exitScreenPoint,
-                        snapshot: snap, settings: nil)
-                }
+        button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+        button2UpDebounceTimer = nil
+        if lastButton2Down {
+            lastButton2Down = false
+            fireButtonAction(
+                snap.activeTool.penButton2Binding, down: false, at: exitScreenPoint,
+                snapshot: snap, settings: nil)
+        }
+        button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+        button3UpDebounceTimer = nil
+        if lastButton3Down {
+            lastButton3Down = false
+            if !activeToolIsMouse {
+                fireButtonAction(
+                    snap.activeTool.penButton3Binding, down: false, at: exitScreenPoint,
+                    snapshot: snap, settings: nil)
             }
         }
     }
 
     /// Which barrel button a debounced-release timer handler is resolving —
     /// used instead of `inout` state (escaping closures can't capture `inout`
-    /// parameters), so the handler can read/write the right stored properties
-    /// by branching on this instead of holding a reference to them directly.
+    /// parameters), so the handler branches on this to reach the right
+    /// stored properties.
     private enum BarrelButtonSlot { case one, two, three }
 
-    /// Xencelabs-only barrel-button handling: presses fire immediately;
-    /// releases are debounced (see `button1UpDebounceTimer`/
-    /// `button2UpDebounceTimer`'s declaration) so a button re-asserting
-    /// within `buttonUpDebounceInterval` never produces a release/press pair.
+    /// Xencelabs-only barrel-button dispatch: presses fire immediately;
+    /// releases are held for `buttonUpDebounceInterval` (see its declaration)
+    /// so a button re-asserting within that small window never produces a
+    /// release/press pair. A flat window, no tilt or history heuristics.
     private func handleXencelabsBarrelButton(
         slot: BarrelButtonSlot, down: Bool,
         binding: ButtonBinding, at location: CGPoint,
@@ -527,9 +515,17 @@ extension InputInjector {
             return
         }
         guard wasDown, pendingTimer == nil else { return }
+        // Right-click / eraser bindings get the longer menu window so a
+        // held contextual menu survives a pen lift (see
+        // buttonUpDebounceMenuInterval). Everything else stays crisp.
+        let window: TimeInterval
+        switch binding.kind {
+        case .rightClick, .eraser: window = buttonUpDebounceMenuInterval
+        default: window = buttonUpDebounceInterval
+        }
         let timer = CFRunLoopTimerCreateWithHandler(
             kCFAllocatorDefault,
-            CFAbsoluteTimeGetCurrent() + buttonUpDebounceInterval,
+            CFAbsoluteTimeGetCurrent() + window,
             0, 0, 0
         ) { [weak self] _ in
             guard let self else { return }

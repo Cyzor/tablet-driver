@@ -162,6 +162,15 @@ Parser dispatch logic:[^3]
 
 The pressure value at byte[6:7] is a raw 16-bit little-endian read; values above 8191 should be clamped or treated as invalid. The OTD `MaxPressure` field is 8191, not 8192, because the range is **0-inclusive to 8191** (2¹³ − 1).
 
+### Barrel-button sensing range is shorter than the position/proximity range (confirmed 2026-07-17)
+
+The ±60° spec above is the *position-tracking* tilt range; it is not the range over which the barrel buttons remain readable. Live capture (`tools/xencelabs_flicker_capture.c`, logging tag-byte transitions plus tilt/pressure at each edge) shows the button bits (`barrel1`/`barrel2`/`barrelLow`) can drop out, or fail to register at all, while position/proximity data is still valid — both as a function of extreme tilt (bounce clusters concentrate past ~±28° on either axis) and, independently, as a function of physical lift height: on a pen lift the button *bit* reliably drops ~55–130 ms **before** the report goes fully out-of-range (`0xC0`). This travel gap is real hardware behavior, not a decode bug — the official Xencelabs Windows driver was confirmed (user testing) to drop barrel-button engagement at the same tilt extremes even though its own proximity tracking holds on, i.e. the vendor doesn't compensate for it either.
+
+Practical implications for any driver built on this protocol:
+- A barrel-button press that never sets its bit at extreme tilt can't be recovered in software — the sensor simply didn't see it.
+- A short, human-imperceptible bit dropout (measured clusters: 1–6 ms holds, 13–20 ms gaps, tail out to ~230 ms) with proximity held throughout is likely chatter, not a real release, and is worth smoothing over.
+- Any logic that reacts to proximity loss (e.g. holding a click through a lift) must budget for this travel gap — a debounce window shorter than it will commit the release before proximity ever reports lost, defeating the mechanism it was meant to serve. See `InputInjector.buttonUpDebounceMenuInterval` in `MockTab/Driver/InputInjector.swift` and the running history in the `xencelabs-pan-feel-rework` project memory for the concrete fix built around this.
+
 ***
 
 ## 7. Auxiliary Button (Express Key) Report

@@ -211,9 +211,7 @@ final class InputInjector: @unchecked Sendable {
     // Named per-button fields rather than an array/dictionary, deliberately:
     // this runs at 133 Hz on the HID hot path, where a direct field read beats
     // a collection's bounds-check/hash overhead, and named fields stay readable
-    // in a debugger during real-hardware sessions. See BarrelButtonSlot below
-    // for where a small fixed enum already substitutes for a collection where
-    // dispatch (not just storage) is needed.
+    // in a debugger during real-hardware sessions.
     var lastButton1Down = false
     var lastButton2Down = false
     var lastButton3Down = false
@@ -356,33 +354,61 @@ final class InputInjector: @unchecked Sendable {
     let proximityExitDebounceInterval: TimeInterval = 0.15
     let proximityExitHeldButtonSafetyInterval: TimeInterval = 4.0
 
-    /// Xencelabs-only: debounces the barrel-button *bits themselves*, not
-    /// just full proximity loss. This hardware's button-contact sensing
-    /// range is shorter than its position-sensing range — a button can
-    /// report released while the pen is still tracked and fully in
-    /// proximity, then reassert a moment later, so hovering right at that
-    /// boundary makes a held click flicker off and on even without a
-    /// proximity transition at all. Only the up edge is deferred (a press
-    /// should always feel instant); if the button reasserts before the
-    /// timer fires, the release never happened as far as anything
-    /// downstream is concerned. Gated to vendorID 0x28BD; Wacom hardware's
-    /// button and position sensing share one range, so this doesn't apply.
+    /// Xencelabs-only: a *small* debounce on the barrel-button up edge, and
+    /// deliberately nothing more. This hardware's button-contact sensing
+    /// range is shorter than its position range, so a held button chatters
+    /// off/on for a frame or two while the pen rides that boundary even with
+    /// proximity fully maintained — the proximity-exit path above never sees
+    /// these because proximity never drops. Left raw, each blip is a real
+    /// release+re-press: a held right-click menu flickers, a held pan
+    /// hiccups. No hand can release and re-press a button in ~15 ms, so
+    /// bridging only that sub-perceptual window reads the hardware's intent
+    /// more faithfully than a naive frame-by-frame reading — it doesn't
+    /// fight the hardware, it declines to believe the physically impossible.
     ///
-    /// The window trades two feels against each other: too short and a
-    /// sweeping, loosely-held pan (which rides the button-sensing boundary
-    /// far longer than the ~80 ms a stationary hover blip lasts) flickers
-    /// its held click off mid-drag; too long and every genuine release —
-    /// including the end of that same pan — commits noticeably late. The
-    /// frames carry no signal that separates a boundary flicker from a
-    /// deliberate release, so this is a hand-tuned compromise: 0.25 made
-    /// release feel sticky in practice, 0.15 keeps roughly double the
-    /// original forgiveness while staying under the lag most hands notice.
-    /// (Full proximity loss with a button held is handled separately by
-    /// `proximityExitHeldButtonSafetyInterval` and can afford to be long.)
+    /// Only the up edge is deferred (a press always fires instantly); a
+    /// reassert within the window cancels the pending release so nothing
+    /// downstream saw it. The window is small on purpose: chatter clusters
+    /// under ~30 ms, but its tail overlaps the fastest deliberate
+    /// double-tap (~120 ms), so a wider window can't separate the two
+    /// without merging a real double-click into one hold. It sits at the
+    /// bottom of the deliberate range — long dropouts (a real pen lift
+    /// mid-flick) pass through as honest re-clicks rather than being glued
+    /// shut, which is the sticky feel an earlier 0.15–0.25 s window was
+    /// rejected for. Override live for tuning without a rebuild:
+    ///   defaults write <bundle-id> MockTabXencelabsButtonDebounceMS 60
     var button1UpDebounceTimer: CFRunLoopTimer?
     var button2UpDebounceTimer: CFRunLoopTimer?
     var button3UpDebounceTimer: CFRunLoopTimer?
-    let buttonUpDebounceInterval: TimeInterval = 0.15
+    let buttonUpDebounceInterval: TimeInterval = {
+        let ms = UserDefaults.standard.integer(forKey: "MockTabXencelabsButtonDebounceMS")
+        return ms > 0 ? Double(ms) / 1000.0 : 0.05
+    }()
+
+    /// Longer up-debounce used *only* for right-click / eraser bindings, so a
+    /// contextual menu opened with the barrel button stays engaged when the
+    /// pen is lifted out of proximity while the button is physically held.
+    ///
+    /// The mechanism: this hardware's button-sensing range is shorter than
+    /// its proximity range, so on a lift the button *bit* drops a beat
+    /// (~55–130 ms observed) before full proximity loss. The held-through-
+    /// lift behavior relies on the proximity-exit deferral cancelling the
+    /// pending release once proximity drops — which only happens if the
+    /// release hasn't already committed. So the window must outlast that
+    /// travel gap; 0.05 s (the pan/flick value) is far too short and would
+    /// fire rightMouseUp mid-lift, activating the highlighted menu item.
+    ///
+    /// Keyed on binding *kind*, not inferred intent: the user declared this
+    /// button a right-click, and menu release-latency is imperceptible (the
+    /// menu opens on button-down; a late up just delays committing the
+    /// highlighted item), so erring long is free. 0.25 s clears every
+    /// travel gap in the captures with margin. Left/middle/drag bindings
+    /// stay on the short window — they're latency-sensitive (tap, pan) and
+    /// were never part of the hold-through-lift behavior.
+    ///
+    /// Residual limit: a lift slower than 0.25 s reopens the same physics
+    /// hole (release commits before proximity drops). Rare, not impossible.
+    let buttonUpDebounceMenuInterval: TimeInterval = 0.25
 
     // MARK: - Time-based leak watchdog
     //
