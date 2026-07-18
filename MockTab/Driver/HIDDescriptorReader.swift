@@ -28,6 +28,22 @@ enum HIDDescriptorReader {
         let physicalMax: Int
         let unit: UInt32
         let unitExponent: UInt32
+
+        /// A field only carries decodable meaning when its usage page is one we
+        /// understand *and* its usage code is itself meaningful within that page.
+        ///
+        /// Real captures show two distinct opacity patterns, not one: a vendor-defined
+        /// page (`>= 0xFF00`, e.g. Wacom CTH-690) is the obvious case, but Wacom's
+        /// Intuos5 touch descriptor sits on the *correct* Digitizer page (0x0D) with
+        /// `usage == 0x00` on every field — checking the page alone would misreport
+        /// that as readable. Both must hold for a field to count as readable.
+        var isReadable: Bool {
+            guard usage != 0x00 else { return false }
+            switch usagePage {
+            case 0x01, 0x09, 0x0C, 0x0D: return true
+            default: return false
+            }
+        }
     }
 
     enum Direction: String, Codable { case input, output, feature }
@@ -36,6 +52,9 @@ enum HIDDescriptorReader {
         let reportID: UInt32
         let direction: Direction
         var fields: [Field]
+
+        /// True if at least one field in this report is decodable.
+        var isReadable: Bool { fields.contains(where: \.isReadable) }
     }
 
     struct Parsed: Codable {
@@ -45,6 +64,15 @@ enum HIDDescriptorReader {
         let rawLength: Int
         /// Keyed by "<direction>:0x<reportID>" (e.g. "input:0x10").
         let reports: [String: ReportLayout]
+
+        /// True if any report on this device exposes at least one decodable field.
+        /// False means the whole descriptor is opaque — every report is either on a
+        /// vendor-defined page or uses undefined usage codes on a known page — and
+        /// callers must not infer *absence* of a capability from that; treat it as
+        /// unknown, not "device lacks this."
+        var hasAnyReadableField: Bool {
+            reports.values.contains(where: \.isReadable)
+        }
     }
 
     static func read(_ device: IOHIDDevice) -> Parsed {

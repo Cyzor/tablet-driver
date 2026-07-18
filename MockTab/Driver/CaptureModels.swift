@@ -342,6 +342,14 @@ struct DiscoveryReportSummary: Codable {
     var firstSample: String?          // hex string of first captured sample
     var constantValues: [Int]?        // actual constant byte values (same for all samples)
     var byteSampleValues: [Int: [Int]]?  // byteIdx -> sample of observed values (up to 20)
+    /// Whether the HID report descriptor exposes at least one standard-usage
+    /// field for this report ID (see `HIDDescriptorReader.Field.isReadable`).
+    /// `false` flags a report whose bytes vary (real signal, per the above
+    /// fields) but whose meaning is opaque from the descriptor alone — the
+    /// triage-relevant case, since those bytes need a captured-sample
+    /// correlation pass instead of a descriptor read. `nil` if no descriptor
+    /// was available to check.
+    var descriptorReadable: Bool?
 }
 
 // MARK: - Capture Mode

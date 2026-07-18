@@ -376,6 +376,12 @@ private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryRes
             }
         }
 
+        // Cross-reference against the parsed descriptor: does it expose a
+        // decodable (non-opaque) field for this input report ID? Discovery
+        // only observes device->host traffic, so we only ever check the
+        // "input:" direction here.
+        let descriptorReadable = deviceInfo.parsedDescriptor?.reports["input:\(idHex)"]?.isReadable
+
         reportSummaries[idHex] = DiscoveryReportSummary(
             reportID: reportID,
             length: length,
@@ -384,7 +390,8 @@ private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryRes
             constantBytes: constantBytes,
             firstSample: firstSampleHex,
             constantValues: constantValues,
-            byteSampleValues: byteSampleValues
+            byteSampleValues: byteSampleValues,
+            descriptorReadable: descriptorReadable
         )
     }
 
