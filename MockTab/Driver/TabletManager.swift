@@ -508,14 +508,27 @@ final class TabletManager: ObservableObject {
         // interface to establish, on real hardware, whether the interfaces of
         // one USB device share a locationID (serial is uniform; locationID is
         // unverified) before DeviceInstanceKey's fallback relies on it.
-        let usbSerial =
+        //
+        // kIOHIDSerialNumberKey is only trusted for instance identity on
+        // non-Bluetooth transports. macOS's Bluetooth HID stack
+        // (IOBluetoothHIDDriver) doesn't reliably mirror the same-device
+        // USB serial string here — it's commonly a different, transport-
+        // specific value rather than empty, so it can't be caught by the
+        // empty-token merge fallback below. Trusting it caused the same
+        // physical tablet (e.g. PTH-660) to split into separate USB and BT
+        // device contexts. Ignoring it over Bluetooth degrades that
+        // interface to PID-only identity, which correctly folds onto
+        // whatever context the model already has (USB or a prior BT
+        // connect) via the empty-instance fallback path.
+        let rawSerialProbe =
             IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
+        let usbSerial = isBLE ? nil : rawSerialProbe
         let locationID = hidIntProperty(device, kIOHIDLocationIDKey)
         let pidStr =
             rawProductID == productID
             ? "0x\(String(productID, radix:16))"
             : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
-        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public) product=\"\(productString, privacy: .public)\" serial=\(usbSerial ?? "—", privacy: .public) locationID=0x\(String(locationID, radix:16), privacy: .public)")
+        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public) product=\"\(productString, privacy: .public)\" serial=\(rawSerialProbe ?? "—", privacy: .public)\(isBLE ? " (BT, untrusted)" : "") locationID=0x\(String(locationID, radix:16), privacy: .public)")
 
         // BLE tablets expose multiple interfaces. Log all of them; skip ghost mouse only.
         if isBLE && usagePage == 0x01 {
