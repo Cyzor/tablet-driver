@@ -79,6 +79,11 @@ struct SettingsPane<Content: View>: View {
     @ObservedObject var registry: DeviceRegistry
     var instanceKey: DeviceInstanceKey?
     var overrideKeys: Set<String>?
+    /// Restores this pane's fields to their shipped defaults on the Global
+    /// layer. Passed through to `AppOverrideBar`'s Global chip context menu;
+    /// nil panes get no "Reset to Defaults" entry. Per-app-override resets
+    /// don't need this — they reuse `settings.removeAppOverride(keyScope:)`.
+    var onResetToDefaults: (() -> Void)?
     @ViewBuilder let content: () -> Content
 
     init(settings: TabletSettings,
@@ -86,12 +91,14 @@ struct SettingsPane<Content: View>: View {
          registry: DeviceRegistry,
          instanceKey: DeviceInstanceKey?,
          overrideKeys: Set<String>? = nil,
+         onResetToDefaults: (() -> Void)? = nil,
          @ViewBuilder content: @escaping () -> Content) {
         self.settings = settings
         self.tabletManager = tabletManager
         self.registry = registry
         self.instanceKey = instanceKey
         self.overrideKeys = overrideKeys
+        self.onResetToDefaults = onResetToDefaults
         self.content = content
     }
 
@@ -100,7 +107,8 @@ struct SettingsPane<Content: View>: View {
             if let overrideKeys {
                 AppOverrideBar(
                     settings: settings, domainKeys: overrideKeys,
-                    productID: instanceKey?.productID)
+                    productID: instanceKey?.productID,
+                    onResetToDefaults: onResetToDefaults)
             }
             Form { content() }
                 .formStyle(.grouped)

@@ -20,7 +20,8 @@ struct PenFeelView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            instanceKey: instanceKey, overrideKeys: AppOverrideBar.pressureKeys
+            instanceKey: instanceKey, overrideKeys: AppOverrideBar.pressureKeys,
+            onResetToDefaults: resetToDefaults
         ) {
             pressureCurveSection
 
@@ -229,6 +230,51 @@ struct PenFeelView: View {
                 ToolNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
             }
         }
+    }
+
+    // MARK: - Reset to Defaults
+
+    /// Restores every field this pane owns (`AppOverrideBar.pressureKeys`) to
+    /// its shipped default. Two `record` calls — one tool-owned, one
+    /// device-owned — share `settings.undoManager`, so grouping them makes a
+    /// single Cmd-Z undo the whole reset instead of two.
+    private func resetToDefaults() {
+        let toolOld = (
+            tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength,
+            tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
+            tool.panScrollSpeed
+        )
+        let settingsOld = (
+            settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
+            settings.tipUpAssistDelay, settings.dragThreshold
+        )
+
+        settings.undoManager?.beginUndoGrouping()
+
+        tool.pressureCurve = .linear
+        tool.smoothingStrength = 0
+        tool.pressureSmoothingStrength = 0
+        tool.useRotationAsTilt = false
+        tool.rotationTiltOffsetDegrees = 0
+        tool.rotationTiltMagnitude = 0.8
+        tool.panScrollSpeed = 1.0
+        tool.record("Reset to Defaults") {
+            (tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength,
+             tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
+             tool.panScrollSpeed) = toolOld
+        }
+
+        settings.doubleClickDistance = 10.0
+        settings.invertRotation = false
+        settings.relativeCursorMovement = false
+        settings.tipUpAssistDelay = 0.0
+        settings.dragThreshold = 0.0
+        settings.record("Reset to Defaults") {
+            (settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
+             settings.tipUpAssistDelay, settings.dragThreshold) = settingsOld
+        }
+
+        settings.undoManager?.endUndoGrouping()
     }
 
     // MARK: - Bindings with undo support

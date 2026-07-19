@@ -39,7 +39,8 @@ struct DisplayMappingView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            instanceKey: instanceKey
+            instanceKey: instanceKey, overrideKeys: AppOverrideBar.areaKeys,
+            onResetToDefaults: resetToDefaults
         ) {
             displayMappingSection
             canvasSection
@@ -48,6 +49,24 @@ struct DisplayMappingView: View {
             }
         }
         .onAppear { displays = DisplayInfo.all() }
+    }
+
+    // MARK: - Reset to Defaults
+
+    /// Restores the two `AppOverrideBar.areaKeys` fields this pane owns —
+    /// `targetDisplayIndex` and `toggleDisplayIDSet` — to their shipped
+    /// defaults (primary display, no toggle set). The other `areaKeys`
+    /// fields (active area, parallax, orientation) belong to `TabletAreaView`
+    /// and aren't touched here.
+    private func resetToDefaults() {
+        let oldIndex = settings.targetDisplayIndex
+        let oldIDs = settings.toggleDisplayIDSet
+        settings.targetDisplayIndex = 0
+        settings.toggleDisplayIDSet = []
+        settings.record("Reset to Defaults") {
+            settings.targetDisplayIndex = oldIndex
+            settings.toggleDisplayIDSet = oldIDs
+        }
     }
 
     // MARK: - Built-in display brightness

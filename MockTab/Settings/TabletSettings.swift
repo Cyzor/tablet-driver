@@ -456,7 +456,7 @@ final class TabletSettings: ObservableObject {
     }
 
     var touchRingButtonBinding: ButtonBinding {
-        get { ButtonBinding.decode(touchRingButtonRaw) ?? .none }
+        get { ButtonBinding.decode(touchRingButtonRaw) ?? ButtonBinding(kind: .ringCycle) }
         set { touchRingButtonRaw = newValue.encoded }
     }
 

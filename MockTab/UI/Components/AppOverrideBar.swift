@@ -134,6 +134,12 @@ struct AppOverrideBar: View {
     @ObservedObject var settings: TabletSettings
     let domainKeys: Set<String>
     let productID: Int?
+    /// Restores this pane's fields to shipped defaults on the Global layer.
+    /// Shown in the Global chip's context menu only while Global is selected —
+    /// applying it to a chip that isn't the active layer would silently write
+    /// to whichever layer *is* active instead, since panes read/write through
+    /// `settings`/`tool`'s current override, not through the clicked chip.
+    var onResetToDefaults: (() -> Void)? = nil
 
     @Environment(\.controlActiveState) private var controlActiveState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -528,12 +534,27 @@ struct AppOverrideBar: View {
                     Label("Reveal in Finder", systemImage: "folder")
                 }
 
+                if isSelected {
+                    Divider()
+                    Button {
+                        settings.removeAppOverride(bundleID: bundleID, keyScope: domainKeys)
+                    } label: {
+                        Label("Reset Pane to Defaults", systemImage: "arrow.counterclockwise")
+                    }
+                }
+
                 Divider()
 
                 Button(role: .destructive) {
                     settings.removeAppOverride(bundleID: bundleID)
                 } label: {
                     Label("Remove", systemImage: "trash")
+                }
+            } else if isSelected, let onResetToDefaults {
+                Button {
+                    onResetToDefaults()
+                } label: {
+                    Label("Reset Pane to Defaults", systemImage: "arrow.counterclockwise")
                 }
             }
         }

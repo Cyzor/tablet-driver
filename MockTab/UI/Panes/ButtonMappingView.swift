@@ -122,7 +122,8 @@ struct ButtonMappingView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            instanceKey: instanceKey, overrideKeys: AppOverrideBar.buttonKeys
+            instanceKey: instanceKey, overrideKeys: AppOverrideBar.buttonKeys,
+            onResetToDefaults: resetToDefaults
         ) {
             // Aux-only devices (Quick Keys puck/dongle) have no pen digitizer,
             // so the pen-buttons section is structurally inapplicable — and
@@ -160,6 +161,51 @@ struct ButtonMappingView: View {
                 tabletManager.ensureCompanionStubs(forOwnerProductID: pid)
             }
         }
+    }
+
+    // MARK: - Reset to Defaults
+
+    /// Restores every field `AppOverrideBar.buttonKeys` tracks to its shipped
+    /// default. Buttons 3–5, the wheel, and bezel buttons are deliberately
+    /// left alone — they aren't in `buttonKeys`, so they aren't part of the
+    /// per-app-override system either, and touching them here would reset
+    /// state this pane's own override scoping doesn't otherwise cover.
+    private func resetToDefaults() {
+        let toolOld = (tool.tipBinding, tool.eraserBinding, tool.penButton1Binding, tool.penButton2Binding)
+        let settingsOld = (
+            settings.expressKeyBindings, settings.touchRingButtonBinding,
+            settings.touchRingSlots, settings.touchRingActiveSlotIndex
+        )
+        let isMouse = activeToolSpec?.toolType == .mouse
+
+        settings.undoManager?.beginUndoGrouping()
+
+        let t = activeToolBinding
+        t.wrappedValue.tipBinding = .leftClick
+        t.wrappedValue.eraserBinding = .eraser
+        t.wrappedValue.penButton1Binding = .rightClick
+        t.wrappedValue.penButton2Binding = isMouse ? .rightClick : .middleClick
+        settings.objectWillChange.send()
+        settings.record("Reset to Defaults") {
+            t.wrappedValue.tipBinding = toolOld.0
+            t.wrappedValue.eraserBinding = toolOld.1
+            t.wrappedValue.penButton1Binding = toolOld.2
+            t.wrappedValue.penButton2Binding = toolOld.3
+            self.settings.objectWillChange.send()
+        }
+
+        settings.expressKeyBindings = Array(repeating: .none, count: 16)
+        settings.touchRingButtonBinding = ButtonBinding(kind: .ringCycle)
+        settings.touchRingSlots = ControlSlot.defaults
+        settings.touchRingActiveSlotIndex = 0
+        settings.record("Reset to Defaults") {
+            settings.expressKeyBindings = settingsOld.0
+            settings.touchRingButtonBinding = settingsOld.1
+            settings.touchRingSlots = settingsOld.2
+            settings.touchRingActiveSlotIndex = settingsOld.3
+        }
+
+        settings.undoManager?.endUndoGrouping()
     }
 
     // MARK: - Pen buttons section

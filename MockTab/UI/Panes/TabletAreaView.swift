@@ -116,7 +116,8 @@ struct TabletAreaView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            instanceKey: boundKey, overrideKeys: AppOverrideBar.areaKeys
+            instanceKey: boundKey, overrideKeys: AppOverrideBar.areaKeys,
+            onResetToDefaults: resetToDefaults
         ) {
                 Section {
                     NormalizedAreaEditor(
@@ -262,6 +263,47 @@ struct TabletAreaView: View {
                     OrientationPickerView(settings: settings)
                 }
         }
+    }
+
+    // MARK: - Reset to Defaults
+
+    /// Restores every field `AppOverrideBar.areaKeys` tracks to its shipped
+    /// default: full-surface active area, proportional mapping on, no
+    /// parallax offset, landscape orientation, primary display, all displays
+    /// toggle-eligible. Calibration and touch-area fields aren't in
+    /// `areaKeys` and already have their own dedicated reset controls above.
+    private func resetToDefaults() {
+        let old = (
+            settings.activeAreaX, settings.activeAreaY,
+            settings.activeAreaWidth, settings.activeAreaHeight,
+            settings.proportionalMapping,
+            settings.parallaxOffsetX, settings.parallaxOffsetY,
+            settings.tabletOrientation,
+            settings.targetDisplayIndex, settings.toggleDisplayIDs
+        )
+
+        settings.undoManager?.beginUndoGrouping()
+
+        settings.activeAreaX = 0
+        settings.activeAreaY = 0
+        settings.activeAreaWidth = 1
+        settings.activeAreaHeight = 1
+        settings.proportionalMapping = true
+        settings.parallaxOffsetX = 0
+        settings.parallaxOffsetY = 0
+        settings.tabletOrientation = .landscape
+        settings.targetDisplayIndex = 0
+        settings.toggleDisplayIDs = ""
+        settings.record("Reset to Defaults") {
+            (settings.activeAreaX, settings.activeAreaY,
+             settings.activeAreaWidth, settings.activeAreaHeight,
+             settings.proportionalMapping,
+             settings.parallaxOffsetX, settings.parallaxOffsetY,
+             settings.tabletOrientation,
+             settings.targetDisplayIndex, settings.toggleDisplayIDs) = old
+        }
+
+        settings.undoManager?.endUndoGrouping()
     }
 
     // MARK: - Device identity
