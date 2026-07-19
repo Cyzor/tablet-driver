@@ -136,7 +136,7 @@ struct ButtonBinding: Codable, Equatable {
                 localized: "Ring: Mode \(keyCode + 1)", comment: "Button action: jump to ring slot")
         case .scrollDrag:
             return String(
-                localized: "Scroll Drag",
+                localized: "Pan View",
                 comment: "Button action: hold to pan/scroll with pen motion")
         case .keyCombo:
             let f = CGEventFlags(rawValue: modifierFlags)
@@ -175,7 +175,8 @@ struct ButtonBinding: Codable, Equatable {
         case "Middle Click": return .middleClick
         case "Middle Click + Tip": return ButtonBinding(kind: .middleClickWithTip)
         case "Eraser": return .eraser
-        case "Scroll Drag": return .scrollDrag
+        case "Pan View": return .scrollDrag
+        case "Scroll Drag": return .scrollDrag  // pre-rename label; keeps older exported profiles importable
         case "Toggle Display": return ButtonBinding(kind: .displayToggle)
         case "Ring: Cycle": return ButtonBinding(kind: .ringCycle)
         default:
@@ -185,7 +186,6 @@ struct ButtonBinding: Codable, Equatable {
                     return ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(num - 1))
                 }
             }
-            if label == "Scroll Drag" { return .scrollDrag }
             return parseKeyComboLabel(label) ?? .none
         }
     }
