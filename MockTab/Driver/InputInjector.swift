@@ -33,6 +33,26 @@ final class SharedAuxModifierState {
     var lastChangeAt: Date = .distantPast
 }
 
+/// Process-wide Scroll Drag gesture routing.
+///
+/// Each physical device has its own `InputInjector` (see `DeviceContext`), but
+/// a Scroll Drag binding can live on a *different* device than the one moving
+/// the pointer — e.g. assigned to a Quick Keys puck button while the pen does
+/// the panning. The puck's injector sees the button edge; the pen's injector
+/// sees the motion. This shared object lets the edge-firing injector engage
+/// the gesture on whichever injector is currently driving the pointer (the
+/// active pen tablet), so the binding works regardless of which device it's
+/// physically on. Barrel-button bindings on the pen itself resolve to the
+/// same single instance, so this is a no-op for the common case.
+///
+/// HIDThread-confined, like the per-injector `panScroll` state it coordinates.
+final class SharedPanScrollState {
+    static let shared = SharedPanScrollState()
+    private init() {}
+    /// The injector currently hosting the live gesture, if any.
+    weak var driver: InputInjector?
+}
+
 /// Converts raw TabletPoint reports into CGEvents and posts them to the HID event tap.
 ///
 /// Event sequence per report:
@@ -134,6 +154,12 @@ final class InputInjector: @unchecked Sendable {
     }
     private static let liveInjectorsLock = OSAllocatedUnfairLock(initialState: LiveInjectors())
 
+    /// Every live injector, for cross-device gesture routing. Callers run on
+    /// HIDThread; the table itself is lock-protected.
+    static var allLiveInjectors: [InputInjector] {
+        liveInjectorsLock.withLock { $0.table.allObjects }
+    }
+
     /// True while any registered device still shows an aux button, touch-ring
     /// center click, or touch-ring/strip contact held — the shared aux-modifier
     /// release check must not fire while this is true, even if the specific
@@ -188,6 +214,7 @@ final class InputInjector: @unchecked Sendable {
         watchdogTimer.map { CFRunLoopTimerInvalidate($0) }
         pendingMouseUp.map { CFRunLoopTimerInvalidate($0) }
         proximityExitDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+        panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
         button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
@@ -293,6 +320,29 @@ final class InputInjector: @unchecked Sendable {
     /// Set while a barrel-button click binding is held, so the movement path posts
     /// otherMouseDragged / rightMouseDragged instead of mouseMoved.
     var hoverDragButton: CGMouseButton? = nil
+
+    // MARK: - Scroll Drag (pan/scroll button binding)
+
+    /// State machine for the .scrollDrag binding — see PanScrollTracker.swift.
+    /// While engaged, the pen movement path posts phased pixel scroll events
+    /// instead of cursor motion.
+    var panScroll = PanScrollTracker()
+
+    /// Timestamp of the previous pen frame, for the tracker's velocity EMA.
+    /// 0 = unknown (first frame after launch); dt is skipped that frame.
+    var lastPanScrollFrameTime: CFAbsoluteTime = 0
+
+    /// One-shot HIDThread timer that force-closes a pan gesture whose owning
+    /// button's release was genuinely lost (pen set down out of range and the
+    /// release report never arrived). Scheduled when proximity exits with a
+    /// pan active; cancelled on the normal release edge. Without it a lost
+    /// release would leave the gesture — and its held button state — on
+    /// forever, since the gesture now (correctly) survives proximity exit.
+    var panScrollSafetyNetTimer: CFRunLoopTimer?
+    /// How long a pan may sit suspended (pen out of range, no release seen)
+    /// before it's force-closed as a presumed-lost gesture. Matches the
+    /// proximity-exit held-button safety interval.
+    let panScrollSafetyNetInterval: TimeInterval = 4.0
 
     var lastPostedPoint: CGPoint = .zero
     var lastPostedPressure: Double = -1.0

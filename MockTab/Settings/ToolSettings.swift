@@ -53,6 +53,13 @@ final class ToolSettings: ObservableObject {
         didSet { persist("pressureSmoothingStrength", pressureSmoothingStrength) }
     }
 
+    /// Multiplier applied to Scroll Drag pan deltas (0.25 = slow, 1.0 = 1:1,
+    /// 3.0 = fast). Per-tool so a heavy inking pen and a light sketching pen
+    /// can pan at different rates.
+    @Published var panScrollSpeed: Double = 1.0 {
+        didSet { persist("panScrollSpeed", panScrollSpeed) }
+    }
+
     /// When true, real tilt is suppressed and barrel rotation is sent as synthetic tilt
     /// instead — a "bait and switch" so Photoshop's Pen Tilt brush dynamics respond to
     /// barrel twist. Intended as a per-app opt-in (e.g. Adobe Photoshop); real tilt is
@@ -213,6 +220,7 @@ final class ToolSettings: ObservableObject {
         isLoading = true
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
         pressureSmoothingStrength = loadDouble("pressureSmoothingStrength", default: 0.0)
+        panScrollSpeed = loadDouble("panScrollSpeed", default: 1.0)
         useRotationAsTilt = loadBool("useRotationAsTilt", default: false)
         rotationTiltOffsetDegrees = loadDouble("rotationTiltOffsetDegrees", default: 0.0)
         rotationTiltMagnitude = loadDouble("rotationTiltMagnitude", default: 0.8)

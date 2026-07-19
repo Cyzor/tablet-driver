@@ -6789,6 +6789,9 @@
         }
       }
     },
+    "Hold to pan/scroll with pen motion (Hand-tool style)" : {
+
+    },
     "Holds the pen click open for this long after the tip lifts, if you're still moving quickly. This helps prevent unintended stroke breaks during fast drawing. Drag to Off to disable." : {
 
     },
@@ -6879,6 +6882,9 @@
           }
         }
       }
+    },
+    "How fast content pans while a Scroll Drag button is held. Assign Scroll Drag to a pen or tablet button to use it." : {
+
     },
     "Idle" : {
       "comment" : "Driver status value — device is idle\nTouch ring idle state in Live Input",
@@ -8662,6 +8668,9 @@
           }
         }
       }
+    },
+    "Multiplier applied to pen motion while Scroll Drag is held. 1× pans one screen point per point of pen travel; higher values pan further. Assign the Scroll Drag action to any pen barrel, express key, or puck button in Button Mapping." : {
+
     },
     "Multiplier for cursor motion from finger drag. 1.00× is the natural mapping through the touch area; raise to move faster across the screen, lower for finer control." : {
       "comment" : "Help text for the \"Cursor speed\" slider in the TouchView.",
@@ -12361,6 +12370,9 @@
           }
         }
       }
+    },
+    "Scroll Drag" : {
+      "comment" : "Button action: hold to pan/scroll with pen motion"
     },
     "Scroll Wheel" : {
       "comment" : "Mouse scroll wheel row label",

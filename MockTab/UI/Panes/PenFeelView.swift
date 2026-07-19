@@ -132,6 +132,19 @@ struct PenFeelView: View {
                     "In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse.")
             }
 
+            Section("Scroll Drag") {
+                SettingSliderRow(
+                    "Speed",
+                    value: panScrollSpeedBinding,
+                    in: 0.25...3.0,
+                    valueText: String(format: "%.2f×", tool.panScrollSpeed),
+                    caption:
+                        "How fast content pans while a Scroll Drag button is held. Assign Scroll Drag to a pen or tablet button to use it."
+                )
+                .help(
+                    "Multiplier applied to pen motion while Scroll Drag is held. 1× pans one screen point per point of pen travel; higher values pan further. Assign the Scroll Drag action to any pen barrel, express key, or puck button in Button Mapping.")
+            }
+
             Section("Click Behavior") {
                 SettingSliderRow(
                     "Tip-up Assist",
@@ -232,6 +245,13 @@ struct PenFeelView: View {
             "Pressure Smoothing", toolOwned: true,
             get: { tool.pressureSmoothingStrength },
             set: { tool.pressureSmoothingStrength = $0 })
+    }
+
+    private var panScrollSpeedBinding: Binding<Double> {
+        settings.recordingBinding(
+            "Scroll Drag Speed", toolOwned: true,
+            get: { tool.panScrollSpeed },
+            set: { tool.panScrollSpeed = $0 })
     }
 
     private var doubleClickBinding: Binding<Double> {

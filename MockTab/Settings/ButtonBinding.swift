@@ -13,7 +13,7 @@ struct ButtonBinding: Codable, Equatable {
 
     enum Kind: String, Codable {
         case none, leftClick, rightClick, middleClick, middleClickWithTip, eraser, keyCombo,
-            displayToggle, doubleClick, spacebar, ringCycle, ringSelectSlot
+            displayToggle, doubleClick, spacebar, ringCycle, ringSelectSlot, scrollDrag
     }
 
     var kind: Kind = .none
@@ -30,6 +30,7 @@ struct ButtonBinding: Codable, Equatable {
     static let eraser = ButtonBinding(kind: .eraser)
     static let doubleClick = ButtonBinding(kind: .doubleClick)
     static let spacebar = ButtonBinding(kind: .spacebar)
+    static let scrollDrag = ButtonBinding(kind: .scrollDrag)
 
     // MARK: Init
 
@@ -133,6 +134,10 @@ struct ButtonBinding: Codable, Equatable {
         case .ringSelectSlot:
             return String(
                 localized: "Ring: Mode \(keyCode + 1)", comment: "Button action: jump to ring slot")
+        case .scrollDrag:
+            return String(
+                localized: "Scroll Drag",
+                comment: "Button action: hold to pan/scroll with pen motion")
         case .keyCombo:
             let f = CGEventFlags(rawValue: modifierFlags)
             var s = ""
@@ -170,6 +175,7 @@ struct ButtonBinding: Codable, Equatable {
         case "Middle Click": return .middleClick
         case "Middle Click + Tip": return ButtonBinding(kind: .middleClickWithTip)
         case "Eraser": return .eraser
+        case "Scroll Drag": return .scrollDrag
         case "Toggle Display": return ButtonBinding(kind: .displayToggle)
         case "Ring: Cycle": return ButtonBinding(kind: .ringCycle)
         default:
@@ -179,6 +185,7 @@ struct ButtonBinding: Codable, Equatable {
                     return ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(num - 1))
                 }
             }
+            if label == "Scroll Drag" { return .scrollDrag }
             return parseKeyComboLabel(label) ?? .none
         }
     }

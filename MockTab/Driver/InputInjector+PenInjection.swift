@@ -158,6 +158,19 @@ extension InputInjector {
         // ── Position smoothing (every report) ─────────────────────────────────
         let screenPoint = smoother.applySmoothing(
             rawPoint: rawPoint, enteringProximity: enteringProximity)
+
+        // ── Scroll Drag: convert this frame's motion to a scroll delta ──────
+        // Runs before the movement/delta-gate path below, which consults
+        // panScroll.isActive to post scrolls in place of cursor motion. dt
+        // feeds only the tracker's release-velocity estimate; deltas are
+        // displacement, not rate. The smoother keeps tracking normally while
+        // panned, so cursor re-entry on disengage doesn't jump.
+        let panNow = CFAbsoluteTimeGetCurrent()
+        let panDt = lastPanScrollFrameTime > 0 ? panNow - lastPanScrollFrameTime : 0
+        lastPanScrollFrameTime = panNow
+        if panScroll.isActive {
+            postPanScroll(panScroll.process(screen: screenPoint, dt: panDt))
+        }
         // Pose is per-report constant; computed once here and passed to every
         // post call below instead of each recomputing it.
         let pose = resolveEffectivePose(point: point, snapshot: snap)
@@ -183,17 +196,31 @@ extension InputInjector {
                 // Cancel any pending deferred mouseUp — tip is back down.
                 cancelPendingMouseUp()
                 didEmitDragSinceDown = false
-                let tipAction = activeToolIsEraser ? tool.eraserBinding : tool.tipBinding
-                activeButton = tipAction.mouseButton ?? .left
-                let (clickPt, count) = resolveClick(screenPoint, snapshot: snap)
-                activeClickCount = count
-                tipDownOrigin = clickPt
-                postMouseDown(
-                    button: activeButton, at: clickPt,
-                    pressure: pressure, clickCount: count,
-                    point: point,
-                    snapshot: snap)
+                if panScroll.isActive {
+                    // Scroll Drag is holding the pointer as a pan surface:
+                    // the tip contact is a grab, not a click. Swallow the
+                    // mouseDown so a touch doesn't start a selection or fire
+                    // the tip binding; the matching mouseUp below is
+                    // swallowed symmetrically (lastTipDown still tracks the
+                    // physical tip).
+                } else {
+                    let tipAction = activeToolIsEraser ? tool.eraserBinding : tool.tipBinding
+                    activeButton = tipAction.mouseButton ?? .left
+                    let (clickPt, count) = resolveClick(screenPoint, snapshot: snap)
+                    activeClickCount = count
+                    tipDownOrigin = clickPt
+                    postMouseDown(
+                        button: activeButton, at: clickPt,
+                        pressure: pressure, clickCount: count,
+                        point: point,
+                        snapshot: snap)
+                }
             } else {
+                if panScroll.isActive {
+                    // Symmetric to the swallowed mouseDown above: no click
+                    // ever fired, so no mouseUp either. The pen lift is just
+                    // the end of a grab.
+                } else {
                 let btn = activeButton
                 let count = activeClickCount
                 let pt = point
@@ -240,6 +267,25 @@ extension InputInjector {
                         clickCount: activeClickCount, point: point,
                         snapshot: snap)
                 }
+                }
+            }
+            lastPostedPoint = screenPoint
+            lastPostedPressure = pressure
+            hasPostedPoint = true
+
+        } else if panScroll.isActive {
+            // ── Scroll Drag: ungated movement ──────────────────────────────
+            // Scroll motion is independent of the cursor delta gate (which is
+            // tuned to suppress stationary-pen duplicates, not to meter a
+            // gesture). The tip's click was swallowed on the way down, so the
+            // pen reads as a pure pan surface here — no drag, no hover move,
+            // just position bookkeeping for the next frame's delta and the
+            // velocity window.
+            if hasPostedPoint {
+                let delta = hypot(
+                    screenPoint.x - lastPostedPoint.x,
+                    screenPoint.y - lastPostedPoint.y)
+                smoother.recordMoveDelta(delta)
             }
             lastPostedPoint = screenPoint
             lastPostedPressure = pressure
@@ -302,6 +348,9 @@ extension InputInjector {
                             pose: pose, snapshot: snap)
                         didEmitDragSinceDown = true
                     }
+                } else if panScroll.isActive {
+                    // Scroll Drag held: pen motion became scroll deltas above;
+                    // the cursor stays put. Skip the drag/move posting entirely.
                 } else if let dragBtn = hoverDragButton {
                     // Barrel button held while hovering — send otherMouseDragged /
                     // rightMouseDragged so apps like SketchUp receive a proper drag stream.
@@ -458,6 +507,18 @@ extension InputInjector {
         // Reset aux state so the next injectAux fires fresh transitions.
         cancelPendingMouseUp()
         hoverDragButton = nil
+        // Scroll Drag: a confirmed exit does NOT close the gesture. The
+        // gesture is owned by its button (puck or barrel), not by proximity —
+        // the user's model is "while the button is held, pen contact pans."
+        // The pen leaving range mid-hold (a Xencelabs 0xC0 blip, or a genuine
+        // lift-and-return) must not end the pan or the next tap would read as
+        // a click/selection. `suspend()` drops the anchor so re-entry doesn't
+        // jump; the gesture closes on the button's release edge (or the
+        // safety-net timeout below if the release is genuinely lost).
+        if panScroll.isActive {
+            panScroll.suspend()
+            schedulePanScrollSafetyNet(snap: snap)
+        }
         lastAuxButtons = [Bool](repeating: false, count: 19)
         lastRingButtonDown = false
         hasPostedPoint = false
@@ -509,6 +570,44 @@ extension InputInjector {
                     snapshot: snap, settings: nil)
             }
         }
+        // NOTE: no pan-scroll disengage here. The gesture survives proximity
+        // exit (suspended, not closed — see the top of this function); it ends
+        // on the button's release edge or the safety-net timer, whichever
+        // comes first.
+    }
+
+    /// Force-close an active pan gesture whose owning button's release was
+    /// genuinely lost (pen set down out of range; no release report). Fires on
+    /// HIDThread. Resets both the gesture and the shared routing pointer.
+    private func panScrollSafetyNetFired() {
+        panScrollSafetyNetTimer = nil
+        postPanScroll(panScroll.disengage())
+        if SharedPanScrollState.shared.driver === self {
+            SharedPanScrollState.shared.driver = nil
+        }
+    }
+
+    /// Schedule the lost-release backstop when proximity exits with a pan
+    /// still open. Rearmed on each call (each confirmed exit restarts the
+    /// window).
+    func schedulePanScrollSafetyNet(snap: InjectionSnapshot) {
+        panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
+        let timer = CFRunLoopTimerCreateWithHandler(
+            kCFAllocatorDefault,
+            CFAbsoluteTimeGetCurrent() + panScrollSafetyNetInterval,
+            0, 0, 0
+        ) { [weak self] _ in
+            self?.panScrollSafetyNetFired()
+        }
+        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+        panScrollSafetyNetTimer = timer
+    }
+
+    /// Cancel the backstop on the normal release path — a button edge arrived,
+    /// so the gesture is closing cleanly and no force-close is needed.
+    func cancelPanScrollSafetyNet() {
+        panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
+        panScrollSafetyNetTimer = nil
     }
 
     /// Which barrel button a debounced-release timer handler is resolving —

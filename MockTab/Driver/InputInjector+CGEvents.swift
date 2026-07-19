@@ -840,6 +840,27 @@ extension InputInjector {
                 e.flags = currentEventFlags
                 finalizeAndPost(e)
             }
+        case .scrollDrag:
+            // Hold-to-pan: while engaged, inject()'s movement path converts
+            // pen motion into phased pixel scroll events (see postPanScroll).
+            // The binding may live on a different device than the one moving
+            // the pointer (e.g. a Quick Keys puck button while the pen pans),
+            // so the gesture is driven on whichever injector is currently
+            // moving the pointer — resolved via SharedPanScrollState. The
+            // engage/disengage intents fire immediately so apps see the
+            // gesture's began/ended brackets even if the pen never moves.
+            let driver = Self.resolvePanScrollDriver(preferring: self)
+            if down {
+                SharedPanScrollState.shared.driver = driver
+                driver.postPanScroll(driver.panScroll.engage(
+                    reverse: snapshot.reverseScrollDirection,
+                    speed: snapshot.activeTool.panScrollSpeed))
+            } else {
+                let active = SharedPanScrollState.shared.driver ?? driver
+                active.cancelPanScrollSafetyNet()
+                active.postPanScroll(active.panScroll.disengage())
+                SharedPanScrollState.shared.driver = nil
+            }
         }
 
         // Safety valve: if nothing is physically held on the tablet but we still
@@ -886,6 +907,56 @@ extension InputInjector {
         else { return }
         e.location = location
         e.flags = currentEventFlags
+        finalizeAndPost(e)
+    }
+
+    // MARK: - Scroll Drag (pan)
+
+    /// Resolve which injector should host a Scroll Drag gesture. The pen
+    /// tablet that's actively moving the pointer (active context, pen in
+    /// proximity) is the natural driver; if none qualifies (e.g. the pen is
+    /// out of range at the moment the button fires), fall back to the injector
+    /// that received the binding, so a barrel binding on the pen itself always
+    /// works and a puck binding degrades gracefully rather than dropping the
+    /// gesture entirely.
+    static func resolvePanScrollDriver(preferring fallback: InputInjector) -> InputInjector {
+        for injector in allLiveInjectors where injector.isActive && injector.lastProximity {
+            return injector
+        }
+        // No pen currently in proximity — prefer the active context's injector
+        // (the pen the user is about to move) over an aux-only accessory.
+        for injector in allLiveInjectors where injector.isActive {
+            return injector
+        }
+        return fallback
+    }
+
+    /// Sole event-construction site for Scroll Drag gestures. Pixel units +
+    /// the continuous flag + a scroll-phase lifecycle is what makes apps treat
+    /// the stream as a trackpad pan (smooth, rubber-banded) rather than
+    /// discrete wheel ticks — the same shape as the finger-touch path's
+    /// `postTouchScroll`.
+    ///
+    /// Kept as one small function on purpose: it is the backend seam. If the
+    /// parked IOHIDUserDevice virtual-trackpad spike ever ships, this becomes
+    /// "report contacts to the virtual device" (which additionally buys real
+    /// system-generated momentum, unavailable to CGEvent-posted scrolls),
+    /// and nothing else in the gesture path changes.
+    func postPanScroll(_ intent: PanScrollTracker.Intent) {
+        guard case .scroll(let dx, let dy, let phase) = intent else { return }
+        guard
+            let e = CGEvent(
+                scrollWheelEvent2Source: sessionSource,
+                units: .pixel,
+                wheelCount: 2,
+                wheel1: Int32(dy),
+                wheel2: Int32(dx),
+                wheel3: 0)
+        else { return }
+        e.location = currentCursorPosition()
+        e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
+        e.flags = moveSafeEventFlags
         finalizeAndPost(e)
     }
 }

@@ -81,6 +81,7 @@
 		AA00HT01 /* HIDThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HT01 /* HIDThread.swift */; };
 		AA00IS01 /* InjectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00IS01 /* InjectionSnapshot.swift */; };
 		AA00TT01 /* TouchStateTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00TT01 /* TouchStateTracker.swift */; };
+		AA00PS01 /* PanScrollTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00PS01 /* PanScrollTracker.swift */; };
 		AA00TV01 /* TouchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00TV01 /* TouchView.swift */; };
 		AAAAAA02 /* PresetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA01 /* PresetExporter.swift */; };
 		AAAAAA04 /* PresetImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA03 /* PresetImporter.swift */; };
@@ -194,6 +195,7 @@
 		AB00HT01 /* HIDThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDThread.swift; sourceTree = "<group>"; };
 		AB00IS01 /* InjectionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjectionSnapshot.swift; sourceTree = "<group>"; };
 		AB00TT01 /* TouchStateTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchStateTracker.swift; sourceTree = "<group>"; };
+		AB00PS01 /* PanScrollTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanScrollTracker.swift; sourceTree = "<group>"; };
 		AB00TV01 /* TouchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchView.swift; sourceTree = "<group>"; };
 		AC000008 /* TabletColorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletColorTheme.swift; sourceTree = "<group>"; };
 		BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationOverlayView.swift; sourceTree = "<group>"; };
@@ -273,6 +275,7 @@
 				AB00HD01 /* HIDDescriptorReader.swift */,
 				AB00HH01 /* HIDHelpers.swift */,
 				AB00TT01 /* TouchStateTracker.swift */,
+				AB00PS01 /* PanScrollTracker.swift */,
 				AB000008 /* InputInjector.swift */,
 				AB000081 /* InputInjector+PenInjection.swift */,
 				AB000082 /* InputInjector+AuxInput.swift */,
@@ -505,6 +508,7 @@
 				AA00HD01 /* HIDDescriptorReader.swift in Sources */,
 				AA00HH01 /* HIDHelpers.swift in Sources */,
 				AA00TT01 /* TouchStateTracker.swift in Sources */,
+				AA00PS01 /* PanScrollTracker.swift in Sources */,
 				AA00TV01 /* TouchView.swift in Sources */,
 				AA000072 /* OTDImporter.swift in Sources */,
 				AA000049 /* WacomKnownDevice.swift in Sources */,
