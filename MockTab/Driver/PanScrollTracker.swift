@@ -14,15 +14,22 @@ import Foundation
 /// drive it, and the only event-construction site (`InputInjector.postPanScroll`)
 /// stays a single replaceable backend.
 ///
-/// Momentum is *not* synthesized here. macOS only generates inertia for scroll
-/// streams arriving from hardware through IOKit HID; CGEvent-posted scrolls go
-/// straight to apps exactly as sent. Real system inertia therefore requires
-/// reporting contacts to a virtual HID trackpad (the parked IOHIDUserDevice
-/// spike) — at which point this tracker's intents become "report contact
-/// began/moved/ended" and the posting backend is swapped. To keep that future
-/// cheap, a short-window release velocity is maintained from day one (it is
-/// the entire input a momentum tail needs, real or synthetic); v1 records it
-/// and discards it.
+/// Momentum is *not* synthesized here — and yet it shows up in scroll-view-based
+/// apps (Finder, Xcode) anyway. That's not the OS driver stack; the posting
+/// backend (`InputInjector.postPanScroll`) tags every event as continuous with
+/// a began/changed/ended scroll-phase lifecycle, and `NSScrollView` itself
+/// synthesizes its own decay tail client-side whenever it sees a `.ended`
+/// phase on a continuous stream — regardless of whether the events came from
+/// real trackpad hardware or `CGEventCreateScrollWheelEvent`. Apps that don't
+/// route through `NSScrollView` (custom-drawn canvases, non-AppKit scroll
+/// handling) get no such gift and must interpret the phase field themselves.
+///
+/// A short-window release velocity is still maintained here regardless (it is
+/// the entire input a momentum tail needs, real or synthetic), for the day a
+/// virtual HID trackpad (the parked IOHIDUserDevice spike) lets this tracker's
+/// intents become "report contact began/moved/ended" with true system-level
+/// inertia in *every* app, not just `NSScrollView` ones. v1 records the
+/// velocity and discards it.
 ///
 /// Owned by `InputInjector`; HIDThread-confined like its sibling trackers.
 struct PanScrollTracker {

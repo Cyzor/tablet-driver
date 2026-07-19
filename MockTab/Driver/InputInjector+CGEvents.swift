@@ -931,11 +931,15 @@ extension InputInjector {
         return fallback
     }
 
-    /// Sole event-construction site for Scroll Drag gestures. Pixel units +
+    /// Sole event-construction site for Pan View gestures. Pixel units +
     /// the continuous flag + a scroll-phase lifecycle is what makes apps treat
     /// the stream as a trackpad pan (smooth, rubber-banded) rather than
     /// discrete wheel ticks — the same shape as the finger-touch path's
-    /// `postTouchScroll`.
+    /// `postTouchScroll`. It's also what buys momentum for free in
+    /// NSScrollView-based apps (Finder, Xcode): AppKit synthesizes its own
+    /// decay tail client-side on `.ended`, whether the stream came from real
+    /// trackpad hardware or was posted here — see PanScrollTracker's header
+    /// comment for the full explanation.
     ///
     /// Kept as one small function on purpose: it is the backend seam. If the
     /// parked IOHIDUserDevice virtual-trackpad spike ever ships, this becomes
