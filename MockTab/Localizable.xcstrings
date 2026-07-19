@@ -1664,7 +1664,27 @@
       }
     },
     "and" : {
-      "comment" : "Conjunction between two linked project names in the acknowledgment line"
+      "comment" : "Conjunction between two linked project names in the acknowledgment line",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "und"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "y"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "と"
+          }
+        }
+      }
     },
     "Any data collected so far will be discarded." : {
       "comment" : "Data collection alert message",
@@ -3996,7 +4016,26 @@
       }
     },
     "Damps pressure noise near the low end of the sensor's range — most noticeable as uneven line width on slow, light strokes. Firm pressure is left alone." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dämpft Druckrauschen am unteren Ende des Sensorbereichs – am deutlichsten sichtbar als ungleichmäßige Strichbreite bei langsamen, leichten Strichen. Fester Druck bleibt unverändert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atenúa el ruido de presión en el extremo inferior del rango del sensor, lo más notable como grosor de línea desigual en trazos lentos y suaves. La presión firme queda intacta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "センサー範囲の下限付近での筆圧ノイズを抑えます。ゆっくりとした軽いストロークで線幅がばらつく現象に最も効果があります。強い筆圧はそのまま変化しません。"
+          }
+        }
+      }
     },
     "Decrease or increase text size" : {
       "comment" : "Help window toolbar: font size control tooltip",
@@ -4070,7 +4109,26 @@
       }
     },
     "Delays the stroke release briefly when the pen is lifted mid-motion and still moving quickly, preventing accidental short strokes." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verzögert das Loslassen des Strichs kurz, wenn der Stift mitten in der Bewegung abgehoben wird und noch schnell unterwegs ist – das verhindert versehentlich kurze Striche."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retrasa brevemente la liberación del trazo cuando el lápiz se levanta en pleno movimiento y sigue moviéndose rápido, evitando trazos cortos accidentales."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "動きの途中でペンを離してもまだ素早く動いている場合、ストロークの終了を少し遅らせ、意図しない短いストロークの発生を防ぎます。"
+          }
+        }
+      }
     },
     "Delays the stroke release briefly when the pen is lifted mid-motion, preventing accidental short strokes." : {
       "extractionState" : "stale",
@@ -4189,7 +4247,27 @@
       }
     },
     "Device data from" : {
-      "comment" : "Acknowledgment line prefix, followed by linked project names"
+      "comment" : "Acknowledgment line prefix, followed by linked project names",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerätedaten von"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datos del dispositivo de"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバイスデータ提供元："
+          }
+        }
+      }
     },
     "Device Defaults" : {
       "comment" : "Profile option: use device's default settings",
@@ -4912,7 +4990,26 @@
       }
     },
     "Drag Threshold" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ziehschwelle"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umbral de arrastre"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ドラッグしきい値"
+          }
+        }
+      }
     },
     "Draw" : {
       "comment" : "Undo name for ink stroke",
@@ -6790,10 +6887,48 @@
       }
     },
     "Hold to pan/scroll with pen motion (Hand-tool style)" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gedrückt halten, um mit Stiftbewegung zu schwenken (wie das Hand-Werkzeug)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén pulsado para desplazar la vista con el lápiz (como la herramienta Mano)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンの動きで表示をパンするには押し続けます（手のひらツールと同様）"
+          }
+        }
+      }
     },
     "Holds the pen click open for this long after the tip lifts, if you're still moving quickly. This helps prevent unintended stroke breaks during fast drawing. Drag to Off to disable." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hält den Stiftklick nach dem Abheben der Spitze so lange offen, wenn du dich noch schnell bewegst. Das verhindert ungewollte Strichunterbrechungen beim schnellen Zeichnen. Zum Deaktivieren auf Aus ziehen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantiene el clic del lápiz activo durante este tiempo después de levantar la punta, si todavía te mueves rápido. Esto evita cortes de trazo no deseados al dibujar rápido. Arrastra a Desactivado para desactivarlo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペン先を離した後も素早く動かしている場合、この時間だけクリックを保持したままにします。すばやく描画する際の意図しないストロークの途切れを防ぎます。無効にするには「オフ」までドラッグしてください。"
+          }
+        }
+      }
     },
     "Horizontal:" : {
       "comment" : "Label for horizontal parallax offset field in Manual Fine-Tune",
@@ -6884,7 +7019,26 @@
       }
     },
     "How fast content pans while a Pan View button is held. Assign Pan View to a pen or tablet button to use it." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie schnell der Inhalt schwenkt, während eine Taste mit „Ansicht schwenken“ gedrückt ist. Weise „Ansicht schwenken“ einer Stift- oder Tablet-Taste zu, um es zu nutzen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Con qué velocidad se desplaza el contenido mientras mantienes pulsado un botón de Desplazar vista. Asigna Desplazar vista a un botón del lápiz o la tableta para usarlo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「ビューをパン」ボタンを押している間にコンテンツがパンする速さです。使うにはペンやタブレットのボタンに「ビューをパン」を割り当ててください。"
+          }
+        }
+      }
     },
     "Idle" : {
       "comment" : "Driver status value — device is idle\nTouch ring idle state in Live Input",
@@ -8670,7 +8824,26 @@
       }
     },
     "Multiplier applied to pen motion while Pan View is held. 1× pans one screen point per point of pen travel; higher values pan further. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Multiplikator für die Stiftbewegung, während „Ansicht schwenken“ gehalten wird. Bei 1× entspricht ein Bildschirmpunkt einem Punkt Stiftbewegung; höhere Werte schwenken weiter. Weise die Aktion „Ansicht schwenken“ einem Barrel-Knopf, einer Express-Taste oder einer Puck-Taste in der Tastenzuordnung zu."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Multiplicador aplicado al movimiento del lápiz mientras se mantiene Desplazar vista. Con 1× se desplaza un punto de pantalla por cada punto de recorrido del lápiz; valores más altos desplazan más. Asigna la acción Desplazar vista a cualquier botón del lápiz, tecla express o botón del puck en Asignación de botones."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「ビューをパン」を押している間にペンの動きへ適用される倍率です。1×では画面上の1ポイントがペンの移動量1ポイントに対応し、値を上げるほど大きくパンします。「ビューをパン」アクションはボタン割り当て画面でペンのバレルボタン、エクスプレスキー、パックのボタンのいずれにも割り当てられます。"
+          }
+        }
+      }
     },
     "Multiplier for cursor motion from finger drag. 1.00× is the natural mapping through the touch area; raise to move faster across the screen, lower for finer control." : {
       "comment" : "Help text for the \"Cursor speed\" slider in the TouchView.",
@@ -10418,10 +10591,48 @@
       }
     },
     "Pressure Smoothing" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Druckglättung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suavizado de presión"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "筆圧スムージング"
+          }
+        }
+      }
     },
     "Prevents a light tap from turning into an accidental drag due to hand tremor or pressure jitter right when the tip touches down. Drag to Off to disable." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verhindert, dass ein leichter Tipp durch Handzittern oder Druckschwankungen beim Aufsetzen versehentlich zu einem Ziehen wird. Zum Deaktivieren auf Aus ziehen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Evita que un toque suave se convierta en un arrastre accidental por temblor de la mano o fluctuaciones de presión justo al apoyar la punta. Arrastra a Desactivado para desactivarlo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペン先を下ろした瞬間の手ぶれや筆圧の揺れによって、軽いタップが誤ってドラッグになるのを防ぎます。無効にするには「オフ」までドラッグしてください。"
+          }
+        }
+      }
     },
     "Preview" : {
       "comment" : "Section header in Display tab — canvas preview",
@@ -11081,7 +11292,26 @@
       }
     },
     "Reduces line-width variation from sensor noise at light pressure." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reduziert Schwankungen der Strichbreite durch Sensorrauschen bei leichtem Druck."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reduce las variaciones del grosor de línea causadas por el ruido del sensor con poca presión."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "軽い筆圧時のセンサーノイズによる線幅のばらつきを軽減します。"
+          }
+        }
+      }
     },
     "Relative Cursor Movement" : {
       "comment" : "Toggle label in Pen Feel tab",
@@ -11509,7 +11739,26 @@
       }
     },
     "Requires the pen to move this far before a tap becomes a drag, absorbing tremor at tip-down." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Stift muss sich um diesen Betrag bewegen, bevor aus einem Tippen ein Ziehen wird – das fängt Zittern beim Aufsetzen ab."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El lápiz debe moverse esta distancia antes de que un toque se convierta en un arrastre, absorbiendo el temblor al apoyar la punta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タップがドラッグに変わるまでにペンがこの距離だけ動く必要があります。ペン先を下ろした際の手ぶれを吸収します。"
+          }
+        }
+      }
     },
     "Reset" : {
       "comment" : "Button label: confirm factory reset\nOverride banner button — removes this app's overrides for this tab",
@@ -12372,7 +12621,27 @@
       }
     },
     "Pan View" : {
-      "comment" : "Button action: hold to pan/scroll with pen motion"
+      "comment" : "Button action: hold to pan/scroll with pen motion",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ansicht schwenken"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desplazar vista"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ビューをパン"
+          }
+        }
+      }
     },
     "Scroll Wheel" : {
       "comment" : "Mouse scroll wheel row label",
