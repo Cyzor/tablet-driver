@@ -55,6 +55,7 @@ extension TabletSettings {
         tipUpAssistDelay = loadDouble(
             "tipUpAssistDelay", default: legacyTipUpAssistOn ? 80.0 : 0.0)
         dragThreshold = loadDouble("dragThreshold", default: 0.0)
+        pressureSmoothingStrength = loadDouble("pressureSmoothingStrength", default: 0.0)
         touchEnabled = loadBool("touchEnabled", default: false)
         touchSensitivity = Swift.max(0.25, Swift.min(loadDouble("touchSensitivity", default: 1.0), 4.0))
         tapToClick = loadBool("tapToClick", default: false)
@@ -72,7 +73,8 @@ extension TabletSettings {
         activeTool.overridePrefix = op
         activeTool.reload()
         activeTool.applyExternalValues(
-            pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
+            pressureCurve: pressureCurve, smoothingStrength: smoothingStrength,
+            pressureSmoothingStrength: pressureSmoothingStrength)
 
         // Also propagate to all cached per-tool instances so the injector (which uses
         // activeToolSettings — a cached ToolSettings — not activeTool) picks up the change.
@@ -80,7 +82,8 @@ extension TabletSettings {
             tool.overridePrefix = op
             tool.reload()
             tool.applyExternalValues(
-                pressureCurve: pressureCurve, smoothingStrength: smoothingStrength)
+                pressureCurve: pressureCurve, smoothingStrength: smoothingStrength,
+                pressureSmoothingStrength: pressureSmoothingStrength)
         }
         isLoading = false
     }

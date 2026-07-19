@@ -304,6 +304,12 @@ final class TabletSettings: ObservableObject {
     @Published var smoothingStrength: Double = 0.0 {
         didSet { persist("smoothingStrength", smoothingStrength) }
     }
+    /// Smooths pressure readings, scaled inversely to pressure level: heaviest
+    /// damping near the noisy low-pressure/activation-threshold band, opening
+    /// up toward passthrough as pressure rises toward a firm stroke. 0 = off.
+    @Published var pressureSmoothingStrength: Double = 0.0 {
+        didSet { persist("pressureSmoothingStrength", pressureSmoothingStrength) }
+    }
     @Published var doubleClickDistance: Double = 10.0 {
         didSet { persist("doubleClickDistance", doubleClickDistance) }
     }

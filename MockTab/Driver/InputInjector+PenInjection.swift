@@ -42,7 +42,7 @@ extension InputInjector {
                 absPoint, in: displayMapper.displayBounds(for: snap))
         }
         let lutIdx = Swift.min(Swift.max(Int((point.normalizedPressure * 255.0).rounded()), 0), 255)
-        let pressure = tool.pressureLUT[lutIdx]
+        let rawPressure = tool.pressureLUT[lutIdx]
         // Mouse tools have no tip pressure — button1 is the primary click trigger.
         // For KC-100 over USB, the left button arrives via the separate 0x01 mouse interface
         // and injectMouseButtons() has already fired leftMouseDown/Up.  Keep tipDown false
@@ -50,7 +50,22 @@ extension InputInjector {
         let tipDown =
             activeToolIsMouse
             ? (usbMouseLeftHeld ? false : point.penButton1)
-            : pressure > 0.004
+            : rawPressure > 0.004
+
+        // ── Pressure smoothing (contact only) ──────────────────────────────────
+        // Damps sensor noise near the low-pressure/activation-threshold band
+        // (visible as splotchy line-width variation on slow, light strokes).
+        // Uses raw pressure for tipDown detection above so contact latency is
+        // unaffected; only the transmitted line-width value is smoothed, and
+        // a stroke's first sample always adopts the raw value verbatim.
+        let pressure: Double
+        if tipDown {
+            pressure = pressureSmoother.applySmoothing(
+                rawPressure: rawPressure, strokeStarting: !lastTipDown)
+        } else {
+            pressure = rawPressure
+            pressureSmoother.reset()
+        }
 
         // ── Xencelabs proximity-dropout debounce ────────────────────────────────
         // See proximityExitDebounceTimer's declaration for why. A lone
@@ -120,6 +135,7 @@ extension InputInjector {
                 activeToolIsEraser = point.eraser
                 lastEraserMode = point.eraser
                 smoother.smoothingStrength = tool.smoothingStrength
+                pressureSmoother.smoothingStrength = tool.pressureSmoothingStrength
                 lastProximity = true
             } else {
                 commitProximityExit(snap: snap)
@@ -448,6 +464,7 @@ extension InputInjector {
         displayMapper.clearRelativeAnchor()
         lastPostedPressure = -1.0
         smoother.resetOnProximityExit()
+        pressureSmoother.reset()
 
         // Record the moment the pen leaves proximity so finger-touch can
         // apply a short grace window (touchArbitrationGrace) before

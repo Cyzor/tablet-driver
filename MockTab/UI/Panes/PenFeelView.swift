@@ -24,6 +24,18 @@ struct PenFeelView: View {
         ) {
             pressureCurveSection
 
+            Section("Pressure Smoothing") {
+                SettingSliderRow(
+                    "Strength",
+                    value: pressureSmoothingBinding,
+                    in: 0...1,
+                    valueText: pressureSmoothingLabel,
+                    caption: "Reduces line-width variation from sensor noise at light pressure."
+                )
+                .help(
+                    "Damps pressure noise near the low end of the sensor's range — most noticeable as uneven line width on slow, light strokes. Firm pressure is left alone.")
+            }
+
             Section("Stabilization") {
                 SettingSliderRow(
                     "Strength",
@@ -215,6 +227,13 @@ struct PenFeelView: View {
             set: { tool.smoothingStrength = $0 })
     }
 
+    private var pressureSmoothingBinding: Binding<Double> {
+        settings.recordingBinding(
+            "Pressure Smoothing", toolOwned: true,
+            get: { tool.pressureSmoothingStrength },
+            set: { tool.pressureSmoothingStrength = $0 })
+    }
+
     private var doubleClickBinding: Binding<Double> {
         settings.recordingBinding(
             "Double-Click Distance",
@@ -267,6 +286,21 @@ struct PenFeelView: View {
         case 0.65..<0.85: return String(localized: "High", comment: "Stabilization strength label")
         default:
             return String(localized: "Max", comment: "Stabilization strength label — maximum value")
+        }
+    }
+
+    private var pressureSmoothingLabel: String {
+        switch tool.pressureSmoothingStrength {
+        case 0..<0.15:
+            return String(localized: "Off", comment: "Pressure smoothing strength — disabled")
+        case 0.15..<0.4: return String(localized: "Low", comment: "Pressure smoothing strength label")
+        case 0.4..<0.65:
+            return String(localized: "Medium", comment: "Pressure smoothing strength label")
+        case 0.65..<0.85:
+            return String(localized: "High", comment: "Pressure smoothing strength label")
+        default:
+            return String(
+                localized: "Max", comment: "Pressure smoothing strength label — maximum value")
         }
     }
 }

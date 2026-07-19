@@ -49,6 +49,10 @@ final class ToolSettings: ObservableObject {
         didSet { persist("smoothingStrength", smoothingStrength) }
     }
 
+    @Published var pressureSmoothingStrength: Double = 0.0 {
+        didSet { persist("pressureSmoothingStrength", pressureSmoothingStrength) }
+    }
+
     /// When true, real tilt is suppressed and barrel rotation is sent as synthetic tilt
     /// instead — a "bait and switch" so Photoshop's Pen Tilt brush dynamics respond to
     /// barrel twist. Intended as a per-app opt-in (e.g. Adobe Photoshop); real tilt is
@@ -208,6 +212,7 @@ final class ToolSettings: ObservableObject {
     func reload() {
         isLoading = true
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
+        pressureSmoothingStrength = loadDouble("pressureSmoothingStrength", default: 0.0)
         useRotationAsTilt = loadBool("useRotationAsTilt", default: false)
         rotationTiltOffsetDegrees = loadDouble("rotationTiltOffsetDegrees", default: 0.0)
         rotationTiltMagnitude = loadDouble("rotationTiltMagnitude", default: 0.8)
@@ -279,10 +284,14 @@ final class ToolSettings: ObservableObject {
     /// Applies externally-resolved values (from a profile or app override) without
     /// triggering persistence writes.  Called by TabletSettings.reloadAll() so that
     /// PenFeel — which observes activeTool — stays in sync.
-    func applyExternalValues(pressureCurve: BezierCurve, smoothingStrength: Double) {
+    func applyExternalValues(
+        pressureCurve: BezierCurve, smoothingStrength: Double,
+        pressureSmoothingStrength: Double
+    ) {
         isLoading = true
         self.pressureCurve = pressureCurve
         self.smoothingStrength = smoothingStrength
+        self.pressureSmoothingStrength = pressureSmoothingStrength
         self.useRotationAsTilt = false
         self.rotationTiltOffsetDegrees = 0.0
         self.rotationTiltMagnitude = 0.8

@@ -257,6 +257,11 @@ final class InputInjector: @unchecked Sendable {
     var jitterLevel: CGFloat { smoother.jitterLevel }
     var isJittery: Bool { smoother.isJittery }
 
+    /// Per-report pressure smoothing (opens up as pressure rises toward a
+    /// firm stroke, unlike the position filter above which opens up with
+    /// speed). State and math live in PressureSmoother.swift.
+    var pressureSmoother = PressureSmoother()
+
     // MARK: - Delta gate
     //
     // Skip posting to the Window Server when position and pressure haven't changed

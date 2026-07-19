@@ -3995,6 +3995,9 @@
         }
       }
     },
+    "Damps pressure noise near the low end of the sensor's range — most noticeable as uneven line width on slow, light strokes. Firm pressure is left alone." : {
+
+    },
     "Decrease or increase text size" : {
       "comment" : "Help window toolbar: font size control tooltip",
       "localizations" : {
@@ -6608,7 +6611,7 @@
       }
     },
     "High" : {
-      "comment" : "Stabilization strength label",
+      "comment" : "Pressure smoothing strength label\nStabilization strength label",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7876,7 +7879,7 @@
       }
     },
     "Low" : {
-      "comment" : "Stabilization strength label",
+      "comment" : "Pressure smoothing strength label\nStabilization strength label",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8069,7 +8072,7 @@
       }
     },
     "Max" : {
-      "comment" : "Stabilization strength label — maximum value",
+      "comment" : "Pressure smoothing strength label — maximum value\nStabilization strength label — maximum value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8098,7 +8101,7 @@
       }
     },
     "Medium" : {
-      "comment" : "Stabilization strength label\nText Size submenu: second-smallest",
+      "comment" : "Pressure smoothing strength label\nStabilization strength label\nText Size submenu: second-smallest",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9340,7 +9343,7 @@
       }
     },
     "Off" : {
-      "comment" : "Connection status when device is disconnected\nDefault ring slot label\nFeature disabled — double-click distance slider at minimum value\nFeature disabled — drag threshold slider at minimum value\nFeature disabled — tip-up assist slider at minimum value\nRing speed at minimum — rotation disabled\nRing/strip action: disabled\nStabilization strength — disabled\nTouch ring mode: disabled",
+      "comment" : "Connection status when device is disconnected\nDefault ring slot label\nFeature disabled — double-click distance slider at minimum value\nFeature disabled — drag threshold slider at minimum value\nFeature disabled — tip-up assist slider at minimum value\nPressure smoothing strength — disabled\nRing speed at minimum — rotation disabled\nRing/strip action: disabled\nStabilization strength — disabled\nTouch ring mode: disabled",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10405,6 +10408,9 @@
         }
       }
     },
+    "Pressure Smoothing" : {
+
+    },
     "Prevents a light tap from turning into an accidental drag due to hand tremor or pressure jitter right when the tip touches down. Drag to Off to disable." : {
 
     },
@@ -11064,6 +11070,9 @@
           }
         }
       }
+    },
+    "Reduces line-width variation from sensor noise at light pressure." : {
+
     },
     "Relative Cursor Movement" : {
       "comment" : "Toggle label in Pen Feel tab",
