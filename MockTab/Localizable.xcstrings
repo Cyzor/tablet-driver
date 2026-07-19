@@ -694,6 +694,9 @@
         }
       }
     },
+    "%lld ms" : {
+      "comment" : "Delay in milliseconds, e.g. '80 ms'"
+    },
     "%lld profile" : {
       "comment" : "Count of profiles for a tablet",
       "extractionState" : "manual",
@@ -767,7 +770,7 @@
       }
     },
     "%lld pt" : {
-      "comment" : "Distance in points, e.g. '10 pt'",
+      "comment" : "Distance in points, e.g. '10 pt'\nDistance in points, e.g. '3 pt'",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4063,7 +4066,11 @@
         }
       }
     },
+    "Delays the stroke release briefly when the pen is lifted mid-motion and still moving quickly, preventing accidental short strokes." : {
+
+    },
     "Delays the stroke release briefly when the pen is lifted mid-motion, preventing accidental short strokes." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4900,6 +4907,9 @@
           }
         }
       }
+    },
+    "Drag Threshold" : {
+
     },
     "Draw" : {
       "comment" : "Undo name for ink stroke",
@@ -6775,6 +6785,9 @@
           }
         }
       }
+    },
+    "Holds the pen click open for this long after the tip lifts, if you're still moving quickly. This helps prevent unintended stroke breaks during fast drawing. Drag to Off to disable." : {
+
     },
     "Horizontal:" : {
       "comment" : "Label for horizontal parallax offset field in Manual Fine-Tune",
@@ -9327,7 +9340,7 @@
       }
     },
     "Off" : {
-      "comment" : "Connection status when device is disconnected\nDefault ring slot label\nFeature disabled — double-click distance slider at minimum value\nRing speed at minimum — rotation disabled\nRing/strip action: disabled\nStabilization strength — disabled\nTouch ring mode: disabled",
+      "comment" : "Connection status when device is disconnected\nDefault ring slot label\nFeature disabled — double-click distance slider at minimum value\nFeature disabled — drag threshold slider at minimum value\nFeature disabled — tip-up assist slider at minimum value\nRing speed at minimum — rotation disabled\nRing/strip action: disabled\nStabilization strength — disabled\nTouch ring mode: disabled",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10391,6 +10404,9 @@
           }
         }
       }
+    },
+    "Prevents a light tap from turning into an accidental drag due to hand tremor or pressure jitter right when the tip touches down. Drag to Off to disable." : {
+
     },
     "Preview" : {
       "comment" : "Section header in Display tab — canvas preview",
@@ -11473,6 +11489,9 @@
           }
         }
       }
+    },
+    "Requires the pen to move this far before a tap becomes a drag, absorbing tremor at tip-down." : {
+
     },
     "Reset" : {
       "comment" : "Button label: confirm factory reset\nOverride banner button — removes this app's overrides for this tab",
@@ -15053,6 +15072,7 @@
       }
     },
     "When enabled, the pen click is held open for ~80 ms after the tip lifts if you are moving quickly. This helps prevent unintended stroke breaks during fast drawing." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

@@ -36,7 +36,8 @@ struct InjectionSnapshot: Sendable, Equatable {
 
     var invertRotation: Bool
     var relativeCursorMovement: Bool
-    var tipUpAssist: Bool
+    var tipUpAssistDelay: Double
+    var dragThreshold: Double
     var doubleClickDistance: Double
     /// System double-click time window (NSEvent.doubleClickInterval), captured
     /// on main so resolveClick never calls AppKit from HIDThread.
@@ -121,7 +122,8 @@ extension TabletSettings {
             parallaxOffsetY: parallaxOffsetY,
             invertRotation: invertRotation,
             relativeCursorMovement: relativeCursorMovement,
-            tipUpAssist: tipUpAssist,
+            tipUpAssistDelay: tipUpAssistDelay,
+            dragThreshold: dragThreshold,
             doubleClickDistance: doubleClickDistance,
             doubleClickInterval: NSEvent.doubleClickInterval,
             activeTool: activeTool.injectionSnapshot(),

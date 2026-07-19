@@ -49,7 +49,12 @@ extension TabletSettings {
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
         invertRotation = loadBool("invertRotation", default: false)
         relativeCursorMovement = loadBool("relativeCursorMovement", default: false)
-        tipUpAssist = loadBool("tipUpAssist", default: false)
+        // Migrate the old on/off toggle: users who had it enabled keep the
+        // previous hardcoded 80 ms delay until they touch the new slider.
+        let legacyTipUpAssistOn = loadBool("tipUpAssist", default: false)
+        tipUpAssistDelay = loadDouble(
+            "tipUpAssistDelay", default: legacyTipUpAssistOn ? 80.0 : 0.0)
+        dragThreshold = loadDouble("dragThreshold", default: 0.0)
         touchEnabled = loadBool("touchEnabled", default: false)
         touchSensitivity = Swift.max(0.25, Swift.min(loadDouble("touchSensitivity", default: 1.0), 4.0))
         tapToClick = loadBool("tapToClick", default: false)

@@ -313,8 +313,16 @@ final class TabletSettings: ObservableObject {
     @Published var relativeCursorMovement: Bool = false {
         didSet { persist("relativeCursorMovement", relativeCursorMovement) }
     }
-    @Published var tipUpAssist: Bool = false {
-        didSet { persist("tipUpAssist", tipUpAssist) }
+    /// Milliseconds to hold the mouseUp open after tip-lift when the pen is
+    /// still moving quickly. 0 = off.
+    @Published var tipUpAssistDelay: Double = 0.0 {
+        didSet { persist("tipUpAssistDelay", tipUpAssistDelay) }
+    }
+    /// Minimum distance (points) the pen must travel from tip-down before a
+    /// drag is posted. 0 = off. Absorbs hand tremor / pressure-driven jitter
+    /// right at tip-down so a light tap doesn't register as a drag.
+    @Published var dragThreshold: Double = 0.0 {
+        didSet { persist("dragThreshold", dragThreshold) }
     }
 
     // MARK: - Capacitive finger touch

@@ -207,6 +207,9 @@ final class InputInjector: @unchecked Sendable {
     /// True after the first leftMouseDragged is posted following a tip-down.
     /// Used to guarantee Pages sees at least one drag event even when deltas are tiny.
     var didEmitDragSinceDown = false
+    /// Screen position at the moment the tip went down. Anchor for the drag
+    /// threshold gate — see `TabletSettings.dragThreshold`.
+    var tipDownOrigin: CGPoint = .zero
     var lastEraserMode = false  // Track eraser/tip flip while in proximity
     // Named per-button fields rather than an array/dictionary, deliberately:
     // this runs at 133 Hz on the HID hot path, where a direct field read beats
@@ -265,11 +268,11 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Tip-up assist
     //
-    // When enabled, delays the mouseUp briefly after the tip lifts if the pen is still
-    // in motion. This prevents accidental stroke termination from light tip-release
-    // during fast strokes. The pending mouseUp is cancelled if the tip comes back down.
+    // When the delay (TabletSettings.tipUpAssistDelay, ms) is above zero, delays the
+    // mouseUp briefly after the tip lifts if the pen is still in motion. This prevents
+    // accidental stroke termination from light tip-release during fast strokes. The
+    // pending mouseUp is cancelled if the tip comes back down.
 
-    static let tipUpAssistDelay: Double = 0.08  // seconds
     static let tipUpAssistVelocityThreshold: CGFloat = 2.0  // pts/sample
     /// One-shot CFRunLoopTimer scheduled on HIDThread (NOT the main queue —
     /// a congested main thread must not be able to stretch the 80 ms delay).

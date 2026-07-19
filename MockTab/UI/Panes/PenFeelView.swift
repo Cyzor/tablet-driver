@@ -121,14 +121,43 @@ struct PenFeelView: View {
             }
 
             Section("Click Behavior") {
-                DescribedToggle(
+                SettingSliderRow(
                     "Tip-up Assist",
-                    isOn: tipUpAssistBinding,
-                    description:
-                        "Delays the stroke release briefly when the pen is lifted mid-motion, preventing accidental short strokes."
+                    value: tipUpAssistBinding,
+                    in: 0...200,
+                    step: 10,
+                    valueText: settings.tipUpAssistDelay < 1
+                        ? String(
+                            localized: "Off",
+                            comment: "Feature disabled — tip-up assist slider at minimum value"
+                        )
+                        : String(
+                            localized: "\(Int(settings.tipUpAssistDelay)) ms",
+                            comment: "Delay in milliseconds, e.g. '80 ms'"),
+                    caption:
+                        "Delays the stroke release briefly when the pen is lifted mid-motion and still moving quickly, preventing accidental short strokes."
                 )
                 .help(
-                    "When enabled, the pen click is held open for ~80 ms after the tip lifts if you are moving quickly. This helps prevent unintended stroke breaks during fast drawing.")
+                    "Holds the pen click open for this long after the tip lifts, if you're still moving quickly. This helps prevent unintended stroke breaks during fast drawing. Drag to Off to disable.")
+
+                SettingSliderRow(
+                    "Drag Threshold",
+                    value: dragThresholdBinding,
+                    in: 0...15,
+                    step: 1,
+                    valueText: settings.dragThreshold < 1
+                        ? String(
+                            localized: "Off",
+                            comment: "Feature disabled — drag threshold slider at minimum value"
+                        )
+                        : String(
+                            localized: "\(Int(settings.dragThreshold)) pt",
+                            comment: "Distance in points, e.g. '3 pt'"),
+                    caption:
+                        "Requires the pen to move this far before a tap becomes a drag, absorbing tremor at tip-down."
+                )
+                .help(
+                    "Prevents a light tap from turning into an accidental drag due to hand tremor or pressure jitter right when the tip touches down. Drag to Off to disable.")
             }
         }
     }
@@ -214,11 +243,18 @@ struct PenFeelView: View {
             set: { settings.relativeCursorMovement = $0 })
     }
 
-    private var tipUpAssistBinding: Binding<Bool> {
+    private var tipUpAssistBinding: Binding<Double> {
         settings.recordingBinding(
             "Tip-up Assist",
-            get: { settings.tipUpAssist },
-            set: { settings.tipUpAssist = $0 })
+            get: { settings.tipUpAssistDelay },
+            set: { settings.tipUpAssistDelay = $0 })
+    }
+
+    private var dragThresholdBinding: Binding<Double> {
+        settings.recordingBinding(
+            "Drag Threshold",
+            get: { settings.dragThreshold },
+            set: { settings.dragThreshold = $0 })
     }
 
     // MARK: - Smoothing label

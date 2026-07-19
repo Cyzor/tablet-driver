@@ -119,8 +119,7 @@ extension InputInjector {
             if point.inProximity {
                 activeToolIsEraser = point.eraser
                 lastEraserMode = point.eraser
-                let s = tool.smoothingStrength
-                smoother.smoothingAlpha = s > 0 ? 1.0 - s * 0.85 : 1.0
+                smoother.smoothingStrength = tool.smoothingStrength
                 lastProximity = true
             } else {
                 commitProximityExit(snap: snap)
@@ -172,6 +171,7 @@ extension InputInjector {
                 activeButton = tipAction.mouseButton ?? .left
                 let (clickPt, count) = resolveClick(screenPoint, snapshot: snap)
                 activeClickCount = count
+                tipDownOrigin = clickPt
                 postMouseDown(
                     button: activeButton, at: clickPt,
                     pressure: pressure, clickCount: count,
@@ -183,7 +183,7 @@ extension InputInjector {
                 let pt = point
 
                 if activeAppProfile == .generic
-                    && snap.tipUpAssist
+                    && snap.tipUpAssistDelay > 0
                     && smoother.recentVelocity > Self.tipUpAssistVelocityThreshold {
                     // Defer the mouseUp briefly so fast strokes aren't cut short.
                     // The deferred mouseUp captures `snap` so it has all the values it
@@ -196,7 +196,7 @@ extension InputInjector {
                     // the handler never fires afterwards).
                     let timer = CFRunLoopTimerCreateWithHandler(
                         kCFAllocatorDefault,
-                        CFAbsoluteTimeGetCurrent() + Self.tipUpAssistDelay,
+                        CFAbsoluteTimeGetCurrent() + snap.tipUpAssistDelay / 1000.0,
                         0,  // interval — one-shot
                         0, 0
                     ) { [weak self] _ in
@@ -265,11 +265,27 @@ extension InputInjector {
                         at: screenPoint, pressure: pressure, point: point, pose: pose,
                         snapshot: snap)
                 }
+                // Drag threshold: while the tip is down and no drag has been
+                // emitted yet, hold off posting leftMouseDragged until the pen
+                // has traveled snap.dragThreshold points from where it went
+                // down. Absorbs tremor/pressure jitter that would otherwise
+                // turn a tap into a spurious drag (e.g. canceling a Finder
+                // rename-edit or starting an unwanted text selection).
+                // forceFirstDrag always bypasses this — Pages needs that first
+                // drag event regardless.
+                let withinDragThreshold =
+                    tipDown && !didEmitDragSinceDown && !forceFirstDrag
+                    && snap.dragThreshold > 0
+                    && hypot(screenPoint.x - tipDownOrigin.x, screenPoint.y - tipDownOrigin.y)
+                        < snap.dragThreshold
+
                 if dragging {
-                    postMouseDrag(
-                        button: activeButton, at: screenPoint, pressure: pressure, point: point,
-                        pose: pose, snapshot: snap)
-                    didEmitDragSinceDown = true
+                    if !withinDragThreshold {
+                        postMouseDrag(
+                            button: activeButton, at: screenPoint, pressure: pressure, point: point,
+                            pose: pose, snapshot: snap)
+                        didEmitDragSinceDown = true
+                    }
                 } else if let dragBtn = hoverDragButton {
                     // Barrel button held while hovering — send otherMouseDragged /
                     // rightMouseDragged so apps like SketchUp receive a proper drag stream.
