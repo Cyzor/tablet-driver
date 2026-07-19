@@ -68,6 +68,37 @@ struct PanScrollTracker {
     /// Delta multiplier captured at engage (from `ToolSettings.panScrollSpeed`).
     private var speed = 1.0
 
+    /// Dominant scroll axis, once established (see `axisLockRatio`). Real
+    /// trackpad drivers do the same "directional lock": without it, a slight
+    /// diagonal drift during a vertical scroll bleeds a horizontal component
+    /// into the event stream, which some apps (Firefox's swipe-to-navigate
+    /// gesture recognizer, in particular) can mistake for a two-finger swipe
+    /// gesture instead of a scroll — hijacking or truncating it. Locking to
+    /// one axis and zeroing the other for the rest of the gesture avoids that.
+    ///
+    /// The lock is decided by the *angle* of travel, not raw distance: a
+    /// near-axis gesture (an ordinary scroll) commits almost immediately,
+    /// while a genuinely diagonal drag (a Hand-tool-style free pan in an app
+    /// like Illustrator or Rebelle) never crosses the ratio and stays
+    /// omnidirectional for the whole gesture. This is what lets one behavior
+    /// serve both cases without a user-facing setting.
+    private enum Axis { case vertical, horizontal }
+    private var axisLock: Axis?
+    private var preLockAccumX = 0.0
+    private var preLockAccumY = 0.0
+
+    /// Cumulative unsigned travel (points) considered before giving up on
+    /// axis lock for this gesture. Wide enough that a tight circular pan
+    /// (small-radius freeform drag in a graphics app) reveals its curve
+    /// before a lock commits — too short a window catches only a small arc,
+    /// which looks locally straight and locks prematurely.
+    static let axisLockWindow = 26.0
+
+    /// Dominant-axis-to-other-axis ratio required to commit to a lock
+    /// (~2:1 ≈ within 25° of true vertical/horizontal — matches the informal
+    /// "direction lock" behavior of trackpad drivers).
+    static let axisLockRatio = 2.0
+
     /// Release velocity in points/second — the momentum seed. Read by the
     /// posting layer when it gains a tail; unused in v1.
     private(set) var releaseVelocity: CGVector = .zero
@@ -93,6 +124,9 @@ struct PanScrollTracker {
         velX = 0
         velY = 0
         releaseVelocity = .zero
+        axisLock = nil
+        preLockAccumX = 0
+        preLockAccumY = 0
         return .scroll(dx: 0, dy: 0, phase: .began)
     }
 
@@ -129,8 +163,32 @@ struct PanScrollTracker {
         }
         last = screen
 
-        let dx = (screen.x - prev.x) * sign * speed
-        let dy = (screen.y - prev.y) * sign * speed
+        var dx = (screen.x - prev.x) * sign * speed
+        var dy = (screen.y - prev.y) * sign * speed
+
+        if let axisLock {
+            switch axisLock {
+            case .vertical: dx = 0
+            case .horizontal: dy = 0
+            }
+        } else {
+            preLockAccumX += abs(dx)
+            preLockAccumY += abs(dy)
+            let total = preLockAccumX + preLockAccumY
+            if total >= Self.axisLockWindow {
+                let ratio = Self.axisLockRatio
+                if preLockAccumX >= preLockAccumY * ratio {
+                    axisLock = .horizontal
+                    dy = 0
+                } else if preLockAccumY >= preLockAccumX * ratio {
+                    axisLock = .vertical
+                    dx = 0
+                }
+                // Neither axis dominates enough (a genuinely diagonal drag):
+                // give up on locking for the rest of this gesture and stay
+                // omnidirectional, the way a native Hand tool would.
+            }
+        }
 
         // Velocity EMA (ungated, so a stop decays the estimate toward zero —
         // a flick-then-hold release must not carry stale flick velocity).
