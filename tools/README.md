@@ -96,11 +96,16 @@ used during the PTH-860 touch decoder work.
 Xcode archive export config — referenced by `release-and-publish.sh`.
 
 ### `release.sh`, `release-and-publish.sh`
-App-side release scripts.  Build, sign, notarize, package.  Out of scope for
-TabletKit (the package has no release process yet).
+App-side release scripts for a numbered version.  `release.sh` builds, signs,
+notarizes, and packages; `release-and-publish.sh` wraps it with the tag +
+draft-GitHub-release work.  Out of scope for TabletKit (the package has no
+release process yet).
 
-## Generated files
-
-### `registry_audit.csv`
-Pre-existing snapshot of `audit_registry.py` output.  Regenerate by running
-that script.
+### `build-snapshot.sh`, `snapshot-and-publish.sh`
+Same shape as `release.sh` / `release-and-publish.sh`, but for the rolling,
+unversioned "snapshot" pre-release (`dist/MockTab-snapshot.dmg`, no
+`MARKETING_VERSION` bump, no version tag) — for sharing where `main` stands
+between formal releases. `snapshot-and-publish.sh` also replaces the single
+`snapshot` tag/pre-release as a **draft**; nothing is public until you click
+Publish on GitHub. Mirrors `.github/workflows/snapshot.yml`, which does the
+same thing on manual dispatch — use one path per snapshot.

@@ -3,8 +3,9 @@
 # Run manually (Actions tab → Snapshot build → Run workflow) whenever main is
 # in a state worth sharing between formal releases. Builds, signs, notarizes,
 # and staples the current commit, then replaces the single "snapshot"
-# pre-release on GitHub — there is only ever one snapshot at a time, no
-# history of past snapshots is kept.
+# pre-release on GitHub as a DRAFT — there is only ever one snapshot at a
+# time, no history of past snapshots is kept. Nothing is public until you
+# click Publish on GitHub.
 #
 # This does NOT touch MARKETING_VERSION, does not create a version tag, and
 # is unrelated to the v*-triggered path in release.yml. Use this for
@@ -90,6 +91,7 @@ jobs:
           gh release create snapshot dist/MockTab-snapshot.dmg \
             --title "MockTab snapshot" \
             --prerelease \
+            --draft \
             --notes "Rolling pre-release build of main, replaced on each snapshot run — not a numbered version.
 
           Commit: ${SHA_SHORT}
