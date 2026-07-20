@@ -4,6 +4,7 @@
 
 import SwiftUI
 import AppKit
+import Combine
 import TabletKit
 
 // MARK: - SwiftUI wrapper
@@ -239,14 +240,20 @@ private struct TouchVisualizer: View {
 /// leaves proximity the dot snaps back to center so the disc does not flicker
 /// each time the user rolls the pen off the surface.
 ///
-/// Performance: this wrapper observes `tabletManager` and therefore invalidates
-/// whenever `livePoint` publishes (~16 Hz when the pane is frontmost). The
-/// inner `TiltDisc` is `Equatable` and keyed on a quantized (tiltX, tiltY)
-/// pair, so SwiftUI skips body evaluation and the Canvas redraw whenever tilt
-/// rounds to the same display position — sensor noise and unrelated X/Y
-/// movement are filtered out for free.
+/// Performance: `livePoint` is not `@Published` (see `DeviceContext.livePoint`),
+/// so this wrapper subscribes to `livePointPublisher` directly via `onReceive`
+/// instead of relying on tabletManager's general objectWillChange cascade —
+/// that keeps this ~16 Hz-when-frontmost redraw scoped to just this small
+/// disc instead of also firing on every other view that merely observes
+/// `tabletManager`. The inner `TiltDisc` is `Equatable` and keyed on a
+/// quantized (tiltX, tiltY) pair, so SwiftUI skips body evaluation and the
+/// Canvas redraw whenever tilt rounds to the same display position — sensor
+/// noise and unrelated X/Y movement are filtered out for free.
 struct TiltVisualizerCanvas: View {
     @ObservedObject var tabletManager: TabletManager
+    /// Unused directly — its writes force a body re-evaluation on each
+    /// livePoint publish.
+    @State private var livePointTick = 0
 
     var body: some View {
         // Quantize to 0.01 (sub-pixel on a 100-pt disc) so micro-jitter and
@@ -256,6 +263,10 @@ struct TiltVisualizerCanvas: View {
         let tx: Double = inProximity ? quantize(raw!.tiltX) : 0.0
         let ty: Double = inProximity ? quantize(raw!.tiltY) : 0.0
         return TiltDisc(tiltX: tx, tiltY: ty).equatable()
+            .onReceive(
+                tabletManager.activeContext?.livePointPublisher.eraseToAnyPublisher()
+                    ?? Empty().eraseToAnyPublisher()
+            ) { _ in livePointTick &+= 1 }
     }
 
     private func quantize(_ value: Double) -> Double {

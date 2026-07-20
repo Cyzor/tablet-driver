@@ -90,8 +90,23 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Serial ID (as hex string) of the tool currently in proximity, or nil.
     @Published var activeToolID: String? = nil
 
-    /// Last-seen pen/stylus point at tablet coordinates.
-    @Published var livePoint: TabletPoint? = nil
+    /// Last-seen pen/stylus point at tablet coordinates. Deliberately NOT
+    /// @Published: TabletManager forwards every context.objectWillChange up
+    /// to its own objectWillChange, which every SwiftUI view holding
+    /// @ObservedObject tabletManager observes — including panes (e.g.
+    /// ButtonMappingView) that never read livePoint at all. With this
+    /// published, plain hovering (no button change) re-ran those views' full,
+    /// expensive bodies at ~16 Hz for no reason, which is what caused the
+    /// Buttons pane's 100% CPU/choppy-scroll behavior while a pen hovered.
+    /// Consumers that need live position (InfoView, ScratchpadView's tilt
+    /// disc) subscribe to `livePointPublisher` directly instead of relying
+    /// on the general cascade.
+    var livePoint: TabletPoint? = nil {
+        didSet { livePointPublisher.send(livePoint) }
+    }
+
+    /// Fires on every `livePoint` write, independent of `objectWillChange` — see above.
+    let livePointPublisher = PassthroughSubject<TabletPoint?, Never>()
 
     /// Live button state for the pen/stylus and device.
     @Published var liveButtons: LiveButtonState = .init()

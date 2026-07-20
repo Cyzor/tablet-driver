@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import AppKit
+import Combine
 import ServiceManagement
 import SwiftUI
 import TabletKit
@@ -21,6 +22,10 @@ struct InfoView: View {
     @State private var diagnosticsExpanded = false
     @State private var conflicts: [String] = []
     @State private var showCaptureGuide = false
+    /// Unused directly — its writes force a body re-evaluation when
+    /// livePoint publishes, since that no longer rides tabletManager's
+    /// general objectWillChange cascade (see DeviceContext.livePoint).
+    @State private var livePointTick = 0
 
     var body: some View {
         SettingsPane(
@@ -71,6 +76,10 @@ struct InfoView: View {
             NotificationCenter.default.publisher(
                 for: NSApplication.didBecomeActiveNotification)
         ) { _ in refresh() }
+        .onReceive(
+            deviceContext?.livePointPublisher.eraseToAnyPublisher()
+                ?? Empty().eraseToAnyPublisher()
+        ) { _ in livePointTick &+= 1 }
         .sheet(isPresented: $showCaptureGuide) {
             CaptureGuideView(
                 engine: CaptureEngine.shared,
