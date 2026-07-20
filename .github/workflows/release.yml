@@ -1,17 +1,17 @@
-# MockTab — tag-triggered release.
+# MockTab — manual backup release build.
 #
-# Push an annotated tag like v0.2.3 and this builds, signs, notarizes, and
-# staples the .app and DMG, then creates a DRAFT GitHub Release with the DMG
+# Run manually (Actions tab → Release → Run workflow, entering the existing
+# tag e.g. v0.2.3) to build, sign, notarize, and staple the .app and DMG for
+# an already-tagged version, then create a DRAFT GitHub Release with the DMG
 # attached. Nothing is public until you click Publish on GitHub.
 #
-# This and the local `tools/release-and-publish.sh` are two front doors to the
-# same build/notarize path (tools/release.sh) — use ONE per release, not both:
-#   • CI (this file): bump version, commit, push main, then push a tag. Done.
-#   • Local script: builds and drafts on your Mac, then pushes the tag itself —
-#     which also fires this workflow. CI would then fail trying to create a
-#     release for a tag that already has one. So if you run the local script,
-#     this workflow's redundant run is expected to error on the last step; the
-#     local draft is the real one. Prefer the CI path unless you're offline.
+# `tools/release-and-publish.sh` is the primary release path and does all of
+# this locally. This workflow is a manual-only backup for when that isn't
+# available (e.g. away from the signing Mac) — it does NOT trigger on tag
+# push, specifically so running the local script never also fires this
+# workflow. If you do run both for the same tag, whichever creates the
+# GitHub Release first wins; the second will error trying to create a
+# duplicate.
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
 #   DEVELOPER_ID_CERT_P12       base64 of the "Developer ID Application" cert
@@ -30,9 +30,12 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to build (e.g. v0.2.3)'
+        required: true
+        type: string
 
 permissions:
   contents: write          # create the GitHub Release
@@ -51,18 +54,20 @@ jobs:
         id: precheck
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" &>/dev/null; then
-            echo "Release $GITHUB_REF_NAME already exists (local script ran first). Nothing to do."
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" &>/dev/null; then
+            echo "Release $TAG already exists. Nothing to do."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout (with submodules)
+      - name: Checkout tag (with submodules)
         if: steps.precheck.outputs.skip != 'true'
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
+          ref: ${{ inputs.tag }}
           submodules: recursive
 
       # macOS 27 prep: enable alongside the macos-26 runner above to build
@@ -78,12 +83,14 @@ jobs:
 
       - name: Verify tag matches MARKETING_VERSION
         if: steps.precheck.outputs.skip != 'true'
+        env:
+          TAG: ${{ inputs.tag }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG#v}"
           MV=$(xcodebuild -project MockTab.xcodeproj -scheme MockTab -configuration Release \
               -showBuildSettings 2>/dev/null | awk '/ MARKETING_VERSION = /{print $3; exit}')
           if [[ "$VERSION" != "$MV" ]]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match MARKETING_VERSION $MV — bump the project before tagging" >&2
+            echo "::error::tag $TAG does not match MARKETING_VERSION $MV — checked-out ref may be wrong" >&2
             exit 1
           fi
           echo "Releasing MockTab $VERSION"
@@ -121,15 +128,16 @@ jobs:
         if: steps.precheck.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${TAG#v}"
           DMG="dist/MockTab-$VERSION.dmg"
           NOTES="release-notes/v${VERSION}.md"
           if [[ -f "$NOTES" ]]; then
-            gh release create "$GITHUB_REF_NAME" "$DMG" \
+            gh release create "$TAG" "$DMG" \
               --title "MockTab $VERSION" --notes-file "$NOTES" --draft
           else
-            gh release create "$GITHUB_REF_NAME" "$DMG" \
+            gh release create "$TAG" "$DMG" \
               --title "MockTab $VERSION" --generate-notes --draft
           fi
 
