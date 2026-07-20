@@ -2,179 +2,203 @@
 
 ## Tabletas gráficas
 
-Una tableta gráfica es un dispositivo de entrada con lápiz que registra posición absoluta, presión, inclinación y rotación.
+Una tableta gráfica es un dispositivo de entrada con lápiz que informa la posición absoluta, la presión, la inclinación y la rotación.
 
 ## MockTab
 
-MockTab es un driver nativo de macOS para tabletas Wacom y Xencelabs. Compatible con USB y Bluetooth en Wacom Intuos, Cintiq, Bamboo e Intuos Pro — hardware que Wacom ya no soporta en macOS moderno — además de las tabletas, pantallas interactivas y el mando Quick Keys de Xencelabs.
+MockTab es un controlador para macOS de tabletas gráficas Wacom y Xencelabs. Es compatible con tabletas USB y Bluetooth de las familias Wacom Intuos, Cintiq, Bamboo e Intuos Pro — con especial foco en hardware que el controlador oficial de Wacom ya no admite en las versiones modernas de macOS — además de tabletas con lápiz y pen displays de Xencelabs.
 
 [tabletArea]
 
 ## Área activa
 
-El área activa es la parte de la superficie que se mapea a tu pantalla. Entrada del lápiz fuera de este rectángulo se ignora.
+El área activa es la parte de la superficie de la tableta que se asigna a la pantalla. La entrada del lápiz fuera de este rectángulo no tiene efecto.
 
-**Redimensionar** — Arrastra cualquier control para reposicionar o cambiar el tamaño. **Shift** + arrastre de esquina bloquea proporción. Puedes escribir valores exactos en Width y Height.
+**Redimensionar** – Arrastra cualquier tirador de la vista previa para mover o redimensionar el área activa. Mantén pulsada **Shift** al arrastrar una esquina para fijar la proporción de la pantalla. También puedes introducir valores exactos en los campos Width y Height.
 
-**Lock Aspect Ratio** — Mantiene la proporción tableta-pantalla.
+**Lock Aspect Ratio** – Mantiene proporcional la relación entre la tableta y la pantalla para que el cursor recorra distancias iguales en horizontal y vertical. Desactívalo si quieres estirar o comprimir el mapeo a propósito.
 
-**Reset to Full** — Restaura el área a toda la superficie. Deshacer con ⌘Z.
+**Reset to Full** – Restablece el área activa a toda la superficie de la tableta. Esta acción se puede deshacer con ⌘Z.
 
-## Calibración (Pen Displays)
+## Calibración (pen displays)
 
-**Calibrate** abre una superposición a pantalla completa para tocar dianas con la punta del lápiz. Corrige la brecha de paralaje del cristal.
+El botón **Calibrate** abre una superposición a pantalla completa con cruces para tocar con la punta del lápiz. Este proceso corrige la separación por paralaje entre la punta del lápiz y el cursor en pantalla que introduce el cristal.
 
-Tras calibrar, usa **Manual Fine-Tune** si queda desplazamiento.
+Después de calibrar, **Manual Fine-Tune** permite ajustar cualquier pequeño desplazamiento constante que quede, por ejemplo si la paralaje cambia un poco según el ángulo de visión.
 
 [penFeel]
 
 ## Curva de presión
 
-La curva controla cómo se mapea presión del lápiz a salida. Cóncava (arriba) hace trazos suaves más fuertes; convexa (abajo) requiere más fuerza.
+La curva de presión controla cómo se traduce la presión del lápiz en presión de salida. Una curva cóncava (tirada hacia arriba) hace que los trazos suaves se registren con más fuerza; una curva convexa (tirada hacia abajo) exige más presión para conseguir el mismo efecto.
 
-**Preajustes de Tip Feel** — Linear, Soft, Firm. Elige uno para establecer la curva; ajusta un punto para personalizar.
+**Preajustes de Tip Feel** – Linear, Soft y Firm. Al elegir un preajuste se establece la curva; al mover un punto de la curva, cambia automáticamente a una forma personalizada.
 
-## Suavizado
+## Suavizado de presión
 
-Reduce vibraciones de alta frecuencia. Valores altos = trazos limpios con retraso; bajos = inmediatos. Usa cero para precisión.
+Atenúa el ruido de presión en la parte baja del rango del sensor, que de otro modo aparece como un grosor de línea irregular en trazos lentos y suaves. La presión firme no se altera.
+
+## Estabilización
+
+Reduce el temblor del cursor causado por el pulso de la mano. Los valores más altos suavizan más, pero añaden latencia.
 
 ## Distancia de doble clic
 
-Define cuán cerca deben estar dos toques para ser doble clic. Aumenta si no se registran; disminuye si ocurren accidentales.
+Este ajuste controla lo cerca que deben estar dos toques para contar como doble clic. Auméntalo si los dobles clics no se registran; bájalo si se producen dobles clics accidentales al dibujar con normalidad. Arrástralo hasta Off para desactivar el ajuste de posición.
+
+## Movimiento
+
+**Invert Rotation Direction** – Invierte el sentido de giro del lápiz. Actívalo por aplicación para las apps que interpretan la rotación al revés, como Krita.
+
+**Art Pen: Swap Tilt with Rotation** – Envía la rotación del barril al control Pen Tilt de Photoshop mediante datos de inclinación simulados, a costa de suprimir la inclinación real mientras está activado. Úsalo en Brush Dynamics → Shape Dynamics → Angle → Pen Tilt. Al activarlo aparecen los deslizadores Tilt Offset y Tilt Magnitude para afinar la señal simulada.
+
+**Relative Cursor Movement** – Cambia del modo absoluto (cada punto de la tableta corresponde a un punto fijo de la pantalla, como con un lápiz) al modo relativo (el cursor se mueve según la distancia que desplazas el lápiz, como con un ratón).
+
+## Pan View
+
+Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado un botón de Pan View. Para usarlo, asigna la acción Pan View a cualquier botón del lápiz, tecla express o botón del puck en Button Mapping.
+
+## Comportamiento del clic
+
+**Tip-up Assist** – Mantiene el clic del lápiz activo durante un instante después de levantar la punta, si todavía te estás moviendo rápido, para evitar cortes involuntarios del trazo al dibujar deprisa. Arrástralo hasta Off para desactivarlo.
+
+**Drag Threshold** – Exige que el lápiz recorra una distancia mínima antes de que un toque pase a ser un arrastre, lo que absorbe el temblor al apoyar la punta y evita que un toque ligero se convierta en un arrastre accidental. Arrástralo hasta Off para desactivarlo.
 
 [buttons]
 
 ## Diagrama del lápiz
 
-El diagrama muestra los botones del lápiz. Pulsa uno para verlo resaltado — identifica qué botón corresponde a qué asignación. Al hacer clic en una parte del diagrama — la punta, el borrador o un botón del barrel — se empieza a grabar una nueva asignación para ella.
+Pulsa cualquier botón mientras la ventana está abierta para resaltar su posición; así puedes identificar qué botón físico corresponde a cada ranura de asignación. Al hacer clic en una parte del diagrama — la punta, el borrador o un botón lateral — comienza la grabación de una nueva asignación para esa parte.
 
-**Arrastre en hover** — Botón 1 (barrel inferior) + flotación = mueve cursor sin tocar punta.
+**Hover drag** – Mantén pulsado Button 1 (el botón lateral inferior) mientras el lápiz flota sobre la superficie para mover el cursor sin tocar con la punta y hacer gestos de arrastre en el aire.
 
 ## Tipos de asignación
 
-- **Botones del ratón** — clic izquierdo, derecho, central o doble clic
-- **Atajos de teclado** — haz clic en el campo de atajo y pulsa cualquier combinación de teclas
-- **Modificadores mantenidos** — ⌘ ⌥ ⇧ ⌃ se mantienen mientras el botón esté pulsado
-- **Acciones especiales** — Display Toggle, Eraser, selección de modo del Touch Ring
+- **Botones del ratón** – Clic izquierdo, derecho, central o doble clic  
+- **Atajos de teclado** – Haz clic en el campo del atajo y pulsa cualquier combinación de teclas  
+- **Modificadores mantenidos** – ⌘ ⌥ ⇧ ⌃ se mantienen mientras el botón siga pulsado  
+- **Acciones especiales** – Display Toggle, Eraser, selección de modo del Touch Ring  
 
 ## Touch Ring y dial
 
-Anillos, diales y tiras táctiles admiten múltiples slots de modo. Cada modo aparece como un resumen de una línea; haz clic en una fila — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el sitio: la acción, su velocidad y los atajos de cada dirección. **Ring Cycle** en un botón recorre los modos; **Ring: Slot N** salta directo a un slot.
+Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio: la acción, su velocidad y los atajos de cada dirección. Asigna **Ring Cycle** a un botón para ir pasando de un modo a otro, o **Ring: Slot N** para saltar directamente a una ranura concreta.
 
 ## Iluminación
 
-Algunos dispositivos tienen luces configurables. En hardware con anillo de dial iluminado, los ajustes de cada modo incluyen el color y el brillo mostrados mientras ese modo está activo. Las pantallas interactivas con botones retroiluminados en el marco tienen una fila **Retroiluminación de los botones**. El hardware conserva su último color hasta que lo cambies.
+Algunos dispositivos tienen luces configurables. En el hardware con un anillo iluminado alrededor del dial, la configuración de cada modo incluye el color y el brillo que se muestran mientras ese modo está activo. Los pen displays con botones de marco retroiluminados tienen una fila **Button Backlight**. El hardware conserva el último color hasta que lo cambies.
 
 ## Borrador
 
-Punta de borrador tiene asignación propia (sección lápiz). La mayoría de apps cambian automáticamente al tool de borrado — sin configuración extra a menos que quieras anular.
+La punta del borrador tiene su propia asignación y se configura en la sección del lápiz. Algunas aplicaciones de dibujo cambian automáticamente a la herramienta de borrado cuando reciben eventos de proximidad del borrador.
 
 ## Overrides por app
 
-La barra de overrides en la parte superior te permite asignar botones diferentes para una aplicación específica. Los overrides se activan automáticamente cuando esa app pasa a primer plano. La configuración global se aplica en todos los demás casos.
+La barra de overrides de la parte superior permite asignar botones distintos a una aplicación concreta. Los overrides se activan automáticamente cuando esa aplicación pasa al primer plano. La configuración global se aplica en todos los demás casos.
 
 [touch]
 
-## Toque con el dedo
+## Toque con los dedos
 
-Las tabletas con superficie táctil capacitiva detectan contactos del dedo además de la entrada del lápiz. MockTab mantiene esta función desactivada por defecto — activa **Habilitar toque con el dedo** para usarla.
+Las tabletas con superficie táctil capacitiva informan de los contactos de los dedos junto con la entrada del lápiz. MockTab lo mantiene desactivado de forma predeterminada; activa **Enable finger touch** para usarlo.
 
-**Toca para hacer clic** – Un toque breve sin movimiento significativo emite un clic izquierdo. Mantén esta opción desactivada si apoyas los dedos en la tableta al dibujar; de lo contrario, se producen clics fantasma.
+**Tap to click** – Un toque breve sin movimiento apreciable envía un clic izquierdo. Déjalo desactivado si apoyas los dedos sobre la tableta mientras dibujas; de lo contrario, puede generar clics fantasma.
 
-**Velocidad del cursor** – Escala el movimiento del puntero al arrastrar con un solo dedo. 1,00× asigna el área táctil directamente a la pantalla; valores mayores recorren más distancia con menos movimiento, valores menores permiten control más fino.
+**Cursor speed** – Ajusta la velocidad del puntero al arrastrar con un solo dedo. 1.00× asigna el área táctil directamente a la pantalla; los valores más altos cubren más distancia con menos movimiento y los más bajos permiten un control más fino.
 
 ## Desplazamiento
 
-**Desplazamiento con dos dedos** – Dos dedos moviéndose juntos emiten eventos de desplazamiento suave. Las apps los tratan como desplazamiento de trackpad, incluido el efecto rubber-band en Safari y Vista Previa.
+**Two-finger scroll** – Dos dedos moviéndose a la vez envían eventos de desplazamiento suave. Las aplicaciones lo tratan como desplazamiento de trackpad, incluido el rebote elástico en Safari y Vista Previa.
 
-**Invertir dirección** – Activado: el contenido se desplaza en sentido contrario al movimiento de los dedos, como una rueda de ratón clásica. Desactivado (predeterminado): el contenido sigue a tus dedos.
+**Reverse direction** – On: el contenido se desplaza en sentido contrario al movimiento de los dedos, como una rueda de ratón clásica. Off (valor predeterminado): el contenido sigue a tus dedos.
 
 ## Área táctil
 
-El área táctil funciona de forma independiente al área activa del lápiz. Arrastra los tiradores de la vista previa para recortar la superficie táctil; la entrada de dedo fuera del rectángulo no tiene efecto. La mayoría de los usuarios deja activa toda la superficie para el toque y recorta solo el área del lápiz.
+El área táctil funciona de forma independiente al área activa del lápiz. Arrastra los tiradores de la vista previa para recortar la superficie táctil; la entrada de dedos fuera del rectángulo no tiene efecto. La mayoría de la gente deja toda la superficie habilitada para el tacto y recorta solo el área del lápiz.
 
-**Restablecer a superficie completa** – Restaura el área táctil a toda la región táctil disponible.
+**Reset to full surface** – Restablece el área táctil a toda la superficie compatible con tacto.
 
-## Lo que el toque no puede hacer
+## Lo que el tacto no puede hacer
 
-MockTab no puede emitir Mission Control, Spaces, Launchpad ni otros gestos multitáctiles del sistema. macOS reserva esos canales privados de eventos de trackpad para controladores de primera parte. Usa un trackpad o atajos de teclado para la navegación del sistema.
+MockTab no puede enviar Mission Control, Spaces, Launchpad ni otros gestos multitáctiles de todo el sistema. macOS reserva estas funciones para canales privados de eventos de trackpad usados por los controladores de Apple. Para la navegación del sistema, usa un trackpad o atajos de teclado.
 
 [display]
 
 ## Mapeo de pantalla
 
-Controla a qué pantalla se mapea el área activa.
+El mapeo de pantalla determina qué pantalla trata la tableta como activa.
 
-**All Displays** — tableta abarca todo el escritorio. Úsalo con varios monitores.
+**All Displays** – La tableta abarca todo el escritorio de forma proporcional. Este modo va bien para flujos de trabajo que se mueven entre varios monitores.
 
-**Single Display** — mapea a pantalla específica. Elige de la lista; la vista previa se actualiza.
+**Single Display** – El área activa se asigna a una pantalla concreta. Al seleccionar una pantalla de la lista, la vista previa se actualiza para mostrar el mapeo.
 
-**Display Toggle** — asigna a tecla express o barrel para recorrer pantallas sin abrir preferencias.
+**Display Toggle** – Asigna la acción Display Toggle a una tecla express o a un botón lateral para recorrer las pantallas conectadas sin abrir los ajustes.
 
 [devices]
 
 ## Dispositivos conectados
 
-El panel lista todas las tabletas y herramientas. Cada fila muestra nombre, tipo de conexión (USB/Bluetooth), estado.
+El panel Devices muestra todas las tabletas y herramientas de lápiz que MockTab ha detectado. Cada fila indica el nombre del dispositivo, el tipo de conexión (USB o Bluetooth) y el estado actual.
 
-## Registro de herramientas
+Al seleccionar una fila de dispositivo, en el panel de detalles de la derecha aparecen los ajustes y herramientas específicos de ese modelo.
 
-MockTab registra código de herramienta al detectar lápiz. Código desconocido aparece como "Unknown tool". Asigna nombre y binding manualmente.
+Los dispositivos desconectados permanecen en la lista para que sus perfiles sigan disponibles para inspección o ajuste aunque estén desenchufados. Cuando un dispositivo de la lista vuelve a conectarse, MockTab aplica automáticamente su configuración guardada.
 
 ## Detección de conflictos
 
-Si otro driver se ejecuta, MockTab detecta y advierte. Cierra el driver en conflicto antes de usar MockTab.
+Si otro controlador de tabletas, como el controlador oficial de Wacom, se ejecuta al mismo tiempo, MockTab intenta detectar el conflicto y mostrar una advertencia.
 
 [profiles]
 
 ## Perfiles
 
-Un perfil guarda toda tu configuración — área activa, curva presión, botones, mapeo pantalla. El cambio es instantáneo.
+Un perfil es una instantánea de la configuración de la tableta: área activa, curva de presión, asignaciones de botones y mapeo de pantalla. Al cambiar de perfil, todos esos ajustes se aplican de inmediato.
 
-**Auto-restore** — activa el interruptor para activar automáticamente al conectar.
+**Auto-restore** – Cuando está activado en un perfil, MockTab activa automáticamente ese perfil al conectar la tableta asociada.
 
 ## Crear y renombrar
 
-**Save as New Profile** para guardar. Doble clic en nombre para renombrar.
+Haz clic en **Save as New Profile** para guardar la configuración actual como un perfil nuevo. Haz doble clic en el nombre de un perfil para cambiarlo.
 
-## Overrides por app en perfiles
+## Overrides por app en los perfiles
 
-Los overrides se guardan con el perfil. Al cambiar, cambian juntos.
+Cada perfil guarda sus propios overrides por aplicación. Al cambiar de perfil, también cambian los overrides asociados al perfil activo.
 
-## Importar / Exportar
+## Importar / exportar
 
-Arrastra tarjeta al Finder para exportar JSON. Arrastra JSON sobre la lista para importar. Comparte o usa como backup.
+Arrastra una tarjeta de perfil al Finder para exportarla como archivo JSON. Arrastra un archivo JSON a la lista de perfiles para importarlo. Los archivos exportados sirven como copia de seguridad y también como forma de compartir perfiles entre equipos.
 
 [scratchpad]
 
 ## Scratchpad
 
-Lienzo de prueba sensible a presión. Opacidad y grosor responden a presión; inclinación afecta ángulo (si compatible). Los trazos no se guardan.
+El scratchpad es un lienzo de prueba sensible a la presión. Sirve para comprobar rápidamente que el lápiz registra bien la presión, la inclinación y el movimiento.
 
-**Clear** — elimina todos los trazos. No se puede deshacer.
+Tanto la opacidad como el grosor del trazo responden a la presión de la punta. La inclinación afecta al ángulo del trazo cuando el lápiz admite entrada de inclinación. El panel no conserva los trazos; al cerrarlo o limpiarlo, se descarta su contenido.
+
+**Clear** – Elimina todos los trazos del lienzo.
 
 [info]
 
-## Entrada en directo
+## Entrada en tiempo real
 
-El panel Info muestra valores en tiempo real: X/Y, presión, inclinación, rotación, hover, botones. Diagnóstico de comportamientos inesperados.
+El panel Info muestra en tiempo real los valores del lápiz: posición X/Y, presión, inclinación, rotación, distancia de hover y estado de los botones. Estos valores se actualizan continuamente mientras el lápiz sigue al alcance de la tableta.
 
-**Jitter** muestra delta de posición medio. Valores sostenidos arriba del baseline indican interferencia RF, batería baja o problema hardware.
+Esta vista ayuda a diagnosticar comportamientos inesperados, por ejemplo para confirmar si la presión llega a su valor máximo o si la tableta informa de inclinación.
 
-## Diagnóstico
+## Collect Device Data
 
-**Collect Device Data** ejecuta una sesión de captura guiada que graba los reportes HID en bruto. El resultado es un archivo JSON compacto para adjuntar a solicitudes de soporte.
+**Collect Device Data** ejecuta una sesión guiada de captura que registra los informes HID sin procesar de la tableta. El resultado es un archivo JSON compacto adecuado para adjuntarlo a solicitudes de funciones destinadas a añadir o mejorar la compatibilidad con un dispositivo.
 
 [website]
 
 ## mocktab.org
 
-[mocktab.org](https://mocktab.org) — documentación, notas de versión, hardware compatible.
+El sitio web [mocktab.org](https://mocktab.org) ofrece documentación, notas de versión y la lista completa del hardware compatible.
 
 ## GitHub
 
-Reportes y preguntas a [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver/issues). Adjunta el archivo JSON de **Collect Device Data** a tus solicitudes de soporte.
+Los informes de errores y las preguntas van a [github.com/Cyzor/tablet-driver/issues](https://github.com/Cyzor/tablet-driver/issues).
 
 ## Agradecimientos
 
-Los datos de dispositivos y la investigación de protocolo provienen en parte de [OpenTabletDriver](https://opentabletdriver.net/) y el [Linux Wacom Project](https://linuxwacom.github.io/).
+Los datos de dispositivos y la investigación de protocolos de MockTab se apoyan en el trabajo de dos proyectos de código abierto: [OpenTabletDriver](https://opentabletdriver.net/), cuyas configuraciones cubren modelos de muchas marcas, y [Linux Wacom Project](https://linuxwacom.github.io/), fuente de referencia para las dimensiones de dispositivos Wacom a través de su biblioteca libwacom.

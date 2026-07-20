@@ -6,7 +6,7 @@ A drawing tablet is an input device with a stylus that reports absolute position
 
 ## MockTab
 
-MockTab is a native macOS driver for Wacom and Xencelabs drawing tablets. It targets USB and Bluetooth tablets from the Wacom Intuos, Cintiq, Bamboo, and Intuos Pro families — focusing on hardware that Wacom's own driver no longer supports on modern macOS releases — as well as Xencelabs pen tablets, pen displays, and the Quick Keys remote.
+MockTab is a macOS driver for Wacom and Xencelabs drawing tablets. It targets USB and Bluetooth tablets from the Wacom Intuos, Cintiq, Bamboo, and Intuos Pro families — focusing on hardware that Wacom's own driver no longer supports on modern macOS releases — as well as Xencelabs pen tablets and pen displays.
 
 [tabletArea]
 
@@ -34,13 +34,35 @@ The pressure curve controls how pen pressure maps to output pressure. A concave 
 
 **Tip Feel presets** – Linear, Soft, and Firm. Choosing a preset sets the curve; adjusting a curve point switches to a custom shape automatically.
 
-## Smoothing
+## Pressure Smoothing
 
-Smoothing reduces high-frequency jitter in the input signal.
+Dampens pressure noise near the low end of the sensor's range, which otherwise shows up as uneven line width on slow, light strokes. Firm pressure is left alone.
+
+## Stabilization
+
+Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but may add input lag.
 
 ## Double-Click Distance
 
-This setting controls how close two taps must be to count as a double-click. Increase the value if double-clicks fail to register; decrease it if accidental double-clicks occur during normal drawing.
+This setting controls how close two taps must be to count as a double-click. Increase the value if double-clicks fail to register; decrease it if accidental double-clicks occur during normal drawing. Drag to Off to disable position snapping.
+
+## Movement
+
+**Invert Rotation Direction** – reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).
+
+**Art Pen: Swap Tilt with Rotation** – feeds barrel rotation into Photoshop's Pen Tilt control by sending fake tilt data, at the cost of suppressing real tilt while it's on. Use in Brush Dynamics → Shape Dynamics → Angle → Pen Tilt. When enabled, Tilt Offset and Tilt Magnitude sliders appear to fine-tune the fake tilt signal.
+
+**Relative Cursor Movement** – switches from absolute mode (each point on the tablet maps to a fixed point on screen, like a stylus) to relative mode (the cursor moves by the distance you move the pen, like a mouse).
+
+## Pan View
+
+Sets how fast content pans while a Pan View button is held. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping to use it.
+
+## Click Behavior
+
+**Tip-up Assist** – holds the pen click open briefly after the tip lifts, if you're still moving quickly, to prevent unintended stroke breaks during fast drawing. Drag to Off to disable.
+
+**Drag Threshold** – requires the pen to move a minimum distance before a tap becomes a drag, absorbing tremor at tip-down so light taps don't turn into accidental drags. Drag to Off to disable.
 
 [buttons]
 
