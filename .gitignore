@@ -11,6 +11,9 @@ DerivedData/
 # Release artifacts (DMGs and staging; uploaded to GitHub Releases, not committed)
 dist/
 
+# Generated tool output (regenerate with tools/audit_registry.py)
+tools/registry_audit.csv
+
 # Xcode user-specific settings (editor state, breakpoints, etc.)
 xcuserdata/
 *.xcuserstate

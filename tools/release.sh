@@ -51,10 +51,17 @@ rm -rf "$BUILD_DIR" "$DMG_PATH"
 mkdir -p "$BUILD_DIR"
 
 echo "==> Archiving $SCHEME $VERSION"
-xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
-    -archivePath "$ARCHIVE" \
-    -destination "generic/platform=macOS" \
-    archive | xcbeautify 2>/dev/null || true
+if command -v xcbeautify >/dev/null 2>&1; then
+    xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
+        -archivePath "$ARCHIVE" \
+        -destination "generic/platform=macOS" \
+        archive | xcbeautify
+else
+    xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
+        -archivePath "$ARCHIVE" \
+        -destination "generic/platform=macOS" \
+        archive
+fi
 
 echo "==> Exporting signed .app"
 xcodebuild -exportArchive \
