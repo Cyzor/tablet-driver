@@ -1,0 +1,100 @@
+# MockTab — on-demand rolling snapshot build.
+#
+# Run manually (Actions tab → Snapshot build → Run workflow) whenever main is
+# in a state worth sharing between formal releases. Builds, signs, notarizes,
+# and staples the current commit, then replaces the single "snapshot"
+# pre-release on GitHub — there is only ever one snapshot at a time, no
+# history of past snapshots is kept.
+#
+# This does NOT touch MARKETING_VERSION, does not create a version tag, and
+# is unrelated to the v*-triggered path in release.yml. Use this for
+# "here's roughly where main stands" between real releases, not as a
+# substitute for tagging an actual version.
+#
+# Required repository secrets: same four as release.yml (DEVELOPER_ID_CERT_P12,
+# DEVELOPER_ID_CERT_PASSWORD, NOTARY_APPLE_ID, NOTARY_PASSWORD).
+
+name: Snapshot build
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write   # move the "snapshot" tag, create/update the pre-release
+
+concurrency:
+  group: snapshot-build
+  cancel-in-progress: true
+
+jobs:
+  snapshot:
+    runs-on: macos-15
+    env:
+      NOTARY_TEAM_ID: 3R62GZR6Q2
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          submodules: recursive
+
+      - name: Show toolchain
+        run: xcodebuild -version
+
+      - name: Import Developer ID certificate
+        env:
+          CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASS=$(openssl rand -base64 24)
+          echo "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+
+          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/cert.p12" -P "$CERT_PASSWORD" \
+              -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+              -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN_PATH" \
+              $(security list-keychains -d user | sed s/\"//g)
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Run test suite
+        run: |
+          cd TabletKit
+          swift test
+
+      - name: Build, sign, notarize, package
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: tools/build-snapshot.sh
+
+      - name: Move the snapshot tag to this commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f snapshot HEAD
+          git push origin snapshot --force
+
+      - name: Replace the snapshot pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          BUILT_AT=$(date -u +'%Y-%m-%d %H:%M UTC')
+          if gh release view snapshot &>/dev/null; then
+            gh release delete snapshot --yes
+          fi
+          gh release create snapshot dist/MockTab-snapshot.dmg \
+            --title "MockTab snapshot" \
+            --prerelease \
+            --notes "Rolling pre-release build of main, replaced on each snapshot run — not a numbered version.
+
+          Commit: ${SHA_SHORT}
+          Built: ${BUILT_AT}"
+
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
