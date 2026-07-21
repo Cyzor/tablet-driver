@@ -770,7 +770,7 @@
       }
     },
     "%lld pt" : {
-      "comment" : "Distance in points, e.g. '10 pt'\nDistance in points, e.g. '3 pt'",
+      "comment" : "Distance in points, e.g. '3 pt'",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6708,7 +6708,7 @@
       }
     },
     "High" : {
-      "comment" : "Pressure smoothing strength label\nStabilization strength label",
+      "comment" : "Double-click distance label\nPressure smoothing strength label\nStabilization strength label",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8039,7 +8039,7 @@
       }
     },
     "Low" : {
-      "comment" : "Pressure smoothing strength label\nStabilization strength label",
+      "comment" : "Double-click distance label\nPressure smoothing strength label\nStabilization strength label",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8232,7 +8232,7 @@
       }
     },
     "Max" : {
-      "comment" : "Pressure smoothing strength label — maximum value\nStabilization strength label — maximum value",
+      "comment" : "Double-click distance label — maximum value\nPressure smoothing strength label — maximum value\nStabilization strength label — maximum value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8261,7 +8261,7 @@
       }
     },
     "Medium" : {
-      "comment" : "Pressure smoothing strength label\nStabilization strength label\nText Size submenu: second-smallest",
+      "comment" : "Double-click distance label\nPressure smoothing strength label\nStabilization strength label\nText Size submenu: second-smallest",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9525,7 +9525,7 @@
       }
     },
     "Off" : {
-      "comment" : "Connection status when device is disconnected\nDefault ring slot label\nFeature disabled — double-click distance slider at minimum value\nFeature disabled — drag threshold slider at minimum value\nFeature disabled — tip-up assist slider at minimum value\nPressure smoothing strength — disabled\nRing speed at minimum — rotation disabled\nRing/strip action: disabled\nStabilization strength — disabled\nTouch ring mode: disabled",
+      "comment" : "Connection status when device is disconnected\nDefault ring slot label\nDouble-click distance — disabled\nFeature disabled — drag threshold slider at minimum value\nFeature disabled — tip-up assist slider at minimum value\nPressure smoothing strength — disabled\nRing speed at minimum — rotation disabled\nRing/strip action: disabled\nStabilization strength — disabled\nTouch ring mode: disabled",
       "localizations" : {
         "de" : {
           "stringUnit" : {

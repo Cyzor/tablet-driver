@@ -53,17 +53,8 @@ struct PenFeelView: View {
                 SettingSliderRow(
                     "Distance",
                     value: doubleClickBinding,
-                    in: 0...30,
-                    step: 1,
-                    valueText: settings.doubleClickDistance < 1
-                        ? String(
-                            localized: "Off",
-                            comment:
-                                "Feature disabled — double-click distance slider at minimum value"
-                        )
-                        : String(
-                            localized: "\(Int(settings.doubleClickDistance)) pt",
-                            comment: "Distance in points, e.g. '10 pt'"),
+                    in: 0...20,
+                    valueText: doubleClickLabel,
                     caption:
                         "Snaps a second tap to the first click position within this radius, making double-clicks reliable."
                 )
@@ -138,6 +129,7 @@ struct PenFeelView: View {
                     "Speed",
                     value: panScrollSpeedBinding,
                     in: 0.25...3.0,
+                    step: 0.25,
                     valueText: String(format: "%.2f×", tool.panScrollSpeed),
                     caption:
                         "How fast content pans while a Pan View button is held. Assign Pan View to a pen or tablet button to use it."
@@ -352,6 +344,18 @@ struct PenFeelView: View {
         case 0.65..<0.85: return String(localized: "High", comment: "Stabilization strength label")
         default:
             return String(localized: "Max", comment: "Stabilization strength label — maximum value")
+        }
+    }
+
+    private var doubleClickLabel: String {
+        switch settings.doubleClickDistance {
+        case 0..<3: return String(localized: "Off", comment: "Double-click distance — disabled")
+        case 3..<8: return String(localized: "Low", comment: "Double-click distance label")
+        case 8..<13: return String(localized: "Medium", comment: "Double-click distance label")
+        case 13..<17: return String(localized: "High", comment: "Double-click distance label")
+        default:
+            return String(
+                localized: "Max", comment: "Double-click distance label — maximum value")
         }
     }
 
