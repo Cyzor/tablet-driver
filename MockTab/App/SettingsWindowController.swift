@@ -376,8 +376,10 @@ final class SettingsWindowController: NSWindowController {
                     || label == Self.tabLabels[Tab.buttons.rawValue]
                     || label == Self.tabLabels[Tab.scratchpad.rawValue])
             let isKeyWindow = window?.isKeyWindow ?? false
+            let visible = isInfoTab && isKeyWindow
             Task { @MainActor in
-                TabletManager.shared.infoViewVisible = isInfoTab && isKeyWindow
+                TabletManager.shared.infoViewVisible = visible
+                if visible { TabletManager.shared.resyncLiveStateForVisibility() }
             }
         }
 
@@ -509,11 +511,13 @@ final class SettingsWindowController: NSWindowController {
         // Sync the Info-tab visibility flag for whichever tab is already selected.
         // Only set true if the window is key (in focus) and tab is Info or Buttons.
         let label = tabVC.tabViewItems[safe: tabVC.selectedTabViewItemIndex]?.label
-        TabletManager.shared.infoViewVisible =
+        let visible =
             (label == Self.tabLabels[Tab.info.rawValue]
                 || label == Self.tabLabels[Tab.buttons.rawValue]
                 || label == Self.tabLabels[Tab.scratchpad.rawValue])
             && window?.isKeyWindow == true
+        TabletManager.shared.infoViewVisible = visible
+        if visible { TabletManager.shared.resyncLiveStateForVisibility() }
     }
 
     func showTab(at index: Int) {

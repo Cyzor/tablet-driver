@@ -28,6 +28,10 @@ struct InfoView: View {
     @State private var livePointTick = 0
 
     var body: some View {
+        // Establishes livePointTick as a read dependency of this body — see
+        // its declaration above. Without a read, bumping it doesn't reliably
+        // trigger a re-render.
+        let _ = livePointTick
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared,
             instanceKey: instanceKey

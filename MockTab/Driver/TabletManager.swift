@@ -184,6 +184,23 @@ final class TabletManager: ObservableObject {
     /// background or a different tab is active.
     var infoViewVisible: Bool = false
 
+    /// Call when `infoViewVisible` turns true (Info/Buttons tab becomes
+    /// visible and frontmost again) to reconcile any proximity-exit that
+    /// happened while hidden — that clearing is deliberately skipped in the
+    /// background (see the `onTablet` closure) to avoid a flash-to-blank
+    /// redraw, which leaves `livePoint`/`liveButtons` stale until either this
+    /// runs or the next real report arrives. No-op if the pen is genuinely
+    /// still in proximity.
+    func resyncLiveStateForVisibility() {
+        guard let context = activeContext, !context.injector.lastProximity,
+            context.livePoint != nil
+        else { return }
+        context.activeToolID = nil
+        context.activeToolCode = 0
+        context.liveButtons = LiveButtonState()
+        context.livePoint = nil
+    }
+
     /// Optional raw-data callback for calibration. When set, every active-context
     /// TabletPoint is forwarded here *in addition to* the normal injection path.
     /// Always assign through `setCalibrationPointHandler(_:)` so the HID-thread
@@ -710,14 +727,19 @@ final class TabletManager: ObservableObject {
             self.calibrationPointHandler?(point)
 
             // ── UI state — gated + throttled ─────────────────────────────────
-            // Proximity exit always clears state immediately, regardless of app foreground/tab visibility.
             if !point.inProximity {
                 self.uiUpdateCounter = 0
+                self.penExitedProximity()
+                // Clearing livePoint/liveButtons/activeToolID while hidden made
+                // Info flash on every proximity change instead of staying put —
+                // worse than a stale frame. Leave the fields as they were; they
+                // get reconciled by resyncLiveStateForVisibility() the moment
+                // Info becomes visible again, or by the next real report.
+                guard appIsFrontmost && infoViewVisible else { return }
                 context.activeToolID = nil
                 context.activeToolCode = 0
                 context.liveButtons = LiveButtonState()
                 context.livePoint = nil
-                self.penExitedProximity()
                 return
             }
 
