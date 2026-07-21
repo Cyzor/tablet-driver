@@ -21,6 +21,40 @@ struct ButtonBinding: Codable, Equatable {
     var modifierFlags: UInt64 = 0  // CGEventFlags raw value
     var keyLabel: String = ""  // display string for the key (e.g. "Z", "↩", "Space")
 
+    /// Fields a future app version added that this build doesn't know about.
+    /// Preserved verbatim on re-encode — see TabletSettings.Profile.unknownFields.
+    /// Note: this only helps with *added fields*; an unrecognized `kind` raw
+    /// value still fails to decode, since Kind has no "unknown case" slot.
+    private var unknownFields: [String: JSONValue] = [:]
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case kind, keyCode, modifierFlags, keyLabel
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try c.decode(Kind.self, forKey: .kind)
+        keyCode = try c.decode(UInt16.self, forKey: .keyCode)
+        modifierFlags = try c.decode(UInt64.self, forKey: .modifierFlags)
+        keyLabel = try c.decode(String.self, forKey: .keyLabel)
+        unknownFields = try UnknownFieldsCodec.captureUnknown(
+            from: decoder, knownKeys: Set(CodingKeys.allCases.map(\.rawValue)))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(keyCode, forKey: .keyCode)
+        try c.encode(modifierFlags, forKey: .modifierFlags)
+        try c.encode(keyLabel, forKey: .keyLabel)
+        try UnknownFieldsCodec.encodeUnknown(unknownFields, to: encoder)
+    }
+
+    static func == (lhs: ButtonBinding, rhs: ButtonBinding) -> Bool {
+        lhs.kind == rhs.kind && lhs.keyCode == rhs.keyCode
+            && lhs.modifierFlags == rhs.modifierFlags && lhs.keyLabel == rhs.keyLabel
+    }
+
     // MARK: Presets
 
     static let none = ButtonBinding()

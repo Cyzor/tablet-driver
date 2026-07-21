@@ -202,6 +202,12 @@ final class ToolSettings: ObservableObject {
     private let ud = UserDefaults.standard
     var isLoading = false
 
+    /// Set when the last load of `pressureCurve` found data but couldn't parse
+    /// it — e.g. this is an older build than whatever wrote it. Blocks
+    /// `savePressureCurve()` from clobbering that data. See TabletSettings'
+    /// equivalent `*LoadFailed` flags.
+    var pressureCurveLoadFailed = false
+
     /// Suppresses undo registration when replaying undo/redo actions.
     var isUndoing = false
 
@@ -308,6 +314,10 @@ final class ToolSettings: ObservableObject {
 
     private func savePressureCurve() {
         guard !isLoading else { return }
+        guard !pressureCurveLoadFailed else {
+            settingsLogger.error("Refusing to save pressureCurve: last load couldn't parse existing data")
+            return
+        }
         guard let data = try? JSONEncoder().encode(pressureCurve) else { return }
         if let op = overridePrefix {
             ud.set(data, forKey: op + "pressureCurve")
@@ -323,9 +333,18 @@ final class ToolSettings: ObservableObject {
             ?? ud.data(forKey: prefix + "pressureCurve")
             ?? fallbackPrefix.flatMap { ud.data(forKey: $0 + "pressureCurve") }
             ?? ud.data(forKey: "pressureCurve")  // legacy unprefixed key
-        guard let data,
-            let curve = try? JSONDecoder().decode(BezierCurve.self, from: data)
-        else { return }
+        guard let data else {
+            pressureCurveLoadFailed = false
+            return
+        }
+        guard let curve = try? JSONDecoder().decode(BezierCurve.self, from: data) else {
+            // Data exists but this build can't parse it — likely a newer
+            // version's format. Don't let a later save clobber it.
+            pressureCurveLoadFailed = true
+            settingsLogger.error("Tool pressureCurve data exists but failed to decode; blocking overwrite")
+            return
+        }
+        pressureCurveLoadFailed = false
         pressureCurve = curve
     }
 
