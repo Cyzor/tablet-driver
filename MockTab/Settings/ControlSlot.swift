@@ -47,6 +47,59 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     /// the picked hue round-trips intact.
     var ledColor: LEDColor?
 
+    /// Fields a future app version added that this build doesn't know about.
+    /// Preserved verbatim on re-encode — see TabletSettings.Profile.unknownFields.
+    private var unknownFields: [String: JSONValue] = [:]
+
+    init(
+        id: UUID = UUID(), label: String = "", action: Action = .scroll,
+        cwBinding: ButtonBinding = .none, ccwBinding: ButtonBinding = .none,
+        speed: Double = 1.0, ledColor: LEDColor? = nil
+    ) {
+        self.id = id
+        self.label = label
+        self.action = action
+        self.cwBinding = cwBinding
+        self.ccwBinding = ccwBinding
+        self.speed = speed
+        self.ledColor = ledColor
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case id, label, action, cwBinding, ccwBinding, speed, ledColor
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        label = try c.decode(String.self, forKey: .label)
+        action = try c.decode(Action.self, forKey: .action)
+        cwBinding = try c.decode(ButtonBinding.self, forKey: .cwBinding)
+        ccwBinding = try c.decode(ButtonBinding.self, forKey: .ccwBinding)
+        speed = try c.decode(Double.self, forKey: .speed)
+        ledColor = try c.decodeIfPresent(LEDColor.self, forKey: .ledColor)
+        unknownFields = try UnknownFieldsCodec.captureUnknown(
+            from: decoder, knownKeys: Set(CodingKeys.allCases.map(\.rawValue)))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(label, forKey: .label)
+        try c.encode(action, forKey: .action)
+        try c.encode(cwBinding, forKey: .cwBinding)
+        try c.encode(ccwBinding, forKey: .ccwBinding)
+        try c.encode(speed, forKey: .speed)
+        try c.encodeIfPresent(ledColor, forKey: .ledColor)
+        try UnknownFieldsCodec.encodeUnknown(unknownFields, to: encoder)
+    }
+
+    static func == (lhs: ControlSlot, rhs: ControlSlot) -> Bool {
+        lhs.id == rhs.id && lhs.label == rhs.label && lhs.action == rhs.action
+            && lhs.cwBinding == rhs.cwBinding && lhs.ccwBinding == rhs.ccwBinding
+            && lhs.speed == rhs.speed && lhs.ledColor == rhs.ledColor
+    }
+
     struct LEDColor: Codable, Equatable {
         var r: UInt8
         var g: UInt8

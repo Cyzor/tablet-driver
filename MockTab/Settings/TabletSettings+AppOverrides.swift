@@ -245,17 +245,29 @@ extension TabletSettings {
     }
 
     func saveAppOverrides() {
+        guard !appOverridesLoadFailed else {
+            settingsLogger.error("Refusing to save app overrides: last load couldn't parse existing data")
+            return
+        }
         guard let data = try? JSONEncoder().encode(appOverrides) else { return }
         ud.set(data, forKey: appOverridesKey)
     }
 
     func loadAppOverrides() {
-        guard let data = ud.data(forKey: appOverridesKey),
-            let list = try? JSONDecoder().decode([AppOverride].self, from: data)
-        else {
+        guard let data = ud.data(forKey: appOverridesKey) else {
+            appOverridesLoadFailed = false
             appOverrides = []
             return
         }
+        guard let list = try? JSONDecoder().decode([AppOverride].self, from: data) else {
+            // Data exists but this build can't parse it — likely a newer
+            // version's format. Don't let a later save clobber it.
+            appOverridesLoadFailed = true
+            settingsLogger.error("App override data exists but failed to decode; blocking overwrite")
+            appOverrides = []
+            return
+        }
+        appOverridesLoadFailed = false
         appOverrides = list
     }
 
@@ -264,17 +276,29 @@ extension TabletSettings {
     private var appBindingsKey: String { devicePrefix + "_appBindings" }
 
     func saveAppBindings() {
+        guard !appBindingsLoadFailed else {
+            settingsLogger.error("Refusing to save app bindings: last load couldn't parse existing data")
+            return
+        }
         guard let data = try? JSONEncoder().encode(appBindings) else { return }
         ud.set(data, forKey: appBindingsKey)
     }
 
     func loadAppBindings() {
-        guard let data = ud.data(forKey: appBindingsKey),
-            let list = try? JSONDecoder().decode([AppProfileBinding].self, from: data)
-        else {
+        guard let data = ud.data(forKey: appBindingsKey) else {
+            appBindingsLoadFailed = false
             appBindings = []
             return
         }
+        guard let list = try? JSONDecoder().decode([AppProfileBinding].self, from: data) else {
+            // Data exists but this build can't parse it — likely a newer
+            // version's format. Don't let a later save clobber it.
+            appBindingsLoadFailed = true
+            settingsLogger.error("App binding data exists but failed to decode; blocking overwrite")
+            appBindings = []
+            return
+        }
+        appBindingsLoadFailed = false
         appBindings = list
     }
 }

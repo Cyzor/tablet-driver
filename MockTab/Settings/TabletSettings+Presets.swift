@@ -139,13 +139,22 @@ extension TabletSettings {
     private var activeProfileIDKey: String { devicePrefix + "_activeProfile" }
 
     func loadProfileList() {
-        guard let data = ud.data(forKey: profileListKey),
-            let list = try? JSONDecoder().decode([Profile].self, from: data)
-        else {
+        guard let data = ud.data(forKey: profileListKey) else {
+            profileListLoadFailed = false
             profiles = []
             activeProfile = nil
             return
         }
+        guard let list = try? JSONDecoder().decode([Profile].self, from: data) else {
+            // Data exists but this build can't parse it — likely a newer
+            // version's format. Don't let a later save clobber it.
+            profileListLoadFailed = true
+            settingsLogger.error("Profile list data exists but failed to decode; blocking overwrite")
+            profiles = []
+            activeProfile = nil
+            return
+        }
+        profileListLoadFailed = false
         profiles = list
         if let uuidStr = ud.string(forKey: activeProfileIDKey),
             let uuid = UUID(uuidString: uuidStr),
@@ -158,6 +167,10 @@ extension TabletSettings {
     }
 
     func saveProfileList() {
+        guard !profileListLoadFailed else {
+            settingsLogger.error("Refusing to save profile list: last load couldn't parse existing data")
+            return
+        }
         guard let data = try? JSONEncoder().encode(profiles) else { return }
         ud.set(data, forKey: profileListKey)
     }

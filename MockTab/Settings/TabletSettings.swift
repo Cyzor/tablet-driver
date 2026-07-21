@@ -9,7 +9,7 @@ import OSLog
 import SwiftUI
 import TabletKit
 
-private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "settings")
+let settingsLogger = Logger(subsystem: "com.cyzor.mocktab", category: "settings")
 
 /// All user-configurable settings, persisted via UserDefaults with a per-device
 /// key prefix so each tablet remembers its own configuration independently.
@@ -59,6 +59,19 @@ final class TabletSettings: ObservableObject {
 
     /// Suppresses UserDefaults writes during `loadForDevice()` / `activate()`.
     var isLoading = false
+
+    /// Set when the last load of a composite JSON blob (profiles, app
+    /// overrides, pressure curve, touch ring slots) found data but couldn't
+    /// parse it — e.g. this is an older build than whatever wrote it. The
+    /// corresponding save function then refuses to overwrite that key, so an
+    /// old build can't clobber settings format it doesn't understand.
+    /// Cleared as soon as that blob is next saved successfully.
+    var profileListLoadFailed = false
+    var appOverridesLoadFailed = false
+    var appBindingsLoadFailed = false
+    var pressureCurveLoadFailed = false
+    var touchRingSlotsLoadFailed = false
+    var calibrationLoadFailed = false
 
     /// Suppresses undo registration when replaying undo/redo actions.
     /// Does NOT suppress `persist()` itself — undo must save restored state to UserDefaults.
@@ -161,10 +174,26 @@ final class TabletSettings: ObservableObject {
     var calibrationEntries: [CalibrationEntry] {
         get {
             guard !calibrationJSON.isEmpty,
-                  let data = calibrationJSON.data(using: .utf8) else { return [] }
-            return (try? JSONDecoder().decode([CalibrationEntry].self, from: data)) ?? []
+                  let data = calibrationJSON.data(using: .utf8) else {
+                calibrationLoadFailed = false
+                return []
+            }
+            guard let entries = try? JSONDecoder().decode([CalibrationEntry].self, from: data)
+            else {
+                // Data exists but this build can't parse it — likely a newer
+                // version's format. Don't let a later save clobber it.
+                calibrationLoadFailed = true
+                settingsLogger.error("calibrationJSON exists but failed to decode; blocking overwrite")
+                return []
+            }
+            calibrationLoadFailed = false
+            return entries
         }
         set {
+            guard !calibrationLoadFailed else {
+                settingsLogger.error("Refusing to save calibration entries: last load couldn't parse existing data")
+                return
+            }
             if newValue.isEmpty {
                 calibrationJSON = ""
             } else if let data = try? JSONEncoder().encode(newValue),
@@ -522,6 +551,42 @@ final class TabletSettings: ObservableObject {
         var id: UUID = UUID()
         var name: String
         var overriddenKeys: Set<String> = []
+
+        /// Fields a future app version added that this build doesn't know
+        /// about. Preserved verbatim on re-encode so editing a profile on an
+        /// old build doesn't erase settings a newer build already wrote.
+        private var unknownFields: [String: JSONValue] = [:]
+
+        init(id: UUID = UUID(), name: String, overriddenKeys: Set<String> = []) {
+            self.id = id
+            self.name = name
+            self.overriddenKeys = overriddenKeys
+        }
+
+        private enum CodingKeys: String, CodingKey, CaseIterable {
+            case id, name, overriddenKeys
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decode(UUID.self, forKey: .id)
+            name = try c.decode(String.self, forKey: .name)
+            overriddenKeys = try c.decode(Set<String>.self, forKey: .overriddenKeys)
+            unknownFields = try UnknownFieldsCodec.captureUnknown(
+                from: decoder, knownKeys: Set(CodingKeys.allCases.map(\.rawValue)))
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(id, forKey: .id)
+            try c.encode(name, forKey: .name)
+            try c.encode(overriddenKeys, forKey: .overriddenKeys)
+            try UnknownFieldsCodec.encodeUnknown(unknownFields, to: encoder)
+        }
+
+        static func == (lhs: Profile, rhs: Profile) -> Bool {
+            lhs.id == rhs.id && lhs.name == rhs.name && lhs.overriddenKeys == rhs.overriddenKeys
+        }
     }
 
     /// A mapping from one app (by bundle ID) to a preset.
@@ -541,6 +606,41 @@ final class TabletSettings: ObservableObject {
         var appName: String
         var overriddenKeys: Set<String> = []
         var id: String { bundleID }
+
+        /// See Profile.unknownFields — same forward-compatibility purpose.
+        private var unknownFields: [String: JSONValue] = [:]
+
+        init(bundleID: String, appName: String, overriddenKeys: Set<String> = []) {
+            self.bundleID = bundleID
+            self.appName = appName
+            self.overriddenKeys = overriddenKeys
+        }
+
+        private enum CodingKeys: String, CodingKey, CaseIterable {
+            case bundleID, appName, overriddenKeys
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            bundleID = try c.decode(String.self, forKey: .bundleID)
+            appName = try c.decode(String.self, forKey: .appName)
+            overriddenKeys = try c.decode(Set<String>.self, forKey: .overriddenKeys)
+            unknownFields = try UnknownFieldsCodec.captureUnknown(
+                from: decoder, knownKeys: Set(CodingKeys.allCases.map(\.rawValue)))
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(bundleID, forKey: .bundleID)
+            try c.encode(appName, forKey: .appName)
+            try c.encode(overriddenKeys, forKey: .overriddenKeys)
+            try UnknownFieldsCodec.encodeUnknown(unknownFields, to: encoder)
+        }
+
+        static func == (lhs: AppOverride, rhs: AppOverride) -> Bool {
+            lhs.bundleID == rhs.bundleID && lhs.appName == rhs.appName
+                && lhs.overriddenKeys == rhs.overriddenKeys
+        }
     }
 
     /// All presets saved for the current device.

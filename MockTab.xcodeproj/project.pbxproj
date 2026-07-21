@@ -27,6 +27,7 @@
 		AA0000DM /* DisplayMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000DM /* DisplayMapper.swift */; };
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
 		AA000010 /* BezierCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* BezierCurve.swift */; };
+		AA002099 /* UnknownFieldsCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB002099 /* UnknownFieldsCodable.swift */; };
 		AA000012 /* TabletAreaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000012 /* TabletAreaView.swift */; };
 		AA000013 /* PenFeelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* PenFeelView.swift */; };
 		AA000014 /* ButtonMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ButtonMappingView.swift */; };
@@ -128,6 +129,7 @@
 		AB0000DM /* DisplayMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMapper.swift; sourceTree = "<group>"; };
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
 		AB000010 /* BezierCurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BezierCurve.swift; sourceTree = "<group>"; };
+		AB002099 /* UnknownFieldsCodable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnknownFieldsCodable.swift; sourceTree = "<group>"; };
 		AB000012 /* TabletAreaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletAreaView.swift; sourceTree = "<group>"; };
 		AB000013 /* PenFeelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenFeelView.swift; sourceTree = "<group>"; };
 		AB000014 /* ButtonMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingView.swift; sourceTree = "<group>"; };
@@ -295,6 +297,7 @@
 				AB000009 /* TabletSettings.swift */,
 				AB000044 /* ToolSettings.swift */,
 				AB000010 /* BezierCurve.swift */,
+				AB002099 /* UnknownFieldsCodable.swift */,
 				AB000100 /* Profile.swift */,
 				AB000206 /* TabletSettings+Persistence.swift */,
 				AB000205 /* TabletSettings+AppOverrides.swift */,
@@ -528,6 +531,7 @@
 				AA000009 /* TabletSettings.swift in Sources */,
 				AA000044 /* ToolSettings.swift in Sources */,
 				AA000010 /* BezierCurve.swift in Sources */,
+				AA002099 /* UnknownFieldsCodable.swift in Sources */,
 				AA000100 /* Profile.swift in Sources */,
 				AA000206 /* TabletSettings+Persistence.swift in Sources */,
 				AA000207 /* LEDColorControl.swift in Sources */,

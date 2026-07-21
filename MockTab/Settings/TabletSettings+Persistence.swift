@@ -186,6 +186,10 @@ extension TabletSettings {
 
     func savePressureCurve() {
         guard !isLoading else { return }
+        guard !pressureCurveLoadFailed else {
+            settingsLogger.error("Refusing to save pressureCurve: last load couldn't parse existing data")
+            return
+        }
         guard let data = try? JSONEncoder().encode(pressureCurve) else { return }
         if var override = activeAppOverride {
             ud.set(data, forKey: appOverrideKeyPrefix(override) + "pressureCurve")
@@ -227,9 +231,18 @@ extension TabletSettings {
                 ud.data(forKey: devicePrefix + "pressureCurve")
                 ?? ud.data(forKey: "pressureCurve")
         }
-        guard let data,
-            let curve = try? JSONDecoder().decode(BezierCurve.self, from: data)
-        else { return }
+        guard let data else {
+            pressureCurveLoadFailed = false
+            return
+        }
+        guard let curve = try? JSONDecoder().decode(BezierCurve.self, from: data) else {
+            // Data exists but this build can't parse it — likely a newer
+            // version's format. Don't let a later save clobber it.
+            pressureCurveLoadFailed = true
+            settingsLogger.error("pressureCurve data exists but failed to decode; blocking overwrite")
+            return
+        }
+        pressureCurveLoadFailed = false
         pressureCurve = curve
     }
 
@@ -238,6 +251,10 @@ extension TabletSettings {
     /// Saves touchRingSlots using the same override/preset/device prefix logic as other fields.
     func saveTouchRingSlots() {
         guard !isLoading else { return }
+        guard !touchRingSlotsLoadFailed else {
+            settingsLogger.error("Refusing to save touchRingSlots: last load couldn't parse existing data")
+            return
+        }
         guard let data = try? JSONEncoder().encode(touchRingSlots) else { return }
         if var override = activeAppOverride {
             ud.set(data, forKey: appOverrideKeyPrefix(override) + "touchRingSlotsJSON")
@@ -274,10 +291,20 @@ extension TabletSettings {
             data = ud.data(forKey: devicePrefix + "touchRingSlotsJSON")
         }
 
-        if let data, let slots = try? JSONDecoder().decode([ControlSlot].self, from: data) {
+        if let data {
+            guard let slots = try? JSONDecoder().decode([ControlSlot].self, from: data) else {
+                // Data exists but this build can't parse it — likely a newer
+                // version's format. Don't let a later save clobber it.
+                touchRingSlotsLoadFailed = true
+                settingsLogger.error("touchRingSlotsJSON data exists but failed to decode; blocking overwrite")
+                touchRingSlots = ControlSlot.defaults
+                return
+            }
+            touchRingSlotsLoadFailed = false
             touchRingSlots = slots
             return
         }
+        touchRingSlotsLoadFailed = false
 
         // Migration: synthesize slots from legacy touchRingMode.
         // touchStrip1Mode and touchStrip2Mode are ignored — strips share the ring's mode.

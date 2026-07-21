@@ -13,6 +13,37 @@ struct BezierCurve: Codable, Equatable {
     /// Intermediate control point 2 (x and y in 0..1).
     var p2: CGPoint
 
+    /// See TabletSettings.Profile.unknownFields — same forward-compatibility purpose.
+    private var unknownFields: [String: JSONValue] = [:]
+
+    init(p1: CGPoint, p2: CGPoint) {
+        self.p1 = p1
+        self.p2 = p2
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case p1, p2
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        p1 = try c.decode(CGPoint.self, forKey: .p1)
+        p2 = try c.decode(CGPoint.self, forKey: .p2)
+        unknownFields = try UnknownFieldsCodec.captureUnknown(
+            from: decoder, knownKeys: Set(CodingKeys.allCases.map(\.rawValue)))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(p1, forKey: .p1)
+        try c.encode(p2, forKey: .p2)
+        try UnknownFieldsCodec.encodeUnknown(unknownFields, to: encoder)
+    }
+
+    static func == (lhs: BezierCurve, rhs: BezierCurve) -> Bool {
+        lhs.p1 == rhs.p1 && lhs.p2 == rhs.p2
+    }
+
     static let linear = BezierCurve(
         p1: CGPoint(x: 0.25, y: 0.25),
         p2: CGPoint(x: 0.75, y: 0.75))
