@@ -215,6 +215,7 @@ final class InputInjector: @unchecked Sendable {
         pendingMouseUp.map { CFRunLoopTimerInvalidate($0) }
         proximityExitDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
+        momentumTailTimer.map { CFRunLoopTimerInvalidate($0) }
         button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
@@ -343,6 +344,20 @@ final class InputInjector: @unchecked Sendable {
     /// before it's force-closed as a presumed-lost gesture. Matches the
     /// proximity-exit held-button safety interval.
     let panScrollSafetyNetInterval: TimeInterval = 4.0
+
+    /// Repeating HIDThread timer driving the synthetic momentum decay tail
+    /// posted after a Scroll Drag release (see `startMomentumTail` in
+    /// InputInjector+CGEvents.swift). Real trackpad hardware has the OS
+    /// synthesize its own `kCGMomentumScrollPhase`-tagged event stream after
+    /// finger-lift; paged views (e.g. Apple Calendar's month/week grid) gate
+    /// "commit to next page vs. snap back" on seeing that momentum
+    /// continuation, not on cumulative displacement alone. CGEventPost never
+    /// gets this for free, so it's synthesized here from the tracker's
+    /// release-velocity estimate.
+    var momentumTailTimer: CFRunLoopTimer?
+    var momentumVelocity: CGVector = .zero
+    var momentumAccumX = 0.0
+    var momentumAccumY = 0.0
 
     var lastPostedPoint: CGPoint = .zero
     var lastPostedPressure: Double = -1.0
