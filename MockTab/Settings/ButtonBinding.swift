@@ -13,7 +13,8 @@ struct ButtonBinding: Codable, Equatable {
 
     enum Kind: String, Codable {
         case none, leftClick, rightClick, middleClick, middleClickWithTip, eraser, keyCombo,
-            displayToggle, doubleClick, spacebar, ringCycle, ringSelectSlot, scrollDrag
+            displayToggle, doubleClick, spacebar, ringCycle, ringSelectSlot, scrollDrag,
+            relativeModeToggle
     }
 
     var kind: Kind = .none
@@ -172,6 +173,10 @@ struct ButtonBinding: Codable, Equatable {
             return String(
                 localized: "Pan View",
                 comment: "Button action: hold to pan/scroll with pen motion")
+        case .relativeModeToggle:
+            return String(
+                localized: "Toggle Relative Mode",
+                comment: "Button action: switch between absolute and relative cursor movement")
         case .keyCombo:
             let f = CGEventFlags(rawValue: modifierFlags)
             var s = ""
@@ -212,6 +217,7 @@ struct ButtonBinding: Codable, Equatable {
         case "Pan View": return .scrollDrag
         case "Scroll Drag": return .scrollDrag  // pre-rename label; keeps older exported profiles importable
         case "Toggle Display": return ButtonBinding(kind: .displayToggle)
+        case "Toggle Relative Mode": return ButtonBinding(kind: .relativeModeToggle)
         case "Ring: Cycle": return ButtonBinding(kind: .ringCycle)
         default:
             if label.hasPrefix("Ring: Mode ") {

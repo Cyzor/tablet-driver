@@ -840,6 +840,12 @@ extension InputInjector {
                 e.flags = currentEventFlags
                 finalizeAndPost(e)
             }
+        case .relativeModeToggle:
+            guard down else { break }
+            displayMapper.clearRelativeAnchor()
+            if let s = settings {
+                Task { @MainActor in s.relativeCursorMovement.toggle() }
+            }
         case .scrollDrag:
             // Hold-to-pan: while engaged, inject()'s movement path converts
             // pen motion into phased pixel scroll events (see postPanScroll).

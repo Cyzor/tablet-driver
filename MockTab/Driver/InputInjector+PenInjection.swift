@@ -28,8 +28,19 @@ extension InputInjector {
         }
         let rawPoint: CGPoint
         if snap.relativeCursorMovement {
-            rawPoint = displayMapper.resolveRelativePoint(
-                point, snapshot: snap, currentCursorPosition: currentCursorPosition())
+            if point.inProximity {
+                rawPoint = displayMapper.resolveRelativePoint(
+                    point, snapshot: snap, currentCursorPosition: currentCursorPosition(),
+                    deviceProductID: deviceProductID)
+            } else {
+                // Don't let an out-of-proximity report (a Xencelabs blip mid-debounce,
+                // or any vendor's genuine exit) touch the relative anchor — its position
+                // data is exactly the kind of near-edge-of-range reading likely to be
+                // noisy or clamped, and poisoning lastRelativeNorm with it corrupts the
+                // next real report's delta into a spurious jump. The cursor is already
+                // sitting wherever the last real move put it; reuse that.
+                rawPoint = currentCursorPosition()
+            }
         } else {
             guard let absPoint = displayMapper.mapToScreen(
                 point, snapshot: snap, deviceProductID: deviceProductID)

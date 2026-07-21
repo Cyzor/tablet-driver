@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 static uint8_t report_buf[512];
 
@@ -44,6 +45,15 @@ static void dump_descriptor(IOHIDDeviceRef device)
     fflush(stdout);
 }
 
+static double now_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1e6;
+}
+
+static double last_report_ms = -1;
+
 static void report_cb(void *ctx, IOReturn result, void *sender,
                       IOHIDReportType type, uint32_t report_id,
                       uint8_t *report, CFIndex length)
@@ -52,7 +62,10 @@ static void report_cb(void *ctx, IOReturn result, void *sender,
         type == kIOHIDReportTypeInput ? "in" :
         type == kIOHIDReportTypeOutput ? "out" :
         type == kIOHIDReportTypeFeature ? "feat" : "?";
-    printf("[%s id=0x%02x len=%2zd]", type_name, report_id, (size_t)length);
+    double t = now_ms();
+    double gap = last_report_ms < 0 ? 0.0 : t - last_report_ms;
+    last_report_ms = t;
+    printf("[t=%.3f dt=%6.2f] [%s id=0x%02x len=%2zd]", t, gap, type_name, report_id, (size_t)length);
     CFIndex cap = length < 64 ? length : 64;
     for (CFIndex i = 0; i < cap; i++) printf(" %02x", report[i]);
     if (length > 64) printf(" ...");

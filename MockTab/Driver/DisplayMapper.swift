@@ -58,6 +58,39 @@ struct DisplayMapper {
     /// produce a large jump.
     private var lastRelativeNorm: CGPoint? = nil
 
+    /// The relative-mode cursor position, owned here as an unrounded float and
+    /// carried report-to-report — NOT re-read from the OS cursor each time.
+    /// Re-reading (`CGEvent(source: nil).location`) races WindowServer's async
+    /// commit of the previous posted move: at ~5ms between reports the readback
+    /// often hasn't caught up yet, so computing the next delta from a stale
+    /// base produces a stall-then-jump stutter (worse the higher the report
+    /// rate — Xencelabs' faster stream hobbles more visibly than Wacom's).
+    /// Owning the position sidesteps the race entirely and doubles as the
+    /// sub-point accumulator: only the final post is rounded, the stored value
+    /// keeps its fraction. Seeded from the real cursor once per anchor (first
+    /// report after proximity entry) so it can't drift from reality.
+    private var ownedRelativePosition: CGPoint? = nil
+
+    /// Cached physical active-area size in millimetres, used to convert
+    /// relative-mode deltas into a gain expressed relative to real pen
+    /// travel rather than tablet-model-specific raw units. Invalidated when
+    /// the device's productID changes.
+    private var cachedRelativeSurfaceMM: (w: Double, h: Double)?
+    private var cachedRelativeSurfaceSpecPID: Int = -1
+
+    /// Cursor points moved per millimetre of physical pen travel in relative
+    /// mode. Chosen so a full sweep of a typical tablet's active area
+    /// traverses roughly a full screen width — a small, deliberate pen
+    /// motion should sweep the cursor a long way, the way a shrunk mapped
+    /// area would, rather than crawling like a low-DPI mouse.
+    private static let relativeGainPointsPerMM: Double = 20.0
+
+    /// Fallback physical width/height (mm) used when the device's active
+    /// area isn't in the registry (no vendor mm data). Matches a typical
+    /// mid-size tablet so relative mode still feels reasonable rather than
+    /// falling back to the old screen-union-relative behavior.
+    private static let relativeFallbackSurfaceMM: (w: Double, h: Double) = (216, 135)
+
     // MARK: - Cache invalidation
 
     /// Forces a display-bounds and calibration cache miss on the next lookup.
@@ -78,6 +111,7 @@ struct DisplayMapper {
     /// deadzone rejection so the pen doesn't re-anchor from stale state.
     mutating func clearRelativeAnchor() {
         lastRelativeNorm = nil
+        ownedRelativePosition = nil
     }
 
     /// Recomputes `cachedVirtualScreenBounds` from `NSScreen.screens`.
@@ -101,13 +135,17 @@ struct DisplayMapper {
     /// and applies it to the current cursor location.
     ///
     /// Display mapping is intentionally ignored — it makes no sense for mouse-like input.
-    /// Deltas are scaled by the total virtual screen space (union of all displays), so a
-    /// full active-area sweep traverses the entire available screen real estate.  The
-    /// cursor is clamped to the same total bounds so it can reach any display.
+    /// The delta is grounded in physical pen travel (the device's real active-area size
+    /// in millimetres) rather than the screen's own dimensions, so the feel doesn't
+    /// depend on tablet model or monitor size: a given pen movement always covers the
+    /// same amount of screen. Sub-point remainders are carried across reports so slow,
+    /// small motions still register instead of rounding away to nothing. The cursor is
+    /// clamped to the virtual-screen union so it can reach any display.
     ///
     /// Active-area crop is still respected: a smaller crop = higher sensitivity.
     mutating func resolveRelativePoint(
-        _ point: TabletPoint, snapshot: InjectionSnapshot, currentCursorPosition: CGPoint
+        _ point: TabletPoint, snapshot: InjectionSnapshot, currentCursorPosition: CGPoint,
+        deviceProductID: Int
     ) -> CGPoint {
         let virtualBounds = cachedVirtualScreenBounds
         let screen =
@@ -157,19 +195,59 @@ struct DisplayMapper {
             x: (ox - snapshot.activeAreaX * effMaxX) / areaW,
             y: (oy - snapshot.activeAreaY * effMaxY) / areaH)
 
-        // First report after proximity entry: anchor without moving.
+        // First report after proximity entry: anchor without moving, seeding
+        // the owned position from the real cursor so it can't drift from
+        // reality across a proximity exit/re-entry.
         guard let prev = lastRelativeNorm else {
             lastRelativeNorm = norm
+            ownedRelativePosition = currentCursorPosition
             return currentCursorPosition
         }
         lastRelativeNorm = norm
 
-        let dx = (norm.x - prev.x) * screen.width
-        let dy = (norm.y - prev.y) * screen.height
-        let cur = currentCursorPosition
-        return CGPoint(
-            x: Swift.min(Swift.max(cur.x + dx, screen.minX), screen.maxX),
-            y: Swift.min(Swift.max(cur.y + dy, screen.minY), screen.maxY))
+        // Ground the delta in physical pen travel: norm is fractional
+        // position within the (possibly cropped) active area, so
+        // norm-delta × crop-size-in-mm is the physical distance moved.
+        let surfaceMM = relativeSurfaceMM(deviceProductID: deviceProductID)
+        let cropWidthMM = surfaceMM.w * snapshot.activeAreaWidth
+        let cropHeightMM = surfaceMM.h * snapshot.activeAreaHeight
+        let gain = Self.relativeGainPointsPerMM
+        let dx = (norm.x - prev.x) * cropWidthMM * gain
+        let dy = (norm.y - prev.y) * cropHeightMM * gain
+
+        // Accumulate on the owned float — never on a value read back from the
+        // OS. The float itself carries sub-point precision across reports, so
+        // slow motion still registers instead of rounding away to nothing;
+        // only the returned point is rounded.
+        let base = ownedRelativePosition ?? currentCursorPosition
+        let next = CGPoint(
+            x: Swift.min(Swift.max(base.x + dx, screen.minX), screen.maxX),
+            y: Swift.min(Swift.max(base.y + dy, screen.minY), screen.maxY))
+        ownedRelativePosition = next
+        return CGPoint(x: next.x.rounded(), y: next.y.rounded())
+    }
+
+    /// Physical active-area size (mm) for the given device, cached per
+    /// productID. Checks the Wacom registry first, then vendor profiles
+    /// (Xencelabs etc.), falling back to a representative mid-size tablet
+    /// when no mm data is registered for the device.
+    private mutating func relativeSurfaceMM(deviceProductID: Int) -> (w: Double, h: Double) {
+        if cachedRelativeSurfaceSpecPID == deviceProductID, let cached = cachedRelativeSurfaceMM {
+            return cached
+        }
+        var result = Self.relativeFallbackSurfaceMM
+        if let spec = WacomDeviceRegistry.spec(for: deviceProductID),
+            let w = spec.activeWidthMM, w > 0, let h = spec.activeHeightMM, h > 0
+        {
+            result = (w, h)
+        } else if let profile = VendorDeviceRegistry.profile(forProductID: deviceProductID),
+            let w = profile.activeWidthMM, w > 0, let h = profile.activeHeightMM, h > 0
+        {
+            result = (w, h)
+        }
+        cachedRelativeSurfaceMM = result
+        cachedRelativeSurfaceSpecPID = deviceProductID
+        return result
     }
 
     /// Maps a tablet point to screen coordinates, accounting for orientation and active area cropping.

@@ -109,6 +109,8 @@ struct ButtonBindingControl: View, Equatable {
             .help("Escape key")
             Button("Toggle Display") { binding = ButtonBinding(kind: .displayToggle) }
                 .help("Switch tablet mapping between displays")
+            Button("Toggle Relative Mode") { binding = ButtonBinding(kind: .relativeModeToggle) }
+                .help("Switch between absolute (stylus) and relative (mouse) cursor movement")
             Menu("Touch Ring Mode") {
                 Button("Cycle") { binding = ButtonBinding(kind: .ringCycle) }
                     .help("Cycle through ring modes")
