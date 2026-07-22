@@ -77,9 +77,16 @@ final class TabletSettings: ObservableObject {
     /// Does NOT suppress `persist()` itself — undo must save restored state to UserDefaults.
     var isUndoing = false
 
-    /// Undo manager for this device's settings, passed from SettingsWindowController.
-    /// Each window gets its own independent undo stack.
-    weak var undoManager: UndoManager?
+    /// Undo manager for this device's settings. Owned by the device, not by
+    /// whichever window happens to be open for it — multiple windows for the
+    /// same device (e.g. Cmd-N "New Window") share this one instance rather
+    /// than each claiming their own, which used to silently clobber the
+    /// previous window's `settings.undoManager` reference and left its Edit
+    /// menu showing stale, orphaned undo entries. Companion devices (the
+    /// Xencelabs Quick Keys puck) explicitly adopt their owner's manager so
+    /// the two share one undo timeline within the same window — hence this
+    /// stays settable rather than a `let`.
+    var undoManager: UndoManager? = UndoManager()
 
     let ud = UserDefaults.standard
 
@@ -130,6 +137,7 @@ final class TabletSettings: ObservableObject {
                 fallbackPrefix: devicePrefix,
                 isMouse: isMouse)
         }
+        ts.undoManager = undoManager
         toolCache[id] = ts
         return ts
     }
@@ -676,6 +684,7 @@ final class TabletSettings: ObservableObject {
             loadAppOverrides()
         }
         activeTool = ToolSettings(prefix: devicePrefix)
+        activeTool.undoManager = undoManager
         reloadAll()
     }
 
@@ -709,6 +718,7 @@ final class TabletSettings: ObservableObject {
         devicePrefix = prefix
         toolCache.removeAll()
         activeTool = ToolSettings(prefix: devicePrefix)
+        activeTool.undoManager = undoManager
         // Clear undo stack to prevent cross-device undo entries
         undoManager?.removeAllActions()
         loadProfileList()

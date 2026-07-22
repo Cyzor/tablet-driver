@@ -57,6 +57,42 @@ struct PresetImporter {
                 decodeDeviceSettings(s, into: &values)
             }
 
+            var presets: [ImportPlan.PresetEntry] = []
+            if let profilesRaw = tabletDict["profiles"] as? [[String: Any]] {
+                for p in profilesRaw {
+                    guard let name = p["name"] as? String else { continue }
+                    let settingsDict = p["settings"] as? [String: Any] ?? [:]
+                    presets.append(ImportPlan.PresetEntry(name: name, values: decodeStoredSettings(settingsDict)))
+                }
+            }
+
+            // Device-level appOverrides only — the per-tool copies nested inside
+            // "tools" are a filtered subset of the same bundleIDs and would
+            // either double-process or drop non-tool keys if read as well.
+            var overrides: [ImportPlan.OverrideEntry] = []
+            if let overridesRaw = tabletDict["appOverrides"] as? [[String: Any]] {
+                for o in overridesRaw {
+                    guard let bundleID = o["bundleID"] as? String, !bundleID.isEmpty else { continue }
+                    let appName = o["app"] as? String ?? bundleID
+                    let settingsDict = o["settings"] as? [String: Any] ?? [:]
+                    overrides.append(ImportPlan.OverrideEntry(
+                        bundleID: bundleID, appName: appName,
+                        values: decodeStoredSettings(settingsDict)))
+                }
+            }
+
+            var toolEntries: [ImportPlan.ToolEntry] = []
+            if let toolsRaw = tabletDict["tools"] as? [[String: Any]] {
+                for t in toolsRaw {
+                    guard let toolID = t["id"] as? String else { continue }
+                    let kind = t["kind"] as? String ?? toolID
+                    let settingsDict = t["settings"] as? [String: Any] ?? [:]
+                    toolEntries.append(ImportPlan.ToolEntry(
+                        toolID: toolID, kind: kind,
+                        values: decodeStoredSettings(settingsDict)))
+                }
+            }
+
             entries.append(ImportPlan.TabletEntry(
                 productID: pid,
                 modelName: modelName,
@@ -64,6 +100,9 @@ struct PresetImporter {
                 resolvedProfileName: nickname,
                 profileValues: values,
                 isKnown: isKnown,
+                presets: presets,
+                overrides: overrides,
+                toolSettings: toolEntries,
             ))
         }
 
@@ -80,25 +119,136 @@ struct PresetImporter {
             if let v = area["width"] as? Double, v.isFinite, v > 0, v <= 1 { values["activeAreaWidth"] = v }
             if let v = area["height"] as? Double, v.isFinite, v > 0, v <= 1 { values["activeAreaHeight"] = v }
             if let v = area["proportionalMapping"] as? Bool { values["proportionalMapping"] = v }
-            if let v = area["orientation"] as? String { values["tabletOrientation"] = decodeOrientation(v) }
+            if let v = area["orientationKey"] as? Int {
+                values["tabletOrientation"] = v
+            } else if let v = area["orientation"] as? String {
+                values["tabletOrientation"] = decodeOrientation(v)
+            }
         }
         if let v = s["display"] { values["targetDisplayIndex"] = decodeDisplay(v) }
         if let v = s["smoothing"] as? Double, v.isFinite, v >= 0, v <= 1 { values["smoothingStrength"] = v }
         if let v = s["doubleClickDistance"] as? Double, v.isFinite, v > 0, v <= 200 { values["doubleClickDistance"] = v }
         if let v = s["invertRotation"] as? Bool { values["invertRotation"] = v }
         if let v = s["relativeCursorMovement"] as? Bool { values["relativeCursorMovement"] = v }
-        if let v = s["penButton1"] as? String, !v.isEmpty { values["penButton1Binding"] = ButtonBinding.fromDisplayLabel(v).encoded }
-        if let v = s["penButton2"] as? String, !v.isEmpty { values["penButton2Binding"] = ButtonBinding.fromDisplayLabel(v).encoded }
-        if let v = s["touchRingButton"] as? String, !v.isEmpty { values["touchRingButtonBinding"] = ButtonBinding.fromDisplayLabel(v).encoded }
-        if let v = s["touchRing"] as? String { values["touchRingMode"] = decodeTouchRingMode(v) }
-        if let v = s["touchStrip1"] as? String { values["touchStrip1Mode"] = decodeTouchRingMode(v) }
-        if let v = s["touchStrip2"] as? String { values["touchStrip2Mode"] = decodeTouchRingMode(v) }
-        if let v = s["expressKeys"] as? [String] { values["expressKeyBindings"] = decodeExpressKeys(v) }
+        if let v = s["penButton1Key"] as? String, !v.isEmpty {
+            values["penButton1Binding"] = (ButtonBinding.decode(v) ?? .none).encoded
+        } else if let v = s["penButton1"] as? String, !v.isEmpty {
+            values["penButton1Binding"] = ButtonBinding.fromDisplayLabel(v).encoded
+        }
+        if let v = s["penButton2Key"] as? String, !v.isEmpty {
+            values["penButton2Binding"] = (ButtonBinding.decode(v) ?? .none).encoded
+        } else if let v = s["penButton2"] as? String, !v.isEmpty {
+            values["penButton2Binding"] = ButtonBinding.fromDisplayLabel(v).encoded
+        }
+        if let v = s["touchRingButtonKey"] as? String, !v.isEmpty {
+            values["touchRingButtonBinding"] = (ButtonBinding.decode(v) ?? .none).encoded
+        } else if let v = s["touchRingButton"] as? String, !v.isEmpty {
+            values["touchRingButtonBinding"] = ButtonBinding.fromDisplayLabel(v).encoded
+        }
+        if let v = s["touchRingKey"] as? String {
+            values["touchRingMode"] = (TouchRingMode(rawValue: v) ?? .off).rawValue
+        } else if let v = s["touchRing"] as? String {
+            values["touchRingMode"] = decodeTouchRingMode(v)
+        }
+        if let v = s["touchStrip1Key"] as? String {
+            values["touchStrip1Mode"] = (TouchRingMode(rawValue: v) ?? .off).rawValue
+        } else if let v = s["touchStrip1"] as? String {
+            values["touchStrip1Mode"] = decodeTouchRingMode(v)
+        }
+        if let v = s["touchStrip2Key"] as? String {
+            values["touchStrip2Mode"] = (TouchRingMode(rawValue: v) ?? .off).rawValue
+        } else if let v = s["touchStrip2"] as? String {
+            values["touchStrip2Mode"] = decodeTouchRingMode(v)
+        }
+        if let v = s["expressKeysKey"] as? [String] {
+            values["expressKeyBindings"] = decodeExpressKeysFromKeys(v)
+        } else if let v = s["expressKeys"] as? [String] {
+            values["expressKeyBindings"] = decodeExpressKeys(v)
+        }
         if let v = s["pressureCurve"] as? [String: Any], let data = decodeCurveData(v) {
             values["pressureCurve"] = data
         }
     }
 
+    /// Decodes a preset/app-override/tool "settings" dict — as produced by
+    /// `PresetExporter.readUDValue` — into UserDefaults-ready key/value pairs.
+    ///
+    /// Unlike `decodeDeviceSettings` (which maps friendlier export-only key
+    /// names like "orientation"/"penButton1" to their storage keys), this
+    /// dict is already keyed by the literal storage key names
+    /// ("tabletOrientation", "penButton1Binding", "touchRingMode", ...),
+    /// since it comes straight from `readUDValue`. Each binding/enum field
+    /// prefers its locale-independent "...Key" sibling when present, falling
+    /// back to the (English-only) label for files exported before that
+    /// existed — same dual-path pattern as `decodeDeviceSettings`.
+    static func decodeStoredSettings(_ s: [String: Any]) -> [String: Any] {
+        var values: [String: Any] = [:]
+        for key in s.keys where !key.hasSuffix("Key") {
+            let rawValue = s[key] as Any
+            switch key {
+            case "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
+                 "smoothingStrength", "doubleClickDistance":
+                if let v = rawValue as? Double, v.isFinite { values[key] = v }
+
+            case "proportionalMapping", "invertRotation", "relativeCursorMovement":
+                if let v = rawValue as? Bool { values[key] = v }
+
+            case "targetDisplayIndex":
+                values[key] = decodeDisplay(rawValue)
+
+            case "toggleDisplayIDs":
+                if let arr = rawValue as? [String] { values[key] = arr.joined(separator: ",") }
+
+            case "tabletOrientation":
+                if let v = s["tabletOrientationKey"] as? Int {
+                    values[key] = v
+                } else if let v = rawValue as? String {
+                    values[key] = decodeOrientation(v)
+                }
+
+            case "penButton1Binding", "penButton2Binding",
+                 "touchRingButtonBinding", "tipBinding", "eraserBinding":
+                if let v = s[key + "Key"] as? String, !v.isEmpty {
+                    values[key] = (ButtonBinding.decode(v) ?? .none).encoded
+                } else if let v = rawValue as? String, !v.isEmpty {
+                    values[key] = ButtonBinding.fromDisplayLabel(v).encoded
+                }
+
+            case "expressKeyBindings":
+                if let v = s["expressKeyBindingsKey"] as? [String] {
+                    values[key] = decodeExpressKeysFromKeys(v)
+                } else if let v = rawValue as? [String] {
+                    values[key] = decodeExpressKeys(v)
+                }
+
+            case "touchRingMode", "touchStrip1Mode", "touchStrip2Mode":
+                if let v = s[key + "Key"] as? String {
+                    values[key] = (TouchRingMode(rawValue: v) ?? .off).rawValue
+                } else if let v = rawValue as? String {
+                    values[key] = decodeTouchRingMode(v)
+                }
+
+            case "pressureCurve":
+                if let d = rawValue as? [String: Any], let data = decodeCurveData(d) {
+                    values[key] = data
+                }
+
+            case "touchRingSlotsJSON", "calibrationJSON":
+                if let v = rawValue as? String { values[key] = v }
+
+            case "touchRingActiveSlotIndex":
+                if let v = rawValue as? Int { values[key] = v }
+
+            default:
+                break
+            }
+        }
+        return values
+    }
+
+    /// English-only, label-based orientation decode — kept for files exported
+    /// before `orientationKey` existed. New exports carry the locale-independent
+    /// `orientationKey` (the raw `TabletOrientation` value) and prefer it.
     static func decodeOrientation(_ label: String) -> Int {
         switch label {
         case "Portrait": return 1
@@ -125,6 +275,9 @@ struct PresetImporter {
         return 0
     }
 
+    /// English-only, label-based decode — kept for files exported before
+    /// `touchRingKey`/`touchStrip*Key` existed. New exports carry the
+    /// locale-independent `TouchRingMode.rawValue` and prefer it.
     static func decodeTouchRingMode(_ label: String) -> String {
         switch label {
         case "Scroll": return TouchRingMode.scroll.rawValue
@@ -132,9 +285,24 @@ struct PresetImporter {
         }
     }
 
+    /// English-only, label-based decode — kept for files exported before
+    /// `expressKeysKey` existed. New exports carry each binding's encoded
+    /// `ButtonBinding` form and prefer it (`decodeExpressKeysFromKeys`).
     static func decodeExpressKeys(_ labels: [String]) -> String {
         var bindings = labels.map { $0.isEmpty ? ButtonBinding.none : ButtonBinding.fromDisplayLabel($0) }
         while bindings.count < 16 { bindings.append(.none) }
+        return encodeBindingArray(bindings)
+    }
+
+    /// Locale-independent express-key decode: each entry is an encoded
+    /// `ButtonBinding` (from `ButtonBinding.encoded`), not a display label.
+    static func decodeExpressKeysFromKeys(_ keys: [String]) -> String {
+        var bindings = keys.map { $0.isEmpty ? ButtonBinding.none : (ButtonBinding.decode($0) ?? .none) }
+        while bindings.count < 16 { bindings.append(.none) }
+        return encodeBindingArray(bindings)
+    }
+
+    private static func encodeBindingArray(_ bindings: [ButtonBinding]) -> String {
         let arr = Array(bindings.prefix(16))
         guard let data = try? JSONEncoder().encode(arr), let s = String(data: data, encoding: .utf8) else {
             return ""

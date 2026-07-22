@@ -236,6 +236,95 @@ extension TabletSettings {
         }
     }
 
+    /// True if this device already has a locally-customized override for `bundleID`.
+    /// Used by the import preview to detect a collision before the user commits.
+    func hasAppOverride(bundleID: String) -> Bool {
+        appOverrides.contains(where: { $0.bundleID == bundleID })
+    }
+
+    /// Imports a per-app override's settings from a backup.
+    ///
+    /// Unlike presets (always a fresh UUID, so they can't collide with
+    /// existing data), overrides are identified by `bundleID` — importing one
+    /// for an app that already has a local override is a genuine identity
+    /// collision. Defaults to skipping (keeping the local override
+    /// untouched) unless `overwrite` is true. When overwriting, any
+    /// previously-overridden keys not present in the imported `values` are
+    /// cleared first, so the result matches the imported override exactly
+    /// rather than merging stale leftovers. Applies immediately — app
+    /// overrides are live, device-wide settings, not preset-scoped — and
+    /// respects the `appOverridesLoadFailed` fail-closed guard like every
+    /// other override mutation.
+    ///
+    /// Returns whether the import was applied.
+    @discardableResult
+    func importAppOverride(
+        bundleID: String, appName: String, from values: [String: Any], overwrite: Bool = false
+    ) -> Bool {
+        guard !appOverridesLoadFailed else { return false }
+        let existing = appOverrides.first(where: { $0.bundleID == bundleID })
+        guard existing == nil || overwrite else { return false }
+
+        let override = existing ?? AppOverride(bundleID: bundleID, appName: appName)
+        let prefix = appOverrideKeyPrefix(override)
+
+        // Snapshot the prior state (if any) before mutating, so the import can
+        // be undone like every other override mutation in this file.
+        var previousValues: [String: Any] = [:]
+        if let existing {
+            for key in existing.overriddenKeys {
+                if let v = ud.object(forKey: prefix + key) { previousValues[key] = v }
+            }
+        }
+        let previousOverride = existing
+
+        if let existing {
+            let staleKeys = existing.overriddenKeys.subtracting(values.keys)
+            for key in staleKeys { ud.removeObject(forKey: prefix + key) }
+        }
+        for (key, value) in values {
+            ud.set(value, forKey: prefix + key)
+        }
+
+        var updated = override
+        updated.appName = appName
+        updated.overriddenKeys = Set(values.keys)
+        if let idx = appOverrides.firstIndex(where: { $0.bundleID == bundleID }) {
+            appOverrides[idx] = updated
+        } else {
+            appOverrides.append(updated)
+        }
+        saveAppOverrides()
+
+        if activeAppOverride?.bundleID == bundleID || driverOverride?.bundleID == bundleID {
+            reloadAll()
+        }
+
+        record("Import App Override") { [weak self] in
+            guard let self else { return }
+            if let previousOverride {
+                // Restore the prior values, removing any keys the import added
+                // that weren't part of the previous override.
+                let addedKeys = Set(values.keys).subtracting(previousOverride.overriddenKeys)
+                for key in addedKeys { self.ud.removeObject(forKey: prefix + key) }
+                for (key, value) in previousValues { self.ud.set(value, forKey: prefix + key) }
+                if let idx = self.appOverrides.firstIndex(where: { $0.bundleID == bundleID }) {
+                    self.appOverrides[idx] = previousOverride
+                }
+                self.saveAppOverrides()
+                if self.activeAppOverride?.bundleID == bundleID || self.driverOverride?.bundleID == bundleID {
+                    self.reloadAll()
+                }
+            } else {
+                // Nothing existed before this import — fully remove it.
+                // removeAppOverride registers its own undo, but that's a no-op
+                // during undo replay (TabletSettings.record guards on isUndoing).
+                self.removeAppOverride(bundleID: bundleID)
+            }
+        }
+        return true
+    }
+
     // MARK: - App override persistence
 
     private var appOverridesKey: String { devicePrefix + "_appOverrides" }

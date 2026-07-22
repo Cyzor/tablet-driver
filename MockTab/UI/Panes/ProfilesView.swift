@@ -266,6 +266,8 @@ struct ProfilesView: View {
                 plan: plan,
                 registry: registry,
                 tabletManager: tabletManager,
+                currentPaneSettings: settings,
+                currentPaneProductID: productID,
                 offlineSettings: offlineSettings
             ) {
                 pendingImport = nil

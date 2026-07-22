@@ -619,6 +619,29 @@
         }
       }
     },
+    "%lld app override" : {
+      "comment" : "Count of per-app overrides found in the backup for this tablet",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld app override"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld app overrides"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld captured" : {
       "comment" : "Guided capture: count of steps with a captured sample",
       "localizations" : {
@@ -696,6 +719,29 @@
     },
     "%lld ms" : {
       "comment" : "Delay in milliseconds, e.g. '80 ms'"
+    },
+    "%lld named preset" : {
+      "comment" : "Count of named presets found in the backup for this tablet",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld named preset"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld named presets"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld profile" : {
       "comment" : "Count of profiles for a tablet",
@@ -857,6 +903,29 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld 設定"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld tool setting" : {
+      "comment" : "Count of per-tool settings found in the backup for this tablet",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld tool setting"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld tool settings"
                 }
               }
             }
@@ -5115,8 +5184,12 @@
         }
       }
     },
+    "Each tablet's base settings and named presets are added as new profiles — your current settings aren't changed until you activate one. App overrides and per-tool settings apply immediately." : {
+      "comment" : "Import sheet: footer explaining that profiles are inert until activated, but app overrides and tool settings take effect right away"
+    },
     "Each tablet's settings will be added as a new profile. Your current settings are not changed until you activate a profile." : {
       "comment" : "Import sheet: footer explaining that import creates new profiles and doesn't overwrite current settings",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9859,6 +9932,30 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "範囲外"
+          }
+        }
+      }
+    },
+    "Overwrite %lld existing customization with the imported ones" : {
+      "comment" : "Toggle: choose to replace already-customized app overrides/tool settings with the ones from this backup, instead of keeping the local ones. English plural variant handles the count grammar.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "Overwrite %lld existing customization with the imported one"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "Overwrite %lld existing customizations with the imported ones"
+                }
+              }
+            }
           }
         }
       }

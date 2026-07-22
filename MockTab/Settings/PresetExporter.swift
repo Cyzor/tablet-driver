@@ -61,6 +61,14 @@ final class PresetExporter {
     }
 
     /// Exports device-level settings as UserDefaults-ready key-value pairs.
+    ///
+    /// Binding/enum fields carry both a human-readable label (for anyone
+    /// reading the file) and a "...Key" sibling holding a locale-independent
+    /// machine value. `displayLabel` is produced via `String(localized:)`, so
+    /// a file exported under a non-English system language previously had no
+    /// way to round-trip through `PresetImporter`, whose decoders only ever
+    /// matched the English label strings. Import prefers the key field and
+    /// falls back to the (English-only) label for older export files.
     func exportDeviceSettings(_ s: TabletSettings, devicePrefix: String) -> [String: Any] {
         var d: [String: Any] = [:]
         d["tabletArea"] = [
@@ -69,7 +77,8 @@ final class PresetExporter {
             "width": roundFrac(s.activeAreaWidth),
             "height": roundFrac(s.activeAreaHeight),
             "proportionalMapping": s.proportionalMapping,
-            "orientation": s.tabletOrientation.label
+            "orientation": s.tabletOrientation.label,
+            "orientationKey": s.tabletOrientation.rawValue
         ] as [String: Any]
         d["display"] = exportDisplay(s.targetDisplayIndex, toggleIDs: s.toggleDisplayIDSet)
         d["pressureCurve"] = exportCurve(s.pressureCurve)
@@ -78,14 +87,26 @@ final class PresetExporter {
         d["invertRotation"] = s.invertRotation
         d["relativeCursorMovement"] = s.relativeCursorMovement
         d["penButton1"] = s.penButton1Binding.displayLabel
+        d["penButton1Key"] = s.penButton1Binding.encoded
         d["penButton2"] = s.penButton2Binding.displayLabel
-        d["touchRing"] = s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex) ? s.touchRingSlots[s.touchRingActiveSlotIndex].action.displayLabel : "Scroll"
+        d["penButton2Key"] = s.penButton2Binding.encoded
+        let ringMode: TouchRingMode =
+            s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex)
+            ? (s.touchRingSlots[s.touchRingActiveSlotIndex].action == .off
+                || s.touchRingSlots[s.touchRingActiveSlotIndex].action == .skip ? .off : .scroll)
+            : .scroll
+        d["touchRing"] = ringMode.displayLabel
+        d["touchRingKey"] = ringMode.rawValue
         d["touchRingButton"] = s.touchRingButtonBinding.displayLabel
+        d["touchRingButtonKey"] = s.touchRingButtonBinding.encoded
         d["touchStrip1"] = d["touchRing"]
+        d["touchStrip1Key"] = d["touchRingKey"]
         d["touchStrip2"] = d["touchRing"]
+        d["touchStrip2Key"] = d["touchRingKey"]
         let expressKeys = s.expressKeyBindings.map(\.displayLabel)
         if expressKeys.contains(where: { $0 != "None" }) {
             d["expressKeys"] = expressKeys
+            d["expressKeysKey"] = s.expressKeyBindings.map(\.encoded)
         }
         return d
     }
@@ -125,8 +146,9 @@ final class PresetExporter {
         let presetPrefix = "\(devicePrefix)preset-\(preset.id.uuidString)."
         var settings: [String: Any] = [:]
         for key in preset.overriddenKeys.sorted() {
-            if let v = readUDValue(key: key, prefix: presetPrefix) {
-                settings[key] = v
+            if let (display, machineKey) = readUDValue(key: key, prefix: presetPrefix) {
+                settings[key] = display
+                if let machineKey { settings[key + "Key"] = machineKey }
             }
         }
         var d: [String: Any] = ["name": preset.name, "active": preset.id == activeID]
@@ -144,8 +166,9 @@ final class PresetExporter {
         let keys = filter.map { override.overriddenKeys.intersection($0) } ?? override.overriddenKeys
         var settings: [String: Any] = [:]
         for key in keys.sorted() {
-            if let v = readUDValue(key: key, prefix: prefix) {
-                settings[key] = v
+            if let (display, machineKey) = readUDValue(key: key, prefix: prefix) {
+                settings[key] = display
+                if let machineKey { settings[key + "Key"] = machineKey }
             }
         }
         var d: [String: Any] = ["app": override.appName, "bundleID": override.bundleID]
@@ -155,61 +178,73 @@ final class PresetExporter {
 
     // MARK: - Helpers
 
-    /// Reads one UserDefaults value and returns it in a JSON-friendly, human-readable form.
-    private func readUDValue(key: String, prefix: String) -> Any? {
+    /// Reads one UserDefaults value and returns it in a JSON-friendly, human-readable form,
+    /// plus (for binding/enum fields) a locale-independent machine-key sibling.
+    ///
+    /// `display` is produced via `displayLabel`/`.label`, which are localized strings —
+    /// only decodable by an importer running in the same system language the value was
+    /// exported under. `machineKey`, when present, is what `PresetImporter` should prefer:
+    /// a `ButtonBinding.encoded` string, a `TouchRingMode`/`TabletOrientation` rawValue, etc.
+    /// Fields that are already locale-independent (numbers, bools, raw ID strings) return
+    /// `nil` for `machineKey` — there's nothing to disambiguate.
+    private func readUDValue(key: String, prefix: String) -> (display: Any, machineKey: Any?)? {
         let ud = UserDefaults.standard
         switch key {
         case "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
              "smoothingStrength", "doubleClickDistance":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
-            return roundFrac(ud.double(forKey: prefix + key))
+            return (roundFrac(ud.double(forKey: prefix + key)), nil)
 
         case "proportionalMapping", "invertRotation", "relativeCursorMovement":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
-            return ud.bool(forKey: prefix + key)
+            return (ud.bool(forKey: prefix + key), nil)
 
         case "targetDisplayIndex":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
-            return exportDisplayIndex(ud.integer(forKey: prefix + key))
+            return (exportDisplayIndex(ud.integer(forKey: prefix + key)), nil)
 
         case "toggleDisplayIDs":
             guard let raw = ud.string(forKey: prefix + key), !raw.isEmpty else { return nil }
-            return raw.split(separator: ",")
+            let ids = raw.split(separator: ",")
                 .compactMap { UInt32($0.trimmingCharacters(in: .whitespaces)) }
                 .map { String($0) }
+            return (ids, nil)
 
         case "tabletOrientation":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
-            return TabletOrientation(rawValue: ud.integer(forKey: prefix + key))?.label
+            let raw = ud.integer(forKey: prefix + key)
+            return (TabletOrientation(rawValue: raw)?.label ?? "", raw)
 
         case "penButton1Binding", "penButton2Binding",
              "touchRingButtonBinding", "tipBinding", "eraserBinding":
             guard let raw = ud.string(forKey: prefix + key) else { return nil }
-            return ButtonBinding.decode(raw)?.displayLabel ?? raw
+            let binding = ButtonBinding.decode(raw)
+            return (binding?.displayLabel ?? raw, binding?.encoded)
 
         case "expressKeyBindings":
             guard let raw = ud.string(forKey: prefix + key),
                   let data = raw.data(using: .utf8),
                   let arr = try? JSONDecoder().decode([ButtonBinding].self, from: data)
             else { return nil }
-            return arr.map(\.displayLabel)
+            return (arr.map(\.displayLabel), arr.map(\.encoded))
 
         case "touchRingMode", "touchStrip1Mode", "touchStrip2Mode":
             guard let raw = ud.string(forKey: prefix + key) else { return nil }
-            return TouchRingMode(rawValue: raw)?.displayLabel ?? raw
+            return (TouchRingMode(rawValue: raw)?.displayLabel ?? raw, raw)
 
         case "pressureCurve":
             guard let data = ud.data(forKey: prefix + key),
                   let curve = try? JSONDecoder().decode(BezierCurve.self, from: data)
             else { return nil }
-            return exportCurve(curve)
+            return (exportCurve(curve), nil)
 
         case "touchRingSlotsJSON", "calibrationJSON":
-            return ud.string(forKey: prefix + key)
+            guard let raw = ud.string(forKey: prefix + key) else { return nil }
+            return (raw, nil)
 
         case "touchRingActiveSlotIndex":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
-            return ud.integer(forKey: prefix + key)
+            return (ud.integer(forKey: prefix + key), nil)
 
         default:
             return nil

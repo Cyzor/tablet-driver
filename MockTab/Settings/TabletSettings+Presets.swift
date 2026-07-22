@@ -76,6 +76,11 @@ extension TabletSettings {
     /// Creates a new preset from a parsed import dict (keys are the same internal
     /// key names used by `saveAsPreset`, values are already in UserDefaults-ready form).
     /// The preset is appended but NOT activated.  Returns the new preset.
+    ///
+    /// Undoable: unlike overrides/tool settings, an imported preset always
+    /// gets a fresh UUID, so there's no collision to reason about — undo is
+    /// simply removing the exact preset that was just created, via the
+    /// existing `deletePreset`.
     @discardableResult
     func importProfile(name: String, from values: [String: Any]) -> Profile {
         var profile = Profile(name: name)
@@ -88,7 +93,71 @@ extension TabletSettings {
         profile.overriddenKeys = writtenKeys
         profiles.append(profile)
         saveProfileList()
+
+        let importedID = profile.id
+        record("Import Profile") { [weak self] in
+            guard let self, let match = self.profiles.first(where: { $0.id == importedID }) else { return }
+            self.deletePreset(match)
+        }
         return profile
+    }
+
+    /// Every UserDefaults key `ToolSettings.reload()` reads — used to detect
+    /// whether a tool already has any locally-customized values before an import.
+    static let toolSettingsKeys: [String] = [
+        "smoothingStrength", "pressureSmoothingStrength", "panScrollSpeed",
+        "useRotationAsTilt", "rotationTiltOffsetDegrees", "rotationTiltMagnitude",
+        "tipBinding", "eraserBinding", "penButton1Binding", "penButton2Binding",
+        "penButton3Binding", "penButton4Binding", "penButton5Binding", "wheelBinding",
+        "pressureCurve",
+    ]
+
+    /// True if `toolID` already has any locally-customized settings stored.
+    /// Used by the import preview to detect a collision before the user commits.
+    func hasToolSettings(toolID: String) -> Bool {
+        let prefix = "\(devicePrefix)tool-\(toolID)."
+        return Self.toolSettingsKeys.contains { ud.object(forKey: prefix + $0) != nil }
+    }
+
+    /// Imports one tool's settings from a backup.
+    ///
+    /// Tool identity is the tool's own ID (serial-derived, not a fresh UUID
+    /// like a preset), so an existing local customization for that exact tool
+    /// is a genuine identity collision. Defaults to skipping unless
+    /// `overwrite` is true. Applies immediately — tool settings are live,
+    /// not preset-scoped. Reloads the cached `ToolSettings` instance (if any)
+    /// so the UI reflects the change without requiring a relaunch.
+    ///
+    /// Returns whether the import was applied.
+    @discardableResult
+    func importToolSettings(toolID: String, from values: [String: Any], overwrite: Bool = false) -> Bool {
+        guard overwrite || !hasToolSettings(toolID: toolID) else { return false }
+        let prefix = "\(devicePrefix)tool-\(toolID)."
+
+        // Snapshot every known tool-settings key's prior value (absent ones
+        // stay absent in the snapshot) so the import can be undone.
+        var previousValues: [String: Any] = [:]
+        for key in Self.toolSettingsKeys {
+            if let v = ud.object(forKey: prefix + key) { previousValues[key] = v }
+        }
+
+        for (key, value) in values {
+            ud.set(value, forKey: prefix + key)
+        }
+        toolCache[toolID]?.reload()
+
+        record("Import Tool Settings") { [weak self] in
+            guard let self else { return }
+            for key in Self.toolSettingsKeys {
+                if let v = previousValues[key] {
+                    self.ud.set(v, forKey: prefix + key)
+                } else {
+                    self.ud.removeObject(forKey: prefix + key)
+                }
+            }
+            self.toolCache[toolID]?.reload()
+        }
+        return true
     }
 
     /// Returns a preset name that doesn't collide with any existing preset name.

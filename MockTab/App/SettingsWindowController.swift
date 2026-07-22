@@ -274,7 +274,11 @@ final class SettingsWindowController: NSWindowController {
     /// Model axis of the bound device — what spec lookups and the panes
     /// (which predate instance identity) consume.
     var productID: Int? { instanceKey?.productID }
-    let docUndoManager = UndoManager()
+    /// Reads the device's own canonical undo manager (`TabletSettings.undoManager`)
+    /// rather than owning one — so multiple windows for the same device share
+    /// one undo stack instead of each window's init silently stealing the
+    /// device's `undoManager` reference out from under the others.
+    var docUndoManager: UndoManager { settings.undoManager ?? UndoManager() }
 
     /// Expose docUndoManager through the NSResponder chain so AppKit's standard
     /// Cmd+Z / Cmd+Shift+Z handling reaches it when this window is key.
@@ -352,12 +356,14 @@ final class SettingsWindowController: NSWindowController {
 
         super.init(window: window)
 
-        // Vend docUndoManager through NSWindow.undoManager (which consults
-        // windowWillReturnUndoManager before creating its own), so the nil-target
-        // undo:/redo: menu items validate, retitle, and fire against it.
+        // Vend the device's own undo manager through NSWindow.undoManager
+        // (which consults windowWillReturnUndoManager before creating its
+        // own), so the nil-target undo:/redo: menu items validate, retitle,
+        // and fire against it. `settings.undoManager` and its `activeTool`
+        // are already wired to each other at TabletSettings construction
+        // time — nothing to assign here, deliberately, so a second window
+        // opening for the same device can't steal the reference.
         window.delegate = self
-        settings.undoManager = docUndoManager
-        settings.activeTool.undoManager = docUndoManager
 
         // Wire up the live-state visibility flag so TabletManager can skip
         // @Published UI writes when nobody is looking at live data.

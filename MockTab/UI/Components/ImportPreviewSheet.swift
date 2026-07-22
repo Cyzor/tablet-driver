@@ -10,6 +10,19 @@ struct ImportPreviewSheet: View {
     let plan: ImportPlan
     @ObservedObject var registry: DeviceRegistry
     @ObservedObject var tabletManager: TabletManager
+    /// The currently-open Profiles pane's own settings object. Only this
+    /// instance is guaranteed to have `undoManager` wired (set once, per
+    /// window, in `SettingsWindowController.init`) — `tabletManager.contexts`
+    /// is a PID-keyed derived view that can diverge from it, and offline/
+    /// fresh `TabletSettings` instances never get an undo manager at all.
+    /// Used so importing into the tablet you're actually viewing is
+    /// reliably undoable; other tablets in the same backup fall back to the
+    /// lookup chain below and may not be (no window open for them yet).
+    let currentPaneSettings: TabletSettings?
+    /// The product ID `currentPaneSettings` belongs to — `TabletSettings`
+    /// doesn't expose its own productID (identity lives in `devicePrefix`),
+    /// so the caller supplies the one it already has.
+    let currentPaneProductID: Int?
     /// Keyed by registry row id; import archives are model-keyed, so
     /// lookups go through the model's legacy row id (see `offline(_:)`).
     let offlineSettings: [String: TabletSettings]
@@ -20,7 +33,6 @@ struct ImportPreviewSheet: View {
     let onDismiss: () -> Void
 
     @State private var excluded: Set<Int> = []
-
     private var includedCount: Int {
         plan.entries.filter { !excluded.contains($0.productID) }.count
     }
@@ -97,8 +109,8 @@ struct ImportPreviewSheet: View {
 
     private var note: some View {
         Text(
-            String(localized: "Each tablet's settings will be added as a new profile. Your current settings are not changed until you activate a profile.",
-                   comment: "Import sheet: footer explaining that import creates new profiles and doesn't overwrite current settings")
+            String(localized: "Each tablet's base settings and named presets are added as new profiles — your current settings aren't changed until you activate one. App overrides and per-tool settings apply immediately.",
+                   comment: "Import sheet: footer explaining that profiles are inert until activated, but app overrides and tool settings take effect right away")
         )
         .appFont(.settingsLabel).foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
@@ -127,9 +139,7 @@ struct ImportPreviewSheet: View {
     @ViewBuilder
     private func entryRow(_ entry: ImportPlan.TabletEntry) -> some View {
         let isExcluded = excluded.contains(entry.productID)
-        let ts: TabletSettings? =
-            tabletManager.contexts[entry.productID]?.settings ??
-            offline(entry.productID)
+        let ts: TabletSettings? = resolveSettings(for: entry.productID)
         let finalName = ts?.uniqueProfileName(entry.resolvedProfileName) ?? entry.resolvedProfileName
         let renamed = finalName != entry.resolvedProfileName
 
@@ -164,6 +174,7 @@ struct ImportPreviewSheet: View {
                     }
                     Text(String(localized: "\(entry.profileValues.count) setting", comment: "Count of settings in imported profile"))
                         .appFont(.settingsBadge).foregroundStyle(.tertiary)
+                    extraContentSummary(for: entry, ts: ts)
                 } else {
                     Text(String(localized: "Skipped", comment: "Label when a tablet profile is excluded from import"))
                         .appFont(.settingsLabel).foregroundStyle(.secondary)
@@ -183,20 +194,69 @@ struct ImportPreviewSheet: View {
         .opacity(isExcluded ? 0.5 : 1.0)
     }
 
+    /// Counts of presets/overrides/tool-settings found in the backup for this
+    /// tablet. Conflicting overrides/tool settings (an existing local
+    /// customization for the same app/tool) are always skipped — kept local,
+    /// never silently clobbered. There's no overwrite option yet; the
+    /// control for that was disconnected until it's wired up for real (see
+    /// `importAppOverride`/`importToolSettings`'s `overwrite` parameter).
+    @ViewBuilder
+    private func extraContentSummary(for entry: ImportPlan.TabletEntry, ts: TabletSettings?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if !entry.presets.isEmpty {
+                Text(String(localized: "\(entry.presets.count) named preset", comment: "Count of named presets found in the backup for this tablet"))
+                    .appFont(.settingsBadge).foregroundStyle(.tertiary)
+            }
+            if !entry.overrides.isEmpty {
+                Text(String(localized: "\(entry.overrides.count) app override", comment: "Count of per-app overrides found in the backup for this tablet"))
+                    .appFont(.settingsBadge).foregroundStyle(.tertiary)
+            }
+            if !entry.toolSettings.isEmpty {
+                Text(String(localized: "\(entry.toolSettings.count) tool setting", comment: "Count of per-tool settings found in the backup for this tablet"))
+                    .appFont(.settingsBadge).foregroundStyle(.tertiary)
+            }
+        }
+    }
+
     // MARK: - Actions
+
+    /// Resolves the `TabletSettings` to import into for a given tablet.
+    /// Prefers `currentPaneSettings` when it's the same device as `productID`
+    /// — the only instance guaranteed to have `undoManager` wired, since
+    /// that's set once per window in `SettingsWindowController.init`, not on
+    /// `tabletManager.contexts`' derived PID lookup or on offline/fresh
+    /// instances. Other tablets in the same backup fall back to that lookup
+    /// chain and may end up not undoable — no window is open for them.
+    private func resolveSettings(for productID: Int) -> TabletSettings {
+        if let currentPaneSettings, currentPaneProductID == productID {
+            return currentPaneSettings
+        }
+        return tabletManager.contexts[productID]?.settings
+            ?? offline(productID)
+            ?? TabletSettings(productID: productID)
+    }
 
     private func applyImport() {
         for entry in plan.entries where !excluded.contains(entry.productID) {
-            let ts: TabletSettings
-            if let live = tabletManager.contexts[entry.productID]?.settings {
-                ts = live
-            } else if let offline = offline(entry.productID) {
-                ts = offline
-            } else {
-                ts = TabletSettings(productID: entry.productID)
-            }
+            let ts = resolveSettings(for: entry.productID)
             let name = ts.uniqueProfileName(entry.resolvedProfileName)
             ts.importProfile(name: name, from: entry.profileValues)
+
+            for preset in entry.presets {
+                let presetName = ts.uniqueProfileName(preset.name)
+                ts.importProfile(name: presetName, from: preset.values)
+            }
+
+            // No overwrite option yet — conflicting overrides/tool settings
+            // are always skipped, keeping the local customization untouched.
+            for override in entry.overrides {
+                ts.importAppOverride(
+                    bundleID: override.bundleID, appName: override.appName,
+                    from: override.values)
+            }
+            for tool in entry.toolSettings {
+                ts.importToolSettings(toolID: tool.toolID, from: tool.values)
+            }
         }
         onDismiss()
     }
