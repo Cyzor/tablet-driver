@@ -424,34 +424,6 @@ final class TabletSettings: ObservableObject {
         didSet { persist("touchRingActiveSlotIndex", touchRingActiveSlotIndex) }
     }
 
-    // MARK: - Temporary compatibility shim
-    // Binds to the active slot action. Used by ButtonMappingView during Phase 3 UI work.
-    // Remove once all callsites are updated to use touchRingSlots.
-    var touchRingMode: TouchRingMode {
-        get {
-            guard touchRingSlots.indices.contains(touchRingActiveSlotIndex) else { return .scroll }
-            switch touchRingSlots[touchRingActiveSlotIndex].action {
-            case .scroll: return .scroll
-            case .off, .skip: return .off
-            case .keyPress: return .scroll
-            }
-        }
-        set {
-            touchRingSlots = ControlSlot.defaults
-            touchRingActiveSlotIndex = 0
-        }
-    }
-
-    // Backward compat for strip modes - redirects to ring active slot.
-    var touchStrip1Mode: TouchRingMode {
-        get { touchRingMode }
-        set { touchRingMode = newValue }
-    }
-    var touchStrip2Mode: TouchRingMode {
-        get { touchRingMode }
-        set { touchRingMode = newValue }
-    }
-
     // MARK: - Button bindings (JSON-encoded ButtonBinding)
 
     @Published var pen1Raw: String = "" { didSet { persist("penButton1Binding", pen1Raw) } }
