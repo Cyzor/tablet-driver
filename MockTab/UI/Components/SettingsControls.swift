@@ -31,12 +31,7 @@ extension TabletSettings {
             set: { newValue in
                 MainActor.assumeIsolated {
                     let oldValue = get()
-                    set(newValue)
-                    if toolOwned { self.objectWillChange.send() }
-                    self.record(name) {
-                        set(oldValue)
-                        if toolOwned { self.objectWillChange.send() }
-                    }
+                    self.applyRecordedChange(name, value: newValue, undoTo: oldValue, toolOwned: toolOwned, set: set)
                 }
             }
         )
@@ -56,15 +51,26 @@ extension TabletSettings {
                 MainActor.assumeIsolated {
                     let oldValue = get()
                     guard newValue != oldValue else { return }
-                    set(newValue)
-                    if toolOwned { self.objectWillChange.send() }
-                    self.record(name) {
-                        set(oldValue)
-                        if toolOwned { self.objectWillChange.send() }
-                    }
+                    self.applyRecordedChange(name, value: newValue, undoTo: oldValue, toolOwned: toolOwned, set: set)
                 }
             }
         )
+    }
+
+    /// Self-recursive so every `recordingBinding` change also redoes: each
+    /// invocation (by the initial edit, by Undo, or by Redo) applies its
+    /// value and re-registers itself with the two values swapped — same
+    /// shape as `recordToggle`, just also handling the `toolOwned`
+    /// `objectWillChange` propagation `recordingBinding` needs.
+    private func applyRecordedChange<T>(
+        _ name: String, value: T, undoTo oldValue: T, toolOwned: Bool,
+        set: @escaping @MainActor @Sendable (T) -> Void
+    ) {
+        set(value)
+        if toolOwned { self.objectWillChange.send() }
+        self.record(name) { [weak self] in
+            self?.applyRecordedChange(name, value: oldValue, undoTo: value, toolOwned: toolOwned, set: set)
+        }
     }
 }
 

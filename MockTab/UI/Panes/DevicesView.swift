@@ -96,10 +96,7 @@ struct DevicesView: View {
                     if let snapshot { snapshots.append(snapshot) }
                 }
                 if !snapshots.isEmpty {
-                    undoManager?.registerUndo(withTarget: registry) { target in
-                        for snapshot in snapshots { target.restoreTool(snapshot) }
-                    }
-                    undoManager?.setActionName(String(localized: "Remove Tool", comment: "Undo action name when removing a tool"))
+                    registerToolRemovalUndo(snapshots)
                 }
                 pendingForgetTool = nil
                 editingToolID = nil
@@ -119,10 +116,7 @@ struct DevicesView: View {
             Button("Remove", role: .destructive) {
                 guard let tablet = pendingRemoveTablet else { return }
                 if let snapshot = registry.removeTablet(id: tablet.id) {
-                    undoManager?.registerUndo(withTarget: registry) { target in
-                        target.restoreTablet(snapshot)
-                    }
-                    undoManager?.setActionName(String(localized: "Remove Tablet", comment: "Undo action name when removing a tablet"))
+                    registerTabletRemovalUndo(snapshot)
                 }
                 pendingRemoveTablet = nil
             }
@@ -482,11 +476,10 @@ struct DevicesView: View {
         guard !trimmed.isEmpty, trimmed != tablet.nickname else { return }
         let oldName = tablet.nickname
         registry.renameTablet(id: id, to: trimmed)
-        // Register undo for tablet rename
-        undoManager?.registerUndo(withTarget: registry) { target in
-            target.renameTablet(id: id, to: oldName)
-        }
-        undoManager?.setActionName(String(localized: "Rename Tablet", comment: "Undo action name when renaming a tablet"))
+        registerRenameUndo(
+            String(localized: "Rename Tablet", comment: "Undo action name when renaming a tablet"),
+            apply: { registry.renameTablet(id: id, to: $0) },
+            from: oldName, to: trimmed)
     }
 
     private func commitToolRename() {
@@ -504,11 +497,12 @@ struct DevicesView: View {
                 !trimmed.isEmpty, trimmed != tool.nickname
             else { return }
             let oldName = tool.nickname
+            let renameToolAction = String(localized: "Rename Tool", comment: "Undo action name when renaming a tool")
             registry.renameToolEverywhere(id: toolID, to: trimmed)
-            undoManager?.registerUndo(withTarget: registry) { target in
-                target.renameToolEverywhere(id: toolID, to: oldName)
-            }
-            undoManager?.setActionName(String(localized: "Rename Tool", comment: "Undo action name when renaming a tool"))
+            registerRenameUndo(
+                renameToolAction,
+                apply: { registry.renameToolEverywhere(id: toolID, to: $0) },
+                from: oldName, to: trimmed)
             // Carry the new name to the folded-in eraser entry so places
             // that surface the active tool by id (status bar, Info pane)
             // stay consistent with the merged row. Both undos land in the
@@ -517,10 +511,12 @@ struct DevicesView: View {
                 let eraser = registry.allKnownTools.first(where: { $0.id == eraserID })
             {
                 let oldEraserName = eraser.nickname
-                registry.renameToolEverywhere(id: eraserID, to: "\(trimmed) (Eraser)")
-                undoManager?.registerUndo(withTarget: registry) { target in
-                    target.renameToolEverywhere(id: eraserID, to: oldEraserName)
-                }
+                let newEraserName = "\(trimmed) (Eraser)"
+                registry.renameToolEverywhere(id: eraserID, to: newEraserName)
+                registerRenameUndo(
+                    renameToolAction,
+                    apply: { registry.renameToolEverywhere(id: eraserID, to: $0) },
+                    from: oldEraserName, to: newEraserName)
             }
             return
         }
@@ -531,23 +527,78 @@ struct DevicesView: View {
         // Empty or unchanged names end the edit and keep the old name.
         guard !trimmed.isEmpty, trimmed != tool.nickname else { return }
         let oldName = tool.nickname
+        let renameToolAction = String(localized: "Rename Tool", comment: "Undo action name when renaming a tool")
         registry.renameTool(id: toolID, to: trimmed, forDevice: deviceID)
-        // Register undo for tool rename
-        undoManager?.registerUndo(withTarget: registry) { target in
-            target.renameTool(id: toolID, to: oldName, forDevice: deviceID)
-        }
-        undoManager?.setActionName(String(localized: "Rename Tool", comment: "Undo action name when renaming a tool"))
+        registerRenameUndo(
+            renameToolAction,
+            apply: { registry.renameTool(id: toolID, to: $0, forDevice: deviceID) },
+            from: oldName, to: trimmed)
         // Carry the new name to the folded-in eraser entry — see the
         // all-tablets branch above.
         if let eraserID = Self.eraserSiblingID(of: toolID),
             let eraser = registry.knownTools.first(where: { $0.id == eraserID })
         {
             let oldEraserName = eraser.nickname
-            registry.renameTool(id: eraserID, to: "\(trimmed) (Eraser)", forDevice: deviceID)
-            undoManager?.registerUndo(withTarget: registry) { target in
-                target.renameTool(id: eraserID, to: oldEraserName, forDevice: deviceID)
-            }
+            let newEraserName = "\(trimmed) (Eraser)"
+            registry.renameTool(id: eraserID, to: newEraserName, forDevice: deviceID)
+            registerRenameUndo(
+                renameToolAction,
+                apply: { registry.renameTool(id: eraserID, to: $0, forDevice: deviceID) },
+                from: oldEraserName, to: newEraserName)
         }
+    }
+
+    // MARK: - Undo/Redo helpers
+
+    /// Registers an undoable rename, self-recursively so it also redoes —
+    /// same idiom as `TabletSettings.recordToggle`, needed here because
+    /// `DeviceRegistry` renames bypass `TabletSettings.record` entirely.
+    private func registerRenameUndo(_ name: String, apply: @escaping (String) -> Void, from oldValue: String, to newValue: String) {
+        undoManager?.registerUndo(withTarget: registry) { _ in
+            apply(oldValue)
+            self.registerRenameUndo(name, apply: apply, from: newValue, to: oldValue)
+        }
+        undoManager?.setActionName(name)
+    }
+
+    /// Self-recursive so "Remove Tool" also redoes: undo restores every
+    /// snapshot, then re-removes the same tool ids the same way (per-device
+    /// vs. everywhere, per snapshot) and re-registers.
+    private func registerToolRemovalUndo(_ snapshots: [DeviceRegistry.ToolRemovalSnapshot]) {
+        undoManager?.registerUndo(withTarget: registry) { target in
+            for snapshot in snapshots { target.restoreTool(snapshot) }
+            self.redoRemoveTool(snapshots)
+        }
+        undoManager?.setActionName(String(localized: "Remove Tool", comment: "Undo action name when removing a tool"))
+    }
+
+    private func redoRemoveTool(_ oldSnapshots: [DeviceRegistry.ToolRemovalSnapshot]) {
+        var newSnapshots: [DeviceRegistry.ToolRemovalSnapshot] = []
+        for old in oldSnapshots {
+            let snapshot: DeviceRegistry.ToolRemovalSnapshot?
+            if old.originDeviceID.isEmpty {
+                snapshot = registry.forgetToolEverywhere(id: old.tool.id)
+            } else {
+                snapshot = registry.forgetTool(id: old.tool.id, forDevice: old.originDeviceID)
+            }
+            if let snapshot { newSnapshots.append(snapshot) }
+        }
+        guard !newSnapshots.isEmpty else { return }
+        registerToolRemovalUndo(newSnapshots)
+    }
+
+    /// Self-recursive so "Remove Tablet" also redoes.
+    private func registerTabletRemovalUndo(_ snapshot: DeviceRegistry.TabletRemovalSnapshot) {
+        undoManager?.registerUndo(withTarget: registry) { target in
+            target.restoreTablet(snapshot)
+            self.redoRemoveTablet(snapshot)
+        }
+        undoManager?.setActionName(String(localized: "Remove Tablet", comment: "Undo action name when removing a tablet"))
+    }
+
+    private func redoRemoveTablet(_ old: DeviceRegistry.TabletRemovalSnapshot) {
+        guard let newSnapshot = registry.removeTablet(id: old.tablet.id) else { return }
+        registerTabletRemovalUndo(newSnapshot)
     }
 
     private func syncTools() {
