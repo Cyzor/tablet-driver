@@ -191,16 +191,19 @@ extension TabletSettings {
 
     /// Deletes `preset` and all its stored values.
     /// Removes any app bindings pointing to it.  If it was active, reverts to device defaults.
+    /// Every UserDefaults key a preset can hold — shared by `deletePreset`
+    /// (what to erase) and `deletePresetRecordingUndo` (what to snapshot).
+    static let presetKeys = [
+        "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
+        "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
+        "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
+        "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
+        "touchRingActiveSlotIndex", "pressureCurve", "calibrationJSON",
+    ]
+
     func deletePreset(_ profile: Profile) {
         let prefix = profileKeyPrefix(profile)
-        let allKeys = [
-            "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
-            "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
-            "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
-            "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
-            "touchRingActiveSlotIndex", "pressureCurve", "calibrationJSON",
-        ]
-        for key in allKeys { ud.removeObject(forKey: prefix + key) }
+        for key in Self.presetKeys { ud.removeObject(forKey: prefix + key) }
         profiles.removeAll { $0.id == profile.id }
         // Remove app bindings that referenced this profile.
         let before = appBindings.count
@@ -210,6 +213,52 @@ extension TabletSettings {
             activate(nil)
         } else {
             saveProfileList()
+        }
+    }
+
+    /// Deletes `profile` with full undo/redo support. `deletePreset` itself
+    /// registers no undo — it's a low-level primitive reused by import/
+    /// save-profile flows that already handle their own undo. This is the
+    /// entry point for a user-initiated delete (e.g. the trash button):
+    /// snapshots the preset's stored values, its position in the list, and
+    /// any app bindings pointing to it, so undo restores it exactly and a
+    /// subsequent redo deletes it again — self-recursive, same idiom as
+    /// everywhere else in this file.
+    func deletePresetRecordingUndo(_ profile: Profile) {
+        let prefix = profileKeyPrefix(profile)
+        var snapshot: [String: Any] = [:]
+        for key in Self.presetKeys {
+            if let v = ud.object(forKey: prefix + key) { snapshot[key] = v }
+        }
+        let index = profiles.firstIndex(where: { $0.id == profile.id })
+        let affectedBindings = appBindings.filter { $0.profileID == profile.id }
+        let wasActive = activeProfile?.id == profile.id
+
+        deletePreset(profile)
+
+        record("Delete Profile") { [weak self] in
+            guard let self else { return }
+            var restored = profile
+            restored.overriddenKeys = Set(snapshot.keys)
+            if let index, index <= self.profiles.count {
+                self.profiles.insert(restored, at: index)
+            } else {
+                self.profiles.append(restored)
+            }
+            for (key, value) in snapshot { self.ud.set(value, forKey: prefix + key) }
+            if !affectedBindings.isEmpty {
+                self.appBindings.append(contentsOf: affectedBindings)
+                self.saveAppBindings()
+            }
+            self.saveProfileList()
+            if wasActive {
+                self.activeProfile = restored
+                self.saveActiveProfileID()
+                self.reloadAll()
+            }
+            self.record("Delete Profile") { [weak self] in
+                self?.deletePresetRecordingUndo(restored)
+            }
         }
     }
 

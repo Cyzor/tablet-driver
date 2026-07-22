@@ -49,10 +49,7 @@ struct ProfilesView: View {
                     editingPreset: $editingPreset,
                     editingName: $editingName,
                     onActivate: { settings.activate($0) },
-                    onDelete: {
-                        if settings.activeProfile?.id == $0.id { settings.activeProfile = nil }
-                        settings.deletePreset($0)
-                    },
+                    onDelete: { settings.deletePresetRecordingUndo($0) },
                     onRenameBegin: { editingPreset = $0; editingName = $0.name },
                     onRenameCommit: commitRename,
                     onRenameCancel: { editingPreset = nil; editingName = "" }
