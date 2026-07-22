@@ -130,8 +130,8 @@ struct QuickKeysSectionView: View {
                 var updated = oldSlots
                 updated[index].action = newValue
                 settings.touchRingSlots = updated
-                settings.record("Dial Slot \(index + 1) Action") {
-                    settings.touchRingSlots = oldSlots
+                settings.recordToggle("Dial Slot \(index + 1) Action", from: oldSlots, to: updated) {
+                    settings.touchRingSlots = $0
                 }
             }
         )
@@ -149,8 +149,8 @@ struct QuickKeysSectionView: View {
                 var updated = oldSlots
                 updated[index].speed = newValue
                 settings.touchRingSlots = updated
-                settings.record("Dial Slot \(index + 1) Speed") {
-                    settings.touchRingSlots = oldSlots
+                settings.recordToggle("Dial Slot \(index + 1) Speed", from: oldSlots, to: updated) {
+                    settings.touchRingSlots = $0
                 }
             }
         )

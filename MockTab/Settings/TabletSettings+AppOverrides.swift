@@ -182,6 +182,11 @@ extension TabletSettings {
             reloadAll()
         }
 
+        // Self-recursive so this also redoes: undo restores the removed
+        // values/struct, then re-registers a fresh "Remove App Override" that
+        // simply re-invokes this same function with its original arguments —
+        // which naturally captures its own new snapshot and re-registers its
+        // own undo, so the pair keeps toggling indefinitely.
         record("Remove App Override") { [weak self] in
             guard let self else { return }
             // Restore UserDefaults values.
@@ -192,6 +197,9 @@ extension TabletSettings {
             if !self.appOverrides.contains(where: { $0.bundleID == capturedOverride.bundleID }) {
                 self.appOverrides.append(capturedOverride)
                 self.saveAppOverrides()
+            }
+            self.record("Remove App Override") { [weak self] in
+                self?.removeAppOverride(bundleID: bundleID, keyScope: keyScope)
             }
         }
     }
@@ -228,11 +236,15 @@ extension TabletSettings {
             reloadAll()
         }
 
+        // Self-recursive redo — see `removeAppOverride`'s comment for the shape.
         record("Remove All App Overrides") { [weak self] in
             guard let self else { return }
             for (key, value) in snapshot { self.ud.set(value, forKey: key) }
             self.appOverrides = capturedOverrides
             self.saveAppOverrides()
+            self.record("Remove All App Overrides") { [weak self] in
+                self?.removeAllAppOverrides()
+            }
         }
     }
 
@@ -300,6 +312,10 @@ extension TabletSettings {
             reloadAll()
         }
 
+        // Self-recursive so this also redoes: the undo closure ends by
+        // re-registering a fresh "Import App Override" that just re-invokes
+        // this same function with its original arguments, mirroring
+        // `removeAppOverride`'s pattern.
         record("Import App Override") { [weak self] in
             guard let self else { return }
             if let previousOverride {
@@ -315,10 +331,13 @@ extension TabletSettings {
                 if self.activeAppOverride?.bundleID == bundleID || self.driverOverride?.bundleID == bundleID {
                     self.reloadAll()
                 }
+                self.record("Import App Override") { [weak self] in
+                    self?.importAppOverride(bundleID: bundleID, appName: appName, from: values, overwrite: true)
+                }
             } else {
                 // Nothing existed before this import — fully remove it.
-                // removeAppOverride registers its own undo, but that's a no-op
-                // during undo replay (TabletSettings.record guards on isUndoing).
+                // `removeAppOverride` is itself self-recursive, so this
+                // delegation already gets real redo for free.
                 self.removeAppOverride(bundleID: bundleID)
             }
         }

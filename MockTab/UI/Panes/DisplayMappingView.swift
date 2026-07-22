@@ -59,13 +59,17 @@ struct DisplayMappingView: View {
     /// fields (active area, parallax, orientation) belong to `TabletAreaView`
     /// and aren't touched here.
     private func resetToDefaults() {
-        let oldIndex = settings.targetDisplayIndex
-        let oldIDs = settings.toggleDisplayIDSet
-        settings.targetDisplayIndex = 0
-        settings.toggleDisplayIDSet = []
+        applyDisplayReset(index: 0, ids: [], undoIndex: settings.targetDisplayIndex, undoIDs: settings.toggleDisplayIDSet)
+    }
+
+    /// Self-recursive so "Reset to Defaults" also redoes: each invocation
+    /// applies its `index`/`ids` pair and registers the swap as the next
+    /// undo (which, from the redo stack, replays as the next redo).
+    private func applyDisplayReset(index: Int, ids: Set<CGDirectDisplayID>, undoIndex: Int, undoIDs: Set<CGDirectDisplayID>) {
+        settings.targetDisplayIndex = index
+        settings.toggleDisplayIDSet = ids
         settings.record("Reset to Defaults") {
-            settings.targetDisplayIndex = oldIndex
-            settings.toggleDisplayIDSet = oldIDs
+            self.applyDisplayReset(index: undoIndex, ids: undoIDs, undoIndex: index, undoIDs: ids)
         }
     }
 
@@ -281,7 +285,7 @@ struct DisplayMappingView: View {
             let old = settings.targetDisplayIndex
             guard old != tag else { return }
             settings.targetDisplayIndex = tag
-            settings.record("Display Mapping") { self.settings.targetDisplayIndex = old }
+            settings.recordToggle("Display Mapping", from: old, to: tag) { self.settings.targetDisplayIndex = $0 }
         } label: {
             HStack(spacing: 8) {
                 NativeRadioIndicator(isSelected: settings.targetDisplayIndex == tag)
@@ -436,8 +440,9 @@ struct DisplayMappingView: View {
                     }
                     // Simplify back to empty (= all) when every display is included
                     let oldIDs = settings.toggleDisplayIDSet
-                    settings.toggleDisplayIDSet = (ids == Set(displays.map(\.id))) ? [] : ids
-                    settings.record("Toggle Display Set") { settings.toggleDisplayIDSet = oldIDs }
+                    let newIDs = (ids == Set(displays.map(\.id))) ? [] : ids
+                    settings.toggleDisplayIDSet = newIDs
+                    settings.recordToggle("Toggle Display Set", from: oldIDs, to: newIDs) { settings.toggleDisplayIDSet = $0 }
                     rangeStart = -1
                 }
             } else if flags.contains(.command) {
@@ -474,9 +479,9 @@ struct DisplayMappingView: View {
         // Simplify back to empty (= all) when every display is included
         let newIDs = (ids == Set(displays.map(\.id))) ? [] : ids
         settings.toggleDisplayIDSet = newIDs
-        // Register undo for the toggle set change
-        settings.record("Toggle Display Set") {
-            settings.toggleDisplayIDSet = oldIDs
+        // Register undo (and, via recordToggle, redo) for the toggle set change
+        settings.recordToggle("Toggle Display Set", from: oldIDs, to: newIDs) {
+            settings.toggleDisplayIDSet = $0
         }
     }
 
@@ -499,12 +504,15 @@ struct DisplayMappingView: View {
             ids.insert(info.id)
         }
         let newIDs = (ids == Set(displays.map(\.id))) ? [] : ids
-        settings.toggleDisplayIDSet = newIDs
-        settings.targetDisplayIndex = modeToggle
-        // Register undo for both changes
+        applyToggleDisplaySet(ids: newIDs, index: modeToggle, undoIDs: oldIDs, undoIndex: oldDisplayIndex)
+    }
+
+    /// Self-recursive so this also redoes — see `applyDisplayReset`.
+    private func applyToggleDisplaySet(ids: Set<CGDirectDisplayID>, index: Int, undoIDs: Set<CGDirectDisplayID>, undoIndex: Int) {
+        settings.toggleDisplayIDSet = ids
+        settings.targetDisplayIndex = index
         settings.record("Toggle Display Set") {
-            settings.toggleDisplayIDSet = oldIDs
-            settings.targetDisplayIndex = oldDisplayIndex
+            self.applyToggleDisplaySet(ids: undoIDs, index: undoIndex, undoIDs: ids, undoIndex: index)
         }
     }
 
@@ -622,7 +630,7 @@ struct DisplayMappingView: View {
                     let old = settings.targetDisplayIndex
                     guard old != modeAll else { return }
                     settings.targetDisplayIndex = modeAll
-                    settings.record("Display Mapping") { self.settings.targetDisplayIndex = old }
+                    settings.recordToggle("Display Mapping", from: old, to: modeAll) { self.settings.targetDisplayIndex = $0 }
 
                 } else if flags.contains(.command), displays.count > 1 {
                     // Cmd+click → build toggle rotation and activate Toggle mode
@@ -637,7 +645,7 @@ struct DisplayMappingView: View {
                         let newVal = displays[index].listIndex
                         guard old != newVal else { break }
                         settings.targetDisplayIndex = newVal
-                        settings.record("Display Mapping") { self.settings.targetDisplayIndex = old }
+                        settings.recordToggle("Display Mapping", from: old, to: newVal) { self.settings.targetDisplayIndex = $0 }
                         break
                     }
                 }

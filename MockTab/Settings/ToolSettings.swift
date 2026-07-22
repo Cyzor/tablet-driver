@@ -208,10 +208,9 @@ final class ToolSettings: ObservableObject {
     /// equivalent `*LoadFailed` flags.
     var pressureCurveLoadFailed = false
 
-    /// Suppresses undo registration when replaying undo/redo actions.
-    var isUndoing = false
-
-    /// Undo manager shared with TabletSettings, passed from SettingsWindowController.
+    /// Undo manager shared with the owning `TabletSettings` instance (see
+    /// its `undoManager` for why this is the device's own manager, not
+    /// something each window creates).
     weak var undoManager: UndoManager?
 
     init(prefix: String, fallbackPrefix: String? = nil, isMouse: Bool = false) {
@@ -351,15 +350,21 @@ final class ToolSettings: ObservableObject {
     // MARK: - Undo/Redo support
 
     /// Registers an undo action with the shared undoManager.
-    /// Guards against registration during undo replay to prevent infinite loops.
+    /// See `TabletSettings.record` — same redo-via-re-registration mechanism.
     func record(_ actionName: String, undo: @escaping () -> Void) {
-        guard let um = undoManager, !isUndoing else { return }
+        guard let um = undoManager else { return }
         um.setActionName(actionName)
         um.registerUndo(withTarget: self) { [weak self] target in
             guard let self else { return }
-            self.isUndoing = true
             undo()
-            self.isUndoing = false
+        }
+    }
+
+    /// See `TabletSettings.recordToggle` — same single-value undo/redo shorthand.
+    func recordToggle<T>(_ actionName: String, from oldValue: T, to newValue: T, apply: @escaping (T) -> Void) {
+        record(actionName) { [weak self] in
+            apply(oldValue)
+            self?.recordToggle(actionName, from: newValue, to: oldValue, apply: apply)
         }
     }
 }

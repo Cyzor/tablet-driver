@@ -158,16 +158,10 @@ struct TouchView: View {
                 Spacer()
                 Button(String(localized: "Reset to Full Surface",
                               comment: "Touch pane: reset the touch area to cover the entire touch surface")) {
-                    let old = (settings.touchAreaX, settings.touchAreaY,
-                               settings.touchAreaWidth, settings.touchAreaHeight)
-                    settings.touchAreaX = 0
-                    settings.touchAreaY = 0
-                    settings.touchAreaWidth = 1
-                    settings.touchAreaHeight = 1
-                    settings.record("Touch Area Reset") {
-                        (settings.touchAreaX, settings.touchAreaY,
-                         settings.touchAreaWidth, settings.touchAreaHeight) = old
-                    }
+                    applyTouchAreaReset(
+                        to: (0, 0, 1, 1),
+                        undoTo: (settings.touchAreaX, settings.touchAreaY,
+                                 settings.touchAreaWidth, settings.touchAreaHeight))
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -234,6 +228,18 @@ struct TouchView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+        }
+    }
+
+    /// Self-recursive so "Touch Area Reset" also redoes — see
+    /// `TabletSettings.recordAreaDrag` for the same pattern.
+    private func applyTouchAreaReset(
+        to new: (Double, Double, Double, Double), undoTo old: (Double, Double, Double, Double)
+    ) {
+        (settings.touchAreaX, settings.touchAreaY,
+         settings.touchAreaWidth, settings.touchAreaHeight) = new
+        settings.record("Touch Area Reset") {
+            self.applyTouchAreaReset(to: old, undoTo: new)
         }
     }
 }

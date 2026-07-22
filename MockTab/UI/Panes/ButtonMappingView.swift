@@ -170,42 +170,54 @@ struct ButtonMappingView: View {
     /// left alone — they aren't in `buttonKeys`, so they aren't part of the
     /// per-app-override system either, and touching them here would reset
     /// state this pane's own override scoping doesn't otherwise cover.
+    private typealias ButtonToolState = (
+        tip: ButtonBinding, eraser: ButtonBinding, pen1: ButtonBinding, pen2: ButtonBinding
+    )
+    private typealias ButtonSettingsState = (
+        expressKeys: [ButtonBinding], touchRingButton: ButtonBinding,
+        touchRingSlots: [ControlSlot], touchRingActiveSlot: Int
+    )
+
     private func resetToDefaults() {
-        let toolOld = (tool.tipBinding, tool.eraserBinding, tool.penButton1Binding, tool.penButton2Binding)
-        let settingsOld = (
+        let toolOld: ButtonToolState = (tool.tipBinding, tool.eraserBinding, tool.penButton1Binding, tool.penButton2Binding)
+        let settingsOld: ButtonSettingsState = (
             settings.expressKeyBindings, settings.touchRingButtonBinding,
             settings.touchRingSlots, settings.touchRingActiveSlotIndex
         )
         let isMouse = activeToolSpec?.toolType == .mouse
+        let toolDefaults: ButtonToolState = (.leftClick, .eraser, .rightClick, isMouse ? .rightClick : .middleClick)
+        let settingsDefaults: ButtonSettingsState = (
+            Array(repeating: .none, count: 16), ButtonBinding(kind: .ringCycle), ControlSlot.defaults, 0
+        )
 
         settings.undoManager?.beginUndoGrouping()
+        applyButtonToolReset(toolDefaults, undoTo: toolOld)
+        applyButtonSettingsReset(settingsDefaults, undoTo: settingsOld)
+        settings.undoManager?.endUndoGrouping()
+    }
 
+    /// Self-recursive so "Reset to Defaults" also redoes the tool-owned half.
+    private func applyButtonToolReset(_ new: ButtonToolState, undoTo old: ButtonToolState) {
         let t = activeToolBinding
-        t.wrappedValue.tipBinding = .leftClick
-        t.wrappedValue.eraserBinding = .eraser
-        t.wrappedValue.penButton1Binding = .rightClick
-        t.wrappedValue.penButton2Binding = isMouse ? .rightClick : .middleClick
+        t.wrappedValue.tipBinding = new.tip
+        t.wrappedValue.eraserBinding = new.eraser
+        t.wrappedValue.penButton1Binding = new.pen1
+        t.wrappedValue.penButton2Binding = new.pen2
         settings.objectWillChange.send()
         settings.record("Reset to Defaults") {
-            t.wrappedValue.tipBinding = toolOld.0
-            t.wrappedValue.eraserBinding = toolOld.1
-            t.wrappedValue.penButton1Binding = toolOld.2
-            t.wrappedValue.penButton2Binding = toolOld.3
-            self.settings.objectWillChange.send()
+            self.applyButtonToolReset(old, undoTo: new)
         }
+    }
 
-        settings.expressKeyBindings = Array(repeating: .none, count: 16)
-        settings.touchRingButtonBinding = ButtonBinding(kind: .ringCycle)
-        settings.touchRingSlots = ControlSlot.defaults
-        settings.touchRingActiveSlotIndex = 0
+    /// Self-recursive so "Reset to Defaults" also redoes the settings-owned half.
+    private func applyButtonSettingsReset(_ new: ButtonSettingsState, undoTo old: ButtonSettingsState) {
+        settings.expressKeyBindings = new.expressKeys
+        settings.touchRingButtonBinding = new.touchRingButton
+        settings.touchRingSlots = new.touchRingSlots
+        settings.touchRingActiveSlotIndex = new.touchRingActiveSlot
         settings.record("Reset to Defaults") {
-            settings.expressKeyBindings = settingsOld.0
-            settings.touchRingButtonBinding = settingsOld.1
-            settings.touchRingSlots = settingsOld.2
-            settings.touchRingActiveSlotIndex = settingsOld.3
+            self.applyButtonSettingsReset(old, undoTo: new)
         }
-
-        settings.undoManager?.endUndoGrouping()
     }
 
     // MARK: - Pen buttons section

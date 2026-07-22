@@ -194,21 +194,21 @@ struct PenFeelView: View {
                 Button("Linear") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .linear
-                    tool.record("Linear Curve") { tool.pressureCurve = old }
+                    tool.recordToggle("Linear Curve", from: old, to: .linear) { tool.pressureCurve = $0 }
                 }
                 .help(
                     "Linear response — equal pen force produces equal pressure output. Best for general use.")
                 Button("Soft") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .soft
-                    tool.record("Soft Curve") { tool.pressureCurve = old }
+                    tool.recordToggle("Soft Curve", from: old, to: .soft) { tool.pressureCurve = $0 }
                 }
                 .help(
                     "Soft response — light pressure reaches full output quickly. Good for loose, expressive work.")
                 Button("Firm") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .firm
-                    tool.record("Firm Curve") { tool.pressureCurve = old }
+                    tool.recordToggle("Firm Curve", from: old, to: .firm) { tool.pressureCurve = $0 }
                 }
                 .help(
                     "Firm response — requires more force to reach full output. Good for precise detail work.")
@@ -230,43 +230,51 @@ struct PenFeelView: View {
     /// its shipped default. Two `record` calls — one tool-owned, one
     /// device-owned — share `settings.undoManager`, so grouping them makes a
     /// single Cmd-Z undo the whole reset instead of two.
+    private typealias ToolResetState = (
+        curve: BezierCurve, smoothing: Double, pressureSmoothing: Double,
+        rotationAsTilt: Bool, tiltOffset: Double, tiltMagnitude: Double, panSpeed: Double
+    )
+    private typealias SettingsResetState = (
+        doubleClick: Double, invertRotation: Bool, relativeCursor: Bool,
+        tipUpAssist: Double, dragThreshold: Double
+    )
+
     private func resetToDefaults() {
-        let toolOld = (
+        let toolOld: ToolResetState = (
             tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength,
             tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
             tool.panScrollSpeed
         )
-        let settingsOld = (
+        let settingsOld: SettingsResetState = (
             settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
             settings.tipUpAssistDelay, settings.dragThreshold
         )
+        let toolDefaults: ToolResetState = (.linear, 0, 0, false, 0, 0.8, 1.0)
+        let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, 0.0)
 
         settings.undoManager?.beginUndoGrouping()
-
-        tool.pressureCurve = .linear
-        tool.smoothingStrength = 0
-        tool.pressureSmoothingStrength = 0
-        tool.useRotationAsTilt = false
-        tool.rotationTiltOffsetDegrees = 0
-        tool.rotationTiltMagnitude = 0.8
-        tool.panScrollSpeed = 1.0
-        tool.record("Reset to Defaults") {
-            (tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength,
-             tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
-             tool.panScrollSpeed) = toolOld
-        }
-
-        settings.doubleClickDistance = 10.0
-        settings.invertRotation = false
-        settings.relativeCursorMovement = false
-        settings.tipUpAssistDelay = 0.0
-        settings.dragThreshold = 0.0
-        settings.record("Reset to Defaults") {
-            (settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
-             settings.tipUpAssistDelay, settings.dragThreshold) = settingsOld
-        }
-
+        applyToolReset(toolDefaults, undoTo: toolOld)
+        applySettingsReset(settingsDefaults, undoTo: settingsOld)
         settings.undoManager?.endUndoGrouping()
+    }
+
+    /// Self-recursive so "Reset to Defaults" also redoes the tool-owned half.
+    private func applyToolReset(_ new: ToolResetState, undoTo old: ToolResetState) {
+        (tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength,
+         tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
+         tool.panScrollSpeed) = new
+        tool.record("Reset to Defaults") {
+            self.applyToolReset(old, undoTo: new)
+        }
+    }
+
+    /// Self-recursive so "Reset to Defaults" also redoes the settings-owned half.
+    private func applySettingsReset(_ new: SettingsResetState, undoTo old: SettingsResetState) {
+        (settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
+         settings.tipUpAssistDelay, settings.dragThreshold) = new
+        settings.record("Reset to Defaults") {
+            self.applySettingsReset(old, undoTo: new)
+        }
     }
 
     // MARK: - Bindings with undo support
@@ -407,8 +415,8 @@ private struct PressureCurveCanvas: View {
                     .onEnded { _ in
                         // Register one undo entry for the entire drag
                         if draggingP1 || draggingP2 {
-                            tool.record("Pressure Curve") {
-                                tool.pressureCurve = self.pressureCurveSnapshot
+                            tool.recordToggle("Pressure Curve", from: self.pressureCurveSnapshot, to: tool.pressureCurve) {
+                                tool.pressureCurve = $0
                             }
                         }
                         draggingP1 = false
@@ -475,7 +483,7 @@ private struct PressureCurveCanvas: View {
                 }
                 guard curve.p1 != tool.pressureCurve.p1 || curve.p2 != tool.pressureCurve.p2 else { return }
                 tool.pressureCurve = curve
-                tool.record("Pressure Curve") { tool.pressureCurve = snapshot }
+                tool.recordToggle("Pressure Curve", from: snapshot, to: curve) { tool.pressureCurve = $0 }
             }
         )
     }
@@ -493,7 +501,7 @@ private struct PressureCurveCanvas: View {
         }
         guard curve.p1 != tool.pressureCurve.p1 || curve.p2 != tool.pressureCurve.p2 else { return }
         tool.pressureCurve = curve
-        tool.record("Pressure Curve") { tool.pressureCurve = snapshot }
+        tool.recordToggle("Pressure Curve", from: snapshot, to: curve) { tool.pressureCurve = $0 }
     }
 
     // MARK: - Drawing helpers

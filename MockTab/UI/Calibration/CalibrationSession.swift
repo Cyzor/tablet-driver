@@ -226,10 +226,11 @@ final class CalibrationSession: ObservableObject {
         entries.removeAll { $0.key == entry.key }
         entries.append(entry)
         settings.calibrationEntries = entries
+        let newJSON = settings.calibrationJSON
 
-        // Register undo.
-        settings.record("Calibrate Pen Display") {
-            self.settings.calibrationJSON = oldJSON
+        // Register undo (and, via recordToggle, redo).
+        settings.recordToggle("Calibrate Pen Display", from: oldJSON, to: newJSON) {
+            self.settings.calibrationJSON = $0
         }
 
         // Invalidate injector's calibration cache.

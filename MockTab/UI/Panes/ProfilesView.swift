@@ -433,16 +433,29 @@ struct ProfilesView: View {
         settings.saveAsPreset(name: trimmed)
 
         if let newPreset = settings.profiles.last(where: { $0.name == trimmed }) {
-            let presetToDelete = newPreset
-            let snapshotForUndo = snap
-            settings.record("Save Profile") {
-                settings.deletePreset(presetToDelete)
-                settings.restoreSnapshot(snapshotForUndo, actionName: "Undo Save Profile")
-            }
+            recordSaveProfile(created: newPreset, previousSnapshot: snap, name: trimmed)
         }
 
         isCreating = false
         newName = ""
+    }
+
+    /// Self-recursive so "Save Profile" also redoes: undoing deletes the
+    /// preset just created and restores the prior settings snapshot; that
+    /// closure then re-creates an equivalent preset (same name, new UUID —
+    /// exact identity isn't preserved, but the visible result is) and
+    /// re-registers itself with the roles swapped, same shape as
+    /// `TabletSettings.restoreSnapshot`.
+    private func recordSaveProfile(created preset: TabletSettings.Profile, previousSnapshot snap: TabletSettings.FullSnapshot, name: String) {
+        settings.record("Save Profile") {
+            let currentSnap = self.settings.snapshot()
+            self.settings.deletePreset(preset)
+            self.settings.applySnapshot(snap)
+            self.settings.saveAsPreset(name: name)
+            if let recreated = self.settings.profiles.last(where: { $0.name == name }) {
+                self.recordSaveProfile(created: recreated, previousSnapshot: currentSnap, name: name)
+            }
+        }
     }
 
     private func commitRename() {
@@ -450,11 +463,16 @@ struct ProfilesView: View {
         let trimmed = editingName.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty {
             let oldName = preset.name
+            let presetID = preset.id
             settings.renamePreset(preset, to: trimmed)
-            let presetForUndo = preset
-            let nameForUndo = oldName
-            settings.record("Rename Profile") {
-                settings.renamePreset(presetForUndo, to: nameForUndo)
+            // `Profile`'s Equatable compares every field (including `name`),
+            // and `renamePreset` looks its target up by value equality — so
+            // a stale captured `preset` (old name) would stop matching after
+            // the first rename. Re-fetch the live profile by id each time
+            // this fires, so repeated undo/redo cycles keep working.
+            settings.recordToggle("Rename Profile", from: oldName, to: trimmed) { name in
+                guard let current = settings.profiles.first(where: { $0.id == presetID }) else { return }
+                settings.renamePreset(current, to: name)
             }
         }
         editingPreset = nil

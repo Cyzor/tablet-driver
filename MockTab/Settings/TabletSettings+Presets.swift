@@ -95,9 +95,16 @@ extension TabletSettings {
         saveProfileList()
 
         let importedID = profile.id
+        // Self-recursive so this also redoes: undo deletes the imported
+        // preset, then re-registers a fresh "Import Profile" that re-invokes
+        // this same function — a new UUID, but an equivalent preset, same
+        // trade-off as `ProfilesView.recordSaveProfile`.
         record("Import Profile") { [weak self] in
             guard let self, let match = self.profiles.first(where: { $0.id == importedID }) else { return }
             self.deletePreset(match)
+            self.record("Import Profile") { [weak self] in
+                self?.importProfile(name: name, from: values)
+            }
         }
         return profile
     }
@@ -146,6 +153,7 @@ extension TabletSettings {
         }
         toolCache[toolID]?.reload()
 
+        // Self-recursive so this also redoes — see `importAppOverride`.
         record("Import Tool Settings") { [weak self] in
             guard let self else { return }
             for key in Self.toolSettingsKeys {
@@ -156,6 +164,9 @@ extension TabletSettings {
                 }
             }
             self.toolCache[toolID]?.reload()
+            self.record("Import Tool Settings") { [weak self] in
+                self?.importToolSettings(toolID: toolID, from: values, overwrite: true)
+            }
         }
         return true
     }

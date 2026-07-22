@@ -240,14 +240,9 @@ struct TabletAreaView: View {
                                 }
                                 Spacer()
                                 Button("Reset Offset") {
-                                    let oldX = settings.parallaxOffsetX
-                                    let oldY = settings.parallaxOffsetY
-                                    settings.parallaxOffsetX = 0
-                                    settings.parallaxOffsetY = 0
-                                    settings.record("Reset Offset") {
-                                        settings.parallaxOffsetX = oldX
-                                        settings.parallaxOffsetY = oldY
-                                    }
+                                    applyParallaxReset(
+                                        toX: 0, toY: 0,
+                                        undoX: settings.parallaxOffsetX, undoY: settings.parallaxOffsetY)
                                 }
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
@@ -272,8 +267,14 @@ struct TabletAreaView: View {
     /// parallax offset, landscape orientation, primary display, all displays
     /// toggle-eligible. Calibration and touch-area fields aren't in
     /// `areaKeys` and already have their own dedicated reset controls above.
+    private typealias AreaState = (
+        x: Double, y: Double, w: Double, h: Double, proportional: Bool,
+        parallaxX: Double, parallaxY: Double, orientation: TabletOrientation,
+        displayIndex: Int, toggleIDs: String
+    )
+
     private func resetToDefaults() {
-        let old = (
+        let old: AreaState = (
             settings.activeAreaX, settings.activeAreaY,
             settings.activeAreaWidth, settings.activeAreaHeight,
             settings.proportionalMapping,
@@ -281,29 +282,35 @@ struct TabletAreaView: View {
             settings.tabletOrientation,
             settings.targetDisplayIndex, settings.toggleDisplayIDs
         )
+        let defaults: AreaState = (0, 0, 1, 1, true, 0, 0, .landscape, 0, "")
+        applyAreaState(defaults, undoTo: old)
+    }
 
+    /// Self-recursive so "Reset to Defaults" also redoes: each invocation
+    /// applies one state and registers the swap as the next undo (which,
+    /// from the redo stack, replays as the next redo) — see
+    /// `TabletSettings.recordAreaDrag` for the same pattern.
+    private func applyAreaState(_ new: AreaState, undoTo old: AreaState) {
         settings.undoManager?.beginUndoGrouping()
-
-        settings.activeAreaX = 0
-        settings.activeAreaY = 0
-        settings.activeAreaWidth = 1
-        settings.activeAreaHeight = 1
-        settings.proportionalMapping = true
-        settings.parallaxOffsetX = 0
-        settings.parallaxOffsetY = 0
-        settings.tabletOrientation = .landscape
-        settings.targetDisplayIndex = 0
-        settings.toggleDisplayIDs = ""
+        (settings.activeAreaX, settings.activeAreaY,
+         settings.activeAreaWidth, settings.activeAreaHeight,
+         settings.proportionalMapping,
+         settings.parallaxOffsetX, settings.parallaxOffsetY,
+         settings.tabletOrientation,
+         settings.targetDisplayIndex, settings.toggleDisplayIDs) = new
         settings.record("Reset to Defaults") {
-            (settings.activeAreaX, settings.activeAreaY,
-             settings.activeAreaWidth, settings.activeAreaHeight,
-             settings.proportionalMapping,
-             settings.parallaxOffsetX, settings.parallaxOffsetY,
-             settings.tabletOrientation,
-             settings.targetDisplayIndex, settings.toggleDisplayIDs) = old
+            self.applyAreaState(old, undoTo: new)
         }
-
         settings.undoManager?.endUndoGrouping()
+    }
+
+    /// Self-recursive so "Reset Offset" also redoes.
+    private func applyParallaxReset(toX: Double, toY: Double, undoX: Double, undoY: Double) {
+        settings.parallaxOffsetX = toX
+        settings.parallaxOffsetY = toY
+        settings.record("Reset Offset") {
+            self.applyParallaxReset(toX: undoX, toY: undoY, undoX: toX, undoY: toY)
+        }
     }
 
     // MARK: - Device identity
@@ -400,8 +407,9 @@ struct TabletAreaView: View {
         var entries = settings.calibrationEntries
         entries.removeAll { $0.key == key }
         settings.calibrationEntries = entries
-        settings.record("Reset Calibration") {
-            settings.calibrationJSON = oldJSON
+        let newJSON = settings.calibrationJSON
+        settings.recordToggle("Reset Calibration", from: oldJSON, to: newJSON) {
+            settings.calibrationJSON = $0
         }
         tabletManager.activeContext?.injector.invalidateCalibrationCache()
     }
@@ -414,8 +422,8 @@ struct TabletAreaView: View {
                 let clamped = Swift.min(Swift.max(newValue, -20), 20)
                 let oldValue = settings.parallaxOffsetX
                 settings.parallaxOffsetX = clamped
-                settings.record("Parallax Offset") {
-                    settings.parallaxOffsetX = oldValue
+                settings.recordToggle("Parallax Offset", from: oldValue, to: clamped) {
+                    settings.parallaxOffsetX = $0
                 }
             }
         )
@@ -429,8 +437,8 @@ struct TabletAreaView: View {
                 let clamped = Swift.min(Swift.max(newValue, -20), 20)
                 let oldValue = settings.parallaxOffsetY
                 settings.parallaxOffsetY = clamped
-                settings.record("Parallax Offset") {
-                    settings.parallaxOffsetY = oldValue
+                settings.recordToggle("Parallax Offset", from: oldValue, to: clamped) {
+                    settings.parallaxOffsetY = $0
                 }
             }
         )
@@ -443,8 +451,8 @@ struct TabletAreaView: View {
             set: { newValue in
                 let oldValue = settings.proportionalMapping
                 settings.proportionalMapping = newValue
-                settings.record("Proportional Mapping") {
-                    settings.proportionalMapping = oldValue
+                settings.recordToggle("Proportional Mapping", from: oldValue, to: newValue) {
+                    settings.proportionalMapping = $0
                 }
             }
         )
