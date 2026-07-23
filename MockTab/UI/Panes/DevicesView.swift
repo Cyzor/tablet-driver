@@ -45,11 +45,39 @@ struct DevicesView: View {
     @State private var selectedTabletID: String? = nil
 
     private var effectiveTabletID: String? {
-        selectedTabletID
-            ?? registry.knownTablets.first(where: {
-                $0.productID == tabletManager.connectedProductID
-            })?.id
+        // Explicit selection always wins. When auto-following, prefer a
+        // pen-bearing device over an aux-only companion (the Quick Keys puck)
+        // so the default Tools view shows the pen rather than an empty
+        // section — the puck owns no tools of its own.
+        if let selectedTabletID { return selectedTabletID }
+        // Filter by the full connected set, not the single `connectedProductID`
+        // scalar — that scalar transiently points at whichever device
+        // (re)enumerated last, which can be the puck during a USB blip. Using it
+        // let the puck hijack the auto-selection and blank the Tools section
+        // even while the pen display was connected.
+        let connected = registry.knownTablets.filter {
+            tabletManager.connectedProductIDs.contains($0.productID)
+        }
+        if let penBearing = connected.first(where: { !isPuckKind(forProductID: $0.productID) }) {
+            return penBearing.id
+        }
+        // No connected pen-bearing device: fall back to any known pen-bearing
+        // device (so its tools stay visible even while only the puck's transport
+        // is up), then to whatever's connected — a genuinely standalone puck —
+        // then to anything at all.
+        return registry.knownTablets.first(where: { !isPuckKind(forProductID: $0.productID) })?.id
+            ?? connected.first?.id
             ?? registry.knownTablets.first?.id
+    }
+
+    /// True when the tablet currently driving the Tools section is aux-only
+    /// (the Quick Keys puck) — it has no digitizer, so it can never own a pen
+    /// tool. The load-bearing guard: a pen never renders under a puck header.
+    private var effectiveTabletIsAuxOnly: Bool {
+        guard let id = effectiveTabletID,
+            let tablet = registry.knownTablets.first(where: { $0.id == id })
+        else { return false }
+        return isPuckKind(forProductID: tablet.productID)
     }
 
     var body: some View {
@@ -69,7 +97,10 @@ struct DevicesView: View {
             commitToolRename()
         }
         .onAppear { syncTools() }
-        .onChange(of: tabletManager.connectedProductID) { _ in
+        .onChange(of: tabletManager.connectedProductIDs) { _ in
+            // Watch the whole connected set, not just the `connectedProductID`
+            // scalar — a USB blip that changes which devices are present must
+            // reload the tool list even when the scalar happens not to change.
             if selectedTabletID == nil { syncTools() }
         }
         .alert(
@@ -301,7 +332,12 @@ struct DevicesView: View {
 
     private var toolsSection: some View {
         Section {
-            if registry.knownTools.isEmpty {
+            if effectiveTabletIsAuxOnly {
+                // Aux-only devices (the Quick Keys puck) have no digitizer, so
+                // no pen ever belongs to them. Its pens live under the paired
+                // Pen Display and in Tools (All Tablets).
+                emptyState(String(localized: "This device has no pen tools.\nIts buttons are configured in the Buttons tab.", comment: "Empty state shown in the tools list for an aux-only device like the Quick Keys puck"))
+            } else if registry.knownTools.isEmpty {
                 emptyState(String(localized: "No tools detected yet.\nMove the pen over the tablet to register it.", comment: "Empty state message in tools list — singular tablet"))
             } else {
                 ForEach(displayTools(registry.knownTools)) { tool in
