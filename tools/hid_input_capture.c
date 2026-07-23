@@ -66,9 +66,7 @@ static void report_cb(void *ctx, IOReturn result, void *sender,
     double gap = last_report_ms < 0 ? 0.0 : t - last_report_ms;
     last_report_ms = t;
     printf("[t=%.3f dt=%6.2f] [%s id=0x%02x len=%2zd]", t, gap, type_name, report_id, (size_t)length);
-    CFIndex cap = length < 64 ? length : 64;
-    for (CFIndex i = 0; i < cap; i++) printf(" %02x", report[i]);
-    if (length > 64) printf(" ...");
+    for (CFIndex i = 0; i < length; i++) printf(" %02x", report[i]);
     printf("\n");
     fflush(stdout);
 }

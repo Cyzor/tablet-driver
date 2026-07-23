@@ -671,9 +671,22 @@ final class DeviceRegistry: ObservableObject {
     }
 
     /// Canonical tool ID string for a ToolIdentity.
+    ///
+    /// Bluetooth Classic reports (PTH-660/860 BT) never carry a per-pen
+    /// serial — `identity.serial` is always 0 — but they do carry a real
+    /// per-model tool code (e.g. 0x0804 Art Pen vs 0x0802 Grip Pen; live BT
+    /// capture 2026-07-22). Folding toolCode into the id here lets distinct
+    /// BT tools coexist in knownTools instead of all collapsing onto a
+    /// single "stylus"/"eraser" entry. Two physically different but
+    /// identical-model pens still collide — BT Classic has no signal that
+    /// distinguishes those — but that's a hardware ceiling, not this bug.
     static func toolID(for identity: ToolIdentity) -> String {
         if identity.serial == 0 {
             if identity.isMouse { return "mouse" }
+            if identity.toolCode != 0 {
+                let hex = String(format: "%04X", identity.toolCode)
+                return identity.isEraser ? "eraser-tc0x\(hex)" : "stylus-tc0x\(hex)"
+            }
             return identity.isEraser ? "eraser" : "stylus"
         }
         let hex = String(format: "%08X", identity.serial)
