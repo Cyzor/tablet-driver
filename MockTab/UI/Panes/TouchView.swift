@@ -71,7 +71,7 @@ struct TouchView: View {
                 String(localized: "Enable finger touch",
                        comment: "Touch pane: master toggle for capacitive touch input"),
                 isOn: settings.recordingBinding(
-                    "Touch",
+                    String(localized: "Touch"),
                     get: { settings.touchEnabled },
                     set: { settings.touchEnabled = $0 }))
                 .help("When off, the tablet's touch surface is ignored. Pen input is unaffected.")
@@ -88,7 +88,7 @@ struct TouchView: View {
                 String(localized: "Tap to click",
                        comment: "Touch pane: brief tap posts a left click"),
                 isOn: settings.recordingBinding(
-                    "Tap to Click",
+                    String(localized: "Tap to Click", comment: "Undo action name: tap-to-click toggle in the Touch pane"),
                     get: { settings.tapToClick },
                     set: { settings.tapToClick = $0 }))
                 .disabled(!settings.touchEnabled)
@@ -98,7 +98,7 @@ struct TouchView: View {
                 Text("Cursor speed")
                 Slider(
                     value: settings.recordingBinding(
-                        "Cursor Speed",
+                        String(localized: "Cursor Speed", comment: "Undo action name: touch cursor-speed multiplier in the Touch pane"),
                         get: { settings.touchSensitivity },
                         set: { settings.touchSensitivity = $0 }),
                     in: 0.25...4.0)
@@ -120,7 +120,7 @@ struct TouchView: View {
                 String(localized: "Two-finger scroll",
                        comment: "Touch pane: enable two-finger scroll-wheel emulation"),
                 isOn: settings.recordingBinding(
-                    "Two-Finger Scroll",
+                    String(localized: "Two-Finger Scroll", comment: "Undo action name: two-finger scroll toggle in the Touch pane"),
                     get: { settings.twoFingerScroll },
                     set: { settings.twoFingerScroll = $0 }))
                 .disabled(!settings.touchEnabled)
@@ -130,7 +130,7 @@ struct TouchView: View {
                 String(localized: "Reverse direction",
                        comment: "Touch pane: reverse scroll direction (off = content follows fingers)"),
                 isOn: settings.recordingBinding(
-                    "Scroll Direction",
+                    String(localized: "Scroll Direction", comment: "Undo action name: touch scroll-direction toggle in the Touch pane"),
                     get: { settings.reverseScrollDirection },
                     set: { settings.reverseScrollDirection = $0 }))
                 .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
@@ -239,7 +239,7 @@ struct TouchView: View {
     ) {
         (settings.touchAreaX, settings.touchAreaY,
          settings.touchAreaWidth, settings.touchAreaHeight) = new
-        settings.record("Touch Area Reset") {
+        settings.record(String(localized: "Touch Area Reset", comment: "Undo action name: resetting the touch active area in the Touch pane")) {
             self.applyTouchAreaReset(to: old, undoTo: new)
         }
     }
@@ -269,7 +269,7 @@ struct TouchView: View {
          settings.twoFingerScroll, settings.reverseScrollDirection,
          settings.touchAreaX, settings.touchAreaY,
          settings.touchAreaWidth, settings.touchAreaHeight) = new
-        settings.record("Reset Pane to Defaults") {
+        settings.record(String(localized: "Reset Pane to Defaults")) {
             self.applyTouchState(old, undoTo: new)
         }
         settings.undoManager?.endUndoGrouping()

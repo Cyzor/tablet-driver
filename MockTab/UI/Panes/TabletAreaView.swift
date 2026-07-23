@@ -254,7 +254,7 @@ struct TabletAreaView: View {
                                         toX: toX, toY: toY,
                                         undoX: settings.parallaxOffsetX,
                                         undoY: settings.parallaxOffsetY,
-                                        name: "Parallax Offset")
+                                        name: String(localized: "Parallax Offset", comment: "Undo action name: sub-pixel cursor fine-tune offset in the Tablet Area pane"))
                                 },
                                 onNudge: { dx, dy in
                                     let fromX = settings.parallaxOffsetX
@@ -262,7 +262,7 @@ struct TabletAreaView: View {
                                     applyParallaxChange(
                                         toX: Self.clampParallax(fromX + dx),
                                         toY: Self.clampParallax(fromY + dy),
-                                        undoX: fromX, undoY: fromY, name: "Parallax Offset")
+                                        undoX: fromX, undoY: fromY, name: String(localized: "Parallax Offset", comment: "Undo action name: sub-pixel cursor fine-tune offset in the Tablet Area pane"))
                                 })
                             // Second spacer pulls the pad in off the trailing edge,
                             // toward the middle of the window.
@@ -271,7 +271,7 @@ struct TabletAreaView: View {
                                 applyParallaxChange(
                                     toX: 0, toY: 0,
                                     undoX: settings.parallaxOffsetX, undoY: settings.parallaxOffsetY,
-                                    name: "Reset Offset")
+                                    name: String(localized: "Reset Offset"))
                             }
                             .buttonStyle(.bordered)
                             .disabled(settings.parallaxOffsetX == 0 && settings.parallaxOffsetY == 0)
@@ -324,7 +324,7 @@ struct TabletAreaView: View {
          settings.parallaxOffsetX, settings.parallaxOffsetY,
          settings.tabletOrientation,
          settings.targetDisplayIndex, settings.toggleDisplayIDs) = new
-        settings.record("Reset to Defaults") {
+        settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applyAreaState(old, undoTo: new)
         }
         settings.undoManager?.endUndoGrouping()
@@ -440,7 +440,7 @@ struct TabletAreaView: View {
         entries.removeAll { $0.key == key }
         settings.calibrationEntries = entries
         let newJSON = settings.calibrationJSON
-        settings.recordToggle("Reset Calibration", from: oldJSON, to: newJSON) {
+        settings.recordToggle(String(localized: "Reset Calibration", comment: "Undo action name: clearing calibration data in the Tablet Area pane"), from: oldJSON, to: newJSON) {
             settings.calibrationJSON = $0
         }
         tabletManager.activeContext?.injector.invalidateCalibrationCache()
@@ -453,7 +453,7 @@ struct TabletAreaView: View {
             set: { newValue in
                 let oldValue = settings.proportionalMapping
                 settings.proportionalMapping = newValue
-                settings.recordToggle("Proportional Mapping", from: oldValue, to: newValue) {
+                settings.recordToggle(String(localized: "Proportional Mapping", comment: "Undo action name: proportional-vs-full-area mapping toggle in the Tablet Area pane"), from: oldValue, to: newValue) {
                     settings.proportionalMapping = $0
                 }
             }

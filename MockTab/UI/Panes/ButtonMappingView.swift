@@ -206,7 +206,7 @@ struct ButtonMappingView: View {
         t.wrappedValue.penButton1Binding = new.pen1
         t.wrappedValue.penButton2Binding = new.pen2
         settings.objectWillChange.send()
-        settings.record("Reset to Defaults") {
+        settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applyButtonToolReset(old, undoTo: new)
         }
     }
@@ -217,7 +217,7 @@ struct ButtonMappingView: View {
         settings.touchRingButtonBinding = new.touchRingButton
         settings.touchRingSlots = new.touchRingSlots
         settings.touchRingActiveSlotIndex = new.touchRingActiveSlot
-        settings.record("Reset to Defaults") {
+        settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applyButtonSettingsReset(old, undoTo: new)
         }
     }
@@ -383,7 +383,7 @@ struct ButtonMappingView: View {
                     String(localized: "Center", comment: "Touch ring center button row label"),
                     isActive: lb.touchRingButtonDown,
                     binding: settings.recordingBinding(
-                        "Touch Ring Button",
+                        String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
                         get: { settings.touchRingButtonBinding },
                         set: { settings.touchRingButtonBinding = $0 }),
                     ringSlotCount: spec?.ringSlotCount ?? 4,
@@ -565,7 +565,7 @@ struct ButtonMappingView: View {
             label,
             isActive: lb.bezelButtons[index],
             binding: settings.recordingBinding(
-                "Bezel Button \(index + 1)",
+                String(localized: "Bezel Button \(index + 1)"),
                 get: { settings.bezelButtonBindings[index] },
                 set: { newValue in
                     var updated = settings.bezelButtonBindings
@@ -584,7 +584,7 @@ struct ButtonMappingView: View {
             label,
             isActive: lb.expressKeys[index],
             binding: settings.recordingBinding(
-                "Express Key \(index + 1)",
+                String(localized: "Express Key \(index + 1)", comment: "Undo action name: express key binding in the Buttons pane"),
                 get: { settings.expressKeyBindings[index] },
                 set: { newValue in
                     var updated = settings.expressKeyBindings

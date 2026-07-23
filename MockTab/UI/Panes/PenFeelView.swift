@@ -92,7 +92,7 @@ struct PenFeelView: View {
                     SettingSliderRow(
                         "Tilt Offset",
                         value: settings.recordingBinding(
-                            "Tilt Offset", toolOwned: true,
+                            String(localized: "Tilt Offset"), toolOwned: true,
                             get: { tool.rotationTiltOffsetDegrees },
                             set: { tool.rotationTiltOffsetDegrees = $0 }),
                         in: -180...180,
@@ -101,7 +101,7 @@ struct PenFeelView: View {
                     SettingSliderRow(
                         "Tilt Magnitude",
                         value: settings.recordingBinding(
-                            "Tilt Magnitude", toolOwned: true,
+                            String(localized: "Tilt Magnitude"), toolOwned: true,
                             get: { tool.rotationTiltMagnitude },
                             set: { tool.rotationTiltMagnitude = $0 }),
                         in: 0.1...1.0,
@@ -194,21 +194,21 @@ struct PenFeelView: View {
                 Button("Linear") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .linear
-                    tool.recordToggle("Linear Curve", from: old, to: .linear) { tool.pressureCurve = $0 }
+                    tool.recordToggle(String(localized: "Linear Curve", comment: "Undo action name: pressure curve preset in the Pen Feel pane"), from: old, to: .linear) { tool.pressureCurve = $0 }
                 }
                 .help(
                     "Linear response — equal pen force produces equal pressure output. Best for general use.")
                 Button("Soft") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .soft
-                    tool.recordToggle("Soft Curve", from: old, to: .soft) { tool.pressureCurve = $0 }
+                    tool.recordToggle(String(localized: "Soft Curve", comment: "Undo action name: pressure curve preset in the Pen Feel pane"), from: old, to: .soft) { tool.pressureCurve = $0 }
                 }
                 .help(
                     "Soft response — light pressure reaches full output quickly. Good for loose, expressive work.")
                 Button("Firm") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .firm
-                    tool.recordToggle("Firm Curve", from: old, to: .firm) { tool.pressureCurve = $0 }
+                    tool.recordToggle(String(localized: "Firm Curve", comment: "Undo action name: pressure curve preset in the Pen Feel pane"), from: old, to: .firm) { tool.pressureCurve = $0 }
                 }
                 .help(
                     "Firm response — requires more force to reach full output. Good for precise detail work.")
@@ -263,7 +263,7 @@ struct PenFeelView: View {
         (tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength,
          tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
          tool.panScrollSpeed) = new
-        tool.record("Reset to Defaults") {
+        tool.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applyToolReset(old, undoTo: new)
         }
     }
@@ -272,7 +272,7 @@ struct PenFeelView: View {
     private func applySettingsReset(_ new: SettingsResetState, undoTo old: SettingsResetState) {
         (settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
          settings.tipUpAssistDelay, settings.dragThreshold) = new
-        settings.record("Reset to Defaults") {
+        settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applySettingsReset(old, undoTo: new)
         }
     }
@@ -281,63 +281,63 @@ struct PenFeelView: View {
 
     private var smoothingBinding: Binding<Double> {
         settings.recordingBinding(
-            "Stabilization", toolOwned: true,
+            String(localized: "Stabilization"), toolOwned: true,
             get: { tool.smoothingStrength },
             set: { tool.smoothingStrength = $0 })
     }
 
     private var pressureSmoothingBinding: Binding<Double> {
         settings.recordingBinding(
-            "Pressure Smoothing", toolOwned: true,
+            String(localized: "Pressure Smoothing"), toolOwned: true,
             get: { tool.pressureSmoothingStrength },
             set: { tool.pressureSmoothingStrength = $0 })
     }
 
     private var panScrollSpeedBinding: Binding<Double> {
         settings.recordingBinding(
-            "Pan View Speed", toolOwned: true,
+            String(localized: "Pan View Speed", comment: "Undo action name: Pan View pan speed multiplier in the Pen Feel pane"), toolOwned: true,
             get: { tool.panScrollSpeed },
             set: { tool.panScrollSpeed = $0 })
     }
 
     private var doubleClickBinding: Binding<Double> {
         settings.recordingBinding(
-            "Double-Click Distance",
+            String(localized: "Double-Click Distance"),
             get: { settings.doubleClickDistance },
             set: { settings.doubleClickDistance = $0 })
     }
 
     private var invertRotationBinding: Binding<Bool> {
         settings.recordingBinding(
-            "Invert Rotation",
+            String(localized: "Invert Rotation", comment: "Undo action name: pen barrel-rotation direction in the Pen Feel pane"),
             get: { settings.invertRotation },
             set: { settings.invertRotation = $0 })
     }
 
     private var rotationAsTiltBinding: Binding<Bool> {
         settings.recordingBinding(
-            "Rotation as Tilt", toolOwned: true,
+            String(localized: "Rotation as Tilt", comment: "Undo action name: mapping barrel rotation to fake tilt in the Pen Feel pane"), toolOwned: true,
             get: { tool.useRotationAsTilt },
             set: { tool.useRotationAsTilt = $0 })
     }
 
     private var relativeCursorMovementBinding: Binding<Bool> {
         settings.recordingBinding(
-            "Relative Cursor Movement",
+            String(localized: "Relative Cursor Movement"),
             get: { settings.relativeCursorMovement },
             set: { settings.relativeCursorMovement = $0 })
     }
 
     private var tipUpAssistBinding: Binding<Double> {
         settings.recordingBinding(
-            "Tip-up Assist",
+            String(localized: "Tip-up Assist"),
             get: { settings.tipUpAssistDelay },
             set: { settings.tipUpAssistDelay = $0 })
     }
 
     private var dragThresholdBinding: Binding<Double> {
         settings.recordingBinding(
-            "Drag Threshold",
+            String(localized: "Drag Threshold"),
             get: { settings.dragThreshold },
             set: { settings.dragThreshold = $0 })
     }
@@ -415,7 +415,7 @@ private struct PressureCurveCanvas: View {
                     .onEnded { _ in
                         // Register one undo entry for the entire drag
                         if draggingP1 || draggingP2 {
-                            tool.recordToggle("Pressure Curve", from: self.pressureCurveSnapshot, to: tool.pressureCurve) {
+                            tool.recordToggle(String(localized: "Pressure Curve"), from: self.pressureCurveSnapshot, to: tool.pressureCurve) {
                                 tool.pressureCurve = $0
                             }
                         }
@@ -483,7 +483,7 @@ private struct PressureCurveCanvas: View {
                 }
                 guard curve.p1 != tool.pressureCurve.p1 || curve.p2 != tool.pressureCurve.p2 else { return }
                 tool.pressureCurve = curve
-                tool.recordToggle("Pressure Curve", from: snapshot, to: curve) { tool.pressureCurve = $0 }
+                tool.recordToggle(String(localized: "Pressure Curve"), from: snapshot, to: curve) { tool.pressureCurve = $0 }
             }
         )
     }
@@ -501,7 +501,7 @@ private struct PressureCurveCanvas: View {
         }
         guard curve.p1 != tool.pressureCurve.p1 || curve.p2 != tool.pressureCurve.p2 else { return }
         tool.pressureCurve = curve
-        tool.recordToggle("Pressure Curve", from: snapshot, to: curve) { tool.pressureCurve = $0 }
+        tool.recordToggle(String(localized: "Pressure Curve"), from: snapshot, to: curve) { tool.pressureCurve = $0 }
     }
 
     // MARK: - Drawing helpers

@@ -778,7 +778,7 @@ final class TabletSettings: ObservableObject {
     /// Records a coalesced tablet area drag (one undo entry per completed gesture, not per frame).
     /// Call this once in DragGesture.onEnded with a snapshot captured at drag-start.
     func recordAreaDrag(before snap: AreaSnapshot) {
-        record("Tablet Area") { [weak self] in
+        record(String(localized: "Tablet Area")) { [weak self] in
             guard let self else { return }
             let after = AreaSnapshot(
                 x: self.activeAreaX, y: self.activeAreaY,

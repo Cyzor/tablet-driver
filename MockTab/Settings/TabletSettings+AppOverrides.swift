@@ -104,7 +104,7 @@ extension TabletSettings {
         activeAppOverride = appOverrides.last
         activeTool.overridePrefix = activeAppOverride.map { appOverrideKeyPrefix($0) }
         // No reloadAll needed — the override is empty; values are unchanged.
-        record("Add App Override") { [weak self] in
+        record(String(localized: "Add App Override", comment: "Undo action name for an app-override list change on the Devices/pane app-override bar")) { [weak self] in
             self?.removeAppOverride(bundleID: bundleID)
         }
     }
@@ -120,7 +120,7 @@ extension TabletSettings {
         reordered.insert(item, at: destination)
         appOverrides = reordered
         saveAppOverrides()
-        record("Reorder App Override") { [weak self] in
+        record(String(localized: "Reorder App Override", comment: "Undo action name for an app-override list change on the Devices/pane app-override bar")) { [weak self] in
             self?.reorderAppOverrides(from: destination, to: source)
         }
     }
@@ -132,7 +132,7 @@ extension TabletSettings {
         appOverrides[idx].appName = newName
         if activeAppOverride?.bundleID == bundleID { activeAppOverride?.appName = newName }
         saveAppOverrides()
-        record("Rename App Override") { [weak self] in
+        record(String(localized: "Rename App Override", comment: "Undo action name for an app-override list change on the Devices/pane app-override bar")) { [weak self] in
             self?.renameAppOverride(bundleID: bundleID, to: oldName)
         }
     }
@@ -187,7 +187,7 @@ extension TabletSettings {
         // simply re-invokes this same function with its original arguments —
         // which naturally captures its own new snapshot and re-registers its
         // own undo, so the pair keeps toggling indefinitely.
-        record("Remove App Override") { [weak self] in
+        record(String(localized: "Remove App Override", comment: "Undo action name for an app-override list change on the Devices/pane app-override bar")) { [weak self] in
             guard let self else { return }
             // Restore UserDefaults values.
             for (key, value) in snapshot {
@@ -198,7 +198,7 @@ extension TabletSettings {
                 self.appOverrides.append(capturedOverride)
                 self.saveAppOverrides()
             }
-            self.record("Remove App Override") { [weak self] in
+            self.record(String(localized: "Remove App Override", comment: "Undo action name for an app-override list change on the Devices/pane app-override bar")) { [weak self] in
                 self?.removeAppOverride(bundleID: bundleID, keyScope: keyScope)
             }
         }
@@ -237,12 +237,12 @@ extension TabletSettings {
         }
 
         // Self-recursive redo — see `removeAppOverride`'s comment for the shape.
-        record("Remove All App Overrides") { [weak self] in
+        record(String(localized: "Remove All App Overrides", comment: "Undo action name for an app-override list change on the Devices/pane app-override bar")) { [weak self] in
             guard let self else { return }
             for (key, value) in snapshot { self.ud.set(value, forKey: key) }
             self.appOverrides = capturedOverrides
             self.saveAppOverrides()
-            self.record("Remove All App Overrides") { [weak self] in
+            self.record(String(localized: "Remove All App Overrides", comment: "Undo action name for an app-override list change on the Devices/pane app-override bar")) { [weak self] in
                 self?.removeAllAppOverrides()
             }
         }
@@ -316,7 +316,7 @@ extension TabletSettings {
         // re-registering a fresh "Import App Override" that just re-invokes
         // this same function with its original arguments, mirroring
         // `removeAppOverride`'s pattern.
-        record("Import App Override") { [weak self] in
+        record(String(localized: "Import App Override", comment: "Undo action name for an app-override list change on the Devices/pane app-override bar")) { [weak self] in
             guard let self else { return }
             if let previousOverride {
                 // Restore the prior values, removing any keys the import added
@@ -331,7 +331,7 @@ extension TabletSettings {
                 if self.activeAppOverride?.bundleID == bundleID || self.driverOverride?.bundleID == bundleID {
                     self.reloadAll()
                 }
-                self.record("Import App Override") { [weak self] in
+                self.record(String(localized: "Import App Override", comment: "Undo action name for an app-override list change on the Devices/pane app-override bar")) { [weak self] in
                     self?.importAppOverride(bundleID: bundleID, appName: appName, from: values, overwrite: true)
                 }
             } else {

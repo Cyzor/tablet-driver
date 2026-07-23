@@ -35,7 +35,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[0].cwBinding = newBinding
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 1 CW", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 1 CW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -51,7 +51,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[0].ccwBinding = newBinding
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 1 CCW", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 1 CCW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -67,7 +67,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[1].cwBinding = newBinding
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 2 CW", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 2 CW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -83,7 +83,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[1].ccwBinding = newBinding
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 2 CCW", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 2 CCW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -99,7 +99,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[2].cwBinding = newBinding
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 3 CW", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 3 CW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -115,7 +115,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[2].ccwBinding = newBinding
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 3 CCW", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 3 CCW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -131,7 +131,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[3].cwBinding = newBinding
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 4 CW", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 4 CW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -147,7 +147,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[3].ccwBinding = newBinding
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 4 CCW", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 4 CCW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -170,7 +170,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[0].action = newAction
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 1 Action", from: oldSlots, to: newSlots) {
+                self.settings.recordToggle(String(localized: "Ring Slot 1 Action", comment: "Undo action name: touch ring slot action mode in the Buttons pane"), from: oldSlots, to: newSlots) {
                     self.settings.touchRingSlots = $0
                 }
             }
@@ -188,7 +188,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[1].action = newAction
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 2 Action", from: oldSlots, to: newSlots) {
+                self.settings.recordToggle(String(localized: "Ring Slot 2 Action", comment: "Undo action name: touch ring slot action mode in the Buttons pane"), from: oldSlots, to: newSlots) {
                     self.settings.touchRingSlots = $0
                 }
             }
@@ -206,7 +206,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[2].action = newAction
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 3 Action", from: oldSlots, to: newSlots) {
+                self.settings.recordToggle(String(localized: "Ring Slot 3 Action", comment: "Undo action name: touch ring slot action mode in the Buttons pane"), from: oldSlots, to: newSlots) {
                     self.settings.touchRingSlots = $0
                 }
             }
@@ -224,7 +224,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[3].action = newAction
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 4 Action", from: oldSlots, to: newSlots) {
+                self.settings.recordToggle(String(localized: "Ring Slot 4 Action", comment: "Undo action name: touch ring slot action mode in the Buttons pane"), from: oldSlots, to: newSlots) {
                     self.settings.touchRingSlots = $0
                 }
             }
@@ -245,7 +245,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[0].speed = newSpeed
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 1 Speed", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 1 Speed", comment: "Undo action name: touch ring slot rotation speed in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -261,7 +261,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[1].speed = newSpeed
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 2 Speed", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 2 Speed", comment: "Undo action name: touch ring slot rotation speed in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -277,7 +277,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[2].speed = newSpeed
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 3 Speed", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 3 Speed", comment: "Undo action name: touch ring slot rotation speed in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -293,7 +293,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[3].speed = newSpeed
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot 4 Speed", from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
+                self.settings.recordToggle(String(localized: "Ring Slot 4 Speed", comment: "Undo action name: touch ring slot rotation speed in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
         )
     }
@@ -306,7 +306,7 @@ extension ButtonMappingView {
                 let oldValue = t.wrappedValue.penButton1Binding
                 t.wrappedValue.penButton1Binding = newValue
                 self.settings.objectWillChange.send()
-                self.settings.recordToggle("Button 1", from: oldValue, to: newValue) {
+                self.settings.recordToggle(String(localized: "Button 1"), from: oldValue, to: newValue) {
                     t.wrappedValue.penButton1Binding = $0
                     self.settings.objectWillChange.send()
                 }
@@ -321,7 +321,7 @@ extension ButtonMappingView {
                 let oldValue = t.wrappedValue.penButton2Binding
                 t.wrappedValue.penButton2Binding = newValue
                 self.settings.objectWillChange.send()
-                self.settings.recordToggle("Button 2", from: oldValue, to: newValue) {
+                self.settings.recordToggle(String(localized: "Button 2"), from: oldValue, to: newValue) {
                     t.wrappedValue.penButton2Binding = $0
                     self.settings.objectWillChange.send()
                 }
@@ -336,7 +336,7 @@ extension ButtonMappingView {
                 let oldValue = t.wrappedValue.penButton3Binding
                 t.wrappedValue.penButton3Binding = newValue
                 self.settings.objectWillChange.send()
-                self.settings.recordToggle("Button 3", from: oldValue, to: newValue) {
+                self.settings.recordToggle(String(localized: "Button 3"), from: oldValue, to: newValue) {
                     t.wrappedValue.penButton3Binding = $0
                     self.settings.objectWillChange.send()
                 }
@@ -351,7 +351,7 @@ extension ButtonMappingView {
                 let oldValue = t.wrappedValue.penButton4Binding
                 t.wrappedValue.penButton4Binding = newValue
                 self.settings.objectWillChange.send()
-                self.settings.recordToggle("Button 4", from: oldValue, to: newValue) {
+                self.settings.recordToggle(String(localized: "Button 4"), from: oldValue, to: newValue) {
                     t.wrappedValue.penButton4Binding = $0
                     self.settings.objectWillChange.send()
                 }
@@ -366,7 +366,7 @@ extension ButtonMappingView {
                 let oldValue = t.wrappedValue.penButton5Binding
                 t.wrappedValue.penButton5Binding = newValue
                 self.settings.objectWillChange.send()
-                self.settings.recordToggle("Button 5", from: oldValue, to: newValue) {
+                self.settings.recordToggle(String(localized: "Button 5"), from: oldValue, to: newValue) {
                     t.wrappedValue.penButton5Binding = $0
                     self.settings.objectWillChange.send()
                 }
@@ -381,7 +381,7 @@ extension ButtonMappingView {
                 let oldValue = t.wrappedValue.tipBinding
                 t.wrappedValue.tipBinding = newValue
                 self.settings.objectWillChange.send()
-                self.settings.recordToggle("Tip Button", from: oldValue, to: newValue) {
+                self.settings.recordToggle(String(localized: "Tip Button", comment: "Undo action name: pen/tip/eraser/wheel button binding in the Buttons pane"), from: oldValue, to: newValue) {
                     t.wrappedValue.tipBinding = $0
                     self.settings.objectWillChange.send()
                 }
@@ -396,7 +396,7 @@ extension ButtonMappingView {
                 let oldValue = t.wrappedValue.eraserBinding
                 t.wrappedValue.eraserBinding = newValue
                 self.settings.objectWillChange.send()
-                self.settings.recordToggle("Eraser Button", from: oldValue, to: newValue) {
+                self.settings.recordToggle(String(localized: "Eraser Button", comment: "Undo action name: pen/tip/eraser/wheel button binding in the Buttons pane"), from: oldValue, to: newValue) {
                     t.wrappedValue.eraserBinding = $0
                     self.settings.objectWillChange.send()
                 }
@@ -411,7 +411,7 @@ extension ButtonMappingView {
                 let oldValue = t.wrappedValue.wheelBinding
                 t.wrappedValue.wheelBinding = newValue
                 self.settings.objectWillChange.send()
-                self.settings.recordToggle("Wheel", from: oldValue, to: newValue) {
+                self.settings.recordToggle(String(localized: "Wheel", comment: "Undo action name: pen/tip/eraser/wheel button binding in the Buttons pane"), from: oldValue, to: newValue) {
                     t.wrappedValue.wheelBinding = $0
                     self.settings.objectWillChange.send()
                 }
@@ -474,7 +474,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[index].cwBinding = newBinding
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot \(index + 1) CW", from: oldSlots, to: newSlots) {
+                self.settings.recordToggle(String(localized: "Ring Slot \(index + 1) CW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) {
                     self.settings.touchRingSlots = $0
                 }
             }
@@ -494,7 +494,7 @@ extension ButtonMappingView {
                 var newSlots = oldSlots
                 newSlots[index].ccwBinding = newBinding
                 self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle("Ring Slot \(index + 1) CCW", from: oldSlots, to: newSlots) {
+                self.settings.recordToggle(String(localized: "Ring Slot \(index + 1) CCW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) {
                     self.settings.touchRingSlots = $0
                 }
             }

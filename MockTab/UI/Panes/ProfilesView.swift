@@ -193,7 +193,7 @@ struct ProfilesView: View {
                         "Automatically switch to the matching profile when this tablet connects",
                     comment: "Toggle: auto-activate profile when tablet connects"),
                 isOn: settings.recordingBinding(
-                    "Auto-Switch",
+                    String(localized: "Auto-Switch"),
                     get: { settings.autoSwitchEnabled },
                     set: { settings.autoSwitchEnabled = $0 }
                 )
@@ -444,7 +444,7 @@ struct ProfilesView: View {
     /// re-registers itself with the roles swapped, same shape as
     /// `TabletSettings.restoreSnapshot`.
     private func recordSaveProfile(created preset: TabletSettings.Profile, previousSnapshot snap: TabletSettings.FullSnapshot, name: String) {
-        settings.record("Save Profile") {
+        settings.record(String(localized: "Save Profile", comment: "Undo action name: creating a new named preset in the Profiles pane")) {
             let currentSnap = self.settings.snapshot()
             self.settings.deletePreset(preset)
             self.settings.applySnapshot(snap)
@@ -467,7 +467,7 @@ struct ProfilesView: View {
             // a stale captured `preset` (old name) would stop matching after
             // the first rename. Re-fetch the live profile by id each time
             // this fires, so repeated undo/redo cycles keep working.
-            settings.recordToggle("Rename Profile", from: oldName, to: trimmed) { name in
+            settings.recordToggle(String(localized: "Rename Profile", comment: "Undo action name: renaming a preset in the Profiles pane"), from: oldName, to: trimmed) { name in
                 guard let current = settings.profiles.first(where: { $0.id == presetID }) else { return }
                 settings.renamePreset(current, to: name)
             }

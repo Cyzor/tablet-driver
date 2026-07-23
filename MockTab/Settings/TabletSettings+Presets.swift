@@ -99,10 +99,10 @@ extension TabletSettings {
         // preset, then re-registers a fresh "Import Profile" that re-invokes
         // this same function — a new UUID, but an equivalent preset, same
         // trade-off as `ProfilesView.recordSaveProfile`.
-        record("Import Profile") { [weak self] in
+        record(String(localized: "Import Profile", comment: "Undo action name for a preset/profile change")) { [weak self] in
             guard let self, let match = self.profiles.first(where: { $0.id == importedID }) else { return }
             self.deletePreset(match)
-            self.record("Import Profile") { [weak self] in
+            self.record(String(localized: "Import Profile", comment: "Undo action name for a preset/profile change")) { [weak self] in
                 self?.importProfile(name: name, from: values)
             }
         }
@@ -154,7 +154,7 @@ extension TabletSettings {
         toolCache[toolID]?.reload()
 
         // Self-recursive so this also redoes — see `importAppOverride`.
-        record("Import Tool Settings") { [weak self] in
+        record(String(localized: "Import Tool Settings", comment: "Undo action name for a preset/profile change")) { [weak self] in
             guard let self else { return }
             for key in Self.toolSettingsKeys {
                 if let v = previousValues[key] {
@@ -164,7 +164,7 @@ extension TabletSettings {
                 }
             }
             self.toolCache[toolID]?.reload()
-            self.record("Import Tool Settings") { [weak self] in
+            self.record(String(localized: "Import Tool Settings", comment: "Undo action name for a preset/profile change")) { [weak self] in
                 self?.importToolSettings(toolID: toolID, from: values, overwrite: true)
             }
         }
@@ -236,7 +236,7 @@ extension TabletSettings {
 
         deletePreset(profile)
 
-        record("Delete Profile") { [weak self] in
+        record(String(localized: "Delete Profile", comment: "Undo action name for a preset/profile change")) { [weak self] in
             guard let self else { return }
             var restored = profile
             restored.overriddenKeys = Set(snapshot.keys)
@@ -256,7 +256,7 @@ extension TabletSettings {
                 self.saveActiveProfileID()
                 self.reloadAll()
             }
-            self.record("Delete Profile") { [weak self] in
+            self.record(String(localized: "Delete Profile", comment: "Undo action name for a preset/profile change")) { [weak self] in
                 self?.deletePresetRecordingUndo(restored)
             }
         }

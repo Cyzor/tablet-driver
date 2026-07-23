@@ -289,7 +289,7 @@ final class CalibrationSession: ObservableObject {
         let newJSON = settings.calibrationJSON
 
         // Register undo (and, via recordToggle, redo).
-        settings.recordToggle("Calibrate Pen Display", from: oldJSON, to: newJSON) {
+        settings.recordToggle(String(localized: "Calibrate Pen Display", comment: "Undo action name: applying a pen-display calibration result"), from: oldJSON, to: newJSON) {
             self.settings.calibrationJSON = $0
         }
 

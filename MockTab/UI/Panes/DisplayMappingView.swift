@@ -68,7 +68,7 @@ struct DisplayMappingView: View {
     private func applyDisplayReset(index: Int, ids: Set<CGDirectDisplayID>, undoIndex: Int, undoIDs: Set<CGDirectDisplayID>) {
         settings.targetDisplayIndex = index
         settings.toggleDisplayIDSet = ids
-        settings.record("Reset to Defaults") {
+        settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applyDisplayReset(index: undoIndex, ids: undoIDs, undoIndex: index, undoIDs: ids)
         }
     }
@@ -122,7 +122,7 @@ struct DisplayMappingView: View {
                 Text("Brightness")
                 Slider(
                     value: settings.recordingBinding(
-                        "Display Brightness",
+                        String(localized: "Display Brightness", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
                         // Before the user ever touches the slider (-1), park
                         // the knob at the vendor default without sending.
                         get: { Double(settings.displayBrightness >= 0 ? settings.displayBrightness : 75) },
@@ -142,7 +142,7 @@ struct DisplayMappingView: View {
                 Text("Color Space")
                 Spacer()
                 Picker("Color Space", selection: settings.recordingBinding(
-                    "Display Color Space",
+                    String(localized: "Display Color Space", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
                     get: { settings.displayColorMode >= 0 ? settings.displayColorMode : 0 },
                     set: { settings.displayColorMode = $0 })) {
                     ForEach(colorModeChoices.indices, id: \.self) { i in
@@ -168,7 +168,7 @@ struct DisplayMappingView: View {
                     Text("Contrast")
                     Slider(
                         value: settings.recordingBinding(
-                            "Display Contrast",
+                            String(localized: "Display Contrast", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
                             get: { Double(settings.displayContrast >= 0 ? settings.displayContrast : 50) },
                             set: { settings.displayContrast = Int($0.rounded()) }),
                         in: 0...100)
@@ -186,7 +186,7 @@ struct DisplayMappingView: View {
                     Text("Gamma")
                     Spacer()
                     Picker("Gamma", selection: settings.recordingBinding(
-                        "Display Gamma",
+                        String(localized: "Display Gamma", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
                         get: { settings.displayGamma >= 0 ? settings.displayGamma : 22 },
                         set: { settings.displayGamma = $0 })) {
                         ForEach(gammaChoices, id: \.self) { value in
@@ -285,7 +285,7 @@ struct DisplayMappingView: View {
             let old = settings.targetDisplayIndex
             guard old != tag else { return }
             settings.targetDisplayIndex = tag
-            settings.recordToggle("Display Mapping", from: old, to: tag) { self.settings.targetDisplayIndex = $0 }
+            settings.recordToggle(String(localized: "Display Mapping"), from: old, to: tag) { self.settings.targetDisplayIndex = $0 }
         } label: {
             HStack(spacing: 8) {
                 NativeRadioIndicator(isSelected: settings.targetDisplayIndex == tag)
@@ -442,7 +442,7 @@ struct DisplayMappingView: View {
                     let oldIDs = settings.toggleDisplayIDSet
                     let newIDs = (ids == Set(displays.map(\.id))) ? [] : ids
                     settings.toggleDisplayIDSet = newIDs
-                    settings.recordToggle("Toggle Display Set", from: oldIDs, to: newIDs) { settings.toggleDisplayIDSet = $0 }
+                    settings.recordToggle(String(localized: "Toggle Display Set", comment: "Undo action name: display calibration/mapping control in the Displays pane"), from: oldIDs, to: newIDs) { settings.toggleDisplayIDSet = $0 }
                     rangeStart = -1
                 }
             } else if flags.contains(.command) {
@@ -480,7 +480,7 @@ struct DisplayMappingView: View {
         let newIDs = (ids == Set(displays.map(\.id))) ? [] : ids
         settings.toggleDisplayIDSet = newIDs
         // Register undo (and, via recordToggle, redo) for the toggle set change
-        settings.recordToggle("Toggle Display Set", from: oldIDs, to: newIDs) {
+        settings.recordToggle(String(localized: "Toggle Display Set", comment: "Undo action name: display calibration/mapping control in the Displays pane"), from: oldIDs, to: newIDs) {
             settings.toggleDisplayIDSet = $0
         }
     }
@@ -511,7 +511,7 @@ struct DisplayMappingView: View {
     private func applyToggleDisplaySet(ids: Set<CGDirectDisplayID>, index: Int, undoIDs: Set<CGDirectDisplayID>, undoIndex: Int) {
         settings.toggleDisplayIDSet = ids
         settings.targetDisplayIndex = index
-        settings.record("Toggle Display Set") {
+        settings.record(String(localized: "Toggle Display Set", comment: "Undo action name: display calibration/mapping control in the Displays pane")) {
             self.applyToggleDisplaySet(ids: undoIDs, index: undoIndex, undoIDs: ids, undoIndex: index)
         }
     }
@@ -630,7 +630,7 @@ struct DisplayMappingView: View {
                     let old = settings.targetDisplayIndex
                     guard old != modeAll else { return }
                     settings.targetDisplayIndex = modeAll
-                    settings.recordToggle("Display Mapping", from: old, to: modeAll) { self.settings.targetDisplayIndex = $0 }
+                    settings.recordToggle(String(localized: "Display Mapping"), from: old, to: modeAll) { self.settings.targetDisplayIndex = $0 }
 
                 } else if flags.contains(.command), displays.count > 1 {
                     // Cmd+click → build toggle rotation and activate Toggle mode
@@ -645,7 +645,7 @@ struct DisplayMappingView: View {
                         let newVal = displays[index].listIndex
                         guard old != newVal else { break }
                         settings.targetDisplayIndex = newVal
-                        settings.recordToggle("Display Mapping", from: old, to: newVal) { self.settings.targetDisplayIndex = $0 }
+                        settings.recordToggle(String(localized: "Display Mapping"), from: old, to: newVal) { self.settings.targetDisplayIndex = $0 }
                         break
                     }
                 }

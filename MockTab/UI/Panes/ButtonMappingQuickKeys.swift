@@ -49,7 +49,7 @@ struct QuickKeysSectionView: View {
                     String(localized: "Key \(i + 1)", comment: "Quick Keys express key N label"),
                     isActive: lb.expressKeys[i],
                     binding: settings.recordingBinding(
-                        "Quick Keys Key \(i + 1)",
+                        String(localized: "Quick Keys Key \(i + 1)", comment: "Undo action name: Quick Keys binding in the Buttons pane"),
                         get: { settings.expressKeyBindings[i] },
                         set: { newValue in
                             var updated = settings.expressKeyBindings
@@ -65,7 +65,7 @@ struct QuickKeysSectionView: View {
                 String(localized: "Mode", comment: "Quick Keys bottom mode button label"),
                 isActive: lb.expressKeys[keyCount],
                 binding: settings.recordingBinding(
-                    "Quick Keys Mode Button",
+                    String(localized: "Quick Keys Mode Button", comment: "Undo action name: Quick Keys binding in the Buttons pane"),
                     get: { settings.expressKeyBindings[keyCount] },
                     set: { newValue in
                         var updated = settings.expressKeyBindings
@@ -80,7 +80,7 @@ struct QuickKeysSectionView: View {
                 String(localized: "Dial", comment: "Quick Keys dial center-click row label"),
                 isActive: lb.touchRingButtonDown,
                 binding: settings.recordingBinding(
-                    "Quick Keys Dial Button",
+                    String(localized: "Quick Keys Dial Button", comment: "Undo action name: Quick Keys binding in the Buttons pane"),
                     get: { settings.touchRingButtonBinding },
                     set: { settings.touchRingButtonBinding = $0 }
                 ),
@@ -130,7 +130,7 @@ struct QuickKeysSectionView: View {
                 var updated = oldSlots
                 updated[index].action = newValue
                 settings.touchRingSlots = updated
-                settings.recordToggle("Dial Slot \(index + 1) Action", from: oldSlots, to: updated) {
+                settings.recordToggle(String(localized: "Dial Slot \(index + 1) Action", comment: "Undo action name: Quick Keys dial slot binding in the Buttons pane"), from: oldSlots, to: updated) {
                     settings.touchRingSlots = $0
                 }
             }
@@ -149,7 +149,7 @@ struct QuickKeysSectionView: View {
                 var updated = oldSlots
                 updated[index].speed = newValue
                 settings.touchRingSlots = updated
-                settings.recordToggle("Dial Slot \(index + 1) Speed", from: oldSlots, to: updated) {
+                settings.recordToggle(String(localized: "Dial Slot \(index + 1) Speed", comment: "Undo action name: Quick Keys dial slot binding in the Buttons pane"), from: oldSlots, to: updated) {
                     settings.touchRingSlots = $0
                 }
             }
@@ -170,9 +170,14 @@ struct QuickKeysSectionView: View {
                 if direction == .cw { updated[index].cwBinding = newValue }
                 else { updated[index].ccwBinding = newValue }
                 settings.touchRingSlots = updated
-                settings.record(
-                    "Dial Slot \(index + 1) \(direction == .cw ? "CW" : "CCW")"
-                ) {
+                // Two localized literals, not one interpolated string — an
+                // embedded "CW"/"CCW" fragment inside \() would bake raw
+                // English into the middle of every translation.
+                let actionName =
+                    direction == .cw
+                    ? String(localized: "Dial Slot \(index + 1) CW", comment: "Undo action name: Quick Keys dial slot rotation binding, clockwise")
+                    : String(localized: "Dial Slot \(index + 1) CCW", comment: "Undo action name: Quick Keys dial slot rotation binding, counterclockwise")
+                settings.record(actionName) {
                     settings.touchRingSlots = oldSlots
                 }
             }

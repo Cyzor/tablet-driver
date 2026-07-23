@@ -43,7 +43,7 @@ struct OrientationPickerView: View {
     private func selectOrientation(_ orientation: TabletOrientation) {
         let oldValue = settings.tabletOrientation
         settings.tabletOrientation = orientation
-        settings.recordToggle("Orientation", from: oldValue, to: orientation) {
+        settings.recordToggle(String(localized: "Orientation"), from: oldValue, to: orientation) {
             settings.tabletOrientation = $0
         }
     }
