@@ -44,6 +44,12 @@ struct DevicesView: View {
     /// Nil = auto-follow the currently active device.
     @State private var selectedTabletID: String? = nil
 
+    /// Screenshot aid: when on, every device/tool identifier renders as a
+    /// deterministic, format-preserving decoy so serials can be captured
+    /// without hand-redaction. Toggled by Option+Shift-clicking a tablet
+    /// row; view-local, so it resets whenever the pane is reopened.
+    @State private var decoyingIDs = false
+
     private var effectiveTabletID: String? {
         // Explicit selection always wins. When auto-following, prefer a
         // pen-bearing device over an aux-only companion (the Quick Keys puck)
@@ -223,7 +229,7 @@ struct DevicesView: View {
                         .lineLimit(1)
                 }
                 let subtitle = Self.subtitle(
-                    kind: tablet.modelName, id: tablet.displayID,
+                    kind: tablet.modelName, id: shownID(tablet.displayID),
                     nickname: tablet.nickname)
                 if !subtitle.isEmpty {
                     Text(subtitle)
@@ -234,7 +240,7 @@ struct DevicesView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .help("\(tablet.modelName) · \(tablet.displayID)")
+            .help("\(tablet.modelName) · \(shownID(tablet.displayID))")
 
             // Always present so the row's trailing edge never moves; while
             // editing it commits instead of re-entering edit mode.
@@ -252,15 +258,43 @@ struct DevicesView: View {
             .accessibilityLabel("Rename")
         }
         .padding(.vertical, 2)
-        .listRowBackground(isSelected ? Color.accentColor.opacity(0.08) : nil)
+        // Quiet hint for which row's tools show below. `.listRowBackground`
+        // is a List-only modifier and does nothing inside the grouped Form
+        // this pane lives in, so paint the highlight behind the row directly.
+        // The negative padding lets it bleed to the cell edges for a full-row
+        // wash rather than a tight box around the content.
+        .background(
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.clear)
+                .padding(.horizontal, -8)
+        )
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { beginTabletEdit(tablet) }
-        .onTapGesture {
-            commitTabletRename()
-            commitToolRename()
-            selectedTabletID = tablet.id
-            registry.loadTools(forDevice: tablet.id)
-        }
+        // Selection runs as a simultaneous gesture, not a plain single
+        // `.onTapGesture`. Alongside the count:2 rename tap, a plain single
+        // tap makes SwiftUI stall the action by the double-click interval to
+        // rule out a second click — a visible "why did that take a beat" lag
+        // on every row switch. A simultaneous tap fires on release without
+        // waiting, so activation feels instant; double-click still renames
+        // (first tap selects, second enters edit — the Finder behavior).
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                // A modified click drives the decoy toggle (the gesture
+                // below); swallow it here so it doesn't also reselect the row.
+                if NSEvent.modifierFlags.contains([.option, .shift]) { return }
+                commitTabletRename()
+                commitToolRename()
+                selectedTabletID = tablet.id
+                registry.loadTools(forDevice: tablet.id)
+            }
+        )
+        // Hidden screenshot aid: Option+Shift-click any row to swap all
+        // identifiers for decoys (and back). A modifier-qualified tap fires
+        // on release, so it isn't held back by the row's double-tap (rename)
+        // disambiguation the way a plain single tap is.
+        .simultaneousGesture(
+            TapGesture().modifiers([.option, .shift]).onEnded { decoyingIDs.toggle() }
+        )
         .contextMenu {
             Button("Rename…") { beginTabletEdit(tablet) }
             Divider()
@@ -402,7 +436,7 @@ struct DevicesView: View {
                         .lineLimit(1)
                 }
                 let subtitle = Self.subtitle(
-                    kind: tool.kind, id: tool.displayID,
+                    kind: tool.kind, id: shownID(tool.displayID),
                     nickname: tool.nickname)
                 if !subtitle.isEmpty {
                     Text(subtitle)
@@ -413,7 +447,7 @@ struct DevicesView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .help("\(tool.kind) · \(tool.displayID)")
+            .help("\(tool.kind) · \(shownID(tool.displayID))")
 
             Button {
                 if isEditing {
@@ -476,6 +510,63 @@ struct DevicesView: View {
             parts.append(id)
         }
         return parts.joined(separator: " · ")
+    }
+
+    /// The identifier as shown: the real value normally, or a stable decoy
+    /// while the screenshot aid is on.
+    private func shownID(_ id: String) -> String {
+        decoyingIDs ? Self.decoyID(for: id) : id
+    }
+
+    /// A format-preserving decoy for a hardware identifier. Every digit and
+    /// letter is swapped for a deterministic stand-in — same input always
+    /// yields the same output, so one device wears one stable fake serial
+    /// across the session — while the "0x" prefix and separators are kept so
+    /// the result still reads as a plausible serial. Case and the hex-vs-
+    /// non-hex split are preserved per character: hex digits stay hex (so an
+    /// "0x…" id still looks like valid hex) and a distinctive serial letter
+    /// like the "G" in "1GQ…" maps to another such letter rather than
+    /// surviving verbatim. Display-only; the registry is untouched.
+    static func decoyID(for id: String) -> String {
+        // FNV-1a over the whole id seeds the stream, so the decoy depends on
+        // the entire value, not just each character in isolation.
+        var seed: UInt64 = 1469598103934665603
+        for byte in id.utf8 { seed = (seed ^ UInt64(byte)) &* 1099511628211 }
+        let hexLower = Array("0123456789abcdef")
+        let hexUpper = Array("0123456789ABCDEF")
+        let nonHexLower = Array("ghijklmnopqrstuvwxyz")
+        let nonHexUpper = Array("GHIJKLMNOPQRSTUVWXYZ")
+        let chars = Array(id)
+        var out = ""
+        var i = 0
+        while i < chars.count {
+            let c = chars[i]
+            // Preserve the literal "0x" hex marker so it doesn't get mangled.
+            if c == "0", i + 1 < chars.count, chars[i + 1] == "x" || chars[i + 1] == "X" {
+                out.append(c)
+                out.append(chars[i + 1])
+                i += 2
+                continue
+            }
+            seed = (seed ^ UInt64(c.asciiValue ?? 0)) &* 1099511628211
+            let pick = Int(seed & 0x1F)
+            if c.isNumber {
+                out.append(hexLower[pick % 10])
+            } else if ("a"..."f").contains(c) {
+                out.append(hexLower[pick % 16])
+            } else if ("A"..."F").contains(c) {
+                out.append(hexUpper[pick % 16])
+            } else if ("g"..."z").contains(c) {
+                out.append(nonHexLower[pick % 20])
+            } else if ("G"..."Z").contains(c) {
+                out.append(nonHexUpper[pick % 20])
+            } else {
+                // Separators and anything else pass through unchanged.
+                out.append(c)
+            }
+            i += 1
+        }
+        return out
     }
 
     private func toolIcon(for tool: DeviceRegistry.KnownTool) -> String {
