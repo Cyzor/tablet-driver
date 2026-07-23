@@ -1,28 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : ""
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : ""
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : ""
-          }
-        }
-      }
-    },
     "  (device connect: %@ ms worst, %llu stalls — excluded above)" : {
       "comment" : "Diagnostic: latency spikes during device connection, excluded from the steady-state HID latency line",
       "localizations" : {
@@ -10247,30 +10225,6 @@
         }
       }
     },
-    "Overwrite %lld existing customization with the imported ones" : {
-      "comment" : "Toggle: choose to replace already-customized app overrides/tool settings with the ones from this backup, instead of keeping the local ones. English plural variant handles the count grammar.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "new",
-                  "value" : "Overwrite %lld existing customization with the imported one"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "new",
-                  "value" : "Overwrite %lld existing customizations with the imported ones"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "Pan View" : {
       "comment" : "Button action: hold to pan/scroll with pen motion",
       "localizations" : {
@@ -12310,7 +12264,27 @@
       }
     },
     "Reset Pane to Defaults" : {
-
+      "comment" : "Context menu command: restore every setting on this pane to its default value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Standardwerte zurücksetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer valores predeterminados"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デフォルトに戻す"
+          }
+        }
+      }
     },
     "Reset the active area to the full tablet surface (undoable)." : {
       "comment" : "A button that resets the active area of a tablet to the full tablet surface, making it undoable.",
@@ -14203,7 +14177,27 @@
       }
     },
     "Switch between absolute (stylus) and relative (mouse) cursor movement" : {
-
+      "comment" : "Help text for the Toggle Relative Mode button action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechselt zwischen absoluter (Stift) und relativer (Maus) Cursorbewegung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alterna entre movimiento del cursor absoluto (lápiz) y relativo (ratón)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カーソル移動を絶対（ペン）と相対（マウス）で切り替えます"
+          }
+        }
+      }
     },
     "Switch ring directly to mode %lld" : {
       "comment" : "A button that switches a tablet's touch ring mode to a specific one. The argument is the 1-based index of the ring mode to switch to.",
@@ -15053,7 +15047,27 @@
       }
     },
     "Toggle Relative Mode" : {
-      "comment" : "Button action: switch between absolute and relative cursor movement"
+      "comment" : "Button action: switch between absolute and relative cursor movement",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relativen Modus umschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar modo relativo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相対モード切り替え"
+          }
+        }
+      }
     },
     "Tool" : {
       "comment" : "Tool type: generic",
