@@ -26,10 +26,17 @@ struct TabletAreaView: View {
     @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
     private var textScale: CGFloat { AppearancePrefs.scale(forIndex: textSizeIndex) }
 
-    /// Drives the Manual Fine-Tune disclosure. Held explicitly so the label row
-    /// can toggle it — the stock DisclosureGroup only responds to its chevron,
-    /// which is a very small target for a section people rarely open.
-    @State private var fineTuneExpanded = false
+    /// Width of the leading status-glyph column in the calibration section, so
+    /// every row's label starts on the same edge whatever glyph precedes it.
+    static let statusGutter: CGFloat = 20
+
+    /// Cursor offset is a nudge on top of calibration, not a mapping control —
+    /// ±20 pt is well past any real parallax and keeps the pad's arrow on-pad.
+    static let parallaxLimit: Double = 20
+
+    static func clampParallax(_ value: Double) -> Double {
+        Swift.min(Swift.max(value, -parallaxLimit), parallaxLimit)
+    }
 
     // MARK: - Digitizer dimensions
 
@@ -177,18 +184,31 @@ struct TabletAreaView: View {
 
                 if activeDeviceIsPenDisplay {
                     Section("Pen Display Calibration") {
-                        // Calibration status + actions
-                        HStack {
+                        // Calibration status + actions. Both rows in this section
+                        // share a fixed leading gutter so their labels start on one
+                        // column regardless of which status glyph is showing.
+                        HStack(spacing: 8) {
+                            Group {
+                                if !activeDeviceIsConnected {
+                                    Image(systemName: "display.trianglebadge.exclamationmark")
+                                        .foregroundStyle(.secondary)
+                                } else if activeCalibration != nil {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                } else {
+                                    // "scope" rather than a plain circle, which read as a
+                                    // radio button or a stray letter O next to the label.
+                                    Image(systemName: "scope")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .scaledFrame(width: Self.statusGutter)
+                            .accessibilityHidden(true)
+
                             if !activeDeviceIsConnected {
-                                Image(systemName: "display.trianglebadge.exclamationmark")
-                                    .foregroundStyle(.secondary)
-                                    .accessibilityHidden(true)
                                 Text("Display not connected")
                                     .foregroundStyle(.secondary)
                             } else if let cal = activeCalibration {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                                    .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Calibrated")
                                         .appFont(.body)
@@ -197,11 +217,6 @@ struct TabletAreaView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             } else {
-                                // "scope" rather than a plain circle, which read as a
-                                // radio button or a stray letter O next to the label.
-                                Image(systemName: "scope")
-                                    .foregroundStyle(.secondary)
-                                    .accessibilityHidden(true)
                                 Text("Default Calibration")
                             }
                             Spacer()
@@ -216,61 +231,50 @@ struct TabletAreaView: View {
                                     resetCalibration()
                                 }
                                 .buttonStyle(.bordered)
-                                .controlSize(.small)
                             }
                         }
 
-                        // Manual fine-tune offset
-                        DisclosureGroup(isExpanded: $fineTuneExpanded) {
-                            // Vertical padding keeps the rounded-border fields and
-                            // buttons from clipping against the disclosure row bounds.
-                            HStack(spacing: 16) {
-                                HStack(spacing: 4) {
-                                    Text("Horizontal:")
-                                        .foregroundStyle(.secondary)
-                                    TextField("", value: parallaxXBinding,
-                                              format: .number.precision(.fractionLength(1)))
-                                        .textFieldStyle(.roundedBorder)
-                                        .scaledFrame(width: 60)
-                                        .multilineTextAlignment(.trailing)
-                                    Text("pt").foregroundStyle(.secondary)
-                                }
-                                HStack(spacing: 4) {
-                                    Text("Vertical:")
-                                        .foregroundStyle(.secondary)
-                                    TextField("", value: parallaxYBinding,
-                                              format: .number.precision(.fractionLength(1)))
-                                        .textFieldStyle(.roundedBorder)
-                                        .scaledFrame(width: 60)
-                                        .multilineTextAlignment(.trailing)
-                                    Text("pt").foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Button("Reset Offset") {
-                                    applyParallaxReset(
-                                        toX: 0, toY: 0,
-                                        undoX: settings.parallaxOffsetX, undoY: settings.parallaxOffsetY)
-                                }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .disabled(settings.parallaxOffsetX == 0 && settings.parallaxOffsetY == 0)
+                        // Cursor offset — the gap between where the pen touches and
+                        // where the cursor lands. Shown as a pad rather than two
+                        // number fields: the arrow's position *is* the offset, so
+                        // the magnitude never needs spelling out.
+                        HStack(spacing: 8) {
+                            Image(systemName: "cursorarrow.square")
+                                .foregroundStyle(.secondary)
+                                .scaledFrame(width: Self.statusGutter)
+                                .accessibilityHidden(true)
+                            Text("Pointer Offset")
+                            Spacer()
+                            CursorOffsetPad(
+                                offsetX: settings.parallaxOffsetX,
+                                offsetY: settings.parallaxOffsetY,
+                                limit: Self.parallaxLimit,
+                                onCommit: { toX, toY in
+                                    applyParallaxChange(
+                                        toX: toX, toY: toY,
+                                        undoX: settings.parallaxOffsetX,
+                                        undoY: settings.parallaxOffsetY,
+                                        name: "Parallax Offset")
+                                },
+                                onNudge: { dx, dy in
+                                    let fromX = settings.parallaxOffsetX
+                                    let fromY = settings.parallaxOffsetY
+                                    applyParallaxChange(
+                                        toX: Self.clampParallax(fromX + dx),
+                                        toY: Self.clampParallax(fromY + dy),
+                                        undoX: fromX, undoY: fromY, name: "Parallax Offset")
+                                })
+                            // Second spacer pulls the pad in off the trailing edge,
+                            // toward the middle of the window.
+                            Spacer()
+                            Button("Reset Offset") {
+                                applyParallaxChange(
+                                    toX: 0, toY: 0,
+                                    undoX: settings.parallaxOffsetX, undoY: settings.parallaxOffsetY,
+                                    name: "Reset Offset")
                             }
-                            .padding(.vertical, 6)
-                        } label: {
-                            // Stretch the label across the row and give it a hit
-                            // shape, so anywhere on the line toggles — not just the
-                            // chevron. The chevron keeps its own built-in handling;
-                            // the gesture is scoped to the label so the two can't
-                            // both fire on one click.
-                            HStack(spacing: 0) {
-                                Text("Manual Fine-Tune")
-                                Spacer()
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                withAnimation { fineTuneExpanded.toggle() }
-                            }
-                            .accessibilityAddTraits(.isButton)
+                            .buttonStyle(.bordered)
+                            .disabled(settings.parallaxOffsetX == 0 && settings.parallaxOffsetY == 0)
                         }
                         .help("Apply a small constant offset on top of calibration for sub-pixel fine-tuning.")
                     }
@@ -326,12 +330,18 @@ struct TabletAreaView: View {
         settings.undoManager?.endUndoGrouping()
     }
 
-    /// Self-recursive so "Reset Offset" also redoes.
-    private func applyParallaxReset(toX: Double, toY: Double, undoX: Double, undoY: Double) {
+    /// Moves both offset axes as one undoable step. Self-recursive so the change
+    /// also redoes. Both axes go together because a drag changes them together —
+    /// recording them separately would take two undos to put back one gesture.
+    private func applyParallaxChange(
+        toX: Double, toY: Double, undoX: Double, undoY: Double, name: String
+    ) {
+        guard toX != undoX || toY != undoY else { return }
         settings.parallaxOffsetX = toX
         settings.parallaxOffsetY = toY
-        settings.record("Reset Offset") {
-            self.applyParallaxReset(toX: undoX, toY: undoY, undoX: toX, undoY: toY)
+        settings.record(name) {
+            self.applyParallaxChange(
+                toX: undoX, toY: undoY, undoX: toX, undoY: toY, name: name)
         }
     }
 
@@ -434,36 +444,6 @@ struct TabletAreaView: View {
             settings.calibrationJSON = $0
         }
         tabletManager.activeContext?.injector.invalidateCalibrationCache()
-    }
-
-    /// Binding that clamps and registers undo for horizontal parallax offset.
-    private var parallaxXBinding: Binding<Double> {
-        Binding(
-            get: { settings.parallaxOffsetX },
-            set: { newValue in
-                let clamped = Swift.min(Swift.max(newValue, -20), 20)
-                let oldValue = settings.parallaxOffsetX
-                settings.parallaxOffsetX = clamped
-                settings.recordToggle("Parallax Offset", from: oldValue, to: clamped) {
-                    settings.parallaxOffsetX = $0
-                }
-            }
-        )
-    }
-
-    /// Binding that clamps and registers undo for vertical parallax offset.
-    private var parallaxYBinding: Binding<Double> {
-        Binding(
-            get: { settings.parallaxOffsetY },
-            set: { newValue in
-                let clamped = Swift.min(Swift.max(newValue, -20), 20)
-                let oldValue = settings.parallaxOffsetY
-                settings.parallaxOffsetY = clamped
-                settings.recordToggle("Parallax Offset", from: oldValue, to: clamped) {
-                    settings.parallaxOffsetY = $0
-                }
-            }
-        )
     }
 
     /// Binding that registers undo when proportional mapping is toggled.
@@ -590,4 +570,147 @@ struct TabletAreaView: View {
         }
     }
 
+}
+
+// MARK: - Cursor offset pad
+
+/// Square pad showing where the cursor lands relative to the pen tip.
+///
+/// The crosshair is the pen's contact point; the arrow is the cursor. Drag the
+/// arrow away from the crosshair to offset one from the other.
+///
+/// Travel is scaled so the pad's usable area spans the full ±`limit` range —
+/// the edge is the maximum — rather than mapping 1:1 with screen points, which
+/// would push the glyph past the border at the extremes. Direction and relative
+/// magnitude are what the control communicates; exact values stay reachable
+/// through the tooltip and the accessibility value.
+private struct CursorOffsetPad: View {
+    let offsetX: Double
+    let offsetY: Double
+    let limit: Double
+    /// Called once when a drag ends, with the final value. Matching the area
+    /// editor above, the drag itself only moves local state — writing `settings`
+    /// per frame would mean 60 Hz `persist(...)` calls and snapshot rebuilds, and
+    /// there's nothing to preview live since the pen isn't in proximity while
+    /// the mouse is dragging here.
+    var onCommit: (Double, Double) -> Void
+    /// Arrow-key nudge, in points. Records its own undo step per press.
+    var onNudge: (Double, Double) -> Void
+
+    private static let side: CGFloat = 60
+    private static let glyph: CGFloat = 14
+    private static let crosshair: CGFloat = 18
+    /// Half-extent the arrow may travel from center, leaving room for half the
+    /// glyph plus a small margin. The glyph is centered on the offset point
+    /// rather than hung from its tip: an arrow's ink sits down-right of its tip,
+    /// so tip-anchoring made the reach look twice as far right/down as
+    /// left/up even though the values were symmetric.
+    private static let travel: CGFloat = side / 2 - glyph / 2 - 2
+
+    /// In-flight drag position. Non-nil only between gesture start and end; the
+    /// committed `offsetX`/`offsetY` drive the arrow the rest of the time.
+    @State private var dragging: (x: Double, y: Double)?
+    @FocusState private var focused: Bool
+
+    private var shownX: Double { dragging?.x ?? offsetX }
+    private var shownY: Double { dragging?.y ?? offsetY }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(Color.primary.opacity(0.06))
+
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(
+                    focused ? Color.accentColor.opacity(0.55)
+                            : Color.secondary.opacity(0.35),
+                    lineWidth: focused ? 1.5 : 1
+                )
+
+            CrosshairShape()
+                .stroke(Color.secondary.opacity(0.50), lineWidth: 1)
+                .frame(width: Self.crosshair, height: Self.crosshair)
+
+            ZStack {
+                Image(systemName: "cursorarrow")
+                    .appFont(size: 14, weight: .medium)
+                    .foregroundStyle(Color.white.opacity(0.95))
+                    .offset(x: padPosition(shownX), y: padPosition(shownY))
+
+                Image(systemName: "cursorarrow")
+                    .appFont(size: 14, weight: .medium)
+                    .foregroundStyle(Color.primary.opacity(0.78))
+                    .offset(x: padPosition(shownX), y: padPosition(shownY))
+            }
+        }
+
+        .frame(width: Self.side, height: Self.side)
+        .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    dragging = (offsetValue(from: value.location.x),
+                                offsetValue(from: value.location.y))
+                }
+                .onEnded { _ in
+                    if let final = dragging { onCommit(final.x, final.y) }
+                    dragging = nil
+                }
+        )
+        .focusable()
+        .focused($focused)
+        .modifier(SuppressSystemFocusRing())
+        .onMoveCommand { direction in
+            switch direction {
+            case .left:  onNudge(-1, 0)
+            case .right: onNudge(1, 0)
+            case .up:    onNudge(0, -1)
+            case .down:  onNudge(0, 1)
+            @unknown default: break
+            }
+        }
+        .help(Text("Drag the arrow to set where the cursor appears relative to the pen tip.")
+            + Text(verbatim: " ") + Text(readout))
+        .accessibilityElement()
+        .accessibilityLabel(Text("Pointer Offset"))
+        .accessibilityValue(Text(readout))
+    }
+
+    /// Offset value → the arrow tip's position within the pad, in points from center.
+    private func padPosition(_ value: Double) -> CGFloat {
+        CGFloat(value / limit) * Self.travel
+    }
+
+    /// A point in pad coordinates → the offset value it represents.
+    private func offsetValue(from coordinate: CGFloat) -> Double {
+        let fromCenter = coordinate - Self.side / 2
+        return clamp(Double(fromCenter / Self.travel) * limit)
+    }
+
+    private func clamp(_ value: Double) -> Double {
+        Swift.min(Swift.max(value, -limit), limit)
+    }
+
+    /// Exact values for the tooltip and VoiceOver — the pad itself stays wordless.
+    private var readout: LocalizedStringKey {
+        "Horizontal \(formatted(offsetX)), vertical \(formatted(offsetY))"
+    }
+
+    private func formatted(_ value: Double) -> String {
+        String(format: "%.1f pt", value)
+    }
+}
+
+/// Drops the system focus ring, which draws a heavy full-strength outline around
+/// the whole control and reads as an error state at rest. The pad tints its own
+/// border instead. Same trade the crop editor makes in `KeyboardNudgeModifier`;
+/// `.focusEffectDisabled()` is macOS 14+, so on 13 the system ring still shows.
+private struct SuppressSystemFocusRing: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content.focusEffectDisabled()
+        } else {
+            content
+        }
+    }
 }
