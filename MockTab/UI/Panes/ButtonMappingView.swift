@@ -186,8 +186,10 @@ struct ButtonMappingView: View {
         )
         let isMouse = activeToolSpec?.toolType == .mouse
         let toolDefaults: ButtonToolState = (.leftClick, .eraser, .rightClick, isMouse ? .rightClick : .middleClick)
+        let vendorID = tabletManager.context(forKey: instanceKey)?.vendorID ?? 0x056A
         let settingsDefaults: ButtonSettingsState = (
-            Array(repeating: .none, count: 16), ButtonBinding(kind: .ringCycle), ControlSlot.defaults, 0
+            TabletSettings.defaultExpressKeyBindings(vendorID: vendorID),
+            ButtonBinding(kind: .ringCycle), ControlSlot.defaults, 0
         )
 
         settings.undoManager?.beginUndoGrouping()

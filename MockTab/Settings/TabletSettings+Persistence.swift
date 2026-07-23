@@ -360,20 +360,27 @@ extension TabletSettings {
     ///     5–7  —    None          (leave open for user assignment)
     func applyExpressKeyDefaults(vendorID: Int = 0x056A) {
         guard ud.string(forKey: devicePrefix + "expressKeyBindings") == nil else { return }
-        // Default express key bindings: keys 1-4 are modifier keys (⌘ ⌥ ⌃ ⇧).
-        // Rest are unbound (.none).
-        // 16-entry layout for dual-ring Cintiq devices (indices 0–15).
-        // Indices 0–2  = left  toggle buttons (near ring), 3–7  = left  express keys.
-        // Indices 8–10 = right toggle buttons (near ring), 11–15 = right express keys.
-        // Devices with only 8 buttons use indices 0–7; the upper 8 entries are ignored.
-        //
-        // Xencelabs Quick Keys is the one exception: its index 8 isn't a mirrored
-        // express key at all — XencelabsDecoder.decodeAux maps it to the puck's
-        // physical mode button (see that file's header comment), which this driver
-        // treats as "Ring: Cycle". Defaulting it to ⌘ like the Cintiq mirror slot
-        // meant every mode-button press quietly asserted Command, which then rode
-        // along with whichever express key the user pressed next and wouldn't let go.
-        expressKeyBindings = [
+        expressKeyBindings = Self.defaultExpressKeyBindings(vendorID: vendorID)
+    }
+
+    /// Default express key bindings: keys 1-4 are modifier keys (⌘ ⌥ ⌃ ⇧).
+    /// Rest are unbound (.none).
+    /// 16-entry layout for dual-ring Cintiq devices (indices 0–15).
+    /// Indices 0–2  = left  toggle buttons (near ring), 3–7  = left  express keys.
+    /// Indices 8–10 = right toggle buttons (near ring), 11–15 = right express keys.
+    /// Devices with only 8 buttons use indices 0–7; the upper 8 entries are ignored.
+    ///
+    /// Xencelabs Quick Keys is the one exception: its index 8 isn't a mirrored
+    /// express key at all — XencelabsDecoder.decodeAux maps it to the puck's
+    /// physical mode button (see that file's header comment), which this driver
+    /// treats as "Ring: Cycle". Defaulting it to ⌘ like the Cintiq mirror slot
+    /// meant every mode-button press quietly asserted Command, which then rode
+    /// along with whichever express key the user pressed next and wouldn't let go.
+    ///
+    /// Shared by `applyExpressKeyDefaults` (first-run) and the Buttons pane's
+    /// "Reset Pane to Defaults" action, so the two can't drift apart again.
+    static func defaultExpressKeyBindings(vendorID: Int = 0x056A) -> [ButtonBinding] {
+        [
             ButtonBinding(modifierOnly: .command),  // 0  left key 1 → ⌘
             ButtonBinding(modifierOnly: .option),  // 1  left key 2 → ⌥
             ButtonBinding(modifierOnly: .control),  // 2  left key 3 → ⌃
