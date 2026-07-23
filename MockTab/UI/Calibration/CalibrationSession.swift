@@ -6,7 +6,10 @@
 
 import Foundation
 import CoreGraphics
+import OSLog
 import TabletKit
+
+let calibrationLogger = Logger(subsystem: "com.cyzor.mocktab", category: "calibration")
 
 /// Drives the calibration flow: presents targets, collects raw pen samples,
 /// fits a transform, and stores the result.
@@ -20,9 +23,18 @@ final class CalibrationSession: ObservableObject {
         case awaitingTap(pointIndex: Int)
         case collecting(pointIndex: Int, sampleCount: Int)
         case computing
-        case done(maxResidual: Double, transformType: String)
+        /// `stored` is false when the fit's residual exceeded
+        /// `residualWarningThreshold` — the entry is held in `pendingEntry` and
+        /// only written if the user explicitly applies it.
+        case done(maxResidual: Double, transformType: String, stored: Bool)
         case cancelled
     }
+
+    /// Max residual (normalized display units) still considered a usable fit.
+    /// 0.01 is 1% of the display's longer edge — about 26 px on a 2560-px-wide
+    /// screen, comfortably above a careful tap's noise and well below the error
+    /// produced by tapping targets out of order or missing them.
+    static let residualWarningThreshold = 0.01
 
     @Published private(set) var state: State = .idle
     @Published private(set) var currentTargetPosition: CGPoint = .zero
@@ -220,7 +232,55 @@ final class CalibrationSession: ObservableObject {
             calibratedAt: Date(),
             maxResidual: maxRes)
 
-        // Store the result, replacing any existing entry for this key.
+        let typeName: String
+        switch transform {
+        case .none: typeName = "none"
+        case .affine: typeName = "affine"
+        case .homography: typeName = "homography"
+        }
+        let pointCount = completedSamples.count
+
+        // A fit this loose means the targets weren't tapped where they were drawn —
+        // wrong order, missed crosshairs, pen lifted early. Applying it would move
+        // the cursor further from the pen tip than no calibration at all, so hold
+        // the entry back and make the user opt in rather than silently storing it.
+        let usable = maxRes <= Self.residualWarningThreshold
+        calibrationLogger.debug(
+            "calibration complete: \(typeName, privacy: .public) fit, \(pointCount) points, max residual \(maxRes, privacy: .public), usable \(usable, privacy: .public)")
+
+        if usable {
+            store(entry)
+        } else {
+            pendingEntry = entry
+        }
+        state = .done(maxResidual: maxRes, transformType: typeName, stored: usable)
+    }
+
+    /// Entry computed but withheld because its residual failed the quality check.
+    /// Written only if the user chooses to apply it anyway.
+    private var pendingEntry: CalibrationEntry?
+
+    /// Apply a result that was withheld for a high residual. No-op otherwise.
+    func applyPendingResult() {
+        guard let entry = pendingEntry else { return }
+        pendingEntry = nil
+        calibrationLogger.debug("user applied high-residual calibration")
+        store(entry)
+        if case .done(let res, let type, _) = state {
+            state = .done(maxResidual: res, transformType: type, stored: true)
+        }
+    }
+
+    /// Discard a withheld result. Nothing was written, so this only clears the
+    /// pending entry — previous calibration for this key is untouched.
+    func discardPendingResult() {
+        guard pendingEntry != nil else { return }
+        pendingEntry = nil
+        calibrationLogger.debug("user discarded high-residual calibration")
+    }
+
+    /// Write an entry into settings, replacing any existing one for its key.
+    private func store(_ entry: CalibrationEntry) {
         let oldJSON = settings.calibrationJSON
         var entries = settings.calibrationEntries
         entries.removeAll { $0.key == entry.key }
@@ -235,14 +295,6 @@ final class CalibrationSession: ObservableObject {
 
         // Invalidate injector's calibration cache.
         tabletManager.activeContext?.injector.invalidateCalibrationCache()
-
-        let typeName: String
-        switch transform {
-        case .none: typeName = "none"
-        case .affine: typeName = "affine"
-        case .homography: typeName = "homography"
-        }
-        state = .done(maxResidual: maxRes, transformType: typeName)
     }
 
     // MARK: - Helpers

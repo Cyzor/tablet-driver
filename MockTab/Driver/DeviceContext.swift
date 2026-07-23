@@ -228,6 +228,10 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// run-loop thread). The inner ToolSettings subscription is replaced whenever
     /// `activeTool` swaps, so per-tool field edits (pressure curve, smoothing,
     /// button bindings) are also reflected.
+    ///
+    /// Each install also drops the display mapper's cached calibration entry, so
+    /// every path that edits calibration — calibrate, clear, undo/redo, preset
+    /// switch, import, reset — picks up the change without its own invalidate call.
     func observeInjectionSnapshot() {
         // Seed synchronously so the first inject() always sees a snapshot.
         // Both the main-side property and the HIDThread-visible read path are written
@@ -238,6 +242,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         let injectorRef = injector
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
             injectorRef.injectionSnapshot = initial
+            injectorRef.displayMapper.invalidateCalibrationCache()
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
 
@@ -247,6 +252,11 @@ final class DeviceContext: ObservableObject, Identifiable {
             let injectorRef = self.injector
             CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
                 injectorRef.injectionSnapshot = snap
+                // Drop the mapper's cached calibration in the same block that
+                // installs the snapshot it was read from. Invalidating from the
+                // settings-edit site instead would land *before* the new snapshot
+                // arrives, letting an inject() in the gap re-cache the old entry.
+                injectorRef.displayMapper.invalidateCalibrationCache()
             }
             CFRunLoopWakeUp(HIDThread.shared.runLoop)
             // Binding/slot renames should reach devices with their own display

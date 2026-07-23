@@ -27,15 +27,9 @@ struct CalibrationOverlayView: View {
                 }
             }
         }
+        // Auto-dismiss on completion lives in CalibrationOverlayWindow, driven by
+        // the session's state publisher rather than a SwiftUI change edge.
         .onExitCommand { onDismiss() }
-        .onChange(of: session.state) { newState in
-            if case .done = newState {
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    onDismiss()
-                }
-            }
-        }
     }
 
     // MARK: - Crosshair
@@ -71,6 +65,11 @@ struct CalibrationOverlayView: View {
 
     // MARK: - Instruction panel
 
+    private var isDone: Bool {
+        if case .done = session.state { return true }
+        return false
+    }
+
     private var instructionPanel: some View {
         VStack(spacing: 8) {
             switch session.state {
@@ -91,23 +90,59 @@ struct CalibrationOverlayView: View {
                 Text("Computing calibration…")
                     .appFont(.title3)
                 ProgressView()
-            case .done(let maxRes, let transformType):
-                Image(systemName: "checkmark.circle.fill")
+            case .done(let maxRes, let transformType, let stored):
+                Image(systemName: stored ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     .appFont(size: 36)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(stored ? .green : .yellow)
                     .accessibilityHidden(true)
-                Text("Calibration complete")
+                // Explicit LocalizedStringKey — a bare ternary of literals infers
+                // String and would bypass localization.
+                let heading: LocalizedStringKey = stored
+                    ? "Calibration complete" : "Calibration looks wrong"
+                Text(heading)
                     .appFont(.title3).bold()
                 let pixelError = maxRes * Swift.max(session.displayBounds.width, session.displayBounds.height)
                 Text("\(transformType) transform, \(pixelError, specifier: "%.1f") px max error")
                     .appFont(.caption)
                     .foregroundStyle(.secondary)
+                if !stored {
+                    Text("The taps don't line up with the targets. Applying this would map the cursor further from the pen tip than no calibration at all.")
+                        .appFont(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .scaledFrame(maxWidth: 320)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             case .cancelled:
                 EmptyView()
             }
 
-            if session.state != .cancelled {
-                Button("Cancel") { onDismiss() }
+            // A withheld result needs an explicit decision — the calibration is
+            // not stored unless "Apply Anyway" is chosen.
+            if case .done(_, _, false) = session.state {
+                HStack(spacing: 12) {
+                    Button("Discard") {
+                        session.discardPendingResult()
+                        onDismiss()
+                    }
+                    .keyboardShortcut(.cancelAction)
+                    .buttonStyle(.borderedProminent)
+                    Button("Apply Anyway") {
+                        session.applyPendingResult()
+                        onDismiss()
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .controlSize(.small)
+                .padding(.top, 4)
+            } else if session.state != .cancelled {
+                // After a successful fit the overlay is just showing a result, so
+                // the button confirms rather than cancels. Both keys are already
+                // localized in every shipped language. The explicit
+                // LocalizedStringKey keeps both branches string *literals* — a
+                // plain ternary would degrade to String and skip localization.
+                let label: LocalizedStringKey = isDone ? "Done" : "Cancel"
+                Button(label) { onDismiss() }
                     .keyboardShortcut(.cancelAction)
                     .buttonStyle(.bordered)
                     .controlSize(.small)

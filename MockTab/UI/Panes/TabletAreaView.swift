@@ -192,10 +192,12 @@ struct TabletAreaView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             } else {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .foregroundStyle(.orange)
+                                // "scope" rather than a plain circle, which read as a
+                                // radio button or a stray letter O next to the label.
+                                Image(systemName: "scope")
+                                    .foregroundStyle(.secondary)
                                     .accessibilityHidden(true)
-                                Text("Not calibrated")
+                                Text("Default Calibration")
                             }
                             Spacer()
                             Button("Calibrate…") {
