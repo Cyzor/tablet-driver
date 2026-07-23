@@ -26,6 +26,11 @@ struct TabletAreaView: View {
     @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
     private var textScale: CGFloat { AppearancePrefs.scale(forIndex: textSizeIndex) }
 
+    /// Drives the Manual Fine-Tune disclosure. Held explicitly so the label row
+    /// can toggle it — the stock DisclosureGroup only responds to its chevron,
+    /// which is a very small target for a section people rarely open.
+    @State private var fineTuneExpanded = false
+
     // MARK: - Digitizer dimensions
 
     /// Digitizer width for the currently-shown device, in hardware line-units.
@@ -216,7 +221,7 @@ struct TabletAreaView: View {
                         }
 
                         // Manual fine-tune offset
-                        DisclosureGroup("Manual Fine-Tune") {
+                        DisclosureGroup(isExpanded: $fineTuneExpanded) {
                             // Vertical padding keeps the rounded-border fields and
                             // buttons from clipping against the disclosure row bounds.
                             HStack(spacing: 16) {
@@ -251,6 +256,21 @@ struct TabletAreaView: View {
                                 .disabled(settings.parallaxOffsetX == 0 && settings.parallaxOffsetY == 0)
                             }
                             .padding(.vertical, 6)
+                        } label: {
+                            // Stretch the label across the row and give it a hit
+                            // shape, so anywhere on the line toggles — not just the
+                            // chevron. The chevron keeps its own built-in handling;
+                            // the gesture is scoped to the label so the two can't
+                            // both fire on one click.
+                            HStack(spacing: 0) {
+                                Text("Manual Fine-Tune")
+                                Spacer()
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation { fineTuneExpanded.toggle() }
+                            }
+                            .accessibilityAddTraits(.isButton)
                         }
                         .help("Apply a small constant offset on top of calibration for sub-pixel fine-tuning.")
                     }
