@@ -579,11 +579,12 @@ struct TabletAreaView: View {
 /// The crosshair is the pen's contact point; the arrow is the cursor. Drag the
 /// arrow away from the crosshair to offset one from the other.
 ///
-/// Travel is scaled so the pad's usable area spans the full ±`limit` range —
-/// the edge is the maximum — rather than mapping 1:1 with screen points, which
-/// would push the glyph past the border at the extremes. Direction and relative
-/// magnitude are what the control communicates; exact values stay reachable
-/// through the tooltip and the accessibility value.
+/// `limit` maps onto the pad's usable half-extent, so the edge is always the
+/// maximum offset. At the shipped ±20 pt limit that works out to exactly one
+/// point of travel per point of offset, making the pad a literal 1:1 preview of
+/// the screen gap; a different limit would still fill the pad, just not at 1:1.
+/// No number is drawn — exact values stay reachable through the tooltip and the
+/// accessibility value.
 private struct CursorOffsetPad: View {
     let offsetX: Double
     let offsetY: Double
@@ -598,14 +599,15 @@ private struct CursorOffsetPad: View {
     var onNudge: (Double, Double) -> Void
 
     private static let side: CGFloat = 60
-    private static let glyph: CGFloat = 14
     private static let crosshair: CGFloat = 18
-    /// Half-extent the arrow may travel from center, leaving room for half the
-    /// glyph plus a small margin. The glyph is centered on the offset point
-    /// rather than hung from its tip: an arrow's ink sits down-right of its tip,
-    /// so tip-anchoring made the reach look twice as far right/down as
-    /// left/up even though the values were symmetric.
-    private static let travel: CGFloat = side / 2 - glyph / 2 - 2
+    /// Half-extent the arrow may travel from center. Stated outright rather than
+    /// derived from a glyph size: `cursorarrow` measures 12×17 here, so the worst
+    /// case is vertical at 20 + 17/2 = 28.5 against the 30 pt half-width.
+    ///
+    /// The glyph is centered on the offset point rather than hung from its tip —
+    /// an arrow's ink sits down-right of its tip, so tip-anchoring made the reach
+    /// look twice as far right/down as left/up even though the values matched.
+    private static let travel: CGFloat = 20
 
     /// In-flight drag position. Non-nil only between gesture start and end; the
     /// committed `offsetX`/`offsetY` drive the arrow the rest of the time.
