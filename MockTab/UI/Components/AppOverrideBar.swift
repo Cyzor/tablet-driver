@@ -129,6 +129,12 @@ struct AppOverrideBar: View {
         "touchRingSlotsJSON", "touchRingActiveSlotIndex",
     ]
 
+    static let touchKeys: Set<String> = [
+        "touchEnabled", "tapToClick", "touchSensitivity",
+        "twoFingerScroll", "naturalScrolling",
+        "touchAreaX", "touchAreaY", "touchAreaWidth", "touchAreaHeight",
+    ]
+
     // MARK: - Properties
 
     @ObservedObject var settings: TabletSettings

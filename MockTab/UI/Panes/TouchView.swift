@@ -43,7 +43,8 @@ struct TouchView: View {
     var body: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
-            instanceKey: instanceKey
+            instanceKey: instanceKey, overrideKeys: AppOverrideBar.touchKeys,
+            onResetToDefaults: resetToDefaults
         ) {
             if hasFingerTouch {
                 enableSection
@@ -241,6 +242,37 @@ struct TouchView: View {
         settings.record("Touch Area Reset") {
             self.applyTouchAreaReset(to: old, undoTo: new)
         }
+    }
+
+    private typealias TouchState = (
+        enabled: Bool, tapToClick: Bool, sensitivity: Double,
+        twoFingerScroll: Bool, reverseScroll: Bool,
+        areaX: Double, areaY: Double, areaW: Double, areaH: Double
+    )
+
+    private func resetToDefaults() {
+        let old: TouchState = (
+            settings.touchEnabled, settings.tapToClick, settings.touchSensitivity,
+            settings.twoFingerScroll, settings.reverseScrollDirection,
+            settings.touchAreaX, settings.touchAreaY,
+            settings.touchAreaWidth, settings.touchAreaHeight
+        )
+        let defaults: TouchState = (false, false, 1.0, true, false, 0, 0, 1, 1)
+        applyTouchState(defaults, undoTo: old)
+    }
+
+    /// Self-recursive so "Reset Pane to Defaults" also redoes — see
+    /// `TabletAreaView.applyAreaState` for the same pattern.
+    private func applyTouchState(_ new: TouchState, undoTo old: TouchState) {
+        settings.undoManager?.beginUndoGrouping()
+        (settings.touchEnabled, settings.tapToClick, settings.touchSensitivity,
+         settings.twoFingerScroll, settings.reverseScrollDirection,
+         settings.touchAreaX, settings.touchAreaY,
+         settings.touchAreaWidth, settings.touchAreaHeight) = new
+        settings.record("Reset Pane to Defaults") {
+            self.applyTouchState(old, undoTo: new)
+        }
+        settings.undoManager?.endUndoGrouping()
     }
 }
 
