@@ -101,8 +101,9 @@ struct DevicesView: View {
                 pendingForgetTool = nil
                 editingToolID = nil
             }
+            .keyboardShortcut(.delete, modifiers: .command)
             Button("Cancel", role: .cancel) { pendingForgetTool = nil }
-                .keyboardShortcut(.defaultAction)
+                .keyboardShortcut(.cancelAction)
         } message: {
             Text(String(localized: "This tool will reappear with its default name next time the tablet detects it.", comment: "Message explaining that removed tool nicknames are temporary"))
         }
@@ -120,8 +121,9 @@ struct DevicesView: View {
                 }
                 pendingRemoveTablet = nil
             }
+            .keyboardShortcut(.delete, modifiers: .command)
             Button("Cancel", role: .cancel) { pendingRemoveTablet = nil }
-                .keyboardShortcut(.defaultAction)
+                .keyboardShortcut(.cancelAction)
         } message: {
             Text(String(localized: "This will discard all settings, profiles, button mappings, and the saved tool list for this tablet. The tablet will be re-added with defaults the next time it connects.", comment: "Message explaining what gets wiped when removing a tablet"))
         }
