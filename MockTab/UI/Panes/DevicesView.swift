@@ -567,38 +567,49 @@ struct DevicesView: View {
     private func registerToolRemovalUndo(_ snapshots: [DeviceRegistry.ToolRemovalSnapshot]) {
         undoManager?.registerUndo(withTarget: registry) { target in
             for snapshot in snapshots { target.restoreTool(snapshot) }
-            self.redoRemoveTool(snapshots)
+            self.registerToolRemovalRedo(snapshots)
         }
         undoManager?.setActionName(String(localized: "Remove Tool", comment: "Undo action name when removing a tool"))
     }
 
-    private func redoRemoveTool(_ oldSnapshots: [DeviceRegistry.ToolRemovalSnapshot]) {
-        var newSnapshots: [DeviceRegistry.ToolRemovalSnapshot] = []
-        for old in oldSnapshots {
-            let snapshot: DeviceRegistry.ToolRemovalSnapshot?
-            if old.originDeviceID.isEmpty {
-                snapshot = registry.forgetToolEverywhere(id: old.tool.id)
-            } else {
-                snapshot = registry.forgetTool(id: old.tool.id, forDevice: old.originDeviceID)
+    /// Registers the re-removal as its own undoable step, so it only runs
+    /// when Redo actually fires — not synchronously inside the undo closure
+    /// above (which would restore the tool and instantly re-delete it).
+    private func registerToolRemovalRedo(_ oldSnapshots: [DeviceRegistry.ToolRemovalSnapshot]) {
+        undoManager?.registerUndo(withTarget: registry) { target in
+            var newSnapshots: [DeviceRegistry.ToolRemovalSnapshot] = []
+            for old in oldSnapshots {
+                let snapshot: DeviceRegistry.ToolRemovalSnapshot?
+                if old.originDeviceID.isEmpty {
+                    snapshot = target.forgetToolEverywhere(id: old.tool.id)
+                } else {
+                    snapshot = target.forgetTool(id: old.tool.id, forDevice: old.originDeviceID)
+                }
+                if let snapshot { newSnapshots.append(snapshot) }
             }
-            if let snapshot { newSnapshots.append(snapshot) }
+            guard !newSnapshots.isEmpty else { return }
+            self.registerToolRemovalUndo(newSnapshots)
         }
-        guard !newSnapshots.isEmpty else { return }
-        registerToolRemovalUndo(newSnapshots)
+        undoManager?.setActionName(String(localized: "Remove Tool", comment: "Undo action name when removing a tool"))
     }
 
     /// Self-recursive so "Remove Tablet" also redoes.
     private func registerTabletRemovalUndo(_ snapshot: DeviceRegistry.TabletRemovalSnapshot) {
         undoManager?.registerUndo(withTarget: registry) { target in
             target.restoreTablet(snapshot)
-            self.redoRemoveTablet(snapshot)
+            self.registerTabletRemovalRedo(snapshot)
         }
         undoManager?.setActionName(String(localized: "Remove Tablet", comment: "Undo action name when removing a tablet"))
     }
 
-    private func redoRemoveTablet(_ old: DeviceRegistry.TabletRemovalSnapshot) {
-        guard let newSnapshot = registry.removeTablet(id: old.tablet.id) else { return }
-        registerTabletRemovalUndo(newSnapshot)
+    /// Registers the re-removal as its own undoable step — see
+    /// `registerToolRemovalRedo` above for why this can't run inline.
+    private func registerTabletRemovalRedo(_ old: DeviceRegistry.TabletRemovalSnapshot) {
+        undoManager?.registerUndo(withTarget: registry) { target in
+            guard let newSnapshot = target.removeTablet(id: old.tablet.id) else { return }
+            self.registerTabletRemovalUndo(newSnapshot)
+        }
+        undoManager?.setActionName(String(localized: "Remove Tablet", comment: "Undo action name when removing a tablet"))
     }
 
     private func syncTools() {
