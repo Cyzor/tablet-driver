@@ -622,6 +622,24 @@
     "%lld app override" : {
       "comment" : "Count of per-app overrides found in the backup for this tablet",
       "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld App-Override"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld App-Overrides"
+                }
+              }
+            }
+          }
+        },
         "en" : {
           "variations" : {
             "plural" : {
@@ -635,6 +653,36 @@
                 "stringUnit" : {
                   "state" : "new",
                   "value" : "%lld app overrides"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld excepción de app"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld excepciones de app"
+                }
+              }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld アプリ別設定"
                 }
               }
             }
@@ -723,6 +771,24 @@
     "%lld named preset" : {
       "comment" : "Count of named presets found in the backup for this tablet",
       "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld benanntes Preset"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld benannte Presets"
+                }
+              }
+            }
+          }
+        },
         "en" : {
           "variations" : {
             "plural" : {
@@ -736,6 +802,36 @@
                 "stringUnit" : {
                   "state" : "new",
                   "value" : "%lld named presets"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld preajuste con nombre"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld preajustes con nombre"
+                }
+              }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld 名前付きプリセット"
                 }
               }
             }
@@ -913,6 +1009,24 @@
     "%lld tool setting" : {
       "comment" : "Count of per-tool settings found in the backup for this tablet",
       "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Werkzeug-Einstellung"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Werkzeug-Einstellungen"
+                }
+              }
+            }
+          }
+        },
         "en" : {
           "variations" : {
             "plural" : {
@@ -926,6 +1040,36 @@
                 "stringUnit" : {
                   "state" : "new",
                   "value" : "%lld tool settings"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld configuración de herramienta"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld configuraciones de herramienta"
+                }
+              }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ツール設定"
                 }
               }
             }
@@ -5185,7 +5329,33 @@
       }
     },
     "Each tablet's base settings and named presets are added as new profiles — your current settings aren't changed until you activate one. App overrides and per-tool settings apply immediately." : {
-      "comment" : "Import sheet: footer explaining that profiles are inert until activated, but app overrides and tool settings take effect right away"
+      "comment" : "Import sheet: footer explaining that profiles are inert until activated, but app overrides and tool settings take effect right away",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Basiseinstellungen und benannten Presets jedes Tabletts werden als neue Profile hinzugefügt — deine aktuellen Einstellungen ändern sich erst, wenn du eines aktivierst. App-Overrides und Werkzeug-Einstellungen gelten sofort."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Each tablet's base settings and named presets are added as new profiles — your current settings aren't changed until you activate one. App overrides and per-tool settings apply immediately."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La configuración base y los preajustes con nombre de cada tableta se añaden como nuevos perfiles — su configuración actual no cambia hasta que active uno. Las excepciones de app y la configuración por herramienta se aplican de inmediato."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "各タブレットのベース設定と名前付きプリセットは新しいプロファイルとして追加されます — 現在の設定は、プロファイルを有効にするまで変更されません。アプリ別設定とツール設定はすぐに反映されます。"
+          }
+        }
+      }
     },
     "Each tablet's settings will be added as a new profile. Your current settings are not changed until you activate a profile." : {
       "comment" : "Import sheet: footer explaining that import creates new profiles and doesn't overwrite current settings",
