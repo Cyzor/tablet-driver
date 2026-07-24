@@ -251,11 +251,18 @@ private struct TouchVisualizer: View {
 /// noise and unrelated X/Y movement are filtered out for free.
 struct TiltVisualizerCanvas: View {
     @ObservedObject var tabletManager: TabletManager
-    /// Unused directly — its writes force a body re-evaluation on each
-    /// livePoint publish.
+    /// Incremented by the `livePointPublisher` subscription below. It MUST be
+    /// read in `body` (see the `let _` line) to register as a dependency —
+    /// a `@State` write to a value the body never reads does not invalidate
+    /// the view, so without the read the disc only refreshed when some *other*
+    /// state (tip pressure) re-ran the parent body, i.e. only on fresh
+    /// surface contact, never during pure hover. Matches InfoView's pattern.
     @State private var livePointTick = 0
 
     var body: some View {
+        // Establishes livePointTick as a read dependency of this body so each
+        // livePoint publish forces a re-evaluation.
+        let _ = livePointTick
         // Quantize to 0.01 (sub-pixel on a 100-pt disc) so micro-jitter and
         // changes that wouldn't move the dot don't trigger redraws.
         let raw = tabletManager.activeContext?.livePoint
