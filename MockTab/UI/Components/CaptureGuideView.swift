@@ -396,7 +396,8 @@ struct CaptureGuideView: View {
         let vendorID     = (IOHIDDeviceGetProperty(dev, kIOHIDVendorIDKey as CFString) as? Int) ?? 0x056A
         let manufacturer = IOHIDDeviceGetProperty(dev, kIOHIDManufacturerKey as CFString) as? String
         let transport    = IOHIDDeviceGetProperty(dev, kIOHIDTransportKey    as CFString) as? String
-        let serial       = IOHIDDeviceGetProperty(dev, kIOHIDSerialNumberKey as CFString) as? String
+        // Device serial is deliberately not read: capture files are pasted into
+        // public issues, and the serial adds nothing to decoding.
         let productString = IOHIDDeviceGetProperty(dev, kIOHIDProductKey as CFString) as? String
         let locationID   = (IOHIDDeviceGetProperty(dev, kIOHIDLocationIDKey  as CFString) as? Int)
             .map { String(format: "0x%08X", $0) }
@@ -412,7 +413,6 @@ struct CaptureGuideView: View {
             productID: productID,
             name: name,
             locationID: locationID,
-            serialNumber: serial,
             manufacturer: manufacturer,
             transport: transport,
             parsedDescriptor: parsed

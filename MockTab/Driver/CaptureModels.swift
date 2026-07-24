@@ -282,7 +282,6 @@ struct CalibrationResult: Codable {
         let productID: String
         let name: String
         let locationID: String?
-        let serialNumber: String?
         var manufacturer: String?
         var transport: String?
     }
@@ -329,7 +328,6 @@ struct DiscoveryDeviceInfo: Codable {
     let name: String
     var manufacturer: String?
     var transport: String?
-    var serialNumber: String?
     var locationID: String?
 }
 
@@ -373,7 +371,6 @@ struct CaptureDeviceInfo {
     let productID: Int
     let name: String
     let locationID: String?
-    let serialNumber: String?
     var manufacturer: String? = nil
     var transport: String? = nil
     var parsedDescriptor: HIDDescriptorReader.Parsed? = nil

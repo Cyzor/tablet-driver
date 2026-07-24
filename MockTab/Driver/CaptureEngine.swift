@@ -405,7 +405,6 @@ private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryRes
             name: deviceInfo.name,
             manufacturer: deviceInfo.manufacturer,
             transport: deviceInfo.transport,
-            serialNumber: deviceInfo.serialNumber,
             locationID: deviceInfo.locationID
         ),
         reports: reportSummaries,
@@ -577,7 +576,6 @@ private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryRes
                 productID: deviceInfo.productIDHex,
                 name: deviceInfo.name,
                 locationID: deviceInfo.locationID,
-                serialNumber: deviceInfo.serialNumber,
                 manufacturer: deviceInfo.manufacturer,
                 transport: deviceInfo.transport
             ),
