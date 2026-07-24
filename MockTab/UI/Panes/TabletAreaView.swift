@@ -251,7 +251,11 @@ struct TabletAreaView: View {
                                 .foregroundStyle(.secondary)
                                 .scaledFrame(width: Self.statusGutter)
                                 .accessibilityHidden(true)
+                            // `.disabled` greys the controls but not plain Text
+                            // labels, so dim this one to match the status row
+                            // above when the display is unplugged.
                             Text("Pointer Offset")
+                                .foregroundStyle(activeDeviceIsConnected ? .primary : .secondary)
                             Spacer()
                             CursorOffsetPad(
                                 offsetX: settings.parallaxOffsetX,

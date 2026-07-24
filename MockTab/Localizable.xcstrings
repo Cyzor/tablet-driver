@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "" : {
+
+    },
     "  (device connect: %@ ms worst, %llu stalls — excluded above)" : {
       "comment" : "Diagnostic: latency spikes during device connection, excluded from the steady-state HID latency line",
       "localizations" : {
@@ -15918,7 +15921,27 @@
       }
     },
     "the Linux Wacom Project" : {
-      "comment" : "Link label: the Linux Wacom Project (libwacom's parent project)"
+      "comment" : "Link label: the Linux Wacom Project (libwacom's parent project)",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dem Linux Wacom Project"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el Linux Wacom Project"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linux Wacom Project"
+          }
+        }
+      }
     },
     "The taps don't line up with the targets. Applying this would map the cursor further from the pen tip than no calibration at all." : {
       "comment" : "Explanation shown under the high-residual calibration warning.",
