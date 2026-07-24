@@ -45,6 +45,7 @@ struct TabletAreaView: View {
         if let pid = boundProductID {
             if let s = tabletManager.context(forKey: boundKey)?.tabletDevice?.spec { return s.maxX }
             if let s = WacomDeviceRegistry.spec(for: pid) { return s.maxX }
+            if let mx = VendorDeviceRegistry.profile(forProductID: pid)?.maxX { return mx }
         }
         return 44800
     }
@@ -54,15 +55,22 @@ struct TabletAreaView: View {
         if let pid = boundProductID {
             if let s = tabletManager.context(forKey: boundKey)?.tabletDevice?.spec { return s.maxY }
             if let s = WacomDeviceRegistry.spec(for: pid) { return s.maxY }
+            if let my = VendorDeviceRegistry.profile(forProductID: pid)?.maxY { return my }
         }
         return 29600
     }
 
-    /// True if the connected device is a pen display (Cintiq-class).
+    /// True if the bound device is a pen display (Cintiq / Xencelabs-class),
+    /// connected or not. Resolved from a persistent registry so the calibration
+    /// section stays visible — greyed out — while the display is unplugged, per
+    /// the grey-out-vs-hide convention. The `VendorDeviceRegistry` fallback is
+    /// what keeps Xencelabs displays (absent from `WacomDeviceRegistry`) from
+    /// collapsing to false and hiding the section on disconnect.
     private var activeDeviceIsPenDisplay: Bool {
         if let pid = boundProductID {
             if let s = tabletManager.context(forKey: boundKey)?.tabletDevice?.spec { return s.isPenDisplay }
             if let s = WacomDeviceRegistry.spec(for: pid) { return s.isPenDisplay }
+            if let p = VendorDeviceRegistry.profile(forProductID: pid) { return p.isPenDisplay }
         }
         return false
     }
@@ -278,6 +286,11 @@ struct TabletAreaView: View {
                         }
                         .help("Apply a small constant offset on top of calibration for sub-pixel fine-tuning.")
                     }
+                    // Whole section greys out when the display is unplugged: the
+                    // status row already explains why ("Display not connected"),
+                    // and nothing here — calibrating or nudging the offset — is
+                    // meaningful without the panel in front of you.
+                    .disabled(!activeDeviceIsConnected)
                 }
 
                 Section("Orientation") {
@@ -359,12 +372,17 @@ struct TabletAreaView: View {
             }
             return DeviceLabel(primary: String(localized: "No device", comment: "Fallback label when no tablet is connected"), secondary: nil)
         }
-        let modelName = TabletManager.deviceName(forProductID: pid)
-        if let tablet = registry.knownTablets.first(where: { $0.productID == pid }),
-           tablet.nickname != tablet.modelName {
-            return DeviceLabel(primary: tablet.nickname, secondary: modelName)
+        // Prefer the model name the registry captured when the tablet was last
+        // seen: it carries the right vendor. Re-deriving from the PID alone
+        // defaults to Wacom once the device — and its lastSeenVendorID — is
+        // gone, printing e.g. "Wacom 0x520D" for a disconnected Xencelabs.
+        if let tablet = registry.knownTablets.first(where: { $0.productID == pid }) {
+            if tablet.nickname != tablet.modelName {
+                return DeviceLabel(primary: tablet.nickname, secondary: tablet.modelName)
+            }
+            return DeviceLabel(primary: tablet.modelName, secondary: nil)
         }
-        return DeviceLabel(primary: modelName, secondary: nil)
+        return DeviceLabel(primary: TabletManager.deviceName(forProductID: pid), secondary: nil)
     }
 
     // MARK: - Section heading
