@@ -91,10 +91,10 @@ extension InputInjector {
             var delta = Int(ringPos) - Int(lastRingPos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
-            // The raw position byte increases clockwise, opposite the touch
-            // strip's "increasing = up" convention; negate so ring and strip
-            // scroll the same way for the same physical motion.
-            delta = -delta
+            // Normalize to the touch strip's "increasing = up" convention.
+            // Which way the raw byte counts depends on the hardware family —
+            // see `ringDeltaIsInverted`.
+            if ringDeltaIsInverted { delta = -delta }
             if delta != 0, let slot = activeSlot {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ringAccum,
                                   at: cursorPos, snapshot: snap, settings: settings)
@@ -109,7 +109,7 @@ extension InputInjector {
             var delta = Int(ring2Pos) - Int(lastRing2Pos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
-            delta = -delta
+            if ringDeltaIsInverted { delta = -delta }
             if delta != 0, let slot = activeSlot {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ring2Accum,
                                   at: cursorPos, snapshot: snap, settings: settings)

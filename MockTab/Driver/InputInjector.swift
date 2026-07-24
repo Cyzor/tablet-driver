@@ -91,6 +91,18 @@ final class InputInjector: @unchecked Sendable {
 
     var deviceVendorID: Int
     var deviceProductID: Int
+
+    /// Whether this device's raw touch-ring position counts opposite the
+    /// direction the injector treats as positive.
+    ///
+    /// Ring polarity is a per-firmware-family hardware fact, not a universal
+    /// one: the Intuos-family ring's position byte increases clockwise, so it
+    /// has to be flipped to match the touch strip's "increasing = up"
+    /// convention, while the Cintiq 24HD's counts the other way already and
+    /// scrolls backwards if flipped too. Resolved once at init rather than per
+    /// report. If a third convention ever appears, promote this to a registry
+    /// field next to the other per-device hardware facts.
+    let ringDeltaIsInverted: Bool
     var activeToolSettings: ToolSettings? = nil {
         didSet { reconcileSyntheticFlags() }
     }
@@ -181,6 +193,8 @@ final class InputInjector: @unchecked Sendable {
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
         self.deviceProductID = productID
+        self.ringDeltaIsInverted =
+            WacomDeviceRegistry.spec(for: productID)?.parser != .cintiqV1
         Self.liveInjectorsLock.withLock { $0.table.add(self) }
         recomputeVirtualScreenBounds()
         displayObserver = NotificationCenter.default.addObserver(
