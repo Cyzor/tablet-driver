@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """verify_registry.py — Cross-reference WacomDeviceRegistry against canonical sources.
 
-Compares every entry in MockTab/Driver/WacomDeviceRegistry.swift against:
+Compares every entry in TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift
+against:
   • Linux input-wacom feature structs (kernel canonical)
   • OpenTabletDriver JSON configs (community canonical)
 
@@ -20,157 +21,65 @@ Verdicts:
   unknown          — neither source has the PID
   registry_only    — see "unknown"
 
-Usage:
+Every path argument defaults to the standard in-repo layout, so the common case
+is just:
+
+    python3 tools/verify_registry.py
+
+Or point it elsewhere:
+
     python3 tools/verify_registry.py \\
-        --registry  MockTab/Driver/WacomDeviceRegistry.swift \\
+        --registry  TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift \\
         --kernel    /path/to/input-wacom/4.18/wacom_wac.c \\
-        --otd       /path/to/OpenTabletDriver/Configurations/Wacom \\
+        --otd       /path/to/OpenTabletDriver/Configurations \\
         --out       registry_audit.csv
 """
 
 import argparse
-import base64
 import csv
-import glob
-import json
-import os
-import re
 import sys
 from typing import Optional
 
+import registry_lib as rl
+
 DIM_TOLERANCE = 0  # exact match required for now; bump to 50 if rounding noise appears
 
-# ── Kernel parsing ────────────────────────────────────────────────────────────
+# ── Upstream + registry parsing ───────────────────────────────────────────────
+#
+# All four parsers live in registry_lib so every tools/ script sees the same
+# data.  The thin wrappers below only rename fields to the column names this
+# script's CSV has always used.
 
-KERNEL_FEATURE_RE = re.compile(
-    r'static const struct wacom_features wacom_features_0x([0-9A-Fa-f]+)\s*=\s*'
-    r'\{\s*"([^"]*)"\s*,\s*'
-    r'(\d+)\s*,\s*(\d+)\s*,\s*(\d+)',
-    re.MULTILINE,
-)
-
-KERNEL_TYPE_RE = re.compile(
-    r'wacom_features_0x([0-9A-Fa-f]+)\s*=\s*\{[^}]*?,\s*'
-    r'(INTUOS[A-Z0-9_]*|GRAPHIRE[A-Z0-9_]*|BAMBOO[A-Z0-9_]*|WACOM_[A-Z0-9_]+|CINTIQ[A-Z0-9_]*|PL[A-Z0-9_]*|DTU[A-Z0-9_]*|PTU|TABLETPC[A-Z0-9_]*|MTSCREEN|MTTPC[A-Z0-9_]*|HID_GENERIC|G9|G14|GD|MO|TPC|REMOTE)',
-    re.DOTALL,
-)
+WACOM_VID = rl.WACOM_VID
 
 
 def parse_kernel(path: str) -> dict:
     """Return {pid_int: {"name", "maxX", "maxY", "maxP", "type"}}."""
-    if not os.path.exists(path):
-        return {}
-    text = open(path, encoding="utf-8", errors="ignore").read()
-    out = {}
-    for m in KERNEL_FEATURE_RE.finditer(text):
-        pid = int(m.group(1), 16)
-        out[pid] = {
-            "name": m.group(2),
-            "maxX": int(m.group(3)),
-            "maxY": int(m.group(4)),
-            "maxP": int(m.group(5)),
-            "type": "",
+    return {
+        pid: {
+            "name": k["name"], "maxX": k["maxX"], "maxY": k["maxY"],
+            "maxP": k["maxPressure"], "type": k["type"],
         }
-    for m in KERNEL_TYPE_RE.finditer(text):
-        pid = int(m.group(1), 16)
-        if pid in out:
-            out[pid]["type"] = m.group(2)
-    return out
-
-
-# ── OTD parsing ───────────────────────────────────────────────────────────────
-
-WACOM_VID = 1386  # 0x056A
-
-
-def parse_pid(raw):
-    if isinstance(raw, int):
-        return raw
-    if isinstance(raw, str):
-        try:
-            return int(raw.strip(), 0)
-        except ValueError:
-            return None
-    return None
+        for pid, k in rl.parse_kernel(path).items()
+    }
 
 
 def parse_otd(directory: str) -> dict:
     """Return {pid_int: {"name", "maxX", "maxY", "maxP", "parser"}}."""
-    if not os.path.isdir(directory):
-        return {}
-    out = {}
-    for fp in glob.glob(os.path.join(directory, "*.json")):
-        try:
-            cfg = json.load(open(fp, encoding="utf-8"))
-        except Exception:
-            continue
-        name = cfg.get("Name", os.path.splitext(os.path.basename(fp))[0])
-        specs = cfg.get("Specifications", {}) or {}
-        dig = specs.get("Digitizer", {}) or {}
-        pen = specs.get("Pen", {}) or {}
-        max_x = int(cfg.get("MaxX") or dig.get("MaxX") or 0)
-        max_y = int(cfg.get("MaxY") or dig.get("MaxY") or 0)
-        max_p = int(cfg.get("MaxPressure") or pen.get("MaxPressure") or 0)
-
-        # Current schema: DigitizerIdentifiers[]
-        for di in cfg.get("DigitizerIdentifiers", []) or []:
-            if not isinstance(di, dict):
-                continue
-            if int(di.get("VendorID", 0)) != WACOM_VID:
-                continue
-            pid = parse_pid(di.get("ProductID"))
-            if not pid:
-                continue
-            parser = di.get("ReportParser", "").split(".")[-1].split(",")[0]
-            out[pid] = {
-                "name": name, "maxX": max_x, "maxY": max_y,
-                "maxP": max_p, "parser": parser,
-            }
-
-        # Legacy schema: top-level VID/PID
-        if int(cfg.get("VendorID", 0)) == WACOM_VID:
-            pid = parse_pid(cfg.get("ProductID"))
-            if pid and pid not in out:
-                parser = cfg.get("ReportParser", "").split(".")[-1].split(",")[0]
-                out[pid] = {
-                    "name": name, "maxX": max_x, "maxY": max_y,
-                    "maxP": max_p, "parser": parser,
-                }
-    return out
-
-
-# ── Registry parsing ──────────────────────────────────────────────────────────
-
-REGISTRY_RE = re.compile(
-    r'\.init\(\s*\n\s*productID:\s*(0x[0-9A-Fa-f]+|\d+),\s*name:\s*"([^"]+)"[^\n]*\n'
-    r'\s*parser:\s*\.([A-Za-z0-9]+),\s*maxX:\s*(\d+),\s*maxY:\s*(\d+),\s*maxPressure:\s*(\d+)',
-    re.MULTILINE,
-)
-
-CONFIDENCE_RE = re.compile(r'confidence:\s*\.([A-Za-z]+)')
+    return rl.parse_otd(directory)
 
 
 def parse_registry(path: str) -> list:
-    text = open(path, encoding="utf-8", errors="ignore").read()
-    rows = []
-    for m in REGISTRY_RE.finditer(text):
-        pid_str = m.group(1)
-        pid = int(pid_str, 0)
-        # Look ahead a few lines for confidence override.
-        end = m.end()
-        tail = text[end:end + 600]
-        conf_match = CONFIDENCE_RE.search(tail)
-        confidence = conf_match.group(1) if conf_match else "experimental"
-        rows.append({
-            "pid": pid,
-            "name": m.group(2),
-            "parser": m.group(3),
-            "maxX": int(m.group(4)),
-            "maxY": int(m.group(5)),
-            "maxP": int(m.group(6)),
-            "confidence": confidence,
-        })
-    return rows
+    """Return one row per registry entry, in file order."""
+    return [
+        {
+            "pid": e["pid"], "name": e["name"], "parser": e["parser"],
+            "maxX": e["maxX"] or 0, "maxY": e["maxY"] or 0,
+            "maxP": e["maxPressure"] or 0,
+            "confidence": e["confidence"],
+        }
+        for e in rl.parse_registry(path)
+    ]
 
 
 # ── Kernel type → MockTab parser family ──────────────────────────────────────
@@ -284,9 +193,12 @@ def _diff_notes(reg, src, label):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--registry", required=True, help="path to WacomDeviceRegistry.swift")
-    p.add_argument("--kernel", required=True, help="path to input-wacom wacom_wac.c")
-    p.add_argument("--otd", required=True, help="path to OTD Configurations/Wacom directory")
+    p.add_argument("--registry", default=str(rl.DEFAULT_REGISTRY),
+                   help="path to WacomDeviceRegistry.swift")
+    p.add_argument("--kernel", default=str(rl.DEFAULT_KERNEL),
+                   help="path to input-wacom wacom_wac.c")
+    p.add_argument("--otd", default=str(rl.DEFAULT_OTD),
+                   help="path to the OTD Configurations tree (searched recursively)")
     p.add_argument("--out", default="registry_audit.csv", help="output CSV path")
     args = p.parse_args()
 

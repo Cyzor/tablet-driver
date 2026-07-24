@@ -2,7 +2,7 @@
 """audit_registry.py — diff WacomDeviceRegistry against kernel wacom_features.
 
 Reads:
-  • MockTab/Driver/WacomDeviceRegistry.swift — our authoritative table
+  • TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift — our table
   • Notes/Scratch/upstream/input-wacom/<branch>/wacom_wac.c — kernel features
 
 For each PID present in both, compares name, maxX, maxY, maxPressure, and
@@ -19,66 +19,36 @@ Usage:
 """
 from __future__ import annotations
 import argparse
-import re
 import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = ROOT / "TabletKit" / "Sources" / "TabletKit" / "WacomDeviceRegistry.swift"
-KERNEL = (
-    ROOT / "Notes" / "Scratch" / "upstream" / "input-wacom"
-    / "4.18" / "wacom_wac.c"
-)
+import registry_lib as rl
+
+REGISTRY = rl.DEFAULT_REGISTRY
+KERNEL = rl.DEFAULT_KERNEL
 
 
 def parse_registry() -> dict[int, dict]:
-    """Return {pid: {name, maxX, maxY, maxPressure, buttonCount}}."""
-    text = REGISTRY.read_text()
+    """Return {pid: {name, maxX, maxY, maxPressure, buttonCount}}.
+
+    Collapses the shared parser's per-entry list to one row per PID, keeping
+    the entry a device would actually resolve to.  Duplicate-PID detection is
+    audit_kernel_registry.py's job, not this rote field comparison's.
+    """
     rows: dict[int, dict] = {}
-    # Match the .init(...) blocks. Loose; relies on canonical formatting.
-    pat = re.compile(
-        r"productID:\s*0x([0-9A-Fa-f]+),\s*name:\s*\"([^\"]+)\"[^)]*?"
-        r"maxX:\s*(\d+),\s*maxY:\s*(\d+),\s*maxPressure:\s*(\d+),\s*"
-        r"buttonCount:\s*(\d+)",
-        re.S,
-    )
-    for m in pat.finditer(text):
-        pid = int(m.group(1), 16)
-        rows[pid] = {
-            "name": m.group(2),
-            "maxX": int(m.group(3)),
-            "maxY": int(m.group(4)),
-            "maxPressure": int(m.group(5)),
-            "buttonCount": int(m.group(6)),
-        }
+    for e in rl.parse_registry(REGISTRY):
+        rows.setdefault(e["pid"], {
+            "name": e["name"],
+            "maxX": e["maxX"] or 0,
+            "maxY": e["maxY"] or 0,
+            "maxPressure": e["maxPressure"] or 0,
+            "buttonCount": e["buttonCount"] or 0,
+        })
     return rows
 
 
 def parse_kernel() -> dict[int, dict]:
-    """Return {pid: {name, maxX, maxY, maxPressure, numbered_buttons}}."""
-    text = KERNEL.read_text()
-    rows: dict[int, dict] = {}
-    # Block form:
-    #   static const struct wacom_features wacom_features_0xHEX =
-    #     { "Name", MAXX, MAXY, MAXPRESS, MAXDIST,
-    #       TYPE, RESX, RESY, NUMBUTTONS, ... };
-    # Some entries are touch-only and won't match this pattern (no dims).
-    pat = re.compile(
-        r"wacom_features_0x([0-9A-Fa-f]+)\s*=\s*"
-        r"\{\s*\"([^\"]+)\"\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*\d+\s*,\s*"
-        r"[A-Z_0-9]+\s*,\s*[A-Z_0-9]+\s*,\s*[A-Z_0-9]+\s*(?:,\s*(\d+))?",
-        re.S,
-    )
-    for m in pat.finditer(text):
-        pid = int(m.group(1), 16)
-        rows[pid] = {
-            "name": m.group(2),
-            "maxX": int(m.group(3)),
-            "maxY": int(m.group(4)),
-            "maxPressure": int(m.group(5)),
-            "buttonCount": int(m.group(6)) if m.group(6) else 0,
-        }
-    return rows
+    """Return {pid: {name, maxX, maxY, maxPressure, buttonCount}}."""
+    return rl.parse_kernel(KERNEL)
 
 
 NUMERIC_FIELDS = ("maxX", "maxY", "maxPressure")

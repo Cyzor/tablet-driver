@@ -88,7 +88,7 @@ Adding support for a new Wacom variant of an existing family means (all edits ha
 1. Add a row to `WacomDeviceRegistry` (and/or `WacomToolSpec` for new pen tools) with the VID/PID and physical dimensions.
 2. Add a fixture to the matching `*DecoderTests.swift` file under `Tests/TabletKitTests/`.
 
-Adding a new family means writing a new decoder under `Sources/TabletKit/Decoders/`, wiring it in `WacomDeviceRegistry.decoder(for:)`, and adding a test file. MockTab picks up the change automatically through the local package dep.
+Adding a new family means writing a new decoder under `Sources/TabletKit/Decoders/`, adding a `ReportParser` case for it, wiring that case to the decoder in `MockTab/Driver/WacomKnownDevice.swift`, and adding a test file. MockTab picks up the change automatically through the local package dep.
 
 ### Injection
 
@@ -146,13 +146,13 @@ The decoder test suite lives in `TabletKit/Tests/TabletKitTests/` and runs via `
 
 | Goal | File to open first |
 |------|--------------------|
-| Add a Wacom model in an existing family | `TabletKit/Sources/TabletKit/WacomDeviceRegistry.swift` |
-| Add a new pen tool | `TabletKit/Sources/TabletKit/WacomToolSpec.swift` |
-| Add a non-Wacom vendor | `TabletKit/Sources/TabletKit/VendorDeviceRegistry.swift` |
-| Add a new protocol family | `TabletKit/Sources/TabletKit/Decoders/` + `WacomDeviceRegistry.decoder(for:)` |
+| Add a Wacom model in an existing family | `TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift` |
+| Add a new pen tool | `TabletKit/Sources/TabletKit/Registry/WacomToolSpec.swift` |
+| Add a non-Wacom vendor | `TabletKit/Sources/TabletKit/Registry/VendorDeviceRegistry.swift` |
+| Add a new protocol family | `TabletKit/Sources/TabletKit/Decoders/` + `ReportParser` case wired in `MockTab/Driver/WacomKnownDevice.swift` |
 | Tweak click resolution | `MockTab/Driver/InputInjector.swift` (read the header) |
 | Tweak button dispatch or modifier synthesis | `MockTab/Driver/InputInjector+CGEvents.swift` |
-| Tweak position smoothing | `TabletKit/Sources/TabletKit/CursorSmoother.swift` |
+| Tweak position smoothing | `TabletKit/Sources/TabletKit/Smoothing/CursorSmoother.swift` |
 | Tweak display mapping or calibration | `MockTab/Driver/DisplayMapper.swift` |
 | Add a settings knob | `Settings/TabletSettings.swift` + relevant pane |
 | Add a new settings pane | `UI/Panes/` + `App/SettingsWindowController.swift` |

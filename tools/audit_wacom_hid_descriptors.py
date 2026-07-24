@@ -4,7 +4,7 @@
 Walks the `linuxwacom/wacom-hid-descriptors` GitHub repository, extracts the
 USB VID/PID for each Wacom-branded device from its sysinfo dump filenames
 (which encode the IDs as `BUS:VID:PID.NNNN.hid.txt`), and cross-references
-against MockTab/Driver/WacomDeviceRegistry.swift.
+against TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift.
 
 Produces a Markdown audit table for Notes/Scratch/ — promotable entries,
 missing entries, and naming discrepancies.  Run via `gh` (no auth needed
@@ -12,24 +12,19 @@ for the public repo).
 
 Usage:
     python3 tools/audit_wacom_hid_descriptors.py \\
-        --registry MockTab/Driver/WacomDeviceRegistry.swift \\
         > Notes/Scratch/Wacom-Descriptor-Audit-$(date +%Y-%m-%d).md
 """
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
 
+import registry_lib as rl
+
 REPO = "linuxwacom/wacom-hid-descriptors"
 WACOM_VID_HEX = "056A"
-
-PID_LINE = re.compile(r"productID:\s*0x([0-9A-Fa-f]+)")
-NAME_LINE = re.compile(r'name:\s*"([^"]+)"')
-CONFIDENCE_LINE = re.compile(r"\bconfidence:\s*\.(\w+)")
-INIT_OPEN = re.compile(r"^\s*\.init\(\s*$")
 
 
 def gh(*args: str) -> str:
@@ -80,38 +75,20 @@ def pids_for_device(folder: str) -> set[int]:
 
 def parse_registry(path: Path) -> dict[int, dict]:
     """Return {pid: {name, confidence, has_dims}} for every .init block."""
-    lines = path.read_text(encoding="utf-8").split("\n")
     out: dict[int, dict] = {}
-    i = 0
-    while i < len(lines):
-        if INIT_OPEN.match(lines[i]):
-            depth = 1
-            block = [lines[i]]
-            j = i + 1
-            while j < len(lines) and depth > 0:
-                block.append(lines[j])
-                depth += lines[j].count("(") - lines[j].count(")")
-                j += 1
-            block_text = "\n".join(block)
-            pid_m = PID_LINE.search(block_text)
-            name_m = NAME_LINE.search(block_text)
-            conf_m = CONFIDENCE_LINE.search(block_text)
-            if pid_m:
-                out[int(pid_m.group(1), 16)] = {
-                    "name": name_m.group(1) if name_m else "",
-                    "confidence": conf_m.group(1) if conf_m else "experimental",
-                    "has_dims": "activeWidthMM" in block_text,
-                }
-            i = j
-        else:
-            i += 1
+    for e in rl.parse_registry(path):
+        out.setdefault(e["pid"], {
+            "name": e["name"],
+            "confidence": e["confidence"],
+            "has_dims": e["activeWidthMM"] is not None,
+        })
     return out
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--registry", required=True, type=Path)
+    ap.add_argument("--registry", default=rl.DEFAULT_REGISTRY, type=Path)
     args = ap.parse_args()
 
     sys.stderr.write("# scanning wacom-hid-descriptors device folders…\n")
