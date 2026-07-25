@@ -1840,7 +1840,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle Tabletts, Tools, Presets und Tastenbelegungen werden gelöscht. MockTab startet neu."
+            "value" : "Alle Grafiktabletts, Tools, Presets und Tastenbelegungen werden gelöscht. MockTab startet neu."
           }
         },
         "en" : {
@@ -2146,7 +2146,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beim Verbinden dieses Tabletts automatisch zum passenden Profil wechseln"
+            "value" : "Beim Verbinden dieses Grafiktabletts automatisch zum passenden Profil wechseln"
           }
         },
         "en" : {
@@ -2196,7 +2196,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hintergrundbeleuchtung des im Tablett integrierten Displays. Die Hardware behält ihren eigenen Wert, bis der Regler bewegt wird."
+            "value" : "Hintergrundbeleuchtung des im Grafiktablett integrierten Displays. Die Hardware behält ihren eigenen Wert, bis der Regler bewegt wird."
           }
         },
         "es" : {
@@ -3103,7 +3103,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klick auf ein Display, um das Tablett darauf zu mappen. ⌘+Klick fügt es zur Umschalt-Rotation hinzu. ⇧+Klick spannt alle Displays auf."
+            "value" : "Klick auf ein Display, um das Grafiktablett darauf zu mappen. ⌘+Klick fügt es zur Umschalt-Rotation hinzu. ⇧+Klick spannt alle Displays auf."
           }
         },
         "en" : {
@@ -3416,7 +3416,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Erfassung endete, bevor das Tablett identifiziert war. Es wurde nichts gespeichert."
+            "value" : "Die Erfassung endete, bevor das Grafiktablett identifiziert war. Es wurde nichts gespeichert."
           }
         },
         "en" : {
@@ -4472,7 +4472,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablett erkennen"
+            "value" : "Grafiktablett erkennen"
           }
         },
         "en" : {
@@ -5269,7 +5269,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mach alles, was dein Tablett kann, und klick dann auf „Fertig“:"
+            "value" : "Mach alles, was dein Grafiktablett kann, und klick dann auf „Fertig“:"
           }
         },
         "en" : {
@@ -5434,7 +5434,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit einem Finger übers Tablett streichen, dann mit zwei Fingern zoomen"
+            "value" : "Mit einem Finger übers Grafiktablett streichen, dann mit zwei Fingern zoomen"
           }
         },
         "en" : {
@@ -5676,7 +5676,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Basiseinstellungen und benannten Presets jedes Tabletts werden als neue Profile hinzugefügt — deine aktuellen Einstellungen ändern sich erst, wenn du eines aktivierst. App-Overrides und Werkzeug-Einstellungen gelten sofort."
+            "value" : "Die Basiseinstellungen und benannten Presets jedes Grafiktabletts werden als neue Profile hinzugefügt — deine aktuellen Einstellungen ändern sich erst, wenn du eines aktivierst. App-Overrides und Werkzeug-Einstellungen gelten sofort."
           }
         },
         "en" : {
@@ -5706,7 +5706,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Einstellungen jedes Tabletts werden als neues Profil hinzugefügt. Die aktuellen Einstellungen ändern sich erst, wenn ein Profil aktiviert wird."
+            "value" : "Die Einstellungen jedes Grafiktabletts werden als neues Profil hinzugefügt. Die aktuellen Einstellungen ändern sich erst, wenn ein Profil aktiviert wird."
           }
         },
         "es" : {
@@ -6230,7 +6230,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Erweitert: Tablett in den Datenmodus versetzen"
+            "value" : "Erweitert: Grafiktablett in den Datenmodus versetzen"
           }
         },
         "es" : {
@@ -6897,7 +6897,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Nutze das, wenn dein Tablett nicht erkannt wird oder etwas daran nicht funktioniert. Dauert etwa eine Minute."
+            "value" : "Nutze das, wenn dein Grafiktablett nicht erkannt wird oder etwas daran nicht funktioniert. Dauert etwa eine Minute."
           }
         },
         "es" : {
@@ -7987,7 +7987,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Im absoluten Modus entspricht jeder Punkt auf dem Tablett einem festen Punkt auf dem Bildschirm. Im relativen Modus bewegt sich der Cursor relativ zur letzten Position – wie eine Maus."
+            "value" : "Im absoluten Modus entspricht jeder Punkt auf dem Grafiktablett einem festen Punkt auf dem Bildschirm. Im relativen Modus bewegt sich der Cursor relativ zur letzten Position – wie eine Maus."
           }
         },
         "en" : {
@@ -8396,7 +8396,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bekanntes Tablett"
+            "value" : "Bekanntes Grafiktablett"
           }
         },
         "es" : {
@@ -8837,7 +8837,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablett-zu-Bildschirm-Verhältnis sperren, damit der Cursor nie gestreckt oder gestaucht wirkt."
+            "value" : "Grafiktablett-zu-Bildschirm-Verhältnis sperren, damit der Cursor nie gestreckt oder gestaucht wirkt."
           }
         },
         "en" : {
@@ -9007,7 +9007,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablett über alle Anzeigen als eine durchgehende Oberfläche abbilden."
+            "value" : "Grafiktablett über alle Anzeigen als eine durchgehende Oberfläche abbilden."
           }
         },
         "en" : {
@@ -9036,7 +9036,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablett nur %@ zuordnen."
+            "value" : "Grafiktablett nur %@ zuordnen."
           }
         },
         "es" : {
@@ -9060,7 +9060,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablett auf die Hauptanzeige abbilden."
+            "value" : "Grafiktablett auf die Hauptanzeige abbilden."
           }
         },
         "en" : {
@@ -9396,7 +9396,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab hat die folgenden Probleme gefunden, die den Tablettbetrieb beeinträchtigen können:"
+            "value" : "MockTab hat die folgenden Probleme gefunden, die den Grafiktablett-Betrieb beeinträchtigen können:"
           }
         },
         "en" : {
@@ -9477,7 +9477,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab nutzt seinen generischen Treiber, einfache Stifteingabe funktioniert also vielleicht. Für volle Unterstützung braucht es eine kurze Aufzeichnung dessen, was dein Tablett sendet."
+            "value" : "MockTab nutzt seinen generischen Treiber, einfache Stifteingabe funktioniert also vielleicht. Für volle Unterstützung braucht es eine kurze Aufzeichnung dessen, was dein Grafiktablett sendet."
           }
         },
         "en" : {
@@ -9736,7 +9736,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nativer macOS-Treiber für einige ältere Zeichentabletts"
+            "value" : "Nativer macOS-Treiber für einige ältere Grafiktabletts"
           }
         },
         "en" : {
@@ -9968,7 +9968,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine Tablettdaten in dieser Datei gefunden."
+            "value" : "Keine Grafiktablett-Daten in dieser Datei gefunden."
           }
         },
         "en" : {
@@ -9997,7 +9997,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noch keine Tabletts verbunden."
+            "value" : "Noch keine Grafiktabletts verbunden."
           }
         },
         "en" : {
@@ -10084,7 +10084,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noch kein Tool erkannt.\nStift über ein Tablett bewegen, um es zu registrieren."
+            "value" : "Noch kein Tool erkannt.\nStift über ein Grafiktablett bewegen, um es zu registrieren."
           }
         },
         "es" : {
@@ -10107,7 +10107,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noch kein Tool erkannt.\nStift über das Tablett bewegen, um es zu registrieren."
+            "value" : "Noch kein Tool erkannt.\nStift über das Grafiktablett bewegen, um es zu registrieren."
           }
         },
         "es" : {
@@ -10365,7 +10365,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nicht in deiner Registrierung — Profil ist verfügbar, sobald dieses Tablett verbunden wird."
+            "value" : "Nicht in deiner Registrierung — Profil ist verfügbar, sobald dieses Grafiktablett verbunden wird."
           }
         },
         "en" : {
@@ -11244,7 +11244,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jede Taste am Tablett drücken"
+            "value" : "Jede Taste am Grafiktablett drücken"
           }
         },
         "en" : {
@@ -12158,7 +12158,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Zeichnet auf, was dein Tablett sendet, damit Unterstützung dafür ergänzt werden kann."
+            "value" : "Zeichnet auf, was dein Grafiktablett sendet, damit Unterstützung dafür ergänzt werden kann."
           }
         },
         "es" : {
@@ -12181,7 +12181,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeichnet auf, was dein Tablett an den Mac sendet, und speichert es als kleine JSON-Datei zum Teilen."
+            "value" : "Zeichnet auf, was dein Grafiktablett an den Mac sendet, und speichert es als kleine JSON-Datei zum Teilen."
           }
         },
         "en" : {
@@ -12210,7 +12210,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeichnet auf, was dein Tablett sendet, um einem Problem auf die Spur zu kommen."
+            "value" : "Zeichnet auf, was dein Grafiktablett sendet, um einem Problem auf die Spur zu kommen."
           }
         },
         "en" : {
@@ -12584,7 +12584,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle App-Overrides für dieses Tablett entfernen"
+            "value" : "Alle App-Overrides für dieses Grafiktablett entfernen"
           }
         },
         "es" : {
@@ -12631,7 +12631,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablett entfernen"
+            "value" : "Grafiktablett entfernen"
           }
         },
         "es" : {
@@ -12812,7 +12812,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablett umbenennen"
+            "value" : "Grafiktablett umbenennen"
           }
         },
         "en" : {
@@ -13090,7 +13090,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aktiven Bereich auf die gesamte Tablett-Oberfläche zurücksetzen (widerrufbar)."
+            "value" : "Aktiven Bereich auf die gesamte Grafiktablett-Oberfläche zurücksetzen (widerrufbar)."
           }
         },
         "en" : {
@@ -13225,7 +13225,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das aktive Profil beim Verbinden dieses Tabletts automatisch wiederherstellen"
+            "value" : "Das aktive Profil beim Verbinden dieses Grafiktabletts automatisch wiederherstellen"
           }
         },
         "en" : {
@@ -13952,7 +13952,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drehen Sie die aktive Fläche um 90° im Uhrzeigersinn. Halten Sie das Tablett im Hochformat."
+            "value" : "Drehen Sie die aktive Fläche um 90° im Uhrzeigersinn. Halten Sie das Grafiktablett im Hochformat."
           }
         },
         "en" : {
@@ -14608,7 +14608,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Details zu erkannten Konflikten mit anderen Tablett-Treibern anzeigen und erfahren, wie du sie beheben kannst."
+            "value" : "Details zu erkannten Konflikten mit anderen Grafiktablett-Treibern anzeigen und erfahren, wie du sie beheben kannst."
           }
         },
         "en" : {
@@ -15330,7 +15330,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standardausrichtung — lange Kante des Tabletts ist horizontal."
+            "value" : "Standardausrichtung — lange Kante des Grafiktabletts ist horizontal."
           }
         },
         "en" : {
@@ -15610,7 +15610,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablett-Zuordnung zwischen Displays wechseln"
+            "value" : "Grafiktablett-Zuordnung zwischen Displays wechseln"
           }
         },
         "en" : {
@@ -15693,7 +15693,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablett"
+            "value" : "Grafiktablett"
           }
         },
         "en" : {
@@ -15722,7 +15722,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablett-Bereich"
+            "value" : "Grafiktablett-Bereich"
           }
         },
         "en" : {
@@ -15752,7 +15752,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tabletts"
+            "value" : "Grafiktabletts"
           }
         },
         "en" : {
@@ -15804,7 +15804,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tabletts   : keine"
+            "value" : "Tabletts  : keine"
           }
         },
         "en" : {
@@ -15863,7 +15863,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Stift aufs Tablett aufsetzen und wieder abheben"
+            "value" : "Stift aufs Grafiktablett aufsetzen und wieder abheben"
           }
         },
         "es" : {
@@ -15985,7 +15985,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Tablett ist nicht mehr verbunden."
+            "value" : "Dieses Grafiktablett ist nicht mehr verbunden."
           }
         },
         "en" : {
@@ -16014,7 +16014,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der aktive Tablett-Bereich wird dem ausgewählten Display zugeordnet."
+            "value" : "Der aktive Grafiktablett-Bereich wird dem ausgewählten Display zugeordnet."
           }
         },
         "en" : {
@@ -16067,7 +16067,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Issue ist mit den Daten deines Tabletts vorausgefüllt. Wenn es zu groß fürs Formular ist, zieh die Datei aus dem Finder hinein."
+            "value" : "Das Issue ist mit den Daten deines Grafiktabletts vorausgefüllt. Wenn es zu groß fürs Formular ist, zieh die Datei aus dem Finder hinein."
           }
         },
         "en" : {
@@ -16171,7 +16171,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Tablett meldet keine brauchbare USB-ID — eine Aufzeichnung könnte es also nicht identifizieren."
+            "value" : "Dieses Grafiktablett meldet keine brauchbare USB-ID — eine Aufzeichnung könnte es also nicht identifizieren."
           }
         },
         "en" : {
@@ -16200,7 +16200,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Tool wird mit seinem Standardnamen angezeigt, wenn das Tablett es das nächste Mal erkennt."
+            "value" : "Dieses Tool wird mit seinem Standardnamen angezeigt, wenn das Grafiktablett es das nächste Mal erkennt."
           }
         },
         "en" : {
@@ -16229,7 +16229,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dadurch werden alle Einstellungen, Profile, Tastenzuordnungen und die gespeicherte Werkzeugliste für dieses Tablett verworfen. Beim nächsten Anschließen wird das Tablett mit den Standardwerten neu hinzugefügt."
+            "value" : "Dadurch werden alle Einstellungen, Profile, Tastenzuordnungen und die gespeicherte Werkzeugliste für dieses Grafiktablett verworfen. Beim nächsten Anschließen wird das Grafiktablett mit den Standardwerten neu hinzugefügt."
           }
         },
         "es" : {
@@ -16725,7 +16725,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Werkzeuge (alle Tabletts)"
+            "value" : "Werkzeuge (alle Grafiktabletts)"
           }
         },
         "en" : {
@@ -16993,7 +16993,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Radierer-Ende des Stifts aufs Tablett aufsetzen"
+            "value" : "Radierer-Ende des Stifts aufs Grafiktablett aufsetzen"
           }
         },
         "en" : {
@@ -17068,7 +17068,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Manche Tabletts senden erst, wenn sie dazu aufgefordert werden. Probier das, wenn nichts aufgezeichnet wird."
+            "value" : "Manche Grafiktabletts senden erst, wenn sie dazu aufgefordert werden. Probier das, wenn nichts aufgezeichnet wird."
           }
         },
         "es" : {
@@ -17267,7 +17267,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unbekanntes Tablett"
+            "value" : "Unbekanntes Grafiktablett"
           }
         },
         "es" : {
@@ -17314,7 +17314,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Über einen Tastendruck die aktive Tablett-Zuordnung zwischen ausgewählten Displays wechseln."
+            "value" : "Über einen Tastendruck die aktive Grafiktablett-Zuordnung zwischen ausgewählten Displays wechseln."
           }
         },
         "en" : {
@@ -17465,7 +17465,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Warten auf das Tablett. Über Bluetooth kann das ein paar Sekunden dauern."
+            "value" : "Warten auf das Grafiktablett. Über Bluetooth kann das ein paar Sekunden dauern."
           }
         },
         "en" : {
@@ -17753,7 +17753,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dein Display ist gedreht. In Kombination mit einem gedrehten Tablett kann eine Anpassung nötig sein. Teste die Stifteingabe, um die Zuordnung zu prüfen."
+            "value" : "Dein Display ist gedreht. In Kombination mit einem gedrehten Grafiktablett kann eine Anpassung nötig sein. Teste die Stifteingabe, um die Zuordnung zu prüfen."
           }
         },
         "en" : {

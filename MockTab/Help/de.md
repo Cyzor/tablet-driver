@@ -6,19 +6,19 @@ Ein Grafiktablett ist ein Eingabegerät mit Stift, das absolute Position, Druck,
 
 ## MockTab
 
-MockTab ist ein macOS-Treiber für Wacom- und Xencelabs-Grafiktabletts. Unterstützt werden USB- und Bluetooth-Tabletts aus den Wacom-Familien Intuos, Cintiq, Bamboo und Intuos Pro — mit besonderem Fokus auf Hardware, die Wacoms eigener Treiber auf aktuellen macOS-Versionen nicht mehr unterstützt — sowie Xencelabs-Stifttabletts und Pen-Displays.
+MockTab ist ein macOS-Treiber für Wacom- und Xencelabs-Grafiktabletts. Unterstützt werden USB- und Bluetooth-Grafiktabletts aus den Wacom-Familien Intuos, Cintiq, Bamboo und Intuos Pro — mit besonderem Fokus auf Hardware, die Wacoms eigener Treiber auf aktuellen macOS-Versionen nicht mehr unterstützt — sowie Xencelabs-Stifttabletts und Pen-Displays.
 
 [tabletArea]
 
 ## Aktiver Bereich
 
-Der aktive Bereich ist der Teil der Tablettoberfläche, der auf den Bildschirm abgebildet wird. Stifteingaben außerhalb dieses Rechtecks haben keine Wirkung.
+Der aktive Bereich ist der Teil der Grafiktablett-Oberfläche, der auf den Bildschirm abgebildet wird. Stifteingaben außerhalb dieses Rechtecks haben keine Wirkung.
 
 **Größe ändern** – Ziehe einen beliebigen Griff in der Vorschau, um den aktiven Bereich zu verschieben oder zu skalieren. Halte beim Ziehen einer Ecke **Shift** gedrückt, um das Seitenverhältnis an die Display-Proportionen zu binden. Genaue Werte kannst du auch in die Felder Width und Height eingeben.
 
-**Lock Aspect Ratio** – Hält das Verhältnis zwischen Tablett und Bildschirm proportional, sodass der Cursor horizontal und vertikal gleich weit zurücklegt. Deaktiviere diese Option, wenn du das Mapping absichtlich strecken oder stauchen willst.
+**Lock Aspect Ratio** – Hält das Verhältnis zwischen Grafiktablett und Bildschirm proportional, sodass der Cursor horizontal und vertikal gleich weit zurücklegt. Deaktiviere diese Option, wenn du das Mapping absichtlich strecken oder stauchen willst.
 
-**Reset to Full** – Stellt den aktiven Bereich auf die gesamte Tablettoberfläche zurück. Diese Aktion lässt sich mit ⌘Z rückgängig machen.
+**Reset to Full** – Stellt den aktiven Bereich auf die gesamte Grafiktablett-Oberfläche zurück. Diese Aktion lässt sich mit ⌘Z rückgängig machen.
 
 ## Kalibrierung (Pen-Displays)
 
@@ -52,7 +52,7 @@ Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müss
 
 **Art Pen: Swap Tilt with Rotation** – Leitet die Barrel-Rotation in Photoshops Pen-Tilt-Steuerung um, indem simulierte Neigungsdaten gesendet werden; echte Neigung wird dabei unterdrückt. Verwende es unter Brush Dynamics → Shape Dynamics → Angle → Pen Tilt. Nach dem Aktivieren erscheinen die Regler Tilt Offset und Tilt Magnitude, um das simulierte Signal fein abzustimmen.
 
-**Relative Cursor Movement** – Wechselt vom absoluten Modus (jeder Punkt auf dem Tablett entspricht einem festen Punkt auf dem Bildschirm, wie bei einem Stift) in den relativen Modus (der Cursor bewegt sich um die Strecke, die du den Stift bewegst, wie bei einer Maus).
+**Relative Cursor Movement** – Wechselt vom absoluten Modus (jeder Punkt auf dem Grafiktablett entspricht einem festen Punkt auf dem Bildschirm, wie bei einem Stift) in den relativen Modus (der Cursor bewegt sich um die Strecke, die du den Stift bewegst, wie bei einer Maus).
 
 ## Pan View
 
@@ -99,9 +99,9 @@ Die Radiererspitze hat eine eigene Belegung, die im Stiftbereich konfiguriert wi
 
 ## Finger-Touch
 
-Tabletts mit kapazitiver Touch-Oberfläche melden Fingerkontakte zusätzlich zur Stifteingabe. MockTab lässt das standardmäßig ausgeschaltet; aktiviere **Enable finger touch**, um es zu verwenden.
+Grafiktabletts mit kapazitiver Touch-Oberfläche melden Fingerkontakte zusätzlich zur Stifteingabe. MockTab lässt das standardmäßig ausgeschaltet; aktiviere **Enable finger touch**, um es zu verwenden.
 
-**Tap to click** – Eine kurze Berührung ohne nennenswerte Bewegung sendet einen Linksklick. Lass diese Option deaktiviert, wenn du beim Zeichnen Finger auf dem Tablett ablegst; sonst entstehen leicht Geisterklicks.
+**Tap to click** – Eine kurze Berührung ohne nennenswerte Bewegung sendet einen Linksklick. Lass diese Option deaktiviert, wenn du beim Zeichnen Finger auf dem Grafiktablett ablegst; sonst entstehen leicht Geisterklicks.
 
 **Cursor speed** – Skaliert die Zeigerbewegung bei einer Ein-Finger-Drag-Geste. 1.00× bildet die Touch-Fläche direkt auf den Bildschirm ab; höhere Werte decken mit weniger Bewegung mehr Strecke ab, niedrigere erlauben feinere Kontrolle.
 
@@ -125,9 +125,9 @@ MockTab kann keine Mission Control-, Spaces-, Launchpad- oder andere systemweite
 
 ## Display-Mapping
 
-Das Display-Mapping bestimmt, welcher Bildschirm für das Tablett als aktiv gilt.
+Das Display-Mapping bestimmt, welcher Bildschirm für das Grafiktablett als aktiv gilt.
 
-**All Displays** – Das Tablett spannt proportional über den gesamten Desktop. Dieser Modus eignet sich für Arbeitsabläufe über mehrere Monitore hinweg.
+**All Displays** – Das Grafiktablett spannt proportional über den gesamten Desktop. Dieser Modus eignet sich für Arbeitsabläufe über mehrere Monitore hinweg.
 
 **Single Display** – Der aktive Bereich wird auf genau einen Bildschirm abgebildet. Wenn du ein Display aus der Liste auswählst, aktualisiert sich die Vorschau und zeigt das Mapping an.
 
@@ -137,7 +137,7 @@ Das Display-Mapping bestimmt, welcher Bildschirm für das Tablett als aktiv gilt
 
 ## Verbundene Geräte
 
-Der Bereich Devices listet alle Tabletts und Stiftwerkzeuge auf, die MockTab erkannt hat. Jede Zeile zeigt den Gerätenamen, die Verbindungsart (USB oder Bluetooth) und den aktuellen Status.
+Der Bereich Devices listet alle Grafiktabletts und Stiftwerkzeuge auf, die MockTab erkannt hat. Jede Zeile zeigt den Gerätenamen, die Verbindungsart (USB oder Bluetooth) und den aktuellen Status.
 
 Wenn du eine Gerätezeile auswählst, erscheinen im Detailbereich rechts die modellspezifischen Einstellungen und Werkzeuge.
 
@@ -145,15 +145,15 @@ Auch getrennte Geräte bleiben in der Liste, damit ihre Profile zur Kontrolle od
 
 ## Konflikterkennung
 
-Wenn gleichzeitig ein anderer Tabletttreiber läuft, etwa der offizielle Wacom-Treiber, versucht MockTab den Konflikt zu erkennen und eine Warnung anzuzeigen.
+Wenn gleichzeitig ein anderer Grafiktablett-Treiber läuft, etwa der offizielle Wacom-Treiber, versucht MockTab den Konflikt zu erkennen und eine Warnung anzuzeigen.
 
 [profiles]
 
 ## Profile
 
-Ein Profil ist eine Momentaufnahme der Tabletteinstellungen: aktiver Bereich, Druckkurve, Tastenbelegungen und Display-Mapping. Beim Wechseln eines Profils werden all diese Einstellungen sofort angewendet.
+Ein Profil ist eine Momentaufnahme der Grafiktablett-Einstellungen: aktiver Bereich, Druckkurve, Tastenbelegungen und Display-Mapping. Beim Wechseln eines Profils werden all diese Einstellungen sofort angewendet.
 
-**Auto-restore** – Wenn diese Option in einem Profil aktiviert ist, schaltet MockTab dieses Profil automatisch ein, sobald das zugehörige Tablett verbunden wird.
+**Auto-restore** – Wenn diese Option in einem Profil aktiviert ist, schaltet MockTab dieses Profil automatisch ein, sobald das zugehörige Grafiktablett verbunden wird.
 
 ## Erstellen und Umbenennen
 
@@ -183,11 +183,11 @@ Sowohl Deckkraft als auch Breite des Strichs reagieren auf den Spitzendruck. Die
 
 Der Info-Bereich zeigt Echtzeitwerte des Stifts an: X/Y-Position, Druck, Neigung, Rotation, Hover-Abstand und Tastenstatus. Diese Werte werden laufend aktualisiert, solange sich der Stift im Erkennungsbereich befindet.
 
-Diese Ansicht hilft bei der Diagnose unerwarteten Verhaltens, zum Beispiel um zu prüfen, ob der Druck seinen Maximalwert erreicht oder ob das Tablett überhaupt Neigung meldet.
+Diese Ansicht hilft bei der Diagnose unerwarteten Verhaltens, zum Beispiel um zu prüfen, ob der Druck seinen Maximalwert erreicht oder ob das Grafiktablett überhaupt Neigung meldet.
 
 ## Collect Device Data
 
-**Collect Device Data** zeichnet auf, was das Tablett bei der Benutzung sendet. Das Ergebnis ist eine kompakte JSON-Datei, die sich an eine Anfrage anhängen lässt, mit der Unterstützung für ein Gerät hinzugefügt oder verbessert werden soll.
+**Collect Device Data** zeichnet auf, was das Grafiktablett bei der Benutzung sendet. Das Ergebnis ist eine kompakte JSON-Datei, die sich an eine Anfrage anhängen lässt, mit der Unterstützung für ein Gerät hinzugefügt oder verbessert werden soll.
 
 [website]
 
