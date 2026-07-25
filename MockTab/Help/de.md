@@ -187,7 +187,7 @@ Diese Ansicht hilft bei der Diagnose unerwarteten Verhaltens, zum Beispiel um zu
 
 ## Collect Device Data
 
-**Collect Device Data** startet eine geführte Aufzeichnung, die die rohen HID-Reports des Tabletts mitschreibt. Das Ergebnis ist eine kompakte JSON-Datei, die sich gut an Feature-Requests anhängen lässt, mit denen Unterstützung für ein Gerät hinzugefügt oder verbessert werden soll.
+**Collect Device Data** zeichnet auf, was das Tablett bei der Benutzung sendet. Das Ergebnis ist eine kompakte JSON-Datei, die sich an eine Anfrage anhängen lässt, mit der Unterstützung für ein Gerät hinzugefügt oder verbessert werden soll.
 
 [website]
 

@@ -27,27 +27,28 @@ struct CaptureGuideView: View {
 
     @State private var savedURL: URL? = nil
     @State private var showCancelConfirm = false
-    @State private var lastCapturedStep: CalibrationStep? = nil
+    @State private var showInitControl = false
+    /// Legacy Wacom pen default (feature report 0x02, value 2). Modern
+    /// HID_GENERIC devices use a descriptor-specific report ID instead — see
+    /// `CaptureInitReport` — so these are a starting point, not a guarantee.
+    @State private var initReportIDText = "0x02"
+    @State private var initValueText = "0x02"
 
     @Environment(\.accessibilityDifferentiateWithoutColor)
     private var differentiateWithoutColor
+    @Environment(\.accessibilityReduceMotion)
+    private var reduceMotion
 
     private var isComplete: Bool { savedURL != nil }
 
-    /// Always false: the named step-by-step walkthrough (`guidedRecordingView`)
-    /// is retired in favor of the free-form discovery recorder everywhere. It
-    /// misread noise as user actions, stalled on 60s timeouts waiting for
-    /// signals that never arrived, and — on any device streaming more than
-    /// one report ID — routinely mislabeled reports from the *other* stream
-    /// as the requested action. The discovery recorder has none of those
-    /// failure modes and produces equally usable output. `guidedRecordingView`
-    /// and the underlying `CaptureEngine.startCalibration` machinery are left
-    /// in place for now rather than deleted outright, since removing them
-    /// touches the calibration JSON export format and the GitHub-issue
-    /// submission flow documented in
-    /// Notes/Scratch/Unknown-Device-Discovery-2026-05-21.md — a separate,
-    /// deliberate cleanup pass, not a side effect of this one.
-    private var isUnknownDevice: Bool { false }
+    /// Set when the session can't start at all (no device, or a device that
+    /// won't tell us what it is). Distinct from `engine.lastError`, which
+    /// covers failures after collection has begun.
+    @State private var startupError: String? = nil
+
+    /// The device identity actually written into the capture file, kept so the
+    /// issue-submission text describes the same hardware.
+    @State private var resolvedInfo: CaptureDeviceInfo? = nil
 
     // MARK: - Body
 
@@ -57,23 +58,22 @@ struct CaptureGuideView: View {
             Divider()
             if isComplete, let url = savedURL {
                 completionView(url: url)
-            } else if isUnknownDevice {
-                guidedRecordingView
             } else {
                 recordingView
             }
             Divider()
             footer
         }
-        .frame(width: 460, height: 400)
-        .alert(String(localized: "Cancel Data Collection?", comment: "Data collection confirmation alert title"), isPresented: $showCancelConfirm) {
-            Button("Continue Collecting", role: .cancel) {}
-            Button("Cancel", role: .destructive) {
-                if isUnknownDevice { engine.cancel() } else { engine.cancelDiscovery() }
+        .frame(width: 460)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: showInitControl)
+        .alert(String(localized: "Stop Collecting?", comment: "Data collection confirmation alert title"), isPresented: $showCancelConfirm) {
+            Button("Keep Collecting", role: .cancel) {}
+            Button(String(localized: "Stop and Discard", comment: "Destructive button that ends the in-progress data collection session and discards its data"), role: .destructive) {
+                engine.cancelDiscovery()
                 onDismiss()
             }
         } message: {
-            Text(String(localized: "Any data collected so far will be discarded.", comment: "Data collection alert message"))
+            Text(String(localized: "Nothing collected so far will be saved.", comment: "Data collection alert message"))
         }
         .onAppear { startCollection() }
     }
@@ -99,111 +99,216 @@ struct CaptureGuideView: View {
         .padding(.vertical, 14)
     }
 
+    /// Whether the tablet is one MockTab already has a spec for.
+    ///
+    /// Must be asked the same way `deviceInfo()` asks it — off the resolved
+    /// device, and only when the vendor is Wacom. Consulting the registry with
+    /// the raw `contexts` key returns a match for a product ID of 0, which is
+    /// how a Pro-One came to be called "PenPartner" (issue #2). Getting it
+    /// wrong here tells a user whose tablet *isn't* recognized that the sheet
+    /// is for investigating a problem with a supported one.
+    private var isRecognizedTablet: Bool {
+        guard let info = resolvedInfo, info.vendorID == Self.wacomVendorID else { return false }
+        return WacomDeviceRegistry.spec(for: info.productID) != nil
+    }
+
     private var subtitle: String {
-        WacomDeviceRegistry.spec(for: productID) != nil
-            ? String(localized: "Captures diagnostic data to help investigate a problem with your device.", comment: "Subtitle for device data collection when tablet is already supported")
-            : String(localized: "Helps add support for your device by capturing its HID report layout.", comment: "Subtitle for device data collection when tablet is not yet supported")
+        isRecognizedTablet
+            ? String(localized: "Records what your tablet sends, to help track down a problem.", comment: "Subtitle for device data collection when tablet is already supported")
+            : String(localized: "Records details about your tablet for analysis.", comment: "Subtitle for device data collection when tablet is not yet supported")
     }
 
     // MARK: - Recording view
 
     private var recordingView: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(String(localized: "Perform each of these actions, then click Done:", comment: "Instruction text for device data collection"))
-                .appFont(.subheadline)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
-
-            VStack(alignment: .leading, spacing: 10) {
-                instruction("hand.point.down.left",  String(localized: "Touch the pen tip to the surface, then lift", comment: "Device data collection instruction: pen tip"))
-                instruction("button.horizontal",      String(localized: "Press and hold each side button on the pen", comment: "Device data collection instruction: pen buttons"))
-                instruction("arrow.up.and.down.circle", String(localized: "Press the eraser end to the surface (if present)", comment: "Device data collection instruction: eraser"))
-                instruction("rectangle.grid.2x2",    String(localized: "Press each button on the tablet body (if any)", comment: "Device data collection instruction: tablet buttons"))
-                instruction("circle.dashed",          String(localized: "Slide or touch any rings or strips on the tablet (if any)", comment: "Device data collection instruction: touch ring/strip"))
-                instruction("hand.draw",              String(localized: "If your tablet has a touch surface, slide a finger across it and try a two-finger pinch", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"))
-            }
-            .padding(.horizontal, 20)
-
-            Spacer()
-
-            HStack(spacing: 6) {
-                recordingDot
-                    .frame(width: 7, height: 7)
-                Text(engine.isRunning
-                     ? String(localized: "\(engine.discoverySampleCount) events recorded", comment: "HID discovery: number of events captured during device discovery")
-                     : String(localized: "Starting…", comment: "HID discovery: status indicator while discovery is starting"))
-                    .appFont(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 16)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    // MARK: - Guided recording view (unknown devices)
-
-    private var guidedRecordingView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let step = engine.armedStep {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(String(localized: "Step \(engine.currentStepIndex + 1) of \(engine.sessionSteps.count)", comment: "Guided capture: step progress, e.g. 'Step 3 of 21'"))
-                        .appFont(.caption)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(String(localized: "Do whatever your tablet supports, then click Done:", comment: "Instruction text for device data collection"))
+                        .appFont(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text(step.instruction)
-                        .appFont(.title3)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if lastCapturedStep == step {
-                        Label(String(localized: "Captured — advancing…", comment: "Guided capture: confirmation after a step's input is detected"),
-                              systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                            .appFont(.caption)
-                    } else {
-                        Text(String(localized: "Perform the action above. If your tablet doesn't have it, click Skip.", comment: "Guided capture: prompt below current step instruction"))
-                            .appFont(.caption)
-                            .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        .padding(.bottom, 12)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        instruction("pencil.tip",  String(localized: "Tap the pen’s tip to the tablet, then lift", comment: "Device data collection instruction: pen tip"))
+                        instruction("button.horizontal",      String(localized: "Hold down each button on the pen", comment: "Device data collection instruction: pen buttons"))
+                        instruction("arrow.up.and.down.circle", String(localized: "Touch the pen's eraser end to the tablet", comment: "Device data collection instruction: eraser"))
+                        instruction("rectangle.grid.2x2",    String(localized: "Press each button on the tablet", comment: "Device data collection instruction: tablet buttons"))
+                        instruction("circle.dashed",          String(localized: "Slide a finger around any ring or strip", comment: "Device data collection instruction: touch ring/strip"))
+                        instruction("hand.draw",              String(localized: "Drag one finger across the tablet, then pinch with two", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"))
                     }
+                    .padding(.horizontal, 20)
+
+                    deviceModeInitControl
+                        .padding(.horizontal, 20)
+                        .padding(.top, 14)
+                        .padding(.bottom, 16)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-            } else {
-                Text(String(localized: "Starting…", comment: "Guided capture: brief status while the first step arms"))
-                    .padding(20)
-                    .foregroundStyle(.secondary)
             }
+            // Sizes to fit its content (so the sheet grows with it, and the
+            // instructions never need to scroll) up to a cap — a safety net
+            // for edge cases like a long run of logged init-report attempts,
+            // not something the common case should ever reach.
+            .frame(maxHeight: 480)
 
-            Spacer()
+            Divider()
 
-            HStack {
-                Button(String(localized: "Skip", comment: "Guided capture: skip the current step")) {
-                    lastCapturedStep = nil
-                    engine.skipCurrentStep()
-                }
-                .buttonStyle(.bordered)
-                .disabled(engine.armedStep == nil)
-                Spacer()
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
                     recordingDot
                         .frame(width: 7, height: 7)
-                    Text(String(localized: "\(engine.stepResults.count) captured", comment: "Guided capture: count of steps with a captured sample"))
+                    Text(statusLine)
                         .appFont(.caption)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
+
+                // Without this, a failure after collection ends — a Desktop
+                // write blocked by privacy settings being the likely one —
+                // left the sheet sitting there with no file and no
+                // explanation, indistinguishable from still working.
+                if let problem = startupError ?? engine.lastError {
+                    Label(problem, systemImage: "exclamationmark.triangle.fill")
+                        .appFont(.caption)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .padding(.horizontal, 20)
+            .padding(.top, 12)
             .padding(.bottom, 16)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    /// Recording-status indicator dot, shared by `recordingView` and
-    /// `guidedRecordingView`. When Differentiate-Without-Color is enabled,
-    /// uses an SF Symbol that distinguishes state by glyph (filled-vs-hollow
-    /// record glyph) in addition to red-vs-gray color.
+    /// `deviceInfo()` (and therefore collection) needs a currently-connected
+    /// `IOHIDDevice` for `productID`. Distinguishing "no such device" from the
+    /// ordinary brief startup lag matters: without it, a device that dropped
+    /// its connection — or was never found under this productID — reads
+    /// identically to "still starting", and stays that way forever with no
+    /// way to tell why.
+    private var deviceIsConnected: Bool {
+        tabletManager.contexts[productID]?.hidDevice != nil
+    }
+
+    private var statusLine: String {
+        if !deviceIsConnected {
+            return String(
+                localized: "Not connected (\(String(format: "0x%04X", productID)))",
+                comment: "HID discovery: shown instead of the event counter when the target device isn't currently connected"
+            )
+        }
+        if startupError != nil {
+            return String(
+                localized: "Not collecting",
+                comment: "HID discovery: status shown when collection could not be started")
+        }
+        return engine.isRunning
+            ? String(localized: "\(engine.discoverySampleCount) events recorded", comment: "HID discovery: number of events captured during device discovery")
+            : String(localized: "Starting…", comment: "HID discovery: status indicator while discovery is starting")
+    }
+
+    // MARK: - Device mode init (advanced)
+
+    /// Collapsed-by-default control for writing a device-mode init feature
+    /// report mid-session.
+    ///
+    /// Deliberately supplemental rather than a gating step: collection is
+    /// already running when this appears, so a tester can send a write and
+    /// watch the event counter for a response without restarting. Most devices
+    /// never need it — hence collapsed, and labelled advanced.
+    private var deviceModeInitControl: some View {
+        DisclosureRow(
+            label: String(localized: "Experimental: switch the tablet into data mode", comment: "Disclosure row label for the advanced device mode init control"),
+            isExpanded: $showInitControl
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(String(localized: "Try sending a signal to awaken an unresponsive tablet.  Some stay quiet unless prompted to answer.", comment: "Explanation of the advanced device mode init control in device data collection"))
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 8) {
+                    Text(String(localized: "Report", comment: "Label for the feature report ID field in the device mode init control"))
+                        .appFont(.caption)
+                    TextField("0x02", text: $initReportIDText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 60)
+                        .monospacedDigit()
+                    Text(String(localized: "Value", comment: "Label for the feature report value field in the device mode init control"))
+                        .appFont(.caption)
+                    TextField("0x02", text: $initValueText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 60)
+                        .monospacedDigit()
+                    Button {
+                        sendInitReport()
+                    } label: {
+                        Text(String(localized: "Send", comment: "Button that writes the device mode init feature report"))
+                    }
+                    .disabled(!engine.isRunning || engine.isSendingInitReport
+                              || parseHexByte(initReportIDText) == nil
+                              || parseHexByte(initValueText) == nil)
+
+                    if engine.isSendingInitReport {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                }
+
+                if engine.isSendingInitReport {
+                    Text(String(localized: "Waiting on the tablet. This can take a few seconds over Bluetooth.", comment: "Status shown while a device mode init write is in flight"))
+                        .appFont(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let last = engine.initReportsSent.last {
+                    let rejectedCount = engine.initReportsSent.filter { !$0.succeeded }.count
+                    Label(
+                        last.succeeded
+                            ? String(localized: "Sent \(last.reportIDHex) = \(last.valueHex)", comment: "Confirmation that a device mode init write was accepted")
+                            : String(localized: "Rejected \(last.reportIDHex) = \(last.valueHex)", comment: "Notice that a device mode init write was refused by the device"),
+                        systemImage: last.succeeded ? "checkmark.circle.fill" : "xmark.circle.fill"
+                    )
+                    .appFont(.caption)
+                    .foregroundStyle(last.succeeded ? .green : .secondary)
+
+                    if rejectedCount > 1 {
+                        Text(String(localized: "\(rejectedCount) attempts rejected", comment: "Rolling count of rejected device mode init writes"))
+                            .appFont(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+            .padding(.top, 6)
+            .padding(.leading, 30)
+        }
+    }
+
+    /// Accepts "0x02", "02", or "2" — testers copy report IDs from documentation
+    /// in whichever form the source used. Returns nil when out of byte range.
+    private func parseHexByte(_ text: String) -> Int? {
+        var s = text.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !s.isEmpty else { return nil }
+        if s.hasPrefix("0x") { s = String(s.dropFirst(2)) }
+        guard let v = Int(s, radix: 16), (0...255).contains(v) else { return nil }
+        return v
+    }
+
+    private func sendInitReport() {
+        guard let reportID = parseHexByte(initReportIDText),
+              let value = parseHexByte(initValueText),
+              let dev = tabletManager.contexts[productID]?.hidDevice
+        else { return }
+        engine.sendInitReport(device: dev, reportID: reportID, value: value)
+    }
+
+    /// Recording-status indicator dot. When Differentiate-Without-Color is
+    /// enabled, uses an SF Symbol that distinguishes state by glyph
+    /// (filled-vs-hollow record glyph) in addition to red-vs-gray color.
     @ViewBuilder
     private var recordingDot: some View {
         if differentiateWithoutColor {
@@ -261,7 +366,7 @@ struct CaptureGuideView: View {
                 .controlSize(.small)
             }
 
-            Text(String(localized: "The issue is pre-filled with your tablet's data. If the JSON is too large to fit in the form, drag the file from Finder into the issue body.", comment: "Caption on the data-collection completion screen"))
+            Text(String(localized: "The issue comes pre-filled with your tablet's data. If it's too big for the form, drag the file in from Finder.", comment: "Caption on the data-collection completion screen"))
                 .appFont(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
@@ -274,50 +379,67 @@ struct CaptureGuideView: View {
     /// Falls back to a short body asking the user to drag-attach the file when
     /// the inline JSON would exceed GitHub's URL form length limit.
     private func openGitHubIssue(url: URL) {
-        let pidHex = String(format: "0x%04X", productID)
-        let title = "Device support: Wacom \(pidHex)"
+        // Identify the device the way the capture file does, not the way the
+        // app guessed. `productID` here is the contexts key, and the old title
+        // said "Wacom" regardless of who actually made the tablet.
+        let pidHex = resolvedInfo.map { String(format: "0x%04X", $0.productID) }
+            ?? String(format: "0x%04X", productID)
+        let vidHex = resolvedInfo.map { $0.vendorIDHex } ?? "unknown"
+        let deviceLabel = resolvedInfo?.name ?? pidHex
+        let title = "Device support: \(deviceLabel) (\(vidHex)/\(pidHex))"
         let baseURL = "https://github.com/cyzor/tablet-driver/issues/new"
         let json = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
 
+        // These fill the form's **Capture data** field, so they lead with the
+        // JSON block rather than restating the device — model, connection, and
+        // macOS version have their own fields.
         let inlineBody = """
         <!-- Captured by MockTab — please leave the JSON block intact -->
-
-        **Wacom product ID:** `\(pidHex)`
-        **Capture file:** `\(url.lastPathComponent)`
-
-        <details><summary>Capture JSON</summary>
+        <!-- Device: \(deviceLabel) — \(vidHex)/\(pidHex) — \(url.lastPathComponent) -->
 
         ```json
         \(json)
         ```
-
-        </details>
         """
 
         let fallbackBody = """
         <!-- Captured by MockTab -->
-
-        **Wacom product ID:** `\(pidHex)`
+        <!-- Device: \(deviceLabel) — \(vidHex)/\(pidHex) -->
 
         The capture JSON is too large to fit in this form. Please drag
         `\(url.lastPathComponent)` from Finder into the comment box to attach it.
         """
 
+        // Name the issue form explicitly. Without `template`, GitHub shows the
+        // template chooser and discards everything prefilled here the moment the
+        // user picks one — which is the only path Contributing.md documents.
+        // With it, prefill is keyed by the form's field `id`s, not `body`.
         var comps = URLComponents(string: baseURL)!
-        comps.queryItems = [
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        var items = [
+            URLQueryItem(name: "template", value: "device-support.yml"),
             URLQueryItem(name: "title", value: title),
             URLQueryItem(name: "labels", value: "device-support"),
-            URLQueryItem(name: "body", value: inlineBody),
+            URLQueryItem(name: "model", value: deviceLabel),
+            URLQueryItem(
+                name: "macos", value: "\(os.majorVersion).\(os.minorVersion).\(os.patchVersion)"),
+            URLQueryItem(name: "capture", value: inlineBody),
         ]
+        // The dropdown only accepts one of its declared options; anything else
+        // makes GitHub drop the whole prefill, so leave it unset when unsure.
+        if let transport = resolvedInfo?.transport,
+            Self.connectionOptions.contains(transport)
+        {
+            items.append(URLQueryItem(name: "connection", value: transport))
+        }
+        comps.queryItems = items
 
         // GitHub serves /issues/new server-side; URL length needs to stay below
         // typical browser/server limits. 7000 leaves headroom under the 8 KB mark.
         if let u = comps.url, u.absoluteString.count > 7000 {
-            comps.queryItems = [
-                URLQueryItem(name: "title", value: title),
-                URLQueryItem(name: "labels", value: "device-support"),
-                URLQueryItem(name: "body", value: fallbackBody),
-            ]
+            comps.queryItems = items.map {
+                $0.name == "capture" ? URLQueryItem(name: "capture", value: fallbackBody) : $0
+            }
         }
 
         if let u = comps.url {
@@ -341,16 +463,10 @@ struct CaptureGuideView: View {
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             } else {
-                Button("Done") {
-                    if isUnknownDevice {
-                        _ = engine.finish()
-                    } else {
-                        _ = engine.finishDiscovery()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-                .disabled(!engine.isRunning)
+                Button("Done") { engine.finishDiscovery() }
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!engine.isRunning)
             }
         }
         .padding(.horizontal, 20)
@@ -361,39 +477,59 @@ struct CaptureGuideView: View {
 
     private func startCollection() {
         guard let devInfo = deviceInfo() else { return }
+        resolvedInfo = devInfo
 
-        if isUnknownDevice {
-            engine.onSampleCaptured = { step, _ in
-                Task { @MainActor in
-                    lastCapturedStep = step
-                    try? await Task.sleep(nanoseconds: 800_000_000)
-                    engine.confirmAndContinue()
+        engine.onDiscoveryComplete = { result in
+            Task { @MainActor in
+                if let url = engine.exportDiscoveryJSON(result: result) {
+                    savedURL = url
                 }
             }
-            engine.onCalibrationComplete = { result in
-                Task { @MainActor in
-                    if let url = engine.exportJSON(result: result) {
-                        savedURL = url
-                    }
-                }
-            }
-            engine.startCalibration(deviceInfo: devInfo, steps: CalibrationStep.allUniversal)
-        } else {
-            engine.onDiscoveryComplete = { result in
-                Task { @MainActor in
-                    if let url = engine.exportDiscoveryJSON(result: result) {
-                        savedURL = url
-                    }
-                }
-            }
-            engine.startDiscovery(deviceInfo: devInfo, duration: 3600)
         }
+        engine.startDiscovery(deviceInfo: devInfo, duration: 3600)
     }
 
-    private func deviceInfo() -> CaptureDeviceInfo? {
-        guard let dev = tabletManager.contexts[productID]?.hidDevice else { return nil }
+    /// Wacom's USB vendor ID. Only devices reporting it may be described using
+    /// the Wacom device registry.
+    private static let wacomVendorID = 0x056A
 
-        let vendorID     = (IOHIDDeviceGetProperty(dev, kIOHIDVendorIDKey as CFString) as? Int) ?? 0x056A
+    /// The `connection` dropdown options in `.github/ISSUE_TEMPLATE/device-support.yml`.
+    /// Prefilling a value the form doesn't offer makes GitHub discard the rest.
+    private static let connectionOptions: Set<String> = [
+        "USB", "Bluetooth", "USB wireless dongle",
+    ]
+
+    /// Build the capture header from the **device itself**, not from what the
+    /// app guessed about it.
+    ///
+    /// Both IDs used to come from the wrong place: the vendor ID fell back to
+    /// Wacom's when unreadable, and the product ID was the `contexts` dictionary
+    /// key rather than the device's own. A submitted capture (issue #2) came
+    /// back describing a Pro-One PDT6002 as vendor `0x056A`, product `0x0000`,
+    /// name "PenPartner" — three fabrications in a header whose entire job is
+    /// to say what the hardware is. Read both off the `IOHIDDevice`, and only
+    /// consult the Wacom registry once the vendor ID says Wacom.
+    private func deviceInfo() -> CaptureDeviceInfo? {
+        guard let dev = tabletManager.contexts[productID]?.hidDevice else {
+            startupError = String(
+                localized: "That tablet isn't connected anymore.",
+                comment: "Capture error shown when the target device disappeared before collection started")
+            return nil
+        }
+
+        let vendorID = IOHIDDeviceGetProperty(dev, kIOHIDVendorIDKey as CFString) as? Int
+        let deviceProductID = IOHIDDeviceGetProperty(dev, kIOHIDProductIDKey as CFString) as? Int
+
+        // A capture whose header can't name the hardware can't become a
+        // registry entry — tools/triage_discovery.py rejects exactly this.
+        // Better to say so now than after an hour of collecting.
+        guard let vendorID, let deviceProductID, deviceProductID != 0 else {
+            startupError = String(
+                localized: "This tablet doesn't report a usable USB ID, so a recording from it couldn't identify it.",
+                comment: "Capture error shown when the device's USB identifiers are missing or zero")
+            return nil
+        }
+
         let manufacturer = IOHIDDeviceGetProperty(dev, kIOHIDManufacturerKey as CFString) as? String
         let transport    = IOHIDDeviceGetProperty(dev, kIOHIDTransportKey    as CFString) as? String
         // Device serial is deliberately not read: capture files are pasted into
@@ -403,14 +539,17 @@ struct CaptureGuideView: View {
             .map { String(format: "0x%08X", $0) }
         let parsed = HIDDescriptorReader.read(dev)
 
+        let registryName =
+            vendorID == Self.wacomVendorID
+            ? WacomDeviceRegistry.spec(for: deviceProductID)?.name : nil
         let name =
-            WacomDeviceRegistry.spec(for: productID)?.name
+            registryName
             ?? TabletManager.deviceName(
-                forProductID: productID, vendorID: vendorID, productString: productString)
+                forProductID: deviceProductID, vendorID: vendorID, productString: productString)
 
         return CaptureDeviceInfo(
             vendorID: vendorID,
-            productID: productID,
+            productID: deviceProductID,
             name: name,
             locationID: locationID,
             manufacturer: manufacturer,

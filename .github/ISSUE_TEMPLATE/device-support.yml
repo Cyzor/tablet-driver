@@ -1,6 +1,6 @@
 name: Device support request
-description: Submit a capture for an unrecognized Wacom tablet
-title: "Device support: Wacom "
+description: Submit a capture for an unrecognized drawing tablet
+title: "Device support: "
 labels: ["device-support"]
 body:
   - type: markdown

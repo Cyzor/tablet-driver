@@ -214,6 +214,121 @@
         }
       }
     },
+    "Experimental: switch the tablet into data mode" : {
+      "comment" : "Disclosure row label for the advanced device mode init control",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Erweitert: Tablett in den Datenmodus versetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Avanzado: cambiar la tableta al modo de datos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "詳細：タブレットをデータモードに切り替える"
+          }
+        }
+      }
+    },
+    "Gather tablet details for support.  May take a few minutes." : {
+      "comment" : "Description below the Collect Device Data button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nutze das, wenn dein Tablett nicht erkannt wird oder etwas daran nicht funktioniert. Dauert etwa eine Minute."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Úsalo si tu tableta no se reconoce o si algo no funciona. Tarda alrededor de un minuto."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "タブレットが認識されない場合や、うまく動かない場合に使います。所要時間は約1分です。"
+          }
+        }
+      }
+    },
+    "Records details about your tablet for analysis." : {
+      "comment" : "Subtitle for device data collection when tablet is not yet supported",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Zeichnet auf, was dein Tablett sendet, damit Unterstützung dafür ergänzt werden kann."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Graba lo que envía tu tableta para que se pueda añadir compatibilidad."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "対応を追加できるよう、タブレットが送信する内容を記録します。"
+          }
+        }
+      }
+    },
+    "Tap the pen’s tip to the tablet, then lift" : {
+      "comment" : "Device data collection instruction: pen tip",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Stift aufs Tablett aufsetzen und wieder abheben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Toca la tableta con el lápiz y luego levántalo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ペンをタブレットにタッチして、離します"
+          }
+        }
+      }
+    },
+    "Try sending a signal to awaken an unresponsive tablet.  Some stay quiet unless prompted to answer." : {
+      "comment" : "Explanation of the advanced device mode init control in device data collection",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Manche Tabletts senden erst, wenn sie dazu aufgefordert werden. Probier das, wenn nichts aufgezeichnet wird."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Algunas tabletas no envían nada hasta que se les pide. Prueba esto si no se está grabando nada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "指示を受けるまで何も送信しないタブレットもあります。何も記録されない場合に試してください。"
+          }
+        }
+      }
+    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -671,25 +786,31 @@
         }
       }
     },
-    "%lld captured" : {
-      "comment" : "Guided capture: count of steps with a captured sample",
+    "%lld attempts rejected" : {
+      "comment" : "Rolling count of rejected device mode init writes",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld erfasst"
+            "value" : "%lld Versuche abgelehnt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%lld attempts rejected"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld capturado"
+            "value" : "%lld intentos rechazados"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld件キャプチャ"
+            "value" : "%lld件の試行が拒否されました"
           }
         }
       }
@@ -1256,6 +1377,7 @@
         }
       }
     },
+    "0x02" : {},
     "A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks." : {
       "comment" : "Help text for the \"Tap to click\" toggle in the TouchView.",
       "isCommentAutoGenerated" : true,
@@ -1899,35 +2021,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "と"
-          }
-        }
-      }
-    },
-    "Any data collected so far will be discarded." : {
-      "comment" : "Data collection alert message",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle bisher gesammelten Daten werden verworfen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Any data collected so far will be discarded."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cualquier dato recopilado hasta ahora será descartado."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "これまでに収集されたデータは破棄されます。"
           }
         }
       }
@@ -2925,35 +3018,6 @@
         }
       }
     },
-    "Cancel Data Collection?" : {
-      "comment" : "Data collection confirmation alert title",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Datensammlung abbrechen?"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Cancel Data Collection?"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "¿Cancelar la recopilación de datos?"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "データ収集をキャンセルしますか？"
-          }
-        }
-      }
-    },
     "Cancel renaming" : {
       "comment" : "Button label to cancel renaming a profile.",
       "extractionState" : "stale",
@@ -2981,58 +3045,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "名前の変更をやめる"
-          }
-        }
-      }
-    },
-    "Captured — advancing…" : {
-      "comment" : "Guided capture: confirmation after a step's input is detected",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erfasst — weiter…"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Capturado — avanzando…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "キャプチャ完了 — 続行中…"
-          }
-        }
-      }
-    },
-    "Captures diagnostic data to help investigate a problem with your device." : {
-      "comment" : "Subtitle for device data collection when tablet is already supported",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erfasst Diagnosedaten, um einem Problem mit deinem Gerät auf die Spur zu kommen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Captures diagnostic data to help investigate a problem with your device."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Captura datos de diagnóstico para ayudar a investigar un problema con su dispositivo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "デバイスの問題を調査するための診断データを取得します。"
           }
         }
       }
@@ -3537,6 +3549,35 @@
         }
       }
     },
+    "Collection ended before the tablet was identified. Nothing was saved." : {
+      "comment" : "Capture error shown when a session finishes with no device information",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Erfassung endete, bevor das Tablett identifiziert war. Es wurde nichts gespeichert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Collection ended before the tablet was identified. Nothing was saved."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La recopilación terminó antes de identificar la tableta. No se guardó nada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレットが特定される前に収集が終了しました。何も保存されていません。"
+          }
+        }
+      }
+    },
     "Color and brightness of the light behind the bezel buttons. The hardware keeps its own color until you change it." : {
       "localizations" : {
         "de" : {
@@ -3744,36 +3785,6 @@
         }
       }
     },
-    "Continue Collecting" : {
-      "comment" : "A button that lets the user continue collecting data without cancelling.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erfassung fortsetzen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Continue Collecting"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continuar recopilando"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "収集を継続"
-          }
-        }
-      }
-    },
     "Contrast" : {
       "localizations" : {
         "de" : {
@@ -3933,6 +3944,67 @@
           }
         }
       }
+    },
+    "Couldn't prepare the file: %@" : {
+      "comment" : "Capture error shown when the collected data could not be encoded",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei konnte nicht vorbereitet werden: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn't prepare the file: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo preparar el archivo: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ファイルを準備できませんでした：%@"
+          }
+        }
+      }
+    },
+    "Couldn't save the file: %@" : {
+      "comment" : "Capture error shown when writing the capture file failed",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei konnte nicht gespeichert werden: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Couldn't save the file: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo guardar el archivo: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ファイルを保存できませんでした：%@"
+          }
+        }
+      }
+    },
+    "Couldn't save to the Desktop, and no other location was chosen." : {
+      "comment" : "Capture error shown when the Desktop write failed and the user dismissed the save panel"
     },
     "Counterclockwise" : {
       "comment" : "Ring mode editor row label",
@@ -5352,6 +5424,35 @@
         }
       }
     },
+    "Do whatever your tablet supports, then click Done:" : {
+      "comment" : "Instruction text for device data collection",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mach alles, was dein Tablett kann, und klick dann auf „Fertig“:"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Do whatever your tablet supports, then click Done:"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haz lo que tu tableta permita y luego haz clic en Listo:"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "お使いのタブレットでできる操作を行ってから、「完了」をクリックします："
+          }
+        }
+      }
+    },
     "Done" : {
       "comment" : "A button that dismisses the view when pressed.",
       "isCommentAutoGenerated" : true,
@@ -5488,25 +5589,31 @@
         }
       }
     },
-    "Drag one finger slowly across the touch surface" : {
-      "comment" : "Capture-guide instruction: single-finger drag on capacitive touch surface",
+    "Drag one finger across the tablet, then pinch with two" : {
+      "comment" : "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ziehe einen Finger langsam über die Berührungsfläche"
+            "value" : "Mit einem Finger übers Tablett streichen, dann mit zwei Fingern zoomen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Drag one finger across the tablet, then pinch with two"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desliza un dedo lentamente por la superficie táctil"
+            "value" : "Desliza un dedo por la tableta y luego pellizca con dos"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "1 本の指でタッチ面をゆっくりとスライドさせます"
+            "value" : "指1本でタブレットをなぞり、次に2本の指でピンチします"
           }
         }
       }
@@ -7079,35 +7186,6 @@
         }
       }
     },
-    "Guides you through a short set of actions to capture how your device communicates. Produces a small JSON file you can share to add or fix device support." : {
-      "comment" : "Help text for the Collect Device Data button",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Führt dich durch einige Aktionen, um die Kommunikation deines Geräts zu erfassen. Erzeugt eine kleine JSON-Datei, die du teilen kannst, um die Geräteunterstützung zu ergänzen oder zu verbessern."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Guides you through a short set of actions to capture how your device communicates. Produces a small JSON file you can share to add or fix device support."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Le guía a través de un breve conjunto de acciones para capturar cómo se comunica su dispositivo. Produce un pequeño archivo JSON que puede compartir para agregar o corregir la compatibilidad del dispositivo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "デバイスの通信方法をキャプチャするための一連の操作を案内します。デバイスのサポートを追加または修正するために共有できる小さな JSON ファイルを生成します。"
-          }
-        }
-      }
-    },
     "Height" : {
       "comment" : "Coordinate readout label in Tablet Area tab",
       "localizations" : {
@@ -7156,35 +7234,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ヘルプ"
-          }
-        }
-      }
-    },
-    "Helps add support for your device by capturing its HID report layout." : {
-      "comment" : "Subtitle for device data collection when tablet is not yet supported",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hilft dabei, Unterstützung für dein Gerät hinzuzufügen, indem das HID-Berichtslayout erfasst wird."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Helps add support for your device by capturing its HID report layout."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ayuda a agregar soporte para su dispositivo al capturar su diseño de informe HID."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "HID レポートレイアウトをキャプチャすることで、デバイスのサポート追加を支援します。"
           }
         }
       }
@@ -7504,6 +7553,35 @@
         }
       }
     },
+    "Hold down each button on the pen" : {
+      "comment" : "Device data collection instruction: pen buttons",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jede Taste am Stift gedrückt halten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hold down each button on the pen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén pulsado cada botón del lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンの各ボタンを押したままにします"
+          }
+        }
+      }
+    },
     "Hold Option modifier (⌥)" : {
       "comment" : "A button that holds the Option modifier key.",
       "isCommentAutoGenerated" : true,
@@ -7803,29 +7881,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "待機中"
-          }
-        }
-      }
-    },
-    "If your tablet has a touch surface, slide a finger across it and try a two-finger pinch" : {
-      "comment" : "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Falls dein Tablet eine Berührungsfläche hat, ziehe einen Finger darüber und probiere eine Zwei-Finger-Geste"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Si tu tableta tiene superficie táctil, desliza un dedo por ella y prueba un pellizco con dos dedos"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タブレットにタッチ面がある場合は、指でなぞったり 2 本指でピンチしてみてください"
           }
         }
       }
@@ -8330,6 +8385,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "モード %lld へ移動"
+          }
+        }
+      }
+    },
+    "Keep Collecting" : {
+      "comment" : "Cancel button that returns to the in-progress data collection session",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter erfassen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Keep Collecting"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seguir recopilando"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "収集を続ける"
           }
         }
       }
@@ -8891,6 +8975,35 @@
         }
       }
     },
+    "Looks like %@, but MockTab doesn't know this model yet." : {
+      "comment" : "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sieht nach %@ aus, aber MockTab kennt dieses Modell noch nicht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Looks like %@, but MockTab doesn't know this model yet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parece ser %@, pero MockTab aún no conoce este modelo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ のようですが、MockTabはこのモデルをまだ認識できません。"
+          }
+        }
+      }
+    },
     "Low" : {
       "comment" : "Double-click distance label\nPressure smoothing strength label\nStabilization strength label",
       "localizations" : {
@@ -9389,6 +9502,9 @@
         }
       }
     },
+    "MockTab couldn't write to your Desktop. Choose where to save the collected device data." : {
+      "comment" : "Explanation in the capture save panel after a Desktop write failure"
+    },
     "MockTab found the following issues that may interfere with tablet operation:" : {
       "comment" : "First sentence of conflict alert body",
       "localizations" : {
@@ -9470,25 +9586,31 @@
         }
       }
     },
-    "MockTab is using its generic driver for this device. Basic pen input may work, but full support requires a short data-collection session." : {
+    "MockTab is running its generic driver, so basic pen input may work. Full support needs a short recording of what your tablet sends." : {
       "comment" : "Body of the unknown-device banner",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab verwendet seinen generischen Treiber für dieses Gerät. Grundlegende Stifteingabe könnte funktionieren, aber volle Unterstützung erfordert eine kurze Datenerfassungssitzung."
+            "value" : "MockTab nutzt seinen generischen Treiber, einfache Stifteingabe funktioniert also vielleicht. Für volle Unterstützung braucht es eine kurze Aufzeichnung dessen, was dein Tablett sendet."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MockTab is running its generic driver, so basic pen input may work. Full support needs a short recording of what your tablet sends."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab está usando su controlador genérico para este dispositivo. La entrada básica con lápiz puede funcionar, pero la compatibilidad completa requiere una breve sesión de recopilación de datos."
+            "value" : "MockTab está usando su controlador genérico, así que la entrada básica del lápiz puede funcionar. Para el soporte completo hace falta una grabación corta de lo que envía tu tableta."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTabはこのデバイスに汎用ドライバーを使用しています。基本的なペ入力は動作する可能性がありますが、完全なサポートには短いデータ収集セッションが必要です。"
+            "value" : "MockTabは汎用ドライバで動作しているため、基本的なペン入力は使えることがあります。完全に対応するには、タブレットが送信する内容を短時間記録する必要があります。"
           }
         }
       }
@@ -10233,6 +10355,9 @@
         }
       }
     },
+    "Not collecting" : {
+      "comment" : "HID discovery: status shown when collection could not be started"
+    },
     "Not connected" : {
       "comment" : "Device connection status value",
       "localizations" : {
@@ -10258,6 +10383,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未接続"
+          }
+        }
+      }
+    },
+    "Not connected (%@)" : {
+      "comment" : "HID discovery: shown instead of the event counter when the target device isn't currently connected",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht verbunden (%@)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not connected (%@)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No conectada (%@)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未接続（%@）"
           }
         }
       }
@@ -10345,6 +10499,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "レジストリにありません — このタブレットが接続されるとプロファイルが利用可能になります。"
+          }
+        }
+      }
+    },
+    "Nothing collected so far will be saved." : {
+      "comment" : "Data collection alert message",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts von dem bisher Erfassten wird gespeichert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Nothing collected so far will be saved."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se guardará nada de lo recopilado hasta ahora."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "これまでに収集した内容は保存されません。"
           }
         }
       }
@@ -10581,9 +10764,7 @@
         }
       }
     },
-    "OpenTabletDriver" : {
-
-    },
+    "OpenTabletDriver" : {},
     "Orange" : {
       "comment" : "LED swatch name",
       "localizations" : {
@@ -10903,58 +11084,6 @@
         }
       }
     },
-    "Perform each of these actions, then click Done:" : {
-      "comment" : "Instruction text for device data collection",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Führe jede dieser Aktionen aus und klick dann auf „Fertig\":"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Perform each of these actions, then click Done:"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Realiza cada una de estas acciones y luego haz clic en Listo:"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "これらの各アクションを実行し、完了をクリックしてください："
-          }
-        }
-      }
-    },
-    "Perform the action above. If your tablet doesn't have it, click Skip." : {
-      "comment" : "Guided capture: prompt below current step instruction",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Führe die oben beschriebene Aktion aus. Wenn dein Tablet dies nicht hat, klicke auf Überspringen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Realiza la acción anterior. Si tu tableta no la tiene, haz clic en Omitir."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "上記の操作を実行してください。タブレットにない場合はスキップをクリックしてください。"
-          }
-        }
-      }
-    },
     "Permanently delete this profile (cannot be undone)" : {
       "comment" : "Label for a menu item in the ProfilesView that deletes a profile permanently. The action cannot be undone.",
       "isCommentAutoGenerated" : true,
@@ -11010,29 +11139,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "アクセス許可"
-          }
-        }
-      }
-    },
-    "Pinch and spread with two fingers on the touch surface" : {
-      "comment" : "Capture-guide instruction: two-finger pinch/spread on capacitive touch surface",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zwei Finger auf der Berührungsfläche zusammen- und auseinanderziehen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pellizca y separa dos dedos sobre la superficie táctil"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タッチ面上で 2 本の指をピンチイン・ピンチアウトします"
           }
         }
       }
@@ -11247,89 +11353,31 @@
         }
       }
     },
-    "Press and hold each side button on the pen" : {
-      "comment" : "Device data collection instruction: pen buttons",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jede Seitentaste am Stift gedrückt halten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Press and hold each side button on the pen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mantenga presionado cada botón lateral del lápiz"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペンの各サイドボタンを長押しします"
-          }
-        }
-      }
-    },
-    "Press each button on the tablet body (if any)" : {
+    "Press each button on the tablet" : {
       "comment" : "Device data collection instruction: tablet buttons",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jede Taste am Tablett-Gehäuse drücken (falls vorhanden)"
+            "value" : "Jede Taste am Tablett drücken"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Press each button on the tablet body (if any)"
+            "value" : "Press each button on the tablet"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pulsa cada botón del cuerpo de la tableta (si los hay)"
+            "value" : "Pulsa cada botón de la tableta"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タブレット本体の各ボタンを押します（ある場合）"
-          }
-        }
-      }
-    },
-    "Press the eraser end to the surface (if present)" : {
-      "comment" : "Device data collection instruction: eraser",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Das Radierende auf die Fläche drücken (falls vorhanden)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Press the eraser end to the surface (if present)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Presiona el extremo del borrador sobre la superficie (si está presente)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "消しゴム側を表面に押し付けます（ある場合）"
+            "value" : "タブレットの各ボタンを押します"
           }
         }
       }
@@ -12197,6 +12245,64 @@
         }
       }
     },
+    "Records what your tablet sends to the Mac and saves it as a small JSON file you can share." : {
+      "comment" : "Help text for the Collect Device Data button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeichnet auf, was dein Tablett an den Mac sendet, und speichert es als kleine JSON-Datei zum Teilen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Records what your tablet sends to the Mac and saves it as a small JSON file you can share."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Graba lo que tu tableta envía al Mac y lo guarda como un archivo JSON pequeño que puedes compartir."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレットがMacに送信する内容を記録し、共有できる小さなJSONファイルとして保存します。"
+          }
+        }
+      }
+    },
+    "Records what your tablet sends, to help track down a problem." : {
+      "comment" : "Subtitle for device data collection when tablet is already supported",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeichnet auf, was dein Tablett sendet, um einem Problem auf die Spur zu kommen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Records what your tablet sends, to help track down a problem."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Graba lo que envía tu tableta para ayudar a localizar un problema."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "問題の原因を突き止めるため、タブレットが送信する内容を記録します。"
+          }
+        }
+      }
+    },
     "Red" : {
       "comment" : "LED swatch name",
       "localizations" : {
@@ -12325,6 +12431,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "軽い筆圧時のセンサーノイズによる線幅のばらつきを軽減します。"
+          }
+        }
+      }
+    },
+    "Rejected %@ = %@" : {
+      "comment" : "Notice that a device mode init write was refused by the device",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rejected %@ = %@"
           }
         }
       }
@@ -12865,6 +12982,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "アプリ別設定を並べ替え"
+          }
+        }
+      }
+    },
+    "Report" : {
+      "comment" : "Label for the feature report ID field in the device mode init control",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Report"
           }
         }
       }
@@ -14108,6 +14236,9 @@
         }
       }
     },
+    "Save Device Data" : {
+      "comment" : "Title of the save panel shown when the capture file can't be written to the Desktop"
+    },
     "Save Profile" : {
       "comment" : "Undo action name: creating a new named preset in the Profiles pane",
       "localizations" : {
@@ -14411,6 +14542,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "すべて選択"
+          }
+        }
+      }
+    },
+    "Send" : {
+      "comment" : "Button that writes the device mode init feature report",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Send"
+          }
+        }
+      }
+    },
+    "Sent %@ = %@" : {
+      "comment" : "Confirmation that a device mode init write was accepted",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Sent %@ = %@"
           }
         }
       }
@@ -14833,7 +14986,7 @@
       }
     },
     "Skip" : {
-      "comment" : "Guided capture: skip the current step\nRing/strip action: slot left out of the mode cycle",
+      "comment" : "Ring/strip action: slot left out of the mode cycle",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14884,31 +15037,31 @@
         }
       }
     },
-    "Slide or touch any rings or strips on the tablet (if any)" : {
+    "Slide a finger around any ring or strip" : {
       "comment" : "Device data collection instruction: touch ring/strip",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle Ringe oder Streifen am Tablett gleiten oder antippen (falls vorhanden)"
+            "value" : "Mit dem Finger über Ring oder Streifen fahren"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Slide or touch any rings or strips on the tablet (if any)"
+            "value" : "Slide a finger around any ring or strip"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deslice o toque cualquier anillo o tira en la tableta (si los hay)"
+            "value" : "Desliza un dedo por el anillo o la banda"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タブレットのリングやストリップをスライドまたはタッチします（ある場合）"
+            "value" : "リングやストリップを指でなぞります"
           }
         }
       }
@@ -15271,7 +15424,7 @@
       }
     },
     "Starting…" : {
-      "comment" : "Guided capture: brief status while the first step arms\nHID discovery: status indicator while discovery is starting",
+      "comment" : "HID discovery: status indicator while discovery is starting",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -15328,31 +15481,60 @@
         }
       }
     },
-    "Step %lld of %lld" : {
-      "comment" : "Guided capture: step progress, e.g. 'Step 3 of 21'",
+    "Stop and Discard" : {
+      "comment" : "Destructive button that ends the in-progress data collection session and discards its data",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schritt %lld von %lld"
+            "value" : "Stoppen und verwerfen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Step %1$lld of %2$lld"
+            "value" : "Stop and Discard"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paso %lld de %lld"
+            "value" : "Detener y descartar"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ステップ %lld / %lld"
+            "value" : "停止して破棄"
+          }
+        }
+      }
+    },
+    "Stop Collecting?" : {
+      "comment" : "Data collection confirmation alert title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erfassung stoppen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Stop Collecting?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Detener la recopilación?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "収集を停止しますか？"
           }
         }
       }
@@ -15844,6 +16026,35 @@
         }
       }
     },
+    "That tablet isn't connected anymore." : {
+      "comment" : "Capture error shown when the target device disappeared before collection started",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Tablett ist nicht mehr verbunden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "That tablet isn't connected anymore."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa tableta ya no está conectada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "そのタブレットはすでに接続されていません。"
+          }
+        }
+      }
+    },
     "The active tablet area maps to the selected display." : {
       "comment" : "Footer text in Display Mapping section",
       "localizations" : {
@@ -15897,25 +16108,31 @@
         }
       }
     },
-    "The issue is pre-filled with your tablet's data. If the JSON is too large to fit in the form, drag the file from Finder into the issue body." : {
+    "The issue comes pre-filled with your tablet's data. If it's too big for the form, drag the file in from Finder." : {
       "comment" : "Caption on the data-collection completion screen",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Issue ist mit den Daten deines Tablets vorausgefüllt. Wenn das JSON zu groß für das Formular ist, ziehe die Datei aus dem Finder in den Issue-Text."
+            "value" : "Das Issue ist mit den Daten deines Tabletts vorausgefüllt. Wenn es zu groß fürs Formular ist, zieh die Datei aus dem Finder hinein."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The issue comes pre-filled with your tablet's data. If it's too big for the form, drag the file in from Finder."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El issue viene pre-rellenado con los datos de tu tableta. Si el JSON es demasiado grande para caber en el formulario, arrastra el archivo desde Finder al cuerpo del issue."
+            "value" : "El issue se abre con los datos de tu tableta ya rellenados. Si son demasiado grandes para el formulario, arrastra el archivo desde el Finder."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "イシューはタブレットのデータで事前入力されています。JSONがフォームに入り切らない場合は、Finderからファイルをイシューの本文にドラッグしてください。"
+            "value" : "作成されるIssueにはタブレットのデータが入力済みです。フォームに収まらない場合は、Finderからファイルをドラッグしてください。"
           }
         }
       }
@@ -15995,25 +16212,31 @@
         }
       }
     },
-    "This looks like %@, but MockTab doesn't recognize this specific model yet." : {
-      "comment" : "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand",
+    "This tablet doesn't report a usable USB ID, so a recording from it couldn't identify it." : {
+      "comment" : "Capture error shown when the device's USB identifiers are missing or zero",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dies sieht nach %@ aus, aber MockTab erkennt dieses spezifische Modell noch nicht."
+            "value" : "Dieses Tablett meldet keine brauchbare USB-ID — eine Aufzeichnung könnte es also nicht identifizieren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This tablet doesn't report a usable USB ID, so a recording from it couldn't identify it."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esto parece %@, pero MockTab aún no reconoce este modelo específico."
+            "value" : "Esta tableta no informa de un ID USB utilizable, así que una grabación no podría identificarla."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@のようですが、MockTabはこの特定のモデルをまだ認識していません。"
+            "value" : "このタブレットは有効なUSB IDを報告しないため、記録してもデバイスを特定できません。"
           }
         }
       }
@@ -16811,31 +17034,31 @@
         }
       }
     },
-    "Touch the pen tip to the surface, then lift" : {
-      "comment" : "Device data collection instruction: pen tip",
+    "Touch the pen's eraser end to the tablet" : {
+      "comment" : "Device data collection instruction: eraser",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stiftspitze auf die Fläche aufsetzen und wieder abheben"
+            "value" : "Radierer-Ende des Stifts aufs Tablett aufsetzen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Touch the pen tip to the surface, then lift"
+            "value" : "Touch the pen's eraser end to the tablet"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toca la superficie con la punta del lápiz y luego levántala"
+            "value" : "Toca la tableta con el extremo borrador del lápiz"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ペン先を表面にタッチして、離します"
+            "value" : "ペンの消しゴム側をタブレットにタッチします"
           }
         }
       }
@@ -17138,31 +17361,13 @@
         }
       }
     },
-    "Use this if your device is unrecognized or a feature isn't working as expected. The collection takes about one minute." : {
-      "comment" : "Description below the Collect Device Data button",
+    "Value" : {
+      "comment" : "Label for the feature report value field in the device mode init control",
       "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Funktion verwenden, wenn dein Gerät nicht erkannt wird oder etwas nicht wie erwartet funktioniert. Die Erfassung dauert etwa eine Minute."
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Use this if your device is unrecognized or a feature isn't working as expected. The collection takes about one minute."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Utilice esto si su dispositivo no es reconocido o si una función no funciona como se esperaba. La recopilación tarda aproximadamente un minuto."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "デバイスが認識されない場合、または機能が期待通りに動作しない場合に使用します。収集には約 1 分かかります。"
+            "value" : "Value"
           }
         }
       }
@@ -17274,6 +17479,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ライセンスを表示"
+          }
+        }
+      }
+    },
+    "Waiting on the tablet. This can take a few seconds over Bluetooth." : {
+      "comment" : "Status shown while a device mode init write is in flight",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warten auf das Tablett. Über Bluetooth kann das ein paar Sekunden dauern."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Waiting on the tablet. This can take a few seconds over Bluetooth."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando a la tableta. Por Bluetooth puede tardar unos segundos."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレットの応答を待っています。Bluetoothでは数秒かかることがあります。"
           }
         }
       }

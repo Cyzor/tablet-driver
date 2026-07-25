@@ -138,12 +138,12 @@ struct InfoView: View {
                 Text(String(localized: "Unrecognized tablet", comment: "Banner title shown when active device is on the generic fallback driver"))
                     .appFont(.headline)
                 if let detectedBrand {
-                    Text(String(localized: "This looks like \(detectedBrand), but MockTab doesn't recognize this specific model yet.", comment: "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand"))
+                    Text(String(localized: "Looks like \(detectedBrand), but MockTab doesn't know this model yet.", comment: "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand"))
                         .appFont(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text(String(localized: "MockTab is using its generic driver for this device. Basic pen input may work, but full support requires a short data-collection session.", comment: "Body of the unknown-device banner"))
+                Text(String(localized: "MockTab is running its generic driver, so basic pen input may work. Full support needs a short recording of what your tablet sends.", comment: "Body of the unknown-device banner"))
                     .appFont(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -334,11 +334,11 @@ struct InfoView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .help(String(localized: "Guides you through a short set of actions to capture how your device communicates. Produces a small JSON file you can share to add or fix device support.", comment: "Help text for the Collect Device Data button"))
+                .help(String(localized: "Records what your tablet sends to the Mac and saves it as a small JSON file you can share.", comment: "Help text for the Collect Device Data button"))
                 Spacer()
             }
 
-            Text(String(localized: "Use this if your device is unrecognized or a feature isn't working as expected. The collection takes about one minute.", comment: "Description below the Collect Device Data button"))
+            Text(String(localized: "Gather tablet details for support.  May take a few minutes.", comment: "Description below the Collect Device Data button"))
                 .appFont(.settingsLabel)
                 .foregroundStyle(.tertiary)
         }

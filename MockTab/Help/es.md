@@ -187,7 +187,7 @@ Esta vista ayuda a diagnosticar comportamientos inesperados, por ejemplo para co
 
 ## Collect Device Data
 
-**Collect Device Data** ejecuta una sesión guiada de captura que registra los informes HID sin procesar de la tableta. El resultado es un archivo JSON compacto adecuado para adjuntarlo a solicitudes de funciones destinadas a añadir o mejorar la compatibilidad con un dispositivo.
+**Collect Device Data** graba lo que la tableta envía mientras la usas. El resultado es un archivo JSON compacto que puedes adjuntar a una solicitud para añadir o mejorar la compatibilidad con un dispositivo.
 
 [website]
 

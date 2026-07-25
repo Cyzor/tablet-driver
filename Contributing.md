@@ -12,8 +12,11 @@ open MockTab.xcodeproj
 ```
 
 Requires Xcode 15 or later. Select the **MockTab** scheme and build. Run the
-decoder test suite with `cd TabletKit && swift test`. The app-side calibration
-fitting math has its own standalone checks — run `tools/calibration-tests/run.sh`.
+decoder test suite with `cd TabletKit && swift test`. App-side logic that has no
+XCTest target has standalone checks under `tools/` — run
+`tools/calibration-tests/run.sh` (calibration fitting math),
+`tools/descriptor-opacity-tests/run.sh` (HID descriptor readability), and
+`tools/discovery-accumulator-tests/run.sh` (device-data collection analysis).
 See the [README's Building from source section](README.md#building-from-source)
 for more detail.
 
@@ -33,7 +36,7 @@ context they need:
   fixture is low-risk and highly valued.
 - **Translation corrections** for the German, Japanese, or Spanish locales.
 - **Documentation fixes** — typos, stale info, unclear steps.
-- **Device-support requests** for unrecognized Wacom tablets — see below.
+- **Device-support requests** for unrecognized tablets — see below.
 - **Bug reports** for specific, reproducible problems on supported hardware.
 - **Decoder work** belongs on [TabletKit](https://github.com/Cyzor/TabletKit)
   — see its [`Contributing.md`](https://github.com/Cyzor/TabletKit/blob/main/Contributing.md)
@@ -47,7 +50,7 @@ context they need:
 
 ## How to request device support
 
-1. In MockTab, open the Info pane and press **Collect Device Data…**. This produces a JSON file with the device's HID descriptor, USB strings, and a short input report capture.
+1. In MockTab, open the Info pane and press **Collect Device Data…**. Use the tablet as prompted. This produces a JSON file with the device's HID descriptor, USB strings, and a summary of what it sent.
 2. Open an issue using the [Device support template](.github/ISSUE_TEMPLATE/device-support.yml) and attach the JSON file.
 
 ## Translations

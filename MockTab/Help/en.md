@@ -187,7 +187,7 @@ This view helps diagnose unexpected behavior, for example by confirming whether 
 
 ## Collect Device Data
 
-**Collect Device Data** runs a guided capture session that records the raw HID reports from the tablet. The result is a compact JSON file suitable for attaching to feature requests that aim to add or improve support for a device.
+**Collect Device Data** records what the tablet sends while you use it. The result is a compact JSON file you can attach to a request to add or improve support for a device.
 
 [website]
 
