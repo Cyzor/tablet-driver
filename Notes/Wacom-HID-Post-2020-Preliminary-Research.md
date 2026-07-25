@@ -257,6 +257,119 @@ For any device using `HID_GENERIC`, the authoritative byte layout lives in the d
 
 ---
 
+## Device Mode Initialization — Making a Device Emit Full Data
+
+*Added 2026-07-24. Primary source: `wacom_sys.c` / `wacom_wac.h`, kernel master.*
+
+The layouts above describe what a report **contains**. This section covers the
+prior question our passive capture tools stumble on: **what makes a modern device
+send those reports in the first place.** Reading the descriptor is not enough — a
+device can enumerate, expose a rich descriptor, and still withhold (or downgrade)
+its pen stream until the host writes a mode-select **feature report**. A read-only
+monitor that never issues that write sees a reduced or empty stream and wrongly
+concludes the device "doesn't report tilt," etc.
+
+There are **three distinct switch mechanisms**. They are not interchangeable;
+which one applies is a function of device generation.
+
+### 1. Legacy fixed switch — `wacom_set_device_mode()` (families ≤ `BAMBOO_PT`, TabletPC)
+
+The report ID and value are **hardcoded by family** in `_wacom_query_tablet_data()`:
+
+| Device class | `mode_report` | `mode_value` |
+|---|---|---|
+| Pen-enabled (type ≤ `BAMBOO_PT`) | `2` (`WACOM_REPORT_PENABLED`) | `2` |
+| Touch (type > `TABLETPC`) | `3` | `4` |
+| `WACOM_24HDT` | `18` | `2` |
+| `WACOM_27QHDT` | `131` | `2` |
+| `BAMBOO_PAD` | `2` | `2` |
+
+The write itself (shared by all paths below):
+
+```c
+rep_data[0] = wacom_wac->mode_report;   // = report ID
+rep_data[1] = wacom_wac->mode_value;
+error = wacom_set_report(hdev, HID_FEATURE_REPORT, rep_data, length, 1);
+```
+
+Retried up to `WAC_MSG_RETRIES` (5×) on timeout/`EAGAIN`. Scheduled ~1000 ms
+after probe via a delayed `init_work`, not synchronously at enumeration.
+
+### 2. Modern generic switch — descriptor-discovered DATAMODE (`HID_GENERIC`)
+
+This is the one that matters for **Cintiq Pro, MobileStudio Pro, Intuos Pro
+(2017+), Wacom One USB-C** — every current EMR device. The switch is still a
+feature-report write through the *same* `wacom_set_device_mode()`, but the report
+ID is **not** fixed at 2. It is learned from the descriptor: during
+`wacom_feature_mapping()`, when a **feature** field carries the vendor usage
+`WACOM_HID_WD_DATAMODE` (`0xff0d1002`), the driver records:
+
+```c
+case WACOM_HID_WD_DATAMODE:
+    wacom->wacom_wac.mode_report = field->report->id;   // device-specific
+    wacom->wacom_wac.mode_value  = 2;
+    break;
+```
+
+**Consequences for our capture tools:**
+- The enabling write is a **feature report** whose ID must be **read out of the
+  descriptor** (find the feature report containing the `0xff0d1002` usage), then
+  write value `2` into it. There is no universal magic number — do not assume 2.
+- The pen data then arrives as `0xff0d` vendor-usage reports whose fields are
+  **descriptor-positioned, not fixed-offset** (see the usage table above). Fixed
+  byte-offset decoding — how our older-family decoders work — will not port here
+  even once the stream is flowing.
+- So "we're blind" splits into two independent fixes: (a) issue the DATAMODE
+  feature write so the device emits, and (b) decode by usage mapping, not offset.
+  A capture recipe that only sniffs input reports covers neither.
+
+`WACOM_HID_WD_MODE_CHANGE` (`0xff0d0980`) is **defined but never written** in
+`wacom_sys.c`; it appears as an *input* usage (the device announcing a mode
+change), not a control the host sets. Don't mistake it for the switch.
+
+### 3. Vendor-defined input-format switch — G9 / G11 chips
+
+Some G9/G11-based units (certain touchscreens and Tablet-PC-class devices) boot
+in a **vendor-defined input format** and emit proprietary reports until switched
+to standard HID. Verified usage-page constants (`wacom_wac.h`):
+
+| Constant | Value |
+|---|---|
+| `WACOM_HID_UP_G9` | `0xff090000` |
+| `WACOM_HID_G9_PEN` | `0xff090002` |
+| `WACOM_HID_UP_G11` | `0xff110000` |
+| `WACOM_HID_G11_PEN` | `0xff110002` |
+
+The switch is a feature-report write that clears the input-format field to `0`.
+The specific feature report IDs reported in the wild (digitizer `0x0B`,
+touchscreen `0x03`) come from the 2016 linux-input patch introducing this support
+and are **not re-verified against current source here** — confirm on-device or
+against `wacom_sys.c` before relying on them. This path is largely orthogonal to
+our EMR-tablet focus; noted for completeness.
+
+### PID note (the "modern PID" question)
+
+None of the three switches re-enumerates the device or changes its VID/PID — the
+mode select is same-PID. The only PID change in the Wacom world is the **physical
+two-button reset** (hold the outer express keys ~2 s), which is a deliberate
+firmware/bootloader hand-off, unrelated to data-mode selection. `BOOTLOADER`
+(PID `0x94`) devices skip mode switching entirely and stay hidraw-only.
+
+### Practical capture sequence for an unknown modern device
+
+1. Pull the report descriptor (see retrieval methods above) — or seed from
+   `linuxwacom/wacom-hid-descriptors` if the model is already catalogued.
+2. Scan **feature** reports for the `0xff0d1002` (DATAMODE) usage; note that
+   report's ID.
+3. Write value `2` into that feature report.
+4. *Now* capture input reports, and decode by the `0xff0d` usage map, not fixed
+   offsets.
+
+Steps 2–3 are the part a read-only monitor cannot discover on its own and the
+most likely reason a modern device looks silent to us today.
+
+---
+
 ## Packet Length Constants (`wacom_wac.h`)
 
 | Constant | Value | Used For |
