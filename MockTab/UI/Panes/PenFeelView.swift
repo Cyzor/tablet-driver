@@ -72,8 +72,8 @@ struct PenFeelView: View {
                                     : "arrow.clockwise"))
                         + Text(
                             settings.invertRotation
-                                ? " Counter-clockwise"
-                                : " Clockwise")
+                                ? " Counter-clockwise."
+                                : " Clockwise.")
                 }
                 .help(
                     "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
@@ -117,8 +117,8 @@ struct PenFeelView: View {
                                     : "pencil.tip"))
                         + Text(
                             settings.relativeCursorMovement
-                                ? " Relative, like a mouse"
-                                : " Absolute, like a stylus")
+                                ? " Relative, like a mouse."
+                                : " Absolute, like a stylus.")
                 }
                 .help(
                     "In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse.")
@@ -132,7 +132,7 @@ struct PenFeelView: View {
                     step: 0.25,
                     valueText: String(format: "%.2f×", tool.panScrollSpeed),
                     caption:
-                        "How fast content pans while a Pan View button is held. Assign Pan View to a pen or tablet button to use it."
+                        "How fast content pans while pressing a Pan View button."
                 )
                 .help(
                     "Multiplier applied to pen motion while Pan View is held. 1× pans one screen point per point of pen travel; higher values pan further. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping.")
@@ -153,7 +153,7 @@ struct PenFeelView: View {
                             localized: "\(Int(settings.tipUpAssistDelay)) ms",
                             comment: "Delay in milliseconds, e.g. '80 ms'"),
                     caption:
-                        "Delays the stroke release briefly when the pen is lifted mid-motion and still moving quickly, preventing accidental short strokes."
+                        "Prevents accidental stroke movement when lifting pen."
                 )
                 .help(
                     "Holds the pen click open for this long after the tip lifts, if you're still moving quickly. This helps prevent unintended stroke breaks during fast drawing. Drag to Off to disable.")
@@ -172,7 +172,7 @@ struct PenFeelView: View {
                             localized: "\(Int(settings.dragThreshold)) pt",
                             comment: "Distance in points, e.g. '3 pt'"),
                     caption:
-                        "Requires the pen to move this far before a tap becomes a drag, absorbing tremor at tip-down."
+                        "Requires the pen to move this far before a tap becomes a drag."
                 )
                 .help(
                     "Prevents a light tap from turning into an accidental drag due to hand tremor or pressure jitter right when the tip touches down. Drag to Off to disable.")

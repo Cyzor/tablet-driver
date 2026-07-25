@@ -134,7 +134,7 @@ struct CaptureGuideView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         instruction("pencil.tip",  String(localized: "Tap the pen’s tip to the tablet, then lift", comment: "Device data collection instruction: pen tip"))
                         instruction("button.horizontal",      String(localized: "Hold down each button on the pen", comment: "Device data collection instruction: pen buttons"))
-                        instruction("arrow.up.and.down.circle", String(localized: "Touch the pen's eraser end to the tablet", comment: "Device data collection instruction: eraser"))
+                        instruction("eraser.line.dashed", String(localized: "Touch the pen's eraser end to the tablet", comment: "Device data collection instruction: eraser"))
                         instruction("rectangle.grid.2x2",    String(localized: "Press each button on the tablet", comment: "Device data collection instruction: tablet buttons"))
                         instruction("circle.dashed",          String(localized: "Slide a finger around any ring or strip", comment: "Device data collection instruction: touch ring/strip"))
                         instruction("hand.draw",              String(localized: "Drag one finger across the tablet, then pinch with two", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"))

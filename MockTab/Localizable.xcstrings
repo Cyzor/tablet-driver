@@ -98,233 +98,94 @@
         }
       }
     },
-    " Absolute, like a stylus" : {
+    " Absolute, like a stylus." : {
       "comment" : "Movement mode label appended after an SF Symbol glyph — keep the leading space",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " Absolut, wie ein Stift"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : " Absolute, like a stylus"
+            "value" : " Absolut, wie ein Stift."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " Absoluto, como un lápiz"
+            "value" : " Absoluto, como un lápiz."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " 絶対、スタイラスのように"
+            "value" : " 絶対、スタイラスのように。"
           }
         }
       }
     },
-    " Clockwise" : {
+    " Clockwise." : {
       "comment" : "Rotation direction label appended after an SF Symbol glyph — keep the leading space",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " Im Uhrzeigersinn"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : " Clockwise"
+            "value" : " Im Uhrzeigersinn."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " En sentido horario"
+            "value" : " En sentido horario."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " 時計回り"
+            "value" : " 時計回り。"
           }
         }
       }
     },
-    " Counter-clockwise" : {
+    " Counter-clockwise." : {
       "comment" : "Rotation direction label appended after an SF Symbol glyph — keep the leading space",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " Gegen den Uhrzeigersinn"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : " Counter-clockwise"
+            "value" : " Gegen den Uhrzeigersinn."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " En sentido antihorario"
+            "value" : " En sentido antihorario."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " 反時計回り"
+            "value" : " 反時計回り。"
           }
         }
       }
     },
-    " Relative, like a mouse" : {
+    " Relative, like a mouse." : {
       "comment" : "Movement mode label appended after an SF Symbol glyph — keep the leading space",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " Relativ, wie eine Maus"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : " Relative, like a mouse"
+            "value" : " Relativ, wie eine Maus."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " Relativo, como un ratón"
+            "value" : " Relativo, como un ratón."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : " 相対、マウスのように"
-          }
-        }
-      }
-    },
-    "Experimental: switch the tablet into data mode" : {
-      "comment" : "Disclosure row label for the advanced device mode init control",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Erweitert: Tablett in den Datenmodus versetzen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Avanzado: cambiar la tableta al modo de datos"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "詳細：タブレットをデータモードに切り替える"
-          }
-        }
-      }
-    },
-    "Gather tablet details for support.  May take a few minutes." : {
-      "comment" : "Description below the Collect Device Data button",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Nutze das, wenn dein Tablett nicht erkannt wird oder etwas daran nicht funktioniert. Dauert etwa eine Minute."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Úsalo si tu tableta no se reconoce o si algo no funciona. Tarda alrededor de un minuto."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "タブレットが認識されない場合や、うまく動かない場合に使います。所要時間は約1分です。"
-          }
-        }
-      }
-    },
-    "Records details about your tablet for analysis." : {
-      "comment" : "Subtitle for device data collection when tablet is not yet supported",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Zeichnet auf, was dein Tablett sendet, damit Unterstützung dafür ergänzt werden kann."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Graba lo que envía tu tableta para que se pueda añadir compatibilidad."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "対応を追加できるよう、タブレットが送信する内容を記録します。"
-          }
-        }
-      }
-    },
-    "Tap the pen’s tip to the tablet, then lift" : {
-      "comment" : "Device data collection instruction: pen tip",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Stift aufs Tablett aufsetzen und wieder abheben"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Toca la tableta con el lápiz y luego levántalo"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "ペンをタブレットにタッチして、離します"
-          }
-        }
-      }
-    },
-    "Try sending a signal to awaken an unresponsive tablet.  Some stay quiet unless prompted to answer." : {
-      "comment" : "Explanation of the advanced device mode init control in device data collection",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Manche Tabletts senden erst, wenn sie dazu aufgefordert werden. Probier das, wenn nichts aufgezeichnet wird."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Algunas tabletas no envían nada hasta que se les pide. Prueba esto si no se está grabando nada."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "指示を受けるまで何も送信しないタブレットもあります。何も記録されない場合に試してください。"
+            "value" : " 相対、マウスのように。"
           }
         }
       }
@@ -4524,28 +4385,6 @@
         }
       }
     },
-    "Delays the stroke release briefly when the pen is lifted mid-motion and still moving quickly, preventing accidental short strokes." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verzögert das Loslassen des Strichs kurz, wenn der Stift mitten in der Bewegung abgehoben wird und noch schnell unterwegs ist – das verhindert versehentlich kurze Striche."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Retrasa brevemente la liberación del trazo cuando el lápiz se levanta en pleno movimiento y sigue moviéndose rápido, evitando trazos cortos accidentales."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "動きの途中でペンを離してもまだ素早く動いている場合、ストロークの終了を少し遅らせ、意図しない短いストロークの発生を防ぎます。"
-          }
-        }
-      }
-    },
     "Delays the stroke release briefly when the pen is lifted mid-motion, preventing accidental short strokes." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6385,6 +6224,29 @@
         }
       }
     },
+    "Experimental: switch the tablet into data mode" : {
+      "comment" : "Disclosure row label for the advanced device mode init control",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Erweitert: Tablett in den Datenmodus versetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Avanzado: cambiar la tableta al modo de datos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "詳細：タブレットをデータモードに切り替える"
+          }
+        }
+      }
+    },
     "Export as JSON…" : {
       "comment" : "Context menu action for exporting backup",
       "localizations" : {
@@ -7025,6 +6887,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ガンマ"
+          }
+        }
+      }
+    },
+    "Gather tablet details for support.  May take a few minutes." : {
+      "comment" : "Description below the Collect Device Data button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nutze das, wenn dein Tablett nicht erkannt wird oder etwas daran nicht funktioniert. Dauert etwa eine Minute."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Úsalo si tu tableta no se reconoce o si algo no funciona. Tarda alrededor de un minuto."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "タブレットが認識されない場合や、うまく動かない場合に使います。所要時間は約1分です。"
           }
         }
       }
@@ -7834,24 +7719,24 @@
         }
       }
     },
-    "How fast content pans while a Pan View button is held. Assign Pan View to a pen or tablet button to use it." : {
+    "How fast content pans while pressing a Pan View button." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wie schnell der Inhalt schwenkt, während eine Taste mit „Ansicht schwenken“ gedrückt ist. Weise „Ansicht schwenken“ einer Stift- oder Tablet-Taste zu, um es zu nutzen."
+            "value" : "Wie schnell der Inhalt beim Drücken einer Taste mit „Ansicht schwenken“ schwenkt."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Con qué velocidad se desplaza el contenido mientras mantienes pulsado un botón de Desplazar vista. Asigna Desplazar vista a un botón del lápiz o la tableta para usarlo."
+            "value" : "Con qué velocidad se desplaza el contenido al pulsar un botón de Desplazar vista."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「ビューをパン」ボタンを押している間にコンテンツがパンする速さです。使うにはペンやタブレットのボタンに「ビューをパン」を割り当ててください。"
+            "value" : "「ビューをパン」ボタンを押している間にコンテンツがパンする速さです。"
           }
         }
       }
@@ -11605,6 +11490,28 @@
         }
       }
     },
+    "Prevents accidental stroke movement when lifting pen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verhindert versehentliche Strichbewegungen beim Abheben des Stifts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Evita movimientos de trazo accidentales al levantar el lápiz."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンを離すときの意図しないストローク移動を防ぎます。"
+          }
+        }
+      }
+    },
     "Preview" : {
       "comment" : "Section header in Display tab — canvas preview",
       "localizations" : {
@@ -12241,6 +12148,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ショートカットを記録"
+          }
+        }
+      }
+    },
+    "Records details about your tablet for analysis." : {
+      "comment" : "Subtitle for device data collection when tablet is not yet supported",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Zeichnet auf, was dein Tablett sendet, damit Unterstützung dafür ergänzt werden kann."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Graba lo que envía tu tableta para que se pueda añadir compatibilidad."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "対応を追加できるよう、タブレットが送信する内容を記録します。"
           }
         }
       }
@@ -12997,24 +12927,24 @@
         }
       }
     },
-    "Requires the pen to move this far before a tap becomes a drag, absorbing tremor at tip-down." : {
+    "Requires the pen to move this far before a tap becomes a drag." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Stift muss sich um diesen Betrag bewegen, bevor aus einem Tippen ein Ziehen wird – das fängt Zittern beim Aufsetzen ab."
+            "value" : "Der Stift muss sich um diesen Betrag bewegen, bevor aus einem Tippen ein Ziehen wird."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El lápiz debe moverse esta distancia antes de que un toque se convierta en un arrastre, absorbiendo el temblor al apoyar la punta."
+            "value" : "El lápiz debe moverse esta distancia antes de que un toque se convierta en un arrastre."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タップがドラッグに変わるまでにペンがこの距離だけ動く必要があります。ペン先を下ろした際の手ぶれを吸収します。"
+            "value" : "タップがドラッグに変わるまでにペンがこの距離だけ動く必要があります。"
           }
         }
       }
@@ -15927,6 +15857,29 @@
         }
       }
     },
+    "Tap the pen’s tip to the tablet, then lift" : {
+      "comment" : "Device data collection instruction: pen tip",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Stift aufs Tablett aufsetzen und wieder abheben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Toca la tableta con el lápiz y luego levántalo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ペンをタブレットにタッチして、離します"
+          }
+        }
+      }
+    },
     "Tap to click" : {
       "comment" : "Touch pane: brief tap posts a left click",
       "localizations" : {
@@ -17105,6 +17058,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ でトリガー"
+          }
+        }
+      }
+    },
+    "Try sending a signal to awaken an unresponsive tablet.  Some stay quiet unless prompted to answer." : {
+      "comment" : "Explanation of the advanced device mode init control in device data collection",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Manche Tabletts senden erst, wenn sie dazu aufgefordert werden. Probier das, wenn nichts aufgezeichnet wird."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Algunas tabletas no envían nada hasta que se les pide. Prueba esto si no se está grabando nada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "指示を受けるまで何も送信しないタブレットもあります。何も記録されない場合に試してください。"
           }
         }
       }
