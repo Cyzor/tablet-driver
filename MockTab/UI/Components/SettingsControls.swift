@@ -169,6 +169,7 @@ struct DescribedToggle<Description: View>: View {
         Toggle(isOn: $isOn) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
+                    .appFont(.subheadline)
                 description()
                     .appFont(.settingsLabel)
                     .foregroundStyle(.secondary)

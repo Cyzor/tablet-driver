@@ -136,6 +136,14 @@ struct PenFeelView: View {
                 )
                 .help(
                     "Multiplier applied to pen motion while Pan View is held. 1× pans one screen point per point of pen travel; higher values pan further. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping.")
+
+                DescribedToggle(
+                    "Momentum Scrolling",
+                    isOn: panScrollMomentumBinding,
+                    description: "Animate motion with inertia, like a trackpad. Compatibility varies by app."
+                )
+                .help(
+                    "On: Pan View emits a phased trackpad-style stream with a momentum tail, so scroll-view apps coast after you release. Off (default): a simpler stream that pans in far more apps, but without inertia. Set per-app using the override bar above if you want momentum only where it works.")
             }
 
             Section("Click Behavior") {
@@ -232,7 +240,8 @@ struct PenFeelView: View {
     /// single Cmd-Z undo the whole reset instead of two.
     private typealias ToolResetState = (
         curve: BezierCurve, smoothing: Double, pressureSmoothing: Double,
-        rotationAsTilt: Bool, tiltOffset: Double, tiltMagnitude: Double, panSpeed: Double
+        rotationAsTilt: Bool, tiltOffset: Double, tiltMagnitude: Double, panSpeed: Double,
+        panMomentum: Bool
     )
     private typealias SettingsResetState = (
         doubleClick: Double, invertRotation: Bool, relativeCursor: Bool,
@@ -243,13 +252,13 @@ struct PenFeelView: View {
         let toolOld: ToolResetState = (
             tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength,
             tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
-            tool.panScrollSpeed
+            tool.panScrollSpeed, tool.panScrollMomentum
         )
         let settingsOld: SettingsResetState = (
             settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
             settings.tipUpAssistDelay, settings.dragThreshold
         )
-        let toolDefaults: ToolResetState = (.linear, 0, 0, false, 0, 0.8, 1.0)
+        let toolDefaults: ToolResetState = (.linear, 0, 0, false, 0, 0.8, 1.0, false)
         let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, 0.0)
 
         settings.undoManager?.beginUndoGrouping()
@@ -262,7 +271,7 @@ struct PenFeelView: View {
     private func applyToolReset(_ new: ToolResetState, undoTo old: ToolResetState) {
         (tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength,
          tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
-         tool.panScrollSpeed) = new
+         tool.panScrollSpeed, tool.panScrollMomentum) = new
         tool.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applyToolReset(old, undoTo: new)
         }
@@ -298,6 +307,13 @@ struct PenFeelView: View {
             String(localized: "Pan View Speed", comment: "Undo action name: Pan View pan speed multiplier in the Pen Feel pane"), toolOwned: true,
             get: { tool.panScrollSpeed },
             set: { tool.panScrollSpeed = $0 })
+    }
+
+    private var panScrollMomentumBinding: Binding<Bool> {
+        settings.recordingBinding(
+            String(localized: "Pan View Momentum", comment: "Undo action name: Pan View trackpad-style momentum toggle in the Pen Feel pane"), toolOwned: true,
+            get: { tool.panScrollMomentum },
+            set: { tool.panScrollMomentum = $0 })
     }
 
     private var doubleClickBinding: Binding<Double> {
