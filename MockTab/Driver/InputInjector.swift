@@ -360,18 +360,33 @@ final class InputInjector: @unchecked Sendable {
     let panScrollSafetyNetInterval: TimeInterval = 4.0
 
     /// Repeating HIDThread timer driving the synthetic momentum decay tail
-    /// posted after a Scroll Drag release (see `startMomentumTail` in
-    /// InputInjector+CGEvents.swift). Real trackpad hardware has the OS
-    /// synthesize its own `kCGMomentumScrollPhase`-tagged event stream after
-    /// finger-lift; paged views (e.g. Apple Calendar's month/week grid) gate
-    /// "commit to next page vs. snap back" on seeing that momentum
-    /// continuation, not on cumulative displacement alone. CGEventPost never
-    /// gets this for free, so it's synthesized here from the tracker's
-    /// release-velocity estimate.
+    /// posted after a Scroll Drag release in Natural mode (see
+    /// `startMomentumTail` in InputInjector+CGEvents.swift). Real trackpads get
+    /// their coast from a system-synthesized `kCGMomentumScrollPhase` stream
+    /// after finger-lift; CGEventPost never gets that for free, so it's
+    /// synthesized here from the tracker's release-velocity estimate.
     var momentumTailTimer: CFRunLoopTimer?
     var momentumVelocity: CGVector = .zero
     var momentumAccumX = 0.0
     var momentumAccumY = 0.0
+
+    /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
+    /// `false` (Compatible, default): the pan stream is deliberately phase-FREE
+    /// (`scrollWheelEventScrollPhase = 0`, no began/changed/ended envelope, no
+    /// momentum tail). A real trackpad wraps its continuous deltas in a phase
+    /// lifecycle plus a companion gesture-event stream, but that gesture backing
+    /// can't be forged through the public CGEvent API — and without it, the
+    /// phased envelope is rejected by the recognizers that key on it (Calendar
+    /// Month/Year, WebKit gesture-scroll / overscroll-behavior, Adobe palettes).
+    /// Captured third-party scroll tools (Smooze) that pan those apps smoothly
+    /// emit exactly this phase-free shape.
+    ///
+    /// `true` (Natural): the stream carries the phased began/changed/ended
+    /// envelope plus a synthetic momentum tail. NSScrollView-based apps (Finder,
+    /// Xcode) read that as a real trackpad flick — rubber-banding and coasting —
+    /// but the gesture-keyed recognizers above ignore it. Per-app opt-in for the
+    /// trackpad feel where it's honored.
+    var panScrollUsePhases = false
 
     var lastPostedPoint: CGPoint = .zero
     var lastPostedPressure: Double = -1.0

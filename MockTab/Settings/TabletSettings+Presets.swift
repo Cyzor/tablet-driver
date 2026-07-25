@@ -113,6 +113,7 @@ extension TabletSettings {
     /// whether a tool already has any locally-customized values before an import.
     static let toolSettingsKeys: [String] = [
         "smoothingStrength", "pressureSmoothingStrength", "panScrollSpeed",
+        "panScrollMomentum",
         "useRotationAsTilt", "rotationTiltOffsetDegrees", "rotationTiltMagnitude",
         "tipBinding", "eraserBinding", "penButton1Binding", "penButton2Binding",
         "penButton3Binding", "penButton4Binding", "penButton5Binding", "wheelBinding",

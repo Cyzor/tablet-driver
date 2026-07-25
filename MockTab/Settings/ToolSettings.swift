@@ -60,6 +60,17 @@ final class ToolSettings: ObservableObject {
         didSet { persist("panScrollSpeed", panScrollSpeed) }
     }
 
+    /// When true, Pan View emits a phased trackpad-style stream (began/changed/
+    /// ended + a momentum tail) so NSScrollView-based apps rubber-band and
+    /// coast like a real trackpad. That envelope is rejected by recognizers
+    /// that expect real trackpad gesture backing (Calendar Month/Year, WebKit
+    /// gesture-scroll, Adobe palettes), so it stays off by default: the
+    /// phase-free stream pans everywhere but without inertia. Per-tool so the
+    /// momentum feel can be enabled only for the apps that honor it.
+    @Published var panScrollMomentum: Bool = false {
+        didSet { persist("panScrollMomentum", panScrollMomentum) }
+    }
+
     /// When true, real tilt is suppressed and barrel rotation is sent as synthetic tilt
     /// instead — a "bait and switch" so Photoshop's Pen Tilt brush dynamics respond to
     /// barrel twist. Intended as a per-app opt-in (e.g. Adobe Photoshop); real tilt is
@@ -226,6 +237,7 @@ final class ToolSettings: ObservableObject {
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
         pressureSmoothingStrength = loadDouble("pressureSmoothingStrength", default: 0.0)
         panScrollSpeed = loadDouble("panScrollSpeed", default: 1.0)
+        panScrollMomentum = loadBool("panScrollMomentum", default: false)
         useRotationAsTilt = loadBool("useRotationAsTilt", default: false)
         rotationTiltOffsetDegrees = loadDouble("rotationTiltOffsetDegrees", default: 0.0)
         rotationTiltMagnitude = loadDouble("rotationTiltMagnitude", default: 0.8)

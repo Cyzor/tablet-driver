@@ -75,6 +75,7 @@ struct InjectionSnapshot: Sendable, Equatable {
         var smoothingStrength: Double
         var pressureSmoothingStrength: Double
         var panScrollSpeed: Double
+        var panScrollMomentum: Bool
         var tipBinding: ButtonBinding
         var eraserBinding: ButtonBinding
         var penButton1Binding: ButtonBinding
@@ -156,6 +157,7 @@ extension ToolSettings {
             smoothingStrength: smoothingStrength,
             pressureSmoothingStrength: pressureSmoothingStrength,
             panScrollSpeed: panScrollSpeed,
+            panScrollMomentum: panScrollMomentum,
             tipBinding: tipBinding,
             eraserBinding: eraserBinding,
             penButton1Binding: penButton1Binding,

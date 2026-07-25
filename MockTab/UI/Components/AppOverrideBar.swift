@@ -118,7 +118,7 @@ struct AppOverrideBar: View {
         "pressureCurve", "smoothingStrength", "pressureSmoothingStrength", "doubleClickDistance",
         "invertRotation", "relativeCursorMovement", "tipUpAssistDelay", "dragThreshold",
         "useRotationAsTilt", "rotationTiltOffsetDegrees", "rotationTiltMagnitude",
-        "panScrollSpeed",
+        "panScrollSpeed", "panScrollMomentum",
     ]
 
     static let buttonKeys: Set<String> = [

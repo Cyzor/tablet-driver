@@ -858,6 +858,7 @@ extension InputInjector {
             let driver = Self.resolvePanScrollDriver(preferring: self)
             if down {
                 SharedPanScrollState.shared.driver = driver
+                driver.panScrollUsePhases = snapshot.activeTool.panScrollMomentum
                 // A fresh grab halts any coasting tail from the previous
                 // gesture, same as touching a real trackpad mid-momentum.
                 driver.cancelMomentumTail()
@@ -868,7 +869,9 @@ extension InputInjector {
                 let active = SharedPanScrollState.shared.driver ?? driver
                 active.cancelPanScrollSafetyNet()
                 active.postPanScroll(active.panScroll.disengage())
-                active.startMomentumTail(velocity: active.panScroll.releaseVelocity)
+                if active.panScrollUsePhases {
+                    active.startMomentumTail(velocity: active.panScroll.releaseVelocity)
+                }
                 SharedPanScrollState.shared.driver = nil
             }
         }
@@ -941,23 +944,25 @@ extension InputInjector {
         return fallback
     }
 
-    /// Sole event-construction site for Pan View gestures. Pixel units +
-    /// the continuous flag + a scroll-phase lifecycle is what makes apps treat
-    /// the stream as a trackpad pan (smooth, rubber-banded) rather than
-    /// discrete wheel ticks — the same shape as the finger-touch path's
-    /// `postTouchScroll`. It's also what buys momentum for free in
-    /// NSScrollView-based apps (Finder, Xcode): AppKit synthesizes its own
-    /// decay tail client-side on `.ended`, whether the stream came from real
-    /// trackpad hardware or was posted here — see PanScrollTracker's header
-    /// comment for the full explanation.
+    /// Sole event-construction site for Pan View gestures. Pixel units + the
+    /// continuous flag makes apps treat the stream as a trackpad pan (smooth,
+    /// rubber-banded) rather than discrete wheel ticks.
     ///
+    /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
+    /// See `postPanScroll` for what the two modes emit.
+
     /// Kept as one small function on purpose: it is the backend seam. If the
     /// parked IOHIDUserDevice virtual-trackpad spike ever ships, this becomes
-    /// "report contacts to the virtual device" (which additionally buys real
-    /// system-generated momentum, unavailable to CGEvent-posted scrolls),
+    /// "report contacts to the virtual device" (which buys genuine system
+    /// gesture + momentum streams, unavailable to CGEvent-posted scrolls),
     /// and nothing else in the gesture path changes.
     func postPanScroll(_ intent: PanScrollTracker.Intent) {
         guard case .scroll(let dx, let dy, let phase) = intent else { return }
+        if !panScrollUsePhases {
+            // Compatible mode: zero-delta began/ended brackets carry no delta;
+            // with no phase envelope to deliver them, skip them as no-ops.
+            guard dx != 0 || dy != 0 else { return }
+        }
         guard
             let e = CGEvent(
                 scrollWheelEvent2Source: sessionSource,
@@ -969,12 +974,41 @@ extension InputInjector {
         else { return }
         e.location = currentCursorPosition()
         e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
+        if panScrollUsePhases {
+            e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
+        }
+        applyTrackpadDeltaFields(e, dx: dx, dy: dy)
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)
     }
 
-    // MARK: - Scroll Drag momentum tail
+    /// Populates the delta fields a real trackpad driver emits alongside the
+    /// raw wheel values, which `CGEvent(scrollWheelEvent2Source:)` leaves at
+    /// zero. `NSEvent.scrollingDeltaX/Y` for a continuous stream derives from
+    /// the point/fixed-point delta fields, and `deltaX/Y` from the line-delta
+    /// fields — so consumers that read NSEvent directly (Calendar's paged
+    /// Month/Year recognizer, WebKit/Chromium gesture-scroll incl.
+    /// overscroll-behavior sites, Adobe's line-delta palettes) saw a
+    /// well-phased gesture with zero deltas and ignored it. NSScrollView
+    /// tolerates the wheel-only shape, which is why the gap was app-specific.
+    private func applyTrackpadDeltaFields(_ e: CGEvent, dx: Double, dy: Double) {
+        let ix = Int64(dx), iy = Int64(dy)
+        e.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: iy)
+        e.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: ix)
+        e.setIntegerValueField(.scrollWheelEventFixedPtDeltaAxis1, value: Int64(dy * 65536.0))
+        e.setIntegerValueField(.scrollWheelEventFixedPtDeltaAxis2, value: Int64(dx * 65536.0))
+        // Line deltas (~10 px/line, the scale real trackpads report); keep a
+        // minimum of 1 so slow pans don't quantize to nothing on the legacy
+        // line-delta path.
+        e.setIntegerValueField(
+            .scrollWheelEventDeltaAxis1,
+            value: iy == 0 ? 0 : max(1, abs(iy) / 10) * (iy < 0 ? -1 : 1))
+        e.setIntegerValueField(
+            .scrollWheelEventDeltaAxis2,
+            value: ix == 0 ? 0 : max(1, abs(ix) / 10) * (ix < 0 ? -1 : 1))
+    }
+
+    // MARK: - Scroll Drag momentum tail (Natural mode)
 
     /// `kCGMomentumScrollPhase` values (distinct from and mutually exclusive
     /// with `CGScrollPhase` — see `PanScrollTracker.ScrollPhase`). During the
@@ -988,13 +1022,11 @@ extension InputInjector {
     }
 
     /// Tick cadence for the synthetic momentum decay tail — matches a real
-    /// trackpad's momentum-stream rate closely enough for paged views to
-    /// read it as genuine continuation.
+    /// trackpad's momentum-stream rate.
     static let momentumTailInterval: TimeInterval = 1.0 / 60.0
 
     /// Per-tick velocity multiplier. Tuned so a firm flick's tail runs a few
-    /// hundred ms before dropping below `momentumStopVelocity` — long enough
-    /// for Calendar's page-advance gate to see it, short of feeling sluggish.
+    /// hundred ms before dropping below `momentumStopVelocity`.
     static let momentumDecayPerTick = 0.85
 
     /// Velocity magnitude (points/second) below which the tail ends. Also
@@ -1006,6 +1038,7 @@ extension InputInjector {
 
     /// Starts (or restarts) the momentum decay tail after a Scroll Drag
     /// release. `velocity` is `PanScrollTracker.releaseVelocity` (points/second).
+    /// Only invoked in Natural mode (`panScrollUsePhases`).
     func startMomentumTail(velocity: CGVector) {
         cancelMomentumTail()
         guard hypot(velocity.dx, velocity.dy) >= Self.momentumStopVelocity else { return }
@@ -1076,6 +1109,7 @@ extension InputInjector {
         e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
         e.setIntegerValueField(.scrollWheelEventScrollPhase, value: 0)
         e.setIntegerValueField(.scrollWheelEventMomentumPhase, value: phase.rawValue)
+        applyTrackpadDeltaFields(e, dx: dx, dy: dy)
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)
     }

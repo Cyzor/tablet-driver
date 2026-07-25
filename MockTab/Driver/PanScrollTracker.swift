@@ -14,22 +14,22 @@ import Foundation
 /// drive it, and the only event-construction site (`InputInjector.postPanScroll`)
 /// stays a single replaceable backend.
 ///
-/// Momentum is *not* synthesized here — and yet it shows up in scroll-view-based
-/// apps (Finder, Xcode) anyway. That's not the OS driver stack; the posting
-/// backend (`InputInjector.postPanScroll`) tags every event as continuous with
-/// a began/changed/ended scroll-phase lifecycle, and `NSScrollView` itself
-/// synthesizes its own decay tail client-side whenever it sees a `.ended`
-/// phase on a continuous stream — regardless of whether the events came from
-/// real trackpad hardware or `CGEventCreateScrollWheelEvent`. Apps that don't
-/// route through `NSScrollView` (custom-drawn canvases, non-AppKit scroll
-/// handling) get no such gift and must interpret the phase field themselves.
+/// Momentum is *not* synthesized, and the stream carries no scroll-phase
+/// envelope. The posting backend (`InputInjector.postPanScroll`) tags every
+/// event continuous with `scrollWheelEventScrollPhase = 0` and no
+/// began/changed/ended lifecycle. That phase-free shape is deliberate: a real
+/// trackpad pairs its phased deltas with a companion gesture-event stream that
+/// the public CGEvent API cannot forge, and recognizers that key on the phase
+/// lifecycle (Calendar Month/Year, WebKit gesture-scroll / overscroll-behavior,
+/// Adobe palettes) reject a phased stream that lacks that gesture backing.
+/// Captured third-party scroll tools that pan those apps smoothly (Smooze)
+/// emit exactly this phase-free continuous shape.
 ///
 /// A short-window release velocity is still maintained here regardless (it is
 /// the entire input a momentum tail needs, real or synthetic), for the day a
 /// virtual HID trackpad (the parked IOHIDUserDevice spike) lets this tracker's
 /// intents become "report contact began/moved/ended" with true system-level
-/// inertia in *every* app, not just `NSScrollView` ones. v1 records the
-/// velocity and discards it.
+/// gesture + inertia in *every* app. v1 records the velocity and discards it.
 ///
 /// Owned by `InputInjector`; HIDThread-confined like its sibling trackers.
 struct PanScrollTracker {
