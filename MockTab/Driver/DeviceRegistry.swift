@@ -90,6 +90,41 @@ final class DeviceRegistry: ObservableObject {
     private init() {
         loadTablets()
         mergeQuickKeysDongleIdentity()
+        mergePlaceholderSerialInstances()
+    }
+
+    /// One-time migration for the `DeviceInstanceKey.isPlaceholderSerial`
+    /// fix: before it, a Quick Keys puck connected over the wireless dongle
+    /// reported the placeholder serial "000000000000", which was taken as a
+    /// real instance token and split the puck into its own row and settings
+    /// namespace alongside the wired connection's legacy one (the "second
+    /// Quick Keys" symptom). Fold any such row's settings into the legacy
+    /// row — legacy wins, the placeholder row fills only keys the legacy
+    /// side never set — and drop the row. New connects never create one of
+    /// these again, since the key now normalizes a placeholder serial to no
+    /// serial.
+    private func mergePlaceholderSerialInstances() {
+        let flag = "_placeholderSerialInstancesMerged"
+        guard !ud.bool(forKey: flag) else { return }
+
+        for row in knownTablets {
+            guard let instance = row.instance, !instance.isEmpty,
+                DeviceInstanceKey.isPlaceholderSerial(instance),
+                knownTablets.contains(where: { $0.productID == row.productID && ($0.instance ?? "").isEmpty })
+            else { continue }
+
+            let pidHex = String(row.productID, radix: 16, uppercase: true)
+            let oldPrefix = "device-0x\(pidHex)#\(instance)."
+            let newPrefix = "device-0x\(pidHex)."
+            for (key, value) in ud.dictionaryRepresentation() where key.hasPrefix(oldPrefix) {
+                let target = newPrefix + key.dropFirst(oldPrefix.count)
+                if ud.object(forKey: target) == nil { ud.set(value, forKey: target) }
+                ud.removeObject(forKey: key)
+            }
+            knownTablets.removeAll(where: { $0.productID == row.productID && $0.instance == instance })
+        }
+        saveTablets()
+        ud.set(true, forKey: flag)
     }
 
     /// One-time migration for the Xencelabs Quick Keys transport merge: the

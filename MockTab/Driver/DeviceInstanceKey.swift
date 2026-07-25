@@ -38,7 +38,7 @@ struct DeviceInstanceKey: Hashable, Codable {
     /// Builds the key from what IOKit exposes at connect time.
     init(productID: Int, usbSerial: String?, locationID: Int) {
         let token: String
-        if let serial = usbSerial, !serial.isEmpty {
+        if let serial = usbSerial, !serial.isEmpty, !Self.isPlaceholderSerial(serial) {
             token = serial
         } else if locationID != 0 {
             token = String(format: "loc-%08X", locationID)
@@ -46,6 +46,15 @@ struct DeviceInstanceKey: Hashable, Codable {
             token = ""
         }
         self.init(productID: productID, instance: token)
+    }
+
+    /// The Xencelabs Quick Keys wireless dongle relay reports the puck's
+    /// serial as the literal string "000000000000" rather than omitting it
+    /// (the real serial isn't recoverable over that transport). Treated as a
+    /// real token, it used to fold a wirelessly-connected puck into its own
+    /// instance row and settings namespace instead of the wired one's.
+    static func isPlaceholderSerial(_ serial: String) -> Bool {
+        !serial.contains(where: { !"0:- ".contains($0) })
     }
 
     /// Stable string form for persistence, window restore, and logs:

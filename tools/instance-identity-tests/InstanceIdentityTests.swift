@@ -72,6 +72,26 @@ private func testTokenSelection() {
         "", "neither → empty token (legacy identity)")
 }
 
+/// The Xencelabs Quick Keys wireless dongle relay reports the puck's serial
+/// as a literal all-zero string rather than omitting it — that must not be
+/// taken as a real instance token (it used to split a wirelessly-connected
+/// puck into its own row and settings namespace next to the wired one).
+private func testPlaceholderSerialTreatedAsAbsent() {
+    expect(DeviceInstanceKey.isPlaceholderSerial("000000000000"),
+           "all-zero serial recognized as placeholder")
+    expect(DeviceInstanceKey.isPlaceholderSerial("00:00:00:00:00:00"),
+           "all-zero MAC-style serial recognized as placeholder")
+    expect(!DeviceInstanceKey.isPlaceholderSerial("XP213BV1001188"),
+           "real serial not mistaken for placeholder")
+    expectEqual(
+        DeviceInstanceKey(productID: 0x5202, usbSerial: "000000000000", locationID: 0x14200000)
+            .instance,
+        "loc-14200000", "placeholder serial falls back to locationID like an absent one")
+    expectEqual(
+        DeviceInstanceKey(productID: 0x5202, usbSerial: "000000000000", locationID: 0).instance,
+        "", "placeholder serial with no locationID falls back to legacy identity")
+}
+
 // MARK: - Claim rule
 
 /// An existing install: the first instance seen for a PID claims the legacy
@@ -178,6 +198,7 @@ enum InstanceIdentityTestRunner {
     static func main() {
         testKeyStringRoundTrip()
         testTokenSelection()
+        testPlaceholderSerialTreatedAsAbsent()
         testFirstInstanceClaimsLegacyPrefix()
         testClaimIsSticky()
         testSecondInstanceInheritsNothing()
