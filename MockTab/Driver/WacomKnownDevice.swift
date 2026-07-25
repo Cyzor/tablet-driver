@@ -926,20 +926,22 @@ final class WacomKnownDevice: TabletDevice {
 
     // MARK: - C callback
 
-    private static let reportCallback: IOHIDReportWithTimeStampCallback = { ctx, _, sender, _, _, report, length, timestamp in
+    private static let reportCallback: IOHIDReportWithTimeStampCallback = {
+        ctx, _, sender, _, reportID, report, length, timestamp in
         guard let ctx else { return }
         // Kernel-receipt → here. Spikes mean the scheduler starved HIDThread.
         LatencyProbe.shared.record(kernelTimestamp: timestamp)
         let senderDevice = sender.map { Unmanaged<IOHIDDevice>.fromOpaque($0).takeUnretainedValue() }
         Unmanaged<WacomKnownDevice>.fromOpaque(ctx).takeUnretainedValue()
             .handleReport(
-                report: report, length: length, sender: senderDevice,
+                reportID: reportID, report: report, length: length, sender: senderDevice,
                 kernelTimestamp: timestamp)
     }
 
     // MARK: - Report dispatch
 
     private func handleReport(
+        reportID: UInt32 = 0,
         report: UnsafePointer<UInt8>, length: CFIndex, sender: IOHIDDevice? = nil,
         kernelTimestamp: UInt64 = 0
     ) {
@@ -952,14 +954,9 @@ final class WacomKnownDevice: TabletDevice {
         defer { InputInjector.currentReportTimestampNs = 0 }
         let name = deviceSpec.name
         HIDCapture.shared.record(tag: name, report: report, length: length)
-        // Delta capture — only fires when CaptureEngine.isRunning is true.
-        if CaptureEngine._isRunningNonisolated {
-            let r0 = report[0]
-            let bytes = [UInt8](UnsafeBufferPointer(start: report, count: length))
-            Task { @MainActor in
-                CaptureEngine.shared.recordSample(reportID: r0, data: bytes)
-            }
-        }
+        // Device-data collection. No-ops when no session is running, and never
+        // hops off this thread or copies the report — see CaptureEngine.
+        CaptureEngine.recordRaw(reportID: reportID, pointer: report, length: length)
         // For wireless dongles, extract paired tablet PID from 0x80 status report and
         // use its spec for accurate coordinate ranges (instead of fallback guesses).
         if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {

@@ -2,23 +2,30 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import AppKit
 import Combine
 import Foundation
+import IOKit.hid
+import OSLog
+import UniformTypeIdentifiers
+import os
 
-/// Phase 1+2: Guided calibration guide + delta filtering engine.
+private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "capture")
+
+// MARK: - Capture engine
+
+/// Open-ended device data collection.
 ///
 /// Usage:
-/// 1. Call `startCalibration(deviceInfo:steps:)` to begin a session.
-/// 2. Each step, call `armForStep()` then wait for `onSampleCaptured` callback.
-/// 3. Call `recordSample(reportID:data:)` from device handleReport callbacks.
-/// 4. On completion, call `finish()` to get a `CalibrationResult`.
-/// 5. Call `exportJSON(result:)` to write to disk.
+/// 1. `startDiscovery(deviceInfo:duration:)` to begin.
+/// 2. Drivers call `CaptureEngine.recordRaw(...)` from their report callbacks.
+/// 3. `finishDiscovery()` to end and build a `DiscoveryResult`.
+/// 4. `exportDiscoveryJSON(result:)` to write it to disk.
 ///
-/// Thread safety: all UI-state methods are @MainActor. Device handleReport
-/// callbacks fire on HIDThread (see HIDThread.swift) and reach `recordSample`
-/// via `Task { @MainActor in ... }`, so by the time `recordSample` runs the
-/// engine's state is already main-isolated. The nonisolated `_isRunningNonisolated`
-/// mirror exists so the HID callback can gate the hop without an actor jump.
+/// Thread safety: UI-state methods are `@MainActor`. The recording path is
+/// deliberately *not* — `recordRaw` runs on HIDThread and writes into a
+/// lock-guarded `DiscoveryAccumulator`, so no report ever hops to the main
+/// actor. The main actor only polls the accumulated count for display.
 @MainActor
 final class CaptureEngine: ObservableObject {
 
@@ -28,586 +35,372 @@ final class CaptureEngine: ObservableObject {
 
     private init() {}
 
+    // MARK: - Recording entry point
+
+    /// Statistics store, shared with the HID callback thread.
+    private nonisolated static let accumulator = DiscoveryAccumulator()
+
+    /// Record one raw HID input report toward the running session.
+    ///
+    /// Safe (and cheap) to call unconditionally from any driver's report
+    /// callback: it no-ops when no session is running.
+    ///
+    /// - Parameters:
+    ///   - reportID: the report ID **from the IOKit callback**, not
+    ///     `report[0]`. Devices whose descriptor declares no Report ID send
+    ///     reports with no ID prefix, where `report[0]` is the first data byte
+    ///     and would invent a new "report ID" on nearly every sample.
+    ///   - pointer: the callback's report buffer. Only read for the duration
+    ///     of this call — nothing retains it.
+    nonisolated static func recordRaw(
+        reportID: UInt32, pointer: UnsafePointer<UInt8>, length: CFIndex
+    ) {
+        accumulator.record(
+            reportID: UInt8(truncatingIfNeeded: reportID), pointer: pointer, length: Int(length))
+    }
+
     // MARK: - Published UI State
 
-    @Published private(set) var isRunning = false {
-        didSet { CaptureEngine._isRunningNonisolated = isRunning }
-    }
-    /// Nonisolated mirror of `isRunning` for use in HID callbacks running on
-    /// HIDThread. Bool stores are atomic enough for a gating flag — a stale
-    /// read just costs one extra Task hop, never a crash. The MainActor side
-    /// updates it via the `didSet` above.
-    nonisolated(unsafe) static private(set) var _isRunningNonisolated = false
-    @Published private(set) var currentStepIndex = 0
-    @Published private(set) var armedStep: CalibrationStep?
+    @Published private(set) var isRunning = false
+    @Published private(set) var discoverySampleCount = 0
     @Published private(set) var lastError: String?
-    @Published private(set) var stepResults: [CalibrationStep: CapturedSample] = [:]
-    @Published private(set) var reportsSeen: [String: CapturedReportSummary] = [:]
-    @Published private(set) var elapsedSeconds: Double = 0
+    /// Device-mode init writes attempted this session, in order. Surfaced in the
+    /// capture UI and carried into the exported JSON.
+    @Published private(set) var initReportsSent: [CaptureInitReport] = []
+    /// True while a `sendInitReport` write is in flight. `IOHIDDeviceSetReport`
+    /// blocks for the full device round-trip — several seconds is normal over
+    /// Bluetooth — so callers must not invoke it on the main thread; this flag
+    /// lets the UI show that state instead of just going unresponsive.
+    @Published private(set) var isSendingInitReport = false
 
-    // MARK: - Session Configuration
+    // MARK: - Session State
 
     private var sessionDeviceInfo: CaptureDeviceInfo?
-    var sessionSteps: [CalibrationStep] = []
-    /// Tool code observed at start of calibration (e.g. 0x0802 = Grip Pen, 0x080A = Grip Pen eraser).
-    private(set) var initialToolCode: UInt16?
-    /// All tool codes observed during this calibration session.
-    private(set) var observedToolCodes: Set<UInt16> = []
-    /// The tool code most recently seen during capture.
-    private(set) var currentToolCode: UInt16?
-    private var stepStartTime: Date = .distantPast
-    private var elapsedTimer: Timer?
-    private var stepTimeoutTimer: Timer?
-
-    // MARK: - Discovery Mode State
-    @Published private(set) var isDiscoveryMode = false
-    @Published private(set) var discoverySampleCount = 0
     private var discoveryStartTime: Date = .distantPast
+    /// Fires once at the end of the session duration to auto-finish a session
+    /// the user walked away from.
     private var discoveryTimer: Timer?
-    @Published private(set) var discoveryDuration: TimeInterval = 60
-    private var discoverySamples: [UInt8: [[UInt8]]] = [:]
-
-    // MARK: - Capture State
-
-    /// Baseline sample captured before the current step's action, per report
-    /// ID. Devices that stream multiple report IDs concurrently (e.g. a
-    /// 32-byte vendor report interleaved with a 10-byte pen report) need
-    /// separate baselines per stream — otherwise a report from the *other*
-    /// stream naturally differs from a baseline established on this one and
-    /// gets misread as the step's action.
-    private var baselinesByReport: [UInt8: [UInt8]] = [:]
-
-    /// A differing sample seen once, held pending confirmation on the next
-    /// report from the same stream — filters single-sample noise (ADC/tilt
-    /// jitter) from genuine, sustained actions.
-    private var pendingCandidate: (reportID: UInt8, data: [UInt8])?
-
-    /// The first action sample that differs from baseline — captured and held.
-    private var capturedAction: (reportID: UInt8, data: [UInt8])?
-
-    /// Guard to prevent re-triggering within the same step.
-    private var hasCapturedThisStep = false
+    /// Polls the accumulator so the UI can show a live event count without the
+    /// recording path touching `@Published` state per report.
+    private var pollTimer: Timer?
 
     // MARK: - Callbacks
 
-    /// Called when a calibration step produces a CapturedSample.
-    var onSampleCaptured: ((CalibrationStep, CapturedSample) -> Void)?
-
-    /// Called when all steps are complete with the full result.
-    var onCalibrationComplete: ((CalibrationResult) -> Void)?
     /// Called when discovery finishes with the full result.
     var onDiscoveryComplete: ((DiscoveryResult) -> Void)?
 
     // MARK: - Public API
 
-    /// Begin a new calibration session.
-    /// - Parameters:
-    ///   - deviceInfo: device descriptor for the JSON export header
-    ///   - steps: ordered list of calibration steps to perform
-    func startCalibration(deviceInfo: CaptureDeviceInfo, steps: [CalibrationStep], toolCode: UInt16? = nil) {
-        reset()
+    /// Begin a collection session. Records every report the device sends for
+    /// `duration` seconds, or until `finishDiscovery()` is called.
+    func startDiscovery(deviceInfo: CaptureDeviceInfo, duration: TimeInterval = 60) {
+        stopTimers()
+        lastError = nil
+        initReportsSent = []
+        discoverySampleCount = 0
         sessionDeviceInfo = deviceInfo
-        sessionSteps = steps
-        initialToolCode = toolCode
-        if let tc = toolCode {
-            observedToolCodes.insert(tc)
-            currentToolCode = tc
-        }
+        discoveryStartTime = Date()
+
+        // Arm the accumulator before announcing the session: a report arriving
+        // between these two statements must land in the fresh store, never the
+        // previous session's.
+        Self.accumulator.start()
         isRunning = true
-        currentStepIndex = 0
-        stepStartTime = Date()
-        startElapsedTimer()
-        advanceToStep(0)
+
+        pollTimer = scheduledTimer(interval: 0.5, repeats: true) { [weak self] in
+            guard let self, self.isRunning else { return }
+            self.discoverySampleCount = Self.accumulator.sampleCount
+        }
+        discoveryTimer = scheduledTimer(interval: duration, repeats: false) { [weak self] in
+            self?.finishDiscovery()
+        }
     }
 
-    /// Update the current tool code during calibration (e.g., when user flips pen).
-    func updateToolCode(_ toolCode: UInt16) {
-        observedToolCodes.insert(toolCode)
-        currentToolCode = toolCode
-    }
-
-    /// Reset the current step's baseline to the next incoming report.
-    /// Also resets `hasCapturedThisStep` so the step can capture again — used
-    /// when a spurious capture (e.g. hover movement) must be discarded.
-    func rebaseline() {
-        guard isRunning, !isDiscoveryMode else { return }
-        baselinesByReport = [:]
-        pendingCandidate = nil
-        hasCapturedThisStep = false
-        capturedAction = nil
-    }
-
-    /// Request that the current step be skipped.
-    func skipCurrentStep() {
-        guard isRunning else { return }
-        advanceToNextStep()
-    }
-
-    /// Cancel the calibration session.
-    func cancel() {
+    /// Cancel collection and discard everything gathered.
+    func cancelDiscovery() {
         guard isRunning else { return }
         stopTimers()
+        Self.accumulator.stop()
         isRunning = false
-        armedStep = nil
-        sessionSteps = []
         sessionDeviceInfo = nil
-        stepResults = [:]
-        reportsSeen = [:]
-        // Reset discovery state if active
-        isDiscoveryMode = false
-        discoverySamples = [:]
+        discoverySampleCount = 0
     }
 
-    /// Attempt to record a report toward the current step.
-    /// Called from device handleReport callbacks when captureMode is .delta.
-    /// `data` is consumed by reference into baselines/samples without further
-    /// copying — callers should pass the already-allocated `[UInt8]` they
-    /// created to ferry the report across the HIDThread → main hop.
-    func recordSample(reportID: UInt8, data: [UInt8], toolCode: UInt16? = nil) {
-
-        // Discovery mode: capture all samples without baseline comparison
-        if isRunning && isDiscoveryMode {
-            recordDiscoverySample(reportID: reportID, data: data)
-            return
-        }
-        guard isRunning,
-            let step = armedStep,
-            !hasCapturedThisStep,
-            !data.isEmpty
-        else { return }
-
-        guard let baseline = baselinesByReport[reportID] else {
-            // First report seen for this stream this step — establish its baseline.
-            baselinesByReport[reportID] = data
-            return
-        }
-
-        if reportsIdentical(baseline, data) {
-            // Still idle on this stream — ignore, and drop any pending candidate
-            // from this stream since it didn't sustain.
-            if pendingCandidate?.reportID == reportID { pendingCandidate = nil }
-            return
-        }
-
-        // This report differs from its stream's baseline. Require the same
-        // differing value to reappear on the next report from the same stream
-        // before treating it as a genuine action — filters single-sample noise.
-        if let pending = pendingCandidate, pending.reportID == reportID,
-            reportsIdentical(pending.data, data)
-        {
-            // Confirmed twice in a row.
-        } else {
-            pendingCandidate = (reportID, data)
-            return
-        }
-
-        // Confirmed action sample.
-        capturedAction = (reportID, data)
-        hasCapturedThisStep = true
-        pendingCandidate = nil
-
-        // Build sample and record it.
-        var sample = CapturedSample(
-            step: step,
-            reportID: reportID,
-            timestamp: Date(),
-            baseline: baseline,
-            action: data
-        )
-        sample.toolCode = toolCode
-        if let tc = toolCode {
-            observedToolCodes.insert(tc)
-            currentToolCode = tc
-        }
-
-        stepResults[step] = sample
-        updateReportSummary(sample)
-        onSampleCaptured?(step, sample)
+    /// Note a Wacom tool code seen during collection (pen vs. eraser vs. puck).
+    /// Called from `TabletManager`'s tool-enter path; harmless when idle.
+    func updateToolCode(_ toolCode: UInt16) {
+        Self.accumulator.noteToolCode(toolCode)
     }
 
-    /// Called by the UI to dismiss the last captured sample and proceed manually.
-    func confirmAndContinue() {
-        guard isRunning else { return }
-        stepTimeoutTimer?.invalidate()
-        advanceToNextStep()
-    }
-
-    /// Finish the session and return the calibration result.
-    func finish() -> CalibrationResult? {
+    /// Finish collection and build the result. Also invokes
+    /// `onDiscoveryComplete`.
+    @discardableResult
+    func finishDiscovery() -> DiscoveryResult? {
         guard isRunning else { return nil }
         stopTimers()
+        // Close the accumulator before snapshotting so no report lands between
+        // the snapshot and the end of the session.
+        Self.accumulator.stop()
         isRunning = false
+        discoverySampleCount = Self.accumulator.sampleCount
 
-        guard let deviceInfo = sessionDeviceInfo else { return nil }
-
-        let result = buildResult(deviceInfo: deviceInfo)
-        onCalibrationComplete?(result)
-        return result
-    }
-
-    // MARK: - Discovery Mode
-
-    /// Begin a discovery session for unknown devices.
-    /// Records all reports for `duration` seconds (default 60s).
-    func startDiscovery(deviceInfo: CaptureDeviceInfo, duration: TimeInterval = 60) {
-        reset()
-        isDiscoveryMode = true
-        sessionDeviceInfo = deviceInfo
-        discoveryDuration = duration
-        isRunning = true
-        discoveryStartTime = Date()
-        startElapsedTimer()
-
-        // Auto-finish after duration
-        discoveryTimer?.invalidate()
-        discoveryTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) {
-            [weak self] _ in
-            Task { @MainActor in
-                self?.finishDiscovery()
-            }
+        guard let deviceInfo = sessionDeviceInfo else {
+            lastError = String(
+                localized: "Collection ended before the tablet was identified. Nothing was saved.",
+                comment: "Capture error shown when a session finishes with no device information")
+            return nil
         }
-    }
 
-    /// Cancel discovery mode.
-    func cancelDiscovery() {
-        guard isRunning, isDiscoveryMode else { return }
-        stopTimers()
-        isRunning = false
-        isDiscoveryMode = false
-        discoverySamples = [:]
-    }
-
-    /// Record a sample in discovery mode (no baseline comparison).
-    private func recordDiscoverySample(reportID: UInt8, data: [UInt8]) {
-        guard isRunning, isDiscoveryMode, !data.isEmpty else { return }
-        if discoverySamples[reportID] == nil {
-            discoverySamples[reportID] = []
-        }
-        discoverySamples[reportID]?.append(data)
-        discoverySampleCount += 1
-    }
-
-    /// Finish discovery and return results.
-    func finishDiscovery() -> DiscoveryResult? {
-        guard isRunning, isDiscoveryMode else { return nil }
-        stopTimers()
-        isRunning = false
-        isDiscoveryMode = false
-        discoverySampleCount = 0
-        guard let deviceInfo = sessionDeviceInfo else { return nil }
         let result = buildDiscoveryResult(deviceInfo: deviceInfo)
         onDiscoveryComplete?(result)
         return result
     }
 
-    /// Export discovery result to JSON.
-    func exportDiscoveryJSON(result: DiscoveryResult) -> URL? {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyyMMdd_HHmmss"
-        let stamp = fmt.string(from: Date())
-        let pid = sessionDeviceInfo?.productIDHex ?? "unknown"
-        let filename = "mocktab_discovery_\(pid)_\(stamp).json"
+    // MARK: - Device Mode Init
 
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Desktop")
-            .appendingPathComponent(filename)
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-
-        do {
-            let data = try encoder.encode(result)
-            try data.write(to: url)
-            return url
-        } catch {
-            lastError = "Export failed: \(error.localizedDescription)"
-            return nil
+    /// Write a device-mode init feature report, and record the attempt.
+    ///
+    /// Experimental and manually driven: see `CaptureInitReport` for why the
+    /// report ID can't be discovered automatically on modern devices. The write
+    /// is best-effort — an unsupported report ID is normally NAK'd harmlessly —
+    /// and either outcome is recorded, since "this report ID was rejected" is
+    /// itself useful evidence in a capture file.
+    ///
+    /// The actual `IOHIDDeviceSetReport` call runs off the main actor: it
+    /// blocks for the full device round-trip, and over Bluetooth that's
+    /// routinely several seconds — long enough to beachball the app if done
+    /// inline from a button action. `initReportsSent` and `isSendingInitReport`
+    /// are only touched back on the main actor once the write returns.
+    func sendInitReport(device: IOHIDDevice, reportID: Int, value: Int) {
+        guard !isSendingInitReport else { return }
+        isSendingInitReport = true
+        Task.detached(priority: .userInitiated) { [weak self] in
+            var bytes: [UInt8] = [UInt8(truncatingIfNeeded: reportID), UInt8(truncatingIfNeeded: value)]
+            let ret = hidSetReport(
+                device,
+                reportID: CFIndex(reportID),
+                bytes: &bytes,
+                tag: "capture modeInit \(String(format: "0x%02X", reportID))=\(value)",
+                severity: .bestEffort,
+                log: logger
+            )
+            let ok = ret == kIOReturnSuccess
+            let attempt = CaptureInitReport(
+                reportID: reportID,
+                value: value,
+                succeeded: ok,
+                ioReturn: ok ? nil : String(format: "0x%08X", ret)
+            )
+            await MainActor.run { [weak self] in
+                self?.initReportsSent.append(attempt)
+                self?.isSendingInitReport = false
+            }
         }
     }
 
-private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryResult {
-    var reportSummaries: [String: DiscoveryReportSummary] = [:]
-
-    for (reportID, samples) in discoverySamples {
-        let idHex = String(format: "0x%02X", reportID)
-        let length = samples.first?.count ?? 0
-
-        // Find which bytes vary and which are constant
-        var varyingBytes: [Int] = []
-        var constantBytes: [Int] = []
-        var firstSampleHex: String? = nil
-        var constantValues: [Int]? = nil
-        var byteSampleValues: [Int: [Int]]? = nil
-
-        if !samples.isEmpty {
-            let firstSample = samples[0]
-            firstSampleHex = firstSample.map { String(format: "%02X", $0) }.joined()
-
-            // Build per-byte value sets
-            var byteValues: [Int: Set<UInt8>] = [:]
-            for sample in samples {
-                for byteIdx in 0..<sample.count {
-                    byteValues[byteIdx, default: []].insert(sample[byteIdx])
-                }
-            }
-
-            for byteIdx in 0..<firstSample.count {
-                let valuesAtIdx = byteValues[byteIdx] ?? []
-                if valuesAtIdx.count > 1 {
-                    varyingBytes.append(byteIdx)
-                } else {
-                    constantBytes.append(byteIdx)
-                }
-            }
-
-            // Collect constant values
-            if !constantBytes.isEmpty {
-                constantValues = constantBytes.map { byteIdx in
-                    Int(byteValues[byteIdx]?.first ?? 0)
-                }
-            }
-
-            // Collect sample values for varying bytes (up to 20 per byte)
-            byteSampleValues = [:]
-            for byteIdx in varyingBytes {
-                let values = Array(byteValues[byteIdx] ?? []).sorted()
-                byteSampleValues?[byteIdx] = values.prefix(20).map { Int($0) }
-            }
-        }
-
-        // Cross-reference against the parsed descriptor: does it expose a
-        // decodable (non-opaque) field for this input report ID? Discovery
-        // only observes device->host traffic, so we only ever check the
-        // "input:" direction here.
-        let descriptorReadable = deviceInfo.parsedDescriptor?.reports["input:\(idHex)"]?.isReadable
-
-        reportSummaries[idHex] = DiscoveryReportSummary(
-            reportID: reportID,
-            length: length,
-            sampleCount: samples.count,
-            varyingBytes: varyingBytes,
-            constantBytes: constantBytes,
-            firstSample: firstSampleHex,
-            constantValues: constantValues,
-            byteSampleValues: byteSampleValues,
-            descriptorReadable: descriptorReadable
-        )
-    }
-
-    return DiscoveryResult(
-        capturedAt: Date(),
-        mode: "discovery",
-        duration: Date().timeIntervalSince(discoveryStartTime),
-        deviceInfo: DiscoveryDeviceInfo(
-            vendorID: deviceInfo.vendorIDHex,
-            productID: deviceInfo.productIDHex,
-            name: deviceInfo.name,
-            manufacturer: deviceInfo.manufacturer,
-            transport: deviceInfo.transport,
-            locationID: deviceInfo.locationID
-        ),
-        reports: reportSummaries,
-        hidReportDescriptor: deviceInfo.parsedDescriptor,
-        notes: nil,
-        submitterContact: nil
-    )
-}
     // MARK: - JSON Export
 
-    /// Write calibration result to a JSON file on the Desktop.
-    func exportJSON(result: CalibrationResult) -> URL? {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyyMMdd_HHmmss"
-        let stamp = fmt.string(from: result.capturedAt)
-        let pid = sessionDeviceInfo?.productIDHex ?? "unknown"
-        let filename = "mocktab_calibration_\(pid)_\(stamp).json"
-
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Desktop")
-            .appendingPathComponent(filename)
+    /// Write the discovery result to a JSON file on the Desktop, falling back
+    /// to a save panel when that write fails (most often because the app has
+    /// not been granted Desktop access).
+    func exportDiscoveryJSON(result: DiscoveryResult) -> URL? {
+        let filename = "mocktab_discovery_\(result.deviceInfo.productID)_\(Self.fileStamp()).json"
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
 
+        let data: Data
         do {
-            let data = try encoder.encode(result)
-            try data.write(to: url)
-            return url
+            data = try encoder.encode(result)
         } catch {
-            lastError = "Export failed: \(error.localizedDescription)"
+            lastError = String(
+                localized: "Couldn't prepare the file: \(error.localizedDescription)",
+                comment: "Capture error shown when the collected data could not be encoded")
+            return nil
+        }
+
+        let desktop = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Desktop")
+            .appendingPathComponent(filename)
+        do {
+            try data.write(to: desktop)
+            return desktop
+        } catch {
+            logger.error(
+                "capture export to Desktop failed — \(error.localizedDescription, privacy: .public)")
+        }
+
+        guard let chosen = Self.runSavePanel(suggestedName: filename) else {
+            lastError = String(
+                localized: "Couldn't save to the Desktop, and no other location was chosen.",
+                comment: "Capture error shown when the Desktop write failed and the user dismissed the save panel")
+            return nil
+        }
+        do {
+            try data.write(to: chosen)
+            return chosen
+        } catch {
+            lastError = String(
+                localized: "Couldn't save the file: \(error.localizedDescription)",
+                comment: "Capture error shown when writing the capture file failed")
             return nil
         }
     }
 
-    // MARK: - Private Helpers
-
-    private func reset() {
-        stopTimers()
-        baselinesByReport = [:]
-        pendingCandidate = nil
-        capturedAction = nil
-        hasCapturedThisStep = false
-        currentStepIndex = 0
-        stepResults = [:]
-        reportsSeen = [:]
-        elapsedSeconds = 0
-        lastError = nil
+    /// Ask the user where to put the capture file. Only reached when the
+    /// Desktop write failed — typically because the app hasn't been granted
+    /// access to the Desktop folder, which a save panel resolves by handing
+    /// back a user-chosen destination.
+    @MainActor
+    private static func runSavePanel(suggestedName: String) -> URL? {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = suggestedName
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+        panel.title = String(
+            localized: "Save Device Data",
+            comment: "Title of the save panel shown when the capture file can't be written to the Desktop")
+        panel.message = String(
+            localized: "MockTab couldn't write to your Desktop. Choose where to save the collected device data.",
+            comment: "Explanation in the capture save panel after a Desktop write failure")
+        return panel.runModal() == .OK ? panel.url : nil
     }
 
-    private func advanceToStep(_ index: Int) {
-        guard index < sessionSteps.count else {
-            _ = finish()
-            return
-        }
-
-        let step = sessionSteps[index]
-        armedStep = step
-        currentStepIndex = index
-        baselinesByReport = [:]
-        pendingCandidate = nil
-        capturedAction = nil
-        hasCapturedThisStep = false
-        stepStartTime = Date()
-
-        // Timeout per step — 60 seconds.
-        stepTimeoutTimer?.invalidate()
-        stepTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: false) {
-            [weak self] _ in
-            Task { @MainActor in
-                guard let self = self, self.isRunning else { return }
-                // Timed out — treat as skipped.
-                self.advanceToNextStep()
-            }
-        }
+    /// Timestamp for capture filenames.
+    ///
+    /// Pinned to `en_US_POSIX` so the stamp is Gregorian ASCII regardless of
+    /// the user's region. Without this, a submitted capture came back named
+    /// `mocktab_discovery_0x0000_14050418_150909.json` — Persian calendar year
+    /// 1405 — which sorts and reads as nonsense next to every other file.
+    private static func fileStamp(_ date: Date = Date()) -> String {
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.calendar = Calendar(identifier: .gregorian)
+        fmt.timeZone = .current
+        fmt.dateFormat = "yyyyMMdd_HHmmss"
+        return fmt.string(from: date)
     }
 
-    private func advanceToNextStep() {
-        let nextIndex = currentStepIndex + 1
-        advanceToStep(nextIndex)
-    }
+    // MARK: - Result Building
 
-    private func startElapsedTimer() {
-        elapsedTimer?.invalidate()
-        elapsedTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self = self else { return }
-                self.elapsedSeconds = Date().timeIntervalSince(self.stepStartTime)
-            }
-        }
-    }
+    private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryResult {
+        let (reports, toolCodes) = Self.accumulator.snapshot()
+        var reportSummaries: [String: DiscoveryReportSummary] = [:]
 
-    private func stopTimers() {
-        elapsedTimer?.invalidate()
-        elapsedTimer = nil
-        stepTimeoutTimer?.invalidate()
-        stepTimeoutTimer = nil
-    }
+        for (reportID, stats) in reports {
+            let idHex = String(format: "0x%02X", reportID)
 
-    private func reportsIdentical(_ a: [UInt8], _ b: [UInt8]) -> Bool {
-        guard a.count == b.count else { return false }
-        for i in 0..<a.count {
-            if a[i] != b[i] { return false }
-        }
-        return true
-    }
+            var varyingBytes: [Int] = []
+            var constantBytes: [Int] = []
+            var optionalBytes: [Int] = []
+            var constantValues: [Int] = []
+            var byteStats: [Int: DiscoveryByteStat] = [:]
 
-    private func updateReportSummary(_ sample: CapturedSample) {
-        let idHex = String(format: "0x%02X", sample.reportID)
-        if reportsSeen[idHex] == nil {
-            reportsSeen[idHex] = CapturedReportSummary(id: idHex)
-            reportsSeen[idHex]?.reportID = sample.reportID
-            reportsSeen[idHex]?.length = sample.action.count
-        }
-        reportsSeen[idHex]?.samples.append(sample)
-    }
-
-    private func buildResult(deviceInfo: CaptureDeviceInfo) -> CalibrationResult {
-        var reportInfoDict: [String: CalibrationResult.ReportInfo] = [:]
-
-        for (idHex, summary) in reportsSeen {
-            // Pick the most informative sample for this report ID (most changed bytes).
-            let bestSample = summary.samples.max(by: {
-                $0.changedIndices.count < $1.changedIndices.count
-            })
-
-            var fields: [String: CalibrationResult.FieldInfo] = [:]
-            for idx in summary.allChangedIndices.sorted() {
-                let freq = summary.changeFrequency[idx] ?? 0
-                let isHighValue = summary.highValueIndices.contains(idx)
-                let changedIn = summary.samples.filter { $0.changedIndices.contains(idx) }.map {
-                    $0.step.shortLabel
-                }
-
-                fields["byte[\(idx)]"] = CalibrationResult.FieldInfo(
-                    role: isHighValue ? "HIGH-VALUE (\(freq)/\(summary.samples.count) steps)" : nil,
-                    bitmask: nil,
-                    note: "changed in: \(changedIn.joined(separator: ", "))",
-                    rangeMin: nil,
-                    rangeMax: nil,
-                    bits: nil,
-                    sampleValues: summary.samples.compactMap { s -> String? in
-                        guard s.changedIndices.contains(idx) else { return nil }
-                        return String(format: "0x%02X", s.action[idx])
+            // `byteRoles()` partitions every position exactly once, so
+            // `constantBytes` and `constantValues` stay the same length by
+            // construction rather than by two loops agreeing with each other.
+            for (idx, role) in stats.byteRoles() {
+                switch role {
+                case .constant(let value):
+                    constantBytes.append(idx)
+                    constantValues.append(Int(value))
+                case .varying, .optional:
+                    if role == .optional {
+                        optionalBytes.append(idx)
+                    } else {
+                        varyingBytes.append(idx)
                     }
-                )
+                    let seen = stats.byteValues[idx]
+                    if let lo = seen.min, let hi = seen.max {
+                        byteStats[idx] = Self.byteStat(seen, lo: lo, hi: hi)
+                    }
+                }
             }
 
-            reportInfoDict[idHex] = CalibrationResult.ReportInfo(
-                length: summary.length,
-                description: describeReportID(summary.reportID),
-                fields: fields,
-                sampleIdle: bestSample?.baselineHex,
-                sampleAction: bestSample?.actionHex
+            // Cross-reference against the parsed descriptor: does it expose a
+            // decodable (non-opaque) field for this input report ID? Discovery
+            // only observes device->host traffic, so we only ever check the
+            // "input:" direction here.
+            let descriptorReadable = deviceInfo.parsedDescriptor?.reports["input:\(idHex)"]?.isReadable
+
+            reportSummaries[idHex] = DiscoveryReportSummary(
+                reportID: reportID,
+                length: stats.firstLength,
+                maxLength: stats.maxLength,
+                lengthVaried: stats.lengthVaried,
+                sampleCount: stats.sampleCount,
+                varyingBytes: varyingBytes,
+                constantBytes: constantBytes,
+                optionalBytes: optionalBytes.isEmpty ? nil : optionalBytes,
+                firstSample: stats.firstSample.map { String(format: "%02X", $0) }.joined(),
+                constantValues: constantValues.isEmpty ? nil : constantValues,
+                byteStats: byteStats.isEmpty ? nil : byteStats,
+                descriptorReadable: descriptorReadable
             )
         }
 
-        let toolCodesDescription = observedToolCodes.isEmpty ? "none" : observedToolCodes.map { String(format: "0x%04X", $0) }.sorted().joined(separator: ", ")
-        var notes = "Observed tool codes: \(toolCodesDescription)"
-        if observedToolCodes.contains(0x080A) {
+        let toolCodeHex = toolCodes.map { String(format: "0x%04X", $0) }.sorted()
+        var notes = "Observed tool codes: \(toolCodeHex.isEmpty ? "none" : toolCodeHex.joined(separator: ", "))"
+        if toolCodes.contains(0x080A) {
             notes += " (eraser capable)"
         }
 
-        return CalibrationResult(
+        return DiscoveryResult(
             capturedAt: Date(),
-            deviceInfo: CalibrationResult.DeviceInfo(
+            mode: "discovery",
+            duration: Date().timeIntervalSince(discoveryStartTime),
+            deviceInfo: DiscoveryDeviceInfo(
                 vendorID: deviceInfo.vendorIDHex,
                 productID: deviceInfo.productIDHex,
                 name: deviceInfo.name,
-                locationID: deviceInfo.locationID,
                 manufacturer: deviceInfo.manufacturer,
-                transport: deviceInfo.transport
+                transport: deviceInfo.transport,
+                locationID: deviceInfo.locationID
             ),
-            reports: reportInfoDict,
+            reports: reportSummaries,
+            hidReportDescriptor: deviceInfo.parsedDescriptor,
+            initReports: initReportsSent.isEmpty ? nil : initReportsSent,
+            observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
             notes: notes,
-            submitterContact: nil,
-            hidReportDescriptor: deviceInfo.parsedDescriptor
+            submitterContact: nil
         )
     }
 
-    private func describeReportID(_ id: UInt8) -> String {
-        switch id {
-        case 0x10: return "Pen position + pressure (IntuosV2)"
-        case 0x11: return "Express keys / aux"
-        case 0x1E: return "Offset pen report"
-        case 0x21: return "Touch / gesture"
-        case 0x80: return "Wireless status"
-        case 0x01: return "Tip switch / mouse-compatible"
-        default: return "Report ID \(String(format: "0x%02X", id))"
-        }
+    /// Values listed per byte position before the list is trimmed. See
+    /// `ByteValueSet.sampledValues(cap:)` for what trimming preserves.
+    private static let byteValueListCap = 24
+
+    private static func byteStat(_ seen: ByteValueSet, lo: UInt8, hi: UInt8) -> DiscoveryByteStat {
+        let (kept, truncated) = seen.sampledValues(cap: byteValueListCap)
+        return DiscoveryByteStat(
+            min: Int(lo),
+            max: Int(hi),
+            distinctCount: seen.count,
+            values: kept.map(Int.init),
+            truncated: truncated ? true : nil
+        )
     }
-}
 
-// MARK: - CaptureMode Extension for Device Callbacks
+    // MARK: - Timers
 
-/// Extension to make CaptureMode conveniently accessible from device handleReport.
-extension CaptureEngine {
+    /// Timers run in `.common` mode so a live session keeps counting (and
+    /// still auto-finishes) while a menu is tracking or the window is being
+    /// resized, both of which stall the default run-loop mode.
+    private func scheduledTimer(
+        interval: TimeInterval, repeats: Bool, _ body: @escaping @MainActor () -> Void
+    ) -> Timer {
+        let timer = Timer(timeInterval: interval, repeats: repeats) { _ in
+            Task { @MainActor in body() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        return timer
+    }
 
-    /// Convenience for device classes to check if they should record.
-    /// Returns the armed step if delta capture is active, nil otherwise.
-    func captureMode(for deviceTag: String) -> CalibrationStep? {
-        guard isRunning else { return nil }
-        return armedStep
+    private func stopTimers() {
+        pollTimer?.invalidate()
+        pollTimer = nil
+        discoveryTimer?.invalidate()
+        discoveryTimer = nil
     }
 }

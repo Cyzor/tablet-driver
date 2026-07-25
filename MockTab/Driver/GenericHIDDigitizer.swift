@@ -62,6 +62,9 @@ final class GenericHIDDigitizer: TabletDevice {
         let probed = queryHIDDigitizerSpec(device)
         spec = DigitizerSpec(maxX: probed.maxX, maxY: probed.maxY, maxPressure: probed.maxPressure)
 
+        let maxReportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
+        reportBuffer = [UInt8](repeating: 0, count: Swift.max(maxReportSize, 64))
+
         // Scan elements once to learn which optional usages exist. This decides
         // proximity semantics (in-range vs. tip) and whether we synthesize a
         // click pressure for tip-only pens.
@@ -89,6 +92,11 @@ final class GenericHIDDigitizer: TabletDevice {
 
     private var selfRetain: Unmanaged<GenericHIDDigitizer>?
 
+    /// Backing store for the raw input-report callback. Decoding never reads
+    /// it — see `reportCallback` — but IOKit needs somewhere to put reports,
+    /// and the buffer must outlive registration.
+    private var reportBuffer: [UInt8]
+
     func open() {
         let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
         guard ret == kIOReturnSuccess else {
@@ -107,6 +115,18 @@ final class GenericHIDDigitizer: TabletDevice {
         let retain = Unmanaged.passRetained(self)
         selfRetain = retain
         IOHIDDeviceRegisterInputValueCallback(device, GenericHIDDigitizer.valueCallback, retain.toOpaque())
+
+        // Raw reports, alongside the value callback above. Decoding doesn't use
+        // these — value callbacks give us pre-parsed fields, which is the whole
+        // point of this class — but device-data collection does, and without
+        // this the *unrecognised, non-Wacom* devices that land here (i.e. the
+        // exact population "Collect Device Data…" exists to serve) recorded
+        // nothing at all. Input-value matching set above does not filter this
+        // path, so vendor reports the decoder ignores still reach the capture.
+        IOHIDDeviceRegisterInputReportCallback(
+            device, &reportBuffer, reportBuffer.count,
+            GenericHIDDigitizer.reportCallback, retain.toOpaque())
+
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
 
@@ -118,6 +138,7 @@ final class GenericHIDDigitizer: TabletDevice {
         IOHIDDeviceUnscheduleFromRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputValueCallback(device, nil, nil)
+        IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
         selfRetain?.release()
         selfRetain = nil
@@ -131,6 +152,20 @@ final class GenericHIDDigitizer: TabletDevice {
         guard let ctx else { return }
         Unmanaged<GenericHIDDigitizer>.fromOpaque(ctx).takeUnretainedValue()
             .handle(value: value)
+    }
+
+    /// Raw reports, for device-data collection only — never for decoding.
+    ///
+    /// Keys on the callback's `reportID` argument rather than `report[0]`: a
+    /// standards-compliant digitizer with a single top-level collection may
+    /// declare no Report ID at all, in which case reports carry no ID prefix
+    /// and `report[0]` is the first *data* byte.
+    private static let reportCallback: IOHIDReportCallback = {
+        ctx, _, _, _, reportID, report, length in
+        guard let ctx else { return }
+        let me = Unmanaged<GenericHIDDigitizer>.fromOpaque(ctx).takeUnretainedValue()
+        HIDCapture.shared.record(tag: me.tag, report: report, length: length)
+        CaptureEngine.recordRaw(reportID: reportID, pointer: report, length: length)
     }
 
     /// One element changed. Update the decode frame, then emit a fresh point.

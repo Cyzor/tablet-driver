@@ -8,9 +8,12 @@ tells us about coordinate/pressure ranges, an inventory of its reports, how it
 compares to the kernel and OpenTabletDriver, and a *draft* registry entry to
 start from.
 
-It reads the two shapes the app emits (see MockTab/Driver/CaptureModels.swift):
-  • discovery   — unknown device; per-report varying/constant byte analysis.
-  • calibration — guided capture; per-report field roles.
+It reads two shapes (see MockTab/Driver/CaptureModels.swift):
+  • discovery   — per-report varying/constant byte analysis.  The only shape
+                  the app still emits.
+  • calibration — guided capture; per-report field roles.  The guided flow was
+                  retired, so no new file will have this shape; support stays
+                  for captures submitted before then.
 The two are told apart by structure, not by captureVersion, since the version
 numbers evolve independently of the mode.
 
@@ -241,6 +244,7 @@ def report_inventory(doc: dict, kind: str) -> list[str]:
 
     lines += ["| Report | len | samples | varying bytes | likely decoder |",
               "|--------|----:|--------:|---------------|----------------|"]
+    varied_length = []
     for key in sorted(reports, key=lambda k: parse_hex_id(k) or 0):
         rep = reports[key]
         rid = rep.get("reportID", parse_hex_id(key))
@@ -249,6 +253,11 @@ def report_inventory(doc: dict, kind: str) -> list[str]:
             samples = rep.get("sampleCount", "")
             varying = rep.get("varyingBytes", [])
             varying_str = ", ".join(str(b) for b in varying) if varying else "—"
+            # captureVersion >= 5 reports length variation instead of silently
+            # analysing only the first sample's worth of bytes.
+            if rep.get("lengthVaried"):
+                length = f"{length}–{rep.get('maxLength', length)}"
+                varied_length.append(key)
         else:
             samples = ""
             fields = rep.get("fields") or {}
@@ -256,10 +265,64 @@ def report_inventory(doc: dict, kind: str) -> list[str]:
         fam = guess_family(rid, length) or "—"
         lines.append(f"| {key} | {length} | {samples} | {varying_str} | {fam} |")
     lines.append("")
+    if varied_length:
+        lines.append("Reports with a length range (" + ", ".join(varied_length) +
+                     ") arrived at more than one size; their `optionalBytes` "
+                     "were present in only some samples and are neither "
+                     "constant nor varying.")
+        lines.append("")
     lines.append("Decoder guesses match on (report ID, length) only — confirm "
                  "against the matching file in "
                  "`TabletKit/Sources/TabletKit/Decoders/` before trusting one.")
     lines.append("")
+    return lines
+
+
+def byte_ranges_section(doc: dict, kind: str) -> list[str]:
+    """Per-byte observed ranges — the strongest hint at what a byte carries.
+
+    Only emitted for captureVersion >= 5, which added `byteStats`.  A byte that
+    swept 0–255 is a pressure or coordinate low byte; one that only ever took
+    two values is a flag field.  Earlier captures listed a *truncated, sorted*
+    sample of values, so their apparent maximum was meaningless.
+    """
+    if kind != "discovery":
+        return []
+    reports = doc.get("reports") or {}
+    rows = []
+    for key in sorted(reports, key=lambda k: parse_hex_id(k) or 0):
+        stats = reports[key].get("byteStats") or {}
+        for idx in sorted(stats, key=lambda i: int(i)):
+            st = stats[idx]
+            if not isinstance(st, dict):
+                continue
+            rows.append((key, int(idx), st.get("min"), st.get("max"),
+                         st.get("distinctCount")))
+    if not rows:
+        return []
+
+    lines = ["## Observed byte ranges", ""]
+    lines += ["| Report | byte | min | max | distinct |",
+              "|--------|-----:|----:|----:|---------:|"]
+    for key, idx, lo, hi, n in rows:
+        lines.append(f"| {key} | {idx} | {lo} | {hi} | {n} |")
+    lines.append("")
+    lines.append("A byte reaching 255 with many distinct values is a likely "
+                 "pressure/coordinate byte; two or three distinct values "
+                 "suggests a button or flag field.")
+    lines.append("")
+    return lines
+
+
+def tool_codes_section(doc: dict) -> list[str]:
+    """Wacom tool codes seen during collection, when the capture recorded any."""
+    codes = doc.get("observedToolCodes")
+    if not codes:
+        return []
+    lines = ["## Tools observed", "", ", ".join(f"`{c}`" for c in codes), ""]
+    if any(str(c).lower() == "0x080a" for c in codes):
+        lines += ["The eraser tool code (`0x080A`) appeared, so this device "
+                  "reports the eraser as a distinct tool.", ""]
     return lines
 
 
@@ -426,6 +489,8 @@ def build_report(doc: dict, path: Path, do_upstream: bool) -> str:
 
     lines += descriptor_section(doc)
     lines += report_inventory(doc, kind)
+    lines += byte_ranges_section(doc, kind)
+    lines += tool_codes_section(doc)
     if do_upstream:
         lines += upstream_section(pid)
     lines += draft_entry(doc, pid)

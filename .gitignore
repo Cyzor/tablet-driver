@@ -23,6 +23,9 @@ xcuserdata/
 .build/
 .swiftpm/
 
+# Python bytecode cache
+__pycache__/
+
 # Playgrounds
 timeline.xctimeline
 playground.xcworkspace

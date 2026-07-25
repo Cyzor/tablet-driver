@@ -70,6 +70,7 @@
 		AA000202 /* ControlSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000202 /* ControlSlot.swift */; };
 		AA000203 /* TabletOrientation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000203 /* TabletOrientation.swift */; };
 		AA000101 /* CaptureModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000101 /* CaptureModels.swift */; };
+		AA0001F1 /* DiscoveryAccumulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F1 /* DiscoveryAccumulator.swift */; };
 		AA000102 /* CaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000102 /* CaptureEngine.swift */; };
 		AA000103 /* CaptureGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000103 /* CaptureGuideView.swift */; };
 		AA000154 /* TouchRingDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000154 /* TouchRingDiagramView.swift */; };
@@ -175,6 +176,7 @@
 		AB000202 /* ControlSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlSlot.swift; sourceTree = "<group>"; };
 		AB000203 /* TabletOrientation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletOrientation.swift; sourceTree = "<group>"; };
 		AB000101 /* CaptureModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureModels.swift; sourceTree = "<group>"; };
+		AB0001F1 /* DiscoveryAccumulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoveryAccumulator.swift; sourceTree = "<group>"; };
 		AB000102 /* CaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEngine.swift; sourceTree = "<group>"; };
 		AB000103 /* CaptureGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGuideView.swift; sourceTree = "<group>"; };
 		AB000154 /* TouchRingDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchRingDiagramView.swift; sourceTree = "<group>"; };
@@ -268,6 +270,7 @@
 				AB000070 /* HIDCapture.swift */,
 				AB000101 /* CaptureModels.swift */,
 				AB000102 /* CaptureEngine.swift */,
+				AB0001F1 /* DiscoveryAccumulator.swift */,
 				AB000072 /* OTDImporter.swift */,
 				AB000049 /* WacomKnownDevice.swift */,
 				AB000039 /* DeviceRegistry.swift */,
@@ -508,6 +511,7 @@
 				AA000070 /* HIDCapture.swift in Sources */,
 				AA000101 /* CaptureModels.swift in Sources */,
 				AA000102 /* CaptureEngine.swift in Sources */,
+				AA0001F1 /* DiscoveryAccumulator.swift in Sources */,
 				AA00HD01 /* HIDDescriptorReader.swift in Sources */,
 				AA00HH01 /* HIDHelpers.swift in Sources */,
 				AA00TT01 /* TouchStateTracker.swift in Sources */,
