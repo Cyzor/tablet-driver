@@ -14,6 +14,9 @@ dist/
 # Generated tool output (regenerate with tools/audit_registry.py)
 tools/registry_audit.csv
 
+# Compiled diagnostic tool (build with the clang line in its header comment)
+tools/scroll_event_capture
+
 # Xcode user-specific settings (editor state, breakpoints, etc.)
 xcuserdata/
 *.xcuserstate
