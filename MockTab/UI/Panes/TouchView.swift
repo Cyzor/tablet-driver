@@ -255,18 +255,18 @@ struct TouchView: View {
 
     private typealias TouchState = (
         enabled: Bool, tapToClick: Bool, sensitivity: Double,
-        twoFingerScroll: Bool, reverseScroll: Bool,
+        twoFingerScroll: Bool, reverseScroll: Bool, twoFingerScrollMomentum: Bool,
         areaX: Double, areaY: Double, areaW: Double, areaH: Double
     )
 
     private func resetToDefaults() {
         let old: TouchState = (
             settings.touchEnabled, settings.tapToClick, settings.touchSensitivity,
-            settings.twoFingerScroll, settings.reverseScrollDirection,
+            settings.twoFingerScroll, settings.reverseScrollDirection, settings.twoFingerScrollMomentum,
             settings.touchAreaX, settings.touchAreaY,
             settings.touchAreaWidth, settings.touchAreaHeight
         )
-        let defaults: TouchState = (false, false, 1.0, true, false, 0, 0, 1, 1)
+        let defaults: TouchState = (false, false, 1.0, true, false, true, 0, 0, 1, 1)
         applyTouchState(defaults, undoTo: old)
     }
 
@@ -275,7 +275,7 @@ struct TouchView: View {
     private func applyTouchState(_ new: TouchState, undoTo old: TouchState) {
         settings.undoManager?.beginUndoGrouping()
         (settings.touchEnabled, settings.tapToClick, settings.touchSensitivity,
-         settings.twoFingerScroll, settings.reverseScrollDirection,
+         settings.twoFingerScroll, settings.reverseScrollDirection, settings.twoFingerScrollMomentum,
          settings.touchAreaX, settings.touchAreaY,
          settings.touchAreaWidth, settings.touchAreaHeight) = new
         settings.record(String(localized: "Reset Pane to Defaults")) {
