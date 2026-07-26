@@ -73,7 +73,7 @@ struct TouchView: View {
                     String(localized: "Touch"),
                     get: { settings.touchEnabled },
                     set: { settings.touchEnabled = $0 }),
-                description: "When off, the tablet's touch surface is ignored. Pen input is unaffected."
+                description: "Use your finger to move and click."
             )
         } header: {
             PaneSectionHeader("Touch") {
@@ -90,7 +90,7 @@ struct TouchView: View {
                     String(localized: "Tap to Click", comment: "Undo action name: tap-to-click toggle in the Touch pane"),
                     get: { settings.tapToClick },
                     set: { settings.tapToClick = $0 }),
-                description: "A brief touch with no significant motion posts a left click."
+                description: "Briefly touch the tablet's surface to click."
             )
             .disabled(!settings.touchEnabled)
             .help("A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks.")
@@ -118,7 +118,7 @@ struct TouchView: View {
                     String(localized: "Two-Finger Scroll", comment: "Undo action name: two-finger scroll toggle in the Touch pane"),
                     get: { settings.twoFingerScroll },
                     set: { settings.twoFingerScroll = $0 }),
-                description: "Two fingers moving together scroll like a trackpad, with rubber-banding in supported apps."
+                description: "Use a two-finger gesture to scroll."
             )
             .disabled(!settings.touchEnabled)
             .help("Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview.")
@@ -144,7 +144,7 @@ struct TouchView: View {
                     String(localized: "Touch Momentum Scrolling", comment: "Undo action name: two-finger scroll momentum toggle in the Touch pane"),
                     get: { settings.twoFingerScrollMomentum },
                     set: { settings.twoFingerScrollMomentum = $0 }),
-                description: "Animate motion with inertia, like a trackpad. Compatibility varies by app."
+                description: "Inertia scrolling. Compatibility varies by app."
             )
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
             .help("On (default): two fingers post a phased trackpad-style stream, so scroll-view apps coast after you lift. Off: a simpler stream that scrolls in far more apps (including Calendar's Month/Year view), but without inertia.")

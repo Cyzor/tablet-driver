@@ -56,7 +56,7 @@ struct PenFeelView: View {
                     in: 0...20,
                     valueText: doubleClickLabel,
                     caption:
-                        "Snaps a second tap to the first click position within this radius, making double-clicks reliable."
+                        "Radius for reliable double-clicks."
                 )
                 .help(
                     "How close a second tap must land to the first to count as a double-click. Drag to Off to disable position snapping.")
@@ -82,7 +82,7 @@ struct PenFeelView: View {
                     "Art Pen: Swap Tilt with Rotation",
                     isOn: rotationAsTiltBinding,
                     description:
-                        "Sacrifices an Art Pen's tilt behavior, allowing apps like Adobe Photoshop to detect barrel rotation."
+                        "Disables tilt so supported apps can detect barrel rotation."
                 )
                 .help(
                     "Feeds barrel rotation into Photoshop's Pen Tilt control by sending fake tilt data. Real tilt is suppressed while this is on. Use in Brush Dynamics → Shape Dynamics → Angle → Pen Tilt."
@@ -140,7 +140,7 @@ struct PenFeelView: View {
                 DescribedToggle(
                     "Momentum Scrolling",
                     isOn: panScrollMomentumBinding,
-                    description: "Animate motion with inertia, like a trackpad. Compatibility varies by app."
+                    description: "Inertia scrolling. Compatibility varies by app."
                 )
                 .help(
                     "On (default): Pan View emits a phased trackpad-style stream with a momentum tail, so scroll-view apps coast after you release. Off: a simpler stream that pans in far more apps, but without inertia. Set per-app using the override bar above if some apps need it off.")
