@@ -821,6 +821,14 @@ final class WacomKnownDevice: TabletDevice {
         setRingLED(index: pendingLEDIndex)
     }
 
+    /// Re-runs the device's init sequence on demand — see the `TabletDevice`
+    /// protocol doc. Same guard as `open()`: BLE's GATT digitizer is always
+    /// active, and writing InputMode over it suppresses pen data.
+    func reawaken() {
+        guard !isBluetooth else { return }
+        executeInitSteps()
+    }
+
     /// Execute the device's init sequence (`deviceSpec.initSteps`) from `index` onward.
     ///
     /// Runs synchronously until a `.delay` step is encountered; at that point the

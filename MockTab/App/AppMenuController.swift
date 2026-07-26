@@ -643,9 +643,21 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     /// Picks the most relevant connected (or known) device and activates its
     /// settings window.  Called from both the menu item and TabletAreaView's
     /// "Detect Tablet" button.
+    ///
+    /// Also quietly resends every connected device's init sequence first. A
+    /// tablet can connect before its digitizer endpoint is ready to answer
+    /// the mode-switch write, leaving it stuck reporting in whatever mode it
+    /// powered on in — seen 2026-07-26 as a wrong screen mapping on an
+    /// already-supported Intuos5 that only corrected once the same write the
+    /// driver already sends at connect was sent again. Cheap and idempotent
+    /// on a device that's already fine, so there's no reason to gate it
+    /// behind detecting a problem first.
     @MainActor
     static func activateBestDevice() {
         let tm = TabletManager.shared
+        for context in tm.contexts.values {
+            context.tabletDevice?.reawaken()
+        }
         // Prefer the pen-in-proximity unit; fall back to first connected,
         // then first ever-seen device.
         if let key = tm.activeContext?.instanceKey

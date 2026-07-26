@@ -161,6 +161,29 @@ final class WacomFallbackDevice: TabletDevice {
     /// Callback-context retain; created in open(), released in close().
     private var selfRetain: Unmanaged<WacomFallbackDevice>?
 
+    /// Feature and mode inits are USB-only.  Over BLE the GATT digitizer is
+    /// always active; writing the InputMode characteristic suppresses pen data.
+    private func sendFeatureInit() {
+        // [0x02, 0x02]: feature init for IntuosV1-era digitiser endpoint.
+        var init1: [UInt8] = [0x02, 0x02]
+        hidSetReport(device, reportID: 0x02, bytes: &init1, tag: "\(tag) featureInit", log: logger)
+
+        // IntuosV2 InputMode init (no-op if element not present).
+        if family == .intuosV2 {
+            sendWacomInputModeInit(device, tag: tag)
+        }
+    }
+
+    /// Re-runs the feature/mode init on demand — see the `TabletDevice`
+    /// protocol doc. Same idempotent write `open()` already sends once;
+    /// safe to call again on an already-correctly-initialized device.
+    func reawaken() {
+        let transport =
+            IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        guard !transport.lowercased().contains("bluetooth") else { return }
+        sendFeatureInit()
+    }
+
     func open() {
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
@@ -173,17 +196,8 @@ final class WacomFallbackDevice: TabletDevice {
             return
         }
 
-        // Feature and mode inits are USB-only.  Over BLE the GATT digitizer is
-        // always active; writing the InputMode characteristic suppresses pen data.
         if !isBluetooth {
-            // [0x02, 0x02]: feature init for IntuosV1-era digitiser endpoint.
-            var init1: [UInt8] = [0x02, 0x02]
-            hidSetReport(device, reportID: 0x02, bytes: &init1, tag: "\(tag) featureInit", log: logger)
-
-            // IntuosV2 InputMode init (no-op if element not present).
-            if family == .intuosV2 {
-                sendWacomInputModeInit(device, tag: tag)
-            }
+            sendFeatureInit()
         }
 
         probeDeadline = CFAbsoluteTimeGetCurrent() + 30.0
