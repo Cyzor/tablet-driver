@@ -6870,6 +6870,9 @@
         }
       }
     },
+    "Found in this tablet's descriptor: report %@" : {
+      "comment" : "Notice that the device mode init report ID was read from the device's own descriptor rather than guessed"
+    },
     "Full Screen" : {
       "comment" : "Window menu",
       "localizations" : {

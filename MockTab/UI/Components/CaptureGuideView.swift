@@ -33,6 +33,12 @@ struct CaptureGuideView: View {
     /// `CaptureInitReport` — so these are a starting point, not a guarantee.
     @State private var initReportIDText = "0x02"
     @State private var initValueText = "0x02"
+    /// Set when the device's own descriptor names a feature report carrying
+    /// `WACOM_HID_WD_DATAMODE` (0xff0d1002) — the report ID is then correct,
+    /// not a guess. `nil` on every classic Wacom / Xencelabs device we've
+    /// tested, since their descriptors don't declare that usage at all; the
+    /// 0x02 default above remains the fallback for those.
+    @State private var autoDetectedDataModeReportID: UInt8? = nil
 
     @Environment(\.accessibilityDifferentiateWithoutColor)
     private var differentiateWithoutColor
@@ -229,6 +235,15 @@ struct CaptureGuideView: View {
                     .appFont(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if let reportID = autoDetectedDataModeReportID {
+                    Label(
+                        String(localized: "Found in this tablet's descriptor: report \(String(format: "0x%02X", reportID))", comment: "Notice that the device mode init report ID was read from the device's own descriptor rather than guessed"),
+                        systemImage: "checkmark.circle"
+                    )
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
+                }
 
                 HStack(spacing: 8) {
                     Text(String(localized: "Report", comment: "Label for the feature report ID field in the device mode init control"))
@@ -478,6 +493,7 @@ struct CaptureGuideView: View {
     private func startCollection() {
         guard let devInfo = deviceInfo() else { return }
         resolvedInfo = devInfo
+        applyAutoDetectedDataMode(from: devInfo.parsedDescriptor)
 
         engine.onDiscoveryComplete = { result in
             Task { @MainActor in
@@ -487,6 +503,27 @@ struct CaptureGuideView: View {
             }
         }
         engine.startDiscovery(deviceInfo: devInfo, duration: 3600)
+    }
+
+    /// Parses the device's own raw descriptor bytes for a feature report
+    /// declaring `WACOM_HID_WD_DATAMODE` (0xff0d1002), and pre-fills the
+    /// report field with it when found — replacing the 0x02 legacy guess with
+    /// the ID this specific device actually uses. Also expands the
+    /// (otherwise collapsed) advanced control, since a detected report makes
+    /// it worth the tester's attention rather than an edge case to dig for.
+    ///
+    /// Runs once, before the tester can have typed anything, so it never
+    /// clobbers a manual edit. No descriptor tested so far (classic Wacom,
+    /// Xencelabs) declares this usage — see `HIDReportDescriptorParser` in
+    /// TabletKit — so this silently does nothing on all of them today.
+    private func applyAutoDetectedDataMode(from parsed: HIDDescriptorReader.Parsed?) {
+        guard let hex = parsed?.rawHex,
+              let layout = try? HIDReportDescriptorParser.parse(hex: hex),
+              let reportID = layout.featureReportID(carryingUsage: 0xff0d1002)
+        else { return }
+        autoDetectedDataModeReportID = reportID
+        initReportIDText = String(format: "0x%02X", reportID)
+        showInitControl = true
     }
 
     /// Wacom's USB vendor ID. Only devices reporting it may be described using
