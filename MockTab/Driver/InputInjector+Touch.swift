@@ -99,7 +99,9 @@ extension InputInjector {
         case .pointerMove(let dx, let dy):
             postTouchPointerMove(dx: dx, dy: dy)
         case .scrollDelta(let dx, let dy, let phase):
-            postTouchScroll(dx: dx, dy: dy, phase: phase)
+            postTouchScroll(
+                dx: dx, dy: dy, phase: phase,
+                usePhases: snap.twoFingerScrollMomentum)
         case .tapClick:
             postTouchTapClick(snapshot: snap, settings: settings)
         }
@@ -121,7 +123,18 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    private func postTouchScroll(dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase) {
+    /// Mirrors Pan View's `panScrollUsePhases`/`postPanScroll` split — same
+    /// on/off meaning, same tradeoff. `usePhases == false` drops the phase
+    /// field entirely (phase-free stream), on the theory that some gesture
+    /// recognizers reject a phased envelope without genuine trackpad gesture
+    /// backing — same failure class as Pan View's Calendar/WebKit cases.
+    /// Zero-delta Began/Ended brackets exist only to open/close the phase
+    /// envelope, so they're dropped as no-ops in that mode too.
+    private func postTouchScroll(
+        dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase,
+        usePhases: Bool
+    ) {
+        if !usePhases, dx == 0, dy == 0 { return }
         let loc = currentCursorPosition()
         // .pixel units + the scroll-phase field is what makes apps treat the
         // stream as a trackpad scroll (smooth, with rubber-banding) rather
@@ -136,7 +149,9 @@ extension InputInjector {
         else { return }
         e.location = loc
         e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
+        if usePhases {
+            e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
+        }
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)
     }

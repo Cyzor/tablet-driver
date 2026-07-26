@@ -67,14 +67,14 @@ struct TouchView: View {
 
     private var enableSection: some View {
         Section {
-            Toggle(
-                String(localized: "Enable finger touch",
-                       comment: "Touch pane: master toggle for capacitive touch input"),
+            DescribedToggle(
+                "Enable Finger Touch",
                 isOn: settings.recordingBinding(
                     String(localized: "Touch"),
                     get: { settings.touchEnabled },
-                    set: { settings.touchEnabled = $0 }))
-                .help("When off, the tablet's touch surface is ignored. Pen input is unaffected.")
+                    set: { settings.touchEnabled = $0 }),
+                description: "When off, the tablet's touch surface is ignored. Pen input is unaffected."
+            )
         } header: {
             PaneSectionHeader("Touch") {
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
@@ -83,65 +83,76 @@ struct TouchView: View {
     }
 
     private var pointerSection: some View {
-        Section {
-            Toggle(
-                String(localized: "Tap to click",
-                       comment: "Touch pane: brief tap posts a left click"),
+        Section("Pointer") {
+            DescribedToggle(
+                "Tap to Click",
                 isOn: settings.recordingBinding(
                     String(localized: "Tap to Click", comment: "Undo action name: tap-to-click toggle in the Touch pane"),
                     get: { settings.tapToClick },
-                    set: { settings.tapToClick = $0 }))
-                .disabled(!settings.touchEnabled)
-                .help("A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks.")
+                    set: { settings.tapToClick = $0 }),
+                description: "A brief touch with no significant motion posts a left click."
+            )
+            .disabled(!settings.touchEnabled)
+            .help("A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks.")
 
-            HStack {
-                Text("Cursor speed")
-                Slider(
-                    value: settings.recordingBinding(
-                        String(localized: "Cursor Speed", comment: "Undo action name: touch cursor-speed multiplier in the Touch pane"),
-                        get: { settings.touchSensitivity },
-                        set: { settings.touchSensitivity = $0 }),
-                    in: 0.25...4.0)
-                    .disabled(!settings.touchEnabled)
-                Text(String(format: "%.2f×", settings.touchSensitivity))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .scaledFrame(width: 56, alignment: .trailing)
-            }
+            SettingSliderRow(
+                "Cursor Speed",
+                value: settings.recordingBinding(
+                    String(localized: "Cursor Speed", comment: "Undo action name: touch cursor-speed multiplier in the Touch pane"),
+                    get: { settings.touchSensitivity },
+                    set: { settings.touchSensitivity = $0 }),
+                in: 0.25...4.0,
+                valueText: String(format: "%.2f×", settings.touchSensitivity),
+                caption: "Multiplier for cursor motion from finger drag."
+            )
+            .disabled(!settings.touchEnabled)
             .help("Multiplier for cursor motion from finger drag. 1.00× is the natural mapping through the touch area; raise to move faster across the screen, lower for finer control.")
-        } header: {
-            Text("Pointer").appFont(.headline)
         }
     }
 
     private var scrollSection: some View {
-        Section {
-            Toggle(
-                String(localized: "Two-finger scroll",
-                       comment: "Touch pane: enable two-finger scroll-wheel emulation"),
+        Section("Scrolling") {
+            DescribedToggle(
+                "Two-Finger Scroll",
                 isOn: settings.recordingBinding(
                     String(localized: "Two-Finger Scroll", comment: "Undo action name: two-finger scroll toggle in the Touch pane"),
                     get: { settings.twoFingerScroll },
-                    set: { settings.twoFingerScroll = $0 }))
-                .disabled(!settings.touchEnabled)
-                .help("Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview.")
+                    set: { settings.twoFingerScroll = $0 }),
+                description: "Two fingers moving together scroll like a trackpad, with rubber-banding in supported apps."
+            )
+            .disabled(!settings.touchEnabled)
+            .help("Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview.")
 
-            Toggle(
-                String(localized: "Reverse direction",
-                       comment: "Touch pane: reverse scroll direction (off = content follows fingers)"),
+            DescribedToggle(
+                "Reverse Direction",
                 isOn: settings.recordingBinding(
                     String(localized: "Scroll Direction", comment: "Undo action name: touch scroll-direction toggle in the Touch pane"),
                     get: { settings.reverseScrollDirection },
-                    set: { settings.reverseScrollDirection = $0 }))
-                .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
-                .help("On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers.")
-        } header: {
-            Text("Scrolling").appFont(.headline)
+                    set: { settings.reverseScrollDirection = $0 })
+            ) {
+                Text(
+                    settings.reverseScrollDirection
+                        ? "Content moves opposite your fingers."
+                        : "Content follows your fingers.")
+            }
+            .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
+            .help("On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers.")
+
+            DescribedToggle(
+                "Momentum Scrolling",
+                isOn: settings.recordingBinding(
+                    String(localized: "Touch Momentum Scrolling", comment: "Undo action name: two-finger scroll momentum toggle in the Touch pane"),
+                    get: { settings.twoFingerScrollMomentum },
+                    set: { settings.twoFingerScrollMomentum = $0 }),
+                description: "Animate motion with inertia, like a trackpad. Compatibility varies by app."
+            )
+            .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
+            .help("On (default): two fingers post a phased trackpad-style stream, so scroll-view apps coast after you lift. Off: a simpler stream that scrolls in far more apps (including Calendar's Month/Year view), but without inertia.")
         }
     }
 
     private var areaSection: some View {
-        Section {
+        Section("Touch Area") {
             Text("Define the active surface area for touch input.  Not available on all devices.")
                 .appFont(.callout)
                 .foregroundStyle(.secondary)
@@ -170,8 +181,6 @@ struct TouchView: View {
             }
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-        } header: {
-            Text("Touch Area").appFont(.headline)
         }
     }
 

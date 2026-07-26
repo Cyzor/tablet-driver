@@ -143,7 +143,7 @@ struct PenFeelView: View {
                     description: "Animate motion with inertia, like a trackpad. Compatibility varies by app."
                 )
                 .help(
-                    "On: Pan View emits a phased trackpad-style stream with a momentum tail, so scroll-view apps coast after you release. Off (default): a simpler stream that pans in far more apps, but without inertia. Set per-app using the override bar above if you want momentum only where it works.")
+                    "On (default): Pan View emits a phased trackpad-style stream with a momentum tail, so scroll-view apps coast after you release. Off: a simpler stream that pans in far more apps, but without inertia. Set per-app using the override bar above if some apps need it off.")
             }
 
             Section("Click Behavior") {

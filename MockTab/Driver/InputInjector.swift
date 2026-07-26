@@ -371,22 +371,23 @@ final class InputInjector: @unchecked Sendable {
     var momentumAccumY = 0.0
 
     /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
-    /// `false` (Compatible, default): the pan stream is deliberately phase-FREE
+    /// `true` (Momentum, default): the stream carries the phased began/changed/
+    /// ended envelope plus a synthetic momentum tail. NSScrollView-based apps
+    /// (Finder, Xcode) read that as a real trackpad flick — rubber-banding and
+    /// coasting. Gesture-keyed recognizers (Calendar Month/Year, WebKit
+    /// gesture-scroll / overscroll-behavior, Adobe palettes) ignore it — turn
+    /// momentum off for those.
+    ///
+    /// `false` (Compatible): the pan stream is deliberately phase-FREE
     /// (`scrollWheelEventScrollPhase = 0`, no began/changed/ended envelope, no
     /// momentum tail). A real trackpad wraps its continuous deltas in a phase
     /// lifecycle plus a companion gesture-event stream, but that gesture backing
     /// can't be forged through the public CGEvent API — and without it, the
-    /// phased envelope is rejected by the recognizers that key on it (Calendar
-    /// Month/Year, WebKit gesture-scroll / overscroll-behavior, Adobe palettes).
-    /// Captured third-party scroll tools (Smooze) that pan those apps smoothly
-    /// emit exactly this phase-free shape.
-    ///
-    /// `true` (Natural): the stream carries the phased began/changed/ended
-    /// envelope plus a synthetic momentum tail. NSScrollView-based apps (Finder,
-    /// Xcode) read that as a real trackpad flick — rubber-banding and coasting —
-    /// but the gesture-keyed recognizers above ignore it. Per-app opt-in for the
-    /// trackpad feel where it's honored.
-    var panScrollUsePhases = false
+    /// phased envelope is rejected by the recognizers named above. Captured
+    /// third-party scroll tools (Smooze) that pan those apps smoothly emit
+    /// exactly this phase-free shape. Per-app opt-out where momentum isn't
+    /// honored.
+    var panScrollUsePhases = true
 
     var lastPostedPoint: CGPoint = .zero
     var lastPostedPressure: Double = -1.0

@@ -434,6 +434,17 @@ final class TabletSettings: ObservableObject {
     @Published var reverseScrollDirection: Bool = false {
         didSet { persist("naturalScrolling", reverseScrollDirection) }
     }
+    /// When true (default), two-finger scroll emits the full Began/Changed/
+    /// Ended phase envelope, which is what gives it iPad-style inertia in most
+    /// apps. That envelope is rejected by the same class of gesture recognizer
+    /// Pan View's momentum stream is (Calendar Month/Year, WebKit
+    /// gesture-scroll) — turn off for those: dropping the phase field trades
+    /// the inertia away for a stream that lands everywhere. Same on/off
+    /// meaning as `ToolSettings.panScrollMomentum` for Pan View — momentum on
+    /// by default everywhere, off trades it for reach.
+    @Published var twoFingerScrollMomentum: Bool = true {
+        didSet { persist("twoFingerScrollMomentum", twoFingerScrollMomentum) }
+    }
     /// Active-touch-area mapping — independent from the pen's active area because
     /// users typically want the full surface for touch but a cropped area for pen
     /// work.  Coordinates are normalised 0..1 over the device's full touch surface.
