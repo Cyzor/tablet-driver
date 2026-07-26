@@ -307,6 +307,38 @@ final class TabletSettings: ObservableObject {
         set { bezelLEDColor = newValue.map { "\($0.r),\($0.g),\($0.b),\($0.a)" } ?? "" }
     }
 
+    /// Quick Keys OLED text orientation, in 90° steps (0 = upright, 1–3 =
+    /// 90°/180°/270°). -1 = never set here; nothing is sent, so the puck
+    /// keeps its own stored orientation. Hardware state, not a per-profile
+    /// preference — same semantics as `displayBrightness`.
+    @Published var quickKeysOrientation: Int = -1 {
+        didSet {
+            guard !isLoading else { return }
+            ud.set(quickKeysOrientation, forKey: devicePrefix + "quickKeysOrientation")
+        }
+    }
+
+    /// Quick Keys auto-sleep timer, in minutes (0 = never sleep). -1 = never
+    /// set here; nothing is sent, so the puck keeps its own stored timer.
+    /// Hardware state persisted in puck firmware — same semantics as
+    /// `displayBrightness`.
+    @Published var quickKeysSleepMinutes: Int = -1 {
+        didSet {
+            guard !isLoading else { return }
+            ud.set(quickKeysSleepMinutes, forKey: devicePrefix + "quickKeysSleepMinutes")
+        }
+    }
+
+    /// Quick Keys OLED brightness, 0 (off) through 3 (bright). -1 = never set
+    /// here; nothing is sent, so the puck keeps its own stored brightness.
+    /// Hardware state — same semantics as `displayBrightness`.
+    @Published var quickKeysOledBrightness: Int = -1 {
+        didSet {
+            guard !isLoading else { return }
+            ud.set(quickKeysOledBrightness, forKey: devicePrefix + "quickKeysOledBrightness")
+        }
+    }
+
     /// CGDirectDisplayID values (comma-separated) included in the toggle rotation.
     /// Empty string means all connected displays are included.
     @Published var toggleDisplayIDs: String = "" {

@@ -580,6 +580,59 @@ final class WacomKnownDevice: TabletDevice {
         deviceSpec.parser == .xencelabs && deviceSpec.isPenDisplay
     }
 
+    /// Last Quick Keys OLED orientation sent, to suppress redundant writes.
+    private var lastQuickKeysOrientation: Int = -1
+
+    /// Set the Quick Keys OLED text orientation, in 90° steps (0 = upright,
+    /// 1–3 = 90°/180°/270°). Same wire command already used to reassert
+    /// upright orientation on relink (`resyncXencelabsOutputsAfterRelink`);
+    /// this is an independent, settings-driven entry point pre-wired ahead
+    /// of a UI control — no caller sets a value other than the sentinel yet.
+    func setQuickKeysOrientation(steps: Int) {
+        guard deviceSpec.parser == .xencelabs else { return }
+        let clamped = ((steps % 4) + 4) % 4
+        guard clamped != lastQuickKeysOrientation else { return }
+        lastQuickKeysOrientation = clamped
+        sendXencelabsOutput(
+            XencelabsControl.orientationPayload(
+                rotationSteps: clamped, address: xencelabsDongleIdentity ?? []),
+            tag: "quick keys orientation \(clamped)")
+    }
+
+    /// Last Quick Keys sleep timer sent, to suppress redundant writes.
+    private var lastQuickKeysSleepMinutes: Int = -1
+
+    /// Set the Quick Keys' auto-sleep timer, in minutes (0 = never sleep).
+    /// Hardware-confirmed 2026-07-26: a value written this way survives a
+    /// puck power cycle and reads back correctly in the native panel.
+    func setQuickKeysSleepMinutes(_ minutes: Int) {
+        guard deviceSpec.parser == .xencelabs else { return }
+        let clamped = min(max(minutes, 0), 255)
+        guard clamped != lastQuickKeysSleepMinutes else { return }
+        lastQuickKeysSleepMinutes = clamped
+        sendXencelabsOutput(
+            XencelabsControl.sleepTimerPayload(
+                minutes: UInt8(clamped), address: xencelabsDongleIdentity ?? []),
+            tag: "quick keys sleep timer \(clamped)m")
+    }
+
+    /// Last Quick Keys OLED brightness sent, to suppress redundant writes.
+    private var lastQuickKeysOledBrightness: Int = -1
+
+    /// Set the Quick Keys OLED's brightness level, 0 (off) through 3
+    /// (bright). Distinct from `setDisplayBrightness`, which controls a pen
+    /// display's panel backlight over a different frame family.
+    func setQuickKeysOledBrightness(_ level: Int) {
+        guard deviceSpec.parser == .xencelabs else { return }
+        let clamped = min(max(level, 0), 3)
+        guard clamped != lastQuickKeysOledBrightness else { return }
+        lastQuickKeysOledBrightness = clamped
+        sendXencelabsOutput(
+            XencelabsControl.oledBrightnessPayload(
+                UInt8(clamped), address: xencelabsDongleIdentity ?? []),
+            tag: "quick keys OLED brightness \(clamped)")
+    }
+
     /// Last panel brightness sent, to suppress redundant writes while a
     /// slider drags.
     private var lastDisplayBrightness: Int = -1

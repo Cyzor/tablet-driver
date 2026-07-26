@@ -194,6 +194,27 @@ final class DeviceContext: ObservableObject, Identifiable {
                 }
             }
             .store(in: &cancellables)
+        // Quick Keys OLED orientation/brightness and sleep timer. Pre-wired
+        // ahead of a UI control — -1 sentinel means untouched, so these never
+        // fire in practice until a control writes something else.
+        settings.$quickKeysOrientation
+            .sink { [weak self] value in
+                guard value >= 0 else { return }
+                self?.tabletDevice?.setQuickKeysOrientation(steps: value)
+            }
+            .store(in: &cancellables)
+        settings.$quickKeysSleepMinutes
+            .sink { [weak self] value in
+                guard value >= 0 else { return }
+                self?.tabletDevice?.setQuickKeysSleepMinutes(value)
+            }
+            .store(in: &cancellables)
+        settings.$quickKeysOledBrightness
+            .sink { [weak self] value in
+                guard value >= 0 else { return }
+                self?.tabletDevice?.setQuickKeysOledBrightness(value)
+            }
+            .store(in: &cancellables)
     }
 
     /// Push host-side display state (mode name, key labels) to devices with
