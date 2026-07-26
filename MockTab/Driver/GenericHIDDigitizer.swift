@@ -165,7 +165,7 @@ final class GenericHIDDigitizer: TabletDevice {
         guard let ctx else { return }
         let me = Unmanaged<GenericHIDDigitizer>.fromOpaque(ctx).takeUnretainedValue()
         HIDCapture.shared.record(tag: me.tag, report: report, length: length)
-        CaptureEngine.recordRaw(reportID: reportID, pointer: report, length: length)
+        CaptureEngine.recordRaw(device: me.device, reportID: reportID, pointer: report, length: length)
     }
 
     /// One element changed. Update the decode frame, then emit a fresh point.

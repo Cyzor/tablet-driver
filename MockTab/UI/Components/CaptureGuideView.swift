@@ -491,7 +491,9 @@ struct CaptureGuideView: View {
     // MARK: - Collection logic
 
     private func startCollection() {
-        guard let devInfo = deviceInfo() else { return }
+        guard let dev = tabletManager.contexts[productID]?.hidDevice,
+              let devInfo = deviceInfo()
+        else { return }
         resolvedInfo = devInfo
         applyAutoDetectedDataMode(from: devInfo.parsedDescriptor)
 
@@ -502,7 +504,7 @@ struct CaptureGuideView: View {
                 }
             }
         }
-        engine.startDiscovery(deviceInfo: devInfo, duration: 3600)
+        engine.startDiscovery(device: dev, deviceInfo: devInfo, duration: 3600)
     }
 
     /// Parses the device's own raw descriptor bytes for a feature report

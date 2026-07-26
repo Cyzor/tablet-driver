@@ -29,23 +29,31 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "capture")
 @MainActor
 final class CaptureEngine: ObservableObject {
 
-    // MARK: - Singleton
-
-    static let shared = CaptureEngine()
-
-    private init() {}
+    init() {}
 
     // MARK: - Recording entry point
 
     /// Statistics store, shared with the HID callback thread.
-    private nonisolated static let accumulator = DiscoveryAccumulator()
+    private nonisolated let accumulator = DiscoveryAccumulator()
 
-    /// Record one raw HID input report toward the running session.
+    /// Every in-progress session's accumulator, keyed by the identity of the
+    /// `IOHIDDevice` it's recording — not product ID, so two connected units
+    /// of the same model (or two capture sheets open at once) each keep their
+    /// own data. Registered in `startDiscovery`, deregistered in
+    /// `cancelDiscovery`/`finishDiscovery`. Lock-guarded because drivers call
+    /// `recordRaw` from HIDThread, never the main actor.
+    private nonisolated static let activeAccumulators =
+        OSAllocatedUnfairLock<[ObjectIdentifier: DiscoveryAccumulator]>(initialState: [:])
+
+    /// Record one raw HID input report toward whichever session (if any) is
+    /// currently capturing `device`.
     ///
     /// Safe (and cheap) to call unconditionally from any driver's report
-    /// callback: it no-ops when no session is running.
+    /// callback: it no-ops when no session is capturing this device.
     ///
     /// - Parameters:
+    ///   - device: the driver's own `IOHIDDevice` — identifies which
+    ///     session (if any) this report belongs to.
     ///   - reportID: the report ID **from the IOKit callback**, not
     ///     `report[0]`. Devices whose descriptor declares no Report ID send
     ///     reports with no ID prefix, where `report[0]` is the first data byte
@@ -53,8 +61,10 @@ final class CaptureEngine: ObservableObject {
     ///   - pointer: the callback's report buffer. Only read for the duration
     ///     of this call — nothing retains it.
     nonisolated static func recordRaw(
-        reportID: UInt32, pointer: UnsafePointer<UInt8>, length: CFIndex
+        device: IOHIDDevice, reportID: UInt32, pointer: UnsafePointer<UInt8>, length: CFIndex
     ) {
+        guard let accumulator = activeAccumulators.withLock({ $0[ObjectIdentifier(device)] })
+        else { return }
         accumulator.record(
             reportID: UInt8(truncatingIfNeeded: reportID), pointer: pointer, length: Int(length))
     }
@@ -76,6 +86,10 @@ final class CaptureEngine: ObservableObject {
     // MARK: - Session State
 
     private var sessionDeviceInfo: CaptureDeviceInfo?
+    /// The `IOHIDDevice` this session is scoped to — the key `recordRaw` and
+    /// `updateToolCode` use to route reports here instead of to some other
+    /// window's session on a different device.
+    private var sessionDevice: IOHIDDevice?
     private var discoveryStartTime: Date = .distantPast
     /// Fires once at the end of the session duration to auto-finish a session
     /// the user walked away from.
@@ -91,25 +105,30 @@ final class CaptureEngine: ObservableObject {
 
     // MARK: - Public API
 
-    /// Begin a collection session. Records every report the device sends for
-    /// `duration` seconds, or until `finishDiscovery()` is called.
-    func startDiscovery(deviceInfo: CaptureDeviceInfo, duration: TimeInterval = 60) {
+    /// Begin a collection session scoped to `device`. Records every report
+    /// that specific `IOHIDDevice` sends for `duration` seconds, or until
+    /// `finishDiscovery()` is called. Independent of any other `CaptureEngine`
+    /// instance's session, even one running concurrently on another device.
+    func startDiscovery(device: IOHIDDevice, deviceInfo: CaptureDeviceInfo, duration: TimeInterval = 60) {
         stopTimers()
+        deregisterAccumulator()
         lastError = nil
         initReportsSent = []
         discoverySampleCount = 0
         sessionDeviceInfo = deviceInfo
+        sessionDevice = device
         discoveryStartTime = Date()
 
         // Arm the accumulator before announcing the session: a report arriving
         // between these two statements must land in the fresh store, never the
         // previous session's.
-        Self.accumulator.start()
+        accumulator.start()
+        Self.activeAccumulators.withLock { $0[ObjectIdentifier(device)] = accumulator }
         isRunning = true
 
         pollTimer = scheduledTimer(interval: 0.5, repeats: true) { [weak self] in
             guard let self, self.isRunning else { return }
-            self.discoverySampleCount = Self.accumulator.sampleCount
+            self.discoverySampleCount = self.accumulator.sampleCount
         }
         discoveryTimer = scheduledTimer(interval: duration, repeats: false) { [weak self] in
             self?.finishDiscovery()
@@ -120,16 +139,28 @@ final class CaptureEngine: ObservableObject {
     func cancelDiscovery() {
         guard isRunning else { return }
         stopTimers()
-        Self.accumulator.stop()
+        accumulator.stop()
+        deregisterAccumulator()
         isRunning = false
         sessionDeviceInfo = nil
         discoverySampleCount = 0
     }
 
+    /// Remove this session's accumulator from the routing table so `recordRaw`
+    /// stops delivering reports to it. Idempotent; safe with no active session.
+    private func deregisterAccumulator() {
+        guard let device = sessionDevice else { return }
+        Self.activeAccumulators.withLock { $0.removeValue(forKey: ObjectIdentifier(device)) }
+        sessionDevice = nil
+    }
+
     /// Note a Wacom tool code seen during collection (pen vs. eraser vs. puck).
     /// Called from `TabletManager`'s tool-enter path; harmless when idle.
-    func updateToolCode(_ toolCode: UInt16) {
-        Self.accumulator.noteToolCode(toolCode)
+    ///
+    /// - Parameter device: the device the tool event came from, so it's
+    ///   folded into the right session's accumulator (see `recordRaw`).
+    nonisolated static func updateToolCode(_ toolCode: UInt16, device: IOHIDDevice) {
+        activeAccumulators.withLock { $0[ObjectIdentifier(device)] }?.noteToolCode(toolCode)
     }
 
     /// Finish collection and build the result. Also invokes
@@ -140,9 +171,10 @@ final class CaptureEngine: ObservableObject {
         stopTimers()
         // Close the accumulator before snapshotting so no report lands between
         // the snapshot and the end of the session.
-        Self.accumulator.stop()
+        accumulator.stop()
+        deregisterAccumulator()
         isRunning = false
-        discoverySampleCount = Self.accumulator.sampleCount
+        discoverySampleCount = accumulator.sampleCount
 
         guard let deviceInfo = sessionDeviceInfo else {
             lastError = String(
@@ -285,7 +317,7 @@ final class CaptureEngine: ObservableObject {
     // MARK: - Result Building
 
     private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryResult {
-        let (reports, toolCodes) = Self.accumulator.snapshot()
+        let (reports, toolCodes) = accumulator.snapshot()
         var reportSummaries: [String: DiscoveryReportSummary] = [:]
 
         for (reportID, stats) in reports {

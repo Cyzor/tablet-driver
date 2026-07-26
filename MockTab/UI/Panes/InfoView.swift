@@ -22,6 +22,10 @@ struct InfoView: View {
     @State private var diagnosticsExpanded = false
     @State private var conflicts: [String] = []
     @State private var showCaptureGuide = false
+    /// Owned per-window rather than a shared singleton: two tablet windows
+    /// each collecting data must not see each other's Cancel/Done, event
+    /// counts, or recorded reports.
+    @StateObject private var captureEngine = CaptureEngine()
     /// Unused directly — its writes force a body re-evaluation when
     /// livePoint publishes, since that no longer rides tabletManager's
     /// general objectWillChange cascade (see DeviceContext.livePoint).
@@ -86,7 +90,7 @@ struct InfoView: View {
         ) { _ in livePointTick &+= 1 }
         .sheet(isPresented: $showCaptureGuide) {
             CaptureGuideView(
-                engine: CaptureEngine.shared,
+                engine: captureEngine,
                 tabletManager: tabletManager,
                 productID: productID ?? 0,
                 onDismiss: { showCaptureGuide = false }

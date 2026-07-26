@@ -252,7 +252,7 @@ final class WacomFallbackDevice: TabletDevice {
         HIDCapture.shared.record(tag: tag, report: report, length: length)
         // Device-data collection. No-ops when no session is running, and never
         // hops off this thread or copies the report — see CaptureEngine.
-        CaptureEngine.recordRaw(reportID: reportID, pointer: report, length: length)
+        CaptureEngine.recordRaw(device: device, reportID: reportID, pointer: report, length: length)
         guard length >= 2 else { return }
         let id = report[0]
 

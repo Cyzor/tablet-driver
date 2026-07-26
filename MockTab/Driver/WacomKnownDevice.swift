@@ -1017,7 +1017,7 @@ final class WacomKnownDevice: TabletDevice {
         HIDCapture.shared.record(tag: name, report: report, length: length)
         // Device-data collection. No-ops when no session is running, and never
         // hops off this thread or copies the report — see CaptureEngine.
-        CaptureEngine.recordRaw(reportID: reportID, pointer: report, length: length)
+        CaptureEngine.recordRaw(device: device, reportID: reportID, pointer: report, length: length)
         // For wireless dongles, extract paired tablet PID from 0x80 status report and
         // use its spec for accurate coordinate ranges (instead of fallback guesses).
         if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {
