@@ -34,6 +34,8 @@ final class HelpWindowController: NSWindowController, ObservableObject {
         }
     }
 
+    private var closeToken: NSObjectProtocol?
+
     private init() {
         let saved = UserDefaults.standard.string(forKey: Self.sectionKey)
         selectedSection = saved.flatMap(HelpSection.init(rawValue:)) ?? .tabletArea
@@ -41,6 +43,19 @@ final class HelpWindowController: NSWindowController, ObservableObject {
         let savedStep = UserDefaults.standard.integer(forKey: Self.sizeStepKey)
         fontSizeStep = max(Self.fontSizeStepRange.lowerBound,
                            min(Self.fontSizeStepRange.upperBound, savedStep))
+
+        // Window is built on demand in ensureWindow() and released on close,
+        // so merely touching `shared` (app launch does, via
+        // restoreIfWasOpen) costs nothing, and closing Help returns its
+        // SwiftUI content instead of retaining it for the process lifetime.
+        super.init(window: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    private func ensureWindow() {
+        guard window == nil else { return }
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
@@ -52,25 +67,42 @@ final class HelpWindowController: NSWindowController, ObservableObject {
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 520, height: 380)
 
-        super.init(window: window)
-
         let view = HelpPanelView(controller: self)
         window.contentViewController = NSHostingController(rootView: view.withAppearance())
 
-        // Restore saved frame, or center on first launch.
+        // Restore saved frame, or center on first open.
         if let frameString = UserDefaults.standard.string(forKey: Self.frameKey) {
             window.setFrame(NSRectFromString(frameString), display: false)
         } else {
             window.center()
         }
+
+        closeToken = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.windowDidClose() }
+        }
+
+        self.window = window
     }
 
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
+    /// Persist the frame, then drop the window and its hosting controller so
+    /// the whole Help view tree deallocates. Rebuilt fresh on next show().
+    private func windowDidClose() {
+        if let frame = window?.frame {
+            UserDefaults.standard.set(NSStringFromRect(frame), forKey: Self.frameKey)
+        }
+        if let closeToken { NotificationCenter.default.removeObserver(closeToken) }
+        closeToken = nil
+        window?.contentViewController = nil
+        window = nil
+    }
 
     /// Opens the help window, optionally jumping to `section`.
     func show(section: HelpSection? = nil) {
         if let section { selectedSection = section }
+        ensureWindow()
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -78,6 +110,7 @@ final class HelpWindowController: NSWindowController, ObservableObject {
     /// Reopens the window if it was open when the app last quit.
     func restoreIfWasOpen() {
         if UserDefaults.standard.bool(forKey: Self.openKey) {
+            ensureWindow()
             showWindow(nil)
         }
     }

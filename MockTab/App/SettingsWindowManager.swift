@@ -105,26 +105,12 @@ final class SettingsWindowManager: ObservableObject {
                                productID: id, connectedProductIDs: ids)
                    }) {
                     self.replaceWindow(dw, withDeviceID: pid)
-                    return  // replaceWindow handled this pid; loop below skips it
                 }
-                // For every connected unit with no open window, open one —
-                // per physical instance, so two identical tablets each get
-                // their own window — except a companion peripheral (e.g.
-                // the Xencelabs Quick Keys puck/dongle) whose owning tablet
-                // is also connected; that one is folded into the tablet's
-                // own Buttons pane instead (see ButtonMappingView's
-                // companion section). This re-evaluates on every publish,
-                // so a companion whose owning tablet later disconnects gets
-                // its own window on the very next one (it's still
-                // connected, still has no window, and is no longer claimed).
-                for context in deviceContexts.values
-                where context.isConnected
-                    && self.window(for: context.instanceKey) == nil
-                    && !VendorDeviceRegistry.isConnectedCompanion(
-                        productID: context.productID, connectedProductIDs: ids)
-                {
-                    self.openWindow(forInstanceKey: context.instanceKey)
-                }
+                // Deliberately no auto-open: connecting a device no longer
+                // builds a settings window on its own. Windows are created
+                // only by explicit user action (status item, menus, dock
+                // reopen) or session restore — keeping the idle driver free
+                // of any SwiftUI/window instantiation.
             }
 
         restoreWindows()
@@ -157,6 +143,10 @@ final class SettingsWindowManager: ObservableObject {
 
     func showIfNoSavedSession() {
         guard windows.isEmpty else { return }
+        // An empty (but present) saved list means the user quit with every
+        // window closed — respect that and stay windowless. Only a missing
+        // key (true first launch) opens the default window uninvited.
+        guard UserDefaults.standard.object(forKey: Self.restorationKey) == nil else { return }
         NSApp.activate(ignoringOtherApps: true)
         ensureDefaultWindow().show()
     }
@@ -539,12 +529,16 @@ final class SettingsWindowManager: ObservableObject {
     }
 
     private func observeClose(_ wc: SettingsWindowController) {
-        NotificationCenter.default.addObserver(
+        var token: NSObjectProtocol?
+        token = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: wc.window,
             queue: .main
         ) { [weak self, weak wc] _ in
             MainActor.assumeIsolated {
+                // One-shot: a window closes once; drop the observer so its
+                // block doesn't stay registered for the process lifetime.
+                if let token { NotificationCenter.default.removeObserver(token) }
                 guard let self, let wc else { return }
                 // Capture size before removing so re-opening restores it.
                 if let size = wc.window?.frame.size {

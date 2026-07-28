@@ -258,6 +258,17 @@ private final class LazyHostingViewController: NSViewController {
         view.addSubview(built.view)
         inner = built
     }
+
+    /// Releases the built hosting controller (and with it the SwiftUI view
+    /// tree and its layer backing) when the window closes, so the pane's
+    /// object graph doesn't ride along with anything that briefly outlives
+    /// the window. The next window builds fresh controllers anyway.
+    func teardown() {
+        guard let built = inner else { return }
+        built.view.removeFromSuperview()
+        built.removeFromParent()
+        inner = nil
+    }
 }
 
 // MARK: - SettingsWindowController
@@ -285,6 +296,10 @@ final class SettingsWindowController: NSWindowController {
     override var undoManager: UndoManager? { docUndoManager }
 
     private let tabVC = ResizableTabViewController()
+
+    /// Block-based notification tokens for this window; removed on close so
+    /// closed windows don't leave their observer blocks registered forever.
+    private var observerTokens: [NSObjectProtocol] = []
 
     enum Tab: Int {
         case tabletArea = 0
@@ -395,28 +410,34 @@ final class SettingsWindowController: NSWindowController {
         }
 
         // Update when window gains/loses focus.
-        NotificationCenter.default.addObserver(
+        observerTokens.append(NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification,
             object: window, queue: .main
         ) { [weak self] _ in
             guard self != nil else { return }
             updateVisibility()
-        }
+        })
 
-        NotificationCenter.default.addObserver(
+        observerTokens.append(NotificationCenter.default.addObserver(
             forName: NSWindow.didResignKeyNotification,
             object: window, queue: .main
         ) { _ in
             Task { @MainActor in
                 TabletManager.shared.infoViewVisible = false
             }
-        }
+        })
 
-        // Clear the flag when the window closes.
-        NotificationCenter.default.addObserver(
+        // On close: clear the flag, release every built tab's hosting
+        // controller, and drop this window's observers.
+        observerTokens.append(NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: window, queue: .main
-        ) { _ in MainActor.assumeIsolated { TabletManager.shared.infoViewVisible = false } }
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                TabletManager.shared.infoViewVisible = false
+                self?.teardownOnClose()
+            }
+        })
 
         let s = settings
         let tm = TabletManager.shared
@@ -546,6 +567,14 @@ final class SettingsWindowController: NSWindowController {
     var selectedTabIndex: Int { tabVC.selectedTabViewItemIndex }
 
     // MARK: - Private
+
+    private func teardownOnClose() {
+        for item in tabVC.tabViewItems {
+            (item.viewController as? LazyHostingViewController)?.teardown()
+        }
+        for token in observerTokens { NotificationCenter.default.removeObserver(token) }
+        observerTokens.removeAll()
+    }
 
     private var nextTabIndex = 0
 
