@@ -4,47 +4,48 @@ Native Mac driver for Wacom drawing tablets that no longer have official support
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue) ![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue)
 
-MockTab is an independent, community-built project. It is not affiliated with, endorsed by, or sponsored by Wacom Co., Ltd. or Xencelabs. Product names are used only to describe hardware compatibility.
 
----
+MockTab is a community-built project. It is not affiliated with Wacom Co., Ltd. or Xencelabs. Product names describe hardware compatibility only.
+
+***
 
 ## Supported hardware
 
-Several Wacom models across multiple families:
+MockTab supports Wacom models across multiple families:
 
-- **Intuos 1–5 / Intuos Pro Gen 1** (PTH-x50/x51, PTZ, PTK series) — USB
-- **Intuos Pro Gen 2** (PTH-460, PTH-660, PTH-860) — USB and Bluetooth Classic
-- **Intuos Pro Gen 3** (PTK-470, PTK-670, PTK-870) — USB, experimental
-- **Cintiq** pen displays (CintiqV1 and IntuosV2-format models)
-- **DTU / DTUS** small pen displays — USB, experimental
-- **Bamboo** and consumer CTL/CTH tablets
-- **Xencelabs Pen Display** bundle — pen and Quick Keys puck, wired and wireless
+- **Intuos 1–5 / Intuos Pro Gen 1** (PTH-x50/x51, PTZ, PTK series), USB.
+- **Intuos Pro Gen 2** (PTH-460, PTH-660, PTH-860), USB and Bluetooth Classic.
+- **Intuos Pro Gen 3** (PTK-470, PTK-670, PTK-870), USB, experimental.
+- **Cintiq** pen displays, including CintiqV1 and IntuosV2-format models.
+- **DTU / DTUS** small pen displays, USB, experimental.
+- **Bamboo** and consumer CTL/CTH tablets.
+- **Xencelabs Pen Display** and Quick Keys remote, wired and wireless.
 
 Full list: [mocktab.org/hardware](https://mocktab.org/hardware.html)
 
-For other devices, MockTab might not work with your configuration yet. Filing an issue with diagnostic detail can help improve support.
+Other devices may not work yet. Filing an issue with diagnostic details can help improve support.
 
----
+***
 
 ## Requirements
 
-macOS 13 (Ventura) or later.
+- macOS 13 Ventura or later.
 
----
+***
 
 ## Install
 
 1. Download the latest `.dmg` from [Releases](https://github.com/Cyzor/tablet-driver/releases).
 2. Drag `MockTab.app` to Applications and launch it.
-3. **Grant Accessibility** when prompted — MockTab needs this for pen pressure. Open System Settings, toggle MockTab on, then relaunch.
-4. **Grant Input Monitoring** if prompted.
-5. Plug in or pair your tablet. It appears in the menu bar.
+3. Grant **Accessibility** when prompted, which MockTab needs for proper operation. Open System Settings, turn MockTab on, then relaunch.
+4. Grant **Input Monitoring** if prompted.
+5. Plug in or pair your tablet.
 
-**If permissions don't seem to take effect:** remove MockTab from the pane and re-add it. Moving or reinstalling the app may invalidate previous approvals.
+If permissions do not take effect, remove MockTab from the pane and add it again. Moving or reinstalling the app may invalidate previous approvals.
 
----
+***
 
-## Building from source
+## Build from source
 
 ```sh
 git clone --recurse-submodules https://github.com/Cyzor/tablet-driver.git
@@ -52,15 +53,18 @@ cd tablet-driver
 open MockTab.xcodeproj
 ```
 
-Requires Xcode 15 or later. Select the **MockTab** scheme and build. If you're
-building a fork, switch code signing to your own team in the project's Signing
-& Capabilities tab.
+You need Xcode 15 or later. Select the **MockTab** scheme and build. If you build a fork, change code signing to your own team in the project’s Signing & Capabilities tab.
 
-Existing clone without `--recurse-submodules`? Run `git submodule update --init`.
+If you already cloned the repo without `--recurse-submodules`, run `git submodule update --init`.
 
-To run the decoder test suite: `cd TabletKit && swift test`.
+To run the decoder test suite:
 
----
+```sh
+cd TabletKit
+swift test
+```
+
+***
 
 ## Screenshots
 
@@ -68,37 +72,36 @@ To run the decoder test suite: `cd TabletKit && swift test`.
 <img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/pen-feel-dark.png" alt="Pressure curve editor" width="480">
 <img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/buttons-dark.png" alt="Button mapping" width="480">
 
----
+***
 
 ## Features
 
-- **Tablet area mapping** — choose which part of the surface maps to the screen
-- **Pressure curve** — curve editor with Linear, Soft, and Firm presets
-- **Button mapping** — remap barrel buttons, express keys, and touch ring to any modifier + key combination
-- **Per-app overrides** — customized settings that activate automatically
-- **Touch ring** — multiple slots, each with its own clockwise/counterclockwise binding
-- **Display mapping** — route the tablet to any connected display
-- **Live scratchpad** — test pressure, tilt, and button assignments
-- **Profile import/export** — save and restore profile configurations
-- **Multiple tablets** — connect multiple tablets simultaneously
-- **Wireless** — Bluetooth and USB dongle protocols
-- **Capacitive touch** — two-finger scroll, tap-to-click, and adjustable touch area on supported models
-- **Menu bar mode** — hides the Dock icon
-- **Native AppKit** app, signed and notarized, without kernel extensions
+- Tablet area mapping.
+- Pressure and pen behavior controls.
+- Button mapping for barrel buttons, express keys, and touch rings.
+- Per-app overrides that activate automatically.
+- Display mapping to any connected display.
+- Wireless support through Bluetooth and USB dongle protocols.
+- Capacitive touch with two-finger scroll, tap-to-click, and adjustable touch area on supported models.
+- Live scratchpad for input testing.
+- Profile import and export.
+- Menu bar mode with no Dock icon.
+- Multiple tablet generations at once.
+- Native AppKit app, signed and notarized, without kernel extensions.
 
----
+***
 
-## Incomplete or unsupported
+## Incomplete / not planned
 
-- Huion, XP-Pen, or any other non-Wacom hardware besides Xencelabs
-- Wacom tablets from recent product cycles not listed above (Cintiq Pro 2023 refresh, etc.)
-- Windows, Linux, or iPad
+- Huion, XP-Pen, and other non-Wacom hardware except Xencelabs.
+- Recent Wacom product cycles not listed above, including the Cintiq Pro 2023 refresh.
+- Windows, Linux, and iPad.
 
----
+***
 
 ## TabletKit
 
-MockTab relies on [**TabletKit**](https://github.com/Cyzor/TabletKit), a Swift package that decodes raw HID reports into pen coordinates, pressure, tilt, rotation, and touch events. `MockTab/Driver/` contains the app-specific glue (IOKit transport, event injection, device routing) that depends on TabletKit but is not part of it.
+MockTab relies on [TabletKit](https://github.com/Cyzor/TabletKit), a Swift package that decodes raw HID reports into pen coordinates, pressure, tilt, rotation, and touch events. `MockTab/Driver/` contains the app-specific glue, including IOKit transport, event injection, and device routing.
 
 ```swift
 // Package.swift of a consumer project
@@ -109,7 +112,7 @@ targets: [
     .target(name: "MyApp", dependencies: [
         .product(name: "TabletKit", package: "TabletKit"),
     ]),
-],
+]
 ```
 
 ```swift
@@ -120,54 +123,61 @@ var decoder: any TabletReportDecoder = IntuosV2Decoder()
 let results = decoder.decode(report: ptr, length: len, spec: spec, state: &state, deviceFamily: "intuosProGen2")
 ```
 
-It has no AppKit or system-event dependencies of its own; everything it does is driven off a registry of known devices, so it can run in any Swift context.
+TabletKit has no AppKit or system-event dependencies of its own. It uses a registry of known devices, so it can run in any Swift context.
 
-The public API is still at 0.1 (see [CHANGELOG.md](https://github.com/Cyzor/TabletKit/blob/main/CHANGELOG.md)) — workable today, but expect some breaking changes before 1.0, particularly once a second non-Wacom vendor lands and exercises the registry shape more.
+TabletKit lives in this repository as a git submodule at `TabletKit/`, pinned to the commit MockTab builds against.
 
-TabletKit lives here as a git submodule at `TabletKit/`, pinned to the commit MockTab builds against:
+If you cloned without `--recurse-submodules`, run:
 
 ```sh
-git clone --recurse-submodules https://github.com/Cyzor/tablet-driver.git
+git submodule update --init
 ```
 
-Already cloned without `--recurse-submodules`? Run `git submodule update --init`. Decoder work happens directly in the submodule and is committed to the TabletKit repo, not here. Its test suite runs the same way: `cd TabletKit && swift test`.
+Decoder work happens in the submodule and belongs in the TabletKit repo, not here. Run its tests with:
 
----
+```sh
+cd TabletKit
+swift test
+```
+
+***
 
 ## License
 
-The app is **GPL-3.0-or-later** — see [`LICENSE`](LICENSE). Free to run, study, modify, and share; modifications must stay under the same license.
+The app is **GPL-3.0-or-later**. See [`LICENSE`](LICENSE). You can run, study, modify, and share it. Modified versions must stay under the same license.
 
-The TabletKit Swift package lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit) and is **MPL-2.0** — see [`LICENSES/MPL-2.0.txt`](https://github.com/Cyzor/TabletKit/blob/main/LICENSES/MPL-2.0.txt). Changes to TabletKit's own files must stay open, but consumers can link it from any-licensed project.
+The TabletKit Swift package lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit) and is **MPL-2.0**. See [`LICENSES/MPL-2.0.txt`](https://github.com/Cyzor/TabletKit/blob/main/LICENSES/MPL-2.0.txt). Changes to TabletKit’s own files must stay open, but consumers can link it from projects under any license.
 
-Per-file licenses are declared via SPDX headers (`SPDX-License-Identifier:`) at the top of each source file.
+Per-file licenses use SPDX headers (`SPDX-License-Identifier:`).
 
----
+***
 
 ## Acknowledgments
 
-MockTab's protocol knowledge and device data draw from several open-source projects. **[OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver)**'s per-vendor JSON configurations — still the most comprehensive public database of tablet PIDs and dimensions across vendors — populate all of TabletKit's non-Wacom registry entries and a portion of the Wacom ones (see `tools/import_otd_configs.py` / `tools/import_vendor_configs.py`). The **[wacom-hid-descriptors](https://github.com/linuxwacom/wacom-hid-descriptors)** corpus shaped decoder development across multiple tablet families, and **[libwacom](https://github.com/linuxwacom/libwacom)** is the authority we check Wacom physical dimensions against whenever the kernel's own constants look off. Report formats and protocol constants ultimately trace back to **[input-wacom](https://github.com/linuxwacom/input-wacom)** and the Linux kernel HID subsystem; several decoder field mappings follow that source directly.
+MockTab’s protocol knowledge and device data draw from several open-source projects. [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) provides per-vendor JSON configurations and supplies all of TabletKit’s non-Wacom registry entries and some Wacom ones. [wacom-hid-descriptors](https://github.com/linuxwacom/wacom-hid-descriptors) shaped decoder development across multiple tablet families, and [libwacom](https://github.com/linuxwacom/libwacom) provides the reference for Wacom physical dimensions. Report formats and protocol constants trace back to [input-wacom](https://github.com/linuxwacom/input-wacom) and the Linux kernel HID subsystem.
 
----
+***
 
 ## Contributing
 
-Bug reports, device-support requests, translation corrections, and decoder work are all in scope — see [`Contributing.md`](Contributing.md) for how each is handled. Decoder PRs belong on [TabletKit](https://github.com/Cyzor/TabletKit). Forking is a first-class option if MockTab doesn't fit your needs.
+Bug reports, device-support requests, translation corrections, and decoder work are all in scope. See [`Contributing.md`](Contributing.md) for details. Decoder PRs belong on [TabletKit](https://github.com/Cyzor/TabletKit). Forking is another option for consideration.
 
-For decoder analysis, `tools/wacom_capture.d` is a dtrace script that records raw USB traffic before any decoder interprets it. Higher fidelity than the in-app capture flow, but requires disabling System Integrity Protection. See [TabletKit's CONTRIBUTING](https://github.com/Cyzor/TabletKit/blob/main/Contributing.md#data-sources-in-order-of-confidence) for the full hierarchy of data sources.
+For decoder analysis, `tools/wacom_capture.d` records raw USB traffic before any decoder interprets it. It provides higher fidelity than the in-app capture flow, but it requires disabling System Integrity Protection. See [TabletKit’s CONTRIBUTING](https://github.com/Cyzor/TabletKit/blob/main/Contributing.md#data-sources-in-order-of-confidence) for the data-source hierarchy.
 
----
+***
 
 ## Troubleshooting
 
-If the tablet light is on but Wacom Center shows "No device connected", or Wacom's installer says "Supported tablet not found", the official driver has likely dropped your model. See [mocktab.org/troubleshooting.html](https://mocktab.org/troubleshooting.html) for symptoms, affected hardware, and steps to try.
+Note that it still might be possible to coax Wacom's native driver to cooperate again without turning to an alternative driver.
 
-For post-install issues (pressure not working, conflict warning, tablet not recognized), the same page covers each case.
+If the tablet light is on but Wacom Center shows “No device connected,” or Wacom’s installer says “Supported tablet not found,” the official driver has likely dropped your model. See [mocktab.org/troubleshooting.html](https://mocktab.org/troubleshooting.html) for symptoms, affected hardware, and steps to try.
+
+For post-install issues such as pressure not working, conflict warnings, or tablet recognition failures, the same page covers each case.
 
 ## Resources
 
-- [CHANGELOG.md](CHANGELOG.md) — release history
-- [mocktab.org](https://mocktab.org) — website and FAQ
-- [Hardware compatibility](https://mocktab.org/hardware.html) — full device list
-- [Troubleshooting](https://mocktab.org/troubleshooting.html) — common problems and fixes
-- [Issues](https://github.com/Cyzor/tablet-driver/issues) — bug reports and feature requests
+- [CHANGELOG.md](CHANGELOG.md) — release history.
+- [mocktab.org](https://mocktab.org) — website and FAQ.
+- [Hardware compatibility](https://mocktab.org/hardware.html) — full device list.
+- [Troubleshooting](https://mocktab.org/troubleshooting.html) — common problems and fixes.
+- [Issues](https://github.com/Cyzor/tablet-driver/issues) — bug reports and feature requests.
