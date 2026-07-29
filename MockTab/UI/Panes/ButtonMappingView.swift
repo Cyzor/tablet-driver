@@ -109,7 +109,8 @@ struct ButtonMappingView: View {
     }
 
     /// Number of express-key rows to display in the single-sided section.
-    /// Driven by the active device spec so PTK-670/870 (10 keys) and DTU
+    /// Driven by the active device spec so PTK-670/870 (8 keys, plus a
+    /// separate dial center-press on each ring — not counted here) and DTU
     /// (4 keys) get the right row count instead of a hard-coded 8. Clamped
     /// to the storage limit of `expressKeyBindings` (16) for safety.
     private var expressKeyCount: Int {
