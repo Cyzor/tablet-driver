@@ -6,7 +6,9 @@
 // hardware attached:
 //
 //   1. Can this process create an IOHIDUserDevice at all?
-//      (Needs root or the com.apple.developer.hid.virtual.device entitlement.)
+//      (Needs the com.apple.developer.hid.virtual.device entitlement backed by a
+//      provisioning profile. Root does NOT substitute — verified with SIP both
+//      enabled and disabled.)
 //   2. Does the system pointer track the virtual pen's absolute X/Y?
 //   3. Do the resulting events carry tablet semantics — pressure, tilt,
 //      tablet subtype / kCGEventTabletPointer — or arrive as plain mouse?
@@ -298,8 +300,10 @@ int main(int argc, char **argv) {
         if (!dev) {
             fprintf(stderr,
                 "error: IOHIDUserDeviceCreateWithProperties returned NULL.\n"
-                "       This call needs root or the com.apple.developer.hid.virtual.device\n"
-                "       entitlement. Re-run with sudo.\n");
+                "       This needs the com.apple.developer.hid.virtual.device entitlement,\n"
+                "       backed by a provisioning profile. Tested and ruled out: root\n"
+                "       (with SIP on and off), and disabling SIP by itself. Privilege is\n"
+                "       not the gate — do not bother re-running with sudo.\n");
             return 1;
         }
         fprintf(stderr, "[device] virtual pen created — check: ioreg -p IOService -n 'MockTab Virtual Pen'\n");
