@@ -8,7 +8,7 @@ import Foundation
 /// Codable conformance doesn't recognize — so an older build re-saving one
 /// of the composite prefs structs doesn't silently drop a field a newer
 /// build wrote. See UnknownFieldsCodec.
-enum JSONValue: Codable, Equatable {
+enum JSONValue: Codable, Equatable, Sendable {
     case string(String)
     case int(Int)
     case double(Double)

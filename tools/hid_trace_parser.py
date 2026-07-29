@@ -38,7 +38,12 @@ def parse_trace(text: str):
         "descriptor": None, "name": None, "path": None,
         "ident": None, "reports": defaultdict(list),
     })
-    current = None
+    # Newer hid-recorder output (whot/wacom-recordings) omits D: entirely for
+    # single-interface devices — R:/N:/I:/E: just apply to interface 0 with
+    # no selector line at all. Default to 0 rather than requiring D: first;
+    # a real D: line (multi-interface dumps, e.g. bentiss/hid-devices) still
+    # overrides it as soon as one appears.
+    current = 0
 
     for lineno, raw_line in enumerate(text.splitlines(), 1):
         line = raw_line.rstrip("\n")
@@ -52,25 +57,18 @@ def parse_trace(text: str):
         if tag == "D":
             current = int(rest)
         elif tag == "R":
-            if current is None:
-                raise ValueError(f"line {lineno}: R: before any D:")
             parts = [int(x, 16) for x in rest.split()]
             # First token is bentiss's own descriptor-length field; the
             # remaining tokens are the actual descriptor bytes.
             interfaces[current]["descriptor"] = parts[1:]
         elif tag == "N":
-            if current is not None:
-                interfaces[current]["name"] = rest
+            interfaces[current]["name"] = rest
         elif tag == "P":
-            if current is not None:
-                interfaces[current]["path"] = rest
+            interfaces[current]["path"] = rest
         elif tag == "I":
-            if current is not None:
-                bus, vid, pid = rest.split()
-                interfaces[current]["ident"] = (bus, vid, int(pid, 16))
+            bus, vid, pid = rest.split()
+            interfaces[current]["ident"] = (bus, vid, int(pid, 16))
         elif tag == "E":
-            if current is None:
-                raise ValueError(f"line {lineno}: E: before any D:")
             fields = rest.split()
             timestamp = float(fields[0])
             # bentiss prefixes the byte list with its own length count;
