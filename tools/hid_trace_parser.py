@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Parses bentiss/hid-devices `hid-recorder` trace files (`.hid`).
+"""Parses `hid-recorder` trace files (`.hid`).
 
-Local analysis only — do NOT commit trace files or values copied verbatim
-from them; the source repo carries no license.
+Reads traces the caller supplies; none ship with this repo.
 
-Format (per bentiss/hid-replay-docs):
+Format:
   D: n        - selects the active interface index for subsequent R:/E: lines
   R: len ...  - raw HID report descriptor bytes for the interface named by
                 the most recent D: line (len includes itself in some dumps;
@@ -38,11 +37,10 @@ def parse_trace(text: str):
         "descriptor": None, "name": None, "path": None,
         "ident": None, "reports": defaultdict(list),
     })
-    # Newer hid-recorder output (whot/wacom-recordings) omits D: entirely for
-    # single-interface devices — R:/N:/I:/E: just apply to interface 0 with
-    # no selector line at all. Default to 0 rather than requiring D: first;
-    # a real D: line (multi-interface dumps, e.g. bentiss/hid-devices) still
-    # overrides it as soon as one appears.
+    # Newer hid-recorder output omits D: entirely for single-interface
+    # devices — R:/N:/I:/E: just apply to interface 0 with no selector line
+    # at all. Default to 0 rather than requiring D: first; a real D: line
+    # (multi-interface dumps) still overrides it as soon as one appears.
     current = 0
 
     for lineno, raw_line in enumerate(text.splitlines(), 1):
@@ -58,7 +56,7 @@ def parse_trace(text: str):
             current = int(rest)
         elif tag == "R":
             parts = [int(x, 16) for x in rest.split()]
-            # First token is bentiss's own descriptor-length field; the
+            # First token is the dump's own descriptor-length field; the
             # remaining tokens are the actual descriptor bytes.
             interfaces[current]["descriptor"] = parts[1:]
         elif tag == "N":
@@ -71,7 +69,7 @@ def parse_trace(text: str):
         elif tag == "E":
             fields = rest.split()
             timestamp = float(fields[0])
-            # bentiss prefixes the byte list with its own length count;
+            # The dump prefixes the byte list with its own length count;
             # the actual report starts at fields[2] (fields[1] is that count).
             report_bytes = [int(x, 16) for x in fields[2:]]
             if not report_bytes:
