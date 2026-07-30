@@ -12,9 +12,11 @@ import Foundation
 /// host writes a data-mode feature report; a read-only capture then records
 /// nothing useful and looks like "the device reports no tilt". Legacy families
 /// use feature report `0x02` value `2`; on current `HID_GENERIC` devices the
-/// report ID is whatever carries the vendor DATAMODE usage (`0xff0d1002`) and
-/// must be read out of the raw descriptor — IOKit surfaces those fields as
-/// `usage 0x00`, so we can't discover it here. Hence the manual entry: a tester
+/// report ID is whatever carries the vendor DATAMODE usage (`0xff0d1002`), and
+/// on Precision-Touchpad-style multitouch interfaces the standard Device Mode
+/// usage (`0x0d`/`0x52`) plays the same role. Either must be read out of the raw
+/// descriptor — IOKit surfaces those fields as `usage 0x00`, so we can't
+/// discover it from the element list. Hence the manual entry: a tester
 /// with modern hardware can try candidate report IDs and ship the outcome back
 /// in the capture file. See Notes/Wacom-HID-Post-2020-Preliminary-Research.md.
 struct CaptureInitReport: Codable, Identifiable {
