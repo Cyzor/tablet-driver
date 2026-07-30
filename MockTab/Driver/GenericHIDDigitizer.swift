@@ -46,11 +46,31 @@ final class GenericHIDDigitizer: TabletDevice {
     /// IOKit plumbing (open, value callbacks) and forwards element values to it.
     private var frame: GenericDigitizerFrame
 
+    /// When true the device is opened and its reports are recorded for
+    /// discovery, but no `TabletPoint` is ever emitted — the cursor is left
+    /// alone.
+    ///
+    /// Used for multitouch-only interfaces (see `DeviceRouter`), where the
+    /// element-value path this class is built on cannot work: a multitouch
+    /// report repeats X/Y once per finger and IOKit gives no way to tell the
+    /// repetitions apart, so driving the cursor from it yanks the pointer
+    /// between contacts. Attaching nothing at all would be worse than it
+    /// sounds — a device with no driver gets no `DeviceContext`, and
+    /// `CaptureGuideView` resolves its capture target through
+    /// `tabletManager.contexts`, so an unsupported touch device would become
+    /// invisible to the discovery flow that exists to onboard it.
+    private let observeOnly: Bool
+
     // MARK: - Init
 
-    init(device: IOHIDDevice, onTablet: @escaping (TabletPoint) -> Void) {
+    init(
+        device: IOHIDDevice,
+        onTablet: @escaping (TabletPoint) -> Void,
+        observeOnly: Bool = false
+    ) {
         self.device = device
         self.onTablet = onTablet
+        self.observeOnly = observeOnly
 
         let pid = hidIntProperty(device, kIOHIDProductIDKey)
         let vid = hidIntProperty(device, kIOHIDVendorIDKey)
@@ -130,6 +150,11 @@ final class GenericHIDDigitizer: TabletDevice {
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
 
+        if observeOnly {
+            logger.info("\(self.tag, privacy: .public): attached for observation only — reports recorded for discovery, no cursor input")
+            return
+        }
+
         let mx = spec.maxX; let my = spec.maxY; let mp = spec.maxPressure
         logger.info("\(self.tag, privacy: .public): generic HID digitizer attached (maxX=\(mx, privacy: .public) maxY=\(my, privacy: .public) pressure=\(self.frame.hasPressure ? mp : 0, privacy: .public) inRange=\(self.frame.hasInRange, privacy: .public))")
     }
@@ -177,6 +202,10 @@ final class GenericHIDDigitizer: TabletDevice {
     /// callback microseconds later, and `InputInjector`'s delta gate drops the
     /// redundant duplicates.
     private func handle(value: IOHIDValue) {
+        // Observation-only interfaces still reach the raw-report callback, which
+        // is what feeds CaptureEngine; only the element→cursor path is cut.
+        guard !observeOnly else { return }
+
         let elem = IOHIDValueGetElement(value)
         let page = IOHIDElementGetUsagePage(elem)
         let usage = IOHIDElementGetUsage(elem)

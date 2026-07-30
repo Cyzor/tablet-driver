@@ -172,6 +172,34 @@ enum DeviceRouter {
         // status interface) or LED companions of a previously-attached tablet.
         let pidStr = String(productID, radix: 16, uppercase: true)
         let (probeX, _, _, _) = queryHIDDigitizerSpec(device)
+
+        // A multitouch interface passes the X/Y probe — `queryHIDDigitizerSpec`
+        // reads IOKit elements, which carry no collection context, so a touch
+        // report's Generic Desktop X looks exactly like a pen's. Attaching a pen
+        // driver to one is actively wrong rather than merely useless: the report
+        // repeats X/Y once per finger and IOKit cannot say which repetition a
+        // value came from, so the cursor is dragged between contacts.
+        //
+        // Only reachable for unregistered PIDs. Registered devices returned
+        // above, so nothing whose touch arrives on a Wacom vendor interface
+        // (PTH-860 and friends, decoded by IntuosV2Decoder) is affected.
+        //
+        // Attached for observation rather than skipped: a device with no driver
+        // gets no `DeviceContext`, and `CaptureGuideView` resolves its capture
+        // target through `tabletManager.contexts`, so returning `.skip` here
+        // would make novel touch hardware invisible to the discovery flow that
+        // exists to onboard it. Observing keeps reports flowing to
+        // `CaptureEngine` while emitting no cursor input.
+        //
+        // No device path constructs a `PrecisionTouchDecoder` yet; when touch
+        // wiring lands, this is where it hooks in.
+        if probeX > 0, classifyDigitizerInterface(device) == .touchOnly {
+            routerLog.info("0x\(pidStr, privacy: .public) — multitouch-only interface, observing without cursor input")
+            let drv = GenericHIDDigitizer(
+                device: device, onTablet: callbacks.onTablet, observeOnly: true)
+            return .driver(drv, seized: false)
+        }
+
         if probeX > 0 {
             // Unknown *Wacom* gets the Intuos-family fallback (knows the Wacom
             // report layout). Any other vendor's standards-compliant pen
