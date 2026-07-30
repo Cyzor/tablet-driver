@@ -66,6 +66,17 @@ struct ButtonMappingView: View {
     private var hasTouchRing: Bool { spec?.hasTouchRing == true }
     private var hasDualRings: Bool { spec?.hasDualRings == true }
     private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
+
+    /// Whether to draw the split left/right *pad* layout (three toggle buttons
+    /// plus five express keys per side, sixteen fixed slots). That shape is a
+    /// Cintiq 24HD trait, not a consequence of having two rings: the gen-3
+    /// Intuos Pro also sets `hasDualRings` but has a single eight-key column.
+    /// Keyed on the family rather than `buttonCount`, since the Cintiq itself
+    /// declares `buttonCount: 8` while filling all sixteen slots — the
+    /// dual-sided layout has never respected that field for anyone.
+    private var hasSplitPadLayout: Bool {
+        hasDualRings && spec?.parser == .cintiqV1
+    }
     private var bezelButtonCount: Int { spec?.bezelButtonCount ?? 0 }
 
     // MARK: - Companion peripheral (e.g. Xencelabs Quick Keys puck/dongle)
@@ -137,7 +148,7 @@ struct ButtonMappingView: View {
                 QuickKeysSectionView(settings: settings, spec: spec, liveButtons: liveButtons)
             } else {
                 penButtonsSection(lb: liveButtons)
-                if hasDualRings {
+                if hasSplitPadLayout {
                     dualSidedSection(lb: liveButtons)
                 } else {
                     singleSidedSection(lb: liveButtons)
@@ -378,23 +389,25 @@ struct ButtonMappingView: View {
             }
         }
 
+        // Dual-ring hardware without the Cintiq's split pad (the gen-3 Intuos
+        // Pro's two dials) still needs both rings shown, so borrow the
+        // dual-sided layout's Left/Right headers. Both rings drive one shared
+        // mode setting — mirrored, exactly as on the Cintiq — so the right
+        // section is a second live view of the same slots, not its own
+        // storage. A per-ring binding would need the work listed in
+        // WacomKnownDevice.swift's ring2 TODO.
         if hasTouchRing {
-            Section("Touch Ring") {
-                buttonRow(
-                    String(localized: "Center", comment: "Touch ring center button row label"),
-                    isActive: lb.touchRingButtonDown,
-                    binding: settings.recordingBinding(
-                        String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
-                        get: { settings.touchRingButtonBinding },
-                        set: { settings.touchRingButtonBinding = $0 }),
-                    ringSlotCount: spec?.ringSlotCount ?? 4,
-                    recordRequestToken: centerRecordToken)
-                touchRingSlotsSection(
-                    String(
-                        localized: "Touch Ring",
-                        comment: "Section header / row label for touch ring"),
-                    isActive: lb.touchRingActive, showsDiagram: true,
-                    onCenterTap: { centerRecordToken += 1 })
+            if hasDualRings {
+                Section("Touch Ring — Left") { touchRingBlock(lb: lb) }
+                Section("Touch Ring — Right") {
+                    touchRingSlotsSection(
+                        String(
+                            localized: "Touch Ring",
+                            comment: "Section header / row label for touch ring"),
+                        isActive: lb.touchRing2Active, showsDiagram: true)
+                }
+            } else {
+                Section("Touch Ring") { touchRingBlock(lb: lb) }
             }
         }
 
@@ -410,6 +423,27 @@ struct ButtonMappingView: View {
         }
 
         quickKeysSection
+    }
+
+    /// Center-click row plus the ring's mode list — the body of the primary
+    /// ring's section, shared by the single-ring and dual-ring headers above.
+    @ViewBuilder
+    private func touchRingBlock(lb: LiveButtonState) -> some View {
+        buttonRow(
+            String(localized: "Center", comment: "Touch ring center button row label"),
+            isActive: lb.touchRingButtonDown,
+            binding: settings.recordingBinding(
+                String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
+                get: { settings.touchRingButtonBinding },
+                set: { settings.touchRingButtonBinding = $0 }),
+            ringSlotCount: spec?.ringSlotCount ?? 4,
+            recordRequestToken: centerRecordToken)
+        touchRingSlotsSection(
+            String(
+                localized: "Touch Ring",
+                comment: "Section header / row label for touch ring"),
+            isActive: lb.touchRingActive, showsDiagram: true,
+            onCenterTap: { centerRecordToken += 1 })
     }
 
     /// Express keys + dial for a connected companion puck/dongle, folded
