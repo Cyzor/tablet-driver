@@ -169,7 +169,14 @@ final class LatencyProbe {
     }
 
     /// Unified-log channel for stall episodes, so evidence survives without
-    /// the diagnostics pane being open. Retrieve after the fact with:
+    /// the diagnostics pane being open. Lines are emitted at `.info`, which
+    /// the unified log keeps in memory only — `log show` after the fact is
+    /// unreliable. Watch live instead:
+    ///   log stream --level info --predicate 'subsystem == "com.mocktab.latency"'
+    /// To retrieve after the fact, opt the subsystem into disk persistence
+    /// first (survives until reboot, and puts stall logging back in the disk
+    /// path — enable it only for a session that is hunting a stall):
+    ///   sudo log config --subsystem com.mocktab.latency --mode "level:info,persist:info"
     ///   log show --info --last 1h --predicate 'subsystem == "com.mocktab.latency"'
     private static let log = Logger(subsystem: "com.mocktab.latency", category: "stall")
 
@@ -190,10 +197,13 @@ final class LatencyProbe {
     ///   - CPU ≈ gap — the thread was running the whole time, so the run loop
     ///     was busy inside another source (or the previous report's own
     ///     handling overran). That is ours to fix.
-    ///   - CPU ≈ 0 — the thread was not running at all: descheduled, or
-    ///     blocked in a page fault behind disk I/O. Time-constraint policy
-    ///     does not help against the latter, and neither does anything else
-    ///     in userspace.
+    ///   - CPU ≈ 0 — the thread was not running at all. This branch is
+    ///     ambiguous and must not be read as "unfixable": descheduled, or
+    ///     blocked in a page fault behind disk I/O (which nothing in
+    ///     userspace helps against), but equally blocked in mach IPC inside
+    ///     `CGEventPost` waiting on a busy WindowServer, which is ours. The
+    ///     pipeline-total figure separates them — an injection span that
+    ///     spikes alongside the stall points at the post, not at paging.
     ///
     /// Measured between consecutive report callbacks rather than across the
     /// stall window itself, which is not observable after the fact — the
