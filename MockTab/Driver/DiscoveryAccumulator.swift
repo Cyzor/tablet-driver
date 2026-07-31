@@ -80,6 +80,38 @@ struct ByteValueSet: Sendable, Equatable {
         }
         return out
     }
+
+    /// Which bit positions took both values across the session — set in at
+    /// least one sample and clear in at least one other.
+    ///
+    /// The decodable signal for a button device. A report whose descriptor is
+    /// opaque still gives its structure away here: on a pad or remote, every
+    /// key is one bit that toggles, so this mask *is* the button map, and a
+    /// bit that is always set (a validity or battery flag) drops out of it
+    /// automatically instead of being counted as a nineteenth button.
+    ///
+    /// Derived at snapshot time by folding the observed values, never on the
+    /// HID callback thread — this walks the value list, which the hot path
+    /// must not.
+    var togglingBits: UInt8 {
+        var everSet: UInt8 = 0
+        var everClear: UInt8 = 0
+        for value in values {
+            everSet |= value
+            everClear |= ~value
+        }
+        return everSet & everClear
+    }
+
+    /// Bits set in at least one observed value.
+    ///
+    /// Reported alongside `togglingBits` because the difference between them
+    /// is meaningful: a bit here but not there was set in *every* sample, so
+    /// it is a constant flag rather than a control, and knowing that saves
+    /// the reader from chasing it.
+    var bitsEverSet: UInt8 {
+        values.reduce(into: UInt8(0)) { $0 |= $1 }
+    }
 }
 
 // MARK: - Discovery accumulator

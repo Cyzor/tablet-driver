@@ -420,12 +420,19 @@ final class CaptureEngine: ObservableObject {
 
     private static func byteStat(_ seen: ByteValueSet, lo: UInt8, hi: UInt8) -> DiscoveryByteStat {
         let (kept, truncated) = seen.sampledValues(cap: byteValueListCap)
+        // Emitted only when some bit actually toggled: on a coordinate byte
+        // nearly every bit does, which says nothing, and a field of 255s
+        // across a long report would bury the positions where it means
+        // something.
+        let toggled = seen.togglingBits
         return DiscoveryByteStat(
             min: Int(lo),
             max: Int(hi),
             distinctCount: seen.count,
             values: kept.map(Int.init),
-            truncated: truncated ? true : nil
+            truncated: truncated ? true : nil,
+            bitsToggled: toggled == 0 ? nil : Int(toggled),
+            bitsSet: toggled == 0 ? nil : Int(seen.bitsEverSet)
         )
     }
 

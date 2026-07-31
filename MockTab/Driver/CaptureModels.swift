@@ -82,6 +82,18 @@ struct DiscoveryByteStat: Codable {
     let values: [Int]
     /// True when `values` omits some observed values.
     var truncated: Bool?
+    /// Bit positions that took both 0 and 1 across the session.
+    ///
+    /// On a device whose descriptor is opaque — every classic Wacom pad and
+    /// remote — this is the closest thing to a button map the capture can
+    /// offer, because each key is one toggling bit. Reading it beats deriving
+    /// it from `values` by hand, which is what triaging such a device
+    /// otherwise requires.
+    var bitsToggled: Int?
+    /// Bit positions set in at least one sample. A bit present here but
+    /// absent from `bitsToggled` was set in every sample, marking it a
+    /// constant flag rather than a control.
+    var bitsSet: Int?
 }
 
 struct DiscoveryReportSummary: Codable {
