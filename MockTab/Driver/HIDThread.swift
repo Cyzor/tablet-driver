@@ -107,8 +107,9 @@ final class HIDThread {
 /// the precondition for promoting it to a time-constraint (real-time)
 /// scheduling policy.
 ///
-/// Cost per report: one `mach_absolute_time()` call and a few double ops.
-/// No allocations, no timers. All writes happen on HIDThread; reads from
+/// Cost per report: one `mach_absolute_time()` call, one
+/// `clock_gettime_nsec_np` read, and a few double ops. No allocations, no
+/// timers, no mach traps. All writes happen on HIDThread; reads from
 /// the diagnostics UI are non-atomic snapshots (same tolerated-torn-read
 /// pattern as `CursorSmoother.jitterLevel`) — a stale value is harmless.
 final class LatencyProbe {
@@ -169,7 +170,7 @@ final class LatencyProbe {
 
     /// Unified-log channel for stall episodes, so evidence survives without
     /// the diagnostics pane being open. Retrieve after the fact with:
-    ///   log show --last 1h --predicate 'subsystem == "com.mocktab.latency"'
+    ///   log show --info --last 1h --predicate 'subsystem == "com.mocktab.latency"'
     private static let log = Logger(subsystem: "com.mocktab.latency", category: "stall")
 
     /// Stalls arrive in bursts during load storms; log the burst, not every
@@ -179,11 +180,60 @@ final class LatencyProbe {
     private var burstWorstMs: Double = 0
     private var burstStallCount: UInt64 = 0
 
+    /// Wall clock and this thread's consumed CPU time at the previous report,
+    /// used to tell a *stalled* thread from a *busy* one.
+    ///
+    /// A delivery stall says only that a report arrived late; it cannot say
+    /// why, and the three candidates want opposite fixes. Comparing how much
+    /// CPU this thread actually burned across the gap separates them:
+    ///
+    ///   - CPU ≈ gap — the thread was running the whole time, so the run loop
+    ///     was busy inside another source (or the previous report's own
+    ///     handling overran). That is ours to fix.
+    ///   - CPU ≈ 0 — the thread was not running at all: descheduled, or
+    ///     blocked in a page fault behind disk I/O. Time-constraint policy
+    ///     does not help against the latter, and neither does anything else
+    ///     in userspace.
+    ///
+    /// Measured between consecutive report callbacks rather than across the
+    /// stall window itself, which is not observable after the fact — the
+    /// interval is a superset of the stall, so a near-zero CPU delta is
+    /// conclusive while a large one points at the run loop without pinning
+    /// the exact source.
+    ///
+    /// Page-fault counters would separate "descheduled" from "page-faulted",
+    /// but `task_info` is a mach trap and this runs per report on a
+    /// time-constraint thread; the cost is not worth a distinction that only
+    /// refines an already-unfixable branch.
+    private var lastRecordWall: UInt64 = 0
+    private var lastRecordThreadCPUNs: UInt64 = 0
+
+    /// Gap and thread-CPU figures belonging to the worst stall in the current
+    /// burst, so the logged line describes that report rather than whichever
+    /// one happened to trip the rate limiter.
+    private var burstWorstGapMs: Double = 0
+    private var burstWorstCPUMs: Double = 0
+
     /// Called on HIDThread for every input report from the known-device path.
     func record(kernelTimestamp: UInt64) {
         let now = mach_absolute_time()
         guard now > kernelTimestamp else { return }
         let ms = Double(now - kernelTimestamp) * Self.timebaseFactor / 1_000_000.0
+
+        // Sampled every report so a stall can be explained after the fact.
+        // `clock_gettime_nsec_np` is a vDSO-style read, not a mach trap — a
+        // few tens of nanoseconds, which the time-constraint computation
+        // budget absorbs without noticing.
+        let threadCPUNs = clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID)
+        let gapMs = lastRecordWall == 0
+            ? 0
+            : Double(now &- lastRecordWall) * Self.timebaseFactor / 1_000_000.0
+        let cpuMs = lastRecordThreadCPUNs == 0
+            ? 0
+            : Double(threadCPUNs &- lastRecordThreadCPUNs) / 1_000_000.0
+        lastRecordWall = now
+        lastRecordThreadCPUNs = threadCPUNs
+
         if now < settlingDeadline {
             if ms > connectWorstMs { connectWorstMs = ms }
             if ms > Self.stallThresholdMs {
@@ -202,13 +252,24 @@ final class LatencyProbe {
         if ms > Self.stallThresholdMs {
             stallCount &+= 1
             burstStallCount &+= 1
-            if ms > burstWorstMs { burstWorstMs = ms }
+            if ms > burstWorstMs {
+                burstWorstMs = ms
+                burstWorstGapMs = gapMs
+                burstWorstCPUMs = cpuMs
+            }
             let oneSecondTicks = UInt64(1_000_000_000.0 / Self.timebaseFactor)
             if now &- lastLogTime > oneSecondTicks {
-                Self.log.warning("delivery stall: worst \(self.burstWorstMs, format: .fixed(precision: 1)) ms over \(self.burstStallCount) report(s); avg \(self.averageMs, format: .fixed(precision: 2)) ms, total stalls \(self.stallCount)")
+                // Logged at `.info`, matching the connect-phase line: `.warning`
+                // persists to the on-disk log store, and this fires from the
+                // time-constraint thread precisely when the disk is already the
+                // suspect — a measurement that writes to the thing it is
+                // measuring. Retrieve with `log show --info`.
+                Self.log.info("delivery stall: worst \(self.burstWorstMs, format: .fixed(precision: 1)) ms over \(self.burstStallCount) report(s); thread ran \(self.burstWorstCPUMs, format: .fixed(precision: 2)) ms of \(self.burstWorstGapMs, format: .fixed(precision: 1)) ms since previous report; avg \(self.averageMs, format: .fixed(precision: 2)) ms, total stalls \(self.stallCount)")
                 lastLogTime = now
                 burstWorstMs = 0
                 burstStallCount = 0
+                burstWorstGapMs = 0
+                burstWorstCPUMs = 0
             }
         }
     }
