@@ -11,11 +11,23 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 
 /// Generic fallback driver for any unrecognised Wacom tablet (vendor 0x056A).
 ///
-/// Auto-detects the HID report family based on `MaxInputReportSize`:
+/// Tries a descriptor-derived pen decoder first — see `penDecoders` — for any
+/// report ID the device's own descriptor explains field by field. Modern
+/// Wacom hardware does this on its vendor page using the standard Digitizer
+/// usage numbers, confirmed against a real Cintiq Pro 24 (DTH-2420)
+/// descriptor. Classic Wacom descriptors declare no such fields, so those
+/// devices fall through unchanged to the family guess below.
+///
+/// For any report ID the descriptor does not explain, auto-detects the HID
+/// report family based on `MaxInputReportSize`:
 ///   - **IntuosV1** (≤ 64 bytes): 10-byte reports with Report ID 0x02/0x10.
 ///     Coordinate decode matches PTH-851 / PTZ-631W / DTK-2400.
 ///   - **IntuosV2** (> 64 bytes): 27+ byte reports with Report ID 0x10.
 ///     Coordinate decode matches PTH-660 / PTH-860.
+/// This proxy is why the descriptor path is tried first rather than used to
+/// pick a family: a modern Cintiq's ~26-byte pen report is closer in size to
+/// the decade-older IntuosV1 format than to the IntuosV2 layout it needs, so
+/// report size alone would misclassify exactly the hardware this exists for.
 ///
 /// Queries HID descriptor elements for physical maxX, maxY, and maxPressure
 /// so calibration adapts automatically.  Falls back to conservative defaults
@@ -43,9 +55,33 @@ final class WacomFallbackDevice: TabletDevice {
     private var reportBuffer: [UInt8]
     private let maxReportSize: Int
 
-    /// Which report family this device uses.
+    /// Which report family this device uses — the guess `penDecoders` exists
+    /// to make unnecessary wherever it can.
     private enum ReportFamily { case intuosV1, intuosV2 }
     private let family: ReportFamily
+
+    /// Descriptor-derived pen decoders, keyed by report ID.
+    ///
+    /// `family` above decides the byte layout by `MaxInputReportSize` alone —
+    /// a proxy that fails on modern hardware: a Cintiq Pro's ~26-byte pen
+    /// report is closer in size to the decade-older IntuosV1 format than to
+    /// the IntuosV2 layout it actually needs. A device whose descriptor
+    /// declares its pen fields does not need that guess at all; `handleReport`
+    /// checks this dictionary before falling through to the family switch, so
+    /// any report ID covered here bypasses the guess entirely rather than
+    /// merely correcting it.
+    ///
+    /// Empty on every classic Wacom descriptor, which declares its fields as
+    /// an unnamed vendor blob — those devices are unaffected and take the
+    /// family-guess path exactly as before.
+    ///
+    /// Known gap: decoding here does not emit `onToolEnter`, so `activeToolSerial`
+    /// stays 0 and `activeToolCode` stays at its default for a device that
+    /// lands here. Eraser detection is unaffected — `TabletPoint.eraser` is
+    /// read directly from the report's own Invert/Eraser bits, which
+    /// `InputInjector` already treats as a defense-in-depth source independent
+    /// of tool identity.
+    private let penDecoders: [UInt8: GenericPenDecoder]
 
     private var lastX = 0
     private var lastY = 0
@@ -98,6 +134,24 @@ final class WacomFallbackDevice: TabletDevice {
         // Query HID descriptor for coordinate and pressure ranges.
         spec = Self.querySpec(device: device, family: family)
         parsedDescriptor = HIDDescriptorReader.read(device)
+        penDecoders = Self.derivePenDecoders(from: parsedDescriptor)
+    }
+
+    /// Builds a descriptor-driven pen decoder for every pen report the
+    /// device's own descriptor declares. Empty when the descriptor cannot be
+    /// parsed or declares no pen fields, which is the ordinary answer for
+    /// classic Wacom hardware.
+    private static func derivePenDecoders(
+        from parsed: HIDDescriptorReader.Parsed
+    ) -> [UInt8: GenericPenDecoder] {
+        guard let hex = parsed.rawHex, let layout = try? HIDReportDescriptorParser.parse(hex: hex)
+        else { return [:] }
+
+        var decoders: [UInt8: GenericPenDecoder] = [:]
+        for penLayout in GenericPenLayout.derive(from: layout) {
+            decoders[penLayout.reportID] = GenericPenDecoder(layout: penLayout)
+        }
+        return decoders
     }
 
     // MARK: - HID descriptor query
@@ -346,6 +400,17 @@ final class WacomFallbackDevice: TabletDevice {
             } else {
                 // Fall back to IntuosV1 express key decode (0x03 also used by PTZ-631W).
                 handleExpressKeys(id: id, report: report, length: length)
+            }
+            return
+        }
+
+        // ── Descriptor-derived pen decode ─────────────────────────────────
+        // Checked before the family guess below: a report ID this device's
+        // own descriptor explains does not need `family` to decide its byte
+        // layout, and should not go through a guess when it does not need one.
+        if let decoder = penDecoders[id] {
+            if let point = decoder.decode(report: Array(UnsafeBufferPointer(start: report, count: length))) {
+                onTablet(point)
             }
             return
         }
