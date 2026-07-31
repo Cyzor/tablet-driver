@@ -4,6 +4,7 @@
 
 import Foundation
 import IOKit.hid
+import TabletKit
 
 /// Reads and summarises a device's HID report descriptor.
 ///
@@ -32,17 +33,23 @@ enum HIDDescriptorReader {
         /// A field only carries decodable meaning when its usage page is one we
         /// understand *and* its usage code is itself meaningful within that page.
         ///
-        /// Real captures show two distinct opacity patterns, not one: a vendor-defined
-        /// page (`>= 0xFF00`, e.g. Wacom CTH-690) is the obvious case, but Wacom's
-        /// Intuos5 touch descriptor sits on the *correct* Digitizer page (0x0D) with
-        /// `usage == 0x00` on every field — checking the page alone would misreport
-        /// that as readable. Both must hold for a field to count as readable.
+        /// Real captures show more than one opacity pattern, and page alone
+        /// cannot distinguish them. An Intuos5 touch descriptor sits on the
+        /// *correct* Digitizer page (0x0D) with `usage == 0x00` on every field
+        /// — opaque despite the right page. A DTH-2420 (Cintiq Pro 24) pen
+        /// report does the reverse: it declares tip switch, pressure, tilt,
+        /// and position with the *standard* Digitizer usage numbers, but on
+        /// Wacom's vendor page (0xFF0D) — fully self-describing despite the
+        /// "wrong" page, and a page-only check would call it opaque, which is
+        /// backwards for the most legible descriptor this reads.
+        ///
+        /// Delegates to `TabletKit.DigitizerUsage.isDecodable`, which is what
+        /// resolves both cases: usage `0x00` is filler anywhere; a standard
+        /// page accepts any named usage; a vendor page accepts only a usage
+        /// number from the known digitizer set, so Wacom's structured vendor
+        /// reports read as readable while its blob reports still do not.
         var isReadable: Bool {
-            guard usage != 0x00 else { return false }
-            switch usagePage {
-            case 0x01, 0x09, 0x0C, 0x0D: return true
-            default: return false
-            }
+            DigitizerUsage.isDecodable(usagePage: usagePage, usage: usage)
         }
     }
 
