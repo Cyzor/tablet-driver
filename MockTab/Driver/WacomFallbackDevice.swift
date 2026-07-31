@@ -164,9 +164,41 @@ final class WacomFallbackDevice: TabletDevice {
     /// Feature and mode inits are USB-only.  Over BLE the GATT digitizer is
     /// always active; writing the InputMode characteristic suppresses pen data.
     private func sendFeatureInit() {
-        // [0x02, 0x02]: feature init for IntuosV1-era digitiser endpoint.
-        var init1: [UInt8] = [0x02, 0x02]
-        hidSetReport(device, reportID: 0x02, bytes: &init1, tag: "\(tag) featureInit", log: logger)
+        // Ask the descriptor which report carries the mode switch before
+        // falling back to the legacy one.
+        //
+        // This matters most for the devices that land here: an unrecognized
+        // modern Wacom boots emitting a reduced stream until the host writes
+        // this, and the report ID carrying it varies per device. The legacy
+        // 0x02 below is correct on classic hardware and happens to be correct
+        // on some modern hardware too, but only by coincidence — where it is
+        // wrong, the tablet stays half-awake and looks like it "reports no
+        // tilt" rather than like a missing init.
+        //
+        // Classic Wacom and Xencelabs descriptors declare no such usage, so
+        // they take the legacy path exactly as before; this adds a case rather
+        // than changing one.
+        var reportID: CFIndex = 0x02
+        var derived = false
+        if let hex = parsedDescriptor.rawHex,
+            let layout = try? HIDReportDescriptorParser.parse(hex: hex),
+            let declared = layout.modeSwitchFeatureReportID()
+        {
+            reportID = CFIndex(declared)
+            derived = true
+        }
+
+        // Value 2 selects full reporting for both the vendor and the standard
+        // control — see `DescriptorLayout.modeSwitchUsages`.
+        var payload: [UInt8] = [UInt8(reportID), 0x02]
+        hidSetReport(
+            device, reportID: reportID, bytes: &payload,
+            tag: "\(tag) featureInit(\(derived ? "descriptor" : "legacy"))", log: logger)
+        if derived {
+            logger.info(
+                "\(self.tag, privacy: .public): mode switch on descriptor-declared report 0x\(String(format: "%02X", Int(reportID)), privacy: .public)"
+            )
+        }
 
         // IntuosV2 InputMode init (no-op if element not present).
         if family == .intuosV2 {

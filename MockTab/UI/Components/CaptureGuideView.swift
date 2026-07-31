@@ -34,7 +34,8 @@ struct CaptureGuideView: View {
     @State private var initReportIDText = "0x02"
     @State private var initValueText = "0x02"
     /// Set when the device's own descriptor names a feature report carrying a
-    /// mode-switch usage — see `modeSwitchUsages` — in which case the report ID
+    /// mode-switch usage — see `DescriptorLayout.modeSwitchUsages` in TabletKit
+    /// — in which case the report ID
     /// is correct rather than a guess. `nil` on every classic Wacom / Xencelabs
     /// device we've tested, since their descriptors declare neither usage; the
     /// 0x02 default above remains the fallback for those.
@@ -507,46 +508,32 @@ struct CaptureGuideView: View {
         engine.startDiscovery(device: dev, deviceInfo: devInfo, duration: 3600)
     }
 
-    /// Feature-report usages that select a device's full data mode, most
-    /// specific first.
+    /// Parses the device's own raw descriptor bytes for a mode-switch feature
+    /// report and pre-fills the report field with it when found — replacing
+    /// the 0x02 legacy guess with the ID this specific device actually uses.
+    /// Also expands the (otherwise collapsed) advanced control, since a
+    /// detected report makes it worth the tester's attention rather than an
+    /// edge case to dig for.
     ///
-    /// `WACOM_HID_WD_DATAMODE` is Wacom's vendor control and stays first: on a
-    /// device declaring both, the vendor path is the one this control was built
-    /// to exercise. HID Device Mode is the standard equivalent, declared by
-    /// Precision-Touchpad-style multitouch interfaces — the same control the
-    /// touch enable would go through, which is why surfacing it here matters:
-    /// it lets a tester with the hardware confirm the standard path works
-    /// without the app shipping a device write nobody has verified.
-    ///
-    /// Both take value 2, so the field's `0x02` default stands either way.
-    private static let modeSwitchUsages: [UInt32] = [
-        0xFF0D_1002,  // WACOM_HID_WD_DATAMODE (vendor)
-        0x000D_0052,  // Digitizer / Device Mode (standard)
-    ]
-
-    /// Parses the device's own raw descriptor bytes for a feature report
-    /// declaring one of `modeSwitchUsages`, and pre-fills the report field with
-    /// it when found — replacing the 0x02 legacy guess with the ID this
-    /// specific device actually uses. Also expands the (otherwise collapsed)
-    /// advanced control, since a detected report makes it worth the tester's
-    /// attention rather than an edge case to dig for.
+    /// The usage list lives in TabletKit beside the lookup
+    /// (`DescriptorLayout.modeSwitchUsages`) because `WacomFallbackDevice`
+    /// consults the same one when initializing an unrecognized device. A
+    /// second copy here would let the tester's pre-filled value and the
+    /// driver's actual write drift apart, which is the one discrepancy this
+    /// screen must never introduce.
     ///
     /// Runs once, before the tester can have typed anything, so it never
     /// clobbers a manual edit. No classic Wacom or Xencelabs descriptor tested
-    /// so far declares either usage — see `HIDReportDescriptorParser` in
-    /// TabletKit — so this still does nothing on all of them.
+    /// so far declares either usage, so this still does nothing on all of them.
     private func applyAutoDetectedModeSwitch(from parsed: HIDDescriptorReader.Parsed?) {
         guard let hex = parsed?.rawHex,
-              let layout = try? HIDReportDescriptorParser.parse(hex: hex)
+              let layout = try? HIDReportDescriptorParser.parse(hex: hex),
+              let reportID = layout.modeSwitchFeatureReportID()
         else { return }
 
-        for usage in Self.modeSwitchUsages {
-            guard let reportID = layout.featureReportID(carryingUsage: usage) else { continue }
-            autoDetectedModeReportID = reportID
-            initReportIDText = String(format: "0x%02X", reportID)
-            showInitControl = true
-            return
-        }
+        autoDetectedModeReportID = reportID
+        initReportIDText = String(format: "0x%02X", reportID)
+        showInitControl = true
     }
 
     /// Wacom's USB vendor ID. Only devices reporting it may be described using
