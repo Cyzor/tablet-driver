@@ -20,7 +20,7 @@ struct InfoView: View {
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var launchAtLogin = false
     @State private var diagnosticsExpanded = false
-    @State private var conflicts: [String] = []
+    @State private var conflicts: [ConflictFinding] = []
     @State private var showCaptureGuide = false
     /// Owned per-window rather than a shared singleton: two tablet windows
     /// each collecting data must not see each other's Cancel/Done, event
@@ -431,7 +431,7 @@ struct InfoView: View {
         } else {
             lines += [String(localized: "Conflicts      : \(conflicts.count)", comment: "Diagnostic: number of conflicting drivers")]
             for conflict in conflicts {
-                lines += ["  ⚠ \(conflict)"]
+                lines += ["  ⚠ \(conflict.description)"]
             }
         }
 
@@ -487,39 +487,30 @@ struct InfoView: View {
 
     // MARK: - Conflict detection
 
-    private static let competingProcesses: [(name: String, label: String)] = [
-        ("WacomTabletDriver", "Wacom Tablet Driver"),
-        ("TabletDriver", "Wacom TabletDriver"),
-        ("Wacom_IOManager", "Wacom I/O Manager"),
-        ("WacomTabletSpringboard", "Wacom Springboard"),
-        ("DataStoreMgr", "Wacom DataStore Manager"),
-        ("OpenTabletDriver.Daemon", "OpenTabletDriver Daemon"),
-        ("OpenTabletDriver.UX", "OpenTabletDriver UX"),
-        ("OpenTabletDriver", "OpenTabletDriver (GUI)"),
-    ]
+    private struct ConflictFinding {
+        let description: String
+        let remedy: String
+    }
 
-    private func detectConflicts() -> [String] {
-        var found: [String] = []
+    private func detectConflicts() -> [ConflictFinding] {
+        var found: [ConflictFinding] = []
 
         let running = NSWorkspace.shared.runningApplications
         var liveNames = Set(running.compactMap { $0.localizedName })
         liveNames.formUnion(running.compactMap { $0.bundleIdentifier })
 
-        var claimedNames = Set<String>()
-        for (name, label) in Self.competingProcesses {
-            let matchingLive = liveNames.filter {
-                ($0 == name || name.hasPrefix($0) || $0.hasPrefix(name))
-                    && !claimedNames.contains($0)
-            }
-            if !matchingLive.isEmpty {
-                claimedNames.formUnion(matchingLive)
-                found.append(String(localized: "Conflicting driver: \(label)", comment: "Conflict detection: named process is running"))
-            }
+        let driverRemedy = String(localized: "Quit or disable it, then restart MockTab. Check System Settings → General → Login Items to stop it launching at startup.", comment: "Remedy line for a conflicting-driver finding in the conflict alert")
+        for label in ConflictProcessMatcher.matchedLabels(liveNames: liveNames) {
+            found.append(ConflictFinding(
+                description: String(localized: "Conflicting driver: \(label)", comment: "Conflict detection: named process is running"),
+                remedy: driverRemedy))
         }
 
         if let ctx = tabletManager.activeContext, ctx.injector.isJittery {
             let level = String(format: "%.1f", ctx.injector.jitterLevel)
-            found.append(String(localized: "RF interference: \(level) pt/sample", comment: "Conflict detection: RF interference jitter"))
+            found.append(ConflictFinding(
+                description: String(localized: "RF interference: \(level) pt/sample", comment: "Conflict detection: RF interference jitter"),
+                remedy: String(localized: "Move wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet.", comment: "Remedy line for an RF-interference finding in the conflict alert")))
         }
 
         return found
@@ -531,14 +522,12 @@ struct InfoView: View {
         alert.messageText = String(localized: "Potential Conflicts Detected", comment: "Alert title when user taps Fix on the Conflicts row")
 
         let intro = String(localized: "MockTab found the following issues that may interfere with tablet operation:", comment: "First sentence of conflict alert body")
-        var body = "\(intro)\n\n"
+        var sections = [intro]
         for (i, conflict) in conflicts.enumerated() {
-            body += "  \(i + 1). \(conflict)\n"
+            sections.append("\(i + 1). \(conflict.description)\n   \(conflict.remedy)")
         }
-        let recommendation = String(localized: "Recommendation: Quit or disable the listed processes, then restart MockTab. For Wacom drivers, check System Settings → General → Login Items to prevent them from launching at startup. For RF jitter, try moving wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet.", comment: "Recommendation paragraph at the end of the conflict alert body")
-        body += "\n\(recommendation)"
 
-        alert.informativeText = body
+        alert.informativeText = sections.joined(separator: "\n\n")
         alert.addButton(withTitle: "OK")
         alert.runModal()
     }
