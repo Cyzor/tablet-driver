@@ -26,11 +26,19 @@ struct QuickKeysSectionView: View {
     @ObservedObject var settings: TabletSettings
     let spec: WacomDeviceSpec?
     let liveButtons: LiveButtonState
-    /// Set only when folded into a tablet's Buttons pane, where the pane's
-    /// own `DeviceStatusBar` reflects the tablet, not this companion — so
-    /// the section needs its own connection cue. The standalone puck/dongle
-    /// window leaves this `false`; its `DeviceStatusBar` already covers it.
-    var isCompanionDisconnected = false
+    /// Whether the puck is reachable right now. Only the Hardware section
+    /// reads this: the binding rows above it are software and stay editable
+    /// while detached, but rotation/brightness/sleep write to puck firmware
+    /// and have nowhere to go. Both call sites pass it — the folded one from
+    /// the companion's context, the standalone window from its own.
+    var isDeviceConnected = true
+    /// The dot-and-name caption both headers carry, matching every other
+    /// section header in the Buttons pane ("Express Keys", "Pen Buttons").
+    /// Built by the caller because only it knows which instance key to point
+    /// at — the companion's when folded into a tablet's window, this
+    /// window's own when the puck stands alone. Both headers show the same
+    /// label: they configure one physical device.
+    var nameLabel: DeviceNameLabel?
 
     /// Bumped when the dial diagram's center is clicked, starting recording
     /// in the Dial row's binding field — direct manipulation on the diagram.
@@ -40,10 +48,17 @@ struct QuickKeysSectionView: View {
     private enum SlotDirection { case cw, ccw }
 
     var body: some View {
+        Group {
+            bindingsSection
+            hardwareSection
+        }
+    }
+
+    private var bindingsSection: some View {
         let lb = liveButtons
         let keyCount = min(max(spec?.buttonCount ?? 8, 0) - 1, 16)
 
-        Section {
+        return Section {
             ForEach(0..<max(keyCount, 0), id: \.self) { i in
                 buttonRow(
                     String(localized: "Key \(i + 1)", comment: "Quick Keys express key N label"),
@@ -105,17 +120,97 @@ struct QuickKeysSectionView: View {
                 onCenterTap: { dialRecordToken += 1 }
             )
         } header: {
-            if isCompanionDisconnected {
-                HStack {
-                    Text("Quick Keys")
-                    Spacer()
-                    Text("Not connected", comment: "Device connection status value")
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                Text("Quick Keys")
-            }
+            // The caption's gray dot and "No device connected" name replace
+            // the trailing "Not connected" text this header used to carry —
+            // same information, in the shape every other section uses.
+            PaneSectionHeader("Quick Keys") { nameLabel }
         }
+    }
+
+    // MARK: - Hardware
+
+    /// Settings the puck stores in its own firmware, kept apart from the
+    /// binding rows above: those are MockTab's, these live on the device and
+    /// survive being unplugged. All three park on a `-1` sentinel — the
+    /// control shows a plausible value but writes nothing until the user
+    /// picks one, so MockTab never clobbers what the puck already has (the
+    /// same contract `displayBrightness` has in the Displays pane).
+    ///
+    /// Header is "Hardware", not "Quick Keys Hardware": folded into a
+    /// tablet's window this already sits under the "Quick Keys" header, and
+    /// in the puck's own window the whole window is the puck.
+    private var hardwareSection: some View {
+        Section {
+            HStack {
+                Image(systemName: "rotate.right")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text("Rotation", comment: "Quick Keys rotation row label")
+                Spacer()
+                // Apple's Displays pane spells this exact control
+                // "Rotation: Standard / 90° / 180° / 270°" — borrowed
+                // wholesale. Bare degrees also claim no direction, which is
+                // as much as the protocol notes actually establish.
+                Picker("Rotation", selection: settings.recordingBinding(
+                    String(localized: "Quick Keys Rotation", comment: "Undo action name: Quick Keys hardware setting in the Buttons pane"),
+                    get: { settings.quickKeysOrientation >= 0 ? settings.quickKeysOrientation : 0 },
+                    set: { settings.quickKeysOrientation = $0 })) {
+                    Text("Standard", comment: "Quick Keys rotation: unrotated").tag(0)
+                    Text("90°", comment: "Quick Keys rotation").tag(1)
+                    Text("180°", comment: "Quick Keys rotation").tag(2)
+                    Text("270°", comment: "Quick Keys rotation").tag(3)
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            .help("Which way up the Quick Keys reads, for holding it rotated or left-handed.")
+
+            HStack {
+                Image(systemName: "sun.max")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text("OLED Brightness", comment: "Quick Keys OLED brightness row label")
+                Spacer()
+                Picker("OLED Brightness", selection: settings.recordingBinding(
+                    String(localized: "Quick Keys OLED Brightness", comment: "Undo action name: Quick Keys hardware setting in the Buttons pane"),
+                    get: { settings.quickKeysOledBrightness >= 0 ? settings.quickKeysOledBrightness : 3 },
+                    set: { settings.quickKeysOledBrightness = $0 })) {
+                    Text("Off", comment: "Quick Keys screen brightness level").tag(0)
+                    Text("Dim", comment: "Quick Keys screen brightness level").tag(1)
+                    Text("Medium", comment: "Quick Keys screen brightness level").tag(2)
+                    Text("Bright", comment: "Quick Keys screen brightness level").tag(3)
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            .help("Brightness of the Quick Keys OLED. Off blanks it — the keys and dial keep working.")
+
+            HStack {
+                Image(systemName: "moon.zzz")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text("Sleep Timer", comment: "Quick Keys auto-sleep timer row label")
+                Spacer()
+                // Tags are literal minutes, matching the wire value
+                // sleepTimerPayload sends (0 = never sleep) — no index
+                // mapping in between to get wrong.
+                Picker("Sleep After", selection: settings.recordingBinding(
+                    String(localized: "Quick Keys Sleep Timer", comment: "Undo action name: Quick Keys hardware setting in the Buttons pane"),                    get: { settings.quickKeysSleepMinutes >= 0 ? settings.quickKeysSleepMinutes : 60 },
+                    set: { settings.quickKeysSleepMinutes = $0 })) {
+                    Text("30 minutes", comment: "Quick Keys sleep timer choice").tag(30)
+                    Text("60 minutes", comment: "Quick Keys sleep timer choice").tag(60)
+                    Text("90 minutes", comment: "Quick Keys sleep timer choice").tag(90)
+                    Text("120 minutes", comment: "Quick Keys sleep timer choice").tag(120)
+                    Text("Never", comment: "Quick Keys sleep timer choice: no auto-sleep").tag(0)
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            .help("How long the Quick Keys waits before sleeping. Press any key to wake it.")
+        } header: {
+            PaneSectionHeader("Hardware") { nameLabel }
+        }
+        .disabled(!isDeviceConnected)
     }
 
     private func slotActionBinding(at index: Int) -> Binding<ControlSlot.Action> {

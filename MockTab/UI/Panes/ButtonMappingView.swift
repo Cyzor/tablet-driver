@@ -99,6 +99,14 @@ struct ButtonMappingView: View {
             .first { tabletManager.contexts[$0] != nil }
     }
 
+    /// This window's own device, live right now. Distinct from
+    /// `companionIsConnected`: when the puck has no pen-bearing partner it
+    /// gets its own window and *is* the bound device, so the Quick Keys
+    /// Hardware rows gate on this instead.
+    private var isSelfConnected: Bool {
+        tabletManager.context(forKey: instanceKey)?.isConnected == true
+    }
+
     private var companionIsConnected: Bool {
         companionContext?.isConnected == true
     }
@@ -145,7 +153,11 @@ struct ButtonMappingView: View {
             // live state. One component, identical look and behavior (LED
             // color wells included) wherever the puck's controls appear.
             if spec?.parser == .xencelabs && spec?.maxX == 0 {
-                QuickKeysSectionView(settings: settings, spec: spec, liveButtons: liveButtons)
+                QuickKeysSectionView(
+                    settings: settings, spec: spec, liveButtons: liveButtons,
+                    isDeviceConnected: isSelfConnected,
+                    nameLabel: DeviceNameLabel(
+                        tabletManager: tabletManager, registry: registry, instanceKey: instanceKey))
             } else {
                 penButtonsSection(lb: liveButtons)
                 if hasSplitPadLayout {
@@ -471,7 +483,13 @@ struct ButtonMappingView: View {
             // state, not a capability change).
             QuickKeysSectionView(
                 settings: companionSettings, spec: companionSpec, liveButtons: companionLiveButtons,
-                isCompanionDisconnected: !companionIsConnected)
+                isDeviceConnected: companionIsConnected,
+                // Keyed to the companion, not this window's tablet — the
+                // section configures the puck, so its header must name the
+                // puck (or its nickname) and track the puck's connection.
+                nameLabel: DeviceNameLabel(
+                    tabletManager: tabletManager, registry: registry,
+                    instanceKey: companionContext?.instanceKey))
         }
     }
 
