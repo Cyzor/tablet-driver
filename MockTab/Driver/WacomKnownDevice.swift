@@ -122,6 +122,13 @@ final class WacomKnownDevice: TabletDevice {
     /// True after the first .active status for this RF link session.
     /// Prevents resending feature init on subsequent status reports.
     private var wirelessLinkConfirmed: Bool = false
+    /// True once the critical-battery warning has been logged for this RF
+    /// link session. Status reports may repeat the low-battery flag for as
+    /// long as the condition holds, and that line logs at `.warning`, which
+    /// the unified log persists to disk — ungated it could write
+    /// continuously. Cleared on a link transition, same as the other
+    /// per-session status gates above.
+    private var batteryWarningLogged: Bool = false
 
     // ── Xencelabs wireless dongle (PID 0x5203) relink ────────────────────────
     // Confirmed 2026-07-06: the dongle only relays a paired puck's live 0xF0
@@ -1196,6 +1203,7 @@ final class WacomKnownDevice: TabletDevice {
                         state = DecoderState()
                         wirelessReady = true
                         wirelessLinkConfirmed = true
+                        batteryWarningLogged = false
                         // Re-run init steps now that the RF link is confirmed.
                         // Must be dispatched to main thread — HID callbacks are background.
                         Task { @MainActor in
@@ -1208,9 +1216,13 @@ final class WacomKnownDevice: TabletDevice {
                         wirelessLinkConfirmed = false
                     }
                     wirelessReady = false
+                    batteryWarningLogged = false
                     state = DecoderState()
                 case .lowBattery:
-                    logger.warning("\(name, privacy: .public): battery critically low")
+                    if !batteryWarningLogged {
+                        logger.warning("\(name, privacy: .public): battery critically low")
+                        batteryWarningLogged = true
+                    }
                 case .unknown:
                     break
                 }

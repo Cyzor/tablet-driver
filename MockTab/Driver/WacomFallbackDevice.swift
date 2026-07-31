@@ -92,6 +92,21 @@ final class WacomFallbackDevice: TabletDevice {
     private var currentToolCode: UInt16 = 0
     private var isEraser: Bool = false
     private var toolIsMouse: Bool = false
+    /// True once the critical-battery warning has been logged for this RF
+    /// link session. The dongle may repeat status 0x06 for as long as the
+    /// condition holds, and that line logs at `.warning`, which the unified
+    /// log persists to disk — ungated it could write continuously. Cleared
+    /// on a link transition.
+    private var batteryWarningLogged: Bool = false
+    /// True after the first 0x02 (link active) status for this RF link
+    /// session. The dongle may send 0x02 repeatedly; without this gate every
+    /// one reset decoder state and resent feature init, and a rejected write
+    /// logs at `.error` — a level the unified log persists to disk, so a
+    /// dongle that keeps refusing the write produced unbounded disk writes.
+    /// Mirrors `wirelessLinkConfirmed` in `WacomKnownDevice`, whose comment
+    /// notes that resending init on every status report also disrupts the
+    /// link. Cleared on 0x05 (link lost).
+    private var wirelessLinkConfirmed: Bool = false
 
     // ── IntuosV2 tool tracking ────────────────────────────────────────────
     private var lastSerial: UInt32 = 0
@@ -351,36 +366,52 @@ final class WacomFallbackDevice: TabletDevice {
 
         // ── Wireless status report (Report ID 0x80) ──────────────────────
         // ACK-40401 RF dongle: byte[1] = 0x02 active, 0x05 lost, 0x06 low battery.
-        // On 0x02 (link active), clear decoder state and re-send feature init to
-        // ensure the digitizer is in Wacom mode.  This handles the case where
-        // MockTab starts while the wireless module is absent: the init sent on open
-        // is silently discarded by the dongle, so we resend it when the RF link is
-        // confirmed established.
+        // On the first 0x02 (link active) of a session, clear decoder state and
+        // re-send feature init to ensure the digitizer is in Wacom mode.  This
+        // handles the case where MockTab starts while the wireless module is
+        // absent: the init sent on open is silently discarded by the dongle, so we
+        // resend it when the RF link is confirmed established.  Subsequent 0x02
+        // reports are ignored until a 0x05 (link lost) closes the session.
         if id == 0x80 {
             if length >= 2 {
                 let t = tag
                 let status = report[1]
                 switch status {
                 case 0x02:
-                    logger.info("\(t, privacy: .public): wireless link active — clearing state and re-sending feature init")
-                    // Reset decoder state to sync with wireless link-up
-                    lastX = 0
-                    lastY = 0
-                    prevInProximity = false
-                    currentSerial = 0
-                    currentToolCode = 0
-                    isEraser = false
-                    toolIsMouse = false
-                    lastSerial = 0
-                    lastToolCode = 0
+                    // Only transition once per RF link session. Repeated 0x02
+                    // reports are normal; resetting state and resending init on
+                    // every one disrupts the link and, when the write is
+                    // rejected, logs a disk-persisted error per report.
+                    if !wirelessLinkConfirmed {
+                        wirelessLinkConfirmed = true
+                        logger.info("\(t, privacy: .public): wireless link active — clearing state and re-sending feature init")
+                        // Reset decoder state to sync with wireless link-up
+                        lastX = 0
+                        lastY = 0
+                        prevInProximity = false
+                        currentSerial = 0
+                        currentToolCode = 0
+                        isEraser = false
+                        toolIsMouse = false
+                        lastSerial = 0
+                        lastToolCode = 0
+                        batteryWarningLogged = false
 
-                    // Send feature init safely from main thread (not from HID callback)
-                    Task { @MainActor in
-                        var init1: [UInt8] = [0x02, 0x02]
-                        hidSetReport(device, reportID: 0x02, bytes: &init1, tag: "\(t) wireless re-init", log: logger)
+                        // Send feature init safely from main thread (not from HID callback)
+                        Task { @MainActor in
+                            var init1: [UInt8] = [0x02, 0x02]
+                            hidSetReport(device, reportID: 0x02, bytes: &init1, tag: "\(t) wireless re-init", log: logger)
+                        }
                     }
-                case 0x05: logger.info("\(t, privacy: .public): wireless link lost (tablet out of range or off)")
-                case 0x06: logger.warning("\(t, privacy: .public): battery critically low")
+                case 0x05:
+                    logger.info("\(t, privacy: .public): wireless link lost (tablet out of range or off)")
+                    wirelessLinkConfirmed = false
+                    batteryWarningLogged = false
+                case 0x06:
+                    if !batteryWarningLogged {
+                        logger.warning("\(t, privacy: .public): battery critically low")
+                        batteryWarningLogged = true
+                    }
                 default: break
                 }
             }
