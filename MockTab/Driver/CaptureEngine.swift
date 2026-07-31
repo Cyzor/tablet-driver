@@ -7,6 +7,7 @@ import Combine
 import Foundation
 import IOKit.hid
 import OSLog
+import TabletKit
 import UniformTypeIdentifiers
 import os
 
@@ -356,6 +357,19 @@ final class CaptureEngine: ObservableObject {
             // "input:" direction here.
             let descriptorReadable = deviceInfo.parsedDescriptor?.reports["input:\(idHex)"]?.isReadable
 
+            // Runs regardless of `descriptorReadable`: a report can have a
+            // readable descriptor for *some* fields and still pack an opaque
+            // repeated block (a vendor touch sub-report tacked onto an
+            // otherwise-documented pen report), so withholding this behind
+            // the opacity check would hide it in exactly that case.
+            let signatures = Dictionary(
+                uniqueKeysWithValues: byteStats.map {
+                    ($0.key, ByteVarianceSignature(distinctCount: $0.value.distinctCount, max: $0.value.max))
+                })
+            let repeatingStructure = RepeatingReportStructureDetector
+                .detect(signatures: signatures)
+                .map(Self.discoveryRepeatingStructure)
+
             reportSummaries[idHex] = DiscoveryReportSummary(
                 reportID: reportID,
                 length: stats.firstLength,
@@ -368,7 +382,8 @@ final class CaptureEngine: ObservableObject {
                 firstSample: stats.firstSample.map { String(format: "%02X", $0) }.joined(),
                 constantValues: constantValues.isEmpty ? nil : constantValues,
                 byteStats: byteStats.isEmpty ? nil : byteStats,
-                descriptorReadable: descriptorReadable
+                descriptorReadable: descriptorReadable,
+                repeatingStructure: repeatingStructure
             )
         }
 
@@ -412,6 +427,20 @@ final class CaptureEngine: ObservableObject {
             values: kept.map(Int.init),
             truncated: truncated ? true : nil
         )
+    }
+
+    private static func discoveryRepeatingRun(_ run: RepeatingRun) -> DiscoveryRepeatingRun {
+        DiscoveryRepeatingRun(
+            startOffset: run.startOffset, period: run.period,
+            repeatCount: run.repeatCount, matchFraction: run.matchFraction)
+    }
+
+    private static func discoveryRepeatingStructure(
+        _ structure: RepeatingReportStructure
+    ) -> DiscoveryRepeatingStructure {
+        DiscoveryRepeatingStructure(
+            outer: discoveryRepeatingRun(structure.outer),
+            nested: structure.nested.map(discoveryRepeatingRun))
     }
 
     // MARK: - Timers

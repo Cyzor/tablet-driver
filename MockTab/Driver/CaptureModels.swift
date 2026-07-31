@@ -114,6 +114,35 @@ struct DiscoveryReportSummary: Codable {
     /// correlation pass instead of a descriptor read. `nil` if no descriptor
     /// was available to check.
     var descriptorReadable: Bool?
+    /// Repeating byte-stride structure found in this report's own varying
+    /// bytes — see `RepeatingReportStructureDetector` in TabletKit.
+    ///
+    /// Exists for exactly the reports `descriptorReadable == false` flags:
+    /// with no descriptor to read, `varyingBytes` is otherwise a flat list of
+    /// positions with no hint that they are, say, four repeats of a 43-byte
+    /// touch frame rather than one 174-byte record. That repeat is the single
+    /// most useful fact in a capture of an unrecognized device, and the
+    /// hardest one to notice by reading the byte list. `nil` when no
+    /// structure cleared the detector's thresholds, which is the correct and
+    /// common answer for reports with real varying bytes and no repeat.
+    var repeatingStructure: DiscoveryRepeatingStructure?
+}
+
+/// One reported run of repeating byte-stride structure, at one nesting level.
+/// Mirrors `TabletKit.RepeatingRun` for JSON output — see that type's doc
+/// comment for what each field claims and how it is scored.
+struct DiscoveryRepeatingRun: Codable {
+    let startOffset: Int
+    let period: Int
+    let repeatCount: Int
+    let matchFraction: Double
+}
+
+/// A detected repeating structure, with an optional one-level-deeper nested
+/// run. Mirrors `TabletKit.RepeatingReportStructure`.
+struct DiscoveryRepeatingStructure: Codable {
+    let outer: DiscoveryRepeatingRun
+    let nested: DiscoveryRepeatingRun?
 }
 
 // MARK: - Device Context for Capture
