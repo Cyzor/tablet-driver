@@ -1,6 +1,6 @@
 # Contributing to MockTab
 
-MockTab is a native macOS driver for older Wacom drawing tablets. It ships
+MockTab is a macOS driver for older Wacom drawing tablets. It ships
 under GPL-3.0-or-later.
 
 ## Getting the code running

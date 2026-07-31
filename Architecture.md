@@ -1,6 +1,6 @@
 # Architecture
 
-MockTab is a Mac driver for older Wacom drawing tablets. The notes below explain pen input, application operation, and project organization.
+MockTab is a Mac driver for older Wacom drawing tablets.
 
 User documentation is available in `README.md`. Technical notes and protocol references reside in `Notes/`.
 

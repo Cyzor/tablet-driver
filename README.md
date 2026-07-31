@@ -1,6 +1,8 @@
 # MockTab
 
-Native Mac driver for Wacom drawing tablets that no longer have official support.
+Mac driver for Wacom drawing tablets that no longer have official support.
+
+One self-contained app bundle. Pen input runs on a real-time thread at audio-grade scheduling priority.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue) ![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue)
 
@@ -87,7 +89,8 @@ swift test
 - Profile import and export.
 - Menu bar mode with no Dock icon.
 - Multiple tablet generations at once.
-- Native AppKit app, signed and notarized, without kernel extensions.
+- Pen input on a real-time thread at audio-grade scheduling priority.
+- One self-contained app bundle, signed and notarized, with no system agents or login items.
 
 ***
 
@@ -170,7 +173,7 @@ For decoder analysis, `tools/wacom_capture.d` records raw USB traffic before any
 
 Note that it still might be possible to coax Wacom's native driver to cooperate again without turning to an alternative driver.
 
-If the tablet light is on but Wacom Center shows “No device connected,” or Wacom’s installer says “Supported tablet not found,” the official driver has likely dropped your model. See [mocktab.org/troubleshooting.html](https://mocktab.org/troubleshooting.html) for symptoms, affected hardware, and steps to try.
+If the tablet light is on but Wacom Center shows “No device connected,” or Wacom’s installer says “Supported tablet not found,” the driver may consider your model to be discontinued. See [mocktab.org/troubleshooting.html](https://mocktab.org/troubleshooting.html) for symptoms, affected hardware, and steps to try.
 
 For post-install issues such as pressure not working, conflict warnings, or tablet recognition failures, the same page covers each case.
 
