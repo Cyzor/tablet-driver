@@ -40,10 +40,100 @@ final class DeviceContext: ObservableObject, Identifiable {
     let settings: TabletSettings
     let injector: InputInjector
 
-    /// The decoded HID driver for this tablet.  Set when the IOHIDDevice
-    /// connects and cleared on disconnect (but the context itself survives
-    /// so settings are preserved for reconnection).
-    var tabletDevice: (any TabletDevice)?
+    /// Decoded HID drivers for this tablet, keyed by raw (transport-specific)
+    /// product ID. A canonical identity can have more than one simultaneously
+    /// live transport — the Xencelabs Quick Keys puck reachable over both its
+    /// wired PID (0x5202) and its wireless dongle (0x5203) is the motivating
+    /// case — so this is a set of candidate drivers, not a single slot.
+    /// `tabletDevice` below is the computed winner among them.
+    private var driverSlots: [Int: any TabletDevice] = [:]
+
+    /// The winning driver among `driverSlots`, ranked by
+    /// `VendorDeviceRegistry.transportPriority`. Kept as the property name
+    /// and assignment style every existing call site already uses — set
+    /// files the driver into today's `rawProductID` slot (matching prior
+    /// single-slot behavior 1:1 until callers start passing an explicit raw
+    /// PID); nil clears every slot, matching the old unconditional clear on
+    /// disconnect.
+    var tabletDevice: (any TabletDevice)? {
+        get {
+            driverSlots.max { lhs, rhs in
+                VendorDeviceRegistry.transportPriority(forRawProductID: lhs.key)
+                    < VendorDeviceRegistry.transportPriority(forRawProductID: rhs.key)
+            }?.value
+        }
+        set {
+            if let newValue {
+                driverSlots[rawProductID] = newValue
+            } else {
+                driverSlots.removeAll()
+            }
+        }
+    }
+
+    /// The raw PID of the slot `tabletDevice` currently resolves to, or nil
+    /// if no transport is live.
+    var activeDriverRawProductID: Int? {
+        driverSlots.max { lhs, rhs in
+            VendorDeviceRegistry.transportPriority(forRawProductID: lhs.key)
+                < VendorDeviceRegistry.transportPriority(forRawProductID: rhs.key)
+        }?.key
+    }
+
+    var hasAnyDriverSlot: Bool { !driverSlots.isEmpty }
+
+    func driverSlot(forRawProductID rawPID: Int) -> (any TabletDevice)? {
+        driverSlots[rawPID]
+    }
+
+    func installDriver(_ driver: any TabletDevice, forRawProductID rawPID: Int) {
+        driverSlots[rawPID] = driver
+    }
+
+    /// Removes and returns the driver for a departing transport, if any.
+    /// Does not touch other slots — a surviving transport keeps running.
+    @discardableResult
+    func removeDriverSlot(forRawProductID rawPID: Int) -> (any TabletDevice)? {
+        driverSlots.removeValue(forKey: rawPID)
+    }
+
+    /// Re-applies every persisted display-affecting setting directly to the
+    /// current winning driver. `observeRingLED`'s Combine sinks only reach
+    /// whatever `tabletDevice` resolves to *at the moment a setting changes*
+    /// — a driver that just won its slot via transport promotion (its rival
+    /// transport disconnected) or transport takeover (a higher-priority
+    /// transport just connected) sat through all of those while losing, so
+    /// it never received them. Call once, right after the winner changes.
+    func resyncActiveDriverDisplayState() {
+        guard let device = tabletDevice else { return }
+        device.setRingLED(index: settings.touchRingActiveSlotIndex)
+        if settings.displayBrightness >= 0 {
+            device.setDisplayBrightness(settings.displayBrightness)
+        }
+        if settings.displayColorMode >= 0 {
+            device.setColorMode(settings.displayColorMode)
+        }
+        if isCustomColorMode {
+            if settings.displayContrast >= 0 { device.setDisplayContrast(settings.displayContrast) }
+            if settings.displayGamma >= 0 { device.setDisplayGamma(settings.displayGamma) }
+        }
+        if let c = TabletSettings.bezelLEDColor(from: settings.bezelLEDColor) {
+            device.setBezelLEDColor(
+                r: UInt8(Int(c.r) * Int(c.a) / 255),
+                g: UInt8(Int(c.g) * Int(c.a) / 255),
+                b: UInt8(Int(c.b) * Int(c.a) / 255))
+        }
+        if settings.quickKeysOrientation >= 0 {
+            device.setQuickKeysOrientation(steps: settings.quickKeysOrientation)
+        }
+        if settings.quickKeysSleepMinutes >= 0 {
+            device.setQuickKeysSleepMinutes(settings.quickKeysSleepMinutes)
+        }
+        if settings.quickKeysOledBrightness >= 0 {
+            device.setQuickKeysOledBrightness(settings.quickKeysOledBrightness)
+        }
+        pushDeviceDisplayState()
+    }
 
     /// The raw IOHIDDevice handle — weak because IOKit owns the lifetime.
     weak var hidDevice: IOHIDDevice?
@@ -125,6 +215,14 @@ final class DeviceContext: ObservableObject, Identifiable {
     private var isCustomColorMode: Bool {
         settings.displayColorMode == TabletSettings.displayColorModeCustomIndex
     }
+
+    /// True once `observeRingLED`/`observeInjectionSnapshot` have been wired
+    /// for this context. A second transport connecting (e.g. the Xencelabs
+    /// dongle joining a context the wired puck already owns) installs into
+    /// its own driver slot but must not re-subscribe — these sinks target
+    /// whichever slot currently wins, so a second subscription would just
+    /// fire every hardware write twice.
+    var hasWiredDriverLifecycle = false
 
     /// Subscribe to ring slot changes so the physical LED tracks the active mode.
     /// Call this once after `tabletDevice` is assigned.

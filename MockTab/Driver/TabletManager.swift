@@ -138,9 +138,17 @@ final class TabletManager: ObservableObject {
     let liveTouch = LiveTouchPublisher()
 
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
+    /// Raw (transport-specific) PID each registered interface belongs to —
+    /// the slot key in that interface's context. Needed on disconnect:
+    /// `hidDeviceMap` only gets you back to the context, and owner-aware
+    /// teardown has to know which transport slot just departed.
+    private var deviceRawProductID: [IOHIDDevice: Int] = [:]
     private var shimObservers: [NSObjectProtocol] = []
     /// Interfaces deferred because they arrived before the control interface (0xFF00) for their PID.
-    /// Drained into registerDevice() once a WacomKnownDevice is created for that PID.
+    /// Drained into registerDevice() once a WacomKnownDevice is created for that raw PID.
+    /// Keyed by raw PID, not canonical PID — two transports that fold onto
+    /// the same canonical identity (Xencelabs puck/dongle) build separate
+    /// drivers and must not drain into each other's.
     private var pendingInterfaces: [Int: [IOHIDDevice]] = [:]
 
     // MARK: - Manager-level published state
@@ -861,11 +869,22 @@ final class TabletManager: ObservableObject {
         // ── Create the device driver ─────────────────────────────────────────
         // Multi-interface devices (e.g. ACK-40401 dongle) enumerate separate
         // IOHIDDevices for each interface (digitizer, wireless status, touch,
-        // etc). We create one driver per product and reuse it across
-        // interfaces; each IOHIDDevice still registers independently for its
-        // own reports.
-        if let existingDriver = context.tabletDevice as? WacomKnownDevice {
+        // etc). We create one driver per *raw* (transport-specific) PID and
+        // reuse it across that transport's interfaces; each IOHIDDevice still
+        // registers independently for its own reports. A canonical identity
+        // reachable over more than one transport at once (Xencelabs Quick
+        // Keys wired + dongle) gets one driver per transport, ranked in
+        // `DeviceContext.tabletDevice` — see the reuse check just below.
+        // Reuse only applies to another interface of the *same* transport —
+        // keyed by raw PID, not "the context already has some driver".
+        // Xencelabs' wired puck (0x5202) and dongle (0x5203) fold onto one
+        // canonical context, so `context.tabletDevice` (the current winner)
+        // is the wrong thing to check here: it would silently register the
+        // dongle's interfaces onto the wired driver, or vice versa, instead
+        // of building each transport its own driver and slot.
+        if let existingDriver = context.driverSlot(forRawProductID: rawProductID) as? WacomKnownDevice {
             hidDeviceMap[device] = context
+            deviceRawProductID[device] = rawProductID
             existingDriver.registerDevice(device)
             return
         }
@@ -931,7 +950,7 @@ final class TabletManager: ObservableObject {
             overrideSpec: vendorSpec)
         {
         case .deferred:
-            pendingInterfaces[productID, default: []].append(device)
+            pendingInterfaces[rawProductID, default: []].append(device)
             return
 
         case .ledCompanion(let parentCtx):
@@ -945,16 +964,34 @@ final class TabletManager: ObservableObject {
             return
 
         case .driver(let wacomDevice, _):
-            context.tabletDevice = wacomDevice
+            let hadNoDriverYet = !context.hasAnyDriverSlot
+            context.installDriver(wacomDevice, forRawProductID: rawProductID)
             hidDeviceMap[device] = context
+            deviceRawProductID[device] = rawProductID
             wacomDevice.open()
             // Drain any interfaces that arrived before this driver was created.
-            for pending in pendingInterfaces.removeValue(forKey: productID) ?? [] {
+            for pending in pendingInterfaces.removeValue(forKey: rawProductID) ?? [] {
                 hidDeviceMap[pending] = context
+                deviceRawProductID[pending] = rawProductID
                 (wacomDevice as? WacomKnownDevice)?.registerDevice(pending)
             }
-            context.observeRingLED()  // after open() so initial LED sync reaches the device
-            context.observeInjectionSnapshot()
+            if hadNoDriverYet {
+                // First transport this context has ever seen — wire the
+                // settings-driven hardware sinks once. A second transport
+                // (e.g. the dongle joining a context the wired puck already
+                // owns) must NOT repeat this: these sinks target whichever
+                // slot currently wins, so a second subscription fires every
+                // write twice. (after open() so initial LED sync reaches it)
+                context.observeRingLED()
+                context.observeInjectionSnapshot()
+                context.hasWiredDriverLifecycle = true
+            } else if context.activeDriverRawProductID == rawProductID {
+                // This transport just outranked whatever was already
+                // installed (USB puck connecting while the dongle was
+                // driving) — it never received the settings writes that
+                // fired while it was still a losing slot.
+                context.resyncActiveDriverDisplayState()
+            }
             // Aux-only accessories (Xencelabs Quick Keys puck/dongle,
             // spec.maxX == 0) move no pointer, so a display-toggle press on
             // them must steer the tablet driving the cursor, not the
@@ -985,10 +1022,33 @@ final class TabletManager: ObservableObject {
 
     private func deviceDisconnected(_ device: IOHIDDevice) {
         guard let context = hidDeviceMap.removeValue(forKey: device) else { return }
-        context.tabletDevice?.close()
-        context.tabletDevice = nil
         context.hidDevice = nil
-        // Clear per-device state
+        let rawPID = deviceRawProductID.removeValue(forKey: device)
+
+        // Owner-aware teardown: a canonical context can have more than one
+        // live transport slot (Xencelabs wired puck + dongle). Unplugging
+        // one interface of one transport must not blank a context whose
+        // other transport is still connected — that was the bug behind
+        // "wireless dongle didn't take over on unplug": every interface
+        // shared one driver slot, so the first departure nuked all of it.
+        if let rawPID {
+            let wasOwner = context.activeDriverRawProductID == rawPID
+            context.removeDriverSlot(forRawProductID: rawPID)?.close()
+            if let survivorPID = context.activeDriverRawProductID {
+                if wasOwner {
+                    // The departing transport was driving; the survivor was
+                    // sitting in a losing slot the whole time and never got
+                    // the settings-driven writes meant for the active driver.
+                    context.resyncActiveDriverDisplayState()
+                    logger.info("TabletManager: \(Self.deviceName(forProductID: context.productID), privacy: .public) — transport 0x\(String(rawPID, radix: 16), privacy: .public) disconnected, promoted 0x\(String(survivorPID, radix: 16), privacy: .public)")
+                }
+                refreshConnectedIDs(mostRecent: nil)
+                return
+            }
+        }
+
+        // No transport remains — fully disconnected.
+        context.hasWiredDriverLifecycle = false
         context.isConnected = false
         context.transport = "—"
         context.usbSpeed = "—"
