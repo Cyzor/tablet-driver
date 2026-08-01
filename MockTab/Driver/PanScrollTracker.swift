@@ -4,6 +4,7 @@
 
 import CoreGraphics
 import Foundation
+import TabletKit
 
 /// State machine for the "Scroll Drag" button binding: while the bound button
 /// is held, pen motion is converted into trackpad-style scroll intents
@@ -54,6 +55,10 @@ struct PanScrollTracker {
     /// resume never replays the distance traveled while the pen was away.
     private var last: CGPoint?
 
+    /// Unsmoothed counterpart of `last`, kept only to seed the release
+    /// velocity from true pen travel.
+    private var lastRaw: CGPoint?
+
     /// Fractional-pixel carry. Scroll events are Int32 pixels; a slow pan
     /// moves < 1 px/frame at 133 Hz and would stall without accumulating the
     /// remainder (same pattern as the ring/strip accumulators).
@@ -74,6 +79,24 @@ struct PanScrollTracker {
 
     /// Delta multiplier captured at engage (from `ToolSettings.panScrollSpeed`).
     private var speed = 1.0
+
+    /// Speed-adaptive damping of the anchor point, so slow deliberate pans
+    /// don't shiver. Panning magnifies hand tremor in a way cursor motion
+    /// does not — the whole canvas moves — so this is always on at a fixed
+    /// light setting rather than being exposed as a control. It is
+    /// independent of the pen's Stabilization setting: the point arriving
+    /// here has already been through that filter, or not, if it's off.
+    ///
+    /// The filter is speed-adaptive (1€), which is what keeps it invisible:
+    /// it damps hard near a standstill and is effectively transparent by the
+    /// time the pan is brisk, so gross motion still lands exactly where the
+    /// pen puts it.
+    private var smoother = PanSmoother()
+
+    /// Fixed damping strength (0–1). Deliberately light: enough to settle
+    /// tremor during slow positioning, not enough to feel like lag if a user
+    /// pans slowly *on purpose*.
+    static let smoothingStrength = 0.3
 
     /// Dominant scroll axis, once established (see `axisLockRatio`). Real
     /// trackpad drivers do the same "directional lock": without it, a slight
@@ -125,12 +148,15 @@ struct PanScrollTracker {
         isActive = true
         sign = reverse ? -1.0 : 1.0
         self.speed = max(0.05, speed)
+        smoother.strength = Self.smoothingStrength
+        smoother.reset()
         last = nil
         accumX = 0
         accumY = 0
         velX = 0
         velY = 0
         releaseVelocity = .zero
+        lastRaw = nil
         axisLock = nil
         preLockAccumX = 0
         preLockAccumY = 0
@@ -144,6 +170,7 @@ struct PanScrollTracker {
         releaseVelocity = CGVector(dx: velX, dy: velY)
         isActive = false
         last = nil
+        lastRaw = nil
         return .scroll(dx: 0, dy: 0, phase: .ended)
     }
 
@@ -153,6 +180,8 @@ struct PanScrollTracker {
     /// blips must not close a pan the user is still holding.
     mutating func suspend() {
         last = nil
+        lastRaw = nil
+        smoother.reset()
     }
 
     // MARK: - Per-frame
@@ -163,15 +192,25 @@ struct PanScrollTracker {
     /// displacement, not rate).
     mutating func process(screen: CGPoint, dt: Double) -> Intent {
         guard isActive else { return .none }
-        guard let prev = last else {
+        // Damp the anchor before anything reads it. Positional, so a long
+        // slow pan still travels the full distance — the filter only lags,
+        // it never drops displacement.
+        let point = smoother.process(raw: screen, dt: dt)
+        guard let prev = last, let rawPrev = lastRaw else {
             // First frame after engage/suspend: anchor only, no delta.
-            last = screen
+            last = point
+            lastRaw = screen
             return .none
         }
-        last = screen
+        last = point
+        lastRaw = screen
 
-        var dx = (screen.x - prev.x) * sign * speed
-        var dy = (screen.y - prev.y) * sign * speed
+        var dx = (point.x - prev.x) * sign * speed
+        var dy = (point.y - prev.y) * sign * speed
+        // Momentum seed comes from the *raw* travel, not the damped anchor,
+        // so adding smoothing can't quietly shorten the coast after a flick.
+        let rawDx = (screen.x - rawPrev.x) * sign * speed
+        let rawDy = (screen.y - rawPrev.y) * sign * speed
 
         if let axisLock {
             switch axisLock {
@@ -201,8 +240,8 @@ struct PanScrollTracker {
         // a flick-then-hold release must not carry stale flick velocity).
         if dt > 0 {
             let a = Self.velocityAlpha
-            velX += a * (dx / dt - velX)
-            velY += a * (dy / dt - velY)
+            velX += a * (rawDx / dt - velX)
+            velY += a * (rawDy / dt - velY)
         }
 
         accumX += dx

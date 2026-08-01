@@ -173,8 +173,10 @@ extension InputInjector {
         // ── Scroll Drag: convert this frame's motion to a scroll delta ──────
         // Runs before the movement/delta-gate path below, which consults
         // panScroll.isActive to post scrolls in place of cursor motion. dt
-        // feeds only the tracker's release-velocity estimate; deltas are
-        // displacement, not rate. The smoother keeps tracking normally while
+        // feeds the tracker's release-velocity estimate and its anchor
+        // damping; deltas themselves are displacement, not rate. The
+        // damping is calibrated in real seconds, so this must stay a true
+        // inter-report delta. The smoother keeps tracking normally while
         // panned, so cursor re-entry on disengage doesn't jump.
         let panNow = CFAbsoluteTimeGetCurrent()
         let panDt = lastPanScrollFrameTime > 0 ? panNow - lastPanScrollFrameTime : 0
