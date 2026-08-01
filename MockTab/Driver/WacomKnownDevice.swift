@@ -80,6 +80,25 @@ final class WacomKnownDevice: TabletDevice {
     /// Stored in registerDevice() so LED commands can be routed to it when
     /// the primary (0xFF00) interface doesn't declare the control reports.
     private var secondaryDevice: IOHIDDevice?
+
+    /// Vendor writes issued before the vendor-tunnel interface existed.
+    ///
+    /// Quick Keys enumerates its decorative digitizer interface first, so
+    /// `device` is fixed at construction to an interface that rejects vendor
+    /// output reports. The tunnel arrives ~120 ms later via
+    /// `registerDevice`. Everything the connect path pushes in that window —
+    /// stored dial LED colors, OLED labels, orientation, sleep timer, OLED
+    /// brightness — used to be written to the wrong interface and fail with
+    /// 0xe0005000, silently, with no retry. That is why a wired puck came up
+    /// with the wrong LED colors and labels and needed a reseat or an app
+    /// relaunch to agree with its settings.
+    ///
+    /// Queue instead of write, then flush in arrival order once the tunnel
+    /// registers. Bounded — a device whose tunnel never arrives must not
+    /// accumulate writes forever.
+    private var pendingVendorWrites: [(bytes: [UInt8], tag: String)] = []
+    private var pendingVendorWritesDropped = false
+    private static let maxPendingVendorWrites = 64
     /// Last index requested via setRingLED. Applied immediately when ledDevice
     /// is registered so the LED syncs even if the companion connects after init.
     private var pendingLEDIndex: Int = 0
@@ -310,7 +329,10 @@ final class WacomKnownDevice: TabletDevice {
         // secondaryDevice, since that's the one hidSetReport (OLED/dial LED)
         // needs to target. Non-vendor interfaces are tracked for cleanup only.
         if deviceSpec.parser == .xencelabs {
-            if acceptsReports(from: device) { secondaryDevice = device }
+            if acceptsReports(from: device) {
+                secondaryDevice = device
+                flushPendingVendorWrites()
+            }
         } else if secondaryDevice == nil {
             // Do NOT seize here — seizing 0x01 causes the PTH-660/860 firmware to stop
             // sending pen reports entirely. The IOHIDManager already holds the device open
@@ -365,6 +387,8 @@ final class WacomKnownDevice: TabletDevice {
             IOHIDDeviceClose(sec, IOOptionBits(kIOHIDOptionsTypeNone))
             secondaryDevice = nil
         }
+        pendingVendorWrites.removeAll()
+        pendingVendorWritesDropped = false
         // Balance the callback-context retain. Deferred to HIDThread so it runs
         // after any callback already executing there; nothing can re-enter the
         // callbacks afterwards because every registration was cleared above.
@@ -824,6 +848,20 @@ final class WacomKnownDevice: TabletDevice {
         lastXencelabsWriteUptime = DispatchTime.now().uptimeNanoseconds
     }
 
+    /// Replay writes that arrived before the vendor tunnel did, in order.
+    /// Called once, from `registerDevice`, the moment `secondaryDevice` is
+    /// set — every one of these would otherwise have been lost.
+    private func flushPendingVendorWrites() {
+        guard !pendingVendorWrites.isEmpty else { return }
+        let queued = pendingVendorWrites
+        pendingVendorWrites.removeAll()
+        pendingVendorWritesDropped = false
+        logger.info("\(self.deviceSpec.name, privacy: .public): vendor tunnel registered — replaying \(queued.count, privacy: .public) queued write(s)")
+        for write in queued {
+            sendXencelabsOutput(write.bytes, tag: write.tag)
+        }
+    }
+
     /// Send a Xencelabs vendor output report, zero-padded to the device's
     /// declared MaxOutputReportSize (short writes return success but are
     /// silently ignored by this firmware — same rule as the init path).
@@ -836,6 +874,21 @@ final class WacomKnownDevice: TabletDevice {
         // pointed at the wrong interface even after that fix landed, which is
         // why OLED/dial-LED writes kept failing with 0xe0005000. Confirmed
         // 2026-07-05.
+        // No tunnel yet, and the interface we were constructed with is not
+        // one: this write cannot succeed. Hold it for the flush in
+        // `registerDevice` rather than burning it on the wrong interface.
+        if deviceSpec.parser == .xencelabs, secondaryDevice == nil,
+            !acceptsReports(from: device)
+        {
+            if pendingVendorWrites.count < Self.maxPendingVendorWrites {
+                pendingVendorWrites.append((bytes, tag))
+            } else if !pendingVendorWritesDropped {
+                pendingVendorWritesDropped = true
+                logger.info("\(self.deviceSpec.name, privacy: .public): vendor tunnel still absent after \(Self.maxPendingVendorWrites, privacy: .public) queued writes — dropping the rest")
+            }
+            return
+        }
+
         let target = (deviceSpec.parser == .xencelabs ? secondaryDevice : nil) ?? device
         let declared = hidIntProperty(target, kIOHIDMaxOutputReportSizeKey)
         var padded = bytes
