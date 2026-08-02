@@ -179,7 +179,9 @@ If the tablet light is on but Wacom Center shows “No device connected,” or W
 
 For post-install issues such as pressure not working, conflict warnings, or tablet recognition failures, the same page covers each case.
 
-**Pen taps not activating background windows (macOS 27 Golden Gate beta only):** see the note under [Requirements](#requirements). Some hardened apps, such as Objective Development Little Snitch, may not respond to all pen input.
+**Pen taps not activating background windows (macOS 27 Golden Gate beta only):** see the note under [Requirements](#requirements).
+
+**Pen clicks ignored in Little Snitch:** enable Little Snitch's own Preferences → Security → Other → "Allow GUI Scripting access to Little Snitch." It rejects simulated input by default as an anti-spoofing measure.
 
 ## Resources
 
