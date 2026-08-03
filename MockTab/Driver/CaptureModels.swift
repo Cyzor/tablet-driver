@@ -43,7 +43,13 @@ struct DiscoveryResult: Codable {
     /// 5: `byteSampleValues` replaced by `byteStats` (adds per-byte min/max and
     /// distinct-value counts); adds `maxLength`/`lengthVaried`/`optionalBytes`
     /// and top-level `observedToolCodes`.
-    var captureVersion: Int = 5
+    /// 6: adds `byteStatsByDiscriminator` — per-report byte stats further
+    /// split by the value at byte position 1, so a report ID that actually
+    /// carries more than one packet shape (coordinate data and a tool-change/
+    /// status packet sharing one ID and length, on Wacom-family devices)
+    /// doesn't get histogrammed as one blob. See `DiscoveryAccumulator
+    /// .ReportStats.discriminatorByteIndex`.
+    var captureVersion: Int = 6
     let capturedAt: Date
     let mode: String  // always "discovery"
     let duration: TimeInterval
@@ -138,6 +144,26 @@ struct DiscoveryReportSummary: Codable {
     /// structure cleared the detector's thresholds, which is the correct and
     /// common answer for reports with real varying bytes and no repeat.
     var repeatingStructure: DiscoveryRepeatingStructure?
+    /// `byteStats` further split by the value at byte position 1 — see
+    /// `DiscoveryAccumulator.ReportStats.discriminatorByteIndex`. Keyed by
+    /// that value as a two-digit uppercase hex string (JSON object keys must
+    /// be strings; hex keeps it legible next to `firstSample`).
+    ///
+    /// Present only when byte 1 looks like a packet-type/status field rather
+    /// than more coordinate data: more than one but no more than
+    /// `CaptureEngine.discriminatorMaxDistinct` values observed. Below that
+    /// threshold this is genuinely absent, not merely omitted — reading a
+    /// capture file without it means byte 1 was constant for every sample of
+    /// this report, or its own stats already told the whole story.
+    var byteStatsByDiscriminator: [String: DiscoveryDiscriminatedStats]?
+}
+
+/// One discriminator-value bucket of `DiscoveryReportSummary
+/// .byteStatsByDiscriminator` — the byte stats for every sample of a report
+/// where byte 1 held one particular value, plus how many samples that was.
+struct DiscoveryDiscriminatedStats: Codable {
+    let sampleCount: Int
+    var byteStats: [Int: DiscoveryByteStat]
 }
 
 /// One reported run of repeating byte-stride structure, at one nesting level.

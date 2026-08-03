@@ -383,7 +383,8 @@ final class CaptureEngine: ObservableObject {
                 constantValues: constantValues.isEmpty ? nil : constantValues,
                 byteStats: byteStats.isEmpty ? nil : byteStats,
                 descriptorReadable: descriptorReadable,
-                repeatingStructure: repeatingStructure
+                repeatingStructure: repeatingStructure,
+                byteStatsByDiscriminator: Self.discriminatedStats(stats)
             )
         }
 
@@ -417,6 +418,39 @@ final class CaptureEngine: ObservableObject {
     /// Values listed per byte position before the list is trimmed. See
     /// `ByteValueSet.sampledValues(cap:)` for what trimming preserves.
     private static let byteValueListCap = 24
+
+    /// Byte 1 must take at least this many but no more than
+    /// `discriminatorMaxDistinct` values across the session for its buckets
+    /// to be worth exporting. Fewer than 2 means byte 1 was constant — no
+    /// split to make. More than this and it's behaving like coordinate data
+    /// itself (a report ID whose byte 1 sweeps a wide range isn't a
+    /// status/type field), so splitting on it would fragment the capture
+    /// into dozens of near-empty buckets instead of clarifying anything.
+    private static let discriminatorMaxDistinct = 16
+
+    /// Builds `byteStatsByDiscriminator` for one report, or nil when byte 1's
+    /// own cardinality falls outside `discriminatorMaxDistinct` — see that
+    /// property and `DiscoveryReportSummary.byteStatsByDiscriminator`.
+    private static func discriminatedStats(
+        _ stats: DiscoveryAccumulator.ReportStats
+    ) -> [String: DiscoveryDiscriminatedStats]? {
+        let distinctDiscriminatorValues = stats.byDiscriminator.count
+        guard (2...discriminatorMaxDistinct).contains(distinctDiscriminatorValues) else { return nil }
+
+        var out: [String: DiscoveryDiscriminatedStats] = [:]
+        for (disc, bucket) in stats.byDiscriminator {
+            var byteStats: [Int: DiscoveryByteStat] = [:]
+            for (idx, seen) in bucket.enumerated() {
+                guard let lo = seen.min, let hi = seen.max else { continue }
+                byteStats[idx] = Self.byteStat(seen, lo: lo, hi: hi)
+            }
+            let key = String(format: "%02X", disc)
+            out[key] = DiscoveryDiscriminatedStats(
+                sampleCount: stats.discriminatorSampleCounts[disc] ?? 0,
+                byteStats: byteStats)
+        }
+        return out
+    }
 
     private static func byteStat(_ seen: ByteValueSet, lo: UInt8, hi: UInt8) -> DiscoveryByteStat {
         let (kept, truncated) = seen.sampledValues(cap: byteValueListCap)

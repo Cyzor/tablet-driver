@@ -314,6 +314,59 @@ def byte_ranges_section(doc: dict, kind: str) -> list[str]:
     return lines
 
 
+def discriminated_byte_ranges_section(doc: dict, kind: str) -> list[str]:
+    """Byte ranges re-split by byte 1 — captureVersion >= 6's
+    `byteStatsByDiscriminator`.
+
+    The section above aggregates every sample of a report ID into one
+    histogram per byte position. If that report ID actually carries more than
+    one packet shape sharing one ID and length — an ordinary coordinate
+    report and a tool-change/aux report, on the Wacom IntuosV1 family and
+    similar protocols — the aggregate range for a coordinate byte can look
+    far wider than the pen's real travel, because a handful of tool-change
+    samples (carrying serial/type bytes at the same positions) got folded in
+    with thousands of real position samples. This reads the app's own
+    pre-split buckets instead of re-deriving anything: each bucket is every
+    sample where byte 1 held one particular value, so a genuine coordinate
+    sweep and a tool-change packet's fixed fields no longer share a row.
+
+    Present only when the app judged byte 1 to behave like a status/type
+    field (2 to 16 distinct values); absent for a report where byte 1 never
+    varied, or varied too much to be a plausible discriminator — see
+    `CaptureEngine.discriminatorMaxDistinct`.
+    """
+    if kind != "discovery":
+        return []
+    reports = doc.get("reports") or {}
+    lines = []
+    for key in sorted(reports, key=lambda k: parse_hex_id(k) or 0):
+        by_disc = reports[key].get("byteStatsByDiscriminator") or {}
+        if not by_disc:
+            continue
+        lines.append(f"## Byte ranges by packet type — report {key}")
+        lines.append("")
+        lines.append(
+            "Byte 1 (the byte right after the report ID) took "
+            f"{len(by_disc)} distinct values across this report's samples — "
+            "plausibly a packet-type/status field, not more coordinate data. "
+            "Each row below is the byte ranges for samples sharing one byte-1 "
+            "value; compare against the un-split ranges above.")
+        lines.append("")
+        lines.append("| Byte 1 | samples | byte | min | max | distinct |")
+        lines.append("|-------:|--------:|-----:|----:|----:|---------:|")
+        for disc in sorted(by_disc):
+            bucket = by_disc[disc]
+            n = bucket.get("sampleCount")
+            stats = bucket.get("byteStats") or {}
+            for idx in sorted(stats, key=lambda i: int(i)):
+                st = stats[idx]
+                lines.append(
+                    f"| 0x{disc} | {n} | {idx} | {st.get('min')} | "
+                    f"{st.get('max')} | {st.get('distinctCount')} |")
+        lines.append("")
+    return lines
+
+
 def tool_codes_section(doc: dict) -> list[str]:
     """Wacom tool codes seen during collection, when the capture recorded any."""
     codes = doc.get("observedToolCodes")
@@ -490,6 +543,7 @@ def build_report(doc: dict, path: Path, do_upstream: bool) -> str:
     lines += descriptor_section(doc)
     lines += report_inventory(doc, kind)
     lines += byte_ranges_section(doc, kind)
+    lines += discriminated_byte_ranges_section(doc, kind)
     lines += tool_codes_section(doc)
     if do_upstream:
         lines += upstream_section(pid)

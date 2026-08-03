@@ -136,6 +136,36 @@ final class DiscoveryAccumulator: Sendable {
         /// One entry per byte position, sized to `maxLength`.
         var byteValues: [ByteValueSet]
 
+        /// The byte position `byDiscriminator` splits on.
+        ///
+        /// Fixed at 1 — the byte immediately after the report ID. On the
+        /// Wacom IntuosV1 protocol (and a good deal of other HID tablet/
+        /// joystick gear) that position is a status/packet-type byte: an
+        /// ordinary coordinate report and a tool-change/aux report can share
+        /// one report ID and length, told apart only by this byte's high
+        /// bits. Folding both into one flat byte-position histogram (what
+        /// `byteValues` above does) makes a tool-change packet's serial/type
+        /// bytes look like wild coordinate excursions in the "varying byte"
+        /// stats for every other position — this is exactly what made a
+        /// submitted GD-0608-U capture unreadable for confirming maxX/maxY:
+        /// byte 2's range looked large enough to span the tool ID space, not
+        /// because the pen moved there, but because a handful of tool-change
+        /// samples were mixed into the same histogram as thousands of pen
+        /// samples. See Notes/Wacom-HID-GD‑0608‑U-Reference.md.
+        static let discriminatorByteIndex = 1
+
+        /// Per-value byte statistics, keyed by the value seen at
+        /// `discriminatorByteIndex`. Maintained unconditionally during
+        /// recording — one extra dictionary lookup and a `ByteValueSet`
+        /// insert per report, negligible next to the top-level accumulation
+        /// this mirrors. Whether it's worth *reading* depends on how many
+        /// distinct values that byte took; that judgment is made once, at
+        /// snapshot time, in `CaptureEngine`, not here — a byte position that
+        /// turns out to be a coordinate byte itself (high cardinality) simply
+        /// makes an uninteresting set of buckets, not an incorrect one.
+        var byDiscriminator: [UInt8: [ByteValueSet]] = [:]
+        var discriminatorSampleCounts: [UInt8: Int] = [:]
+
         var lengthVaried: Bool { minLength != maxLength }
 
         /// How each byte position of this report behaved.
@@ -205,6 +235,21 @@ final class DiscoveryAccumulator: Sendable {
         state.withLock { _ = $0.toolCodes.insert(code) }
     }
 
+    /// Fold one report into `stats.byDiscriminator[disc]`, growing that
+    /// bucket's byte-position array the same way the top-level `byteValues`
+    /// grows in `record(reportID:pointer:length:)`.
+    private static func foldDiscriminated(
+        _ stats: inout ReportStats, disc: UInt8, pointer: UnsafePointer<UInt8>, length: Int
+    ) {
+        stats.discriminatorSampleCounts[disc, default: 0] += 1
+        var bucket = stats.byDiscriminator[disc] ?? []
+        if length > bucket.count {
+            bucket.append(contentsOf: repeatElement(ByteValueSet(), count: length - bucket.count))
+        }
+        for i in 0..<length { bucket[i].insert(pointer[i]) }
+        stats.byDiscriminator[disc] = bucket
+    }
+
     // MARK: Recording
 
     /// Fold one report into the running statistics.
@@ -232,17 +277,26 @@ final class DiscoveryAccumulator: Sendable {
                 if length < stats.minLength { stats.minLength = length }
                 stats.sampleCount += 1
                 for i in 0..<length { stats.byteValues[i].insert(pointer[i]) }
+                if length > ReportStats.discriminatorByteIndex {
+                    let disc = pointer[ReportStats.discriminatorByteIndex]
+                    Self.foldDiscriminated(&stats, disc: disc, pointer: pointer, length: length)
+                }
                 s.reports[reportID] = stats
             } else {
                 var byteValues = [ByteValueSet](repeating: ByteValueSet(), count: length)
                 for i in 0..<length { byteValues[i].insert(pointer[i]) }
-                s.reports[reportID] = ReportStats(
+                var stats = ReportStats(
                     firstLength: length,
                     minLength: length,
                     maxLength: length,
                     sampleCount: 1,
                     firstSample: [UInt8](UnsafeBufferPointer(start: pointer, count: length)),
                     byteValues: byteValues)
+                if length > ReportStats.discriminatorByteIndex {
+                    let disc = pointer[ReportStats.discriminatorByteIndex]
+                    Self.foldDiscriminated(&stats, disc: disc, pointer: pointer, length: length)
+                }
+                s.reports[reportID] = stats
             }
         }
     }

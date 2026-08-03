@@ -344,6 +344,87 @@ private func testToolCodes() {
     expectEqual(acc.snapshot().toolCodes, [0x0802, 0x080A], "tool codes deduplicated")
 }
 
+// MARK: - Discriminated byte stats
+
+/// The scenario this exists for: a GD-0608-U (Intuos 6×8) capture where
+/// report 0x02 carries both ordinary pen packets and tool-change packets
+/// (status byte, byte 1, in the 0xC0-masked range) at the same report ID and
+/// length. Folded into one histogram, byte 2 (X high byte) looked like it
+/// swept a range wide enough to span the tool-ID space — not because the pen
+/// moved there, but because a handful of tool-change samples carrying serial/
+/// type bytes at that position got mixed in with thousands of real position
+/// samples. See Notes/Wacom-HID-GD‑0608‑U-Reference.md.
+private func testDiscriminatorSeparatesPacketShapes() {
+    let acc = DiscoveryAccumulator()
+    acc.start()
+
+    // 20 ordinary pen samples: status byte 0xA0 (in proximity), X high byte
+    // (index 2) clustered tightly around 40.
+    for i in 0..<20 {
+        feed(acc, 0x02, [0x02, 0xA0, UInt8(38 + (i % 5)), 0x00, 0x1E, 0x00, 0x00, 0x00, 0x00, 0x00])
+    }
+    // 2 tool-change samples: status byte 0xC2, with a tool-ID value at byte 2
+    // far outside the pen's real X range.
+    feed(acc, 0x02, [0x02, 0xC2, 0x82, 0x29, 0x98, 0x00, 0x5E, 0x58, 0x00, 0xC0])
+    feed(acc, 0x02, [0x02, 0xC2, 0x88, 0x2A, 0x98, 0x00, 0x5E, 0x58, 0x00, 0xC0])
+
+    guard let s = stats(acc, 0x02) else {
+        expect(false, "mixed-packet-shape report recorded")
+        return
+    }
+
+    // The un-split view: exactly the bug. Byte 2's max is dragged up to 0x88
+    // by two tool-change samples, even though the pen itself never went
+    // above 42 in this capture.
+    expectEqual(s.byteValues[2].max, 0x88, "un-split byte 2 max is dragged up by tool-change samples")
+
+    // The discriminator buckets separate them cleanly.
+    expectEqual(s.byDiscriminator.count, 2, "two distinct byte-1 values bucket separately")
+    guard let penBucket = s.byDiscriminator[0xA0], let toolBucket = s.byDiscriminator[0xC2] else {
+        expect(false, "both discriminator buckets present")
+        return
+    }
+    expectEqual(s.discriminatorSampleCounts[0xA0], 20, "pen bucket sample count")
+    expectEqual(s.discriminatorSampleCounts[0xC2], 2, "tool-change bucket sample count")
+    expectEqual(penBucket[2].max, 42, "pen bucket's byte 2 max reflects only real pen samples")
+    expectEqual(penBucket[2].min, 38, "pen bucket's byte 2 min reflects only real pen samples")
+    expectEqual(toolBucket[2].min, 0x82, "tool-change bucket's byte 2 isolated from the pen samples")
+    expectEqual(toolBucket[2].max, 0x88, "tool-change bucket's byte 2 isolated from the pen samples")
+}
+
+/// A report whose byte 1 never varies (the common case — most reports have a
+/// single packet shape) must produce exactly one bucket, matching the whole
+/// report's sample count. `CaptureEngine.discriminatedStats` is expected to
+/// treat this as "nothing to split" and omit the field entirely, but that
+/// gating lives in CaptureEngine.swift (which links against AppKit/IOKit and
+/// isn't part of this standalone harness) — this only confirms the
+/// accumulator side hands it a single, complete bucket to make that call from.
+private func testDiscriminatorSingleBucketWhenByteOneConstant() {
+    let acc = DiscoveryAccumulator()
+    acc.start()
+    for i in 0..<10 {
+        feed(acc, 0x10, [0x10, 0x80, UInt8(i)])
+    }
+    guard let s = stats(acc, 0x10) else {
+        expect(false, "constant-byte-1 report recorded")
+        return
+    }
+    expectEqual(s.byDiscriminator.count, 1, "one discriminator bucket when byte 1 never varies")
+    expectEqual(s.discriminatorSampleCounts[0x80], 10, "the single bucket covers every sample")
+}
+
+/// A report too short to have a byte 1 must not crash or fabricate a bucket.
+private func testDiscriminatorSkippedForShortReports() {
+    let acc = DiscoveryAccumulator()
+    acc.start()
+    feed(acc, 0x05, [0x05])
+    guard let s = stats(acc, 0x05) else {
+        expect(false, "one-byte report recorded")
+        return
+    }
+    expect(s.byDiscriminator.isEmpty, "no discriminator bucket for a report with no byte 1")
+}
+
 // MARK: - Degenerate input
 
 private func testEmptyReportIgnored() {
@@ -370,6 +451,9 @@ enum DiscoveryAccumulatorTestRunner {
         testStreamsStaySeparate()
         testToolCodes()
         testEmptyReportIgnored()
+        testDiscriminatorSeparatesPacketShapes()
+        testDiscriminatorSingleBucketWhenByteOneConstant()
+        testDiscriminatorSkippedForShortReports()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")
