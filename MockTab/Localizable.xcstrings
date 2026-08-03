@@ -17353,7 +17353,7 @@
       }
     },
     "Touch" : {
-      "comment" : "Help section title\nTab name: capacitive finger-touch settings",
+      "comment" : "Help section title\nMenu item: open Touch tab\nTab name: capacitive finger-touch settings",
       "localizations" : {
         "de" : {
           "stringUnit" : {

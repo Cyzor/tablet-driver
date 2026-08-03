@@ -81,20 +81,25 @@ enum MainMenuBuilder {
         let item = NSMenuItem(title: viewMenuTitle, action: nil, keyEquivalent: "")
         let menu = NSMenu(title: viewMenuTitle)
 
-        let tabs: [(title: String, image: String, key: String)] = [
-            (String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab"), "rectangle.dashed", "1"),
-            (String(localized: "Pen Feel", comment: "Menu item: open Pen Feel tab"), "scribble.variable", "2"),
-            (String(localized: "Buttons", comment: "Menu item: open Button Mapping tab"), "square.grid.2x2.fill", "3"),
-            (String(localized: "Display", comment: "Menu item: open Display Mapping tab"), "display", "4"),
-            (String(localized: "Devices", comment: "Menu item: open Devices tab"), "rectangle.on.rectangle", "5"),
-            (String(localized: "Profiles", comment: "Menu item: open Profiles tab"), "star.circle", "6"),
-            (String(localized: "Scratchpad", comment: "Menu item: open Scratchpad tab"), "pencil.and.outline", "7"),
-            (String(localized: "Info", comment: "Menu item: open Info tab"), "info.circle", "8"),
+        // Keyed by SettingsWindowController.Tab.rawValue (the tag), not by
+        // position in this array — showTabFromMainMenu looks the tab up by
+        // label via showTab(_:Tab), so this list must mirror SettingsWindowController.Tab
+        // exactly (same order, same members) or a shortcut will silently open the wrong pane.
+        let tabs: [(tab: SettingsWindowController.Tab, title: String, image: String, key: String)] = [
+            (.tabletArea, String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab"), "rectangle.dashed", "1"),
+            (.penFeel, String(localized: "Pen Feel", comment: "Menu item: open Pen Feel tab"), "scribble.variable", "2"),
+            (.buttons, String(localized: "Buttons", comment: "Menu item: open Button Mapping tab"), "square.grid.2x2.fill", "3"),
+            (.touch, String(localized: "Touch", comment: "Menu item: open Touch tab"), "hand.point.up.left", "4"),
+            (.display, String(localized: "Display", comment: "Menu item: open Display Mapping tab"), "display", "5"),
+            (.devices, String(localized: "Devices", comment: "Menu item: open Devices tab"), "rectangle.on.rectangle", "6"),
+            (.profiles, String(localized: "Profiles", comment: "Menu item: open Profiles tab"), "star.circle", "7"),
+            (.scratchpad, String(localized: "Scratchpad", comment: "Menu item: open Scratchpad tab"), "pencil.and.outline", "8"),
+            (.info, String(localized: "Info", comment: "Menu item: open Info tab"), "info.circle", "9"),
         ]
-        for (index, tab) in tabs.enumerated() {
+        for tab in tabs {
             let menuItem = NSMenuItem(title: tab.title, action: #selector(AppMenuController.showTabFromMainMenu(_:)), keyEquivalent: tab.key)
             menuItem.keyEquivalentModifierMask = .command
-            menuItem.tag = index
+            menuItem.tag = tab.tab.rawValue
             menuItem.target = AppMenuController.shared
             menuItem.image = NSImage(systemSymbolName: tab.image, accessibilityDescription: nil)
             menu.addItem(menuItem)

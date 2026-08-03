@@ -61,7 +61,12 @@ final class AppMenuController: NSObject, NSMenuDelegate {
     // MARK: - View menu item actions (targets for MainMenuBuilder's ⌘1–⌘8 items)
 
     @objc func showTabFromMainMenu(_ sender: NSMenuItem) {
-        SettingsWindowManager.shared.showTab(at: sender.tag)
+        // Match by Tab enum (looked up by label in showTab(_:Tab)), not raw
+        // tab-view index: a window's actual tab layout varies (Touch tab is
+        // conditional, aux-only devices trim most tabs), so a fixed index
+        // would point at the wrong pane depending on which window is frontmost.
+        guard let tab = SettingsWindowController.Tab(rawValue: sender.tag) else { return }
+        SettingsWindowManager.shared.showTab(tab)
     }
 
     @objc func showHelpFromMainMenu() {
