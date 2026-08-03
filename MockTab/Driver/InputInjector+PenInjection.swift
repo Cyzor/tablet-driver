@@ -52,8 +52,8 @@ extension InputInjector {
             rawPoint = Self.pinNearScreenEdges(
                 absPoint, in: displayMapper.displayBounds(for: snap))
         }
-        let lutIdx = Swift.min(Swift.max(Int((point.normalizedPressure * 255.0).rounded()), 0), 255)
-        let rawPressure = tool.pressureLUT[lutIdx]
+        let rawPressure = InputInjector.curvedPressure(
+            point.normalizedPressure, lut: tool.pressureLUT)
         // Mouse tools have no tip pressure — button1 is the primary click trigger.
         // For KC-100 over USB, the left button arrives via the separate 0x01 mouse interface
         // and injectMouseButtons() has already fired leftMouseDown/Up.  Keep tipDown false
@@ -61,7 +61,7 @@ extension InputInjector {
         let tipDown =
             activeToolIsMouse
             ? (usbMouseLeftHeld ? false : point.penButton1)
-            : rawPressure > 0.004
+            : rawPressure > InputInjector.tipPressureThreshold
 
         // ── Pressure smoothing (contact only) ──────────────────────────────────
         // Damps sensor noise near the low-pressure/activation-threshold band

@@ -225,6 +225,16 @@ struct PenFeelView: View {
             .controlSize(.small)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
+
+            SettingSliderRow(
+                "Click Threshold",
+                value: pressureThresholdBinding,
+                in: 0...0.5,
+                valueText: pressureThresholdLabel,
+                caption: "Minimum force required before the tip registers pressure or a click."
+            )
+            .help(
+                "Sets how much pressure the tip needs before it counts as contact — the same idea as sensitivity, but for the on/off point rather than the response curve. Raise it for a firmer, more deliberate click feel; lower it for the lightest possible touch. Off (default) starts registering at the sensor's own floor.")
         } header: {
             PaneSectionHeader("Pressure Curve") {
                 ToolNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
@@ -239,7 +249,7 @@ struct PenFeelView: View {
     /// device-owned — share `settings.undoManager`, so grouping them makes a
     /// single Cmd-Z undo the whole reset instead of two.
     private typealias ToolResetState = (
-        curve: BezierCurve, smoothing: Double, pressureSmoothing: Double,
+        curve: BezierCurve, smoothing: Double, pressureSmoothing: Double, pressureThreshold: Double,
         rotationAsTilt: Bool, tiltOffset: Double, tiltMagnitude: Double, panSpeed: Double,
         panMomentum: Bool
     )
@@ -250,7 +260,7 @@ struct PenFeelView: View {
 
     private func resetToDefaults() {
         let toolOld: ToolResetState = (
-            tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength,
+            tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength, tool.pressureThreshold,
             tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
             tool.panScrollSpeed, tool.panScrollMomentum
         )
@@ -258,7 +268,7 @@ struct PenFeelView: View {
             settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
             settings.tipUpAssistDelay, settings.dragThreshold
         )
-        let toolDefaults: ToolResetState = (.linear, 0, 0, false, 0, 0.8, 1.0, true)
+        let toolDefaults: ToolResetState = (.linear, 0, 0, 0, false, 0, 0.8, 1.0, true)
         let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, 0.0)
 
         settings.undoManager?.beginUndoGrouping()
@@ -269,7 +279,7 @@ struct PenFeelView: View {
 
     /// Self-recursive so "Reset to Defaults" also redoes the tool-owned half.
     private func applyToolReset(_ new: ToolResetState, undoTo old: ToolResetState) {
-        (tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength,
+        (tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength, tool.pressureThreshold,
          tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
          tool.panScrollSpeed, tool.panScrollMomentum) = new
         tool.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
@@ -300,6 +310,13 @@ struct PenFeelView: View {
             String(localized: "Pressure Smoothing"), toolOwned: true,
             get: { tool.pressureSmoothingStrength },
             set: { tool.pressureSmoothingStrength = $0 })
+    }
+
+    private var pressureThresholdBinding: Binding<Double> {
+        settings.recordingBinding(
+            String(localized: "Click Threshold", comment: "Undo action name: minimum pressure before tip contact registers, in the Pen Feel pane"), toolOwned: true,
+            get: { tool.pressureThreshold },
+            set: { tool.pressureThreshold = $0 })
     }
 
     private var panScrollSpeedBinding: Binding<Double> {
@@ -397,6 +414,15 @@ struct PenFeelView: View {
                 localized: "Max", comment: "Pressure smoothing strength label — maximum value")
         }
     }
+
+    private var pressureThresholdLabel: String {
+        // Anything that rounds to 0% reads as "Off" — the dead zone is then
+        // narrower than InputInjector.tipPressureThreshold anyway, so it has
+        // no effect the user could observe.
+        tool.pressureThreshold < 0.005
+            ? String(localized: "Off", comment: "Click threshold — disabled, previous behavior")
+            : String(format: "%.0f%%", tool.pressureThreshold * 100)
+    }
 }
 
 // MARK: - Pressure Curve Canvas (extracted for clarity)
@@ -416,6 +442,7 @@ private struct PressureCurveCanvas: View {
             let size = geo.size
             Canvas { ctx, _ in
                 drawGrid(ctx: ctx, size: size)
+                drawThreshold(ctx: ctx, size: size)
                 drawCurve(ctx: ctx, size: size)
                 drawHandles(ctx: ctx, size: size)
             }
@@ -535,14 +562,49 @@ private struct PressureCurveCanvas: View {
         ctx.stroke(path, with: .color(.secondary.opacity(0.2)), lineWidth: 0.5)
     }
 
+    /// Normalized input below which no contact registers — read back from the
+    /// LUT rather than from `tool.pressureThreshold` directly, so it accounts
+    /// for both halves of the dead zone: the user's threshold, and the fact
+    /// that a soft curve keeps output under `tipPressureThreshold` for a while
+    /// after the threshold is crossed. Using the raw setting here would draw
+    /// the marker short of where contact actually begins.
+    private var effectiveOnset: Double {
+        let lut = tool.pressureLUT
+        var lastSilent = -1
+        for (i, v) in lut.enumerated() where v <= InputInjector.tipPressureThreshold {
+            lastSilent = i
+        }
+        guard lastSilent >= 0 else { return 0 }
+        return Swift.min(Double(lastSilent) / 255.0, 1)
+    }
+
+    /// Shades the dead zone — the same idea as Wacom's "click threshold"
+    /// triangle marker on its pressure curve UI.
+    private func drawThreshold(ctx: GraphicsContext, size: CGSize) {
+        guard tool.pressureThreshold > 0 else { return }
+        let x = effectiveOnset * size.width
+        let rect = CGRect(x: 0, y: 0, width: x, height: size.height)
+        ctx.fill(Path(rect), with: .color(.secondary.opacity(0.12)))
+        var line = Path()
+        line.move(to: CGPoint(x: x, y: 0))
+        line.addLine(to: CGPoint(x: x, y: size.height))
+        ctx.stroke(line, with: .color(.secondary.opacity(0.5)), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+    }
+
     private func drawCurve(ctx: GraphicsContext, size: CGSize) {
         var path = Path()
         let curve = tool.pressureCurve
-        // Draw 64-point polyline approximation of the bezier.
+        // Mirrors ToolSettings.buildLUT: flat at zero through the dead zone,
+        // then the curve over the rescaled remainder. Drawing the bare Bézier
+        // from the origin would show the tip responding inside a region where
+        // the LUT actually outputs nothing.
+        let t = Swift.min(Swift.max(tool.pressureThreshold, 0), 0.95)
         path.move(to: toCanvas(x: 0, y: 0, size: size))
+        if t > 0 { path.addLine(to: toCanvas(x: t, y: 0, size: size)) }
+        // 32-segment polyline approximation of the bezier.
         for i in 1...32 {
-            let t = Double(i) / 32.0
-            path.addLine(to: toCanvas(x: t, y: curve.evaluate(t), size: size))
+            let s = Double(i) / 32.0
+            path.addLine(to: toCanvas(x: t + s * (1 - t), y: curve.evaluate(s), size: size))
         }
         ctx.stroke(
             path, with: .color(.accentColor), style: StrokeStyle(lineWidth: 2, lineCap: .round))

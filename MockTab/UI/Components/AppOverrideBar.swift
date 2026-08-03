@@ -115,7 +115,8 @@ struct AppOverrideBar: View {
     ]
 
     static let pressureKeys: Set<String> = [
-        "pressureCurve", "smoothingStrength", "pressureSmoothingStrength", "doubleClickDistance",
+        "pressureCurve", "smoothingStrength", "pressureSmoothingStrength", "pressureThreshold",
+        "doubleClickDistance",
         "invertRotation", "relativeCursorMovement", "tipUpAssistDelay", "dragThreshold",
         "useRotationAsTilt", "rotationTiltOffsetDegrees", "rotationTiltMagnitude",
         "panScrollSpeed", "panScrollMomentum",

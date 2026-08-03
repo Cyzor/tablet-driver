@@ -765,7 +765,17 @@ final class TabletManager: ObservableObject {
             self.uiUpdateCounter = 0
 
             let toolIsMouse = context.activeToolIsMouse
-            let tipDown = toolIsMouse ? point.penButton1 : point.normalizedPressure > 0.004
+            // Must match the injection path exactly — run the raw reading
+            // through the same tool LUT (dead zone + curve) before testing the
+            // floor. Comparing the raw value here would light the Info pane's
+            // tip indicator inside a user-configured Click Threshold, where no
+            // click is actually being injected.
+            let tipDown =
+                toolIsMouse
+                ? point.penButton1
+                : InputInjector.curvedPressure(
+                    point.normalizedPressure, lut: context.settings.activeTool.pressureLUT)
+                    > InputInjector.tipPressureThreshold
             let newButtons = LiveButtonState(
                 tipDown: tipDown && !point.eraser,
                 eraserDown: tipDown && point.eraser,

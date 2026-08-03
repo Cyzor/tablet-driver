@@ -112,7 +112,7 @@ extension TabletSettings {
     /// Every UserDefaults key `ToolSettings.reload()` reads — used to detect
     /// whether a tool already has any locally-customized values before an import.
     static let toolSettingsKeys: [String] = [
-        "smoothingStrength", "pressureSmoothingStrength", "panScrollSpeed",
+        "smoothingStrength", "pressureSmoothingStrength", "pressureThreshold", "panScrollSpeed",
         "panScrollMomentum",
         "useRotationAsTilt", "rotationTiltOffsetDegrees", "rotationTiltMagnitude",
         "tipBinding", "eraserBinding", "penButton1Binding", "penButton2Binding",

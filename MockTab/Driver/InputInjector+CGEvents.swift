@@ -431,7 +431,7 @@ extension InputInjector {
         if activeAppProfile != .pagesPlainMouse {
             e.setIntegerValueField(.mouseEventSubtype, value: 1)
             e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-            e.setIntegerValueField(.tabletEventPointButtons, value: pressure > 0.004 ? 1 : 0)
+            e.setIntegerValueField(.tabletEventPointButtons, value: pressure > InputInjector.tipPressureThreshold ? 1 : 0)
             e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
             e.setDoubleValueField(.mouseEventPressure, value: pressure)
             if point != nil {
@@ -501,10 +501,10 @@ extension InputInjector {
         e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
         e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         let buttons: Int64 =
-            (pressure > 0.004 ? 1 : 0)
+            (pressure > InputInjector.tipPressureThreshold ? 1 : 0)
             | (point.penButton1 ? 2 : 0)
             | (point.penButton2 ? 4 : 0)
-            | (activeToolIsEraser && pressure > 0.004 ? 8 : 0)
+            | (activeToolIsEraser && pressure > InputInjector.tipPressureThreshold ? 8 : 0)
         e.setIntegerValueField(.tabletEventPointButtons, value: buttons)
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)

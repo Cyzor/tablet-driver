@@ -313,6 +313,32 @@ final class InputInjector: @unchecked Sendable {
     static let positionEpsilon: CGFloat = 0.5  // sub-pixel, not worth posting
     static let pressureEpsilon: Double = 0.002
 
+    // MARK: - Tip-down pressure threshold
+    //
+    // Curve-mapped pressure above which a report counts as tip contact (drives
+    // tipDown detection, the tabletEventPointButtons tip bit, and the Info
+    // pane's button readout). ~4 raw counts on a 10-bit/1023 sensor.
+    //
+    // Deliberately left where it has always been. A GD-0608-U (Intuos 6×8,
+    // 1024-level EMR pressure) field report showed hover-only sensor noise at
+    // 3-4 raw counts spiking to ~7 — right on top of this threshold, producing
+    // phantom tip-down clicks and hairline strokes while the pen never touched
+    // the surface. Raising this constant would fix that tablet by firming up
+    // contact onset on every device, including 8191-level sensors where the
+    // same fraction is a far larger absolute step, and none of those can be
+    // re-verified here. `ToolSettings.pressureThreshold` is the scoped fix: a
+    // per-tool dead zone that covers a noisy baseline without moving this
+    // shared floor. Revisit only if bug reports show the dial is insufficient.
+    static let tipPressureThreshold: Double = 0.004
+
+    /// Applies a tool's pressure LUT (dead zone + response curve) to a raw
+    /// normalized sensor reading. Shared by the injection path and the Info
+    /// pane so the pane's tip indicator can't disagree with what gets injected.
+    static func curvedPressure(_ normalized: Double, lut: [Double]) -> Double {
+        let idx = Swift.min(Swift.max(Int((normalized * 255.0).rounded()), 0), 255)
+        return lut[idx]
+    }
+
     // MARK: - Tip-up assist
     //
     // When the delay (TabletSettings.tipUpAssistDelay, ms) is above zero, delays the

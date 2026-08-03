@@ -36,14 +36,50 @@ final class ToolSettings: ObservableObject {
     @Published var pressureCurve: BezierCurve = .linear {
         didSet {
             savePressureCurve()
-            pressureLUT = pressureCurve.buildLookupTable()
+            rebuildPressureLUT()
         }
     }
 
-    /// 256-entry precomputed lookup table for `pressureCurve`.
-    /// Rebuilt whenever `pressureCurve` changes (including on load from UserDefaults).
+    /// Normalized pressure (0...1) below which raw sensor readings are
+    /// clamped to zero before the pressure curve is applied — Wacom's
+    /// "click threshold" (Advanced pen settings), requested after a
+    /// GD-0608-U field report where hover-only sensor noise (raw counts
+    /// 3-4, spiking to ~7 on a 1023-max channel) sat close enough to
+    /// `InputInjector.tipPressureThreshold` to register as intermittent
+    /// tip contact. That constant is a fixed hardware-noise safety floor
+    /// shared by every device; this is the user-facing, per-tool dial on
+    /// top of it — raising it moves the dead zone further out for pens
+    /// or tablets with a noisier baseline than the shared floor covers.
+    /// 0 (default) reproduces the pre-existing behavior exactly.
+    @Published var pressureThreshold: Double = 0.0 {
+        didSet {
+            persist("pressureThreshold", pressureThreshold)
+            rebuildPressureLUT()
+        }
+    }
+
+    /// 256-entry precomputed lookup table combining `pressureThreshold` (dead
+    /// zone) and `pressureCurve` (response shape). Rebuilt whenever either
+    /// changes (including on load from UserDefaults).
     /// Consumed by `InputInjector.inject()` — replaces per-report bisection with one array index.
-    private(set) var pressureLUT: [Double] = BezierCurve.linear.buildLookupTable()
+    private(set) var pressureLUT: [Double] = ToolSettings.buildLUT(curve: .linear, threshold: 0.0)
+
+    /// Below `threshold`, output is 0 (no contact). Above it, the remaining
+    /// range `(threshold, 1]` is rescaled to `[0, 1]` and passed through
+    /// `curve` — same two-control model as Wacom's sensitivity + click
+    /// threshold pair.
+    private static func buildLUT(curve: BezierCurve, threshold: Double) -> [Double] {
+        let t = Swift.min(Swift.max(threshold, 0), 0.95)  // leave room above the deadzone for a curve
+        return (0..<256).map { i in
+            let r = Double(i) / 255.0
+            guard r > t else { return 0 }
+            return curve.evaluate((r - t) / (1 - t))
+        }
+    }
+
+    private func rebuildPressureLUT() {
+        pressureLUT = Self.buildLUT(curve: pressureCurve, threshold: pressureThreshold)
+    }
 
     @Published var smoothingStrength: Double = 0.0 {
         didSet { persist("smoothingStrength", smoothingStrength) }
@@ -238,6 +274,7 @@ final class ToolSettings: ObservableObject {
         isLoading = true
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
         pressureSmoothingStrength = loadDouble("pressureSmoothingStrength", default: 0.0)
+        pressureThreshold = loadDouble("pressureThreshold", default: 0.0)
         panScrollSpeed = loadDouble("panScrollSpeed", default: 1.0)
         panScrollMomentum = loadBool("panScrollMomentum", default: true)
         useRotationAsTilt = loadBool("useRotationAsTilt", default: false)
