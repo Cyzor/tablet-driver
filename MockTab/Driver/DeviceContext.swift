@@ -135,7 +135,23 @@ final class DeviceContext: ObservableObject, Identifiable {
         pushDeviceDisplayState()
     }
 
-    /// The raw IOHIDDevice handle — weak because IOKit owns the lifetime.
+    /// The raw IOHIDDevice handle for this context's primary digitizer
+    /// interface — weak because IOKit owns the lifetime.
+    ///
+    /// A multi-interface tablet (touch, pad/aux, LED-only siblings alongside
+    /// the pen interface) enumerates one `IOHIDDevice` per interface, all
+    /// mapped to this same context, but only one of them is the interface the
+    /// driver actually reads pen reports from and passes to
+    /// `CaptureEngine.recordRaw`. `TabletManager.deviceConnected` sets this
+    /// exactly once, from that interface only (the one `DeviceRouter.route`
+    /// returns `.driver` for) — never from a sibling interface that later
+    /// attaches via `registerDevice`/`registerLEDDevice`. Only consumer today
+    /// is `CaptureGuideView`, which hands this to
+    /// `CaptureEngine.startDiscovery(device:)`; if it pointed at the wrong
+    /// interface, that session would silently record zero events for the
+    /// whole capture window (0 events despite reports flowing normally
+    /// through the app) because `recordRaw`'s device never matches the
+    /// registered accumulator's key.
     weak var hidDevice: IOHIDDevice?
 
     /// Serial number of the pen currently in proximity on this device.

@@ -595,7 +595,14 @@ final class TabletManager: ObservableObject {
                 vendorID: vendorID, usbSerial: usbSerial, locationID: locationID)
         }
         deviceContexts[context.instanceKey] = context
-        context.hidDevice = device
+        // context.hidDevice is set later, only for the interface DeviceRouter
+        // identifies as the primary digitizer (the `.driver` case below) —
+        // never here unconditionally. A multi-interface tablet enumerates one
+        // IOHIDDevice per interface, calling this function once each; setting
+        // it here would make the property last-write-wins across interfaces
+        // that have nothing to do with the actual report stream, breaking
+        // device-data collection (which reads it) with no effect on normal
+        // operation (nothing else reads it). See the property's doc comment.
 
         // Seed the per-app override for whatever app is currently frontmost.
         // AppWatcher seeds existing contexts at start(), but a device may connect
@@ -974,6 +981,10 @@ final class TabletManager: ObservableObject {
         case .driver(let wacomDevice, _):
             let hadNoDriverYet = !context.hasAnyDriverSlot
             context.installDriver(wacomDevice, forRawProductID: rawProductID)
+            // The interface the driver actually reads reports from — see
+            // `DeviceContext.hidDevice`'s doc comment for why this must be
+            // set from exactly this `device`, not from any sibling interface.
+            context.hidDevice = device
             hidDeviceMap[device] = context
             deviceRawProductID[device] = rawProductID
             wacomDevice.open()
@@ -1033,7 +1044,13 @@ final class TabletManager: ObservableObject {
 
     private func deviceDisconnected(_ device: IOHIDDevice) {
         guard let context = hidDeviceMap.removeValue(forKey: device) else { return }
-        context.hidDevice = nil
+        // Only clear hidDevice when the disconnecting interface is the one it
+        // actually points to (the primary digitizer interface). A secondary
+        // interface (touch, pad/aux, LED) disconnecting while the primary
+        // stays connected must not blank it — same class of bug as the
+        // unconditional set this mirrors on the connect side; see
+        // `DeviceContext.hidDevice`'s doc comment.
+        if context.hidDevice === device { context.hidDevice = nil }
         let rawPID = deviceRawProductID.removeValue(forKey: device)
 
         // Owner-aware teardown: a canonical context can have more than one
