@@ -885,6 +885,13 @@ final class InputInjector: @unchecked Sendable {
     /// by TabletManager for aux-only accessory devices; called on HIDThread.
     var displayToggleForwarder: (() -> Void)?
 
+    /// When set, `.relativeModeToggle` presses are forwarded here instead of
+    /// flipping this injector's own (inert, for an aux-only accessory)
+    /// `relativeCursorMovement` setting. Assigned once at connect by
+    /// TabletManager for aux-only accessory devices, mirroring
+    /// `displayToggleForwarder` above; called on HIDThread.
+    var relativeModeToggleForwarder: (() -> Void)?
+
     /// Advances the toggle rotation to the next display in the sequence.
     /// Called from fireButtonAction (HIDThread) when a `.displayToggle` binding fires.
     func cycleToggleDisplay(snapshot: InjectionSnapshot) {

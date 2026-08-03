@@ -288,9 +288,7 @@ final class TabletManager: ObservableObject {
     }
 
     func start() {
-        if #available(macOS 10.15, *) {
-            IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
-        }
+        IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
 
         // Primary match: Wacom (VID 0x056A) — the only vendor we actually decode.
         //
@@ -1001,6 +999,9 @@ final class TabletManager: ObservableObject {
                 context.injector.displayToggleForwarder = { [weak self] in
                     Task { @MainActor in self?.toggleDisplayOnPenTablet() }
                 }
+                context.injector.relativeModeToggleForwarder = { [weak self] in
+                    Task { @MainActor in self?.toggleRelativeModeOnPenTablet() }
+                }
             }
             context.settings.applyExpressKeyDefaults(vendorID: context.vendorID)
             refreshConnectedIDs(mostRecent: productID)
@@ -1090,6 +1091,28 @@ final class TabletManager: ObservableObject {
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
         target.settings.targetDisplayIndex = TabletSettings.displayModeToggle
+    }
+
+    /// Same pen-bearing-target resolution as `toggleDisplayOnPenTablet`, for
+    /// a `.relativeModeToggle` binding fired from an aux-only accessory
+    /// (Quick Keys) that has no cursor of its own.
+    private func toggleRelativeModeOnPenTablet() {
+        let isPenBearing: (DeviceContext) -> Bool = {
+            $0.isConnected && ($0.tabletDevice.map { $0.spec.maxX > 0 } ?? false)
+        }
+        var target: DeviceContext?
+        if let active = activeContext, isPenBearing(active) {
+            target = active
+        } else {
+            target = deviceContexts.values.first(where: isPenBearing)
+        }
+        guard let target else { return }
+        let injector = target.injector
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            injector.displayMapper.clearRelativeAnchor()
+        }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+        target.settings.relativeCursorMovement.toggle()
     }
 
     private func refreshConnectedIDs(mostRecent: Int?) {

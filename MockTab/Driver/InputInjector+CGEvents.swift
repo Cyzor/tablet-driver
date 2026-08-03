@@ -842,6 +842,14 @@ extension InputInjector {
             }
         case .relativeModeToggle:
             guard down else { break }
+            // Aux-only accessories (Xencelabs Quick Keys) have no cursor of
+            // their own — see displayToggleForwarder above for the identical
+            // reasoning. Forward to whichever tablet is actually driving the
+            // pointer instead of flipping this injector's own inert setting.
+            if let forward = relativeModeToggleForwarder {
+                forward()
+                break
+            }
             displayMapper.clearRelativeAnchor()
             if let s = settings {
                 Task { @MainActor in s.relativeCursorMovement.toggle() }
