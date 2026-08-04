@@ -298,6 +298,9 @@ final class InputInjector: @unchecked Sendable {
     /// Spikes above ~3 pt/sample while hovering suggest RF interference.
     var jitterLevel: CGFloat { smoother.jitterLevel }
     var isJittery: Bool { smoother.isJittery }
+    /// Cumulative histogram of hover-jitter samples, never reset by
+    /// tip-down/proximity-exit transitions — see `CursorSmoother.jitterHistogram`.
+    var jitterHistogram: [UInt64] { smoother.jitterHistogram }
 
     /// Per-report pressure smoothing (opens up as pressure rises toward a
     /// firm stroke, unlike the position filter above which opens up with

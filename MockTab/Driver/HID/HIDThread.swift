@@ -187,6 +187,34 @@ final class LatencyProbe {
     private var burstWorstMs: Double = 0
     private var burstStallCount: UInt64 = 0
 
+    /// Inter-report gap histogram, bucketed at 2/5/10/20/40 ms. Unlike
+    /// `stallCount` (gated on delivery latency vs. `kernelTimestamp`, so it
+    /// is blind to anything delayed *before* the kernel timestamp itself —
+    /// e.g. a transport batching reports upstream of IOHIDManager), this
+    /// buckets `gapMs` unconditionally, so it can distinguish "delivering
+    /// fewer reports, evenly spaced" (mass shifts to one higher bucket)
+    /// from "delivering reports in bursts" (mass split between the lowest
+    /// bucket and a higher one — coalesce-then-flush). Reset per capture
+    /// window via `resetGapHistogram()` so a USB run and a Bluetooth run of
+    /// the same device can be compared without one polluting the other.
+    /// Fixed-size array, no allocation on the hot path.
+    private(set) var gapHistogramMs: [UInt64] = [0, 0, 0, 0, 0, 0]
+    static let gapHistogramBucketsMs: [Double] = [2, 5, 10, 20, 40]
+
+    private func bucketGap(_ gapMs: Double) {
+        for (i, bound) in Self.gapHistogramBucketsMs.enumerated() where gapMs < bound {
+            gapHistogramMs[i] &+= 1
+            return
+        }
+        gapHistogramMs[Self.gapHistogramBucketsMs.count] &+= 1
+    }
+
+    /// Clears the gap histogram to start a fresh comparison window (e.g.
+    /// before switching a device from USB to Bluetooth mid-diagnosis).
+    func resetGapHistogram() {
+        gapHistogramMs = [0, 0, 0, 0, 0, 0]
+    }
+
     /// Wall clock and this thread's consumed CPU time at the previous report,
     /// used to tell a *stalled* thread from a *busy* one.
     ///
@@ -235,7 +263,8 @@ final class LatencyProbe {
         // few tens of nanoseconds, which the time-constraint computation
         // budget absorbs without noticing.
         let threadCPUNs = clock_gettime_nsec_np(CLOCK_THREAD_CPUTIME_ID)
-        let gapMs = lastRecordWall == 0
+        let isFirstReport = lastRecordWall == 0
+        let gapMs = isFirstReport
             ? 0
             : Double(now &- lastRecordWall) * Self.timebaseFactor / 1_000_000.0
         let cpuMs = lastRecordThreadCPUNs == 0
@@ -257,6 +286,7 @@ final class LatencyProbe {
             return
         }
         reportCount &+= 1
+        if !isFirstReport { bucketGap(gapMs) }
         averageMs += (ms - averageMs) / 64.0
         if ms > worstMs { worstMs = ms }
         if ms > Self.stallThresholdMs {

@@ -20,22 +20,38 @@ struct InfoView: View {
     @State private var accessibilityGranted = AXIsProcessTrusted()
     @State private var launchAtLogin = false
     @State private var diagnosticsExpanded = false
+    @State private var diagnosticSnapshot = ""
+    @State private var diagnosticSnapshotAt = Date()
     @State private var conflicts: [ConflictFinding] = []
     @State private var showCaptureGuide = false
+    /// Local event monitor refreshing the diagnostic snapshot on mouse-up,
+    /// active only while the panel is expanded and torn down otherwise —
+    /// see the `.onChange(of: diagnosticsExpanded)` below.
+    @State private var mouseUpMonitor: Any?
+    /// True between a mouse/pen-down that started inside the diagnostics
+    /// text and its matching mouse-up — i.e. a selection drag is (or was
+    /// just) in progress. Guards refreshes *during* the drag itself.
+    @State private var selectionGestureActive = false
+    /// Where `selectionGestureActive` became true, in window coordinates —
+    /// compared against the mouse-up location to tell a real drag-selection
+    /// from a bare click (which places a cursor but selects nothing worth
+    /// protecting).
+    @State private var selectionGestureStart: CGPoint = .zero
+    /// True once a real drag-selection inside the diagnostics text has
+    /// completed, and stays true *after* the gesture ends — unlike
+    /// `selectionGestureActive`, which only covers the drag itself. Without
+    /// this, a proximity exit (or any other automatic trigger) arriving
+    /// after the user has let go of the mouse but is still looking at their
+    /// selection would refresh right out from under it. Cleared only by an
+    /// actual refresh (`refreshDiagnosticSnapshot()`), since that's the one
+    /// thing that genuinely invalidates whatever was selected.
+    @State private var textHasSelection = false
     /// Owned per-window rather than a shared singleton: two tablet windows
     /// each collecting data must not see each other's Cancel/Done, event
     /// counts, or recorded reports.
     @StateObject private var captureEngine = CaptureEngine()
-    /// Unused directly — its writes force a body re-evaluation when
-    /// livePoint publishes, since that no longer rides tabletManager's
-    /// general objectWillChange cascade (see DeviceContext.livePoint).
-    @State private var livePointTick = 0
 
     var body: some View {
-        // Establishes livePointTick as a read dependency of this body — see
-        // its declaration above. Without a read, bumping it doesn't reliably
-        // trigger a re-render.
-        let _ = livePointTick
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared,
             instanceKey: instanceKey
@@ -53,19 +69,9 @@ struct InfoView: View {
                 Text("Status").appFont(.headline)
             }
             Section {
-                LiveInputView(
-                    livePoint: tabletManager.context(forKey: instanceKey)?.livePoint,
-                    liveButtons: tabletManager.context(forKey: instanceKey)?.liveButtons
-                        ?? LiveButtonState(),
-                    activeToolID: tabletManager.context(forKey: instanceKey)?.activeToolID,
-                    registry: DeviceRegistry.shared,
-                    hasDualRings: WacomDeviceRegistry.spec(for: productID ?? 0)?.hasDualRings
-                        == true,
-                    // Only Wacom's protocol carries a hover height; every other
-                    // decoder hardcodes 0, so show plain in/out instead of a
-                    // number that reads as a measured zero.
-                    reportsHoverDistance: (tabletManager.context(forKey: instanceKey)?.vendorID
-                        ?? 0x056A) == 0x056A
+                LiveInputSectionContent(
+                    deviceContext: deviceContext,
+                    productID: productID
                 )
             } header: {
                 Text(String(localized: "Live Input", comment: "Section header: live input state and pen position"))
@@ -84,10 +90,6 @@ struct InfoView: View {
             NotificationCenter.default.publisher(
                 for: NSApplication.didBecomeActiveNotification)
         ) { _ in refresh() }
-        .onReceive(
-            deviceContext?.livePointPublisher.eraseToAnyPublisher()
-                ?? Empty().eraseToAnyPublisher()
-        ) { _ in livePointTick &+= 1 }
         .sheet(isPresented: $showCaptureGuide) {
             CaptureGuideView(
                 engine: captureEngine,
@@ -352,17 +354,168 @@ struct InfoView: View {
 
     private var diagnosticSection: some View {
         DisclosureRow(label: String(localized: "Diagnostic Detail", comment: "Collapsible section header for detailed diagnostic information"), isExpanded: $diagnosticsExpanded) {
-            Text(diagnosticText)
-                .appFont(.monospaced)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(8)
-                .background(Color(NSColor.textBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
-                )
+            VStack(alignment: .trailing, spacing: 6) {
+                // No separate "Updated HH:mm:ss" label here — it always
+                // duplicated the "Generated :" line already inside the
+                // snapshot text below, just in a different spot.
+                Button {
+                    refreshDiagnosticSnapshot()
+                } label: {
+                    Label(String(localized: "Refresh", comment: "Button: regenerate the diagnostic text snapshot — a last resort now that most cases refresh on their own"), systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.plain)
+                .appFont(.settingsLabel)
+                .foregroundStyle(.secondary)
+
+                Text(diagnosticSnapshot)
+                    .appFont(.monospaced)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
+                    )
+            }
+        }
+        .onChange(of: diagnosticsExpanded) { expanded in
+            if expanded {
+                refreshDiagnosticSnapshot()
+                startMouseUpMonitor()
+            } else {
+                stopMouseUpMonitor()
+            }
+        }
+        .onDisappear { stopMouseUpMonitor() }
+        .onReceive(
+            deviceContext?.livePointPublisher.eraseToAnyPublisher()
+                ?? Empty().eraseToAnyPublisher()
+        ) { point in
+            // Refresh on proximity exit (point going nil) only — fires once
+            // per pen lift, not per report. Guarded against both an
+            // in-progress drag (ending a stylus-driven selection *is* a pen
+            // lift, and if it also registers as a full proximity exit, this
+            // must not refresh out from under it) and an already-completed
+            // selection the user is still looking at — a pen lift is
+            // unrelated to the tablet's own timing, so it can arrive at any
+            // point after the drag finished, not just during it. Safe from
+            // the jitter-reset issue regardless, now that jitter is a
+            // cumulative histogram rather than the instantaneous value
+            // `resetOnProximityExit()` zeroes here.
+            guard diagnosticsExpanded, point == nil, !selectionGestureActive, !textHasSelection else { return }
+            refreshDiagnosticSnapshot()
+        }
+    }
+
+    /// Refreshes the diagnostic snapshot on left-mouse-up anywhere in the
+    /// app: mouse release is a natural pause point, not a continuous stream,
+    /// so unlike the old live-updating property it doesn't fight an
+    /// in-progress selection on every redraw. Local monitors run before
+    /// normal event dispatch, so this fires even for a mouse-up inside the
+    /// diagnostics text itself — which is exactly the case that must be
+    /// excluded: that specific mouse-up is what *finishes* a text selection
+    /// there, and refreshing under it would wipe the selection right back
+    /// out.
+    ///
+    /// Excluded by tracking where the gesture *started*, not where it ends.
+    /// Hit-testing only the mouse-up location (tried first) missed drags
+    /// that begin inside the text but end just outside its exact bounds —
+    /// in the padding/background/border chrome that visually looks like
+    /// part of the box but isn't the `NSTextView` itself — which is a very
+    /// ordinary way to finish a selection (dragging past the last line, or
+    /// slightly past an edge). Matching mouse-down and mouse-up as a pair
+    /// and remembering only the down-location's hit test handles that:
+    /// a selection gesture is defined by where it began.
+    /// A drag shorter than this, in points, is treated as a bare click
+    /// (places a cursor, selects nothing) rather than a real selection —
+    /// so it doesn't latch `textHasSelection` and block future auto-refresh
+    /// for no reason.
+    private static let selectionDragThreshold: CGFloat = 3
+
+    private func startMouseUpMonitor() {
+        guard mouseUpMonitor == nil else { return }
+        mouseUpMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) { event in
+            switch event.type {
+            case .leftMouseDown:
+                selectionGestureActive = Self.isInsideDiagnosticText(event)
+                selectionGestureStart = event.locationInWindow
+            case .leftMouseUp:
+                let dx = event.locationInWindow.x - selectionGestureStart.x
+                let dy = event.locationInWindow.y - selectionGestureStart.y
+                let wasRealDrag = hypot(dx, dy) >= Self.selectionDragThreshold
+
+                if selectionGestureActive && wasRealDrag {
+                    // A real drag inside the text: new selection made.
+                    textHasSelection = true
+                } else if !wasRealDrag {
+                    // A bare click anywhere — inside the text (collapses any
+                    // existing selection to a cursor) or elsewhere (the
+                    // ordinary "I'm done with that" gesture) — is a
+                    // deselection signal. Without this, once a real
+                    // selection had ever been made, nothing would resume
+                    // auto-refreshing even after the user visibly let go of
+                    // it, since textHasSelection only ever got set, never
+                    // cleared.
+                    textHasSelection = false
+                }
+                // The remaining case — a real drag that *didn't* start in
+                // the text (e.g. resizing something elsewhere) — leaves
+                // textHasSelection untouched, so an existing protected
+                // selection stays protected regardless of unrelated drags.
+
+                if selectionGestureActive {
+                    selectionGestureActive = false
+                } else if !textHasSelection {
+                    refreshDiagnosticSnapshot()
+                }
+            default:
+                break
+            }
+            return event
+        }
+    }
+
+    /// `hitTest(_:)` wants the point in the coordinate system of the
+    /// *superview* of the view it's called on, not the view's own — calling
+    /// it directly on `contentView` with window coordinates (an earlier
+    /// version of this did) is off by the title bar's height, so the check
+    /// silently never matched anything.
+    private static func isInsideDiagnosticText(_ event: NSEvent) -> Bool {
+        let hit =
+            event.window?.contentView?.superview?.hitTest(event.locationInWindow)
+            ?? event.window?.contentView?.hitTest(event.locationInWindow)
+        guard let hit else { return false }
+        return isInsideTextView(hit)
+    }
+
+    /// Walks up from the hit-tested view looking for a text-view ancestor —
+    /// the hit view itself is often a clip/container view nested a level or
+    /// two above the actual text view. Checks both formal `NSText`
+    /// conformance and the class name: SwiftUI's `.textSelection(.enabled)`
+    /// on a plain `Text` is backed by a private view that behaves like a
+    /// text view (click-drag selects, first-responder-adjacent) but isn't
+    /// guaranteed to formally declare `NSText` conformance, so relying on
+    /// `is NSText` alone already missed once. The class-name check is
+    /// deliberately loose to catch that private type without needing its
+    /// exact name.
+    private static func isInsideTextView(_ view: NSView) -> Bool {
+        var v: NSView? = view
+        while let current = v {
+            if current is NSText { return true }
+            if NSStringFromClass(type(of: current)).localizedCaseInsensitiveContains("text") {
+                return true
+            }
+            v = current.superview
+        }
+        return false
+    }
+
+    private func stopMouseUpMonitor() {
+        if let monitor = mouseUpMonitor {
+            NSEvent.removeMonitor(monitor)
+            mouseUpMonitor = nil
         }
     }
 
@@ -378,12 +531,20 @@ struct InfoView: View {
         }
     }
 
-    private var diagnosticText: String {
+    /// Builds a snapshot of diagnostic text as of the moment it's called.
+    /// Deliberately *not* a live-reading computed property: earlier it read
+    /// `Date()` and app state inline, so any incidental re-render of
+    /// `InfoView` (mouse hover elsewhere, window activation, a pen report
+    /// arriving) produced different text — which meant the `Text` view's
+    /// content changed under an in-progress selection, discarding it before
+    /// the user could copy anything. Called explicitly by `refresh()` and
+    /// cached in `diagnosticSnapshot`, so the displayed text only changes
+    /// when the user asks for it.
+    private func buildDiagnosticText() -> String {
         var lines: [String] = []
 
         let fmt = DateFormatter()
-        fmt.dateStyle = .medium
-        fmt.timeStyle = .medium
+        fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
         lines += [String(localized: "Generated : \(fmt.string(from: Date()))", comment: "Diagnostic: timestamp when info was generated")]
 
         let ver =
@@ -436,9 +597,21 @@ struct InfoView: View {
         }
 
         if let ctx = tabletManager.activeContext {
-            let jitter = String(format: "%.2f", ctx.injector.jitterLevel)
-            let highLabel = ctx.injector.isJittery ? String(localized: " (HIGH)", comment: "Jitter level warning") : ""
-            lines += [String(localized: "Jitter level   : \(jitter) pt/sample\(highLabel)", comment: "Diagnostic: input jitter measurement")]
+            let jitterHist = ctx.injector.jitterHistogram
+            let jitterTotal = jitterHist.reduce(0, +)
+            if jitterTotal > 0 {
+                // Cumulative since this tool came into proximity — not reset
+                // by tip-down/proximity-exit like the instantaneous jitter
+                // level, so a snapshot taken between hover sessions still
+                // shows whether meaningful jitter has occurred recently
+                // instead of always reading zero.
+                var bounds = CursorSmoother.jitterHistogramBucketsPtPerSample.map { "<\($0)" }
+                bounds.append(">\(CursorSmoother.jitterHistogramBucketsPtPerSample.last!)")
+                let parts = zip(bounds, jitterHist).map { "\($0):\($1)" }
+                lines += [String(localized: "Jitter (pt/sample): \(parts.joined(separator: "  "))", comment: "Diagnostic: histogram of hover-jitter sample magnitudes, cumulative for this tool's proximity session")]
+            } else {
+                lines += [String(localized: "Jitter (pt/sample): no hover samples yet", comment: "Diagnostic: jitter histogram is empty")]
+            }
         }
 
         let probe = LatencyProbe.shared
@@ -455,6 +628,14 @@ struct InfoView: View {
         if probe.connectStallCount > 0 {
             let connectWorst = String(format: "%.1f", probe.connectWorstMs)
             lines += [String(localized: "  (device connect: \(connectWorst) ms worst, \(probe.connectStallCount) stalls — excluded above)", comment: "Diagnostic: latency spikes during device connection, excluded from the steady-state HID latency line")]
+        }
+
+        let histTotal = probe.gapHistogramMs.reduce(0, +)
+        if histTotal > 0 {
+            var bounds = LatencyProbe.gapHistogramBucketsMs.map { "<\(Int($0))" }
+            bounds.append(">\(Int(LatencyProbe.gapHistogramBucketsMs.last!))")
+            let parts = zip(bounds, probe.gapHistogramMs).map { "\($0)ms:\($1)" }
+            lines += [String(localized: "Report gaps    : \(parts.joined(separator: "  "))", comment: "Diagnostic: histogram of inter-report arrival gaps, in milliseconds, for spotting bursty/coalesced delivery")]
         }
 
         if let fallback = fallbackDevice {
@@ -477,6 +658,18 @@ struct InfoView: View {
         accessibilityGranted = AXIsProcessTrusted()
         launchAtLogin = SMAppService.mainApp.status == .enabled
         conflicts = detectConflicts()
+        refreshDiagnosticSnapshot()
+    }
+
+    /// Single choke point for updating `diagnosticSnapshot`, so every
+    /// trigger (manual button, expand, mouse-up, proximity exit) also
+    /// stamps `diagnosticSnapshotAt` for the "Updated Xs ago" label —
+    /// otherwise it's impossible to tell staleness from "nothing changed"
+    /// from "the refresh mechanism is broken."
+    private func refreshDiagnosticSnapshot() {
+        diagnosticSnapshot = buildDiagnosticText()
+        diagnosticSnapshotAt = Date()
+        textHasSelection = false
     }
 
     private func requestAccessibility() {
@@ -541,6 +734,49 @@ struct InfoView: View {
                 URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!
             )
         }
+    }
+}
+
+// MARK: - LiveInputSectionContent
+//
+// Owns the livePointTick polling dependency itself, rather than InfoView
+// hosting it. `livePoint` publishes on every HID report, so anything that
+// reads livePointTick in its body re-renders at report rate — previously
+// that was all of InfoView.body, including the diagnostics text below,
+// which meant selecting that text with a stylus regenerated the very
+// livePoint reports that blew away the in-progress selection on every
+// redraw (a mouse-driven selection isn't itself a livePoint source, so it
+// didn't hit this). Scoping the tick to just this subtree keeps the
+// diagnostics section — and everything else in InfoView — stable while
+// the pen moves.
+private struct LiveInputSectionContent: View {
+    let deviceContext: DeviceContext?
+    let productID: Int?
+
+    /// Unused directly — its writes force a body re-evaluation when
+    /// livePoint publishes, since that no longer rides tabletManager's
+    /// general objectWillChange cascade (see DeviceContext.livePoint).
+    @State private var livePointTick = 0
+
+    var body: some View {
+        // Establishes livePointTick as a read dependency of this body —
+        // without a read, bumping it doesn't reliably trigger a re-render.
+        let _ = livePointTick
+        LiveInputView(
+            livePoint: deviceContext?.livePoint,
+            liveButtons: deviceContext?.liveButtons ?? LiveButtonState(),
+            activeToolID: deviceContext?.activeToolID,
+            registry: DeviceRegistry.shared,
+            hasDualRings: WacomDeviceRegistry.spec(for: productID ?? 0)?.hasDualRings == true,
+            // Only Wacom's protocol carries a hover height; every other
+            // decoder hardcodes 0, so show plain in/out instead of a
+            // number that reads as a measured zero.
+            reportsHoverDistance: (deviceContext?.vendorID ?? 0x056A) == 0x056A
+        )
+        .onReceive(
+            deviceContext?.livePointPublisher.eraseToAnyPublisher()
+                ?? Empty().eraseToAnyPublisher()
+        ) { _ in livePointTick &+= 1 }
     }
 }
 

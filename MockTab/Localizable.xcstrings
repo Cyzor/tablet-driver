@@ -2,7 +2,26 @@
   "sourceLanguage" : "en",
   "strings" : {
     "" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : ""
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : ""
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : ""
+          }
+        }
+      }
     },
     "  (device connect: %@ ms worst, %llu stalls — excluded above)" : {
       "comment" : "Diagnostic: latency spikes during device connection, excluded from the steady-state HID latency line",
@@ -71,6 +90,7 @@
     },
     " (HIGH)" : {
       "comment" : "Jitter level warning",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -729,7 +749,27 @@
       }
     },
     "%lld ms" : {
-      "comment" : "Delay in milliseconds, e.g. '80 ms'"
+      "comment" : "Delay in milliseconds, e.g. '80 ms'",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "%lld ms"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "%lld ms"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "%lld ms"
+          }
+        }
+      }
     },
     "%lld named preset" : {
       "comment" : "Count of named presets found in the backup for this tablet",
@@ -1239,7 +1279,26 @@
       }
     },
     "0x02" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "0x02"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "0x02"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "0x02"
+          }
+        }
+      }
     },
     "30 minutes" : {
       "comment" : "Quick Keys sleep timer choice",
@@ -2536,8 +2595,20 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zum Klicken tippen"
+            "state" : "machine_translated",
+            "value" : "Kurz auf die Oberfläche tippen, um zu klicken."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Toca brevemente la superficie de la tableta para hacer clic."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "タブレットの表面を短くタッチするとクリックします。"
           }
         }
       }
@@ -3426,6 +3497,18 @@
             "state" : "translated",
             "value" : "Klickschwelle"
           }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Umbral de clic"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "クリックしきい値"
+          }
         }
       }
     },
@@ -3879,8 +3962,20 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inhalt bewegt sich mit dem Finger."
+            "state" : "machine_translated",
+            "value" : "Inhalt bewegt sich mit den Fingern."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "El contenido sigue a tus dedos."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "コンテンツが指の動きに追従します。"
           }
         }
       }
@@ -3889,8 +3984,20 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inhalt bewegt sich entgegen dem Finger."
+            "state" : "machine_translated",
+            "value" : "Inhalt bewegt sich entgegen den Fingern."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "El contenido se mueve en sentido contrario al de tus dedos."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "コンテンツが指の動きと逆方向に動きます。"
           }
         }
       }
@@ -4114,7 +4221,27 @@
       }
     },
     "Couldn't save to the Desktop, and no other location was chosen." : {
-      "comment" : "Capture error shown when the Desktop write failed and the user dismissed the save panel"
+      "comment" : "Capture error shown when the Desktop write failed and the user dismissed the save panel",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Es konnte nicht auf dem Schreibtisch gespeichert werden, und es wurde kein anderer Speicherort ausgewählt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "No se pudo guardar en el Escritorio y no se eligió ninguna otra ubicación."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "デスクトップに保存できず、ほかの保存場所も選択されませんでした。"
+          }
+        }
+      }
     },
     "Counterclockwise" : {
       "comment" : "Ring mode editor row label",
@@ -6151,8 +6278,20 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touch‑Eingabe"
+            "state" : "machine_translated",
+            "value" : "Fingereingabe aktivieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Habilitar toque con el dedo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "指によるタッチを有効にする"
           }
         }
       }
@@ -7147,7 +7286,27 @@
       }
     },
     "Found in this tablet's descriptor: report %@" : {
-      "comment" : "Notice that the device mode init report ID was read from the device's own descriptor rather than guessed"
+      "comment" : "Notice that the device mode init report ID was read from the device's own descriptor rather than guessed",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Im Deskriptor des Grafiktabletts gefunden: Report %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Encontrado en el descriptor de esta tableta: informe %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "このタブレットのディスクリプタで見つかりました: レポート %@"
+          }
+        }
+      }
     },
     "Full Screen" : {
       "comment" : "Window menu",
@@ -8544,8 +8703,15 @@
         }
       }
     },
+    "Jitter (pt/sample): %@" : {
+      "comment" : "Diagnostic: histogram of hover-jitter sample magnitudes, cumulative for this tool's proximity session"
+    },
+    "Jitter (pt/sample): no hover samples yet" : {
+      "comment" : "Diagnostic: jitter histogram is empty"
+    },
     "Jitter level   : %@ pt/sample%@" : {
       "comment" : "Diagnostic: input jitter measurement",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9694,6 +9860,18 @@
             "state" : "translated",
             "value" : "Mindestkraft, die die Spitze benötigt, um Druck oder einen Klick zu registrieren."
           }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Fuerza mínima necesaria para que la punta registre presión o un clic."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "ペン先が筆圧またはクリックを検出するために必要な最小の力。"
+          }
         }
       }
     },
@@ -9774,7 +9952,27 @@
       }
     },
     "MockTab couldn't write to your Desktop. Choose where to save the collected device data." : {
-      "comment" : "Explanation in the capture save panel after a Desktop write failure"
+      "comment" : "Explanation in the capture save panel after a Desktop write failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "MockTab konnte nicht auf den Schreibtisch schreiben. Wähle aus, wo die erfassten Gerätedaten gespeichert werden sollen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "MockTab no pudo escribir en tu Escritorio. Elige dónde guardar los datos del dispositivo recopilados."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "MockTab がデスクトップに書き込めませんでした。収集したデバイスデータの保存場所を選択してください。"
+          }
+        }
+      }
     },
     "MockTab found the following issues that may interfere with tablet operation:" : {
       "comment" : "First sentence of conflict alert body",
@@ -9933,7 +10131,27 @@
       }
     },
     "mocktab.org" : {
-      "comment" : "Link label: MockTab's website"
+      "comment" : "Link label: MockTab's website",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "mocktab.org"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "mocktab.org"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "mocktab.org"
+          }
+        }
+      }
     },
     "Mode" : {
       "comment" : "Quick Keys bottom mode button label",
@@ -10147,8 +10365,20 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Passt die Zeigergeschwindigkeit an."
+            "state" : "machine_translated",
+            "value" : "Multiplikator für die Zeigerbewegung beim Ziehen mit dem Finger."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Multiplicador del movimiento del cursor al arrastrar con el dedo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "指によるドラッグ時のカーソル移動の倍率。"
           }
         }
       }
@@ -10711,7 +10941,27 @@
       }
     },
     "Not collecting" : {
-      "comment" : "HID discovery: status shown when collection could not be started"
+      "comment" : "HID discovery: status shown when collection could not be started",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Keine Erfassung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Sin recopilación"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "収集していません"
+          }
+        }
+      }
     },
     "Not connected" : {
       "comment" : "Device connection status value",
@@ -10964,10 +11214,48 @@
       }
     },
     "On (default): Pan View emits a phased trackpad-style stream with a momentum tail, so scroll-view apps coast after you release. Off: a simpler stream that pans in far more apps, but without inertia. Set per-app using the override bar above if some apps need it off." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Ein (Standard): „Ansicht schwenken“ sendet einen phasenweisen, trackpad-artigen Strom mit Trägheitsauslauf, sodass Apps mit Scroll-Ansicht nach dem Loslassen weiterlaufen. Aus: ein einfacherer Strom, der in deutlich mehr Apps schwenkt, aber ohne Trägheit. Stelle dies pro App über die App-Override-Leiste oben ein, wenn einige Apps es deaktiviert benötigen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Activado (predeterminado): Desplazar vista emite un flujo en fases al estilo trackpad con una cola de inercia, de modo que las apps con vista de desplazamiento continúan tras soltar. Desactivado: un flujo más simple que se desplaza en muchas más apps, pero sin inercia. Configúralo por app con la barra de excepciones de arriba si alguna app necesita tenerlo desactivado."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "オン（既定）: 「ビューをパン」はトラックパッド風のフェーズ付きストリームを慣性テール付きで送信するため、スクロールビューを持つアプリは指を離した後も動き続けます。オフ: 慣性はありませんが、はるかに多くのアプリでパンできるシンプルなストリームです。一部のアプリでオフにする必要がある場合は、上のアプリ別設定バーでアプリごとに設定してください。"
+          }
+        }
+      }
     },
     "On (default): two fingers post a phased trackpad-style stream, so scroll-view apps coast after you lift. Off: a simpler stream that scrolls in far more apps (including Calendar's Month/Year view), but without inertia." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Ein (Standard): Zwei Finger senden einen phasenweisen, trackpad-artigen Strom, sodass Apps mit Scroll-Ansicht nach dem Abheben weiterlaufen. Aus: ein einfacherer Strom, der in deutlich mehr Apps scrollt (einschließlich der Monats-/Jahresansicht von Kalender), aber ohne Trägheit."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Activado (predeterminado): dos dedos emiten un flujo en fases al estilo trackpad, de modo que las apps con vista de desplazamiento continúan tras levantar los dedos. Desactivado: un flujo más simple que se desplaza en muchas más apps (incluida la vista Mes/Año del Calendario), pero sin inercia."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "オン（既定）: 2本の指でトラックパッド風のフェーズ付きストリームを送信するため、スクロールビューを持つアプリは指を離した後も動き続けます。オフ: 慣性はありませんが、はるかに多くのアプリ（“カレンダー”の月/年ビューを含む）でスクロールできるシンプルなストリームです。"
+          }
+        }
+      }
     },
     "On: Pan View emits a phased trackpad-style stream with a momentum tail, so scroll-view apps coast after you release. Off (default): a simpler stream that pans in far more apps, but without inertia. Set per-app using the override bar above if you want momentum only where it works." : {
       "extractionState" : "stale",
@@ -11178,7 +11466,26 @@
       }
     },
     "OpenTabletDriver" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "OpenTabletDriver"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "OpenTabletDriver"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "OpenTabletDriver"
+          }
+        }
+      }
     },
     "Orange" : {
       "comment" : "LED swatch name",
@@ -13011,13 +13318,54 @@
         }
       }
     },
+    "Refresh" : {
+      "comment" : "Button: regenerate the diagnostic text snapshot — a last resort now that most cases refresh on their own",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut laden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Actualizar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "更新"
+          }
+        }
+      }
+    },
     "Rejected %@ = %@" : {
       "comment" : "Notice that a device mode init write was refused by the device",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Abgelehnt %@ = %@"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Rejected %@ = %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Rechazado %@ = %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "拒否 %@ = %@"
           }
         }
       }
@@ -13565,13 +13913,34 @@
     "Report" : {
       "comment" : "Label for the feature report ID field in the device mode init control",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Report"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Report"
           }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Informe"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "レポート"
+          }
         }
       }
+    },
+    "Report gaps    : %@" : {
+      "comment" : "Diagnostic: histogram of inter-report arrival gaps, in milliseconds, for spotting bursty/coalesced delivery"
     },
     "Requires the pen to move this far before a tap becomes a drag." : {
       "localizations" : {
@@ -13971,7 +14340,26 @@
       }
     },
     "Reverse Direction" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Richtung umkehren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Invertir dirección"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "方向を反転"
+          }
+        }
+      }
     },
     "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita)." : {
       "comment" : "A help text for the \"Invert Rotation Direction\" toggle, explaining its purpose.",
@@ -14795,7 +15183,27 @@
       }
     },
     "Save Device Data" : {
-      "comment" : "Title of the save panel shown when the capture file can't be written to the Desktop"
+      "comment" : "Title of the save panel shown when the capture file can't be written to the Desktop",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Gerätedaten speichern"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Guardar datos del dispositivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "デバイスデータを保存"
+          }
+        }
+      }
     },
     "Save Profile" : {
       "comment" : "Undo action name: creating a new named preset in the Profiles pane",
@@ -15107,10 +15515,28 @@
     "Send" : {
       "comment" : "Button that writes the device mode init feature report",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Senden"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Send"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Enviar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "送信"
           }
         }
       }
@@ -15118,10 +15544,28 @@
     "Sent %@ = %@" : {
       "comment" : "Confirmation that a device mode init write was accepted",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Gesendet %@ = %@"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Sent %@ = %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Enviado %@ = %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "送信済み %@ = %@"
           }
         }
       }
@@ -15213,6 +15657,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Legt fest, wie viel Druck die Spitze benötigt, bevor er als Kontakt zählt – dasselbe Prinzip wie die Empfindlichkeit, jedoch für den Ein-/Aus-Punkt statt für die Kennlinie. Höher eingestellt ergibt ein festeres, bewussteres Klickgefühl; niedriger eingestellt ermöglicht die leichtestmögliche Berührung. Aus (Standard) beginnt die Erkennung an der Untergrenze des Sensors selbst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Establece cuánta presión necesita la punta antes de contar como contacto — la misma idea que la sensibilidad, pero para el punto de activación en lugar de la curva de respuesta. Auméntalo para un clic más firme y deliberado; redúcelo para el toque más ligero posible. Desactivado (predeterminado) empieza a registrar desde el mínimo del propio sensor."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "ペン先が接触と見なされるために必要な筆圧を設定します — 感度と同じ考え方ですが、応答曲線ではなくオン/オフの切り替え点に作用します。上げるとより確実なクリック感になり、下げると最も軽いタッチが有効になります。オフ（既定）はセンサー自体の最低値から検出を開始します。"
           }
         }
       }
@@ -15606,7 +16062,26 @@
       }
     },
     "Sleep After" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Ruhezustand nach"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Reposo después de"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "スリープまで"
+          }
+        }
+      }
     },
     "Sleep Timer" : {
       "comment" : "Quick Keys auto-sleep timer row label",
@@ -17454,7 +17929,27 @@
       }
     },
     "Touch Momentum Scrolling" : {
-      "comment" : "Undo action name: two-finger scroll momentum toggle in the Touch pane"
+      "comment" : "Undo action name: two-finger scroll momentum toggle in the Touch pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Touch-Scrollen mit Nachlauf"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Desplazamiento con inercia táctil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "タッチ慣性スクロール"
+          }
+        }
+      }
     },
     "Touch Ring" : {
       "comment" : "Section header / row label for touch ring",
@@ -17985,6 +18480,18 @@
             "state" : "translated",
             "value" : "Mit zwei Fingern scrollen."
           }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Usa un gesto con dos dedos para desplazarte."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "2本指のジェスチャでスクロールします。"
+          }
         }
       }
     },
@@ -18015,10 +18522,28 @@
     "Value" : {
       "comment" : "Label for the feature report value field in the device mode init control",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Wert"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Value"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Valor"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "値"
           }
         }
       }
@@ -18479,5 +19004,5 @@
       }
     }
   },
-  "version" : "1.1"
+  "version" : "1.3"
 }
