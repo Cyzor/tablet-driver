@@ -52,6 +52,18 @@ python3 tools/import_vendor_configs.py \
     --vendors Huion Xencelabs XP-Pen
 ```
 
+## Unwired app source (not in the Xcode target)
+
+### `OTDImporter.swift`
+**Swift-native OTD JSON → registry entry converter — unused.**
+
+Parses the same OTD configuration JSON as `import_otd_configs.py`, but in
+Swift, emitting `WacomDeviceSpec`/`VendorDeviceProfile`-shaped entries.
+Nothing calls it and it was never wired into the pbxproj; it depends only on
+`Foundation` and `TabletKit`, so it's portable if it's ever picked back up.
+Moved here from `MockTab/Driver/` rather than deleted, since it's real,
+working-looking logic, not a stub.
+
 ## Processing submitted captures
 
 Submitted-capture triage (`triage_discovery.py`) now lives in
@@ -74,6 +86,15 @@ behavior.  Superseded by the in-app capture flow for most cases.
 ### `touch_capture.c`
 Standalone C utility that opens a HID device and dumps reports.  Pre-existing,
 used during the PTH-860 touch decoder work.
+
+### `WacomProbeDevice.swift`
+A `TabletDevice` shim you temporarily copy into `MockTab/Driver/Devices/` and
+wire into `TabletManager.deviceConnected(_:)` when researching an unrecognized
+Wacom device that speaks the 10-byte IntuosV1 wire format: it logs running
+coordinate/pressure maxima to Console so you can read off real ranges before
+writing a proper registry entry. See the file header for the exact steps.
+Not part of the Xcode target — it depends on app-internal helpers that only
+resolve once it's copied into `Devices/`.
 
 ## Build / release
 

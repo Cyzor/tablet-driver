@@ -5,6 +5,12 @@
 import Foundation
 import TabletKit
 
+// Lives in tools/, not the Xcode target: a Swift-native alternative to
+// import_otd_configs.py, parsing the same OTD JSON shape into TabletKit
+// registry entries. Nothing currently calls it — it was never wired into
+// any app UI or build step. Depends only on Foundation and TabletKit, so
+// it's a plain `swift` script candidate if it's ever revived.
+
 // MARK: - OTD JSON Structures
 
 /// Root structure of an OpenTabletDriver device configuration file.

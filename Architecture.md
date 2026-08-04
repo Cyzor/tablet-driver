@@ -43,7 +43,6 @@ MockTab/
     Injection/ InputInjector and its extensions, snapshot delivery
     Mapping/   Display selection, orientation, per-app overrides
     Discovery/ Unknown-device capture and triage
-    OTDImporter.swift  OTD JSON -> registry entry converter (no callers yet)
   Settings/    Live settings, presets, calibration, profile load/save
   UI/
     Panes/     The tabs of the settings window
@@ -70,11 +69,12 @@ The pure-logic decoder layer lives in the [TabletKit repo](https://github.com/Cy
 
 ### Devices
 
-Three device wrappers sit between IOHIDManager and the decoders. Each schedules its own HID device on `HIDThread.shared.runLoop`.
+Two device wrappers sit between IOHIDManager and the decoders. Each schedules its own HID device on `HIDThread.shared.runLoop`.
 
 - `WacomKnownDevice` — a tablet whose VID/PID matches an entry in `WacomDeviceRegistry`. Carries the device's `DigitizerSpec` and a decoder instance. The common case.
 - `WacomFallbackDevice` — a Wacom-vendor tablet with no registry entry. Reads the HID descriptor and synthesizes a best-effort spec.
-- `WacomProbeDevice` — a one-shot probe that captures the descriptor for unknown-device discovery, then unschedules itself.
+
+`tools/WacomProbeDevice.swift` is a third, temporary one: a one-shot probe that logs coordinate/pressure maxima for an unrecognized device, meant to be copied into `Devices/` and wired into `TabletManager.deviceConnected(_:)` only for the duration of a research session — see the file header. It isn't part of the Xcode target.
 
 `VendorDeviceRegistry` covers non-Wacom vendors with a similar shape.
 
