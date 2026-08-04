@@ -7,7 +7,7 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../.." && pwd)"
-SRC="$ROOT/MockTab/UI/Panes/ConflictDetection.swift"
+SRC="$ROOT/MockTab/UI/Support/ConflictDetection.swift"
 TEST="$DIR/ConflictDetectionTests.swift"
 BIN="$(mktemp -d)/conflict-detection-tests"
 

@@ -360,9 +360,18 @@
 				47A5AA2037FC42E2BFC54602 /* Calibration */,
 				AC000006 /* Panes */,
 				AC000007 /* Components */,
+				AC0000C1 /* Support */,
 				AC000011 /* Help */,
 			);
 			path = UI;
+			sourceTree = "<group>";
+		};
+		AC0000C1 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				AB0000A0 /* ConflictDetection.swift */,
+			);
+			path = Support;
 			sourceTree = "<group>";
 		};
 		AC000006 /* Panes */ = {
@@ -376,7 +385,6 @@
 				AB000015 /* DisplayMappingView.swift */,
 				AB000016 /* ScratchpadView.swift */,
 				AB000033 /* InfoView.swift */,
-				AB0000A0 /* ConflictDetection.swift */,
 				AB000034 /* ProfilesView.swift */,
 				AB000040 /* DevicesView.swift */,
 				AB00TV01 /* TouchView.swift */,
