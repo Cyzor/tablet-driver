@@ -265,34 +265,74 @@
 		AC000002 /* Driver */ = {
 			isa = PBXGroup;
 			children = (
-				AB000045 /* WacomFallbackDevice.swift */,
-				AB00DR01 /* DeviceRouter.swift */,
-				AB00DK01 /* DeviceInstanceKey.swift */,
-				AB00GD01 /* GenericHIDDigitizer.swift */,
-				AB000070 /* HIDCapture.swift */,
-				AB000101 /* CaptureModels.swift */,
-				AB000102 /* CaptureEngine.swift */,
-				AB0001F1 /* DiscoveryAccumulator.swift */,
+				AC0000B1 /* HID */,
+				AC0000B2 /* Devices */,
+				AC0000B3 /* Injection */,
+				AC0000B4 /* Mapping */,
+				AC0000B5 /* Discovery */,
 				AB000072 /* OTDImporter.swift */,
-				AB000049 /* WacomKnownDevice.swift */,
-				AB000039 /* DeviceRegistry.swift */,
-				AB000042 /* DeviceContext.swift */,
-				AB000035 /* AppWatcher.swift */,
+			);
+			path = Driver;
+			sourceTree = "<group>";
+		};
+		AC0000B1 /* HID */ = {
+			isa = PBXGroup;
+			children = (
 				AB00HT01 /* HIDThread.swift */,
-				AB00HD01 /* HIDDescriptorReader.swift */,
+				AB000070 /* HIDCapture.swift */,
 				AB00HH01 /* HIDHelpers.swift */,
-				AB00TT01 /* TouchStateTracker.swift */,
-				AB00PS01 /* PanScrollTracker.swift */,
+				AB00HD01 /* HIDDescriptorReader.swift */,
+			);
+			path = HID;
+			sourceTree = "<group>";
+		};
+		AC0000B2 /* Devices */ = {
+			isa = PBXGroup;
+			children = (
+				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
+				AB00DR01 /* DeviceRouter.swift */,
+				AB000042 /* DeviceContext.swift */,
+				AB000039 /* DeviceRegistry.swift */,
+				AB00DK01 /* DeviceInstanceKey.swift */,
+				AB000049 /* WacomKnownDevice.swift */,
+				AB000045 /* WacomFallbackDevice.swift */,
+				AB00GD01 /* GenericHIDDigitizer.swift */,
+			);
+			path = Devices;
+			sourceTree = "<group>";
+		};
+		AC0000B3 /* Injection */ = {
+			isa = PBXGroup;
+			children = (
 				AB000008 /* InputInjector.swift */,
+				AB000084 /* InputInjector+CGEvents.swift */,
 				AB000081 /* InputInjector+PenInjection.swift */,
 				AB000082 /* InputInjector+AuxInput.swift */,
 				AB000083 /* InputInjector+Touch.swift */,
-				AB000084 /* InputInjector+CGEvents.swift */,
-				AB0000DM /* DisplayMapper.swift */,
 				AB00IS01 /* InjectionSnapshot.swift */,
-				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
+				AB00PS01 /* PanScrollTracker.swift */,
+				AB00TT01 /* TouchStateTracker.swift */,
 			);
-			path = Driver;
+			path = Injection;
+			sourceTree = "<group>";
+		};
+		AC0000B4 /* Mapping */ = {
+			isa = PBXGroup;
+			children = (
+				AB0000DM /* DisplayMapper.swift */,
+				AB000035 /* AppWatcher.swift */,
+			);
+			path = Mapping;
+			sourceTree = "<group>";
+		};
+		AC0000B5 /* Discovery */ = {
+			isa = PBXGroup;
+			children = (
+				AB000102 /* CaptureEngine.swift */,
+				AB000101 /* CaptureModels.swift */,
+				AB0001F1 /* DiscoveryAccumulator.swift */,
+			);
+			path = Discovery;
 			sourceTree = "<group>";
 		};
 		AC000003 /* Settings */ = {
