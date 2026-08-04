@@ -3,7 +3,7 @@
 
 Reads every Wacom-branded `.tablet` file from a local libwacom checkout, builds
 a {PID → (widthMM, heightMM, modelName)} map, then walks
-MockTab/Driver/WacomDeviceRegistry.swift and inserts `activeWidthMM` /
+TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift and inserts `activeWidthMM` /
 `activeHeightMM` arguments into entries that don't already have them.
 
 libwacom Width/Height are **manufacturer-advertised drawing-area dimensions
@@ -22,7 +22,7 @@ capture.  We therefore:
 Usage:
     python3 tools/backfill_libwacom_dimensions.py \\
         --libwacom-data /path/to/libwacom/data \\
-        --registry MockTab/Driver/WacomDeviceRegistry.swift
+        --registry TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift
     python3 tools/backfill_libwacom_dimensions.py ... --dry-run   # preview only
 """
 
@@ -206,7 +206,7 @@ def main() -> int:
     ap.add_argument("--libwacom-data", required=True, type=Path,
                     help="Path to libwacom data/ directory (e.g. ~/Documents/Develop/libwacom/data)")
     ap.add_argument("--registry", required=True, type=Path,
-                    help="Path to MockTab/Driver/WacomDeviceRegistry.swift")
+                    help="Path to TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print proposed changes without writing the file")
     args = ap.parse_args()
