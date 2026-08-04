@@ -386,6 +386,10 @@
 			isa = PBXGroup;
 			children = (
 				AB0000A0 /* ConflictDetection.swift */,
+				AC000008 /* TabletColorTheme.swift */,
+				AB000053 /* FontExtensions.swift */,
+				057B24D72F899E3A0032B29E /* Path+SVGData.swift */,
+				AB000077 /* LiveResizeDetector.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -411,28 +415,40 @@
 		AC000007 /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				AB000052 /* AppOverrideBar.swift */,
 				AB000207 /* LEDColorControl.swift */,
-				AB000208 /* TouchRingModeList.swift */,
 				AB000076 /* ButtonBindingControl.swift */,
-				AB000077 /* LiveResizeDetector.swift */,
 				AB000078 /* ButtonRow.swift */,
-				05D7EB7A2F79E6E30086E03F /* AboutView.swift */,
-				AB000103 /* CaptureGuideView.swift */,
 				AB000055 /* DisclosureRow.swift */,
 				AB000056 /* SettingsControls.swift */,
 				AB000041 /* DeviceStatusBar.swift */,
 				AAAAAA07 /* ExportDragWell.swift */,
-				AAAAAA09 /* ImportPreviewSheet.swift */,
 				AB000073 /* OrientationPickerView.swift */,
 				AB000200 /* NormalizedAreaEditor.swift */,
-				AB000054 /* PenDiagramView.swift */,
-				AB000154 /* TouchRingDiagramView.swift */,
-				AC000008 /* TabletColorTheme.swift */,
-				AB000053 /* FontExtensions.swift */,
-				057B24D72F899E3A0032B29E /* Path+SVGData.swift */,
+				AC0000E1 /* Diagrams */,
+				AC0000E2 /* Features */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		AC0000E1 /* Diagrams */ = {
+			isa = PBXGroup;
+			children = (
+				AB000054 /* PenDiagramView.swift */,
+				AB000154 /* TouchRingDiagramView.swift */,
+				AB000208 /* TouchRingModeList.swift */,
+			);
+			path = Diagrams;
+			sourceTree = "<group>";
+		};
+		AC0000E2 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				AB000052 /* AppOverrideBar.swift */,
+				AB000103 /* CaptureGuideView.swift */,
+				AAAAAA09 /* ImportPreviewSheet.swift */,
+				05D7EB7A2F79E6E30086E03F /* AboutView.swift */,
+			);
+			path = Features;
 			sourceTree = "<group>";
 		};
 		AC000010 /* Products */ = {
