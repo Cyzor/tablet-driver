@@ -37,7 +37,13 @@ What keeps these two sides from stepping on each other is the snapshot pattern. 
 MockTab/
   App/         AppKit entry point, menu bar, top-level windows
   Driver/      App glue around the TabletKit decoder layer
-               (HID transport, device routing, event injection)
+    HID/       IOHIDManager plumbing: the dedicated thread, diagnostic
+               capture, descriptor reads
+    Devices/   TabletManager + the per-device wrapper classes
+    Injection/ InputInjector and its extensions, snapshot delivery
+    Mapping/   Display selection, orientation, per-app overrides
+    Discovery/ Unknown-device capture and triage
+    OTDImporter.swift  OTD JSON -> registry entry converter (no callers yet)
   Settings/    Live settings, presets, calibration, profile load/save
   UI/
     Panes/     The tabs of the settings window
@@ -45,11 +51,16 @@ MockTab/
   Help/        In-app help content
 ```
 
+This mirrors the pipeline above: HID bytes arrive in `HID/`, get routed to a
+`Devices/` class, decoded (by TabletKit) into events, and pushed through
+`Injection/`; `Mapping/` and `Discovery/` are side channels rather than
+stops on that main path.
+
 The decoder layer — `TabletReportDecoder`, the decoder structs, the device registries, and their pure-logic helpers — doesn't live in this tree at all; see the next section.
 
 ## TabletKit (SwiftPM package, git submodule)
 
-The pure-logic decoder layer lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit), an MPL-2.0 SwiftPM package checked out here as a git submodule at `TabletKit/`. It holds `TabletReportDecoder` (the protocol every decoder implements), the value types it speaks (`DecodeResult`, `TabletPoint`, `ToolIdentity`, `AuxButtons`, `TouchContact`, `WirelessStatus`, `DigitizerSpec`, `DecoderState`), `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, the Wacom decoder structs (one per protocol family), and pure-logic helpers (`CursorSmoother`, `ModifierMath`). Nothing in TabletKit touches AppKit, SwiftUI, or app-wide state; the gear that does lives in this repo's `MockTab/Driver/` (`HIDThread`, `HIDCapture`, `CaptureEngine`, `InputInjector`, `TabletManager`, `DeviceContext`, the three `Wacom*Device` classes) plus everything under `Settings/` and `UI/`.
+The pure-logic decoder layer lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit), an MPL-2.0 SwiftPM package checked out here as a git submodule at `TabletKit/`. It holds `TabletReportDecoder` (the protocol every decoder implements), the value types it speaks (`DecodeResult`, `TabletPoint`, `ToolIdentity`, `AuxButtons`, `TouchContact`, `WirelessStatus`, `DigitizerSpec`, `DecoderState`), `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, the Wacom decoder structs (one per protocol family), and pure-logic helpers (`CursorSmoother`, `ModifierMath`). Nothing in TabletKit touches AppKit, SwiftUI, or app-wide state; the gear that does lives in this repo's `MockTab/Driver/` (`HID/HIDThread`, `HID/HIDCapture`, `Discovery/CaptureEngine`, `Injection/InputInjector`, `Devices/TabletManager`, `Devices/DeviceContext`, the three `Devices/Wacom*Device` classes) plus everything under `Settings/` and `UI/`.
 
 `MockTab.xcodeproj` consumes TabletKit through an `XCLocalSwiftPackageReference` that points at `TabletKit` (the submodule). Each app commit pins the exact TabletKit commit it builds against; clone with `--recurse-submodules` (or run `git submodule update --init`). Decoder work happens inside the submodule and is pushed to the TabletKit repo — push the kit before pushing an app commit that bumps the pin. Files in this repo that touch TabletKit types carry an explicit `import TabletKit`.
 
@@ -88,11 +99,11 @@ Adding support for a new Wacom variant of an existing family means (all edits ha
 1. Add a row to `WacomDeviceRegistry` (and/or `WacomToolSpec` for new pen tools) with the VID/PID and physical dimensions.
 2. Add a fixture to the matching `*DecoderTests.swift` file under `Tests/TabletKitTests/`.
 
-Adding a new family means writing a new decoder under `Sources/TabletKit/Decoders/`, adding a `ReportParser` case for it, wiring that case to the decoder in `MockTab/Driver/WacomKnownDevice.swift`, and adding a test file. MockTab picks up the change automatically through the local package dep.
+Adding a new family means writing a new decoder under `Sources/TabletKit/Decoders/`, adding a `ReportParser` case for it, wiring that case to the decoder in `MockTab/Driver/Devices/WacomKnownDevice.swift`, and adding a test file. MockTab picks up the change automatically through the local package dep.
 
 ### Injection
 
-`InputInjector` converts a `TabletPoint` into the CGEvent sequence apps expect: a proximity event, then a `.tabletPointer` event (which Krita, GIMP, and other Qt/GTK apps consume directly), then a mouse event carrying pressure via `.mouseEventPressure` and `.mouseEventSubtype = .tabletPoint`. Two self-contained transforms live outside the class entirely — position smoothing (`CursorSmoother`, in TabletKit) and display selection/orientation/calibration (`DisplayMapper.swift`, in this repo). The class itself spans five files. `InputInjector.swift` holds every stored property (Swift extensions can't) plus the concerns that read broadly across that state:
+`InputInjector` converts a `TabletPoint` into the CGEvent sequence apps expect: a proximity event, then a `.tabletPointer` event (which Krita, GIMP, and other Qt/GTK apps consume directly), then a mouse event carrying pressure via `.mouseEventPressure` and `.mouseEventSubtype = .tabletPoint`. Two self-contained transforms live outside the class entirely — position smoothing (`CursorSmoother`, in TabletKit) and display selection/orientation/calibration (`Driver/Mapping/DisplayMapper.swift`, in this repo). The class itself spans five files. `InputInjector.swift` holds every stored property (Swift extensions can't) plus the concerns that read broadly across that state:
 
 - click-count resolution for double- and triple-clicks
 - a brief mouse-up delay so fast pen lifts don't cut strokes short
@@ -114,7 +125,7 @@ Standalone aux-only peripherals (currently the Xencelabs Quick Keys puck) are *c
 
 ### Device identity
 
-Identity has two axes. The **model** axis is the USB product ID: decoders, `DigitizerSpec` lookups, capability tables, and companion relationships all key on it, matching how Wacom's own tables and libwacom work. The **instance** axis is `DeviceInstanceKey` (`MockTab/Driver/DeviceInstanceKey.swift`): the canonical PID plus an instance token (USB serial, with a locationID fallback held in reserve), so two physical units of the same model stay distinct. Contexts (`TabletManager.deviceContexts`), registry rows, settings windows, menu entries, and the panes all key on the instance; `TabletManager.contexts` remains as a PID-keyed compatibility view for model-level callers.
+Identity has two axes. The **model** axis is the USB product ID: decoders, `DigitizerSpec` lookups, capability tables, and companion relationships all key on it, matching how Wacom's own tables and libwacom work. The **instance** axis is `DeviceInstanceKey` (`MockTab/Driver/Devices/DeviceInstanceKey.swift`): the canonical PID plus an instance token (USB serial, with a locationID fallback held in reserve), so two physical units of the same model stay distinct. Contexts (`TabletManager.deviceContexts`), registry rows, settings windows, menu entries, and the panes all key on the instance; `TabletManager.contexts` remains as a PID-keyed compatibility view for model-level callers.
 
 Settings storage follows the *claim-the-legacy-prefix* rule (`DeviceRegistry.settingsPrefix(for:)`): the first unit ever seen for a model permanently claims the historical `device-0x{PID}.` UserDefaults prefix — existing installs keep every setting without migration — and any additional unit of the same model gets a fresh `device-0x{PID}#{instance}.` namespace. A key with no instance token resolves to the legacy prefix, which is exactly the old PID-only behavior.
 
@@ -149,11 +160,11 @@ The decoder test suite lives in `TabletKit/Tests/TabletKitTests/` and runs via `
 | Add a Wacom model in an existing family | `TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift` |
 | Add a new pen tool | `TabletKit/Sources/TabletKit/Registry/WacomToolSpec.swift` |
 | Add a non-Wacom vendor | `TabletKit/Sources/TabletKit/Registry/VendorDeviceRegistry.swift` |
-| Add a new protocol family | `TabletKit/Sources/TabletKit/Decoders/` + `ReportParser` case wired in `MockTab/Driver/WacomKnownDevice.swift` |
-| Tweak click resolution | `MockTab/Driver/InputInjector.swift` (read the header) |
-| Tweak button dispatch or modifier synthesis | `MockTab/Driver/InputInjector+CGEvents.swift` |
+| Add a new protocol family | `TabletKit/Sources/TabletKit/Decoders/` + `ReportParser` case wired in `MockTab/Driver/Devices/WacomKnownDevice.swift` |
+| Tweak click resolution | `MockTab/Driver/Injection/InputInjector.swift` (read the header) |
+| Tweak button dispatch or modifier synthesis | `MockTab/Driver/Injection/InputInjector+CGEvents.swift` |
 | Tweak position smoothing | `TabletKit/Sources/TabletKit/Smoothing/CursorSmoother.swift` |
-| Tweak display mapping or calibration | `MockTab/Driver/DisplayMapper.swift` |
+| Tweak display mapping or calibration | `MockTab/Driver/Mapping/DisplayMapper.swift` |
 | Add a settings knob | `Settings/TabletSettings.swift` + relevant pane |
 | Add a new settings pane | `UI/Panes/` + `App/SettingsWindowController.swift` |
 | Diagnose a misbehaving tablet | Settings → Info → Start Capture (writes to Desktop) |

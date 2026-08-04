@@ -24,7 +24,8 @@ for more detail.
 
 [`Architecture.md`](Architecture.md) has a pipeline diagram, the threading
 rules, and a "Where to start" table mapping common goals to files — read that
-before diving into `MockTab/` or `TabletKit/`.
+before diving into `MockTab/` or `TabletKit/`. Adding a new tablet model is
+its own guide: [`TabletKit/Extending-Support.md`](TabletKit/Extending-Support.md).
 
 ## What's welcome first
 
