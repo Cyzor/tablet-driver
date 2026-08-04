@@ -273,6 +273,9 @@ private final class LazyHostingViewController: NSViewController {
 
 // MARK: - SettingsWindowController
 
+/// A single settings window's own AppKit plumbing (tab view, sizing,
+/// toolbar). `SettingsWindowManager` owns the array of these and the shared
+/// `TabletSettings` instance; this class owns one window's lifecycle.
 @MainActor
 final class SettingsWindowController: NSWindowController {
 

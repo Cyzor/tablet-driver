@@ -7,6 +7,9 @@ import Combine
 import SwiftUI
 import TabletKit
 
+/// Owns the lifecycle of every open settings window and the shared
+/// `TabletSettings` instance. One per app run; each window it opens gets a
+/// `SettingsWindowController`, which owns that window's own AppKit plumbing.
 @MainActor
 final class SettingsWindowManager: ObservableObject {
 
