@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // DiscoveryAccumulatorTests.swift — Standalone checks for the device-data
-// collection accumulator (MockTab/Driver/DiscoveryAccumulator.swift).
+// collection accumulator (MockTab/Driver/Discovery/DiscoveryAccumulator.swift).
 //
 // This is where "Collect Device Data…" either produces meaningful data or
 // quietly produces nonsense, and it can't be exercised without a tablet

@@ -6,7 +6,7 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/HIDDescriptorReader.swift"
+SRC="$ROOT/MockTab/Driver/HID/HIDDescriptorReader.swift"
 TEST="$DIR/DescriptorOpacityTests.swift"
 BIN="$(mktemp -d)/descriptor-opacity-tests"
 
