@@ -44,10 +44,16 @@ MockTab/
     Mapping/   Display selection, orientation, per-app overrides
     Discovery/ Unknown-device capture and triage
   Settings/    Live settings, presets, calibration, profile load/save
+    Model/         Value types the settings model stores
+    Serialization/ Profile JSON import/export
   UI/
-    Panes/     The tabs of the settings window
-    Components/ Reusable views
-  Help/        In-app help content
+    Panes/       The tabs of the settings window
+    Components/  Reusable views
+      Diagrams/  The SVG-driven pen and touch ring diagrams
+      Features/  Self-contained views that landed in Components/ rather
+                 than Panes/ (a settings-window overlay, an import sheet, …)
+    Support/     Non-view logic and extensions that aren't UI components
+  Help/          In-app help content
 ```
 
 This mirrors the pipeline above: HID bytes arrive in `HID/`, get routed to a
@@ -133,13 +139,13 @@ One known limitation: a companion peripheral (Quick Keys puck) is paired to its 
 
 ## Settings
 
-`TabletSettings` lives on the main thread and acts as the single source of truth that SwiftUI views observe: pen-feel curves, button bindings, calibration, display mapping, per-app overrides, profiles. The class spans four files: `TabletSettings.swift` holds the stored properties, init, per-device loading, and undo/redo, while `TabletSettings+Presets.swift`, `TabletSettings+AppOverrides.swift`, and `TabletSettings+Persistence.swift` hold preset handling, per-app behavior, and the UserDefaults layer. The value types it stores (`ButtonBinding`, `ControlSlot`, `TabletOrientation`) each have their own file. `Settings/Profile.swift` and `Settings/PresetExporter/Importer` handle the JSON shape that ships in releases (`example-profile.json`).
+`TabletSettings` lives on the main thread and acts as the single source of truth that SwiftUI views observe: pen-feel curves, button bindings, calibration, display mapping, per-app overrides, profiles. The class spans four files at `Settings/` root: `TabletSettings.swift` holds the stored properties, init, per-device loading, and undo/redo, while `TabletSettings+Presets.swift`, `TabletSettings+AppOverrides.swift`, and `TabletSettings+Persistence.swift` hold preset handling, per-app behavior, and the UserDefaults layer. The value types it stores (`ButtonBinding`, `ControlSlot`, `TabletOrientation`, `BezierCurve`, `ToolSettings`, `CalibrationData`) live in `Settings/Model/`. `Settings/Serialization/Profile.swift` and `Settings/Serialization/PresetExporter.swift`/`PresetImporter.swift` handle the JSON shape that ships in releases (`example-profile.json`).
 
 The settings layer calls `DeviceContext.observeInjectionSnapshot(…)` whenever a relevant value changes; `DeviceContext` packages the snapshot and hands it across.
 
 ## UI
 
-The settings window hosts a tab bar; each tab maps to one file in `UI/Panes/`. Each pane corresponds to a settings concern: Devices, Tablet Area, Display Mapping, Pen Feel, Button Mapping, Touch, Scratchpad, Profiles, Info. `UI/Components/` holds widgets that more than one pane uses (the disclosure row, the orientation picker, the tablet color theme, the SVG-driven pen and ring diagrams).
+The settings window hosts a tab bar; each tab maps to one file in `UI/Panes/`. Each pane corresponds to a settings concern: Devices, Tablet Area, Display Mapping, Pen Feel, Button Mapping, Touch, Scratchpad, Profiles, Info. `UI/Components/` holds widgets that more than one pane uses (the disclosure row, the orientation picker), plus two subfolders: `Diagrams/` for the SVG-driven pen and touch ring diagrams, and `Features/` for self-contained views that landed here rather than in `Panes/` (`AppOverrideBar`, `CaptureGuideView`, `ImportPreviewSheet`, `AboutView`). `UI/Support/` holds non-view logic that isn't a UI component at all — `FontExtensions`, `Path+SVGData`, `LiveResizeDetector`, `TabletColorTheme`, and the Info pane's `ConflictDetection` process matcher.
 
 ## Tests
 
