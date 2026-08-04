@@ -335,23 +335,39 @@
 		AC000003 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				22D2FFEB9A0346788DD687D6 /* CalibrationData.swift */,
 				AB000009 /* TabletSettings.swift */,
-				AB000044 /* ToolSettings.swift */,
-				AB000010 /* BezierCurve.swift */,
-				AB002099 /* UnknownFieldsCodable.swift */,
-				AB000100 /* Profile.swift */,
 				AB000206 /* TabletSettings+Persistence.swift */,
 				AB000205 /* TabletSettings+AppOverrides.swift */,
 				AB000204 /* TabletSettings+Presets.swift */,
+				AC0000D1 /* Model */,
+				AC0000D2 /* Serialization */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		AC0000D1 /* Model */ = {
+			isa = PBXGroup;
+			children = (
 				AB000201 /* ButtonBinding.swift */,
 				AB000202 /* ControlSlot.swift */,
 				AB000203 /* TabletOrientation.swift */,
+				AB000010 /* BezierCurve.swift */,
+				AB000044 /* ToolSettings.swift */,
+				22D2FFEB9A0346788DD687D6 /* CalibrationData.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		AC0000D2 /* Serialization */ = {
+			isa = PBXGroup;
+			children = (
+				AB000100 /* Profile.swift */,
+				AAAAAA05 /* ImportPlan.swift */,
+				AB002099 /* UnknownFieldsCodable.swift */,
 				AAAAAA01 /* PresetExporter.swift */,
 				AAAAAA03 /* PresetImporter.swift */,
-				AAAAAA05 /* ImportPlan.swift */,
 			);
-			path = Settings;
+			path = Serialization;
 			sourceTree = "<group>";
 		};
 		AC000004 /* UI */ = {
