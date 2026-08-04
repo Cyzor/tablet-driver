@@ -10,32 +10,15 @@ in.  None are wired into a build step — run them from the repo root by hand,
 occasionally, when refreshing against newer upstream data or handling a
 submission.
 
-### `registry_lib.py`
-**Shared parsing library — not run directly.**
-
-One implementation of every parser the other scripts need: the Swift registry,
-the kernel `wacom_features` table, and an OpenTabletDriver configuration tree,
-plus the Swift-emission and LPI helpers.  It carries the canonical default paths
-(`DEFAULT_REGISTRY`, `DEFAULT_KERNEL`, `DEFAULT_OTD`), so the audit scripts run
-with no arguments.  Import it (`import registry_lib as rl`); don't run it.
-
-Its registry parser walks `.init(` blocks by balancing parentheses, so it reads
-every entry even when a comment sits between `.init(` and `productID:` — the
-regex parsers it replaced silently skipped those, roughly a quarter of the
-table.
-
-## Registry maintenance (Wacom)
-
-### `import_otd_configs.py`
-**OTD → `WacomDeviceSpec` Swift entries.**
-
-Reads an OpenTabletDriver `Configurations/Wacom/` checkout, emits `.init(…)`
-blocks for any Wacom PID not already in the registry.  Output goes to stdout —
-paste into `WacomDeviceRegistry.knownDevices`.
-
-```
-python3 tools/import_otd_configs.py /path/to/OTD/Configurations/Wacom > new.txt
-```
+**Registry parsing, import, and audit scripts now live in
+[`TabletKit/tools/`](../TabletKit/tools/)**, next to the data they validate,
+so a TabletKit-only contributor has the same guardrails without needing the
+app repo: `registry_lib.py` (shared parser), `import_otd_configs.py`,
+`audit_wacom_hid_descriptors.py`, `audit_registry.py`,
+`audit_kernel_registry.py`, `verify_registry.py`, and `triage_discovery.py`.
+What remains below is app-repo-specific: release/snapshot tooling, legacy
+capture utilities, and the non-Wacom vendor import (which isn't registry data
+in the same sense — see below).
 
 ### `backfill_libwacom_dimensions.py`
 **libwacom `.tablet` files → `activeWidthMM` / `activeHeightMM` fields.**
@@ -52,54 +35,6 @@ python3 tools/backfill_libwacom_dimensions.py \
     --libwacom-data /path/to/libwacom/data \
     --registry TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift \
     --dry-run
-```
-
-### `audit_wacom_hid_descriptors.py`
-**Cross-reference registry against linuxwacom HID descriptor corpus.**
-
-Walks `linuxwacom/wacom-hid-descriptors` via the GitHub API, extracts PIDs from
-sysinfo filenames (`BUS:VID:PID.NNNN.hid.txt`), and categorizes every registry
-entry as: confirmed (`.verified` — no action), promotable (PID present in both
-with matching names — candidate for `.crossReferenced`), naming-drift (PIDs
-match but names diverge — needs human review), or missing (linuxwacom has it,
-the registry doesn't).  Emits a Markdown table to stdout — paste into a
-`Notes/Scratch/` audit doc.  `--registry` defaults to the canonical path.
-
-```
-python3 tools/audit_wacom_hid_descriptors.py \
-    > Notes/Scratch/Wacom-Descriptor-Audit-$(date +%Y-%m-%d).md
-```
-
-### `audit_registry.py`
-**Internal-consistency + kernel-dimension audit.**
-
-Diffs the registry against the kernel `wacom_features` table: name, maxX/maxY,
-maxPressure, and button count per shared PID.  Runs with no arguments.
-
-```
-python3 tools/audit_registry.py            # full audit
-python3 tools/audit_registry.py --only numeric   # just dimension drift
-```
-
-### `audit_kernel_registry.py`
-**Structural + coverage audit against the kernel.**
-
-Reports duplicate PIDs that aren't disambiguated by `productStringMatch`, kernel
-PIDs the registry doesn't cover, dimension drift, and any entry whose X/Y LPI
-disagree grossly (a data-error signature; ordinary old-hardware anisotropy is
-tolerated).  Runs with no arguments; exit status is non-zero when it finds
-something.
-
-### `verify_registry.py`
-**Three-way cross-reference → CSV.**
-
-The most thorough audit: one row per registry entry comparing it to both the
-kernel and OpenTabletDriver, with a verdict (`agree`, `cross_referenced`,
-`kernel_disagrees`, `otd_only`, `unknown`, …).  All paths default to the
-canonical layout.
-
-```
-python3 tools/verify_registry.py --out registry_audit.csv
 ```
 
 ## Registry maintenance (non-Wacom)
@@ -119,27 +54,9 @@ python3 tools/import_vendor_configs.py \
 
 ## Processing submitted captures
 
-### `triage_discovery.py`
-**Turn one submitted capture JSON into a Markdown triage report.**
-
-Reads the file the app's *Collect Device Data…* flow produces (either the
-discovery or the guided-calibration shape) and prints: a validation summary, how
-the device compares to our own registries, the coordinate/pressure ranges its
-HID descriptor exposes, an inventory of its reports with a decoder-family guess,
-a kernel/OTD cross-reference, and a **draft** `.init(…)` registry entry to start
-from.  Tolerant of surrounding prose or a ```json fence, so a block pasted
-straight out of an issue works.
-
-The draft is a starting point for human review against real hardware, never a
-paste-and-ship entry — the `parser` field is intentionally left `.REVIEW`, and
-coordinate ranges follow the project convention that the kernel outranks a
-device's own descriptor (many tablets also expose a low-resolution generic
-digitizer whose declared ranges are nothing like the real ones).
-
-```
-python3 tools/triage_discovery.py path/to/capture.json
-python3 tools/triage_discovery.py capture.json --no-upstream   # skip kernel/OTD
-```
+Submitted-capture triage (`triage_discovery.py`) now lives in
+[`TabletKit/tools/`](../TabletKit/tools/) alongside the registry it
+cross-references.
 
 **Serials in older captures.** Current app builds no longer write the device
 serial into capture files.  Files produced before that change may still contain
