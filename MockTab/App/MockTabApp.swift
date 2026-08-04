@@ -30,6 +30,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ? true
             : UserDefaults.standard.bool(forKey: "showInDock")
         NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
+
+        // Install the menu before AppKit begins tracking so the system sees
+        // the final structure from the start (avoids Menu_Tracking warnings
+        // caused by replacing the menu mid-track in didFinishLaunching).
+        NSApp.mainMenu = MainMenuBuilder.build()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -37,8 +42,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The Accessibility prompt is deferred to the first tablet connection
         // (TabletManager.promptForAccessibilityIfNeeded) so the request appears
         // when injection is actually about to happen, not cold at launch.
-
-        NSApp.mainMenu = MainMenuBuilder.build()
         StatusItemController.shared.start()
 
         let settings = SettingsWindowManager.shared.settings
@@ -85,6 +88,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ctx.injector.releaseOnAppSwitch()
         }
         HelpWindowController.shared.saveState()
+    }
+
+    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
+        true
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
