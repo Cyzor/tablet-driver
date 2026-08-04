@@ -528,7 +528,7 @@ final class WacomKnownDevice: TabletDevice {
 
         case .xencelabs:
             // Quick Keys dial LED: vendor output report 0xB4 sub-op 0x01 with
-            // literal RGB (see XencelabsControl). Colors follow Xencelabs'
+            // literal RGB (see XencelabsOutputProtocol). Colors follow Xencelabs'
             // own per-mode factory palette so the ring reads the same way it
             // does under their software. Best-effort: the Pen Display has no
             // dial and ignores/rejects the write harmlessly.
@@ -543,19 +543,19 @@ final class WacomKnownDevice: TabletDevice {
             // during its own reconnect init. Sending anything else here
             // visibly rotates the OLED text (confirmed on hardware).
             sendXencelabsOutput(
-                XencelabsControl.orientationPayload(rotationSteps: 0, address: address),
+                XencelabsOutputProtocol.orientationPayload(rotationSteps: 0, address: address),
                 tag: "screen orientation upright")
-            let colors = XencelabsControl.defaultSlotColors
+            let colors = XencelabsOutputProtocol.defaultSlotColors
             let custom = dialSlotColors.indices.contains(index) ? dialSlotColors[index] : nil
             let c = custom ?? colors[((index % colors.count) + colors.count) % colors.count]
             sendXencelabsOutput(
-                XencelabsControl.dialColorPayload(r: c.r, g: c.g, b: c.b, address: address),
+                XencelabsOutputProtocol.dialColorPayload(r: c.r, g: c.g, b: c.b, address: address),
                 tag: "dial LED slot=\(index)")
             // The native driver always pairs a dial-color write with a
             // sensitivity write (0xB4 sub-op 0x04); we'd never sent this one
             // before. Default matches the vendor default of 3.
             sendXencelabsOutput(
-                XencelabsControl.dialSensitivityPayload(3, address: address),
+                XencelabsOutputProtocol.dialSensitivityPayload(3, address: address),
                 tag: "dial sensitivity slot=\(index)")
 
         default:
@@ -587,7 +587,7 @@ final class WacomKnownDevice: TabletDevice {
         guard deviceSpec.parser == .xencelabs else { return }
         guard xencelabsSentText["mode"] != label else { return }
         xencelabsSentText["mode"] = label
-        for payload in XencelabsControl.textPayloads(
+        for payload in XencelabsOutputProtocol.textPayloads(
             field: .modeName, text: label, address: xencelabsDongleIdentity ?? [])
         {
             sendXencelabsOutput(payload, tag: "OLED mode label")
@@ -600,13 +600,13 @@ final class WacomKnownDevice: TabletDevice {
         let joined = labels.joined(separator: "\u{1F}")
         guard xencelabsSentText["keys"] != joined else { return }
         xencelabsSentText["keys"] = joined
-        for payload in XencelabsControl.keyLabelPayloads(labels, address: xencelabsDongleIdentity ?? []) {
+        for payload in XencelabsOutputProtocol.keyLabelPayloads(labels, address: xencelabsDongleIdentity ?? []) {
             sendXencelabsOutput(payload, tag: "OLED key labels")
         }
     }
 
     /// Panel brightness is exposed on Xencelabs pen displays via the vendor
-    /// 0xB5 display-control frame family (see XencelabsControl).
+    /// 0xB5 display-control frame family (see XencelabsOutputProtocol).
     var hasDisplayBrightnessControl: Bool {
         deviceSpec.parser == .xencelabs && deviceSpec.isPenDisplay
     }
@@ -625,7 +625,7 @@ final class WacomKnownDevice: TabletDevice {
         guard clamped != lastQuickKeysOrientation else { return }
         lastQuickKeysOrientation = clamped
         sendXencelabsOutput(
-            XencelabsControl.orientationPayload(
+            XencelabsOutputProtocol.orientationPayload(
                 rotationSteps: clamped, address: xencelabsDongleIdentity ?? []),
             tag: "quick keys orientation \(clamped)")
     }
@@ -642,7 +642,7 @@ final class WacomKnownDevice: TabletDevice {
         guard clamped != lastQuickKeysSleepMinutes else { return }
         lastQuickKeysSleepMinutes = clamped
         sendXencelabsOutput(
-            XencelabsControl.sleepTimerPayload(
+            XencelabsOutputProtocol.sleepTimerPayload(
                 minutes: UInt8(clamped), address: xencelabsDongleIdentity ?? []),
             tag: "quick keys sleep timer \(clamped)m")
     }
@@ -659,7 +659,7 @@ final class WacomKnownDevice: TabletDevice {
         guard clamped != lastQuickKeysOledBrightness else { return }
         lastQuickKeysOledBrightness = clamped
         sendXencelabsOutput(
-            XencelabsControl.oledBrightnessPayload(
+            XencelabsOutputProtocol.oledBrightnessPayload(
                 UInt8(clamped), address: xencelabsDongleIdentity ?? []),
             tag: "quick keys OLED brightness \(clamped)")
     }
@@ -675,7 +675,7 @@ final class WacomKnownDevice: TabletDevice {
         guard clamped != lastDisplayBrightness else { return }
         lastDisplayBrightness = clamped
         sendXencelabsOutput(
-            XencelabsControl.displayBrightnessPayload(
+            XencelabsOutputProtocol.displayBrightnessPayload(
                 UInt8(clamped), address: xencelabsDongleIdentity ?? []),
             tag: "panel brightness \(clamped)")
     }
@@ -693,7 +693,7 @@ final class WacomKnownDevice: TabletDevice {
         else { return }
         lastBezelLED = (r, g, b)
         sendXencelabsOutput(
-            XencelabsControl.dialColorPayload(
+            XencelabsOutputProtocol.dialColorPayload(
                 r: r, g: g, b: b, address: xencelabsDongleIdentity ?? []),
             tag: "bezel LED")
     }
@@ -702,14 +702,14 @@ final class WacomKnownDevice: TabletDevice {
     private var lastDisplayContrast: Int = -1
 
     /// Set the pen display's panel contrast (0–100). Same 0xB5 control family
-    /// as brightness (see XencelabsControl.DisplayControl).
+    /// as brightness (see XencelabsOutputProtocol.DisplayControl).
     func setDisplayContrast(_ percent: Int) {
         guard hasDisplayBrightnessControl else { return }
         let clamped = min(max(percent, 0), 100)
         guard clamped != lastDisplayContrast else { return }
         lastDisplayContrast = clamped
         sendXencelabsOutput(
-            XencelabsControl.displayContrastPayload(
+            XencelabsOutputProtocol.displayContrastPayload(
                 UInt8(clamped), address: xencelabsDongleIdentity ?? []),
             tag: "panel contrast \(clamped)")
     }
@@ -724,7 +724,7 @@ final class WacomKnownDevice: TabletDevice {
         guard clamped != lastDisplayGamma else { return }
         lastDisplayGamma = clamped
         sendXencelabsOutput(
-            XencelabsControl.displayGammaPayload(
+            XencelabsOutputProtocol.displayGammaPayload(
                 UInt8(clamped), address: xencelabsDongleIdentity ?? []),
             tag: "panel gamma \(clamped)")
     }
@@ -754,10 +754,10 @@ final class WacomKnownDevice: TabletDevice {
         lastColorMode = index
         let address = xencelabsDongleIdentity ?? []
         sendXencelabsOutput(
-            XencelabsControl.colorModePayload(UInt8(index + 1), address: address),
+            XencelabsOutputProtocol.colorModePayload(UInt8(index + 1), address: address),
             tag: "panel color mode \(index)")
         sendXencelabsOutput(
-            XencelabsControl.displayCommitPayload(address: address),
+            XencelabsOutputProtocol.displayCommitPayload(address: address),
             tag: "panel color mode commit")
     }
 
@@ -1166,7 +1166,7 @@ final class WacomKnownDevice: TabletDevice {
                 // the link was live before resending OLED/LED state, because
                 // those writes went out unaddressed and had nowhere reliable
                 // to land. Now that they carry the puck's identity (see
-                // XencelabsControl call sites above), a successful relink
+                // XencelabsOutputProtocol call sites above), a successful relink
                 // write is enough — resyncing here means the display is
                 // correct immediately instead of only after the user
                 // happens to press a button. Confirmed 2026-07-07: still
