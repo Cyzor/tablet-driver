@@ -133,7 +133,7 @@ struct AppOverrideBar: View {
     static let touchKeys: Set<String> = [
         "touchEnabled", "tapToClick", "touchSensitivity",
         "twoFingerScroll", "naturalScrolling", "twoFingerScrollMomentum",
-        "pinchZoomViaModifierWheel",
+        "pinchZoomEnabled",
         "touchAreaX", "touchAreaY", "touchAreaWidth", "touchAreaHeight",
     ]
 

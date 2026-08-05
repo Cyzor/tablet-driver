@@ -445,11 +445,12 @@ final class TabletSettings: ObservableObject {
     @Published var twoFingerScrollMomentum: Bool = true {
         didSet { persist("twoFingerScrollMomentum", twoFingerScrollMomentum) }
     }
-    /// When true (and two-finger scroll is on), a pinch gesture posts ⌃+wheel
-    /// events as a zoom stand-in for browsers/Electron. Off by default — pan
-    /// scroll stays the primary two-finger behaviour.
-    @Published var pinchZoomViaModifierWheel: Bool = false {
-        didSet { persist("pinchZoomViaModifierWheel", pinchZoomViaModifierWheel) }
+    /// When true (and two-finger scroll is on), a pinch gesture posts
+    /// ⌘+Keypad-Plus/Minus keystrokes as a zoom stand-in, one step per pinch
+    /// increment. Off by default — pan scroll stays the primary two-finger
+    /// behaviour.
+    @Published var pinchZoomEnabled: Bool = false {
+        didSet { persist("pinchZoomEnabled", pinchZoomEnabled) }
     }
     /// Active-touch-area mapping — independent from the pen's active area because
     /// users typically want the full surface for touch but a cropped area for pen

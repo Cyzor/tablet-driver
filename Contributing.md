@@ -15,8 +15,9 @@ Requires Xcode 15 or later. Select the **MockTab** scheme and build. Run the
 decoder test suite with `cd TabletKit && swift test`. App-side logic that has no
 XCTest target has standalone checks under `tools/` — run
 `tools/calibration-tests/run.sh` (calibration fitting math),
-`tools/descriptor-opacity-tests/run.sh` (HID descriptor readability), and
-`tools/discovery-accumulator-tests/run.sh` (device-data collection analysis).
+`tools/descriptor-opacity-tests/run.sh` (HID descriptor readability),
+`tools/discovery-accumulator-tests/run.sh` (device-data collection analysis), and
+`tools/touch-state-tracker-tests/run.sh` (touch gesture intent).
 See the [README's Building from source section](README.md#building-from-source)
 for more detail.
 

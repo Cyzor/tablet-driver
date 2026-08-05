@@ -26,6 +26,7 @@ extension InputInjector {
     ///     translate its `Intent` into CGEvents:
     ///       - `.pointerMove` → `mouseMoved`
     ///       - `.scrollDelta` → smooth scroll-wheel event with phase
+    ///       - `.zoomStep`    → ⌘+Keypad-Plus/Minus keystrokes (pinch stand-in)
     ///       - `.tapClick`    → left-click at the current cursor position
     ///
     /// No shipping decoder produces touch frames yet; this is hot-path
@@ -92,7 +93,7 @@ extension InputInjector {
             twoFingerScroll: snap.twoFingerScroll,
             reverseScrollDirection: snap.reverseScrollDirection,
             sensitivity: snap.touchSensitivity,
-            pinchZoom: snap.pinchZoomViaModifierWheel,
+            pinchZoom: snap.pinchZoomEnabled,
             now: now)
 
         switch intent {
@@ -104,8 +105,8 @@ extension InputInjector {
             postTouchScroll(
                 dx: dx, dy: dy, phase: phase,
                 usePhases: snap.twoFingerScrollMomentum)
-        case .zoomDelta(let dy, let phase):
-            postTouchZoom(dy: dy, phase: phase)
+        case .zoomStep(let count):
+            postTouchZoom(count: count)
         case .tapClick:
             postTouchTapClick(snapshot: snap, settings: settings)
         }
@@ -160,26 +161,58 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Pinch-zoom stand-in: continuous pixel wheel with ⌃ set. Chromium /
-    /// Electron / Safari treat Ctrl+wheel as zoom (same as trackpad pinch
-    /// translation). No scroll phase — zoom consumers don't need the
-    /// trackpad Began/Changed/Ended envelope.
-    private func postTouchZoom(dy: Double, phase _: TouchStateTracker.ScrollPhase) {
-        // Began/Ended are zero-delta brackets; zoom only needs Changed frames.
-        guard dy != 0 else { return }
-        let loc = currentCursorPosition()
-        guard let e = CGEvent(
-            scrollWheelEvent2Source: sessionSource,
-            units: .pixel,
-            wheelCount: 1,
-            wheel1: Int32(dy.rounded()),
-            wheel2: 0,
-            wheel3: 0)
+    /// Pinch-zoom stand-in: ⌘+Keypad-Plus (zoom in) or ⌘+Keypad-Minus
+    /// (zoom out) keystrokes, one per accumulated step. Matches Wacom's own
+    /// documented fallback mapping for apps without native gesture support
+    /// (their AppGestures.xml binds the same pinch gesture to ⌘+Keypad-Plus/
+    /// Minus when their primary Opt+F15/F16 path — which relies on
+    /// per-app menu key-equivalent overrides we don't install — isn't
+    /// available). The keypad location is deliberate, not incidental: unlike
+    /// the row-1 =/- keys, keypad positions produce the same +/- characters
+    /// across keyboard layouts, so this doesn't share the German-layout
+    /// failure a row-1-based version would have.
+    ///
+    /// A CGEvent scroll-wheel stand-in (⌃+wheel, then ⌘+wheel) was tried
+    /// first and hardware-tested across Preview, Safari, Chrome, Edge,
+    /// Vivaldi, and Firefox: it never worked reliably outside one browser,
+    /// and even there only matched the choppiness of a real Cmd+wheel zoom.
+    /// This keystroke form reached every one of those apps.
+    private func postTouchZoom(count: Int) {
+        guard count != 0 else { return }
+        // kVK_ANSI_KeypadPlus = 0x45 (69), kVK_ANSI_KeypadMinus = 0x4E (78).
+        let keyCode: CGKeyCode = count > 0 ? 69 : 78
+        for _ in 0..<abs(count) {
+            postZoomKeystroke(keyCode: keyCode)
+        }
+    }
+
+    private func postZoomKeystroke(keyCode: CGKeyCode) {
+        // Real keyboards bracket a modified keystroke with flagsChanged
+        // events; see the keyCombo binding path for why that matters to
+        // some apps' modifier tracking.
+        let flagsDown = CGEvent(source: sessionSource)
+        flagsDown?.type = .flagsChanged
+        flagsDown?.flags = moveSafeEventFlags.union(.maskCommand)
+        flagsDown?.setIntegerValueField(.keyboardEventKeycode, value: 55) // ⌘
+        if let e = flagsDown { finalizeAndPost(e) }
+
+        guard let keyDown = CGEvent(
+            keyboardEventSource: sessionSource, virtualKey: keyCode, keyDown: true)
         else { return }
-        e.location = loc
-        e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        e.flags = moveSafeEventFlags.union(.maskControl)
-        finalizeAndPost(e)
+        keyDown.flags = moveSafeEventFlags.union(.maskCommand)
+        finalizeAndPost(keyDown)
+
+        guard let keyUp = CGEvent(
+            keyboardEventSource: sessionSource, virtualKey: keyCode, keyDown: false)
+        else { return }
+        keyUp.flags = moveSafeEventFlags.union(.maskCommand)
+        finalizeAndPost(keyUp)
+
+        let flagsUp = CGEvent(source: sessionSource)
+        flagsUp?.type = .flagsChanged
+        flagsUp?.flags = moveSafeEventFlags
+        flagsUp?.setIntegerValueField(.keyboardEventKeycode, value: 55)
+        if let e = flagsUp { finalizeAndPost(e) }
     }
 
     private func postTouchTapClick(snapshot: InjectionSnapshot, settings: TabletSettings?) {

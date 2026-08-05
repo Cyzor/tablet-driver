@@ -126,13 +126,13 @@ struct TouchView: View {
             DescribedToggle(
                 "Pinch to Zoom",
                 isOn: settings.recordingBinding(
-                    String(localized: "Pinch to Zoom", comment: "Undo action name: pinch-to-zoom via Ctrl+wheel toggle in the Touch pane"),
-                    get: { settings.pinchZoomViaModifierWheel },
-                    set: { settings.pinchZoomViaModifierWheel = $0 }),
+                    String(localized: "Pinch to Zoom", comment: "Undo action name: pinch-to-zoom toggle in the Touch pane"),
+                    get: { settings.pinchZoomEnabled },
+                    set: { settings.pinchZoomEnabled = $0 }),
                 description: "Use two fingers to pinch and zoom in or out."
             )
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
-            .help("Optional zoom stand-in: a pinch gesture injects continuous scroll-wheel events with the Control modifier. Safari, Chrome, and Electron treat that as page zoom. Does not synthesize native NSTouch / trackpad pinch.")
+            .help("Zoom stand-in: a pinch gesture posts Command+Plus or Command+Minus keystrokes, one step per pinch, using each app's own zoom shortcut. Works in most apps with a standard zoom command, including Safari, Preview, and Chromium browsers — a few apps use a different convention and won't respond. Not a smooth pinch like a real trackpad; steps in discrete increments.")
 
             DescribedToggle(
                 "Reverse Direction",
@@ -275,7 +275,7 @@ struct TouchView: View {
         let old: TouchState = (
             settings.touchEnabled, settings.tapToClick, settings.touchSensitivity,
             settings.twoFingerScroll, settings.reverseScrollDirection, settings.twoFingerScrollMomentum,
-            settings.pinchZoomViaModifierWheel,
+            settings.pinchZoomEnabled,
             settings.touchAreaX, settings.touchAreaY,
             settings.touchAreaWidth, settings.touchAreaHeight
         )
@@ -289,7 +289,7 @@ struct TouchView: View {
         settings.undoManager?.beginUndoGrouping()
         (settings.touchEnabled, settings.tapToClick, settings.touchSensitivity,
          settings.twoFingerScroll, settings.reverseScrollDirection, settings.twoFingerScrollMomentum,
-         settings.pinchZoomViaModifierWheel,
+         settings.pinchZoomEnabled,
          settings.touchAreaX, settings.touchAreaY,
          settings.touchAreaWidth, settings.touchAreaHeight) = new
         settings.record(String(localized: "Reset Pane to Defaults")) {
