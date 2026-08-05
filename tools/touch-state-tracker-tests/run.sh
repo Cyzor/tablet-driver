@@ -19,14 +19,6 @@ if [ -z "$MODULES" ]; then
   echo "TabletKit Swift module was not built" >&2
   exit 1
 fi
-OBJECTS="$(find "$ROOT/TabletKit/.build" -type f -path '*/debug/TabletKit.build/*.swift.o' -print)"
-if [ -z "$OBJECTS" ]; then
-  echo "TabletKit object files were not built" >&2
-  exit 1
-fi
 
-# Link TabletKit's object files as well as importing its module. Touch-state
-# tests now exercise palm classification, whose production API carries
-# TouchContact even though the test inputs are intentionally scalar.
-swiftc -O -I "$MODULES" "$SRC" "$TEST" $OBJECTS -o "$BIN"
+swiftc -O -I "$MODULES" "$SRC" "$TEST" -o "$BIN"
 "$BIN"
