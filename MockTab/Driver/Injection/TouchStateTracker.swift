@@ -6,6 +6,101 @@ import CoreGraphics
 import Foundation
 import TabletKit
 
+/// Rejects palm-sized capacitive contacts before they reach gesture tracking.
+///
+/// PTH-660 reports the contact major axis for every touch slot. The units are
+/// device-specific, so this filter is deliberately limited to that calibrated
+/// family rather than applying an unsafe global threshold. A rejected slot
+/// remains rejected until it falls below a lower threshold or lifts, which
+/// keeps a noisy palm footprint from flapping into a finger gesture.
+struct TouchPalmRejector {
+
+    struct Result {
+        let acceptedIDs: Set<Int>
+        let newlyRejectedIDs: [Int]
+        let newlyAcceptedIDs: [Int]
+    }
+
+    /// PTH-660 USB and Bluetooth Classic PIDs. Injection normally sees the
+    /// canonical USB PID, but accepting both keeps the filter correct before
+    /// canonicalization and in isolated tests.
+    private static let pth660ProductIDs: Set<Int> = [0x0357, 0x0360]
+
+    /// Live PTH-660 capture: a palm begins at Width/Height 6/7, while the
+    /// finger-sized fragments alongside it remain 1–4. The descriptor's
+    /// logical maxima (41 × 31) are not physical millimetres, so a threshold
+    /// inferred from those maxima was invalid; use both observed raw axes.
+    private static let rejectAxisAtOrAbove = 5
+    /// A rejected contact only returns once both axes shrink below the
+    /// threshold, avoiding size-noise flapping during a palm contact.
+    private static let acceptAxisAtOrBelow = 3
+
+    private var rejectedIDs: Set<Int> = []
+
+    static func supports(productID: Int) -> Bool {
+        pth660ProductIDs.contains(productID)
+    }
+
+    private static func isPalm(major: Int?, minor: Int?) -> Bool {
+        [major, minor].compactMap { $0 }.contains { $0 >= rejectAxisAtOrAbove }
+    }
+
+    private static func isFingerSized(major: Int?, minor: Int?) -> Bool {
+        let axes = [major, minor].compactMap { $0 }
+        return !axes.isEmpty && axes.allSatisfy { $0 <= acceptAxisAtOrBelow }
+    }
+
+    mutating func filter(
+        contacts: [(id: Int, major: Int?, minor: Int?)],
+        productID: Int
+    ) -> Result {
+        guard Self.supports(productID: productID) else {
+            reset()
+            return Result(
+                acceptedIDs: Set(contacts.map(\.id)),
+                newlyRejectedIDs: [], newlyAcceptedIDs: [])
+        }
+
+        let activeIDs = Set(contacts.map(\.id))
+        rejectedIDs.formIntersection(activeIDs)
+
+        var acceptedIDs: Set<Int> = []
+        var newlyRejectedIDs: [Int] = []
+        var newlyAcceptedIDs: [Int] = []
+        acceptedIDs.reserveCapacity(contacts.count)
+
+        for contact in contacts {
+            if rejectedIDs.contains(contact.id) {
+                // A report missing its footprint must not let a previously
+                // classified palm back into an active gesture.
+                guard Self.isFingerSized(major: contact.major, minor: contact.minor) else {
+                    continue
+                }
+                rejectedIDs.remove(contact.id)
+                newlyAcceptedIDs.append(contact.id)
+                acceptedIDs.insert(contact.id)
+                continue
+            }
+
+            guard Self.isPalm(major: contact.major, minor: contact.minor) else {
+                acceptedIDs.insert(contact.id)
+                continue
+            }
+            rejectedIDs.insert(contact.id)
+            newlyRejectedIDs.append(contact.id)
+        }
+
+        return Result(
+            acceptedIDs: acceptedIDs,
+            newlyRejectedIDs: newlyRejectedIDs,
+            newlyAcceptedIDs: newlyAcceptedIDs)
+    }
+
+    mutating func reset() {
+        rejectedIDs.removeAll(keepingCapacity: true)
+    }
+}
+
 /// Translates a per-frame set of capacitive contacts into a single sticky-mode
 /// gesture intent (pointer drag vs. two-finger scroll vs. tap-click).
 ///
