@@ -86,6 +86,11 @@ struct TouchStateTracker {
     private var twoFingerKind: TwoFingerKind = .undecided
     /// Last inter-finger distance in screen points (pinch tracking).
     private var lastPinchDistance: Double = 0
+    /// Centroid / distance at the start of an undecided two-finger sequence.
+    /// Decision uses cumulative motion from these anchors, not per-frame deltas
+    /// (slow pans never exceed the threshold in a single high-rate frame).
+    private var undecidedOriginCentroid: CGPoint = .zero
+    private var undecidedOriginDistance: Double = 0
     /// True after this two-finger sequence emitted a zoom intent (for Ended).
     private var pinchWasActive: Bool = false
 
@@ -214,6 +219,8 @@ struct TouchStateTracker {
                 lastScrollPhase = .began
                 twoFingerKind = pinchZoom ? .undecided : .pan
                 lastPinchDistance = Self.distance(between: pair)
+                undecidedOriginCentroid = centroid(of: pair.map(\.screen))
+                undecidedOriginDistance = lastPinchDistance
                 pinchWasActive = false
                 // Defer Began until pan is committed when pinch discrimination
                 // is on — avoids opening a scroll phase that never gets deltas.
@@ -269,14 +276,20 @@ struct TouchStateTracker {
 
             if pinchZoom {
                 if twoFingerKind == .undecided {
+                    // Cumulative motion since two-finger sequence start — not
+                    // per-frame deltas, which stay tiny at high report rates.
+                    let cumTranslation = hypot(
+                        newCentroid.x - undecidedOriginCentroid.x,
+                        newCentroid.y - undecidedOriginCentroid.y)
+                    let cumScale = abs(newDistance - undecidedOriginDistance)
                     let decide = Self.twoFingerDecideDistance
-                    if abs(scaleDelta) < decide, translation < decide {
+                    if cumScale < decide, cumTranslation < decide {
                         return .none
                     }
                     // Prefer pan unless pinch clearly dominates (ordinary pans
                     // always have some finger-distance jitter).
                     twoFingerKind =
-                        abs(scaleDelta) > translation * Self.pinchDominanceRatio
+                        cumScale > cumTranslation * Self.pinchDominanceRatio
                         ? .pinch : .pan
                     if twoFingerKind == .pan {
                         lastScrollPhase = .began
@@ -331,6 +344,8 @@ struct TouchStateTracker {
         lastScrollPhase = .ended
         twoFingerKind = .undecided
         lastPinchDistance = 0
+        undecidedOriginCentroid = .zero
+        undecidedOriginDistance = 0
         pinchWasActive = false
     }
 
