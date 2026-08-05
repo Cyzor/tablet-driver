@@ -124,12 +124,12 @@ struct TouchView: View {
             .help("Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview.")
 
             DescribedToggle(
-                "Pinch to Scroll",
+                "Pinch to Zoom",
                 isOn: settings.recordingBinding(
-                    String(localized: "Pinch to Scroll", comment: "Undo action name: pinch-to-zoom via Ctrl+wheel toggle in the Touch pane"),
+                    String(localized: "Pinch to Zoom", comment: "Undo action name: pinch-to-zoom via Ctrl+wheel toggle in the Touch pane"),
                     get: { settings.pinchZoomViaModifierWheel },
                     set: { settings.pinchZoomViaModifierWheel = $0 }),
-                description: "Use two fingers to pinch and zoom in or out"
+                description: "Use two fingers to pinch and zoom in or out."
             )
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
             .help("Optional zoom stand-in: a pinch gesture injects continuous scroll-wheel events with the Control modifier. Safari, Chrome, and Electron treat that as page zoom. Does not synthesize native NSTouch / trackpad pinch.")
