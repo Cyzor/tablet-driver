@@ -61,7 +61,8 @@ extension InputInjector {
             if !contacts.isEmpty {
                 _ = touchTracker.process(
                     contacts: [], tapToClick: false, twoFingerScroll: false,
-                    reverseScrollDirection: false, sensitivity: 1.0, now: now)
+                    reverseScrollDirection: false, sensitivity: 1.0,
+                    pinchZoom: false, now: now)
             }
             return
         }
@@ -91,6 +92,7 @@ extension InputInjector {
             twoFingerScroll: snap.twoFingerScroll,
             reverseScrollDirection: snap.reverseScrollDirection,
             sensitivity: snap.touchSensitivity,
+            pinchZoom: snap.pinchZoomViaModifierWheel,
             now: now)
 
         switch intent {
@@ -102,6 +104,8 @@ extension InputInjector {
             postTouchScroll(
                 dx: dx, dy: dy, phase: phase,
                 usePhases: snap.twoFingerScrollMomentum)
+        case .zoomDelta(let dy, let phase):
+            postTouchZoom(dy: dy, phase: phase)
         case .tapClick:
             postTouchTapClick(snapshot: snap, settings: settings)
         }
@@ -153,6 +157,28 @@ extension InputInjector {
             e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
         }
         e.flags = moveSafeEventFlags
+        finalizeAndPost(e)
+    }
+
+    /// Pinch-zoom stand-in: continuous pixel wheel with ⌃ set. Chromium /
+    /// Electron / Safari treat Ctrl+wheel as zoom (same as trackpad pinch
+    /// translation). No scroll phase — zoom consumers don't need the
+    /// trackpad Began/Changed/Ended envelope.
+    private func postTouchZoom(dy: Double, phase _: TouchStateTracker.ScrollPhase) {
+        // Began/Ended are zero-delta brackets; zoom only needs Changed frames.
+        guard dy != 0 else { return }
+        let loc = currentCursorPosition()
+        guard let e = CGEvent(
+            scrollWheelEvent2Source: sessionSource,
+            units: .pixel,
+            wheelCount: 1,
+            wheel1: Int32(dy.rounded()),
+            wheel2: 0,
+            wheel3: 0)
+        else { return }
+        e.location = loc
+        e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        e.flags = moveSafeEventFlags.union(.maskControl)
         finalizeAndPost(e)
     }
 

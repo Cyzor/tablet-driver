@@ -63,6 +63,7 @@ struct InjectionSnapshot: Sendable, Equatable {
     var twoFingerScroll: Bool
     var reverseScrollDirection: Bool
     var twoFingerScrollMomentum: Bool
+    var pinchZoomViaModifierWheel: Bool
     var touchAreaX: Double
     var touchAreaY: Double
     var touchAreaWidth: Double
@@ -142,6 +143,7 @@ extension TabletSettings {
             twoFingerScroll: twoFingerScroll,
             reverseScrollDirection: reverseScrollDirection,
             twoFingerScrollMomentum: twoFingerScrollMomentum,
+            pinchZoomViaModifierWheel: pinchZoomViaModifierWheel,
             touchAreaX: touchAreaX,
             touchAreaY: touchAreaY,
             touchAreaWidth: touchAreaWidth,

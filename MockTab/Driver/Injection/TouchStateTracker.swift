@@ -24,7 +24,15 @@ struct TouchStateTracker {
         case idle
         case pending        // contact(s) down, gesture not yet committed
         case pointer        // single contact moving the cursor
-        case scroll         // two contacts moving the scroll wheel
+        case scroll         // two contacts: pan scroll and/or pinch-zoom
+    }
+
+    /// Sticky two-finger sub-mode once significant motion is seen.
+    /// Pinch vs pan is chosen once per sequence (same sticky policy as Mode).
+    enum TwoFingerKind {
+        case undecided
+        case pan
+        case pinch
     }
 
     enum Intent: Equatable {
@@ -39,6 +47,10 @@ struct TouchStateTracker {
         /// (CG `kCGScrollWheelEventScrollPhase` values: 1=Began, 2=Changed,
         /// 4=Ended).  Sign convention follows the natural-scrolling setting.
         case scrollDelta(dx: Double, dy: Double, phase: ScrollPhase)
+        /// Pinch scale as a vertical wheel stand-in (posted with ⌃). Positive
+        /// `dy` follows CGEvent wheel1 "scroll up"; Chromium treats ⌃+wheel
+        /// as page zoom. Fingers spreading maps to zoom-in (negative `dy`).
+        case zoomDelta(dy: Double, phase: ScrollPhase)
     }
 
     enum ScrollPhase: Int {
@@ -70,6 +82,13 @@ struct TouchStateTracker {
     /// when the last contact lifts.
     private var lastScrollPhase: ScrollPhase = .ended
 
+    /// Sticky pan vs pinch once motion crosses `twoFingerDecideDistance`.
+    private var twoFingerKind: TwoFingerKind = .undecided
+    /// Last inter-finger distance in screen points (pinch tracking).
+    private var lastPinchDistance: Double = 0
+    /// True after this two-finger sequence emitted a zoom intent (for Ended).
+    private var pinchWasActive: Bool = false
+
     // MARK: - Tunables
 
     /// Maximum drift (in screen points) that still counts as a tap.
@@ -84,6 +103,12 @@ struct TouchStateTracker {
     /// having dragged the cursor in the meantime.  Same trick trackpads use;
     /// the cost is pointer motion starting ~0.1 s late.
     static let onsetDelay: CFAbsoluteTime = 0.12
+    /// Motion (screen points) needed to commit pan vs pinch for a sequence.
+    /// Slightly above finger-jitter so a sliding pan doesn't decide on noise.
+    static let twoFingerDecideDistance: Double = 6.0
+    /// Pinch wins only when inter-finger distance change clearly exceeds
+    /// centroid translation. Equal/noisy scale vs pan → stay pan (scroll).
+    static let pinchDominanceRatio: Double = 1.75
 
     // MARK: - Process
 
@@ -129,12 +154,14 @@ struct TouchStateTracker {
     /// `tapToClick` and `twoFingerScroll` gate the optional behaviours;
     /// `reverseScrollDirection` flips the sign of the scroll delta.
     /// `sensitivity` multiplies pointer-mode movement (1.0 = identity).
+    /// `pinchZoom` enables sticky pinch → ⌃+wheel zoom stand-in (vs pan scroll).
     mutating func process(
         contacts: [(id: Int, screen: CGPoint)],
         tapToClick: Bool,
         twoFingerScroll: Bool,
         reverseScrollDirection: Bool,
         sensitivity: Double,
+        pinchZoom: Bool = false,
         now: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     ) -> Intent {
 
@@ -144,11 +171,15 @@ struct TouchStateTracker {
         if contacts.isEmpty {
             let priorMode = mode
             let priorPhase = lastScrollPhase
+            let priorPinch = pinchWasActive
+            let priorKind = twoFingerKind
             let tap = tapToClick && (priorMode == .pointer || priorMode == .pending)
                 && now - tapStart <= Self.tapMaxDuration
                 && tapMaxDelta < Self.tapMaxDistance
             reset()
             switch priorMode {
+            case .scroll where priorPinch || priorKind == .pinch:
+                return .zoomDelta(dy: 0, phase: .ended)
             case .scroll where priorPhase != .ended:
                 return .scrollDelta(dx: 0, dy: 0, phase: .ended)
             case .pointer where tap, .pending where tap:
@@ -176,10 +207,19 @@ struct TouchStateTracker {
         if mode == .pending || mode == .pointer, contacts.count >= 2 {
             if twoFingerScroll {
                 mode = .scroll
+                let pair = Array(contacts.prefix(2))
                 lastPositions = Dictionary(uniqueKeysWithValues:
-                    contacts.prefix(2).map { ($0.id, $0.screen) })
+                    pair.map { ($0.id, $0.screen) })
                 tapAnchor = nil  // tap is off the table once we go to two fingers
                 lastScrollPhase = .began
+                twoFingerKind = pinchZoom ? .undecided : .pan
+                lastPinchDistance = Self.distance(between: pair)
+                pinchWasActive = false
+                // Defer Began until pan is committed when pinch discrimination
+                // is on — avoids opening a scroll phase that never gets deltas.
+                if pinchZoom {
+                    return .none
+                }
                 return .scrollDelta(dx: 0, dy: 0, phase: .began)
             } else if mode == .pointer {
                 // Two-finger scroll disabled: ignore the second contact,
@@ -217,11 +257,44 @@ struct TouchStateTracker {
             let tracked = current.filter { lastPositions[$0.id] != nil }
             let oldCentroid = centroid(of: tracked.compactMap { lastPositions[$0.id] })
             let newCentroid = centroid(of: tracked.map { $0.screen })
+            let newDistance = Self.distance(between: current)
+            let scaleDelta = newDistance - lastPinchDistance
             lastPositions = Dictionary(uniqueKeysWithValues:
                 current.map { ($0.id, $0.screen) })
+            lastPinchDistance = newDistance
             guard !tracked.isEmpty else { return .none }
             let dx = newCentroid.x - oldCentroid.x
             let dy = newCentroid.y - oldCentroid.y
+            let translation = hypot(dx, dy)
+
+            if pinchZoom {
+                if twoFingerKind == .undecided {
+                    let decide = Self.twoFingerDecideDistance
+                    if abs(scaleDelta) < decide, translation < decide {
+                        return .none
+                    }
+                    // Prefer pan unless pinch clearly dominates (ordinary pans
+                    // always have some finger-distance jitter).
+                    twoFingerKind =
+                        abs(scaleDelta) > translation * Self.pinchDominanceRatio
+                        ? .pinch : .pan
+                    if twoFingerKind == .pan {
+                        lastScrollPhase = .began
+                        return .scrollDelta(dx: 0, dy: 0, phase: .began)
+                    }
+                    lastScrollPhase = .began
+                    pinchWasActive = true
+                    return .zoomDelta(dy: 0, phase: .began)
+                }
+                if twoFingerKind == .pinch {
+                    if scaleDelta == 0 { return .none }
+                    // Fingers spreading (scaleDelta > 0) → zoom in → negative wheel.
+                    lastScrollPhase = .changed
+                    pinchWasActive = true
+                    return .zoomDelta(dy: -scaleDelta, phase: .changed)
+                }
+            }
+
             // Skip dead frames: a stationary palm with two contacts down would
             // otherwise post 100 no-op scroll events per second.
             if dx == 0 && dy == 0 { return .none }
@@ -256,6 +329,9 @@ struct TouchStateTracker {
         tapStart = 0
         tapMaxDelta = 0
         lastScrollPhase = .ended
+        twoFingerKind = .undecided
+        lastPinchDistance = 0
+        pinchWasActive = false
     }
 
     private func centroid(of points: [CGPoint]) -> CGPoint {
@@ -264,5 +340,12 @@ struct TouchStateTracker {
         let sx = points.reduce(0) { $0 + $1.x } / n
         let sy = points.reduce(0) { $0 + $1.y } / n
         return CGPoint(x: sx, y: sy)
+    }
+
+    private static func distance(between contacts: [(id: Int, screen: CGPoint)]) -> Double {
+        guard contacts.count >= 2 else { return 0 }
+        let a = contacts[0].screen
+        let b = contacts[1].screen
+        return hypot(a.x - b.x, a.y - b.y)
     }
 }
