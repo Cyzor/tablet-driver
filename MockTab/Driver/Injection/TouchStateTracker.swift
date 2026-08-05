@@ -264,7 +264,11 @@ struct TouchStateTracker {
             let tracked = current.filter { lastPositions[$0.id] != nil }
             let oldCentroid = centroid(of: tracked.compactMap { lastPositions[$0.id] })
             let newCentroid = centroid(of: tracked.map { $0.screen })
-            let newDistance = Self.distance(between: current)
+            // Hold last distance when a finger lifts mid-gesture (1-contact
+            // frames). distance(between:) would be 0 and invent a huge scaleDelta.
+            let newDistance = current.count >= 2
+                ? Self.distance(between: current)
+                : lastPinchDistance
             let scaleDelta = newDistance - lastPinchDistance
             lastPositions = Dictionary(uniqueKeysWithValues:
                 current.map { ($0.id, $0.screen) })
