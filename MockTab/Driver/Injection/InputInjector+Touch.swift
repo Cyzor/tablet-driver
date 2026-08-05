@@ -58,12 +58,36 @@ extension InputInjector {
         let penBusy = lastProximity ||
             now - penProximityExitTime < Self.touchArbitrationGrace
         if penBusy {
+            touchPalmRejector.reset()
             if !contacts.isEmpty {
                 _ = touchTracker.process(
                     contacts: [], tapToClick: false, twoFingerScroll: false,
                     reverseScrollDirection: false, sensitivity: 1.0, now: now)
             }
             return
+        }
+
+        // Palm classification must happen before projection and gesture
+        // tracking. On the PTH-660 it preserves a simultaneous normal finger
+        // while dropping only the palm-sized contact; other tablets pass
+        // through unchanged until they have their own calibrated thresholds.
+        let filtered = touchPalmRejector.filter(
+            contacts: contacts.map {
+                (id: $0.id, major: $0.contactArea, minor: $0.contactMinor)
+            },
+            productID: deviceProductID)
+        let filteredContacts = contacts.filter { filtered.acceptedIDs.contains($0.id) }
+        if !filtered.newlyRejectedIDs.isEmpty || !filtered.newlyAcceptedIDs.isEmpty {
+            let rejected = contacts
+                .filter { filtered.newlyRejectedIDs.contains($0.id) }
+                .map { "\($0.id):\($0.contactArea ?? -1)/\($0.contactMinor ?? -1)" }
+                .joined(separator: ",")
+            let accepted = contacts
+                .filter { filtered.newlyAcceptedIDs.contains($0.id) }
+                .map { "\($0.id):\($0.contactArea ?? -1)/\($0.contactMinor ?? -1)" }
+                .joined(separator: ",")
+            injectLog.notice(
+                "touch palm filter: rejected=id:major/minor[\(rejected, privacy: .public)], accepted=id:major/minor[\(accepted, privacy: .public)]")
         }
 
         // Resolve display bounds — touch shares the pen's target display.
@@ -74,8 +98,8 @@ extension InputInjector {
         // and are dropped entirely (no clamping to the rect edge — that would
         // leave the deadzone partially responsive).
         var projected: [(id: Int, screen: CGPoint)] = []
-        projected.reserveCapacity(contacts.count)
-        for c in contacts {
+        projected.reserveCapacity(filteredContacts.count)
+        for c in filteredContacts {
             guard let p = TouchStateTracker.screenPoint(
                 for: c, maxX: cachedTouchMaxX, maxY: cachedTouchMaxY,
                 areaX: snap.touchAreaX, areaY: snap.touchAreaY,
