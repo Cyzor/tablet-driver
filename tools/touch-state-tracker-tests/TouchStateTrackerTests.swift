@@ -49,44 +49,27 @@ private func process(
     )
 }
 
-private func testPinchZoomStepDirection() {
+/// The full magnify envelope: silent commit (no Began until pinch wins),
+/// then Changed frames carrying the exact relative growth of inter-finger
+/// distance since the previous frame — spreading positive, closing negative
+/// — then an Ended bracket on lift.
+private func testPinchMagnifyEnvelope() {
     var tracker = TouchStateTracker()
     _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
     expectEqual(process(&tracker, contacts(distance: 20), at: 0.01), .none,
                 "two-finger pinch waits for a decisive motion")
-    expectEqual(process(&tracker, contacts(distance: 30), at: 0.02), .none,
-                "distance-dominant motion commits to pinch silently — no envelope to open")
-    // pinchZoomStepDistance is 90 points; a 90-point spread crosses exactly one
-    // step. Frames are spaced >= minZoomStepInterval apart so rate-limiting
-    // doesn't interact with this test.
-    expectEqual(process(&tracker, contacts(distance: 120), at: 0.20),
-                .zoomStep(count: 1),
-                "spreading fingers by a full step emits one ⌘+Keypad-Plus")
-    expectEqual(process(&tracker, contacts(distance: 30), at: 0.40),
-                .zoomStep(count: -1),
-                "closing fingers by a full step emits one ⌘+Keypad-Minus")
-}
-
-/// A pinch that crosses a full step twice within `minZoomStepInterval` must
-/// not double-fire — real menu-command zoom (Preview, Safari, browsers)
-/// isn't built to absorb keystrokes at HID report rate, and hardware testing
-/// without this cap showed a visible backlog draining after the pinch had
-/// already stopped.
-private func testZoomStepsAreRateLimited() {
-    var tracker = TouchStateTracker()
-    _ = process(&tracker, [(id: 1, screen: .zero)], at: 1.00)
-    _ = process(&tracker, contacts(distance: 20), at: 1.01)
-    expectEqual(process(&tracker, contacts(distance: 30), at: 1.02), .none,
-                "distance-dominant motion commits to pinch silently")
-    expectEqual(process(&tracker, contacts(distance: 120), at: 1.03),
-                .zoomStep(count: 1),
-                "first full step emits immediately")
-    expectEqual(process(&tracker, contacts(distance: 210), at: 1.05),
-                .none,
-                "a second full step within minZoomStepInterval is rate-limited, not dropped")
-    expectEqual(process(&tracker, contacts(distance: 210), at: 1.16),
-                .zoomStep(count: 1),
-                "the rate-limited step fires once the interval reopens, not as a double-fire")
+    expectEqual(process(&tracker, contacts(distance: 30), at: 0.02),
+                .zoomMagnify(magnification: 0, phase: .began),
+                "distance-dominant motion commits to pinch and opens the envelope")
+    expectEqual(process(&tracker, contacts(distance: 45), at: 0.03),
+                .zoomMagnify(magnification: 15.0 / 30.0, phase: .changed),
+                "spreading fingers emits the exact relative growth since last frame")
+    expectEqual(process(&tracker, contacts(distance: 30), at: 0.04),
+                .zoomMagnify(magnification: -15.0 / 45.0, phase: .changed),
+                "closing fingers emits negative relative growth")
+    expectEqual(process(&tracker, [], at: 0.05),
+                .zoomMagnify(magnification: 0, phase: .ended),
+                "lifting fingers closes the magnify envelope")
 }
 
 private func testPreCommitLiftHasNoScrollEnd() {
@@ -109,36 +92,12 @@ private func testSingleContactFrameDoesNotCommitPan() {
                 "a 1-contact frame while undecided must not commit a phantom pan")
 }
 
-/// A pinch that moves well under one `pinchZoomStepDistance` per frame must
-/// still cross a whole step eventually — the remainder has to accumulate
-/// across frames or a slow pinch never emits a keystroke at all.
-private func testSlowPinchAccumulatesPartialSteps() {
-    var tracker = TouchStateTracker()
-    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
-    _ = process(&tracker, contacts(distance: 20), at: 0.01)
-    expectEqual(process(&tracker, contacts(distance: 30), at: 0.02), .none,
-                "distance-dominant motion commits to pinch silently")
-    // Four frames of +22.5 pt (0.25 of a 90-pt step each), spaced well past
-    // minZoomStepInterval so rate-limiting isn't a factor here: each alone
-    // rounds to zero steps, together they cross one whole step on the fourth.
-    for (i, d) in [52.5, 75.0, 97.5].enumerated() {
-        expectEqual(process(&tracker, contacts(distance: d), at: 0.10 + 0.01 * Double(i)),
-                    .none,
-                    "partial-step pinch frame \(i) accumulates instead of emitting")
-    }
-    expectEqual(process(&tracker, contacts(distance: 120.0), at: 0.13),
-                .zoomStep(count: 1),
-                "accumulated partial-step pinch motion emits one whole zoom step")
-}
-
 @main
 enum TouchStateTrackerTestRunner {
     static func main() {
-        testPinchZoomStepDirection()
-        testZoomStepsAreRateLimited()
+        testPinchMagnifyEnvelope()
         testPreCommitLiftHasNoScrollEnd()
         testSingleContactFrameDoesNotCommitPan()
-        testSlowPinchAccumulatesPartialSteps()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

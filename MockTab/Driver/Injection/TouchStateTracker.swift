@@ -47,12 +47,14 @@ struct TouchStateTracker {
         /// (CG `kCGScrollWheelEventScrollPhase` values: 1=Began, 2=Changed,
         /// 4=Ended).  Sign convention follows the natural-scrolling setting.
         case scrollDelta(dx: Double, dy: Double, phase: ScrollPhase)
-        /// Pinch-zoom stand-in: `count` ⌘+Keypad-Plus (spreading, positive) or
-        /// ⌘+Keypad-Minus (pinching, negative) keystrokes to post this frame.
-        /// Almost always ±1; can exceed that during a fast pinch that crosses
-        /// more than one `pinchZoomStepDistance` in a single frame. Keystrokes
-        /// are one-shot, unlike `scrollDelta` — no Began/Ended envelope needed.
-        case zoomStep(count: Int)
+        /// Pinch-zoom magnify delta + phase, mirroring `scrollDelta`'s
+        /// envelope. `magnification` is the exact relative growth of
+        /// inter-finger distance this frame — (newDistance / oldDistance) - 1
+        /// — which is what a real trackpad's magnify gesture reports, and
+        /// what makes per-frame deltas compound to the correct total scale
+        /// factor (Π(1 + dᵢ) telescopes to distance_final / distance_initial).
+        /// Fingers spreading → positive.
+        case zoomMagnify(magnification: Double, phase: ScrollPhase)
     }
 
     enum ScrollPhase: Int {
@@ -93,12 +95,6 @@ struct TouchStateTracker {
     /// (slow pans never exceed the threshold in a single high-rate frame).
     private var undecidedOriginCentroid: CGPoint = .zero
     private var undecidedOriginDistance: Double = 0
-    /// Fractional zoom-step remainder carried across frames so slow pinch
-    /// motion isn't lost between frames — see `pinchZoomStepDistance`.
-    private var pinchAccum: Double = 0
-    /// Wall-clock time the last zoom keystroke was emitted, for
-    /// `minZoomStepInterval` throttling.
-    private var lastZoomStepTime: CFAbsoluteTime = 0
 
     // MARK: - Tunables
 
@@ -120,22 +116,6 @@ struct TouchStateTracker {
     /// Pinch wins only when inter-finger distance change clearly exceeds
     /// centroid translation. Equal/noisy scale vs pan → stay pan (scroll).
     static let pinchDominanceRatio: Double = 1.75
-    /// Screen points of inter-finger distance change per ⌘+Keypad zoom
-    /// keystroke. Tuning knob, not derived: hardware testing showed a full
-    /// expressive pinch covers on the order of 600-900 points of cumulative
-    /// distance change; at this step size a full pinch produces roughly
-    /// 6-10 keystrokes rather than dozens. Revisit by feel, not math.
-    static let pinchZoomStepDistance: Double = 90.0
-    /// Minimum wall-clock gap between zoom keystrokes. Real menu-command
-    /// zoom isn't built to absorb presses faster than the app can visually
-    /// redraw between them — Preview's per-step image re-render is the
-    /// slowest case hardware-tested, and even with a correct one-step
-    /// backlog cap a long vigorous pinch legitimately produces enough steps
-    /// to fall visibly behind in Preview specifically (Affinity/Illustrator
-    /// keep up fine at this rate; a human mashing a real keyboard shortcut
-    /// in Preview would show the same lag). This is a tradeoff, not a fix —
-    /// slower helps Preview, faster feels better everywhere else.
-    static let minZoomStepInterval: CFAbsoluteTime = 0.12
 
     // MARK: - Process
 
@@ -181,7 +161,7 @@ struct TouchStateTracker {
     /// `tapToClick` and `twoFingerScroll` gate the optional behaviours;
     /// `reverseScrollDirection` flips the sign of the scroll delta.
     /// `sensitivity` multiplies pointer-mode movement (1.0 = identity).
-    /// `pinchZoom` enables sticky pinch → ⌘+Keypad zoom-step stand-in (vs pan scroll).
+    /// `pinchZoom` enables sticky pinch → synthesized magnify-gesture zoom (vs pan scroll).
     mutating func process(
         contacts: [(id: Int, screen: CGPoint)],
         tapToClick: Bool,
@@ -204,9 +184,8 @@ struct TouchStateTracker {
                 && tapMaxDelta < Self.tapMaxDistance
             reset()
             switch priorMode {
-            case .scroll where priorKind == .pinch:
-                // Keystroke zoom is one-shot — no envelope to close on lift.
-                return .none
+            case .scroll where priorKind == .pinch && priorPhase != .ended:
+                return .zoomMagnify(magnification: 0, phase: .ended)
             case .scroll where priorPhase != .ended:
                 return .scrollDelta(dx: 0, dy: 0, phase: .ended)
             case .pointer where tap, .pending where tap:
@@ -242,8 +221,6 @@ struct TouchStateTracker {
                 lastPinchDistance = Self.distance(between: pair)
                 undecidedOriginCentroid = centroid(of: pair.map(\.screen))
                 undecidedOriginDistance = lastPinchDistance
-                pinchAccum = 0
-                lastZoomStepTime = 0
                 // Defer Began until pan/pinch commits when pinch discrimination
                 // is on — leave lastScrollPhase .ended so a lift before commit
                 // does not emit a stray scroll Ended.
@@ -293,7 +270,8 @@ struct TouchStateTracker {
             let newDistance = current.count >= 2
                 ? Self.distance(between: current)
                 : lastPinchDistance
-            let scaleDelta = newDistance - lastPinchDistance
+            let oldDistance = lastPinchDistance
+            let scaleDelta = newDistance - oldDistance
             lastPositions = Dictionary(uniqueKeysWithValues:
                 current.map { ($0.id, $0.screen) })
             lastPinchDistance = newDistance
@@ -327,31 +305,17 @@ struct TouchStateTracker {
                         lastScrollPhase = .began
                         return .scrollDelta(dx: 0, dy: 0, phase: .began)
                     }
-                    // Pinch commits silently — the first keystroke waits for
-                    // pinchAccum to actually cross a step, same as any other
-                    // frame in the .pinch branch below.
-                    return .none
+                    lastScrollPhase = .began
+                    return .zoomMagnify(magnification: 0, phase: .began)
                 }
                 if twoFingerKind == .pinch {
-                    // Accumulate the fractional remainder in step units: a
-                    // step is `pinchZoomStepDistance` points of inter-finger
-                    // distance change, and without carrying the remainder
-                    // across frames a slow pinch would never cross a whole
-                    // step (same pattern as PanScrollTracker's accum).
-                    pinchAccum += scaleDelta / Self.pinchZoomStepDistance
-                    guard now - lastZoomStepTime >= Self.minZoomStepInterval else {
-                        // Rate-gated: keep at most one step's worth of
-                        // pending motion so a fast pinch can't build a
-                        // backlog that keeps firing after the gesture ends.
-                        pinchAccum = Swift.max(Swift.min(pinchAccum, 1), -1)
-                        return .none
-                    }
-                    let steps = pinchAccum.rounded(.towardZero)
-                    guard steps != 0 else { return .none }
-                    pinchAccum -= steps
-                    lastZoomStepTime = now
-                    // Fingers spreading (scaleDelta > 0) → zoom in → ⌘+Keypad-Plus.
-                    return .zoomStep(count: Int(steps))
+                    guard scaleDelta != 0, oldDistance > 0 else { return .none }
+                    // Exact relative growth this frame — see the `zoomMagnify`
+                    // doc comment for why this is the correct (not approximate)
+                    // per-frame value for a multiplicative magnify stream.
+                    let magnification = scaleDelta / oldDistance
+                    lastScrollPhase = .changed
+                    return .zoomMagnify(magnification: magnification, phase: .changed)
                 }
             }
 
@@ -393,8 +357,6 @@ struct TouchStateTracker {
         lastPinchDistance = 0
         undecidedOriginCentroid = .zero
         undecidedOriginDistance = 0
-        pinchAccum = 0
-        lastZoomStepTime = 0
     }
 
     private func centroid(of points: [CGPoint]) -> CGPoint {

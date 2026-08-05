@@ -132,7 +132,7 @@ struct TouchView: View {
                 description: "Use two fingers to pinch and zoom in or out."
             )
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
-            .help("Zoom stand-in: a pinch gesture posts Command+Plus or Command+Minus keystrokes, one step per pinch, using each app's own zoom shortcut. Works in most apps with a standard zoom command, including Safari, Preview, and Chromium browsers — a few apps use a different convention and won't respond. Not a smooth pinch like a real trackpad; steps in discrete increments.")
+            .help("Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch — works anywhere a trackpad pinch would, including Safari, Preview, and Photoshop.")
 
             DescribedToggle(
                 "Reverse Direction",

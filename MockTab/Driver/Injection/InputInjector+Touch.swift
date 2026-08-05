@@ -24,10 +24,10 @@ extension InputInjector {
     ///   • Otherwise project each contact through the user's touch-area
     ///     mapping into screen-space, hand to `TouchStateTracker`, and
     ///     translate its `Intent` into CGEvents:
-    ///       - `.pointerMove` → `mouseMoved`
-    ///       - `.scrollDelta` → smooth scroll-wheel event with phase
-    ///       - `.zoomStep`    → ⌘+Keypad-Plus/Minus keystrokes (pinch stand-in)
-    ///       - `.tapClick`    → left-click at the current cursor position
+    ///       - `.pointerMove`   → `mouseMoved`
+    ///       - `.scrollDelta`   → smooth scroll-wheel event with phase
+    ///       - `.zoomMagnify`   → synthesized magnify gesture with phase
+    ///       - `.tapClick`      → left-click at the current cursor position
     ///
     /// No shipping decoder produces touch frames yet; this is hot-path
     /// plumbing for when a per-family touch decoder lands.
@@ -105,8 +105,8 @@ extension InputInjector {
             postTouchScroll(
                 dx: dx, dy: dy, phase: phase,
                 usePhases: snap.twoFingerScrollMomentum)
-        case .zoomStep(let count):
-            postTouchZoom(count: count)
+        case .zoomMagnify(let magnification, let phase):
+            postTouchMagnify(magnification: magnification, phase: phase)
         case .tapClick:
             postTouchTapClick(snapshot: snap, settings: settings)
         }
@@ -161,59 +161,45 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Pinch-zoom stand-in: ⌘+Keypad-Plus (zoom in) or ⌘+Keypad-Minus
-    /// (zoom out) keystrokes, one per accumulated step. Matches Wacom's own
-    /// documented fallback mapping for apps without native gesture support
-    /// (their AppGestures.xml binds the same pinch gesture to ⌘+Keypad-Plus/
-    /// Minus when their primary Opt+F15/F16 path — which relies on
-    /// per-app menu key-equivalent overrides we don't install — isn't
-    /// available). The keypad location is deliberate, not incidental: unlike
-    /// the row-1 =/- keys, keypad positions produce the same +/- characters
-    /// across keyboard layouts, so this doesn't share the German-layout
-    /// failure a row-1-based version would have.
+    /// Pinch-zoom: a real synthesized magnify gesture, phase-bracketed like
+    /// `postTouchScroll`. A ⌘+wheel stand-in and, after that failed hardware
+    /// testing, a ⌘+Keypad-Plus/Minus keystroke stand-in were both tried and
+    /// hardware-verified working (see git history) before this — the
+    /// keystroke form reached Preview, Safari, and Chromium/Firefox browsers,
+    /// but only as discrete menu-command steps, and every mechanism was
+    /// believed to require a private, Apple-only entitlement for anything
+    /// smoother, matching a previously closed investigation into synthesizing
+    /// native gestures.
     ///
-    /// A CGEvent scroll-wheel stand-in (⌃+wheel, then ⌘+wheel) was tried
-    /// first and hardware-tested across Preview, Safari, Chrome, Edge,
-    /// Vivaldi, and Firefox: it never worked reliably outside one browser,
-    /// and even there only matched the choppiness of a real Cmd+wheel zoom.
-    /// This keystroke form reached every one of those apps.
-    private func postTouchZoom(count: Int) {
-        guard count != 0 else { return }
-        // kVK_ANSI_KeypadPlus = 0x45 (69), kVK_ANSI_KeypadMinus = 0x4E (78).
-        let keyCode: CGKeyCode = count > 0 ? 69 : 78
-        for _ in 0..<abs(count) {
-            postZoomKeystroke(keyCode: keyCode)
-        }
+    /// That turned out to be wrong. The technique below needs no entitlement
+    /// at all — a CGEvent's *real* type (`.type`, not a field) set to 29
+    /// (`NSEventTypeGesture`) plus a few undocumented-but-public integer/
+    /// double fields is enough for the OS to treat it exactly like a genuine
+    /// trackpad pinch. Traced independently on hardware to confirm it wasn't
+    /// a fluke; the same technique (undocumented CGEvent fields, no private
+    /// API) is used in production by the open-source Mac Mouse Fix project
+    /// (github.com/noah-nuebling/mac-mouse-fix, Helper/Core/Touch/
+    /// TouchSimulator.m), which traces it further back to CalfTrail Touch /
+    /// SensibleSideButtons reverse-engineering work. Reimplemented
+    /// independently here, not copied — MMF ships under a source-available,
+    /// non-GPL license.
+    private func postTouchMagnify(magnification: Double, phase: TouchStateTracker.ScrollPhase) {
+        guard let e = CGEvent(source: nil) else { return }
+        e.type = Self.nsEventTypeGesture
+        e.location = currentCursorPosition()
+        e.setIntegerValueField(Self.fieldIOHIDEventSubtype, value: Self.iohidEventTypeZoom)
+        e.setIntegerValueField(Self.fieldGesturePhase, value: Int64(phase.rawValue))
+        e.setDoubleValueField(Self.fieldMagnification, value: magnification)
+        finalizeAndPost(e)
     }
 
-    private func postZoomKeystroke(keyCode: CGKeyCode) {
-        // Real keyboards bracket a modified keystroke with flagsChanged
-        // events; see the keyCombo binding path for why that matters to
-        // some apps' modifier tracking.
-        let flagsDown = CGEvent(source: sessionSource)
-        flagsDown?.type = .flagsChanged
-        flagsDown?.flags = moveSafeEventFlags.union(.maskCommand)
-        flagsDown?.setIntegerValueField(.keyboardEventKeycode, value: 55) // ⌘
-        if let e = flagsDown { finalizeAndPost(e) }
-
-        guard let keyDown = CGEvent(
-            keyboardEventSource: sessionSource, virtualKey: keyCode, keyDown: true)
-        else { return }
-        keyDown.flags = moveSafeEventFlags.union(.maskCommand)
-        finalizeAndPost(keyDown)
-
-        guard let keyUp = CGEvent(
-            keyboardEventSource: sessionSource, virtualKey: keyCode, keyDown: false)
-        else { return }
-        keyUp.flags = moveSafeEventFlags.union(.maskCommand)
-        finalizeAndPost(keyUp)
-
-        let flagsUp = CGEvent(source: sessionSource)
-        flagsUp?.type = .flagsChanged
-        flagsUp?.flags = moveSafeEventFlags
-        flagsUp?.setIntegerValueField(.keyboardEventKeycode, value: 55)
-        if let e = flagsUp { finalizeAndPost(e) }
-    }
+    /// Undocumented CGEvent type/field numbers for gesture synthesis —
+    /// see `postTouchMagnify`'s doc comment for provenance and license note.
+    private static let nsEventTypeGesture = CGEventType(rawValue: 29)!
+    private static let fieldIOHIDEventSubtype = CGEventField(rawValue: 110)!
+    private static let fieldMagnification = CGEventField(rawValue: 113)!
+    private static let fieldGesturePhase = CGEventField(rawValue: 132)!
+    private static let iohidEventTypeZoom: Int64 = 8
 
     private func postTouchTapClick(snapshot: InjectionSnapshot, settings: TabletSettings?) {
         let loc = currentCursorPosition()
