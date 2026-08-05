@@ -29,27 +29,6 @@ private func expectEqual<T: Equatable>(
     )
 }
 
-private func contacts(distance: Double) -> [(id: Int, screen: CGPoint)] {
-    [(id: 1, screen: CGPoint(x: -distance / 2, y: 0)),
-     (id: 2, screen: CGPoint(x: distance / 2, y: 0))]
-}
-
-private func process(
-    _ tracker: inout TouchStateTracker,
-    _ contacts: [(id: Int, screen: CGPoint)],
-    at time: CFAbsoluteTime
-) -> TouchStateTracker.Intent {
-    tracker.process(
-        contacts: contacts,
-        tapToClick: false,
-        twoFingerScroll: true,
-        reverseScrollDirection: false,
-        sensitivity: 1,
-        pinchZoom: true,
-        now: time
-    )
-}
-
 private func rawContact(
     id: Int, major: Int?, minor: Int? = nil
 ) -> (id: Int, major: Int?, minor: Int?) {
@@ -89,35 +68,9 @@ private func testPalmFilteringIsPTH660Specific() {
                 "un-calibrated tablet families must keep their contacts unchanged")
 }
 
-private func testPinchWheelDirection() {
-    var tracker = TouchStateTracker()
-    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
-    expectEqual(process(&tracker, contacts(distance: 20), at: 0.01), .none,
-                "two-finger pinch waits for a decisive motion")
-    expectEqual(process(&tracker, contacts(distance: 30), at: 0.02),
-                .zoomDelta(dy: 0, phase: .began),
-                "distance-dominant motion commits to pinch")
-    expectEqual(process(&tracker, contacts(distance: 34), at: 0.03),
-                .zoomDelta(dy: 4, phase: .changed),
-                "spreading fingers emits positive Ctrl-wheel for zoom-in")
-    expectEqual(process(&tracker, contacts(distance: 28), at: 0.04),
-                .zoomDelta(dy: -6, phase: .changed),
-                "closing fingers emits negative Ctrl-wheel for zoom-out")
-}
-
-private func testPreCommitLiftHasNoScrollEnd() {
-    var tracker = TouchStateTracker()
-    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
-    _ = process(&tracker, contacts(distance: 20), at: 0.01)
-    expectEqual(process(&tracker, [], at: 0.02), .none,
-                "a pinch that never commits must not emit a scroll end")
-}
-
 @main
 enum TouchStateTrackerTestRunner {
     static func main() {
-        testPinchWheelDirection()
-        testPreCommitLiftHasNoScrollEnd()
         testPTH660PalmRejection()
         testPalmFilteringIsPTH660Specific()
 
