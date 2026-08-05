@@ -216,17 +216,18 @@ struct TouchStateTracker {
                 lastPositions = Dictionary(uniqueKeysWithValues:
                     pair.map { ($0.id, $0.screen) })
                 tapAnchor = nil  // tap is off the table once we go to two fingers
-                lastScrollPhase = .began
                 twoFingerKind = pinchZoom ? .undecided : .pan
                 lastPinchDistance = Self.distance(between: pair)
                 undecidedOriginCentroid = centroid(of: pair.map(\.screen))
                 undecidedOriginDistance = lastPinchDistance
                 pinchWasActive = false
-                // Defer Began until pan is committed when pinch discrimination
-                // is on — avoids opening a scroll phase that never gets deltas.
+                // Defer Began until pan/pinch commits when pinch discrimination
+                // is on — leave lastScrollPhase .ended so a lift before commit
+                // does not emit a stray scroll Ended.
                 if pinchZoom {
                     return .none
                 }
+                lastScrollPhase = .began
                 return .scrollDelta(dx: 0, dy: 0, phase: .began)
             } else if mode == .pointer {
                 // Two-finger scroll disabled: ignore the second contact,
