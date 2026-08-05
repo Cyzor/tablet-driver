@@ -49,7 +49,7 @@ struct TouchStateTracker {
         case scrollDelta(dx: Double, dy: Double, phase: ScrollPhase)
         /// Pinch scale as a vertical wheel stand-in (posted with ⌃). Positive
         /// `dy` follows CGEvent wheel1 "scroll up"; Chromium treats ⌃+wheel
-        /// as page zoom. Fingers spreading maps to zoom-in (negative `dy`).
+        /// as page zoom. Fingers spreading maps to zoom-in (positive `dy`).
         case zoomDelta(dy: Double, phase: ScrollPhase)
     }
 
@@ -305,10 +305,10 @@ struct TouchStateTracker {
                 }
                 if twoFingerKind == .pinch {
                     if scaleDelta == 0 { return .none }
-                    // Fingers spreading (scaleDelta > 0) → zoom in → negative wheel.
+                    // Fingers spreading (scaleDelta > 0) → zoom in → positive wheel.
                     lastScrollPhase = .changed
                     pinchWasActive = true
-                    return .zoomDelta(dy: -scaleDelta, phase: .changed)
+                    return .zoomDelta(dy: scaleDelta, phase: .changed)
                 }
             }
 
