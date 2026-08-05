@@ -272,7 +272,6 @@ struct TouchStateTracker {
             guard !tracked.isEmpty else { return .none }
             let dx = newCentroid.x - oldCentroid.x
             let dy = newCentroid.y - oldCentroid.y
-            let translation = hypot(dx, dy)
 
             if pinchZoom {
                 if twoFingerKind == .undecided {
