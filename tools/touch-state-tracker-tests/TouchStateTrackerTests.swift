@@ -92,12 +92,58 @@ private func testSingleContactFrameDoesNotCommitPan() {
                 "a 1-contact frame while undecided must not commit a phantom pan")
 }
 
+private func rawContact(
+    id: Int, major: Int?, minor: Int? = nil
+) -> (id: Int, major: Int?, minor: Int?) {
+    (id: id, major: major, minor: minor)
+}
+
+/// PTH-660 and PTH-860 share the same IntuosV2 touch report layout — the
+/// registry's own touchMaxX/Y for PTH-660 are estimated from PTH-860's
+/// confirmed values — so both PIDs go through the calibrated palm filter.
+private func testPalmRejectionOnCalibratedFamily() {
+    for productID in [0x0357, 0x0358] {
+        var rejector = TouchPalmRejector()
+
+        let initial = rejector.filter(
+            contacts: [rawContact(id: 1, major: 6, minor: 7), rawContact(id: 2, major: 2, minor: 3)],
+            productID: productID)
+        expectEqual(initial.acceptedIDs, Set([2]),
+                    "a palm must be dropped while a simultaneous finger remains usable")
+        expectEqual(initial.newlyRejectedIDs, [1],
+                    "the live palm-sized contact must be classified as a palm")
+
+        let stillRejected = rejector.filter(
+            contacts: [rawContact(id: 1, major: 4, minor: 4), rawContact(id: 2, major: 2, minor: 3)],
+            productID: productID)
+        expectEqual(stillRejected.acceptedIDs, Set([2]),
+                    "hysteresis must keep a palm rejected between thresholds")
+
+        let accepted = rejector.filter(
+            contacts: [rawContact(id: 1, major: 3, minor: 3)], productID: productID)
+        expectEqual(accepted.acceptedIDs, Set([1]),
+                    "a contact below the lower threshold can return as a finger")
+        expectEqual(accepted.newlyAcceptedIDs, [1],
+                    "the hysteresis release must be observable for logging")
+    }
+}
+
+private func testPalmFilteringIsFamilySpecific() {
+    var rejector = TouchPalmRejector()
+    let result = rejector.filter(
+        contacts: [rawContact(id: 1, major: 41)], productID: 0x0317)
+    expectEqual(result.acceptedIDs, Set([1]),
+                "un-calibrated tablet families must keep their contacts unchanged")
+}
+
 @main
 enum TouchStateTrackerTestRunner {
     static func main() {
         testPinchMagnifyEnvelope()
         testPreCommitLiftHasNoScrollEnd()
         testSingleContactFrameDoesNotCommitPan()
+        testPalmRejectionOnCalibratedFamily()
+        testPalmFilteringIsFamilySpecific()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

@@ -790,6 +790,9 @@ final class InputInjector: @unchecked Sendable {
 
     /// Mutable per-sequence state for capacitive touch.  HIDThread-owned.
     var touchTracker = TouchStateTracker()
+    /// Per-contact palm classification. HIDThread-owned alongside the
+    /// tracker, so a palm can never enter its gesture state.
+    var touchPalmRejector = TouchPalmRejector()
     /// CFAbsoluteTime when the pen last left proximity.  Touch is suppressed
     /// while the pen is in proximity and for a brief grace window after exit
     /// so palm-rejection bounces (finger contact arriving 1–2 frames after
