@@ -485,21 +485,22 @@ struct TabletAreaView: View {
     // MARK: - Coordinate readout
 
     private var coordinateReadout: some View {
-        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
-            GridRow {
-                Text("Width").foregroundStyle(.secondary)
-                    .scaledFrame(width: 60, alignment: .trailing)
-                pixelField(fraction: $settings.activeAreaWidth,
-                           maxValue: activeDeviceMaxX,
-                           minFraction: Self.minFraction,
-                           maxFraction: 1 - settings.activeAreaX)
-                Text("Height").foregroundStyle(.secondary)
-                    .scaledFrame(width: 60, alignment: .trailing)
-                pixelField(fraction: $settings.activeAreaHeight,
-                           maxValue: activeDeviceMaxY,
-                           minFraction: Self.minFraction,
-                           maxFraction: 1 - settings.activeAreaY)
-            }
+        // A single-row Grid mis-sized and vertically offset the value fields
+        // relative to each other on 1x displays (DTK-2400); with one row a
+        // Grid adds nothing over an HStack, which lays the cells out sanely.
+        HStack(alignment: .center, spacing: 8) {
+            Text("Width").foregroundStyle(.secondary)
+                .scaledFrame(width: 60, alignment: .trailing)
+            pixelField(fraction: $settings.activeAreaWidth,
+                       maxValue: activeDeviceMaxX,
+                       minFraction: Self.minFraction,
+                       maxFraction: 1 - settings.activeAreaX)
+            Text("Height").foregroundStyle(.secondary)
+                .scaledFrame(width: 60, alignment: .trailing)
+            pixelField(fraction: $settings.activeAreaHeight,
+                       maxValue: activeDeviceMaxY,
+                       minFraction: Self.minFraction,
+                       maxFraction: 1 - settings.activeAreaY)
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }
@@ -508,7 +509,8 @@ struct TabletAreaView: View {
     private func percentField(_ binding: Binding<Double>) -> some View {
         TextField("", value: binding, format: .percent.precision(.fractionLength(1)))
             .textFieldStyle(.roundedBorder)
-            .scaledFrame(width: 80)
+            .lineLimit(1)
+            .scaledFrame(width: 100)
             .multilineTextAlignment(.trailing)
     }
 
@@ -529,9 +531,14 @@ struct TabletAreaView: View {
                 fraction.wrappedValue = Swift.min(Swift.max(f, minFraction), maxFraction)
             }
         )
+        // The visible field is 20 pt narrower than the frame (SwiftUI pads the
+        // AppKit field 10 pt per side). A value whose text outgrows that inner
+        // width makes the field reject the proposal and drop ~11 pt (grouped
+        // Form only). 100 leaves room for 7-character values like "104,480".
         return TextField("", value: pixelBinding, format: .number)
             .textFieldStyle(.roundedBorder)
-            .scaledFrame(width: 80)
+            .lineLimit(1)
+            .scaledFrame(width: 100)
             .multilineTextAlignment(.trailing)
     }
 
