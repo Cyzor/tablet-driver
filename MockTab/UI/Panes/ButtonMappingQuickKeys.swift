@@ -116,6 +116,13 @@ struct QuickKeysSectionView: View {
                 speedBinding: slotSpeedBinding(at:),
                 cwBinding: { slotBinding(at: $0, direction: .cw) },
                 ccwBinding: { slotBinding(at: $0, direction: .ccw) },
+                // The dial reports one discrete ±1 click per detent (not a
+                // continuous position like a Wacom ring), so a single click
+                // only crosses dispatchRingDelta's chunk-event threshold —
+                // and gets the same anti-clamp treatment — if the per-click
+                // multiplier itself is high enough. See maxSpeed's doc comment
+                // on TouchRingModeListView.
+                maxSpeed: 20.0,
                 ledEditor: slotLEDWell(at:),
                 onCenterTap: { dialRecordToken += 1 }
             )

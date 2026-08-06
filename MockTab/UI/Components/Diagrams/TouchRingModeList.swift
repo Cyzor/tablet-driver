@@ -71,6 +71,16 @@ struct TouchRingModeListView: View {
     let speedBinding: (Int) -> Binding<Double>
     let cwBinding: (Int) -> Binding<ButtonBinding>
     let ccwBinding: (Int) -> Binding<ButtonBinding>
+    /// Upper bound of the Speed slider. A Wacom ring reports an absolute
+    /// position, so a single fast spin already produces a large raw delta
+    /// per HID report — the default range is plenty, and that per-report
+    /// burst is what crosses dispatchRingDelta's chunk-event threshold at
+    /// high speed. The Xencelabs dial instead reports one discrete ±1 click
+    /// per detent, so a single click's line count only crosses that same
+    /// threshold (and gets the same chunked-event treatment) if the
+    /// per-click multiplier itself is high enough — callers for that device
+    /// pass a taller range accordingly.
+    var maxSpeed: Double = 3.0
     /// Inline light editor per mode slot; nil (all Wacom devices) omits the
     /// summary dot and the Light row entirely.
     var ledEditor: ((Int) -> LEDColorControl)? = nil
@@ -110,6 +120,7 @@ struct TouchRingModeListView: View {
             speedBinding: speedBinding,
             cwBinding: cwBinding,
             ccwBinding: ccwBinding,
+            maxSpeed: maxSpeed,
             ledEditor: ledEditor,
             onCenterTap: onCenterTap
         )
@@ -140,6 +151,7 @@ private struct TouchRingModeListCore: View, Equatable {
     let speedBinding: (Int) -> Binding<Double>
     let cwBinding: (Int) -> Binding<ButtonBinding>
     let ccwBinding: (Int) -> Binding<ButtonBinding>
+    let maxSpeed: Double
     let ledEditor: ((Int) -> LEDColorControl)?
     let onCenterTap: (() -> Void)?
 
@@ -153,6 +165,7 @@ private struct TouchRingModeListCore: View, Equatable {
             && lhs.showsDiagram == rhs.showsDiagram
             && lhs.selected == rhs.selected
             && lhs.pressed == rhs.pressed
+            && lhs.maxSpeed == rhs.maxSpeed
             && (lhs.ledEditor == nil) == (rhs.ledEditor == nil)
             && (lhs.onCenterTap == nil) == (rhs.onCenterTap == nil)
     }
@@ -277,7 +290,7 @@ private struct TouchRingModeListCore: View, Equatable {
             labeledRow(String(localized: "Speed", comment: "Ring mode editor row label")) {
                 // Snaps in the binding rather than via `step:` so it renders
                 // without tick marks — one slider style everywhere.
-                Slider(value: snappedSpeedBinding(idx), in: 0...3.0) { EmptyView() }
+                Slider(value: snappedSpeedBinding(idx), in: 0...maxSpeed) { EmptyView() }
                     .labelsHidden()
                     .frame(maxWidth: 200)
                     .help("Adjust how fast the ring scrolls or repeats key presses.")
