@@ -973,7 +973,7 @@ extension InputInjector {
         }
         // See postTouchScrollGesture (InputInjector+Touch.swift) for why this
         // companion event exists and why it's posted before the wheel event.
-        if panScrollUsePhases, !Self.debugDisableGestureCompanionEvent {
+        if panScrollUsePhases {
             postPanScrollGesture(dx: dx, dy: dy, phase: phase)
         }
         guard
@@ -1052,36 +1052,34 @@ extension InputInjector {
     /// not what the decay math assumes elapsed — see `momentumTailTick`.
     static let momentumTailInterval: TimeInterval = 1.0 / 60.0
 
-    /// Velocity decay per 10ms of real elapsed time, not per tick. Sourced
-    /// from a live hardware trace of Wacom's own native touch-scroll momentum
-    /// (2026-08-05, see project_scroll_momentum_mechanism memory): its
-    /// decaying tail multiplies by ~95–96% roughly every 10ms. The original
-    /// `momentumDecayPerTick = 0.85` was an untested guess assumed to apply
-    /// once per scheduled tick — it produced a coast roughly a third as long
-    /// as real hardware and, worse, assumed every tick actually landed
-    /// exactly `momentumTailInterval` apart, which a one-shot
-    /// self-rescheduling `CFRunLoopTimer` never guarantees under any runloop
-    /// load. `momentumTailTick` now measures real elapsed time each fire and
-    /// applies this rate continuously against it, which fixes both: a firm
-    /// flick coasts on the order of a real trackpad's, and any scheduling
-    /// jitter changes how far a tick travels, not how fast the whole tail
-    /// decays — eliminating the uneven, stair-stepping feel that came from
-    /// silently assuming a fixed tick length that wasn't actually constant.
-    static let momentumDecayPer10ms = 0.955
+    /// Constant deceleration (points/second²) applied to the momentum
+    /// velocity every tick, replacing an earlier exponential-decay model
+    /// (`momentumDecayPer10ms`, sourced from a Wacom native-driver trace —
+    /// wrong target: the user's comparison has always been a real Apple
+    /// trackpad, not Wacom's own touch feel, and Wacom's captured rate
+    /// produced a slow, grinding coast that never sat right). Exponential
+    /// decay also structurally cannot match a real trackpad's flick
+    /// signature — a decisive flick coasts hard and briefly (a real
+    /// trackpad: roughly a quarter second) while still covering a large
+    /// distance, then stops cleanly, rather than asymptotically crawling to
+    /// a near-stop and lingering there. Constant deceleration reaches
+    /// exactly zero in bounded time and its distance scales with the square
+    /// of release speed, so a decisive flick travels disproportionately
+    /// farther than a gentle one — matching both complaints in one change.
+    /// This value is a starting point derived from a rough target (a firm
+    /// flick decaying to a stop in ~0.25s while covering several thousand
+    /// points), not a hardware measurement — expect it to need retuning
+    /// once real release-velocity numbers from `recentVelocities`-based
+    /// capture are observed on hardware.
+    static let momentumDeceleration: CGFloat = 6000.0
 
-    /// Velocity magnitude (points/second) below which the tail ends. Also
-    /// the floor below which a tail never starts at all — a slow, deliberate
-    /// release isn't a flick on a real trackpad either, and doesn't get a
-    /// momentum phase there; this must match, or a slow release would coast
-    /// when native input wouldn't.
+    /// Velocity magnitude (points/second) below which a tail never starts —
+    /// a slow, deliberate release isn't a flick on a real trackpad either,
+    /// and doesn't get a momentum phase there. Constant deceleration reaches
+    /// exactly zero on its own, so this is only a start gate now, not a stop
+    /// condition (see `momentumTailTick`).
     static let momentumStopVelocity: CGFloat = 8.0
 
-    /// TEMPORARY diagnostic switch — not a shipping setting. Set true to
-    /// isolate whether the type-29 gesture-scroll companion event
-    /// (`postTouchScrollGesture`/`postPanScrollGesture`) is the cause of the
-    /// "skidding" feel reported in Safari/Firefox after it shipped, as
-    /// opposed to the momentum decay math itself. Remove once resolved.
-    static let debugDisableGestureCompanionEvent = true
 
     /// Starts (or restarts) the momentum decay tail after a Scroll Drag
     /// release. `velocity` is `PanScrollTracker.releaseVelocity` (points/second).
@@ -1122,11 +1120,23 @@ extension InputInjector {
         let now = CFAbsoluteTimeGetCurrent()
         let dt = now - momentumLastTickTime
         momentumLastTickTime = now
-        let dx = momentumVelocity.dx * dt
-        let dy = momentumVelocity.dy * dt
-        let decay = pow(Self.momentumDecayPer10ms, dt * 1000.0 / 10.0)
-        momentumVelocity.dx *= decay
-        momentumVelocity.dy *= decay
+
+        let speed = hypot(momentumVelocity.dx, momentumVelocity.dy)
+        guard speed > 0 else {
+            postPanScrollMomentum(dx: 0, dy: 0, phase: .end)
+            return
+        }
+        // Trapezoidal integration (average of this tick's start/end speed,
+        // not just the start speed) so distance stays accurate even at the
+        // low tick rate under real scheduling jitter, not just at an
+        // idealized fixed 60Hz.
+        let newSpeed = max(0, speed - Self.momentumDeceleration * CGFloat(dt))
+        let avgSpeed = (speed + newSpeed) / 2
+        let dx = momentumVelocity.dx / speed * avgSpeed * dt
+        let dy = momentumVelocity.dy / speed * avgSpeed * dt
+        momentumVelocity = newSpeed > 0
+            ? CGVector(dx: momentumVelocity.dx / speed * newSpeed, dy: momentumVelocity.dy / speed * newSpeed)
+            : .zero
 
         momentumAccumX += dx
         momentumAccumY += dy
@@ -1135,8 +1145,7 @@ extension InputInjector {
         momentumAccumX -= Double(ix)
         momentumAccumY -= Double(iy)
 
-        let magnitude = hypot(momentumVelocity.dx, momentumVelocity.dy)
-        if magnitude < Self.momentumStopVelocity {
+        if newSpeed <= 0 {
             postPanScrollMomentum(dx: Double(ix), dy: Double(iy), phase: .end)
             return
         }

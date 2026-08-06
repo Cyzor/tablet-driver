@@ -193,7 +193,7 @@ extension InputInjector {
         // it first: posting the wheel event after it (not before) is what a
         // real trackpad's ordering looks like and avoids a stutter seen when
         // ordered the other way. Only meaningful with a real phase.
-        if usePhases, !Self.debugDisableGestureCompanionEvent {
+        if usePhases {
             postTouchScrollGesture(dx: dx, dy: dy, phase: phase)
         }
         let loc = currentCursorPosition()
@@ -354,11 +354,22 @@ extension InputInjector {
         let now = CFAbsoluteTimeGetCurrent()
         let dt = now - touchMomentumLastTickTime
         touchMomentumLastTickTime = now
-        let dx = touchMomentumVelocity.dx * dt
-        let dy = touchMomentumVelocity.dy * dt
-        let decay = pow(Self.momentumDecayPer10ms, dt * 1000.0 / 10.0)
-        touchMomentumVelocity.dx *= decay
-        touchMomentumVelocity.dy *= decay
+
+        let speed = hypot(touchMomentumVelocity.dx, touchMomentumVelocity.dy)
+        guard speed > 0 else {
+            postTouchScrollMomentum(dx: 0, dy: 0, phase: .end)
+            return
+        }
+        // See momentumTailTick (InputInjector+CGEvents.swift) for why this is
+        // constant deceleration with trapezoidal integration, not exponential
+        // decay — same model, independent state.
+        let newSpeed = max(0, speed - Self.momentumDeceleration * CGFloat(dt))
+        let avgSpeed = (speed + newSpeed) / 2
+        let dx = touchMomentumVelocity.dx / speed * avgSpeed * dt
+        let dy = touchMomentumVelocity.dy / speed * avgSpeed * dt
+        touchMomentumVelocity = newSpeed > 0
+            ? CGVector(dx: touchMomentumVelocity.dx / speed * newSpeed, dy: touchMomentumVelocity.dy / speed * newSpeed)
+            : .zero
 
         touchMomentumAccumX += dx
         touchMomentumAccumY += dy
@@ -367,8 +378,7 @@ extension InputInjector {
         touchMomentumAccumX -= Double(ix)
         touchMomentumAccumY -= Double(iy)
 
-        let magnitude = hypot(touchMomentumVelocity.dx, touchMomentumVelocity.dy)
-        if magnitude < Self.momentumStopVelocity {
+        if newSpeed <= 0 {
             postTouchScrollMomentum(dx: Double(ix), dy: Double(iy), phase: .end)
             return
         }

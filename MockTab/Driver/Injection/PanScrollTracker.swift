@@ -65,11 +65,17 @@ struct PanScrollTracker {
     private var accumX = 0.0
     private var accumY = 0.0
 
-    /// Exponential moving average of per-frame velocity (points/second), for
-    /// the future momentum tail. alpha chosen so the window spans ~50 ms at
-    /// pen report rates — matches the scale of a trackpad's flick sampling.
-    private var velX = 0.0
-    private var velY = 0.0
+    /// Recent per-frame instantaneous velocities (points/second) with a
+    /// timestamp on `clock` — the momentum-tail seed. An EMA was tried first
+    /// and rejected: it takes several frames to converge, and a real flick
+    /// is often over before that happens, so the EMA reports well under the
+    /// pen's actual peak speed. Using the fastest sample within a short
+    /// recent window instead captures the peak even from a very brief flick.
+    private var recentVelocities: [(time: Double, v: CGVector)] = []
+    /// Free-running elapsed-time clock, advanced by each call's `dt` — this
+    /// tracker only ever receives relative frame deltas, never wall-clock
+    /// time, so the peak-velocity window needs its own local timeline.
+    private var clock: Double = 0
 
     /// Sign applied to deltas: natural scrolling (content follows pen) is the
     /// default; reversed matches classic scroll-wheel semantics. Captured at
@@ -135,16 +141,17 @@ struct PanScrollTracker {
 
     /// Seconds of `process()` calls since the last frame with non-negligible
     /// raw motion. A real trackpad detects a deliberate brake — holding
-    /// still before releasing — and starts no momentum even though the EMA
-    /// above (tuned for smoothing a flick, not a fast "did they mean it"
-    /// read) hasn't fully decayed yet. `disengage()` gates release on this
-    /// instead of trusting the smoothed estimate alone.
+    /// still before releasing — and starts no momentum even if a fast sample
+    /// is still sitting in `recentVelocities` from just before the brake.
+    /// `disengage()` gates release on this instead of trusting the
+    /// peak-velocity window alone.
     private var timeSinceMotion: Double = 0
 
     // MARK: - Tunables
 
-    /// EMA weight per frame for the velocity estimate (~50 ms window at 133 Hz).
-    static let velocityAlpha = 0.20
+    /// How far back to look for the fastest recent sample when seeding
+    /// momentum release velocity.
+    static let peakVelocityWindow: Double = 0.06
     /// A release is only treated as a flick if motion happened within this
     /// many seconds of it.
     static let momentumRecencyWindow: Double = 0.05
@@ -164,8 +171,8 @@ struct PanScrollTracker {
         last = nil
         accumX = 0
         accumY = 0
-        velX = 0
-        velY = 0
+        recentVelocities.removeAll()
+        clock = 0
         releaseVelocity = .zero
         timeSinceMotion = 0
         lastRaw = nil
@@ -179,8 +186,10 @@ struct PanScrollTracker {
     /// Idempotent — a second call after an inactive period emits nothing.
     mutating func disengage() -> Intent {
         guard isActive else { return .none }
-        releaseVelocity = timeSinceMotion <= Self.momentumRecencyWindow
-            ? CGVector(dx: velX, dy: velY) : .zero
+        let peak = recentVelocities
+            .filter { clock - $0.time <= Self.peakVelocityWindow }
+            .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
+        releaseVelocity = timeSinceMotion <= Self.momentumRecencyWindow ? peak : .zero
         isActive = false
         last = nil
         lastRaw = nil
@@ -249,12 +258,10 @@ struct PanScrollTracker {
             }
         }
 
-        // Velocity EMA (ungated, so a stop decays the estimate toward zero —
-        // a flick-then-hold release must not carry stale flick velocity).
         if dt > 0 {
-            let a = Self.velocityAlpha
-            velX += a * (rawDx / dt - velX)
-            velY += a * (rawDy / dt - velY)
+            clock += dt
+            recentVelocities.append((time: clock, v: CGVector(dx: rawDx / dt, dy: rawDy / dt)))
+            recentVelocities.removeAll { clock - $0.time > Self.peakVelocityWindow }
         }
         if abs(rawDx) > 0.01 || abs(rawDy) > 0.01 {
             timeSinceMotion = 0

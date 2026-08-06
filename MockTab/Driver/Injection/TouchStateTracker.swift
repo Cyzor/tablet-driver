@@ -194,19 +194,23 @@ struct TouchStateTracker {
     private var undecidedOriginCentroid: CGPoint = .zero
     private var undecidedOriginDistance: Double = 0
 
-    /// EMA scroll velocity, points/second — the momentum-tail seed. Ungated
-    /// (updated even on zero-delta frames when `dt > 0`) so a flick-then-hold
-    /// release decays toward zero rather than carrying stale flick velocity,
-    /// matching `PanScrollTracker.velX/velY`.
-    private var velX = 0.0
-    private var velY = 0.0
+    /// Recent per-frame instantaneous velocities (points/second), each frame's
+    /// raw `delta/dt` with a timestamp — the momentum-tail seed. An EMA was
+    /// tried first and rejected: at `velocityAlpha = 0.20` it takes several
+    /// frames to converge, and a real flick is often over in less time than
+    /// that, so the EMA reports well under the finger's actual peak speed —
+    /// exactly the "momentum falls short of a real trackpad" complaint. Using
+    /// the fastest sample within a short recent window instead captures the
+    /// peak even from a very brief flick, matching `PanScrollTracker`'s
+    /// equivalent. Pruned to `peakVelocityWindow` each frame; tiny array,
+    /// never holds more than a handful of samples at touch report rates.
+    private var recentVelocities: [(time: CFAbsoluteTime, v: CGVector)] = []
     private var lastFrameTime: CFAbsoluteTime = 0
     /// Time of the last frame with nonzero motion. A real trackpad detects a
     /// deliberate brake — holding fingers still before lifting — and starts
-    /// no momentum even though the EMA above hasn't fully decayed to zero
-    /// yet (`velocityAlpha` is tuned for smoothing a flick, not for a fast
-    /// "did they mean it" read). Gating release on *recent* motion instead
-    /// of the smoothed estimate catches that directly.
+    /// no momentum even if a fast sample is still sitting in `recentVelocities`
+    /// from just before the brake. Gating release on *recent* motion instead
+    /// of trusting the peak-velocity window alone catches that directly.
     private var lastMotionTime: CFAbsoluteTime = 0
     /// Captured at scroll-gesture end; read by the posting layer to start a
     /// momentum decay tail. Unused while the gesture is still active.
@@ -232,12 +236,13 @@ struct TouchStateTracker {
     /// Pinch wins only when inter-finger distance change clearly exceeds
     /// centroid translation. Equal/noisy scale vs pan → stay pan (scroll).
     static let pinchDominanceRatio: Double = 1.75
-    /// EMA weight per frame for the velocity estimate — matches
-    /// `PanScrollTracker.velocityAlpha`.
-    static let velocityAlpha = 0.20
+    /// How far back to look for the fastest recent sample when seeding
+    /// momentum release velocity — matches `PanScrollTracker.peakVelocityWindow`.
+    static let peakVelocityWindow: CFAbsoluteTime = 0.06
     /// A lift is only treated as a flick-release if motion happened within
     /// this many seconds of it — otherwise the fingers were held still
-    /// (braking) and release velocity is suppressed regardless of the EMA.
+    /// (braking) and release velocity is suppressed regardless of any fast
+    /// sample still sitting in the peak-velocity window.
     static let momentumRecencyWindow: CFAbsoluteTime = 0.05
 
     // MARK: - Process
@@ -305,8 +310,10 @@ struct TouchStateTracker {
             let tap = tapToClick && (priorMode == .pointer || priorMode == .pending)
                 && now - tapStart <= Self.tapMaxDuration
                 && tapMaxDelta < Self.tapMaxDistance
-            releaseVelocity = now - lastMotionTime <= Self.momentumRecencyWindow
-                ? CGVector(dx: velX, dy: velY) : .zero
+            let peak = recentVelocities
+                .filter { now - $0.time <= Self.peakVelocityWindow }
+                .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
+            releaseVelocity = now - lastMotionTime <= Self.momentumRecencyWindow ? peak : .zero
             reset()
             switch priorMode {
             case .scroll where priorKind == .pinch && priorPhase != .ended:
@@ -346,8 +353,7 @@ struct TouchStateTracker {
                 lastPinchDistance = Self.distance(between: pair)
                 undecidedOriginCentroid = centroid(of: pair.map(\.screen))
                 undecidedOriginDistance = lastPinchDistance
-                velX = 0
-                velY = 0
+                recentVelocities.removeAll()
                 lastFrameTime = now
                 lastMotionTime = 0
                 // Defer Began until pan/pinch commits when pinch discrimination
@@ -456,9 +462,8 @@ struct TouchStateTracker {
             let outDx = sign * dx
             let outDy = sign * dy
             if dt > 0 {
-                let a = Self.velocityAlpha
-                velX += a * (outDx / dt - velX)
-                velY += a * (outDy / dt - velY)
+                recentVelocities.append((time: now, v: CGVector(dx: outDx / dt, dy: outDy / dt)))
+                recentVelocities.removeAll { now - $0.time > Self.peakVelocityWindow }
             }
             if dx != 0 || dy != 0 {
                 lastMotionTime = now
@@ -498,8 +503,7 @@ struct TouchStateTracker {
         lastPinchDistance = 0
         undecidedOriginCentroid = .zero
         undecidedOriginDistance = 0
-        velX = 0
-        velY = 0
+        recentVelocities.removeAll()
         lastFrameTime = 0
         lastMotionTime = 0
     }
