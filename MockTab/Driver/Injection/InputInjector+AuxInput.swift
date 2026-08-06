@@ -176,7 +176,10 @@ extension InputInjector {
                                   at: cursorPos, snapshot: snap, settings: settings)
             }
         } else {
-            postScrollWheelEvent(delta: delta, at: cursorPos)
+            // No slot configured — fall back to a direct scroll, applying the
+            // same nominal-CW-scrolls-down + natural-scrolling convention as
+            // dispatchRingDelta's `.scroll` case.
+            postScrollWheelEvent(delta: Self.naturalScrollingEnabled ? delta : -delta, at: cursorPos)
         }
     }
 }

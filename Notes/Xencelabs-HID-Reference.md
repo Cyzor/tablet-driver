@@ -187,12 +187,19 @@ Byte  3:  AuxButtons[ 8–15]
 Byte  4:  AuxButtons[16–19]  — lower nibble only
 Bytes 5–6: (unassigned in Xencelabs context)
 Byte  7:  Wheel byte
-          bit 0: Wheel 1 clockwise (+1)
-          bit 1: Wheel 1 counter-clockwise (−1)
+          bit 0: Wheel 1 counter-clockwise (−1)
+          bit 1: Wheel 1 clockwise (+1)
           bit 4: Wheel 2 clockwise (+1)
           bit 5: Wheel 2 counter-clockwise (−1)
 Bytes 8–9: (padding)
 ```
+
+Wheel 1's bit 0/1 labels above are corrected from an earlier misreading of the
+vendor byte map. Hardware observation on the puck dial (2026-08-06, cross-checked
+against the native driver's own rotation-direction diagram) confirmed bit 0 =
+counter-clockwise, bit 1 = clockwise — the reverse of the original labels. See
+`feedback_manual_specs_not_authoritative`: don't take a vendor doc's polarity
+claim over a corroborated hardware read.
 
 OTD configures **3 auxiliary buttons** (`AuxiliaryButtons.ButtonCount: 3`) for both the Small and Medium tablets. This matches the 3 physical express keys on the tablet body. The remaining button bits in the aux report structure are unused in the Xencelabs context, though the struct technically supports up to 20.[^3]
 

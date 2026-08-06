@@ -93,15 +93,20 @@ final class InputInjector: @unchecked Sendable {
     var deviceProductID: Int
 
     /// Whether this device's raw touch-ring position counts opposite the
-    /// direction the injector treats as positive.
+    /// normalized convention (positive delta = physically clockwise).
+    ///
+    /// This flag only normalizes raw hardware polarity — it says nothing about
+    /// which way clockwise should scroll. That's applied once, uniformly,
+    /// downstream in `dispatchRingDelta` from `InputInjector.naturalScrollingEnabled`.
     ///
     /// Ring polarity is a per-firmware-family hardware fact, not a universal
-    /// one: the Intuos-family ring's position byte increases clockwise, so it
-    /// has to be flipped to match the touch strip's "increasing = up"
-    /// convention, while the Cintiq 24HD's counts the other way already and
-    /// scrolls backwards if flipped too. Resolved once at init rather than per
-    /// report. If a third convention ever appears, promote this to a registry
-    /// field next to the other per-device hardware facts.
+    /// one. Hardware-observed so far: `.cintiqV1` (DTK-2400, both bezel rings)
+    /// counts clockwise; `.intuosV1` (PTH-850) counts counter-clockwise, so it
+    /// needs the flip. `.intuosV2` (PTH-660/860) is assumed clockwise (grouped
+    /// with `.cintiqV1`) but is untested — the only family resting on that
+    /// assumption. Resolved once at init rather than per report. If a third
+    /// polarity convention ever appears, promote this to a registry field next
+    /// to the other per-device hardware facts.
     let ringDeltaIsInverted: Bool
     var activeToolSettings: ToolSettings? = nil {
         didSet { reconcileSyntheticFlags() }
@@ -189,12 +194,38 @@ final class InputInjector: @unchecked Sendable {
         }
     }
 
+    // MARK: - Natural scrolling (system-wide, not per-device)
+
+    /// Mirrors `com.apple.swipescrolldirection`: true when System Settings ›
+    /// Mouse/Trackpad › "Natural Scrolling" is on. This is a machine-wide fact,
+    /// not a per-tablet one, so it's `static` rather than threaded through
+    /// `InjectionSnapshot`.
+    ///
+    /// Read fresh from `UserDefaults` on every call rather than cached —
+    /// `UserDefaults` is documented thread-safe, so this is safe to call from
+    /// HIDThread inside `dispatchRingDelta` without extra locking. Confirmed by
+    /// direct observation (2026-08-06) that this reflects the system value
+    /// within about a second of the switch being toggled, with no distributed-
+    /// notification plumbing needed: `SwipeScrollDirectionDidChangeNotification`
+    /// exists but distributed-notification delivery to a background utility
+    /// app was seen to be unreliable (macOS suspends/coalesces delivery while
+    /// the app isn't frontmost), so don't reintroduce a cached+notified flag
+    /// here without re-verifying delivery is reliable for a backgrounded app.
+    ///
+    /// Ring/dial scroll injection posts `CGEvent` scroll-wheel events directly,
+    /// which bypass the OS's own natural-scrolling flip (that inversion happens
+    /// below CGEvent, for real HID devices) — so `dispatchRingDelta` applies it
+    /// itself, using this flag, to reproduce what a real device's driver does.
+    static var naturalScrollingEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "com.apple.swipescrolldirection")
+    }
+
     @MainActor
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
         self.deviceProductID = productID
         self.ringDeltaIsInverted =
-            WacomDeviceRegistry.spec(for: productID)?.parser != .cintiqV1
+            WacomDeviceRegistry.spec(for: productID)?.parser == .intuosV1
         Self.liveInjectorsLock.withLock { $0.table.add(self) }
         recomputeVirtualScreenBounds()
         displayObserver = NotificationCenter.default.addObserver(

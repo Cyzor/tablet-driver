@@ -912,7 +912,11 @@ extension InputInjector {
         accum -= Double(lines)
         switch slot.action {
         case .scroll:
-            postScrollWheelEvent(delta: lines, at: location)
+            // Nominal convention is the vendor/classic one: clockwise (positive
+            // `lines`) scrolls down. macOS applies its natural-scrolling flip
+            // below the CGEvent layer, so injected scroll events never receive
+            // it — apply it here instead, from the mirrored system setting.
+            postScrollWheelEvent(delta: Self.naturalScrollingEnabled ? lines : -lines, at: location)
         case .keyPress:
             let binding = lines > 0 ? slot.cwBinding : slot.ccwBinding
             let count = min(abs(lines), 4)
