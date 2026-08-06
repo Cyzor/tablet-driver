@@ -121,8 +121,17 @@ extension InputInjector {
         // idle-to-two-contacts transition instead. Requires *two* fingers,
         // not one — an ordinary single-finger pointer move shouldn't stop a
         // coast the user never touched.
-        if projected.count >= 2, touchTracker.mode == .idle {
-            stopTouchMomentumTail()
+        //
+        // `.pending` counts as well as `.idle`: process()'s idle branch returns
+        // early on the first contact of any sequence, so `.idle` -> `.pending`
+        // always burns a frame and `.idle` only still holds here when both
+        // fingers landed in the very same HID frame. A landing split across two
+        // frames — the common case at report rate, and guaranteed whenever palm
+        // filtering drops a contact on the first one — would otherwise never
+        // arrest the coast at all. MomentumTail.stop() no-ops when no tail is
+        // in flight, so testing both modes is free.
+        if projected.count >= 2, touchTracker.mode == .idle || touchTracker.mode == .pending {
+            touchMomentumTail.stop()
         }
 
         let intent = touchTracker.process(
@@ -143,13 +152,13 @@ extension InputInjector {
             if phase == .began {
                 // A fresh two-finger scroll halts any coasting tail from the
                 // previous gesture, same as touching a real trackpad mid-momentum.
-                cancelTouchMomentumTail()
+                touchMomentumTail.cancel()
             }
             postTouchScroll(
                 dx: dx, dy: dy, phase: phase,
                 usePhases: snap.twoFingerScrollMomentum)
             if phase == .ended, snap.twoFingerScrollMomentum {
-                startTouchMomentumTail(velocity: touchTracker.releaseVelocity)
+                touchMomentumTail.start(velocity: touchTracker.releaseVelocity)
             }
         case .zoomMagnify(let magnification, let phase):
             postTouchMagnify(magnification: magnification, phase: phase)
@@ -292,103 +301,16 @@ extension InputInjector {
 
     // MARK: - Touch scroll momentum tail
 
+    /// Sole event-construction site for the touch-scroll momentum tail; the
+    /// decay itself lives in `touchMomentumTail` (see MomentumTail.swift).
+    ///
     /// `postTouchScroll`'s phased began/changed/ended stream is enough for
     /// `NSScrollView` apps to synthesize their own coast, but apps that read
     /// gesture-scroll deltas directly and build their own physics (Safari,
     /// Firefox, Affinity — confirmed by hardware test 2026-08-05) never see
-    /// one, because `CGEventPost` carries no real trackpad hardware behind
-    /// it to generate a `kCGMomentumScrollPhase` stream. Reuses the same
-    /// decay curve as `startMomentumTail` (Scroll Drag's Pan View tail, see
-    /// InputInjector+CGEvents.swift) but with its own timer/velocity state
-    /// so the two tails can never cancel or blend into each other.
-    func startTouchMomentumTail(velocity: CGVector) {
-        cancelTouchMomentumTail()
-        guard hypot(velocity.dx, velocity.dy) >= Self.momentumStopVelocity else { return }
-        touchMomentumVelocity = velocity
-        touchMomentumAccumX = 0
-        touchMomentumAccumY = 0
-        touchMomentumLastTickTime = CFAbsoluteTimeGetCurrent()
-        postTouchScrollMomentum(dx: 0, dy: 0, phase: .begin)
-        scheduleTouchMomentumTailTick()
-    }
-
-    /// Cancels any in-flight touch momentum tail without posting a `.end`
-    /// event — used when a new two-finger scroll engages before the previous
-    /// tail decayed out.
-    func cancelTouchMomentumTail() {
-        touchMomentumTailTimer.map { CFRunLoopTimerInvalidate($0) }
-        touchMomentumTailTimer = nil
-    }
-
-    /// Like `cancelTouchMomentumTail`, but also posts an explicit momentum-
-    /// end event. `NSScrollView`-based apps that received our momentum-begin/
-    /// continue stream are running their own independent coast animation by
-    /// this point — simply stopping our timer never tells them to stop
-    /// theirs, since we haven't sent a scroll-delta event either (a
-    /// stationary two-finger grab, not a new gesture). A real trackpad's
-    /// touch-down is sensed and stops the app's animation directly; this is
-    /// the nearest equivalent we can send. The `.began`-of-a-new-gesture
-    /// cancel path elsewhere doesn't need this: the wheel event immediately
-    /// following it already carries a fresh phase, which is by itself
-    /// sufficient to cancel a prior momentum animation.
-    func stopTouchMomentumTail() {
-        guard touchMomentumTailTimer != nil else { return }
-        cancelTouchMomentumTail()
-        postTouchScrollMomentum(dx: 0, dy: 0, phase: .end)
-    }
-
-    private func scheduleTouchMomentumTailTick() {
-        let timer = CFRunLoopTimerCreateWithHandler(
-            kCFAllocatorDefault,
-            CFAbsoluteTimeGetCurrent() + Self.momentumTailInterval,
-            0, 0, 0
-        ) { [weak self] _ in
-            self?.touchMomentumTailTick()
-        }
-        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
-        touchMomentumTailTimer = timer
-    }
-
-    private func touchMomentumTailTick() {
-        touchMomentumTailTimer = nil
-        let now = CFAbsoluteTimeGetCurrent()
-        let dt = now - touchMomentumLastTickTime
-        touchMomentumLastTickTime = now
-
-        let speed = hypot(touchMomentumVelocity.dx, touchMomentumVelocity.dy)
-        guard speed > 0 else {
-            postTouchScrollMomentum(dx: 0, dy: 0, phase: .end)
-            return
-        }
-        // See momentumTailTick (InputInjector+CGEvents.swift) for why this is
-        // constant deceleration with trapezoidal integration, not exponential
-        // decay — same model, independent state.
-        let newSpeed = max(0, speed - Self.momentumDeceleration * CGFloat(dt))
-        let avgSpeed = (speed + newSpeed) / 2
-        let dx = touchMomentumVelocity.dx / speed * avgSpeed * dt
-        let dy = touchMomentumVelocity.dy / speed * avgSpeed * dt
-        touchMomentumVelocity = newSpeed > 0
-            ? CGVector(dx: touchMomentumVelocity.dx / speed * newSpeed, dy: touchMomentumVelocity.dy / speed * newSpeed)
-            : .zero
-
-        touchMomentumAccumX += dx
-        touchMomentumAccumY += dy
-        let ix = Int(touchMomentumAccumX.rounded(.towardZero))
-        let iy = Int(touchMomentumAccumY.rounded(.towardZero))
-        touchMomentumAccumX -= Double(ix)
-        touchMomentumAccumY -= Double(iy)
-
-        if newSpeed <= 0 {
-            postTouchScrollMomentum(dx: Double(ix), dy: Double(iy), phase: .end)
-            return
-        }
-        if ix != 0 || iy != 0 {
-            postTouchScrollMomentum(dx: Double(ix), dy: Double(iy), phase: .continue)
-        }
-        scheduleTouchMomentumTailTick()
-    }
-
-    private func postTouchScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
+    /// one, because `CGEventPost` carries no real trackpad hardware behind it
+    /// to generate a `kCGMomentumScrollPhase` stream.
+    func postTouchScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
         guard
             let e = CGEvent(
                 scrollWheelEvent2Source: sessionSource,

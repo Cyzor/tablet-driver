@@ -229,8 +229,8 @@ final class InputInjector: @unchecked Sendable {
         pendingMouseUp.map { CFRunLoopTimerInvalidate($0) }
         proximityExitDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
-        momentumTailTimer.map { CFRunLoopTimerInvalidate($0) }
-        touchMomentumTailTimer.map { CFRunLoopTimerInvalidate($0) }
+        panMomentumTail.cancel()
+        touchMomentumTail.cancel()
         button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
@@ -389,33 +389,23 @@ final class InputInjector: @unchecked Sendable {
     /// proximity-exit held-button safety interval.
     let panScrollSafetyNetInterval: TimeInterval = 4.0
 
-    /// Repeating HIDThread timer driving the synthetic momentum decay tail
-    /// posted after a Scroll Drag release in Natural mode (see
-    /// `startMomentumTail` in InputInjector+CGEvents.swift). Real trackpads get
-    /// their coast from a system-synthesized `kCGMomentumScrollPhase` stream
-    /// after finger-lift; CGEventPost never gets that for free, so it's
-    /// synthesized here from the tracker's release-velocity estimate.
-    var momentumTailTimer: CFRunLoopTimer?
-    var momentumVelocity: CGVector = .zero
-    var momentumAccumX = 0.0
-    var momentumAccumY = 0.0
-    /// Real time of the last tick, measured rather than assumed — a one-shot
-    /// self-rescheduling timer never lands exactly `momentumTailInterval`
-    /// apart under runloop load, so the decay math measures actual elapsed
-    /// time each tick instead of silently assuming a fixed cadence.
-    var momentumLastTickTime: CFAbsoluteTime = 0
+    /// Synthetic momentum decay tail posted after a Scroll Drag release in
+    /// Natural mode. See MomentumTail.swift for the decay model.
+    ///
+    /// `[weak self]` is load-bearing: this object owns the tail, so a strong
+    /// capture in the post closure would be a retain cycle.
+    lazy var panMomentumTail = MomentumTail { [weak self] dx, dy, phase in
+        self?.postPanScrollMomentum(dx: dx, dy: dy, phase: phase)
+    }
 
-    /// Same mechanism as `momentumTailTimer` above, kept as a separate timer
-    /// and velocity state so a touch scroll's tail can't cancel or blend with
-    /// an in-flight Scroll Drag tail (see `startTouchMomentumTail` in
-    /// InputInjector+Touch.swift). Only used on non-`NSScrollView` apps —
-    /// `NSScrollView` already synthesizes its own coast from the phased
-    /// began/changed/ended stream `postTouchScroll` posts either way.
-    var touchMomentumTailTimer: CFRunLoopTimer?
-    var touchMomentumVelocity: CGVector = .zero
-    var touchMomentumAccumX = 0.0
-    var touchMomentumAccumY = 0.0
-    var touchMomentumLastTickTime: CFAbsoluteTime = 0
+    /// Same mechanism, deliberately a *separate instance* so a touch scroll's
+    /// tail can't cancel or blend with an in-flight Scroll Drag tail. Only
+    /// matters on non-`NSScrollView` apps — `NSScrollView` already synthesizes
+    /// its own coast from the phased began/changed/ended stream
+    /// `postTouchScroll` posts either way.
+    lazy var touchMomentumTail = MomentumTail { [weak self] dx, dy, phase in
+        self?.postTouchScrollMomentum(dx: dx, dy: dy, phase: phase)
+    }
 
     /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
     /// `true` (Momentum, default): the stream carries the phased began/changed/
@@ -530,6 +520,14 @@ final class InputInjector: @unchecked Sendable {
     var button1UpDebounceTimer: CFRunLoopTimer?
     var button2UpDebounceTimer: CFRunLoopTimer?
     var button3UpDebounceTimer: CFRunLoopTimer?
+
+    /// How long ago the physical button-up happened, for a release currently
+    /// being committed out of the debounce above. Nonzero only for the
+    /// duration of that deferred `fireButtonAction` call; 0 for every
+    /// immediate (Wacom, and all non-barrel) release. Read by `.scrollDrag`
+    /// so a flick's momentum is judged as of the real release edge — see
+    /// `PanScrollTracker.disengage(backdate:)`.
+    var pendingButtonUpBackdate: TimeInterval = 0
     let buttonUpDebounceInterval: TimeInterval = {
         let ms = UserDefaults.standard.integer(forKey: "MockTabXencelabsButtonDebounceMS")
         return ms > 0 ? Double(ms) / 1000.0 : 0.05

@@ -84,6 +84,7 @@
 		AA00IS01 /* InjectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00IS01 /* InjectionSnapshot.swift */; };
 		AA00TT01 /* TouchStateTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00TT01 /* TouchStateTracker.swift */; };
 		AA00PS01 /* PanScrollTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00PS01 /* PanScrollTracker.swift */; };
+		AA00MT01 /* MomentumTail.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00MT01 /* MomentumTail.swift */; };
 		AA00TV01 /* TouchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00TV01 /* TouchView.swift */; };
 		AAAAAA02 /* PresetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA01 /* PresetExporter.swift */; };
 		AAAAAA04 /* PresetImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA03 /* PresetImporter.swift */; };
@@ -200,6 +201,7 @@
 		AB00IS01 /* InjectionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjectionSnapshot.swift; sourceTree = "<group>"; };
 		AB00TT01 /* TouchStateTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchStateTracker.swift; sourceTree = "<group>"; };
 		AB00PS01 /* PanScrollTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanScrollTracker.swift; sourceTree = "<group>"; };
+		AB00MT01 /* MomentumTail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MomentumTail.swift; sourceTree = "<group>"; };
 		AB00TV01 /* TouchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchView.swift; sourceTree = "<group>"; };
 		AC000008 /* TabletColorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletColorTheme.swift; sourceTree = "<group>"; };
 		BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationOverlayView.swift; sourceTree = "<group>"; };
@@ -308,6 +310,7 @@
 				AB000083 /* InputInjector+Touch.swift */,
 				AB00IS01 /* InjectionSnapshot.swift */,
 				AB00PS01 /* PanScrollTracker.swift */,
+				AB00MT01 /* MomentumTail.swift */,
 				AB00TT01 /* TouchStateTracker.swift */,
 			);
 			path = Injection;
@@ -596,6 +599,7 @@
 				AA00HH01 /* HIDHelpers.swift in Sources */,
 				AA00TT01 /* TouchStateTracker.swift in Sources */,
 				AA00PS01 /* PanScrollTracker.swift in Sources */,
+				AA00MT01 /* MomentumTail.swift in Sources */,
 				AA00TV01 /* TouchView.swift in Sources */,
 				AA000049 /* WacomKnownDevice.swift in Sources */,
 				AA000039 /* DeviceRegistry.swift in Sources */,

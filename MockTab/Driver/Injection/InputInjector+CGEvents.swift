@@ -869,16 +869,21 @@ extension InputInjector {
                 driver.panScrollUsePhases = snapshot.activeTool.panScrollMomentum
                 // A fresh grab halts any coasting tail from the previous
                 // gesture, same as touching a real trackpad mid-momentum.
-                driver.cancelMomentumTail()
+                driver.panMomentumTail.cancel()
                 driver.postPanScroll(driver.panScroll.engage(
                     reverse: snapshot.reverseScrollDirection,
                     speed: snapshot.activeTool.panScrollSpeed))
             } else {
                 let active = SharedPanScrollState.shared.driver ?? driver
                 active.cancelPanScrollSafetyNet()
-                active.postPanScroll(active.panScroll.disengage())
+                // The backdate is read from `self` — the injector whose button
+                // debounce deferred this release — not from `active`, which may
+                // be a different injector hosting the gesture (puck button, pen
+                // pans). Zero unless a debounced release is committing now.
+                active.postPanScroll(
+                    active.panScroll.disengage(backdate: pendingButtonUpBackdate))
                 if active.panScrollUsePhases {
-                    active.startMomentumTail(velocity: active.panScroll.releaseVelocity)
+                    active.panMomentumTail.start(velocity: active.panScroll.releaseVelocity)
                 }
                 SharedPanScrollState.shared.driver = nil
             }
@@ -1036,126 +1041,13 @@ extension InputInjector {
 
     // MARK: - Scroll Drag momentum tail (Natural mode)
 
-    /// `kCGMomentumScrollPhase` values (distinct from and mutually exclusive
-    /// with `CGScrollPhase` — see `PanScrollTracker.ScrollPhase`). During the
-    /// tail, `scrollWheelEventScrollPhase` is held at 0 and this field carries
-    /// the sequence instead; setting both nonzero on the same event makes
-    /// AppKit/WebKit misread the stream.
-    enum MomentumPhase: Int64 {
-        case begin = 1
-        case `continue` = 2
-        case end = 3
-    }
-
-    /// Tick cadence for the synthetic momentum decay tail — matches a real
-    /// trackpad's momentum-stream rate. This is the *scheduling* interval,
-    /// not what the decay math assumes elapsed — see `momentumTailTick`.
-    static let momentumTailInterval: TimeInterval = 1.0 / 60.0
-
-    /// Constant deceleration (points/second²) applied to the momentum
-    /// velocity every tick, replacing an earlier exponential-decay model
-    /// (`momentumDecayPer10ms`, sourced from a Wacom native-driver trace —
-    /// wrong target: the user's comparison has always been a real Apple
-    /// trackpad, not Wacom's own touch feel, and Wacom's captured rate
-    /// produced a slow, grinding coast that never sat right). Exponential
-    /// decay also structurally cannot match a real trackpad's flick
-    /// signature — a decisive flick coasts hard and briefly (a real
-    /// trackpad: roughly a quarter second) while still covering a large
-    /// distance, then stops cleanly, rather than asymptotically crawling to
-    /// a near-stop and lingering there. Constant deceleration reaches
-    /// exactly zero in bounded time and its distance scales with the square
-    /// of release speed, so a decisive flick travels disproportionately
-    /// farther than a gentle one — matching both complaints in one change.
-    /// This value is a starting point derived from a rough target (a firm
-    /// flick decaying to a stop in ~0.25s while covering several thousand
-    /// points), not a hardware measurement — expect it to need retuning
-    /// once real release-velocity numbers from `recentVelocities`-based
-    /// capture are observed on hardware.
-    static let momentumDeceleration: CGFloat = 6000.0
-
-    /// Velocity magnitude (points/second) below which a tail never starts —
-    /// a slow, deliberate release isn't a flick on a real trackpad either,
-    /// and doesn't get a momentum phase there. Constant deceleration reaches
-    /// exactly zero on its own, so this is only a start gate now, not a stop
-    /// condition (see `momentumTailTick`).
-    static let momentumStopVelocity: CGFloat = 8.0
-
-
-    /// Starts (or restarts) the momentum decay tail after a Scroll Drag
-    /// release. `velocity` is `PanScrollTracker.releaseVelocity` (points/second).
-    /// Only invoked in Natural mode (`panScrollUsePhases`).
-    func startMomentumTail(velocity: CGVector) {
-        cancelMomentumTail()
-        guard hypot(velocity.dx, velocity.dy) >= Self.momentumStopVelocity else { return }
-        momentumVelocity = velocity
-        momentumAccumX = 0
-        momentumAccumY = 0
-        momentumLastTickTime = CFAbsoluteTimeGetCurrent()
-        postPanScrollMomentum(dx: 0, dy: 0, phase: .begin)
-        scheduleMomentumTailTick()
-    }
-
-    /// Cancels any in-flight momentum tail without posting a `.end` event —
-    /// used when a new Scroll Drag engages before the previous tail decayed
-    /// out, matching a real trackpad halting coast-on-touch.
-    func cancelMomentumTail() {
-        momentumTailTimer.map { CFRunLoopTimerInvalidate($0) }
-        momentumTailTimer = nil
-    }
-
-    private func scheduleMomentumTailTick() {
-        let timer = CFRunLoopTimerCreateWithHandler(
-            kCFAllocatorDefault,
-            CFAbsoluteTimeGetCurrent() + Self.momentumTailInterval,
-            0, 0, 0
-        ) { [weak self] _ in
-            self?.momentumTailTick()
-        }
-        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
-        momentumTailTimer = timer
-    }
-
-    private func momentumTailTick() {
-        momentumTailTimer = nil
-        let now = CFAbsoluteTimeGetCurrent()
-        let dt = now - momentumLastTickTime
-        momentumLastTickTime = now
-
-        let speed = hypot(momentumVelocity.dx, momentumVelocity.dy)
-        guard speed > 0 else {
-            postPanScrollMomentum(dx: 0, dy: 0, phase: .end)
-            return
-        }
-        // Trapezoidal integration (average of this tick's start/end speed,
-        // not just the start speed) so distance stays accurate even at the
-        // low tick rate under real scheduling jitter, not just at an
-        // idealized fixed 60Hz.
-        let newSpeed = max(0, speed - Self.momentumDeceleration * CGFloat(dt))
-        let avgSpeed = (speed + newSpeed) / 2
-        let dx = momentumVelocity.dx / speed * avgSpeed * dt
-        let dy = momentumVelocity.dy / speed * avgSpeed * dt
-        momentumVelocity = newSpeed > 0
-            ? CGVector(dx: momentumVelocity.dx / speed * newSpeed, dy: momentumVelocity.dy / speed * newSpeed)
-            : .zero
-
-        momentumAccumX += dx
-        momentumAccumY += dy
-        let ix = Int(momentumAccumX.rounded(.towardZero))
-        let iy = Int(momentumAccumY.rounded(.towardZero))
-        momentumAccumX -= Double(ix)
-        momentumAccumY -= Double(iy)
-
-        if newSpeed <= 0 {
-            postPanScrollMomentum(dx: Double(ix), dy: Double(iy), phase: .end)
-            return
-        }
-        if ix != 0 || iy != 0 {
-            postPanScrollMomentum(dx: Double(ix), dy: Double(iy), phase: .continue)
-        }
-        scheduleMomentumTailTick()
-    }
-
-    private func postPanScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
+    /// Sole event-construction site for the Scroll Drag momentum tail; the
+    /// decay itself lives in `panMomentumTail` (see MomentumTail.swift).
+    ///
+    /// During the tail `scrollWheelEventScrollPhase` is held at 0 and
+    /// `scrollWheelEventMomentumPhase` carries the sequence instead — setting
+    /// both nonzero on the same event makes AppKit/WebKit misread the stream.
+    func postPanScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
         guard
             let e = CGEvent(
                 scrollWheelEvent2Source: sessionSource,
