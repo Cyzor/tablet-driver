@@ -916,7 +916,29 @@ extension InputInjector {
             // `lines`) scrolls down. macOS applies its natural-scrolling flip
             // below the CGEvent layer, so injected scroll events never receive
             // it — apply it here instead, from the mirrored system setting.
-            postScrollWheelEvent(delta: Self.naturalScrollingEnabled ? lines : -lines, at: location)
+            let signedLines = Self.naturalScrollingEnabled ? lines : -lines
+            // A single .line-unit CGEvent with a large magnitude gets clamped
+            // by AppKit/NSScrollView well below its literal value (confirmed
+            // by hardware test 2026-08-06 on the Xencelabs dial: raising the
+            // per-tick multiplier well past this chunk size produced no
+            // further visible scroll). Split only bursts above the chunk
+            // size — normal-speed single ticks stay exactly one event, so a
+            // continuously-reporting device like a Wacom ring still feels
+            // smooth rather than jittery; only a genuinely fast spin, which
+            // would have been clamped anyway, gets broken into a few chunks
+            // so the intended distance actually lands.
+            let scrollChunk = 10
+            if abs(signedLines) <= scrollChunk {
+                postScrollWheelEvent(delta: signedLines, at: location)
+            } else {
+                let sign = signedLines > 0 ? 1 : -1
+                var remaining = abs(signedLines)
+                while remaining > 0 {
+                    let step = min(remaining, scrollChunk)
+                    postScrollWheelEvent(delta: sign * step, at: location)
+                    remaining -= step
+                }
+            }
         case .keyPress:
             let binding = lines > 0 ? slot.cwBinding : slot.ccwBinding
             let count = min(abs(lines), 4)
