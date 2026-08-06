@@ -133,10 +133,21 @@ struct PanScrollTracker {
     /// posting layer when it gains a tail; unused in v1.
     private(set) var releaseVelocity: CGVector = .zero
 
+    /// Seconds of `process()` calls since the last frame with non-negligible
+    /// raw motion. A real trackpad detects a deliberate brake — holding
+    /// still before releasing — and starts no momentum even though the EMA
+    /// above (tuned for smoothing a flick, not a fast "did they mean it"
+    /// read) hasn't fully decayed yet. `disengage()` gates release on this
+    /// instead of trusting the smoothed estimate alone.
+    private var timeSinceMotion: Double = 0
+
     // MARK: - Tunables
 
     /// EMA weight per frame for the velocity estimate (~50 ms window at 133 Hz).
     static let velocityAlpha = 0.20
+    /// A release is only treated as a flick if motion happened within this
+    /// many seconds of it.
+    static let momentumRecencyWindow: Double = 0.05
 
     // MARK: - Edges
 
@@ -156,6 +167,7 @@ struct PanScrollTracker {
         velX = 0
         velY = 0
         releaseVelocity = .zero
+        timeSinceMotion = 0
         lastRaw = nil
         axisLock = nil
         preLockAccumX = 0
@@ -167,7 +179,8 @@ struct PanScrollTracker {
     /// Idempotent — a second call after an inactive period emits nothing.
     mutating func disengage() -> Intent {
         guard isActive else { return .none }
-        releaseVelocity = CGVector(dx: velX, dy: velY)
+        releaseVelocity = timeSinceMotion <= Self.momentumRecencyWindow
+            ? CGVector(dx: velX, dy: velY) : .zero
         isActive = false
         last = nil
         lastRaw = nil
@@ -242,6 +255,11 @@ struct PanScrollTracker {
             let a = Self.velocityAlpha
             velX += a * (rawDx / dt - velX)
             velY += a * (rawDy / dt - velY)
+        }
+        if abs(rawDx) > 0.01 || abs(rawDy) > 0.01 {
+            timeSinceMotion = 0
+        } else if dt > 0 {
+            timeSinceMotion += dt
         }
 
         accumX += dx

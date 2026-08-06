@@ -112,6 +112,19 @@ extension InputInjector {
             projected.append((id: c.id, screen: p))
         }
 
+        // A real trackpad stops a coasting flick the instant two fingers land
+        // on the surface — before any gesture is even recognized, like
+        // grabbing a spinning wheel. Gating the cancel behind the tracker's
+        // resolved intent (as happens naturally below) instead requires
+        // motion past the pinch/pan discrimination threshold first, which
+        // reads as needing a "nudge" to arrest the coast. Cancel on the raw
+        // idle-to-two-contacts transition instead. Requires *two* fingers,
+        // not one — an ordinary single-finger pointer move shouldn't stop a
+        // coast the user never touched.
+        if projected.count >= 2, touchTracker.mode == .idle {
+            stopTouchMomentumTail()
+        }
+
         let intent = touchTracker.process(
             contacts: projected,
             tapToClick: snap.tapToClick,
@@ -180,7 +193,7 @@ extension InputInjector {
         // it first: posting the wheel event after it (not before) is what a
         // real trackpad's ordering looks like and avoids a stutter seen when
         // ordered the other way. Only meaningful with a real phase.
-        if usePhases {
+        if usePhases, !Self.debugDisableGestureCompanionEvent {
             postTouchScrollGesture(dx: dx, dy: dy, phase: phase)
         }
         let loc = currentCursorPosition()
@@ -305,6 +318,23 @@ extension InputInjector {
     func cancelTouchMomentumTail() {
         touchMomentumTailTimer.map { CFRunLoopTimerInvalidate($0) }
         touchMomentumTailTimer = nil
+    }
+
+    /// Like `cancelTouchMomentumTail`, but also posts an explicit momentum-
+    /// end event. `NSScrollView`-based apps that received our momentum-begin/
+    /// continue stream are running their own independent coast animation by
+    /// this point — simply stopping our timer never tells them to stop
+    /// theirs, since we haven't sent a scroll-delta event either (a
+    /// stationary two-finger grab, not a new gesture). A real trackpad's
+    /// touch-down is sensed and stops the app's animation directly; this is
+    /// the nearest equivalent we can send. The `.began`-of-a-new-gesture
+    /// cancel path elsewhere doesn't need this: the wheel event immediately
+    /// following it already carries a fresh phase, which is by itself
+    /// sufficient to cancel a prior momentum animation.
+    func stopTouchMomentumTail() {
+        guard touchMomentumTailTimer != nil else { return }
+        cancelTouchMomentumTail()
+        postTouchScrollMomentum(dx: 0, dy: 0, phase: .end)
     }
 
     private func scheduleTouchMomentumTailTick() {

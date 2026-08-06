@@ -973,7 +973,7 @@ extension InputInjector {
         }
         // See postTouchScrollGesture (InputInjector+Touch.swift) for why this
         // companion event exists and why it's posted before the wheel event.
-        if panScrollUsePhases {
+        if panScrollUsePhases, !Self.debugDisableGestureCompanionEvent {
             postPanScrollGesture(dx: dx, dy: dy, phase: phase)
         }
         guard
@@ -1075,6 +1075,13 @@ extension InputInjector {
     /// momentum phase there; this must match, or a slow release would coast
     /// when native input wouldn't.
     static let momentumStopVelocity: CGFloat = 8.0
+
+    /// TEMPORARY diagnostic switch — not a shipping setting. Set true to
+    /// isolate whether the type-29 gesture-scroll companion event
+    /// (`postTouchScrollGesture`/`postPanScrollGesture`) is the cause of the
+    /// "skidding" feel reported in Safari/Firefox after it shipped, as
+    /// opposed to the momentum decay math itself. Remove once resolved.
+    static let debugDisableGestureCompanionEvent = true
 
     /// Starts (or restarts) the momentum decay tail after a Scroll Drag
     /// release. `velocity` is `PanScrollTracker.releaseVelocity` (points/second).

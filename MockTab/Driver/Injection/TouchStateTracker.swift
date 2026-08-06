@@ -201,6 +201,13 @@ struct TouchStateTracker {
     private var velX = 0.0
     private var velY = 0.0
     private var lastFrameTime: CFAbsoluteTime = 0
+    /// Time of the last frame with nonzero motion. A real trackpad detects a
+    /// deliberate brake — holding fingers still before lifting — and starts
+    /// no momentum even though the EMA above hasn't fully decayed to zero
+    /// yet (`velocityAlpha` is tuned for smoothing a flick, not for a fast
+    /// "did they mean it" read). Gating release on *recent* motion instead
+    /// of the smoothed estimate catches that directly.
+    private var lastMotionTime: CFAbsoluteTime = 0
     /// Captured at scroll-gesture end; read by the posting layer to start a
     /// momentum decay tail. Unused while the gesture is still active.
     private(set) var releaseVelocity: CGVector = .zero
@@ -228,6 +235,10 @@ struct TouchStateTracker {
     /// EMA weight per frame for the velocity estimate — matches
     /// `PanScrollTracker.velocityAlpha`.
     static let velocityAlpha = 0.20
+    /// A lift is only treated as a flick-release if motion happened within
+    /// this many seconds of it — otherwise the fingers were held still
+    /// (braking) and release velocity is suppressed regardless of the EMA.
+    static let momentumRecencyWindow: CFAbsoluteTime = 0.05
 
     // MARK: - Process
 
@@ -294,7 +305,8 @@ struct TouchStateTracker {
             let tap = tapToClick && (priorMode == .pointer || priorMode == .pending)
                 && now - tapStart <= Self.tapMaxDuration
                 && tapMaxDelta < Self.tapMaxDistance
-            releaseVelocity = CGVector(dx: velX, dy: velY)
+            releaseVelocity = now - lastMotionTime <= Self.momentumRecencyWindow
+                ? CGVector(dx: velX, dy: velY) : .zero
             reset()
             switch priorMode {
             case .scroll where priorKind == .pinch && priorPhase != .ended:
@@ -337,6 +349,7 @@ struct TouchStateTracker {
                 velX = 0
                 velY = 0
                 lastFrameTime = now
+                lastMotionTime = 0
                 // Defer Began until pan/pinch commits when pinch discrimination
                 // is on — leave lastScrollPhase .ended so a lift before commit
                 // does not emit a stray scroll Ended.
@@ -447,6 +460,9 @@ struct TouchStateTracker {
                 velX += a * (outDx / dt - velX)
                 velY += a * (outDy / dt - velY)
             }
+            if dx != 0 || dy != 0 {
+                lastMotionTime = now
+            }
             // Skip dead frames: a stationary palm with two contacts down would
             // otherwise post 100 no-op scroll events per second.
             if dx == 0 && dy == 0 { return .none }
@@ -485,6 +501,7 @@ struct TouchStateTracker {
         velX = 0
         velY = 0
         lastFrameTime = 0
+        lastMotionTime = 0
     }
 
     private func centroid(of points: [CGPoint]) -> CGPoint {
