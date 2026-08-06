@@ -906,6 +906,33 @@ extension InputInjector {
         rawDelta: Int, slot: ControlSlot, accum: inout Double,
         at location: CGPoint, snapshot: InjectionSnapshot, settings: TabletSettings?
     ) {
+        // Xencelabs dial, scrolling: hand the click to the inertial emitter
+        // instead of posting for it. Everything else about the slot still
+        // applies — speed scaling and the natural-scrolling convention below
+        // are the same numbers, they just seed velocity rather than a
+        // one-shot event. Key-press and off/skip slots are untouched, and so
+        // is every other device's ring or strip.
+        // Modifier-held dial scrolling is not scrolling: apps read ⌥/⌘+wheel as
+        // zoom, and zoom is a stepped operation, one notch per detent. A 60 Hz
+        // continuous stream hands those apps dozens of zoom steps per second —
+        // confirmed unusable in Adobe on hardware. Keep the old discrete
+        // one-event-per-click path whenever a modifier is down, which is also
+        // the behaviour that was already known good for zoom.
+        let zoomModifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
+        let modifierHeld = !moveSafeEventFlags.intersection(zoomModifiers).isEmpty
+        if modifierHeld { dialCoaster.cancel() }
+        if deviceVendorID == 0x28BD, !modifierHeld, case .scroll = slot.action {
+            // The dial's Speed slider was given a 20x ceiling (44e22ad) purely
+            // so one click's line count could cross the chunk threshold that
+            // works around AppKit's per-event clamp. Pixel-unit output has no
+            // such clamp to work around, so that headroom is now dead — and a
+            // saved 20 would put a single click past the velocity ceiling.
+            // The slider is back to the normal 0-3x range, so this clamp only
+            // catches values saved while the taller one was live.
+            let lines = Double(rawDelta) * min(slot.speed, 3.0)
+            dialCoaster.impulse(lines: Self.naturalScrollingEnabled ? lines : -lines)
+            return
+        }
         accum += Double(rawDelta) * slot.speed
         let lines = Int(accum)
         guard lines != 0 else { return }
@@ -927,6 +954,12 @@ extension InputInjector {
             // smooth rather than jittery; only a genuinely fast spin, which
             // would have been clamped anyway, gets broken into a few chunks
             // so the intended distance actually lands.
+            //
+            // Wacom rings and strips only: the Xencelabs dial returns above
+            // into its inertial coaster, whose pixel-unit output never
+            // approaches the clamp this works around. Retiring the chunking
+            // entirely would mean moving rings to pixel units too — the open
+            // .pixel redesign, which needs its own hardware pass on a ring.
             let scrollChunk = 10
             if abs(signedLines) <= scrollChunk {
                 postScrollWheelEvent(delta: signedLines, at: location)
@@ -959,6 +992,40 @@ extension InputInjector {
         else { return }
         e.location = location
         e.flags = currentEventFlags
+        finalizeAndPost(e)
+    }
+
+    /// Sole event-construction site for the Xencelabs dial; the inertia lives
+    /// in `dialCoaster` (see MomentumTail.swift).
+    ///
+    /// Pixel units rather than the `.line` units `postScrollWheelEvent` uses,
+    /// for two reasons. A 60 Hz emitter needs sub-line granularity — in line
+    /// units the smallest event it can post is a whole line, which would
+    /// reintroduce as quantization exactly the steppiness the coast exists to
+    /// remove. And small per-tick pixel deltas never approach AppKit's
+    /// per-event clamp, so the dial no longer needs the `scrollChunk` split
+    /// that works around it on the line path.
+    ///
+    /// No phase fields: a dial has no touch-down or lift to bracket, and the
+    /// stream is already continuous, so there is no gesture envelope to
+    /// describe. `isContinuous` plus the trackpad delta fields is what makes
+    /// apps read it as smooth scrolling rather than discrete detents.
+    func postDialScroll(dy: Double) {
+        guard
+            let e = CGEvent(
+                scrollWheelEvent2Source: sessionSource,
+                units: .pixel,
+                wheelCount: 1,
+                wheel1: Int32(dy), wheel2: 0, wheel3: 0)
+        else { return }
+        e.location = currentCursorPosition()
+        e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        applyTrackpadDeltaFields(e, dx: 0, dy: dy)
+        // Ground-truth flags, like the two momentum tails and unlike
+        // `postScrollWheelEvent`: those post synchronously inside the click's
+        // own callback, whereas the coast keeps posting from a timer for
+        // seconds afterwards, by which time a held modifier may be long gone.
+        e.flags = moveSafeEventFlags
         finalizeAndPost(e)
     }
 

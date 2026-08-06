@@ -71,15 +71,12 @@ struct TouchRingModeListView: View {
     let speedBinding: (Int) -> Binding<Double>
     let cwBinding: (Int) -> Binding<ButtonBinding>
     let ccwBinding: (Int) -> Binding<ButtonBinding>
-    /// Upper bound of the Speed slider. A Wacom ring reports an absolute
-    /// position, so a single fast spin already produces a large raw delta
-    /// per HID report — the default range is plenty, and that per-report
-    /// burst is what crosses dispatchRingDelta's chunk-event threshold at
-    /// high speed. The Xencelabs dial instead reports one discrete ±1 click
-    /// per detent, so a single click's line count only crosses that same
-    /// threshold (and gets the same chunked-event treatment) if the
-    /// per-click multiplier itself is high enough — callers for that device
-    /// pass a taller range accordingly.
+    /// Upper bound of the Speed slider. The Xencelabs dial briefly raised this
+    /// to 20x so a single click could cross dispatchRingDelta's chunk-event
+    /// threshold and dodge AppKit's per-event clamp; its inertial scroll model
+    /// posts pixel units now and has no clamp to dodge, so every caller is back
+    /// on the default. Kept as a parameter for the next device that needs its
+    /// own range.
     var maxSpeed: Double = 3.0
     /// Inline light editor per mode slot; nil (all Wacom devices) omits the
     /// summary dot and the Light row entirely.

@@ -116,13 +116,6 @@ struct QuickKeysSectionView: View {
                 speedBinding: slotSpeedBinding(at:),
                 cwBinding: { slotBinding(at: $0, direction: .cw) },
                 ccwBinding: { slotBinding(at: $0, direction: .ccw) },
-                // The dial reports one discrete ±1 click per detent (not a
-                // continuous position like a Wacom ring), so a single click
-                // only crosses dispatchRingDelta's chunk-event threshold —
-                // and gets the same anti-clamp treatment — if the per-click
-                // multiplier itself is high enough. See maxSpeed's doc comment
-                // on TouchRingModeListView.
-                maxSpeed: 20.0,
                 ledEditor: slotLEDWell(at:),
                 onCenterTap: { dialRecordToken += 1 }
             )
@@ -243,7 +236,13 @@ struct QuickKeysSectionView: View {
         Binding(
             get: {
                 guard settings.touchRingSlots.indices.contains(index) else { return 1.0 }
-                return settings.touchRingSlots[index].speed
+                // The dial's slider briefly went to 20x, as a way to push a
+                // single click past the per-event clamp the inertial scroll
+                // model has since removed the need for. Anything a user saved
+                // above the normal range is inert now (the injector clamps it
+                // the same way), so show it pinned at the top rather than
+                // letting the slider render off its own scale.
+                return min(settings.touchRingSlots[index].speed, 3.0)
             },
             set: { newValue in
                 let oldSlots = settings.touchRingSlots

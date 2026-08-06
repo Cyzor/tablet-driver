@@ -262,6 +262,7 @@ final class InputInjector: @unchecked Sendable {
         panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
         panMomentumTail.cancel()
         touchMomentumTail.cancel()
+        dialCoaster.cancel()
         button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
@@ -436,6 +437,13 @@ final class InputInjector: @unchecked Sendable {
     /// `postTouchScroll` posts either way.
     lazy var touchMomentumTail = MomentumTail { [weak self] dx, dy, phase in
         self?.postTouchScrollMomentum(dx: dx, dy: dy, phase: phase)
+    }
+
+    /// Inertial emitter for the Xencelabs dial. Unlike the two tails above this
+    /// one is the *only* thing that posts scroll for its input — see
+    /// `DialScrollCoaster` for why the dial needs that shape.
+    lazy var dialCoaster = DialScrollCoaster { [weak self] dy in
+        self?.postDialScroll(dy: dy)
     }
 
     /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
