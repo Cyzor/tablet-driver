@@ -575,6 +575,13 @@ final class SettingsWindowController: NSWindowController {
         }
     }
 
+    /// Whether this window's tab layout includes the given tab. Layouts vary
+    /// per device (Touch is conditional, aux-only devices trim most tabs), so
+    /// menu validation asks rather than assuming.
+    func hasTab(_ tab: Tab) -> Bool {
+        let label = Self.tabLabels[tab.rawValue]
+        return tabVC.tabViewItems.contains { $0.label == label }
+    }
     //
     var selectedTabIndex: Int { tabVC.selectedTabViewItemIndex }
 

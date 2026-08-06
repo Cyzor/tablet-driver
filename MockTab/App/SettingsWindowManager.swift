@@ -414,6 +414,13 @@ final class SettingsWindowManager: ObservableObject {
             ?? DeviceRegistry.shared.knownTablets.first?.instanceKey
     }
 
+    /// Whether the key settings window offers the given tab, or nil when no
+    /// settings window is key. Menu validation only — unlike
+    /// `frontmostSettingsWindow()`, this must not create a window.
+    func keyWindowHasTab(_ tab: SettingsWindowController.Tab) -> Bool? {
+        windows.first(where: { $0.window?.isKeyWindow == true })?.hasTab(tab)
+    }
+
     private func frontmostSettingsWindow() -> SettingsWindowController {
         windows.first(where: { $0.window?.isKeyWindow == true }) ?? ensureDefaultWindow()
     }

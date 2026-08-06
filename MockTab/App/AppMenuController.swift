@@ -37,7 +37,7 @@ extension Notification.Name {
 /// **Duplicate View menu removal** — SwiftUI generates an empty "View" menu;
 /// we remove it here so only the one with ⌘1–⌘8 shortcuts remains.
 @MainActor
-final class AppMenuController: NSObject, NSMenuDelegate {
+final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
 
     static let shared = AppMenuController()
 
@@ -67,6 +67,16 @@ final class AppMenuController: NSObject, NSMenuDelegate {
         // would point at the wrong pane depending on which window is frontmost.
         guard let tab = SettingsWindowController.Tab(rawValue: sender.tag) else { return }
         SettingsWindowManager.shared.showTab(tab)
+    }
+
+    /// Grays out pane shortcuts the key settings window doesn't carry (Touch on
+    /// touchless devices, most tabs on aux-only ones). With no settings window
+    /// key, items stay enabled: activating one targets the default window.
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        guard item.action == #selector(showTabFromMainMenu(_:)),
+              let tab = SettingsWindowController.Tab(rawValue: item.tag)
+        else { return true }
+        return SettingsWindowManager.shared.keyWindowHasTab(tab) ?? true
     }
 
     @objc func showHelpFromMainMenu() {
