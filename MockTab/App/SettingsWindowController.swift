@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 import AppKit
+import Combine
 import SwiftUI
 import TabletKit
 
@@ -304,6 +305,12 @@ final class SettingsWindowController: NSWindowController {
     /// closed windows don't leave their observer blocks registered forever.
     private var observerTokens: [NSObjectProtocol] = []
 
+    /// Live connection state of the bound device, mirrored into the window's
+    /// subtitle. See `observeConnectionState()`.
+    private var contextsCancellable: AnyCancellable?
+    private var connectedCancellable: AnyCancellable?
+    private var isBoundDeviceConnected = true
+
     enum Tab: Int {
         case tabletArea = 0
         case penFeel, buttons, touch, display, devices, profiles, scratchpad, info
@@ -520,6 +527,7 @@ final class SettingsWindowController: NSWindowController {
             InfoView(tabletManager: tm, settings: s, instanceKey: instanceKey)
         }
 
+        observeConnectionState()
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -566,10 +574,66 @@ final class SettingsWindowController: NSWindowController {
             showTab(at: index)
         }
     }
+
     //
     var selectedTabIndex: Int { tabVC.selectedTabViewItemIndex }
 
     // MARK: - Private
+
+    // MARK: - Disconnected-state cue
+
+    /// Mirrors the bound device's connection state into the window subtitle.
+    ///
+    /// Why this exists: a reconnecting tablet does not spawn its window (a
+    /// deliberate memory-diet tradeoff), so it is easy to be looking at a
+    /// *different* tablet's window and not realize the settings in front of you
+    /// belong to a unit that isn't attached. That has caused real misdiagnosis
+    /// more than once — a toggle read as "off for this tablet" when it was
+    /// simply another tablet's toggle. The window keeps working (disconnected
+    /// windows stay deliberately editable, so a tablet can be configured before
+    /// it is plugged in); this only makes the state impossible to miss, from
+    /// every tab rather than just Info.
+    ///
+    /// Deliberately observes two *narrow* publishers rather than
+    /// `TabletManager.objectWillChange`: that fires at pen-report rate, and
+    /// riding it for UI state has previously caused a measurable hover-CPU
+    /// spike. `deviceContexts` changes only on connect/disconnect/re-key, and
+    /// `isConnected` only on a real transition.
+    private func observeConnectionState() {
+        // The generic (no-device) window has nothing to report.
+        guard instanceKey != nil else { return }
+        contextsCancellable = TabletManager.shared.$deviceContexts
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.rebindConnectionObserver() }
+        rebindConnectionObserver()
+    }
+
+    /// Re-resolves the bound context and re-subscribes. Needed because a
+    /// disconnect can remove the context entirely and a reconnect installs a
+    /// *new* one (or adopts and re-keys a restore stub), so a single
+    /// subscription taken at init would go stale on the first replug.
+    private func rebindConnectionObserver() {
+        guard let context = TabletManager.shared.context(forKey: instanceKey) else {
+            connectedCancellable = nil
+            applyConnectionState(false)
+            return
+        }
+        connectedCancellable = context.$isConnected
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] connected in self?.applyConnectionState(connected) }
+    }
+
+    /// Set unconditionally rather than diffed: connect/disconnect is a rare
+    /// event and assigning a subtitle is idempotent, so a guard would only add
+    /// a way to get the two out of sync.
+    private func applyConnectionState(_ connected: Bool) {
+        isBoundDeviceConnected = connected
+        // Reuses the existing "Not connected" catalog key (already localized
+        // de/es/ja and used for device status elsewhere) rather than
+        // introducing a near-duplicate string — same meaning, same wording.
+        window?.subtitle = connected ? "" : String(localized: "Not connected")
+    }
 
     private func teardownOnClose() {
         for item in tabVC.tabViewItems {
@@ -577,6 +641,8 @@ final class SettingsWindowController: NSWindowController {
         }
         for token in observerTokens { NotificationCenter.default.removeObserver(token) }
         observerTokens.removeAll()
+        contextsCancellable = nil
+        connectedCancellable = nil
     }
 
     private var nextTabIndex = 0
