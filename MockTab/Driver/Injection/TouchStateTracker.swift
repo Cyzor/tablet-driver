@@ -194,6 +194,17 @@ struct TouchStateTracker {
     private var undecidedOriginCentroid: CGPoint = .zero
     private var undecidedOriginDistance: Double = 0
 
+    /// EMA scroll velocity, points/second — the momentum-tail seed. Ungated
+    /// (updated even on zero-delta frames when `dt > 0`) so a flick-then-hold
+    /// release decays toward zero rather than carrying stale flick velocity,
+    /// matching `PanScrollTracker.velX/velY`.
+    private var velX = 0.0
+    private var velY = 0.0
+    private var lastFrameTime: CFAbsoluteTime = 0
+    /// Captured at scroll-gesture end; read by the posting layer to start a
+    /// momentum decay tail. Unused while the gesture is still active.
+    private(set) var releaseVelocity: CGVector = .zero
+
     // MARK: - Tunables
 
     /// Maximum drift (in screen points) that still counts as a tap.
@@ -214,6 +225,9 @@ struct TouchStateTracker {
     /// Pinch wins only when inter-finger distance change clearly exceeds
     /// centroid translation. Equal/noisy scale vs pan → stay pan (scroll).
     static let pinchDominanceRatio: Double = 1.75
+    /// EMA weight per frame for the velocity estimate — matches
+    /// `PanScrollTracker.velocityAlpha`.
+    static let velocityAlpha = 0.20
 
     // MARK: - Process
 
@@ -280,6 +294,7 @@ struct TouchStateTracker {
             let tap = tapToClick && (priorMode == .pointer || priorMode == .pending)
                 && now - tapStart <= Self.tapMaxDuration
                 && tapMaxDelta < Self.tapMaxDistance
+            releaseVelocity = CGVector(dx: velX, dy: velY)
             reset()
             switch priorMode {
             case .scroll where priorKind == .pinch && priorPhase != .ended:
@@ -319,6 +334,9 @@ struct TouchStateTracker {
                 lastPinchDistance = Self.distance(between: pair)
                 undecidedOriginCentroid = centroid(of: pair.map(\.screen))
                 undecidedOriginDistance = lastPinchDistance
+                velX = 0
+                velY = 0
+                lastFrameTime = now
                 // Defer Began until pan/pinch commits when pinch discrimination
                 // is on — leave lastScrollPhase .ended so a lift before commit
                 // does not emit a stray scroll Ended.
@@ -354,6 +372,8 @@ struct TouchStateTracker {
             return .none
 
         case .scroll:
+            let dt = now - lastFrameTime
+            lastFrameTime = now
             // Centroid delta over the contacts present in both this frame and
             // the last.  Contacts with new ids (finger lifted and re-landed,
             // or upstream palm filtering churned the set) are seeded for the
@@ -417,14 +437,21 @@ struct TouchStateTracker {
                 }
             }
 
-            // Skip dead frames: a stationary palm with two contacts down would
-            // otherwise post 100 no-op scroll events per second.
-            if dx == 0 && dy == 0 { return .none }
             // Default (reverseScrollDirection=false): content follows finger.
             // Reversed: classic scroll-wheel semantics, content moves opposite.
             let sign = reverseScrollDirection ? -1.0 : 1.0
+            let outDx = sign * dx
+            let outDy = sign * dy
+            if dt > 0 {
+                let a = Self.velocityAlpha
+                velX += a * (outDx / dt - velX)
+                velY += a * (outDy / dt - velY)
+            }
+            // Skip dead frames: a stationary palm with two contacts down would
+            // otherwise post 100 no-op scroll events per second.
+            if dx == 0 && dy == 0 { return .none }
             lastScrollPhase = .changed
-            return .scrollDelta(dx: sign * dx, dy: sign * dy, phase: .changed)
+            return .scrollDelta(dx: outDx, dy: outDy, phase: .changed)
 
         case .pointer:
             guard let first = contacts.first else { return .none }
@@ -455,6 +482,9 @@ struct TouchStateTracker {
         lastPinchDistance = 0
         undecidedOriginCentroid = .zero
         undecidedOriginDistance = 0
+        velX = 0
+        velY = 0
+        lastFrameTime = 0
     }
 
     private func centroid(of points: [CGPoint]) -> CGPoint {

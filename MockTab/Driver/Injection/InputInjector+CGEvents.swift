@@ -999,7 +999,7 @@ extension InputInjector {
     /// overscroll-behavior sites, Adobe's line-delta palettes) saw a
     /// well-phased gesture with zero deltas and ignored it. NSScrollView
     /// tolerates the wheel-only shape, which is why the gap was app-specific.
-    private func applyTrackpadDeltaFields(_ e: CGEvent, dx: Double, dy: Double) {
+    func applyTrackpadDeltaFields(_ e: CGEvent, dx: Double, dy: Double) {
         let ix = Int64(dx), iy = Int64(dy)
         e.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: iy)
         e.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: ix)
@@ -1023,7 +1023,7 @@ extension InputInjector {
     /// tail, `scrollWheelEventScrollPhase` is held at 0 and this field carries
     /// the sequence instead; setting both nonzero on the same event makes
     /// AppKit/WebKit misread the stream.
-    private enum MomentumPhase: Int64 {
+    enum MomentumPhase: Int64 {
         case begin = 1
         case `continue` = 2
         case end = 3
