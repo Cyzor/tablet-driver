@@ -399,6 +399,11 @@ final class InputInjector: @unchecked Sendable {
     var momentumVelocity: CGVector = .zero
     var momentumAccumX = 0.0
     var momentumAccumY = 0.0
+    /// Real time of the last tick, measured rather than assumed — a one-shot
+    /// self-rescheduling timer never lands exactly `momentumTailInterval`
+    /// apart under runloop load, so the decay math measures actual elapsed
+    /// time each tick instead of silently assuming a fixed cadence.
+    var momentumLastTickTime: CFAbsoluteTime = 0
 
     /// Same mechanism as `momentumTailTimer` above, kept as a separate timer
     /// and velocity state so a touch scroll's tail can't cancel or blend with
@@ -410,6 +415,7 @@ final class InputInjector: @unchecked Sendable {
     var touchMomentumVelocity: CGVector = .zero
     var touchMomentumAccumX = 0.0
     var touchMomentumAccumY = 0.0
+    var touchMomentumLastTickTime: CFAbsoluteTime = 0
 
     /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
     /// `true` (Momentum, default): the stream carries the phased began/changed/

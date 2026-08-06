@@ -971,6 +971,11 @@ extension InputInjector {
             // with no phase envelope to deliver them, skip them as no-ops.
             guard dx != 0 || dy != 0 else { return }
         }
+        // See postTouchScrollGesture (InputInjector+Touch.swift) for why this
+        // companion event exists and why it's posted before the wheel event.
+        if panScrollUsePhases {
+            postPanScrollGesture(dx: dx, dy: dy, phase: phase)
+        }
         guard
             let e = CGEvent(
                 scrollWheelEvent2Source: sessionSource,
@@ -987,6 +992,19 @@ extension InputInjector {
         }
         applyTrackpadDeltaFields(e, dx: dx, dy: dy)
         e.flags = moveSafeEventFlags
+        finalizeAndPost(e)
+    }
+
+    /// Companion to `postPanScroll` — same technique as `postTouchScrollGesture`,
+    /// not sent during the momentum tail. Field numbers documented there.
+    private func postPanScrollGesture(dx: Double, dy: Double, phase: PanScrollTracker.ScrollPhase) {
+        guard let e = CGEvent(source: nil) else { return }
+        e.type = CGEventType(rawValue: 29)!
+        e.location = currentCursorPosition()
+        e.setIntegerValueField(CGEventField(rawValue: 110)!, value: 6)
+        e.setIntegerValueField(CGEventField(rawValue: 132)!, value: Int64(phase.rawValue))
+        e.setDoubleValueField(CGEventField(rawValue: 116)!, value: dx)
+        e.setDoubleValueField(CGEventField(rawValue: 119)!, value: dy)
         finalizeAndPost(e)
     }
 
@@ -1030,12 +1048,26 @@ extension InputInjector {
     }
 
     /// Tick cadence for the synthetic momentum decay tail — matches a real
-    /// trackpad's momentum-stream rate.
+    /// trackpad's momentum-stream rate. This is the *scheduling* interval,
+    /// not what the decay math assumes elapsed — see `momentumTailTick`.
     static let momentumTailInterval: TimeInterval = 1.0 / 60.0
 
-    /// Per-tick velocity multiplier. Tuned so a firm flick's tail runs a few
-    /// hundred ms before dropping below `momentumStopVelocity`.
-    static let momentumDecayPerTick = 0.85
+    /// Velocity decay per 10ms of real elapsed time, not per tick. Sourced
+    /// from a live hardware trace of Wacom's own native touch-scroll momentum
+    /// (2026-08-05, see project_scroll_momentum_mechanism memory): its
+    /// decaying tail multiplies by ~95–96% roughly every 10ms. The original
+    /// `momentumDecayPerTick = 0.85` was an untested guess assumed to apply
+    /// once per scheduled tick — it produced a coast roughly a third as long
+    /// as real hardware and, worse, assumed every tick actually landed
+    /// exactly `momentumTailInterval` apart, which a one-shot
+    /// self-rescheduling `CFRunLoopTimer` never guarantees under any runloop
+    /// load. `momentumTailTick` now measures real elapsed time each fire and
+    /// applies this rate continuously against it, which fixes both: a firm
+    /// flick coasts on the order of a real trackpad's, and any scheduling
+    /// jitter changes how far a tick travels, not how fast the whole tail
+    /// decays — eliminating the uneven, stair-stepping feel that came from
+    /// silently assuming a fixed tick length that wasn't actually constant.
+    static let momentumDecayPer10ms = 0.955
 
     /// Velocity magnitude (points/second) below which the tail ends. Also
     /// the floor below which a tail never starts at all — a slow, deliberate
@@ -1053,6 +1085,7 @@ extension InputInjector {
         momentumVelocity = velocity
         momentumAccumX = 0
         momentumAccumY = 0
+        momentumLastTickTime = CFAbsoluteTimeGetCurrent()
         postPanScrollMomentum(dx: 0, dy: 0, phase: .begin)
         scheduleMomentumTailTick()
     }
@@ -1079,11 +1112,14 @@ extension InputInjector {
 
     private func momentumTailTick() {
         momentumTailTimer = nil
-        let dt = Self.momentumTailInterval
+        let now = CFAbsoluteTimeGetCurrent()
+        let dt = now - momentumLastTickTime
+        momentumLastTickTime = now
         let dx = momentumVelocity.dx * dt
         let dy = momentumVelocity.dy * dt
-        momentumVelocity.dx *= Self.momentumDecayPerTick
-        momentumVelocity.dy *= Self.momentumDecayPerTick
+        let decay = pow(Self.momentumDecayPer10ms, dt * 1000.0 / 10.0)
+        momentumVelocity.dx *= decay
+        momentumVelocity.dy *= decay
 
         momentumAccumX += dx
         momentumAccumY += dy

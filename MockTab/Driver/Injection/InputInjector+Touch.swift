@@ -173,6 +173,16 @@ extension InputInjector {
         usePhases: Bool
     ) {
         if !usePhases, dx == 0, dy == 0 { return }
+        // A real trackpad driver posts a gesture-scroll companion event
+        // alongside the wheel event; apps that build their own gesture-scroll
+        // physics (rather than relying on NSScrollView's free coast) key off
+        // this stream instead of — or in addition to — the wheel event. Post
+        // it first: posting the wheel event after it (not before) is what a
+        // real trackpad's ordering looks like and avoids a stutter seen when
+        // ordered the other way. Only meaningful with a real phase.
+        if usePhases {
+            postTouchScrollGesture(dx: dx, dy: dy, phase: phase)
+        }
         let loc = currentCursorPosition()
         // .pixel units + the scroll-phase field is what makes apps treat the
         // stream as a trackpad scroll (smooth, with rubber-banding) rather
@@ -192,6 +202,24 @@ extension InputInjector {
         }
         applyTrackpadDeltaFields(e, dx: dx, dy: dy)
         e.flags = moveSafeEventFlags
+        finalizeAndPost(e)
+    }
+
+    /// Companion to `postTouchScroll` — same synthesized-gesture technique as
+    /// `postTouchMagnify` (`nsEventTypeGesture`/`fieldIOHIDEventSubtype`/
+    /// `fieldGesturePhase`, all reused from there), but subtype
+    /// `kIOHIDEventTypeScroll` instead of zoom, carrying the gesture delta
+    /// directly rather than a magnification factor. Not sent during the
+    /// momentum tail — a real trackpad's momentum stream is wheel-event only,
+    /// this event only accompanies a live, phase-bracketed gesture.
+    private func postTouchScrollGesture(dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase) {
+        guard let e = CGEvent(source: nil) else { return }
+        e.type = Self.nsEventTypeGesture
+        e.location = currentCursorPosition()
+        e.setIntegerValueField(Self.fieldIOHIDEventSubtype, value: Self.iohidEventTypeScroll)
+        e.setIntegerValueField(Self.fieldGesturePhase, value: Int64(phase.rawValue))
+        e.setDoubleValueField(Self.fieldGestureDeltaX, value: dx)
+        e.setDoubleValueField(Self.fieldGestureDeltaY, value: dy)
         finalizeAndPost(e)
     }
 
@@ -229,11 +257,17 @@ extension InputInjector {
 
     /// Undocumented CGEvent type/field numbers for gesture synthesis —
     /// see `postTouchMagnify`'s doc comment for provenance and license note.
+    /// `fieldGestureDeltaX/Y` and `iohidEventTypeScroll` are the scroll-
+    /// subtype siblings of the zoom fields below, sourced from the same
+    /// technique's use in Mac Mouse Fix's `GestureScrollSimulator.m`.
     private static let nsEventTypeGesture = CGEventType(rawValue: 29)!
     private static let fieldIOHIDEventSubtype = CGEventField(rawValue: 110)!
     private static let fieldMagnification = CGEventField(rawValue: 113)!
+    private static let fieldGestureDeltaX = CGEventField(rawValue: 116)!
+    private static let fieldGestureDeltaY = CGEventField(rawValue: 119)!
     private static let fieldGesturePhase = CGEventField(rawValue: 132)!
     private static let iohidEventTypeZoom: Int64 = 8
+    private static let iohidEventTypeScroll: Int64 = 6
 
     private func postTouchTapClick(snapshot: InjectionSnapshot, settings: TabletSettings?) {
         let loc = currentCursorPosition()
@@ -260,6 +294,7 @@ extension InputInjector {
         touchMomentumVelocity = velocity
         touchMomentumAccumX = 0
         touchMomentumAccumY = 0
+        touchMomentumLastTickTime = CFAbsoluteTimeGetCurrent()
         postTouchScrollMomentum(dx: 0, dy: 0, phase: .begin)
         scheduleTouchMomentumTailTick()
     }
@@ -286,11 +321,14 @@ extension InputInjector {
 
     private func touchMomentumTailTick() {
         touchMomentumTailTimer = nil
-        let dt = Self.momentumTailInterval
+        let now = CFAbsoluteTimeGetCurrent()
+        let dt = now - touchMomentumLastTickTime
+        touchMomentumLastTickTime = now
         let dx = touchMomentumVelocity.dx * dt
         let dy = touchMomentumVelocity.dy * dt
-        touchMomentumVelocity.dx *= Self.momentumDecayPerTick
-        touchMomentumVelocity.dy *= Self.momentumDecayPerTick
+        let decay = pow(Self.momentumDecayPer10ms, dt * 1000.0 / 10.0)
+        touchMomentumVelocity.dx *= decay
+        touchMomentumVelocity.dy *= decay
 
         touchMomentumAccumX += dx
         touchMomentumAccumY += dy
