@@ -155,6 +155,13 @@ struct PanScrollTracker {
     /// A release is only treated as a flick if motion happened within this
     /// many seconds of it.
     static let momentumRecencyWindow: Double = 0.05
+    /// Longest `disengage(backdate:)` offset the sample history must still be
+    /// able to answer for. Sized to cover the longest button up-debounce
+    /// (`InputInjector.buttonUpDebounceMenuInterval`, 0.25 s) with margin —
+    /// samples are pruned to `peakVelocityWindow + this`, so a backdated
+    /// release can still see the window that was current at the physical
+    /// release. Costs a handful of extra tuples on a tiny array.
+    static let maxBackdate: Double = 0.30
 
     // MARK: - Edges
 
@@ -184,12 +191,45 @@ struct PanScrollTracker {
 
     /// End the gesture (real button release, or a confirmed proximity exit).
     /// Idempotent — a second call after an inactive period emits nothing.
-    mutating func disengage() -> Intent {
+    ///
+    /// `backdate` is how long ago the *physical* release happened, for callers
+    /// whose release edge is deferred — currently only the Xencelabs
+    /// barrel-button up-debounce (`InputInjector.handleXencelabsBarrelButton`),
+    /// which holds the release for `buttonUpDebounceInterval` (0.05 s) to
+    /// bridge contact chatter. Wacom fires its release immediately and always
+    /// passes 0.
+    ///
+    /// **This is hardening, not a fix for an observed bug.** At the current
+    /// 0.05 s window it changes nothing measurable: any real follow-through
+    /// after a flick — even deceleration sharp enough to stop the pen within
+    /// the window — still counts as motion, so `timeSinceMotion` stays reset
+    /// and the peak sample survives `peakVelocityWindow`. Only an
+    /// instantaneous, physically impossible dead stop at the release edge
+    /// loses momentum without this. It earns its place by making the gesture's
+    /// timing independent of debounce length, so a future longer window (the
+    /// 0.25 s `buttonUpDebounceMenuInterval` reaching a drag-style binding,
+    /// say) can't quietly start suppressing flicks. Verified by the checks in
+    /// tools/pan-scroll-tracker-tests/ — do not "restore" a bug narrative here.
+    mutating func disengage(backdate: Double = 0) -> Intent {
         guard isActive else { return .none }
-        let peak = recentVelocities
-            .filter { clock - $0.time <= Self.peakVelocityWindow }
-            .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
-        releaseVelocity = timeSinceMotion <= Self.momentumRecencyWindow ? peak : .zero
+        let offset = max(0, backdate)
+        if offset > Self.maxBackdate {
+            // Out of contract — the sample history isn't retained this far
+            // back, so no reliable answer exists. Suppress rather than clamp
+            // into a permissive window: clamping would look back a fixed
+            // `maxBackdate` and could resurrect a long-dead flick. A missing
+            // coast is a much milder failure than a spurious one.
+            releaseVelocity = .zero
+        } else {
+            let cutoff = clock - offset
+            let peak = recentVelocities
+                .filter { $0.time <= cutoff && cutoff - $0.time <= Self.peakVelocityWindow }
+                .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
+            // May go negative when motion continued into the deferral window —
+            // that's a flick, and compares correctly against the threshold.
+            releaseVelocity =
+                timeSinceMotion - offset <= Self.momentumRecencyWindow ? peak : .zero
+        }
         isActive = false
         last = nil
         lastRaw = nil
@@ -261,7 +301,11 @@ struct PanScrollTracker {
         if dt > 0 {
             clock += dt
             recentVelocities.append((time: clock, v: CGVector(dx: rawDx / dt, dy: rawDy / dt)))
-            recentVelocities.removeAll { clock - $0.time > Self.peakVelocityWindow }
+            // Retain `maxBackdate` beyond the peak window so a deferred release
+            // can still be judged as of its physical edge — see disengage().
+            recentVelocities.removeAll {
+                clock - $0.time > Self.peakVelocityWindow + Self.maxBackdate
+            }
         }
         if abs(rawDx) > 0.01 || abs(rawDy) > 0.01 {
             timeSinceMotion = 0

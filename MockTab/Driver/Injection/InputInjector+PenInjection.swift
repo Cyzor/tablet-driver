@@ -668,9 +668,10 @@ extension InputInjector {
         case .rightClick, .eraser: window = buttonUpDebounceMenuInterval
         default: window = buttonUpDebounceInterval
         }
+        let physicalReleaseTime = CFAbsoluteTimeGetCurrent()
         let timer = CFRunLoopTimerCreateWithHandler(
             kCFAllocatorDefault,
-            CFAbsoluteTimeGetCurrent() + window,
+            physicalReleaseTime + window,
             0, 0, 0
         ) { [weak self] _ in
             guard let self else { return }
@@ -683,7 +684,13 @@ extension InputInjector {
             }
             guard stillDown else { return }
             self.setBarrelButtonDown(slot, false)
+            // Publish how stale this release is so velocity-sensitive bindings
+            // (Scroll Drag's momentum seed) can judge it as of the physical
+            // edge rather than this deferred commit. Cleared immediately after
+            // so no later, undeferred action inherits it.
+            self.pendingButtonUpBackdate = CFAbsoluteTimeGetCurrent() - physicalReleaseTime
             self.fireButtonAction(binding, down: false, at: location, snapshot: snap, settings: settings)
+            self.pendingButtonUpBackdate = 0
         }
         CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
         setBarrelButtonTimer(slot, timer)
