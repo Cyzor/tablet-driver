@@ -38,9 +38,34 @@ final class WacomKnownDevice: TabletDevice {
     /// session on HIDThread.
     private let onPairedPID: ((Int) -> Void)?
     /// Called once per touch frame for devices that report capacitive finger
-    /// touch.  No decoder produces these yet — wired so the integration
-    /// surface is ready when a per-family touch decoder lands.
+    /// touch. Report 0x21 (PTH-660/860) is decoded by `IntuosV2Decoder`
+    /// itself; every other touch-capable entry is served by `touchDecoders`
+    /// below.
     private let onTouch: (([TouchContact]) -> Void)?
+
+    /// Descriptor-derived touch decoders, keyed by report ID.
+    ///
+    /// `IntuosV2Decoder` only understands report 0x21, the PTH-660/860 shape
+    /// verified against real hardware. Every other touch-capable registry
+    /// entry — the Cintiq Pro / DTH pen-display line — declares a standard
+    /// HID Digitizer Touch Screen collection instead (report 0x0C in every
+    /// descriptor checked so far), which that decoder's report-ID switch has
+    /// no case for; those frames were silently discarded. `PrecisionTouchDecoder`
+    /// exists for exactly this shape and is derived from the device's own
+    /// descriptor rather than a hand-maintained byte table.
+    ///
+    /// Populated as each IOHIDDevice for this product arrives — the primary
+    /// interface at `init` and any secondary via `registerDevice` — because
+    /// the touch collection sometimes lives on a different USB interface than
+    /// the pen report, or even (Cintiq Pro 16) under an entirely different
+    /// product ID paired to this one. Report ID 0x21 is never added here even
+    /// if a descriptor happens to declare it, so this can never shadow
+    /// `IntuosV2Decoder`'s verified path for PTH-660/860.
+    ///
+    /// Unverified against real hardware for every device it currently
+    /// applies to — see the coordinate provenance comments on each
+    /// `touchMaxX`/`touchMaxY` this feeds in `WacomDeviceRegistry`.
+    private var touchDecoders: [UInt8: PrecisionTouchDecoder] = [:]
     /// Called when the hardware serial is successfully queried from a WACOM_REPORT_USB
     /// (Report ID 0x03) feature report on USB/dongle connections. Serial is 0 if the
     /// query fails or the device does not support the feature report.
@@ -249,6 +274,8 @@ final class WacomKnownDevice: TabletDevice {
         // and IntuosV2 (192-byte) reports always fit.
         let maxSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
         reportBuffer = [UInt8](repeating: 0, count: Swift.max(maxSize, 192))
+
+        deriveTouchDecoders(from: device)
     }
 
     // MARK: - Open / Close
@@ -309,11 +336,48 @@ final class WacomKnownDevice: TabletDevice {
             device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
     }
 
-    /// Register an additional IOHIDDevice (interface) for report delivery.
+    /// Report IDs `IntuosV2Decoder`'s own `switch` already claims — mirrors
+    /// its cases exactly (`IntuosV2Decoder.swift`, the `switch report[0]` at
+    /// the top of `decode`). Keep this in sync if that switch changes.
+    ///
+    /// `PrecisionTouchLayout.derive` doesn't know what `IntuosV2Decoder`
+    /// handles; it just tells you what a descriptor *declares*. PTH-660/860's
+    /// own touch report (0x21) is unusually structured for this family — its
+    /// descriptor declares Contact Identifier/Tip Switch/X/Y/Width/Height
+    /// fields exactly like `PrecisionTouchLayout` looks for (see
+    /// `IntuosV2Decoder.decodeTouchReport`'s doc comment) — so a naive derive
+    /// would produce a *second*, unverified decoder for the exact report
+    /// `IntuosV2Decoder` already handles correctly against real hardware.
+    /// Whether any of the other cases below are also descriptor-structured on
+    /// any real device is unconfirmed either way; all are excluded rather
+    /// than assumed safe, since these are this project's only two
+    /// hardware-verified touch devices.
+    private static let intuosV2ReservedReportIDs: Set<UInt8> = [0x01, 0x03, 0x10, 0x1E, 0x11, 0x21, 0x80]
+
+    /// Derives touch decoders from one IOHIDDevice's own report descriptor and
+    /// merges them into `touchDecoders`. Safe to call for every interface this
+    /// product exposes — a descriptor with no Touch Screen/Touch Pad
+    /// collection derives nothing, and a report ID already covered (by an
+    /// earlier interface, or reserved above) is never overwritten.
+    private func deriveTouchDecoders(from device: IOHIDDevice) {
+        guard deviceSpec.hasFingerTouch else { return }
+        let parsed = HIDDescriptorReader.read(device)
+        guard let hex = parsed.rawHex,
+            let layout = try? HIDReportDescriptorParser.parse(hex: hex)
+        else { return }
+        let reserved: Set<UInt8> = deviceSpec.parser == .intuosV2 ? Self.intuosV2ReservedReportIDs : []
+        for touchLayout in PrecisionTouchLayout.derive(from: layout) {
+            guard !reserved.contains(touchLayout.reportID), touchDecoders[touchLayout.reportID] == nil
+            else { continue }
+            touchDecoders[touchLayout.reportID] = PrecisionTouchDecoder(layout: touchLayout)
+        }
+    }
+
     /// Used for multi-interface devices (e.g. ACK-40401 wireless dongle) that
     /// enumerate separate IOHIDDevices for each interface (digitizer, wireless status, etc).
     func registerDevice(_ device: IOHIDDevice) {
         registeredInterfaces.append(device)
+        deriveTouchDecoders(from: device)
         if acceptsReports(from: device) {
             IOHIDDeviceRegisterInputReportWithTimeStampCallback(
                 device, &reportBuffer, reportBuffer.count,
@@ -1197,9 +1261,15 @@ final class WacomKnownDevice: TabletDevice {
             }
         }
 
-        let results = decoder.decode(
-            report: report, length: length, spec: spec, state: &state,
-            deviceFamily: deviceSpec.family)
+        let results: [DecodeResult]
+        if length > 0, let touchDecoder = touchDecoders[report[0]] {
+            let bytes = Array(UnsafeBufferPointer(start: report, count: length))
+            results = touchDecoder.decode(report: bytes).map { [.touch($0.contacts)] } ?? []
+        } else {
+            results = decoder.decode(
+                report: report, length: length, spec: spec, state: &state,
+                deviceFamily: deviceSpec.family)
+        }
         for result in results {
             switch result {
             case .none:
