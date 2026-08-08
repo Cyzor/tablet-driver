@@ -34,8 +34,24 @@ final class CaptureEngine: ObservableObject {
 
     // MARK: - Recording entry point
 
-    /// Statistics store, shared with the HID callback thread.
-    private nonisolated let accumulator = DiscoveryAccumulator()
+    /// One interface being recorded: the `IOHIDDevice` reports arrive from,
+    /// what that interface says it is, and its own statistics store.
+    ///
+    /// A session records *every* reporting interface of the device at once
+    /// rather than one the user picked, so each needs its own accumulator:
+    /// two interfaces of the same tablet routinely use the same report IDs
+    /// for unrelated payloads (PTH-850 sends pen data and a 64-byte touch
+    /// frame that would otherwise be histogrammed into one bucket), and each
+    /// carries its own report descriptor to cross-reference against.
+    struct InterfaceSession {
+        let device: IOHIDDevice
+        let info: CaptureDeviceInfo
+        let accumulator: DiscoveryAccumulator
+    }
+
+    /// Every interface this session is recording, primary first — see
+    /// `startDiscovery(devices:)`. Empty when idle.
+    private var sessions: [InterfaceSession] = []
 
     /// Every in-progress session's accumulator, keyed by the identity of the
     /// `IOHIDDevice` it's recording — not product ID, so two connected units
@@ -86,11 +102,6 @@ final class CaptureEngine: ObservableObject {
 
     // MARK: - Session State
 
-    private var sessionDeviceInfo: CaptureDeviceInfo?
-    /// The `IOHIDDevice` this session is scoped to — the key `recordRaw` and
-    /// `updateToolCode` use to route reports here instead of to some other
-    /// window's session on a different device.
-    private var sessionDevice: IOHIDDevice?
     private var discoveryStartTime: Date = .distantPast
     /// Fires once at the end of the session duration to auto-finish a session
     /// the user walked away from.
@@ -106,53 +117,104 @@ final class CaptureEngine: ObservableObject {
 
     // MARK: - Public API
 
-    /// Begin a collection session scoped to `device`. Records every report
-    /// that specific `IOHIDDevice` sends for `duration` seconds, or until
+    /// Begin a collection session covering **every** reporting interface of
+    /// one tablet at once. Records for `duration` seconds, or until
     /// `finishDiscovery()` is called. Independent of any other `CaptureEngine`
     /// instance's session, even one running concurrently on another device.
-    func startDiscovery(device: IOHIDDevice, deviceInfo: CaptureDeviceInfo, duration: TimeInterval = 60) {
+    ///
+    /// - Parameter devices: each interface to record, paired with its own
+    ///   identity and descriptor, **primary interface first** — that one names
+    ///   the hardware in the capture header and supplies the top-level
+    ///   `reports` block older triage tooling reads. Passing more than one is
+    ///   the point: which interface carries the interesting traffic is exactly
+    ///   what a tester submitting an unknown device cannot be expected to
+    ///   know, and recording them all costs a few KB.
+    func startDiscovery(devices: [(IOHIDDevice, CaptureDeviceInfo)], duration: TimeInterval = 60) {
+        guard !devices.isEmpty else { return }
         stopTimers()
-        deregisterAccumulator()
+        deregisterAccumulators()
         lastError = nil
         initReportsSent = []
         discoverySampleCount = 0
-        sessionDeviceInfo = deviceInfo
-        sessionDevice = device
         discoveryStartTime = Date()
 
-        // Arm the accumulator before announcing the session: a report arriving
-        // between these two statements must land in the fresh store, never the
-        // previous session's.
-        accumulator.start()
-        Self.activeAccumulators.withLock { $0[ObjectIdentifier(device)] = accumulator }
+        let started = devices.map {
+            InterfaceSession(device: $0.0, info: $0.1, accumulator: DiscoveryAccumulator())
+        }
+        sessions = started
+        // Arm each accumulator before announcing it: a report arriving between
+        // these two statements must land in the fresh store, never a previous
+        // session's.
+        let armed = started.map { (ObjectIdentifier($0.device), $0.accumulator) }
+        Self.activeAccumulators.withLock { table in
+            for (key, accumulator) in armed {
+                accumulator.start()
+                table[key] = accumulator
+            }
+        }
         isRunning = true
 
         pollTimer = scheduledTimer(interval: 0.5, repeats: true) { [weak self] in
             guard let self, self.isRunning else { return }
-            self.discoverySampleCount = self.accumulator.sampleCount
+            self.discoverySampleCount = self.totalSampleCount
         }
         discoveryTimer = scheduledTimer(interval: duration, repeats: false) { [weak self] in
             self?.finishDiscovery()
         }
     }
 
+    /// Whether `device` is one of the interfaces this session is recording.
+    func isRecording(_ device: IOHIDDevice) -> Bool {
+        sessions.contains { $0.device === device }
+    }
+
+    /// Start recording one more interface on a session already under way,
+    /// keeping everything gathered so far.
+    ///
+    /// A tablet's interfaces do not all attach at once — on a PTH-850 the
+    /// touch interface routinely enumerates a moment *after* the sheet has
+    /// opened and started recording the pen interface. Without this, that
+    /// interface is absent from the file for no reason the tester could see
+    /// or act on, which is the same silent half-capture recording every
+    /// interface exists to prevent. Never primary: the interface that named
+    /// the hardware in the header keeps that role for the whole session.
+    func addInterface(device: IOHIDDevice, deviceInfo: CaptureDeviceInfo) {
+        guard isRunning, !isRecording(device) else { return }
+        let accumulator = DiscoveryAccumulator()
+        accumulator.start()
+        sessions.append(
+            InterfaceSession(device: device, info: deviceInfo, accumulator: accumulator))
+        let key = ObjectIdentifier(device)
+        Self.activeAccumulators.withLock { $0[key] = accumulator }
+    }
+
+    /// Events recorded across every interface — what the sheet's live counter
+    /// shows, so a tester watching it sees their pen *and* their fingers move
+    /// the number regardless of which interface each travels on.
+    private var totalSampleCount: Int {
+        sessions.reduce(0) { $0 + $1.accumulator.sampleCount }
+    }
+
     /// Cancel collection and discard everything gathered.
     func cancelDiscovery() {
         guard isRunning else { return }
         stopTimers()
-        accumulator.stop()
-        deregisterAccumulator()
+        for session in sessions { session.accumulator.stop() }
+        deregisterAccumulators()
         isRunning = false
-        sessionDeviceInfo = nil
         discoverySampleCount = 0
     }
 
-    /// Remove this session's accumulator from the routing table so `recordRaw`
-    /// stops delivering reports to it. Idempotent; safe with no active session.
-    private func deregisterAccumulator() {
-        guard let device = sessionDevice else { return }
-        Self.activeAccumulators.withLock { $0.removeValue(forKey: ObjectIdentifier(device)) }
-        sessionDevice = nil
+    /// Remove every interface's accumulator from the routing table so
+    /// `recordRaw` stops delivering reports to them. Idempotent; safe with no
+    /// active session.
+    private func deregisterAccumulators() {
+        guard !sessions.isEmpty else { return }
+        let keys = sessions.map { ObjectIdentifier($0.device) }
+        Self.activeAccumulators.withLock { table in
+            for key in keys { table.removeValue(forKey: key) }
+        }
+        sessions = []
     }
 
     /// Note a Wacom tool code seen during collection (pen vs. eraser vs. puck).
@@ -170,21 +232,22 @@ final class CaptureEngine: ObservableObject {
     func finishDiscovery() -> DiscoveryResult? {
         guard isRunning else { return nil }
         stopTimers()
-        // Close the accumulator before snapshotting so no report lands between
-        // the snapshot and the end of the session.
-        accumulator.stop()
-        deregisterAccumulator()
+        // Close every accumulator before snapshotting so no report lands
+        // between the snapshot and the end of the session.
+        for session in sessions { session.accumulator.stop() }
         isRunning = false
-        discoverySampleCount = accumulator.sampleCount
+        discoverySampleCount = totalSampleCount
 
-        guard let deviceInfo = sessionDeviceInfo else {
+        guard !sessions.isEmpty else {
             lastError = String(
                 localized: "Collection ended before the tablet was identified. Nothing was saved.",
                 comment: "Capture error shown when a session finishes with no device information")
             return nil
         }
 
-        let result = buildDiscoveryResult(deviceInfo: deviceInfo)
+        // Built before deregistering: `sessions` holds the data being read.
+        let result = buildDiscoveryResult(sessions: sessions)
+        deregisterAccumulators()
         onDiscoveryComplete?(result)
         return result
     }
@@ -317,8 +380,115 @@ final class CaptureEngine: ObservableObject {
 
     // MARK: - Result Building
 
-    private func buildDiscoveryResult(deviceInfo: CaptureDeviceInfo) -> DiscoveryResult {
-        let (reports, toolCodes) = accumulator.snapshot()
+    /// Assemble the file from every interface's accumulator.
+    ///
+    /// The primary interface (first, by contract of `startDiscovery`) also
+    /// fills the top-level `reports`/`hidReportDescriptor`/`deviceInfo`, which
+    /// is what a `captureVersion` 6 reader — `tools/triage_discovery.py` as
+    /// shipped — knows how to read. Every interface, primary included, is
+    /// additionally listed in `interfaces`. Tool codes are unioned across
+    /// interfaces, since a tool entering proximity is a property of the tablet
+    /// rather than of whichever interface happened to report it.
+    private func buildDiscoveryResult(sessions: [InterfaceSession]) -> DiscoveryResult {
+        // Which interface fills the top-level block: the one the driver
+        // designated, unless it recorded nothing, in which case the busiest.
+        //
+        // A PTH-850 capture made the fallback necessary: its vendor interface
+        // attached first and so led the session, but sat silent for the whole
+        // run while the other interface carried all 391 samples. Leading with
+        // the silent one put an empty `reports` at the top level, which is the
+        // *entire* capture as far as a `captureVersion` 6 reader is concerned —
+        // the file read as "recorded nothing" while holding a full recording
+        // one section down.
+        //
+        // Ranking purely by sample count would fix that and introduce a worse
+        // problem: the top-level block would then be whichever interface the
+        // tester happened to exercise most, so two captures of the same tablet
+        // would disagree about what the primary is — a pen-heavy session and a
+        // touch-heavy one landing different data in the block that triage
+        // tooling treats as the device's own. Preferring the designated
+        // interface keeps that stable, and only a genuinely silent one gives
+        // the slot up.
+        let primaryDevice =
+            sessions[0].accumulator.sampleCount > 0
+            ? sessions[0].device
+            : (sessions.max { $0.accumulator.sampleCount < $1.accumulator.sampleCount }
+                ?? sessions[0]).device
+
+        var interfaces: [DiscoveryInterface] = []
+        var allToolCodes: Set<UInt16> = []
+
+        for session in sessions {
+            let (reports, toolCodes) = session.accumulator.snapshot()
+            allToolCodes.formUnion(toolCodes)
+            interfaces.append(
+                DiscoveryInterface(
+                    usagePage: session.info.usagePage.map { String(format: "0x%04X", $0) },
+                    usage: session.info.usage.map { String(format: "0x%04X", $0) },
+                    isPrimary: session.device === primaryDevice,
+                    sampleCount: session.accumulator.sampleCount,
+                    reports: Self.reportSummaries(
+                        reports, descriptor: session.info.parsedDescriptor),
+                    hidReportDescriptor: session.info.parsedDescriptor))
+        }
+
+        // Ordered so the interface filling the top-level block is also
+        // `interfaces[0]`, matching what the `isPrimary` flag claims.
+        if let idx = interfaces.firstIndex(where: { $0.isPrimary }), idx != 0 {
+            interfaces.insert(interfaces.remove(at: idx), at: 0)
+        }
+
+        // Identity still comes from the interface the driver reads pen reports
+        // from: every interface reports the same VID/PID, but that one is the
+        // one whose name the registry lookup was built around.
+        let deviceInfo = sessions[0].info
+        let toolCodeHex = allToolCodes.map { String(format: "0x%04X", $0) }.sorted()
+        var notes = "Observed tool codes: \(toolCodeHex.isEmpty ? "none" : toolCodeHex.joined(separator: ", "))"
+        if allToolCodes.contains(0x080A) {
+            notes += " (eraser capable)"
+        }
+        // Only worth saying when there was more than one interface: on the
+        // common single-interface device it would be noise in every file.
+        if interfaces.count > 1 {
+            let quiet = interfaces.filter { $0.sampleCount == 0 }.count
+            notes += ". Recorded \(interfaces.count) interfaces"
+            notes += quiet == 0 ? "." : ", \(quiet) of which sent nothing."
+        }
+
+        return DiscoveryResult(
+            capturedAt: Date(),
+            mode: "discovery",
+            duration: Date().timeIntervalSince(discoveryStartTime),
+            deviceInfo: DiscoveryDeviceInfo(
+                vendorID: deviceInfo.vendorIDHex,
+                productID: deviceInfo.productIDHex,
+                name: deviceInfo.name,
+                manufacturer: deviceInfo.manufacturer,
+                transport: deviceInfo.transport,
+                locationID: deviceInfo.locationID
+            ),
+            reports: interfaces[0].reports,
+            hidReportDescriptor: interfaces[0].hidReportDescriptor,
+            interfaces: interfaces.count > 1 ? interfaces : nil,
+            initReports: initReportsSent.isEmpty ? nil : initReportsSent,
+            observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
+            notes: notes,
+            submitterContact: nil
+        )
+    }
+
+    /// Summarize one interface's accumulated reports.
+    ///
+    /// - Parameter descriptor: **that interface's own** parsed descriptor, not
+    ///   the device's primary one. `descriptorReadable` below is a claim about
+    ///   whether this report's fields are declared, and checking a touch
+    ///   interface's reports against a pen interface's descriptor marks every
+    ///   one of them opaque — the same mis-attribution across sibling
+    ///   interfaces that `WacomKnownDevice`'s `sender`-based routing fixed.
+    private static func reportSummaries(
+        _ reports: [UInt8: DiscoveryAccumulator.ReportStats],
+        descriptor: HIDDescriptorReader.Parsed?
+    ) -> [String: DiscoveryReportSummary] {
         var reportSummaries: [String: DiscoveryReportSummary] = [:]
 
         for (reportID, stats) in reports {
@@ -355,7 +525,7 @@ final class CaptureEngine: ObservableObject {
             // decodable (non-opaque) field for this input report ID? Discovery
             // only observes device->host traffic, so we only ever check the
             // "input:" direction here.
-            let descriptorReadable = deviceInfo.parsedDescriptor?.reports["input:\(idHex)"]?.isReadable
+            let descriptorReadable = descriptor?.reports["input:\(idHex)"]?.isReadable
 
             // Runs regardless of `descriptorReadable`: a report can have a
             // readable descriptor for *some* fields and still pack an opaque
@@ -388,31 +558,7 @@ final class CaptureEngine: ObservableObject {
             )
         }
 
-        let toolCodeHex = toolCodes.map { String(format: "0x%04X", $0) }.sorted()
-        var notes = "Observed tool codes: \(toolCodeHex.isEmpty ? "none" : toolCodeHex.joined(separator: ", "))"
-        if toolCodes.contains(0x080A) {
-            notes += " (eraser capable)"
-        }
-
-        return DiscoveryResult(
-            capturedAt: Date(),
-            mode: "discovery",
-            duration: Date().timeIntervalSince(discoveryStartTime),
-            deviceInfo: DiscoveryDeviceInfo(
-                vendorID: deviceInfo.vendorIDHex,
-                productID: deviceInfo.productIDHex,
-                name: deviceInfo.name,
-                manufacturer: deviceInfo.manufacturer,
-                transport: deviceInfo.transport,
-                locationID: deviceInfo.locationID
-            ),
-            reports: reportSummaries,
-            hidReportDescriptor: deviceInfo.parsedDescriptor,
-            initReports: initReportsSent.isEmpty ? nil : initReportsSent,
-            observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
-            notes: notes,
-            submitterContact: nil
-        )
+        return reportSummaries
     }
 
     /// Values listed per byte position before the list is trimmed. See

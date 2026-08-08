@@ -147,6 +147,14 @@ final class WacomKnownDevice: TabletDevice {
     /// with no corresponding physical press.
     private static let xencelabsVendorUsagePage = 0xFF0A
 
+    /// Whether this interface gets an input-report callback — and so whether a
+    /// capture session listening on it could ever record anything. Consulted
+    /// by `TabletManager` before offering the interface to `CaptureEngine`;
+    /// see `CaptureInterfaceCandidate`.
+    func deliversReports(from candidate: IOHIDDevice) -> Bool {
+        acceptsReports(from: candidate)
+    }
+
     private func acceptsReports(from candidate: IOHIDDevice) -> Bool {
         guard deviceSpec.parser == .xencelabs else { return true }
         return hidIntProperty(candidate, kIOHIDPrimaryUsagePageKey)

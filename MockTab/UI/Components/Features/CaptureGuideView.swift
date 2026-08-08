@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import AppKit
+import Combine
 import IOKit.hid
 import SwiftUI
 import TabletKit
@@ -40,11 +41,15 @@ struct CaptureGuideView: View {
     /// device we've tested, since their descriptors declare neither usage; the
     /// 0x02 default above remains the fallback for those.
     @State private var autoDetectedModeReportID: UInt8? = nil
-    /// Which of the device's `.driver`-routed interfaces to capture, when it
-    /// has more than one (see `DeviceContext.captureInterfaces`). Nil means
-    /// "use `hidDevice`'s default" — the common single-interface case, and
-    /// the pre-picker behavior for anyone who never opens the picker.
-    @State private var selectedInterfaceID: String? = nil
+    /// The interface whose descriptor declared `autoDetectedModeReportID`, so
+    /// the Send button writes to that one rather than to the primary.
+    ///
+    /// These differ on exactly the hardware the control exists for: a
+    /// multitouch interface carries the standard Device Mode usage while the
+    /// pen interface carries Wacom's vendor DATAMODE, and a mode-switch write
+    /// addressed to the wrong sibling is simply NAK'd — indistinguishable, to
+    /// the tester, from the device not supporting the report at all.
+    @State private var modeSwitchDevice: IOHIDDevice? = nil
 
     @Environment(\.accessibilityDifferentiateWithoutColor)
     private var differentiateWithoutColor
@@ -88,6 +93,24 @@ struct CaptureGuideView: View {
             Text(String(localized: "Nothing collected so far will be saved.", comment: "Data collection alert message"))
         }
         .onAppear { startCollection() }
+        // A tablet's interfaces don't all attach at once — see
+        // `CaptureEngine.addInterface`. `DeviceContext` is nested inside
+        // `TabletManager.contexts`, so its changes don't reach this view
+        // through `tabletManager` alone; subscribe to the context itself.
+        //
+        // Hopped rather than run inline: `objectWillChange` fires from the
+        // `@Published` property's `willSet`, so a synchronous handler reads
+        // `captureInterfaces` as it was *before* the interface was appended,
+        // finds nothing new, and never hears about that append again.
+        // (Verified in isolation: a sink on `objectWillChange` observes counts
+        // 0 and 1 across two appends.) The picker this replaced was immune
+        // because SwiftUI re-evaluates `body` after the mutation, not during.
+        .onReceive(contextChanges) { _ in
+            Task { @MainActor in adoptNewInterfaces() }
+        }
+        .onChange(of: engine.isSendingInitReport) { sending in
+            trackSendingIndicator(isSending: sending)
+        }
     }
 
     // MARK: - Header
@@ -152,10 +175,6 @@ struct CaptureGuideView: View {
                         instruction("hand.draw",              String(localized: "Drag one finger across the tablet, then pinch with two", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"))
                     }
                     .padding(.horizontal, 20)
-
-                    interfacePicker
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
 
                     deviceModeInitControl
                         .padding(.horizontal, 20)
@@ -226,50 +245,63 @@ struct CaptureGuideView: View {
             : String(localized: "Starting…", comment: "HID discovery: status indicator while discovery is starting")
     }
 
-    // MARK: - Interface picker
+    // MARK: - Interfaces
 
-    /// Every still-connected `.driver`-routed interface for this device.
-    /// Usually one entry (`hidDevice`'s own interface); a device like
-    /// PTH-850, whose pen and touch interfaces both route through `.driver`
-    /// independently (see `DeviceContext.hidDevice`'s doc comment), has more.
-    private var interfaceCandidates: [CaptureInterfaceCandidate] {
-        (tabletManager.contexts[productID]?.captureInterfaces ?? []).filter { $0.device != nil }
+    /// Every interface of this tablet worth listening to, primary first.
+    ///
+    /// The session records all of them at once rather than asking which one to
+    /// use. A tablet whose pen and touch data arrive on separate HID
+    /// interfaces (PTH-850 — see `DeviceContext.hidDevice`'s doc comment)
+    /// otherwise yields a file covering half the hardware, and *which* half is
+    /// enumeration-order luck. Nobody submitting a capture for an unrecognized
+    /// device can be expected to know which interface carries the traffic
+    /// worth having — that judgment is the whole point of reading the file
+    /// afterward, so it can't be a precondition for producing one.
+    ///
+    /// `hidDevice` leads when it's among the listed interfaces: it's the one
+    /// the driver reads pen reports from, so its data is what fills the
+    /// top-level block of the capture file that existing triage tooling reads.
+    ///
+    /// It is *not* promoted when it was left off that list. `hidDevice` is
+    /// claimed by the first `.driver`-routed interface whether or not the
+    /// driver installed a report callback on it, while `captureInterfaces`
+    /// deliberately omits interfaces that got none (see
+    /// `TabletManager.offerForCapture`). Leading with one of those would put
+    /// a permanently empty block at the top level of the file — which is
+    /// exactly the block a `captureVersion` 6 reader treats as the whole
+    /// capture — while the real traffic sat in a section it doesn't read.
+    ///
+    /// The bare `hidDevice` fallback remains for a device whose interfaces
+    /// never got listed at all.
+    private func captureInterfaces() -> [IOHIDDevice] {
+        let context = tabletManager.contexts[productID]
+        let listed = (context?.captureInterfaces ?? []).compactMap(\.device)
+        guard !listed.isEmpty else { return [context?.hidDevice].compactMap { $0 } }
+        guard let primary = context?.hidDevice, listed.contains(where: { $0 === primary })
+        else { return listed }
+        return [primary] + listed.filter { $0 !== primary }
     }
 
-    /// Only shown when there's an actual choice to make — a single-interface
-    /// device (the common case) never sees this row.
-    @ViewBuilder
-    private var interfacePicker: some View {
-        let candidates = interfaceCandidates
-        if candidates.count > 1 {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(String(localized: "Interface", comment: "Label for the picker choosing which of a multi-interface device's HID interfaces to capture"))
-                    .appFont(.caption)
-                    .foregroundStyle(.secondary)
-                Picker("", selection: $selectedInterfaceID) {
-                    ForEach(candidates) { candidate in
-                        Text(String(format: "0x%02X", candidate.usagePage))
-                            .tag(Optional(candidate.id))
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-            }
-            .onChange(of: selectedInterfaceID) { _ in restartCollection() }
-        }
+    /// Change notifications from this tablet's `DeviceContext`, or a publisher
+    /// that never fires when there's no context to watch.
+    private var contextChanges: ObservableObjectPublisher {
+        tabletManager.contexts[productID]?.objectWillChange ?? Self.silentChanges
     }
 
-    /// The device this session should capture from: the picker's selection
-    /// when one was made, otherwise `hidDevice` — same fallback in both
-    /// `deviceInfo()` and `startCollection()`, kept as one place so they
-    /// can't drift apart.
-    private func targetDevice() -> IOHIDDevice? {
-        if let selectedInterfaceID,
-            let match = interfaceCandidates.first(where: { $0.id == selectedInterfaceID })
-        {
-            return match.device
+    private static let silentChanges = ObservableObjectPublisher()
+
+    /// Fold any interface that has attached since collection started into the
+    /// running session, keeping what's already been gathered.
+    ///
+    /// Cheap enough to run on every context change: it does nothing unless an
+    /// interface is genuinely new to the session, which happens once or twice
+    /// in a device's lifetime.
+    private func adoptNewInterfaces() {
+        guard engine.isRunning else { return }
+        for device in captureInterfaces() where !engine.isRecording(device) {
+            guard let info = deviceInfo(device: device) else { continue }
+            engine.addInterface(device: device, deviceInfo: info)
         }
-        return tabletManager.contexts[productID]?.hidDevice
     }
 
     // MARK: - Device mode init (advanced)
@@ -281,6 +313,40 @@ struct CaptureGuideView: View {
     /// already running when this appears, so a tester can send a write and
     /// watch the event counter for a response without restarting. Most devices
     /// never need it — hence collapsed, and labelled advanced.
+    /// Whether the in-flight spinner and its "waiting on the tablet" line are
+    /// shown. Tracks `engine.isSendingInitReport`, but only after
+    /// `sendingIndicatorDelay` — see `trackSendingIndicator`.
+    @State private var showSendingIndicator = false
+    /// Task running the delay, cancelled when a write finishes inside it.
+    @State private var sendingIndicatorTask: Task<Void, Never>? = nil
+
+    /// How long a write must stay in flight before the sheet says anything
+    /// about it.
+    ///
+    /// A USB feature write returns in a millisecond or two, so an indicator
+    /// tied directly to `isSendingInitReport` appears and vanishes within a
+    /// frame or two — long enough to grow the sheet and snap it back, which
+    /// reads as the window flinching rather than as progress. The indicator
+    /// exists for the Bluetooth case, where the same write genuinely takes
+    /// several seconds; below this threshold there is nothing worth reporting,
+    /// and showing nothing at all is the honest rendering of "instant".
+    private static let sendingIndicatorDelay = Duration.milliseconds(500)
+
+    /// Show the indicator only if the write is still in flight after the
+    /// delay, and hide it the moment the write finishes.
+    private func trackSendingIndicator(isSending: Bool) {
+        sendingIndicatorTask?.cancel()
+        guard isSending else {
+            showSendingIndicator = false
+            return
+        }
+        sendingIndicatorTask = Task { @MainActor in
+            try? await Task.sleep(for: Self.sendingIndicatorDelay)
+            guard !Task.isCancelled, engine.isSendingInitReport else { return }
+            showSendingIndicator = true
+        }
+    }
+
     private var deviceModeInitControl: some View {
         DisclosureRow(
             label: String(localized: "Experimental: switch the tablet into data mode", comment: "Disclosure row label for the advanced device mode init control"),
@@ -323,13 +389,13 @@ struct CaptureGuideView: View {
                               || parseHexByte(initReportIDText) == nil
                               || parseHexByte(initValueText) == nil)
 
-                    if engine.isSendingInitReport {
+                    if showSendingIndicator {
                         ProgressView()
                             .controlSize(.small)
                     }
                 }
 
-                if engine.isSendingInitReport {
+                if showSendingIndicator {
                     Text(String(localized: "Waiting on the tablet. This can take a few seconds over Bluetooth.", comment: "Status shown while a device mode init write is in flight"))
                         .appFont(.caption)
                         .foregroundStyle(.tertiary)
@@ -370,9 +436,12 @@ struct CaptureGuideView: View {
     }
 
     private func sendInitReport() {
+        // The interface whose descriptor declared the report when one did —
+        // see `modeSwitchDevice`. Otherwise the primary, which is the right
+        // target for the hand-entered legacy 0x02 case this control started as.
         guard let reportID = parseHexByte(initReportIDText),
               let value = parseHexByte(initValueText),
-              let dev = tabletManager.contexts[productID]?.hidDevice
+              let dev = modeSwitchDevice ?? tabletManager.contexts[productID]?.hidDevice
         else { return }
         engine.sendInitReport(device: dev, reportID: reportID, value: value)
     }
@@ -547,11 +616,35 @@ struct CaptureGuideView: View {
     // MARK: - Collection logic
 
     private func startCollection() {
-        guard let dev = targetDevice(),
-              let devInfo = deviceInfo(device: dev)
-        else { return }
-        resolvedInfo = devInfo
-        applyAutoDetectedModeSwitch(from: devInfo.parsedDescriptor)
+        // Each interface is described from its own `IOHIDDevice`: the usage
+        // page and the report descriptor differ between them, and those are
+        // exactly what the capture file needs in order to say which interface
+        // a report came from and whether that interface declared it.
+        let interfaces = captureInterfaces()
+        guard !interfaces.isEmpty else {
+            startupError = String(
+                localized: "That tablet isn't connected anymore.",
+                comment: "Capture error shown when the target device disappeared before collection started")
+            return
+        }
+        let targets = interfaces.compactMap { device in
+            deviceInfo(device: device).map { (device, $0) }
+        }
+        // Only the failure to describe *any* interface stops collection. A
+        // sibling that won't name itself is dropped quietly: the tablet is
+        // still fully capturable through the interfaces that will, and its
+        // absence from the file is visible there.
+        guard let primary = targets.first else {
+            startupError = String(
+                localized: "This tablet doesn't report a usable USB ID, so a recording from it couldn't identify it.",
+                comment: "Capture error shown when the device's USB identifiers are missing or zero")
+            return
+        }
+        resolvedInfo = primary.1
+        // Cleared first: a device that reconnected without the interface that
+        // declared the report must not leave the previous one's ID pre-filled.
+        startupError = nil
+        applyAutoDetectedModeSwitch(from: targets)
 
         engine.onDiscoveryComplete = { result in
             Task { @MainActor in
@@ -560,19 +653,7 @@ struct CaptureGuideView: View {
                 }
             }
         }
-        engine.startDiscovery(device: dev, deviceInfo: devInfo, duration: 3600)
-    }
-
-    /// Cancels and restarts collection against whatever `targetDevice()` now
-    /// resolves to — used when the interface picker's selection changes.
-    /// Discards whatever was gathered under the previous interface, same as
-    /// a manual Cancel; there's no meaningful way to merge two interfaces'
-    /// samples into one `DiscoveryResult`.
-    private func restartCollection() {
-        engine.cancelDiscovery()
-        savedURL = nil
-        startupError = nil
-        startCollection()
+        engine.startDiscovery(devices: targets, duration: 3600)
     }
 
     /// Parses the device's own raw descriptor bytes for a mode-switch feature
@@ -592,15 +673,19 @@ struct CaptureGuideView: View {
     /// Runs once, before the tester can have typed anything, so it never
     /// clobbers a manual edit. No classic Wacom or Xencelabs descriptor tested
     /// so far declares either usage, so this still does nothing on all of them.
-    private func applyAutoDetectedModeSwitch(from parsed: HIDDescriptorReader.Parsed?) {
-        guard let hex = parsed?.rawHex,
-              let layout = try? HIDReportDescriptorParser.parse(hex: hex),
-              let reportID = layout.modeSwitchFeatureReportID()
-        else { return }
+    private func applyAutoDetectedModeSwitch(from targets: [(IOHIDDevice, CaptureDeviceInfo)]) {
+        for (device, info) in targets {
+            guard let hex = info.parsedDescriptor?.rawHex,
+                  let layout = try? HIDReportDescriptorParser.parse(hex: hex),
+                  let reportID = layout.modeSwitchFeatureReportID()
+            else { continue }
 
-        autoDetectedModeReportID = reportID
-        initReportIDText = String(format: "0x%02X", reportID)
-        showInitControl = true
+            autoDetectedModeReportID = reportID
+            modeSwitchDevice = device
+            initReportIDText = String(format: "0x%02X", reportID)
+            showInitControl = true
+            return
+        }
     }
 
     /// Wacom's USB vendor ID. Only devices reporting it may be described using
@@ -623,26 +708,20 @@ struct CaptureGuideView: View {
     /// name "PenPartner" — three fabrications in a header whose entire job is
     /// to say what the hardware is. Read both off the `IOHIDDevice`, and only
     /// consult the Wacom registry once the vendor ID says Wacom.
-    private func deviceInfo(device: IOHIDDevice? = nil) -> CaptureDeviceInfo? {
-        guard let dev = device ?? targetDevice() else {
-            startupError = String(
-                localized: "That tablet isn't connected anymore.",
-                comment: "Capture error shown when the target device disappeared before collection started")
-            return nil
-        }
-
+    ///
+    /// Deliberately free of side effects, unlike the single-device version it
+    /// replaced: it now runs once per interface, and a sibling that can't name
+    /// itself is a dropped interface rather than a failed session. Deciding
+    /// that is the caller's job — see `startCollection`, which raises the
+    /// error only when *no* interface could be described.
+    private func deviceInfo(device dev: IOHIDDevice) -> CaptureDeviceInfo? {
         let vendorID = IOHIDDeviceGetProperty(dev, kIOHIDVendorIDKey as CFString) as? Int
         let deviceProductID = IOHIDDeviceGetProperty(dev, kIOHIDProductIDKey as CFString) as? Int
 
         // A capture whose header can't name the hardware can't become a
         // registry entry — tools/triage_discovery.py rejects exactly this.
         // Better to say so now than after an hour of collecting.
-        guard let vendorID, let deviceProductID, deviceProductID != 0 else {
-            startupError = String(
-                localized: "This tablet doesn't report a usable USB ID, so a recording from it couldn't identify it.",
-                comment: "Capture error shown when the device's USB identifiers are missing or zero")
-            return nil
-        }
+        guard let vendorID, let deviceProductID, deviceProductID != 0 else { return nil }
 
         let manufacturer = IOHIDDeviceGetProperty(dev, kIOHIDManufacturerKey as CFString) as? String
         let transport    = IOHIDDeviceGetProperty(dev, kIOHIDTransportKey    as CFString) as? String
@@ -668,7 +747,9 @@ struct CaptureGuideView: View {
             locationID: locationID,
             manufacturer: manufacturer,
             transport: transport,
-            parsedDescriptor: parsed
+            parsedDescriptor: parsed,
+            usagePage: hidIntProperty(dev, kIOHIDPrimaryUsagePageKey),
+            usage: hidIntProperty(dev, kIOHIDPrimaryUsageKey)
         )
     }
 }

@@ -8651,9 +8651,6 @@
         }
       }
     },
-    "Interface" : {
-      "comment" : "Label for the picker choosing which of a multi-interface device's HID interfaces to capture"
-    },
     "Invert Rotation" : {
       "comment" : "Undo action name: pen barrel-rotation direction in the Pen Feel pane",
       "localizations" : {

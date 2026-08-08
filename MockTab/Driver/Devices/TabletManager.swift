@@ -906,8 +906,7 @@ final class TabletManager: ObservableObject {
             // here too, since this is exactly PTH-850's path (touch
             // interface attaches after the pen interface already has a
             // driver installed for the same raw product ID).
-            context.captureInterfaces.append(
-                CaptureInterfaceCandidate(device: device, usagePage: usagePage))
+            Self.offerForCapture(device, usagePage: usagePage, on: context, driver: existingDriver)
             return
         }
 
@@ -995,8 +994,9 @@ final class TabletManager: ObservableObject {
                 context.firstDriverInterfaceClaimed = true
                 context.hidDevice = device
             }
-            context.captureInterfaces.append(
-                CaptureInterfaceCandidate(device: device, usagePage: usagePage))
+            Self.offerForCapture(
+                device, usagePage: usagePage, on: context,
+                driver: wacomDevice as? WacomKnownDevice)
             hidDeviceMap[device] = context
             deviceRawProductID[device] = rawProductID
             wacomDevice.open()
@@ -1005,6 +1005,14 @@ final class TabletManager: ObservableObject {
                 hidDeviceMap[pending] = context
                 deviceRawProductID[pending] = rawProductID
                 (wacomDevice as? WacomKnownDevice)?.registerDevice(pending)
+                // Deferred interfaces are registered for reports exactly like
+                // the ones that arrive after the driver exists, so they are
+                // just as capturable — and this is the path an interface takes
+                // whenever it enumerates ahead of the pen interface, which is
+                // arrival-order luck, not a property of the hardware.
+                Self.offerForCapture(
+                    pending, usagePage: hidIntProperty(pending, kIOHIDPrimaryUsagePageKey),
+                    on: context, driver: wacomDevice as? WacomKnownDevice)
             }
             if hadNoDriverYet {
                 // First transport this context has ever seen — wire the
@@ -1052,6 +1060,32 @@ final class TabletManager: ObservableObject {
                 instanceKey: context.instanceKey, usbSerial: usbSerial,
                 vendorID: vendorID, productString: productString)
         }
+    }
+
+    /// List `device` as an interface a capture session may record from, unless
+    /// the driver never installed a report callback on it.
+    ///
+    /// The filter is what keeps a capture file honest. `CaptureEngine` records
+    /// every listed interface at once and reports each one's sample count, so
+    /// an interface that reads zero is stated as a fact about the *hardware* —
+    /// it stayed silent, which is what a device awaiting a mode-switch write
+    /// looks like. An interface nobody was listening to would read zero for a
+    /// reason that has nothing to do with the hardware and say so in the same
+    /// words. `WacomKnownDevice.deliversReports(from:)` is the same predicate
+    /// `registerDevice` used to decide, so the two can't disagree.
+    ///
+    /// Called from all three paths an interface can reach a driver by —
+    /// first `.driver` route, sibling onto an existing driver, and the
+    /// deferred-interface drain — because which one a given interface takes is
+    /// enumeration-order luck.
+    private static func offerForCapture(
+        _ device: IOHIDDevice, usagePage: Int, on context: DeviceContext,
+        driver: WacomKnownDevice?
+    ) {
+        guard driver?.deliversReports(from: device) ?? true else { return }
+        guard !context.captureInterfaces.contains(where: { $0.device === device }) else { return }
+        context.captureInterfaces.append(
+            CaptureInterfaceCandidate(device: device, usagePage: usagePage))
     }
 
     private func deviceDisconnected(_ device: IOHIDDevice) {
