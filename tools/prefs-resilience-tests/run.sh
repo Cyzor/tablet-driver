@@ -12,10 +12,10 @@ TEST="$DIR/main.swift"
 BIN="$(mktemp -d)/prefs-resilience-tests"
 
 swiftc -O \
-    "$SETTINGS/UnknownFieldsCodable.swift" \
-    "$SETTINGS/ButtonBinding.swift" \
-    "$SETTINGS/ControlSlot.swift" \
-    "$SETTINGS/BezierCurve.swift" \
+    "$SETTINGS/Serialization/UnknownFieldsCodable.swift" \
+    "$SETTINGS/Model/ButtonBinding.swift" \
+    "$SETTINGS/Model/ControlSlot.swift" \
+    "$SETTINGS/Model/BezierCurve.swift" \
     "$TEST" \
     -o "$BIN"
 "$BIN"
