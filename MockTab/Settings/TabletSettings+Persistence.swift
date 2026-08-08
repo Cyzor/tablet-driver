@@ -66,6 +66,8 @@ extension TabletSettings {
         reverseScrollDirection = loadBool("naturalScrolling", default: false)
         twoFingerScrollMomentum = loadBool("twoFingerScrollMomentum", default: true)
         pinchZoomEnabled = loadBool("pinchZoomEnabled", default: false)
+        smartZoomEnabled = loadBool("smartZoomEnabled", default: false)
+        rotateEnabled = loadBool("rotateEnabled", default: false)
         touchAreaX      = Swift.max(0.0,  Swift.min(loadDouble("touchAreaX",      default: 0.0), 1.0))
         touchAreaY      = Swift.max(0.0,  Swift.min(loadDouble("touchAreaY",      default: 0.0), 1.0))
         touchAreaWidth  = Swift.max(0.01, Swift.min(loadDouble("touchAreaWidth",  default: 1.0), 1.0))

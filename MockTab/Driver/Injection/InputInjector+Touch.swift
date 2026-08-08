@@ -44,6 +44,10 @@ extension InputInjector {
             let spec = WacomDeviceRegistry.spec(for: deviceProductID)
             cachedTouchMaxX = Swift.max(1, spec?.touchMaxX ?? 1)
             cachedTouchMaxY = Swift.max(1, spec?.touchMaxY ?? 1)
+            // Falls back to the raw maximums (no correction) when the spec
+            // has no physical size — see `cachedTouchWidthMM`'s doc comment.
+            cachedTouchWidthMM = spec?.activeWidthMM ?? Double(cachedTouchMaxX)
+            cachedTouchHeightMM = spec?.activeHeightMM ?? Double(cachedTouchMaxY)
             cachedTouchSpecPID = deviceProductID
         }
 
@@ -134,6 +138,25 @@ extension InputInjector {
             touchMomentumTail.stop()
         }
 
+        // Only built when Rotate is on — the raw-position dictionary would
+        // otherwise allocate on every frame for no reason. Converted to
+        // millimeters, not left in raw device units: the touch coordinate
+        // space is anisotropic (e.g. the PTH-850 is ~12.6 units/mm in X vs
+        // ~20.2 in Y), so a raw-unit separation gate would read a 45°
+        // physical finger pair as a different angle and a horizontally-held
+        // span as narrower than a vertically-held one of the same physical
+        // size. mm is the only unit where "how far apart are the fingers,
+        // physically" means the same thing regardless of axis.
+        var rawTouchPositionsMM: [Int: CGPoint] = [:]
+        if snap.rotateEnabled {
+            rawTouchPositionsMM.reserveCapacity(filteredContacts.count)
+            let mmPerUnitX = cachedTouchWidthMM / Double(cachedTouchMaxX)
+            let mmPerUnitY = cachedTouchHeightMM / Double(cachedTouchMaxY)
+            for c in filteredContacts {
+                rawTouchPositionsMM[c.id] = CGPoint(x: Double(c.x) * mmPerUnitX, y: Double(c.y) * mmPerUnitY)
+            }
+        }
+
         let intent = touchTracker.process(
             contacts: projected,
             tapToClick: snap.tapToClick,
@@ -141,6 +164,10 @@ extension InputInjector {
             reverseScrollDirection: snap.reverseScrollDirection,
             sensitivity: snap.touchSensitivity,
             pinchZoom: snap.pinchZoomEnabled,
+            smartZoom: snap.smartZoomEnabled,
+            rotate: snap.rotateEnabled,
+            rawPositions: rawTouchPositionsMM,
+            touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
             now: now)
 
         switch intent {
@@ -162,6 +189,10 @@ extension InputInjector {
             }
         case .zoomMagnify(let magnification, let phase):
             postTouchMagnify(magnification: magnification, phase: phase)
+        case .smartZoom:
+            postTouchSmartZoom()
+        case .rotate(let rotation, let phase):
+            postTouchRotate(rotation: rotation, phase: phase)
         case .tapClick:
             postTouchTapClick(snapshot: snap, settings: settings)
         }
@@ -277,6 +308,46 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
+    /// Smart Zoom: two-finger double-tap, posted as a single one-shot event —
+    /// no phase envelope, unlike `postTouchMagnify`. Same technique and
+    /// provenance (see that function's doc comment); subtype sourced from
+    /// Mac Mouse Fix's `postSmartZoomEvent` (`TouchSimulator.m`), which sets
+    /// no fields beyond type and subtype.
+    private func postTouchSmartZoom() {
+        guard let e = CGEvent(source: nil) else { return }
+        e.type = Self.nsEventTypeGesture
+        e.location = currentCursorPosition()
+        e.setIntegerValueField(Self.fieldIOHIDEventSubtype, value: Self.iohidEventTypeZoomToggle)
+        finalizeAndPost(e)
+    }
+
+    /// Rotate: a synthesized rotation gesture, phase-bracketed like
+    /// `postTouchMagnify`. Same technique and provenance (see that
+    /// function's doc comment); subtype and rotation field sourced from Mac
+    /// Mouse Fix's `postRotationEventWithRotation:phase:` (`TouchSimulator.m`).
+    ///
+    /// Unit: `TouchStateTracker` hands this function radians (natural for
+    /// its internal `atan2` math); converted here to degrees on the
+    /// assumption the field expects what `NSEvent.rotation` — the public API
+    /// apps actually read a real trackpad rotation through — documents.
+    /// Hardware feedback 2026-08-08: rotate is responsive when it engages,
+    /// which is consistent with this scaling being roughly right (a 57×
+    /// unit error would have been obvious as "nothing happens" or "spins
+    /// wildly"), but that's corroborating evidence, not a controlled
+    /// measurement — MMF's own source never states what its `rotation`
+    /// parameter's unit actually is. Direction was independently confirmed
+    /// wrong and fixed at the source (see `TouchStateTracker`'s `.rotate`
+    /// case doc comment); magnitude scaling has not had the same scrutiny.
+    private func postTouchRotate(rotation: Double, phase: TouchStateTracker.ScrollPhase) {
+        guard let e = CGEvent(source: nil) else { return }
+        e.type = Self.nsEventTypeGesture
+        e.location = currentCursorPosition()
+        e.setIntegerValueField(Self.fieldIOHIDEventSubtype, value: Self.iohidEventTypeRotation)
+        e.setIntegerValueField(Self.fieldGesturePhase, value: Int64(phase.rawValue))
+        e.setDoubleValueField(Self.fieldRotation, value: rotation * 180.0 / .pi)
+        finalizeAndPost(e)
+    }
+
     /// Undocumented CGEvent type/field numbers for gesture synthesis —
     /// see `postTouchMagnify`'s doc comment for provenance and license note.
     /// `fieldGestureDeltaX/Y` and `iohidEventTypeScroll` are the scroll-
@@ -285,11 +356,14 @@ extension InputInjector {
     private static let nsEventTypeGesture = CGEventType(rawValue: 29)!
     private static let fieldIOHIDEventSubtype = CGEventField(rawValue: 110)!
     private static let fieldMagnification = CGEventField(rawValue: 113)!
+    private static let fieldRotation = CGEventField(rawValue: 114)!
     private static let fieldGestureDeltaX = CGEventField(rawValue: 116)!
     private static let fieldGestureDeltaY = CGEventField(rawValue: 119)!
     private static let fieldGesturePhase = CGEventField(rawValue: 132)!
-    private static let iohidEventTypeZoom: Int64 = 8
+    private static let iohidEventTypeRotation: Int64 = 5
     private static let iohidEventTypeScroll: Int64 = 6
+    private static let iohidEventTypeZoom: Int64 = 8
+    private static let iohidEventTypeZoomToggle: Int64 = 22
 
     private func postTouchTapClick(snapshot: InjectionSnapshot, settings: TabletSettings?) {
         let loc = currentCursorPosition()

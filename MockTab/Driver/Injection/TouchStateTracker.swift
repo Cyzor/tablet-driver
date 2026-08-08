@@ -126,11 +126,16 @@ struct TouchStateTracker {
     }
 
     /// Sticky two-finger sub-mode once significant motion is seen.
-    /// Pinch vs pan is chosen once per sequence (same sticky policy as Mode).
+    /// Pan vs pinch vs rotate is chosen once per sequence (same sticky
+    /// policy as Mode). Exclusive by design: a real trackpad can magnify
+    /// and rotate at once, this tracker cannot — twist-while-spreading
+    /// resolves to whichever dominates, never both. Documented limitation,
+    /// not a bug to chase.
     enum TwoFingerKind {
         case undecided
         case pan
         case pinch
+        case rotate
     }
 
     enum Intent: Equatable {
@@ -153,6 +158,20 @@ struct TouchStateTracker {
         /// factor (Π(1 + dᵢ) telescopes to distance_final / distance_initial).
         /// Fingers spreading → positive.
         case zoomMagnify(magnification: Double, phase: ScrollPhase)
+        /// Smart Zoom: two-finger double-tap, posted as a single one-shot
+        /// zoom-to-fit event — no phase envelope, unlike `zoomMagnify`.
+        case smartZoom
+        /// Two-finger rotate delta + phase, mirroring `zoomMagnify`'s
+        /// envelope. `rotation` is this frame's change in the pair's angle,
+        /// in radians, sign-corrected to match the actual direction of
+        /// finger twist as the user perceives it on screen — hardware-
+        /// confirmed 2026-08-08 that raw `atan2` reads backwards here (screen
+        /// coordinates are y-down, which flips its usual y-up handedness).
+        /// Left in radians deliberately: the CGEvent field's actual expected
+        /// unit is unverified (see `postTouchRotate`'s doc comment), so any
+        /// unit conversion belongs at the posting layer, not baked into this
+        /// tracker's internal math.
+        case rotate(rotation: Double, phase: ScrollPhase)
     }
 
     enum ScrollPhase: Int {
@@ -184,7 +203,7 @@ struct TouchStateTracker {
     /// when the last contact lifts.
     private var lastScrollPhase: ScrollPhase = .ended
 
-    /// Sticky pan vs pinch once motion crosses `twoFingerDecideDistance`.
+    /// Sticky pan vs pinch vs rotate once motion crosses `twoFingerDecideDistance`.
     private var twoFingerKind: TwoFingerKind = .undecided
     /// Last inter-finger distance in screen points (pinch tracking).
     private var lastPinchDistance: Double = 0
@@ -193,6 +212,29 @@ struct TouchStateTracker {
     /// (slow pans never exceed the threshold in a single high-rate frame).
     private var undecidedOriginCentroid: CGPoint = .zero
     private var undecidedOriginDistance: Double = 0
+
+    /// Whether the current two-finger sequence's contacts started far enough
+    /// apart, relative to the touch surface, for rotate to even be a
+    /// candidate. Computed once at escalation (see `process`) from raw
+    /// device-unit positions, not screen points — screen-space separation
+    /// for the same physical finger span changes with the user's touch-area
+    /// crop and display size, which a fixed threshold must not be sensitive
+    /// to. `false` whenever rotate is disabled, so it costs nothing when off.
+    private var rotateEligible: Bool = false
+    /// When the current two-finger sequence entered `.undecided` — the dwell
+    /// clock for rotate-eligible sequences (see `rotateMinDwell`'s doc
+    /// comment). Unused, and not meaningfully read, when rotate is off.
+    private var undecidedStartTime: CFAbsoluteTime = 0
+    /// Last frame's angle (radians, `atan2`) of the id-sorted two-contact
+    /// pair. Doubles as the undecided sequence's origin angle (set once at
+    /// escalation) and the per-frame delta baseline once committed.
+    private var lastPairAngle: Double = 0
+    /// Cumulative wrapped angle change (radians) since an undecided
+    /// sequence's origin — the rotate analogue of `undecidedOriginCentroid`/
+    /// `undecidedOriginDistance`. Summed per-frame rather than taken as
+    /// `newAngle - originAngle` so a rotation exceeding π during the decide
+    /// window still accumulates correctly instead of wrapping back on itself.
+    private var undecidedCumulativeAngle: Double = 0
 
     /// Recent per-frame instantaneous velocities (points/second), each frame's
     /// raw `delta/dt` with a timestamp — the momentum-tail seed. An EMA was
@@ -216,6 +258,13 @@ struct TouchStateTracker {
     /// momentum decay tail. Unused while the gesture is still active.
     private(set) var releaseVelocity: CGVector = .zero
 
+    /// End time of the most recent qualifying two-finger tap, for Smart Zoom
+    /// double-tap detection. Deliberately *not* cleared by `reset()` — every
+    /// lift calls `reset()`, including the lift between the two taps of a
+    /// double-tap, so this must survive it or the second tap could never see
+    /// the first.
+    private var lastTwoFingerTapEndTime: CFAbsoluteTime?
+
     // MARK: - Tunables
 
     /// Maximum drift (in screen points) that still counts as a tap.
@@ -233,9 +282,20 @@ struct TouchStateTracker {
     /// Motion (screen points) needed to commit pan vs pinch for a sequence.
     /// Slightly above finger-jitter so a sliding pan doesn't decide on noise.
     static let twoFingerDecideDistance: Double = 6.0
-    /// Pinch wins only when inter-finger distance change clearly exceeds
-    /// centroid translation. Equal/noisy scale vs pan → stay pan (scroll).
+    /// Pinch/rotate win only when their own signal clearly exceeds centroid
+    /// translation. Equal/noisy signal vs pan → stay pan (scroll). This is
+    /// the bar that protects "pan wins on ambiguity" — see
+    /// `crossCandidateDominanceRatio` for the separate, gentler bar pinch
+    /// and rotate use against *each other*.
     static let pinchDominanceRatio: Double = 1.75
+    /// Bar pinch and rotate must clear against each other (not against pan).
+    /// Deliberately gentler than `pinchDominanceRatio`: a real pinch has
+    /// some incidental angle jitter, a real twist has some incidental
+    /// separation drift, and requiring either to dominate the other by the
+    /// same 1.75× reserved for beating pan made a real pinch with a modest
+    /// twist wobble misclassify as pan once rotate was enabled — a pinch
+    /// regression, confirmed by hand-computed example before this was added.
+    static let crossCandidateDominanceRatio: Double = 1.0
     /// How far back to look for the fastest recent sample when seeding
     /// momentum release velocity — matches `PanScrollTracker.peakVelocityWindow`.
     static let peakVelocityWindow: CFAbsoluteTime = 0.06
@@ -244,6 +304,54 @@ struct TouchStateTracker {
     /// (braking) and release velocity is suppressed regardless of any fast
     /// sample still sitting in the peak-velocity window.
     static let momentumRecencyWindow: CFAbsoluteTime = 0.05
+    /// Maximum hold duration for a two-finger contact to still count as a
+    /// Smart Zoom tap rather than a rest. Deliberately does *not* need a
+    /// separate max-deviation check: a still-`.undecided` teardown already
+    /// guarantees both total centroid translation and total inter-finger
+    /// distance change stayed under `twoFingerDecideDistance` — that's the
+    /// same guard that keeps `.undecided` from ever committing to pan or
+    /// pinch in the first place. See the `.undecided` branch in `process`.
+    static let twoFingerTapMaxDuration: CFAbsoluteTime = 0.30
+    /// Maximum gap between the first tap's lift and the second tap's touch-
+    /// down to count as a double-tap. Not derived from any real trackpad
+    /// measurement — a tunable to revisit after hardware testing.
+    static let twoFingerTapMaxGap: CFAbsoluteTime = 0.35
+    /// Minimum finger separation, as a fraction of the touch surface's
+    /// physical diagonal (millimeters — see `process`'s `rawPositions` doc
+    /// comment for why raw device units would distort this), for rotate to
+    /// be eligible at all. Below this, two fingers close together sweeping
+    /// together reads as pan (the common case) — only wide-apart swiveling
+    /// should ever be considered rotate. Sanity-checked but not hardware-
+    /// verified: on the PTH-850 (325×203mm active area, ~383mm diagonal), a
+    /// ~90mm thumb-index span is ≈23% of the diagonal; this threshold is
+    /// set conservatively below that estimate to allow smaller spans and
+    /// other tablet sizes, but needs checking against a second,
+    /// differently-sized tablet before being trusted, and against real
+    /// hands before being final.
+    static let rotateMinSeparationFraction: Double = 0.15
+    /// Minimum time a rotate-eligible two-finger sequence must sit undecided
+    /// before *rotate specifically* is allowed to win the three-way decision.
+    /// `decide` (6.0 points) is a tiny amount of physical motion — roughly
+    /// half a millimeter of centroid drift at typical touch-surface-to-
+    /// display scaling — so on the very first frame or two after two fingers
+    /// land, landing noise alone can already exceed it in whichever
+    /// direction the fingers happened to settle. Hardware feedback
+    /// 2026-08-08 confirmed this empirically: "plant the fingers, hold for a
+    /// moment, then twist" was the only reliable way to invoke rotate,
+    /// meaning the fix belongs at the timing layer. Pan and pinch are not
+    /// held back by this — only rotate-eligible sequences wait, and only
+    /// rotate's own win condition is gated by it; obviously large, fast
+    /// motion still bypasses the wait via `rotateDwellBypassDistance`, so a
+    /// genuine fast pan/pinch on a wide-enough pair isn't stuck waiting on a
+    /// clock it has no use for. Not independently hardware-tuned — chosen at
+    /// the low end of a plausible "hold for a moment" range; revisit once
+    /// this can be measured directly.
+    static let rotateMinDwell: CFAbsoluteTime = 0.07
+    /// Translation or scale change (screen points, same unit as `decide`)
+    /// large enough to bypass `rotateMinDwell` entirely — an obviously fast
+    /// pan or pinch shouldn't wait on a timer meant to disambiguate a
+    /// *slow*, deliberate twist onset. Set to 2× `twoFingerDecideDistance`.
+    static let rotateDwellBypassDistance: Double = 12.0
 
     // MARK: - Process
 
@@ -290,6 +398,16 @@ struct TouchStateTracker {
     /// `reverseScrollDirection` flips the sign of the scroll delta.
     /// `sensitivity` multiplies pointer-mode movement (1.0 = identity).
     /// `pinchZoom` enables sticky pinch → synthesized magnify-gesture zoom (vs pan scroll).
+    /// `smartZoom` enables two-finger double-tap → one-shot Smart Zoom.
+    /// `rotate` enables sticky rotate (vs pan/pinch), gated additionally by
+    /// `rotateEligible` (see that field). `rawPositions` are unprojected
+    /// contact positions keyed by contact id, in physical millimeters (not
+    /// device units, not screen points) — the separation gate is a physical
+    /// finger-span threshold, and only mm keeps it consistent across a
+    /// touch surface's X/Y axes, which are not equally scaled — only
+    /// consulted when `rotate` is true, so callers not using rotate may
+    /// pass `[:]`. `touchDiagonal` is the touch surface's diagonal in the
+    /// same unit (millimeters).
     mutating func process(
         contacts: [(id: Int, screen: CGPoint)],
         tapToClick: Bool,
@@ -297,6 +415,10 @@ struct TouchStateTracker {
         reverseScrollDirection: Bool,
         sensitivity: Double,
         pinchZoom: Bool = false,
+        smartZoom: Bool = false,
+        rotate: Bool = false,
+        rawPositions: [Int: CGPoint] = [:],
+        touchDiagonal: Double = 0,
         now: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     ) -> Intent {
 
@@ -310,6 +432,13 @@ struct TouchStateTracker {
             let tap = tapToClick && (priorMode == .pointer || priorMode == .pending)
                 && now - tapStart <= Self.tapMaxDuration
                 && tapMaxDelta < Self.tapMaxDistance
+            // Captured before `reset()` clears `tapStart` — the deviation
+            // half of "was this a tap" is implicit: still being `.undecided`
+            // at teardown already proves motion stayed under
+            // `twoFingerDecideDistance` (see the tunable's doc comment).
+            let twoFingerTap = smartZoom && priorMode == .scroll && priorKind == .undecided
+                && now - tapStart <= Self.twoFingerTapMaxDuration
+            let thisTapStart = tapStart
             let peak = recentVelocities
                 .filter { now - $0.time <= Self.peakVelocityWindow }
                 .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
@@ -318,8 +447,22 @@ struct TouchStateTracker {
             switch priorMode {
             case .scroll where priorKind == .pinch && priorPhase != .ended:
                 return .zoomMagnify(magnification: 0, phase: .ended)
+            // Must precede the generic pan-ended case below: rotate also
+            // leaves `lastScrollPhase` at .began/.changed once committed, so
+            // without this case a rotate teardown would emit a stray
+            // scrollDelta(.ended) instead and its own phase envelope would
+            // never close.
+            case .scroll where priorKind == .rotate && priorPhase != .ended:
+                return .rotate(rotation: 0, phase: .ended)
             case .scroll where priorPhase != .ended:
                 return .scrollDelta(dx: 0, dy: 0, phase: .ended)
+            case .scroll where twoFingerTap:
+                if let last = lastTwoFingerTapEndTime, thisTapStart - last <= Self.twoFingerTapMaxGap {
+                    lastTwoFingerTapEndTime = nil
+                    return .smartZoom
+                }
+                lastTwoFingerTapEndTime = now
+                return .none
             case .pointer where tap, .pending where tap:
                 return .tapClick
             default:
@@ -349,17 +492,32 @@ struct TouchStateTracker {
                 lastPositions = Dictionary(uniqueKeysWithValues:
                     pair.map { ($0.id, $0.screen) })
                 tapAnchor = nil  // tap is off the table once we go to two fingers
-                twoFingerKind = pinchZoom ? .undecided : .pan
+                twoFingerKind = (pinchZoom || rotate) ? .undecided : .pan
                 lastPinchDistance = Self.distance(between: pair)
                 undecidedOriginCentroid = centroid(of: pair.map(\.screen))
                 undecidedOriginDistance = lastPinchDistance
+                // Separation gate (see `rotateMinSeparationFraction`'s doc
+                // comment): millimeter positions, computed once here, not
+                // re-evaluated per frame — a rotate gesture's finger
+                // separation is expected to stay roughly constant while the
+                // angle changes.
+                rotateEligible = false
+                if rotate, touchDiagonal > 0,
+                   let posA = rawPositions[pair[0].id], let posB = rawPositions[pair[1].id]
+                {
+                    let rawSeparation = hypot(posA.x - posB.x, posA.y - posB.y)
+                    rotateEligible = (rawSeparation / touchDiagonal) >= Self.rotateMinSeparationFraction
+                }
+                lastPairAngle = Self.angle(between: pair.sorted { $0.id < $1.id })
+                undecidedCumulativeAngle = 0
+                undecidedStartTime = now
                 recentVelocities.removeAll()
                 lastFrameTime = now
                 lastMotionTime = 0
-                // Defer Began until pan/pinch commits when pinch discrimination
-                // is on — leave lastScrollPhase .ended so a lift before commit
-                // does not emit a stray scroll Ended.
-                if pinchZoom {
+                // Defer Began until pan/pinch/rotate commits when
+                // discrimination is on — leave lastScrollPhase .ended so a
+                // lift before commit does not emit a stray scroll Ended.
+                if pinchZoom || rotate {
                     return .none
                 }
                 lastScrollPhase = .began
@@ -416,7 +574,7 @@ struct TouchStateTracker {
             let dx = newCentroid.x - oldCentroid.x
             let dy = newCentroid.y - oldCentroid.y
 
-            if pinchZoom {
+            if pinchZoom || rotate {
                 if twoFingerKind == .undecided {
                     // A 1-contact frame collapses the centroid onto that single
                     // finger, roughly half the finger separation away from the
@@ -429,21 +587,79 @@ struct TouchStateTracker {
                         newCentroid.x - undecidedOriginCentroid.x,
                         newCentroid.y - undecidedOriginCentroid.y)
                     let totalScaleChange = abs(newDistance - undecidedOriginDistance)
+
+                    // Tangential motion: angle change converted into the same
+                    // unit (screen points) as the other two candidates, so it
+                    // can share `twoFingerDecideDistance`/`pinchDominanceRatio`
+                    // without a second, unrelated tunable. `rotateEligible`
+                    // was decided once at escalation from raw device-unit
+                    // separation — when it's false (or rotate is off), this
+                    // stays exactly 0 and the block below behaves identically
+                    // to the pinch-only two-way decision it replaced.
+                    var totalTangentialMotion = 0.0
+                    if rotate, rotateEligible {
+                        let sortedPair = current.sorted { $0.id < $1.id }
+                        let newAngle = Self.angle(between: sortedPair)
+                        undecidedCumulativeAngle += Self.wrappedDelta(from: lastPairAngle, to: newAngle)
+                        lastPairAngle = newAngle
+                        totalTangentialMotion = abs(undecidedCumulativeAngle) * (newDistance / 2)
+                    }
+
                     let decide = Self.twoFingerDecideDistance
-                    if totalScaleChange < decide, totalTranslation < decide {
+                    if totalScaleChange < decide, totalTranslation < decide,
+                        totalTangentialMotion < decide
+                    {
                         return .none
                     }
-                    // Prefer pan unless pinch clearly dominates (ordinary pans
-                    // always have some finger-distance jitter).
-                    twoFingerKind =
-                        totalScaleChange > totalTranslation * Self.pinchDominanceRatio
-                        ? .pinch : .pan
-                    if twoFingerKind == .pan {
-                        lastScrollPhase = .began
-                        return .scrollDelta(dx: 0, dy: 0, phase: .began)
+                    // Dwell: a rotate-eligible sequence gets a brief grace
+                    // period before rotate can win, because `decide` is tiny
+                    // enough (see `rotateMinDwell`'s doc comment) that
+                    // landing noise alone often clears it within the first
+                    // frame or two — deciding this early is a coin flip, not
+                    // a discrimination. Obviously large, fast motion bypasses
+                    // the wait so a real pan/pinch on a wide-enough pair
+                    // isn't held up by a clock meant for a slow twist onset.
+                    // Pan and pinch are otherwise untouched by this: when
+                    // rotate is off or the pair isn't eligible, this block
+                    // never runs.
+                    if rotate, rotateEligible,
+                        now - undecidedStartTime < Self.rotateMinDwell,
+                        totalTranslation < Self.rotateDwellBypassDistance,
+                        totalScaleChange < Self.rotateDwellBypassDistance
+                    {
+                        return .none
                     }
+                    // Prefer pan unless one rival clearly dominates *both*
+                    // others — the three-way generalization of the original
+                    // pinch-vs-pan dominance rule. Pan is the only rival both
+                    // others must beat by the full `pinchDominanceRatio`;
+                    // that's the bar that matters for "pan wins on
+                    // ambiguity" (including the anchored-finger-arc case,
+                    // which has real translation *and* real angle change at
+                    // once — documented, intentional limitation, not a bug).
+                    // Pinch-vs-rotate uses a gentler
+                    // `crossCandidateDominanceRatio`: a real pinch has some
+                    // incidental angle jitter and a real twist has some
+                    // incidental separation drift, and neither should be
+                    // able to veto the other at the same strict bar reserved
+                    // for outvoting pan.
+                    let pinchWins = pinchZoom
+                        && totalScaleChange > totalTranslation * Self.pinchDominanceRatio
+                        && totalScaleChange > totalTangentialMotion * Self.crossCandidateDominanceRatio
+                    let rotateWins = rotate && rotateEligible
+                        && totalTangentialMotion > totalTranslation * Self.pinchDominanceRatio
+                        && totalTangentialMotion > totalScaleChange * Self.crossCandidateDominanceRatio
                     lastScrollPhase = .began
-                    return .zoomMagnify(magnification: 0, phase: .began)
+                    if pinchWins {
+                        twoFingerKind = .pinch
+                        return .zoomMagnify(magnification: 0, phase: .began)
+                    }
+                    if rotateWins {
+                        twoFingerKind = .rotate
+                        return .rotate(rotation: 0, phase: .began)
+                    }
+                    twoFingerKind = .pan
+                    return .scrollDelta(dx: 0, dy: 0, phase: .began)
                 }
                 if twoFingerKind == .pinch {
                     guard scaleDelta != 0, oldDistance > 0 else { return .none }
@@ -453,6 +669,28 @@ struct TouchStateTracker {
                     let magnification = scaleDelta / oldDistance
                     lastScrollPhase = .changed
                     return .zoomMagnify(magnification: magnification, phase: .changed)
+                }
+                if twoFingerKind == .rotate {
+                    // Hold the last angle on a 1-contact frame instead of
+                    // computing — same treatment `lastPinchDistance` gets
+                    // above, for the same reason (a lone survivor's angle
+                    // relative to nothing is meaningless and would invent a
+                    // huge delta).
+                    let sortedPair = current.count >= 2 ? current.sorted { $0.id < $1.id } : current
+                    let newAngle = current.count >= 2 ? Self.angle(between: sortedPair) : lastPairAngle
+                    let delta = Self.wrappedDelta(from: lastPairAngle, to: newAngle)
+                    lastPairAngle = newAngle
+                    guard delta != 0 else { return .none }
+                    lastScrollPhase = .changed
+                    // Negated: hardware-confirmed 2026-08-08 that raw atan2
+                    // delta reads backwards from the actual finger twist.
+                    // `atan2`'s "positive is counter-clockwise" convention
+                    // holds in math coordinates (y-up); screen coordinates
+                    // here are y-down, which flips the handedness. Internal
+                    // tracking (`lastPairAngle`, `undecidedCumulativeAngle`)
+                    // stays in the raw, unflipped convention — only the
+                    // emitted intent is corrected, right at the boundary.
+                    return .rotate(rotation: -delta, phase: .changed)
                 }
             }
 
@@ -503,6 +741,10 @@ struct TouchStateTracker {
         lastPinchDistance = 0
         undecidedOriginCentroid = .zero
         undecidedOriginDistance = 0
+        rotateEligible = false
+        lastPairAngle = 0
+        undecidedCumulativeAngle = 0
+        undecidedStartTime = 0
         recentVelocities.removeAll()
         lastFrameTime = 0
         lastMotionTime = 0
@@ -521,5 +763,28 @@ struct TouchStateTracker {
         let a = contacts[0].screen
         let b = contacts[1].screen
         return hypot(a.x - b.x, a.y - b.y)
+    }
+
+    /// Angle of the vector from the first contact to the second, in radians.
+    /// Distance is symmetric under swapping the pair, so `distance(between:)`
+    /// is safe doing it by array position — angle is not: swap the pair and
+    /// the result flips by π. Callers must sort by contact id first so a
+    /// frame-to-frame reordering upstream (palm filtering, re-landed fingers)
+    /// can't be mistaken for a half-turn.
+    private static func angle(between sortedContacts: [(id: Int, screen: CGPoint)]) -> Double {
+        guard sortedContacts.count >= 2 else { return 0 }
+        let a = sortedContacts[0].screen
+        let b = sortedContacts[1].screen
+        return atan2(b.y - a.y, b.x - a.x)
+    }
+
+    /// Shortest signed angular difference from `old` to `new`, wrapped into
+    /// (-π, π]. Plain subtraction breaks at the seam — two contacts slowly
+    /// rotating past ±π would otherwise report a spurious near-2π jump.
+    private static func wrappedDelta(from old: Double, to new: Double) -> Double {
+        var delta = new - old
+        while delta > .pi { delta -= 2 * .pi }
+        while delta < -.pi { delta += 2 * .pi }
+        return delta
     }
 }

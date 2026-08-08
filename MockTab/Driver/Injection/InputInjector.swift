@@ -743,6 +743,13 @@ final class InputInjector: @unchecked Sendable {
     /// changes.  Saves a per-frame linear scan over `WacomDeviceRegistry`.
     var cachedTouchMaxX: Int = 1
     var cachedTouchMaxY: Int = 1
+    /// Physical active-surface size, mm. From `WacomDeviceSpec.activeWidthMM`/
+    /// `activeHeightMM` — those describe the *pen* active area; treating them
+    /// as the touch surface's physical size is an approximation, not a
+    /// verified equivalence, but it's what's available. Falls back to the
+    /// raw coordinate maximums (i.e. no correction) when the spec has none.
+    var cachedTouchWidthMM: Double = 1
+    var cachedTouchHeightMM: Double = 1
     var cachedTouchSpecPID: Int = -1
     private var displayObserver: NSObjectProtocol?
 

@@ -14,16 +14,16 @@ import TabletKit
 ///   • Cursor motion from a single finger
 ///   • Smooth two-finger scrolling (with trackpad-style phase + rubber-band)
 ///   • Optional tap-to-click
+///   • Pinch to zoom
 ///
-/// What it *cannot* do without Apple-issued private entitlements — and what
-/// users will reasonably expect from a tablet driver:
-///   • Mission Control / Spaces / Launchpad gestures
-///   • App Exposé three- and four-finger gestures
+/// What this pane does not do:
+///   • Mission Control / Spaces / Launchpad / App Exposé gestures
+///   • Force Touch
 ///   • Native multi-touch `NSTouch` events that apps like Final Cut consume
 ///
-/// Those last three require posting into the WindowServer MultitouchSupport
-/// pipeline, which is read-only for third-party processes.  The disclaimer
-/// at the bottom of the pane is the truthful description of the ceiling.
+/// The first group is unimplemented, not impossible — see project memory
+/// `project_dock_swipe_gesture_feasibility`. The rest is a genuine platform
+/// ceiling.
 struct TouchView: View {
 
     @ObservedObject var settings: TabletSettings
@@ -111,7 +111,7 @@ struct TouchView: View {
     }
 
     private var scrollSection: some View {
-        Section("Scrolling") {
+        Section("Gestures") {
             DescribedToggle(
                 "Two-Finger Scroll",
                 isOn: settings.recordingBinding(
@@ -133,6 +133,24 @@ struct TouchView: View {
             )
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
             .help("Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch — works anywhere a trackpad pinch would, including Safari, Preview, and Photoshop.")
+
+            // Smart Zoom's toggle is deliberately not shown: hardware testing
+            // 2026-08-08 found the double-tap detection unreliable (~70% of
+            // taps produced no or an unpredictable response). Detection and
+            // event-posting stay in place — `settings.smartZoomEnabled`
+            // simply has no UI path to becoming true — so the work isn't
+            // lost, but nothing exposes it until that reliability improves.
+
+            DescribedToggle(
+                "Rotate",
+                isOn: settings.recordingBinding(
+                    String(localized: "Rotate", comment: "Undo action name: two-finger rotate toggle in the Touch pane"),
+                    get: { settings.rotateEnabled },
+                    set: { settings.rotateEnabled = $0 }),
+                description: "Swivel two fingers apart to rotate."
+            )
+            .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
+            .help("Two fingers held well apart, swiveling about their center, rotate — the same as a trackpad rotate gesture. Two fingers close together keep scrolling as usual.")
 
             DescribedToggle(
                 "Reverse Direction",
@@ -240,10 +258,10 @@ struct TouchView: View {
                     .padding(.top, 2)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("System gestures not supported")
+                    Text("Not all system gestures are available.")
                         .appFont(.subheadline)
                         .fontWeight(.semibold)
-                    Text("Mission Control, Spaces, Launchpad, and other system-wide multi-touch gestures require Wacom's official driver. macOS does not let third-party apps post the native trackpad events those gestures depend on.")
+                    Text("MockTab does not currently support all system gestures, such as Mission Control, Spaces, Launchpad, and App Exposé.")
                         .appFont(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -267,7 +285,7 @@ struct TouchView: View {
     private typealias TouchState = (
         enabled: Bool, tapToClick: Bool, sensitivity: Double,
         twoFingerScroll: Bool, reverseScroll: Bool, twoFingerScrollMomentum: Bool,
-        pinchZoom: Bool,
+        pinchZoom: Bool, smartZoom: Bool, rotate: Bool,
         areaX: Double, areaY: Double, areaW: Double, areaH: Double
     )
 
@@ -275,11 +293,11 @@ struct TouchView: View {
         let old: TouchState = (
             settings.touchEnabled, settings.tapToClick, settings.touchSensitivity,
             settings.twoFingerScroll, settings.reverseScrollDirection, settings.twoFingerScrollMomentum,
-            settings.pinchZoomEnabled,
+            settings.pinchZoomEnabled, settings.smartZoomEnabled, settings.rotateEnabled,
             settings.touchAreaX, settings.touchAreaY,
             settings.touchAreaWidth, settings.touchAreaHeight
         )
-        let defaults: TouchState = (false, false, 1.0, true, false, true, false, 0, 0, 1, 1)
+        let defaults: TouchState = (false, false, 1.0, true, false, true, false, false, false, 0, 0, 1, 1)
         applyTouchState(defaults, undoTo: old)
     }
 
@@ -289,7 +307,7 @@ struct TouchView: View {
         settings.undoManager?.beginUndoGrouping()
         (settings.touchEnabled, settings.tapToClick, settings.touchSensitivity,
          settings.twoFingerScroll, settings.reverseScrollDirection, settings.twoFingerScrollMomentum,
-         settings.pinchZoomEnabled,
+         settings.pinchZoomEnabled, settings.smartZoomEnabled, settings.rotateEnabled,
          settings.touchAreaX, settings.touchAreaY,
          settings.touchAreaWidth, settings.touchAreaHeight) = new
         settings.record(String(localized: "Reset Pane to Defaults")) {
