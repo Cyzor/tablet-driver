@@ -901,6 +901,13 @@ final class TabletManager: ObservableObject {
             hidDeviceMap[device] = context
             deviceRawProductID[device] = rawProductID
             existingDriver.registerDevice(device)
+            // This interface never reaches the `.driver` case below — same
+            // omission `captureInterfaces` exists to avoid there applies
+            // here too, since this is exactly PTH-850's path (touch
+            // interface attaches after the pen interface already has a
+            // driver installed for the same raw product ID).
+            context.captureInterfaces.append(
+                CaptureInterfaceCandidate(device: device, usagePage: usagePage))
             return
         }
 
@@ -981,10 +988,15 @@ final class TabletManager: ObservableObject {
         case .driver(let wacomDevice, _):
             let hadNoDriverYet = !context.hasAnyDriverSlot
             context.installDriver(wacomDevice, forRawProductID: rawProductID)
-            // The interface the driver actually reads reports from — see
-            // `DeviceContext.hidDevice`'s doc comment for why this must be
-            // set from exactly this `device`, not from any sibling interface.
-            context.hidDevice = device
+            // Only the first `.driver`-routed interface for this context
+            // claims `hidDevice` — see that property's doc comment for why a
+            // later sibling interface must never overwrite it.
+            if !context.firstDriverInterfaceClaimed {
+                context.firstDriverInterfaceClaimed = true
+                context.hidDevice = device
+            }
+            context.captureInterfaces.append(
+                CaptureInterfaceCandidate(device: device, usagePage: usagePage))
             hidDeviceMap[device] = context
             deviceRawProductID[device] = rawProductID
             wacomDevice.open()
@@ -1050,7 +1062,11 @@ final class TabletManager: ObservableObject {
         // stays connected must not blank it — same class of bug as the
         // unconditional set this mirrors on the connect side; see
         // `DeviceContext.hidDevice`'s doc comment.
-        if context.hidDevice === device { context.hidDevice = nil }
+        if context.hidDevice === device {
+            context.hidDevice = nil
+            context.firstDriverInterfaceClaimed = false
+        }
+        context.captureInterfaces.removeAll { $0.device == nil || $0.device === device }
         let rawPID = deviceRawProductID.removeValue(forKey: device)
 
         // Owner-aware teardown: a canonical context can have more than one

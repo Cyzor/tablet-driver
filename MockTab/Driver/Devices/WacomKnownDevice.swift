@@ -1141,7 +1141,19 @@ final class WacomKnownDevice: TabletDevice {
         HIDCapture.shared.record(tag: name, report: report, length: length)
         // Device-data collection. No-ops when no session is running, and never
         // hops off this thread or copies the report — see CaptureEngine.
-        CaptureEngine.recordRaw(device: device, reportID: reportID, pointer: report, length: length)
+        //
+        // `sender` (not `device`) — a device with more than one registered
+        // interface (see `registerDevice`) shares this one callback and
+        // `reportBuffer` across all of them, and `sender` is IOKit's own
+        // per-call identification of which interface actually delivered this
+        // report. Attributing every report to `device` (the primary
+        // interface, fixed at init) regardless of which interface it truly
+        // came from silently merged, e.g., a touch interface's 64-byte
+        // reports into a pen interface's 10-byte report ID 2 stream under
+        // one capture bucket — confirmed on a PTH-850 discovery capture
+        // whose byte offsets ran past what its pen report could ever hold.
+        CaptureEngine.recordRaw(
+            device: sender ?? device, reportID: reportID, pointer: report, length: length)
         // For wireless dongles, extract paired tablet PID from 0x80 status report and
         // use its spec for accurate coordinate ranges (instead of fallback guesses).
         if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {

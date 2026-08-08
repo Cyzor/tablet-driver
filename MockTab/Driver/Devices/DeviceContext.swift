@@ -143,16 +143,48 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// mapped to this same context, but only one of them is the interface the
     /// driver actually reads pen reports from and passes to
     /// `CaptureEngine.recordRaw`. `TabletManager.deviceConnected` sets this
-    /// exactly once, from that interface only (the one `DeviceRouter.route`
-    /// returns `.driver` for) — never from a sibling interface that later
-    /// attaches via `registerDevice`/`registerLEDDevice`. Only consumer today
-    /// is `CaptureGuideView`, which hands this to
-    /// `CaptureEngine.startDiscovery(device:)`; if it pointed at the wrong
-    /// interface, that session would silently record zero events for the
-    /// whole capture window (0 events despite reports flowing normally
-    /// through the app) because `recordRaw`'s device never matches the
-    /// registered accumulator's key.
+    /// only the first time a `.driver`-routed interface attaches for this raw
+    /// product ID (see `firstDriverInterfaceClaimed`) — never overwritten by a
+    /// sibling interface that attaches later. Before that guard existed, an
+    /// `.intuosV1`-family device with `seizeUSB: false` (no defer/seize
+    /// gating in `DeviceRouter.route`) would route *every* interface through
+    /// `.driver` independently, and this property took whichever one attached
+    /// last — order-dependent and silently wrong. Confirmed on a PTH-850: two
+    /// discovery captures both came back scoped to its touch interface
+    /// instead of the pen interface, because that was the one that happened
+    /// to attach second. Only consumer today is `CaptureGuideView`, which
+    /// hands this to `CaptureEngine.startDiscovery(device:)`; if it pointed
+    /// at the wrong interface, that session would silently record zero events
+    /// for the whole capture window (0 events despite reports flowing
+    /// normally through the app) because `recordRaw`'s device never matches
+    /// the registered accumulator's key.
     weak var hidDevice: IOHIDDevice?
+
+    /// True once `hidDevice` has been claimed by a `.driver`-routed interface
+    /// for the first time. Guards `hidDevice`'s assignment against later
+    /// sibling interfaces of the same raw product ID — see that property's
+    /// doc comment. Deliberately not derived from `hidDevice != nil`: that
+    /// would let the property be reclaimed after the original interface
+    /// disconnects and `hidDevice` goes nil, which is fine (a fresh claim on
+    /// reconnect is correct), so this flag alone can't just mirror it either
+    /// — it's reset in the same place `hidDevice` is cleared.
+    var firstDriverInterfaceClaimed = false
+
+    /// Every `.driver`-routed interface currently attached for this context,
+    /// most recently attached last — not just the one `hidDevice` pins to.
+    /// Exists so `CaptureGuideView` can offer a picker when a device (like
+    /// PTH-850) exposes more than one capturable interface, instead of only
+    /// ever being able to record whichever one `hidDevice` happened to claim.
+    /// Weakly held via `CaptureInterfaceCandidate`, mirroring `hidDevice`,
+    /// since IOKit owns the lifetime; pruned on disconnect in
+    /// `TabletManager.deviceDisconnected`.
+    ///
+    /// `@Published`, unlike `hidDevice` — a second interface routinely
+    /// attaches a moment after `CaptureGuideView` opens (its own capture
+    /// session already under way against the first), and the picker that
+    /// reads this needs SwiftUI to actually notice the update and redraw,
+    /// not just have the right data sitting unseen in the context.
+    @Published var captureInterfaces: [CaptureInterfaceCandidate] = []
 
     /// Serial number of the pen currently in proximity on this device.
     /// 0 = unknown (IntuosV1) or no pen in proximity.

@@ -40,6 +40,11 @@ struct CaptureGuideView: View {
     /// device we've tested, since their descriptors declare neither usage; the
     /// 0x02 default above remains the fallback for those.
     @State private var autoDetectedModeReportID: UInt8? = nil
+    /// Which of the device's `.driver`-routed interfaces to capture, when it
+    /// has more than one (see `DeviceContext.captureInterfaces`). Nil means
+    /// "use `hidDevice`'s default" — the common single-interface case, and
+    /// the pre-picker behavior for anyone who never opens the picker.
+    @State private var selectedInterfaceID: String? = nil
 
     @Environment(\.accessibilityDifferentiateWithoutColor)
     private var differentiateWithoutColor
@@ -148,6 +153,10 @@ struct CaptureGuideView: View {
                     }
                     .padding(.horizontal, 20)
 
+                    interfacePicker
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+
                     deviceModeInitControl
                         .padding(.horizontal, 20)
                         .padding(.top, 14)
@@ -215,6 +224,52 @@ struct CaptureGuideView: View {
         return engine.isRunning
             ? String(localized: "\(engine.discoverySampleCount) events recorded", comment: "HID discovery: number of events captured during device discovery")
             : String(localized: "Starting…", comment: "HID discovery: status indicator while discovery is starting")
+    }
+
+    // MARK: - Interface picker
+
+    /// Every still-connected `.driver`-routed interface for this device.
+    /// Usually one entry (`hidDevice`'s own interface); a device like
+    /// PTH-850, whose pen and touch interfaces both route through `.driver`
+    /// independently (see `DeviceContext.hidDevice`'s doc comment), has more.
+    private var interfaceCandidates: [CaptureInterfaceCandidate] {
+        (tabletManager.contexts[productID]?.captureInterfaces ?? []).filter { $0.device != nil }
+    }
+
+    /// Only shown when there's an actual choice to make — a single-interface
+    /// device (the common case) never sees this row.
+    @ViewBuilder
+    private var interfacePicker: some View {
+        let candidates = interfaceCandidates
+        if candidates.count > 1 {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(String(localized: "Interface", comment: "Label for the picker choosing which of a multi-interface device's HID interfaces to capture"))
+                    .appFont(.caption)
+                    .foregroundStyle(.secondary)
+                Picker("", selection: $selectedInterfaceID) {
+                    ForEach(candidates) { candidate in
+                        Text(String(format: "0x%02X", candidate.usagePage))
+                            .tag(Optional(candidate.id))
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+            }
+            .onChange(of: selectedInterfaceID) { _ in restartCollection() }
+        }
+    }
+
+    /// The device this session should capture from: the picker's selection
+    /// when one was made, otherwise `hidDevice` — same fallback in both
+    /// `deviceInfo()` and `startCollection()`, kept as one place so they
+    /// can't drift apart.
+    private func targetDevice() -> IOHIDDevice? {
+        if let selectedInterfaceID,
+            let match = interfaceCandidates.first(where: { $0.id == selectedInterfaceID })
+        {
+            return match.device
+        }
+        return tabletManager.contexts[productID]?.hidDevice
     }
 
     // MARK: - Device mode init (advanced)
@@ -492,8 +547,8 @@ struct CaptureGuideView: View {
     // MARK: - Collection logic
 
     private func startCollection() {
-        guard let dev = tabletManager.contexts[productID]?.hidDevice,
-              let devInfo = deviceInfo()
+        guard let dev = targetDevice(),
+              let devInfo = deviceInfo(device: dev)
         else { return }
         resolvedInfo = devInfo
         applyAutoDetectedModeSwitch(from: devInfo.parsedDescriptor)
@@ -506,6 +561,18 @@ struct CaptureGuideView: View {
             }
         }
         engine.startDiscovery(device: dev, deviceInfo: devInfo, duration: 3600)
+    }
+
+    /// Cancels and restarts collection against whatever `targetDevice()` now
+    /// resolves to — used when the interface picker's selection changes.
+    /// Discards whatever was gathered under the previous interface, same as
+    /// a manual Cancel; there's no meaningful way to merge two interfaces'
+    /// samples into one `DiscoveryResult`.
+    private func restartCollection() {
+        engine.cancelDiscovery()
+        savedURL = nil
+        startupError = nil
+        startCollection()
     }
 
     /// Parses the device's own raw descriptor bytes for a mode-switch feature
@@ -556,8 +623,8 @@ struct CaptureGuideView: View {
     /// name "PenPartner" — three fabrications in a header whose entire job is
     /// to say what the hardware is. Read both off the `IOHIDDevice`, and only
     /// consult the Wacom registry once the vendor ID says Wacom.
-    private func deviceInfo() -> CaptureDeviceInfo? {
-        guard let dev = tabletManager.contexts[productID]?.hidDevice else {
+    private func deviceInfo(device: IOHIDDevice? = nil) -> CaptureDeviceInfo? {
+        guard let dev = device ?? targetDevice() else {
             startupError = String(
                 localized: "That tablet isn't connected anymore.",
                 comment: "Capture error shown when the target device disappeared before collection started")

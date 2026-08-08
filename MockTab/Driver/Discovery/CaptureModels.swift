@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Foundation
+import IOKit.hid
 
 // MARK: - Device Mode Init
 
@@ -181,6 +182,25 @@ struct DiscoveryRepeatingRun: Codable {
 struct DiscoveryRepeatingStructure: Codable {
     let outer: DiscoveryRepeatingRun
     let nested: DiscoveryRepeatingRun?
+}
+
+/// A `.driver`-routed interface, weakly held, remembered so a device with
+/// more than one such interface (PTH-850's pen and touch interfaces both
+/// route through `.driver` independently — see `DeviceContext.hidDevice`'s
+/// doc comment) can be listed and chosen from, rather than only ever
+/// reachable via whichever one `hidDevice` happens to pin to.
+final class CaptureInterfaceCandidate: Identifiable {
+    weak var device: IOHIDDevice?
+    let usagePage: Int
+    /// Stable across the device's lifetime even after `device` goes nil on
+    /// disconnect, so SwiftUI list diffing doesn't churn.
+    let id: String
+
+    init(device: IOHIDDevice, usagePage: Int) {
+        self.device = device
+        self.usagePage = usagePage
+        self.id = "\(ObjectIdentifier(device))"
+    }
 }
 
 // MARK: - Device Context for Capture
