@@ -16,15 +16,15 @@ The active area is the portion of the tablet surface that maps to the screen. Pe
 
 **Resizing** – Drag any handle in the preview to reposition or resize the active area. Hold **Shift** while dragging a corner to lock the aspect ratio to the display's proportions. Exact values can also go into the Width and Height fields.
 
-**Lock Aspect Ratio** – Keeps the tablet-to-screen ratio proportional so the cursor travels equal distances horizontally and vertically. Disable this option to deliberately stretch or compress the mapping.
+**Proportional mapping** – Keeps the tablet-to-screen ratio proportional so the cursor travels equal distances horizontally and vertically. Disable this option to deliberately stretch or compress the mapping.
 
-**Reset to Full** – Restores the active area to the entire tablet surface. This action supports undo (⌘Z).
+**Reset to Full Area** – Restores the active area to the entire tablet surface. This action supports undo (⌘Z).
 
 ## Calibration (Pen Displays)
 
-The **Calibrate** button opens a full-screen overlay where crosshair targets appear for tapping with the pen tip. This process corrects the parallax gap between the pen tip and the on-screen cursor that the display glass introduces.
+The **Calibrate…** button opens a full-screen overlay where crosshair targets appear for tapping with the pen tip. This process corrects the parallax gap between the pen tip and the on-screen cursor that the display glass introduces.
 
-After calibration, **Manual Fine-Tune** adjusts any small constant offset that remains, for example when parallax shifts slightly at different viewing angles.
+After calibration, **Pointer Offset** adjusts any small constant offset that remains, for example when parallax shifts slightly at different viewing angles.
 
 [penFeel]
 
@@ -32,7 +32,7 @@ After calibration, **Manual Fine-Tune** adjusts any small constant offset that r
 
 The pressure curve controls how pen pressure maps to output pressure. A concave curve (pulled up) makes light strokes register heavier; a convex curve (pushed down) requires more force for the same effect.
 
-**Tip Feel presets** – Linear, Soft, and Firm. Choosing a preset sets the curve; adjusting a curve point switches to a custom shape automatically.
+**Presets** – Linear, Soft, and Firm. Choosing a preset sets the curve; adjusting a curve point switches to a custom shape automatically.
 
 ## Pressure Smoothing
 
@@ -77,11 +77,11 @@ Press any button while the window is open to highlight its position; this helps 
 - **Mouse buttons** – Left, Right, Middle click, or Double-click  
 - **Keyboard shortcuts** – click the shortcut field and press any key combination  
 - **Modifier holds** – ⌘ ⌥ ⇧ ⌃ held for as long as the button remains pressed  
-- **Special actions** – Display Toggle, Eraser, Touch Ring mode selection  
+- **Special actions** – Toggle Display, Eraser, Touch Ring mode selection  
 
 ## Touch Ring and Dial
 
-Rings, dials, and touch strips support multiple mode slots. Each mode appears as a one-line summary; click a mode row — or its wedge in the diagram beside the list — to open its settings in place: the action, its speed, and the shortcuts for each direction. Assign **Ring Cycle** to a button to step through modes, or **Ring: Slot N** to jump directly to a specific slot.
+Rings, dials, and touch strips support multiple mode slots. Each mode appears as a one-line summary; click a mode row — or its wedge in the diagram beside the list — to open its settings in place: the action, its speed, and the shortcuts for each direction. Assign Touch Ring Mode → **Cycle** to a button to step through modes, or **Jump to Mode** to jump directly to a specific mode.
 
 ## Lighting
 
@@ -97,29 +97,35 @@ The app override bar at the top assigns different buttons for a specific applica
 
 [touch]
 
-## Finger Touch
+## Touch
 
-Tablets with a capacitive touch surface report finger contacts alongside pen input. MockTab keeps this disabled by default — enable **Enable finger touch** to use it.
+Tablets with a capacitive touch surface report finger contacts alongside pen input. MockTab keeps this disabled by default. Enable **Enable finger touch** to use it.  Response varies by app.
 
-**Tap to click** – A brief touch with no significant motion posts a left click. Keep this disabled when resting fingers on the tablet while drawing; otherwise, it produces phantom clicks.
+**Tap to click** – A brief touch with no significant motion produces a left click.
 
-**Cursor speed** – Scales pointer movement from a single-finger drag. 1.00× maps the touch area directly to the screen; higher values cover more distance with less motion, lower values allow finer control.
+**Cursor speed** – Scales pointer movement from a single-finger drag. Lower values allow fine control, while higher values cover more distance with less motion.
 
-## Scrolling
+## Gestures
 
-**Two-finger scroll** – Two fingers moving together post smooth scroll events. Apps treat these as trackpad scrolling, including rubber-banding in Safari and Preview.
+**Two-finger scroll** – Swipe two fingers in one direction. Apps generally treat these as trackpad scrolling.
 
-**Reverse direction** – On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers.
+**Pinch to zoom** – Spread or pinch two fingers to zoom.
+
+**Rotate** – Place two fingers on the tablet and twist either clockwise or counter-clockwise to rotate the view.
+
+**Reverse direction** – On: content moves opposite to finger motion, like a conventional mouse wheel.
+
+**Momentum Scrolling** – Two-finger scroll coasts briefly after you lift your fingers, the same as trackpad inertia. Turn off for apps that don't handle the effect well.
 
 ## Touch Area
 
-The touch area operates independently from the pen’s active area. Drag the handles in the preview to crop the touch surface; finger input outside the rectangle has no effect. Most users leave the full surface enabled for touch and crop only the pen area.
+The touch area operates independently from the pen’s active area. Drag the handles in the preview to crop the available touch surface. Finger input outside the rectangle has no effect.
 
-**Reset to full surface** – Restores the touch area to the entire touch-capable region.
+**Reset to Full Surface** – Restores the touch area to the entire touch-capable region.
 
-## What Touch Cannot Do
+## Limitations
 
-MockTab cannot post Mission Control, Spaces, Launchpad, or other system-wide multi-touch gestures. macOS reserves these for private trackpad event channels used by first-party drivers. Use a trackpad or keyboard shortcuts for system navigation.
+MockTab doesn't currently support Mission Control, Spaces, Launchpad, or App Exposé from touch.
 
 [display]
 
@@ -127,11 +133,11 @@ MockTab cannot post Mission Control, Spaces, Launchpad, or other system-wide mul
 
 Display mapping determines which screen the tablet treats as active.
 
-**All Displays** – The tablet spans the entire desktop proportionally. This mode suits workflows that move across multiple monitors.
+**All Displays** – Shift-click any display in the diagram to span the entire desktop proportionally. Suits workflows that move across multiple monitors.
 
-**Single Display** – The active area maps to one specific display. Selecting a display from the list updates the preview to show the mapping.
+**Single Display** – Click a display in the diagram to map the active area to just that display.
 
-**Display Toggle** – Assign the Display Toggle action to an express key or barrel button to cycle through connected displays without opening settings.
+**Toggle Display** – Assign the Toggle Display action to an express key or barrel button to cycle through connected displays without opening settings.
 
 [devices]
 
@@ -153,11 +159,11 @@ If another tablet driver (such as the official Wacom driver) runs at the same ti
 
 A profile is a snapshot of tablet settings: active area, pressure curve, button assignments, and display mapping. Switching profiles applies all of these settings immediately.
 
-**Auto-restore** – When enabled on a profile, MockTab automatically activates that profile when the associated tablet connects.
+**Auto-Switch** – Automatically switches to the matching profile when its tablet connects.
 
 ## Creating and Renaming
 
-Click **Save as New Profile** to capture the current settings. Double-click a profile name to rename it.
+Click **Create Profile** to capture the current settings. Double-click a profile name to rename it.
 
 ## Per-App Overrides in Profiles
 

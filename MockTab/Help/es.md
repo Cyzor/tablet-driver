@@ -16,15 +16,15 @@ El área activa es la parte de la superficie de la tableta que se asigna a la pa
 
 **Redimensionar** – Arrastra cualquier tirador de la vista previa para mover o redimensionar el área activa. Mantén pulsada **Shift** al arrastrar una esquina para fijar la proporción de la pantalla. También puedes introducir valores exactos en los campos Width y Height.
 
-**Lock Aspect Ratio** – Mantiene proporcional la relación entre la tableta y la pantalla para que el cursor recorra distancias iguales en horizontal y vertical. Desactívalo si quieres estirar o comprimir el mapeo a propósito.
+**Asignación proporcional** – Mantiene proporcional la relación entre la tableta y la pantalla para que el cursor recorra distancias iguales en horizontal y vertical. Desactívalo si quieres estirar o comprimir el mapeo a propósito.
 
-**Reset to Full** – Restablece el área activa a toda la superficie de la tableta. Esta acción se puede deshacer con ⌘Z.
+**Restablecer a área completa** – Restablece el área activa a toda la superficie de la tableta. Esta acción se puede deshacer con ⌘Z.
 
 ## Calibración (pen displays)
 
-El botón **Calibrate** abre una superposición a pantalla completa con cruces para tocar con la punta del lápiz. Este proceso corrige la separación por paralaje entre la punta del lápiz y el cursor en pantalla que introduce el cristal.
+El botón **Calibrar…** abre una superposición a pantalla completa con cruces para tocar con la punta del lápiz. Este proceso corrige la separación por paralaje entre la punta del lápiz y el cursor en pantalla que introduce el cristal.
 
-Después de calibrar, **Manual Fine-Tune** permite ajustar cualquier pequeño desplazamiento constante que quede, por ejemplo si la paralaje cambia un poco según el ángulo de visión.
+Después de calibrar, **Desplazamiento del puntero** permite ajustar cualquier pequeño desplazamiento constante que quede, por ejemplo si la paralaje cambia un poco según el ángulo de visión.
 
 [penFeel]
 
@@ -32,7 +32,7 @@ Después de calibrar, **Manual Fine-Tune** permite ajustar cualquier pequeño de
 
 La curva de presión controla cómo se traduce la presión del lápiz en presión de salida. Una curva cóncava (tirada hacia arriba) hace que los trazos suaves se registren con más fuerza; una curva convexa (tirada hacia abajo) exige más presión para conseguir el mismo efecto.
 
-**Preajustes de Tip Feel** – Linear, Soft y Firm. Al elegir un preajuste se establece la curva; al mover un punto de la curva, cambia automáticamente a una forma personalizada.
+**Preajustes** – Lineal, Suave y Firme. Al elegir un preajuste se establece la curva; al mover un punto de la curva, cambia automáticamente a una forma personalizada.
 
 ## Suavizado de presión
 
@@ -48,11 +48,11 @@ Este ajuste controla lo cerca que deben estar dos toques para contar como doble 
 
 ## Movimiento
 
-**Invert Rotation Direction** – Invierte el sentido de giro del lápiz. Actívalo por aplicación para las apps que interpretan la rotación al revés, como Krita.
+**Invertir dirección de rotación** – Invierte el sentido de giro del lápiz. Actívalo por aplicación para las apps que interpretan la rotación al revés, como Krita.
 
-**Art Pen: Swap Tilt with Rotation** – Envía la rotación del barril al control Pen Tilt de Photoshop mediante datos de inclinación simulados, a costa de suprimir la inclinación real mientras está activado. Úsalo en Brush Dynamics → Shape Dynamics → Angle → Pen Tilt. Al activarlo aparecen los deslizadores Tilt Offset y Tilt Magnitude para afinar la señal simulada.
+**Art Pen: intercambiar inclinación con rotación** – Envía la rotación del barril al control Pen Tilt de Photoshop mediante datos de inclinación simulados, a costa de suprimir la inclinación real mientras está activado. Úsalo en Brush Dynamics → Shape Dynamics → Angle → Pen Tilt. Al activarlo aparecen los deslizadores Tilt Offset y Tilt Magnitude para afinar la señal simulada.
 
-**Relative Cursor Movement** – Cambia del modo absoluto (cada punto de la tableta corresponde a un punto fijo de la pantalla, como con un lápiz) al modo relativo (el cursor se mueve según la distancia que desplazas el lápiz, como con un ratón).
+**Movimiento relativo del cursor** – Cambia del modo absoluto (cada punto de la tableta corresponde a un punto fijo de la pantalla, como con un lápiz) al modo relativo (el cursor se mueve según la distancia que desplazas el lápiz, como con un ratón).
 
 ## Pan View
 
@@ -60,9 +60,9 @@ Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado
 
 ## Comportamiento del clic
 
-**Tip-up Assist** – Mantiene el clic del lápiz activo durante un instante después de levantar la punta, si todavía te estás moviendo rápido, para evitar cortes involuntarios del trazo al dibujar deprisa. Arrástralo hasta Off para desactivarlo.
+**Asistencia de levantamiento** – Mantiene el clic del lápiz activo durante un instante después de levantar la punta, si todavía te estás moviendo rápido, para evitar cortes involuntarios del trazo al dibujar deprisa. Arrástralo hasta Off para desactivarlo.
 
-**Drag Threshold** – Exige que el lápiz recorra una distancia mínima antes de que un toque pase a ser un arrastre, lo que absorbe el temblor al apoyar la punta y evita que un toque ligero se convierta en un arrastre accidental. Arrástralo hasta Off para desactivarlo.
+**Umbral de arrastre** – Exige que el lápiz recorra una distancia mínima antes de que un toque pase a ser un arrastre, lo que absorbe el temblor al apoyar la punta y evita que un toque ligero se convierta en un arrastre accidental. Arrástralo hasta Off para desactivarlo.
 
 [buttons]
 
@@ -77,15 +77,15 @@ Pulsa cualquier botón mientras la ventana está abierta para resaltar su posici
 - **Botones del ratón** – Clic izquierdo, derecho, central o doble clic  
 - **Atajos de teclado** – Haz clic en el campo del atajo y pulsa cualquier combinación de teclas  
 - **Modificadores mantenidos** – ⌘ ⌥ ⇧ ⌃ se mantienen mientras el botón siga pulsado  
-- **Acciones especiales** – Display Toggle, Eraser, selección de modo del Touch Ring  
+- **Acciones especiales** – Cambiar pantalla, Borrador, selección de modo del Touch Ring  
 
 ## Touch Ring y dial
 
-Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio: la acción, su velocidad y los atajos de cada dirección. Asigna **Ring Cycle** a un botón para ir pasando de un modo a otro, o **Ring: Slot N** para saltar directamente a una ranura concreta.
+Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio: la acción, su velocidad y los atajos de cada dirección. Asigna Touch Ring Mode → **Ciclo** a un botón para ir pasando de un modo a otro, o **Ir al modo** para saltar directamente a un modo concreto.
 
 ## Iluminación
 
-Algunos dispositivos tienen luces configurables. En el hardware con un anillo iluminado alrededor del dial, la configuración de cada modo incluye el color y el brillo que se muestran mientras ese modo está activo. Los pen displays con botones de marco retroiluminados tienen una fila **Button Backlight**. El hardware conserva el último color hasta que lo cambies.
+Algunos dispositivos tienen luces configurables. En el hardware con un anillo iluminado alrededor del dial, la configuración de cada modo incluye el color y el brillo que se muestran mientras ese modo está activo. Los pen displays con botones de marco retroiluminados tienen una fila **Retroiluminación de los botones**. El hardware conserva el último color hasta que lo cambies.
 
 ## Borrador
 
@@ -97,29 +97,35 @@ La barra de overrides de la parte superior permite asignar botones distintos a u
 
 [touch]
 
-## Toque con los dedos
+## Táctil
 
-Las tabletas con superficie táctil capacitiva informan de los contactos de los dedos junto con la entrada del lápiz. MockTab lo mantiene desactivado de forma predeterminada; activa **Enable finger touch** para usarlo.
+Las tabletas con superficie táctil capacitiva informan de los contactos de los dedos junto con la entrada del lápiz. MockTab lo mantiene desactivado de forma predeterminada; activa **Habilitar toque con el dedo** para usarlo. La respuesta varía según la app.
 
-**Tap to click** – Un toque breve sin movimiento apreciable envía un clic izquierdo. Déjalo desactivado si apoyas los dedos sobre la tableta mientras dibujas; de lo contrario, puede generar clics fantasma.
+**Tocar para hacer clic** – Un toque breve sin movimiento apreciable envía un clic izquierdo.
 
-**Cursor speed** – Ajusta la velocidad del puntero al arrastrar con un solo dedo. 1.00× asigna el área táctil directamente a la pantalla; los valores más altos cubren más distancia con menos movimiento y los más bajos permiten un control más fino.
+**Velocidad del cursor** – Ajusta la velocidad del puntero al arrastrar con un solo dedo. Los valores más bajos permiten un control más fino; los más altos cubren más distancia con menos movimiento.
 
-## Desplazamiento
+## Gestos
 
-**Two-finger scroll** – Dos dedos moviéndose a la vez envían eventos de desplazamiento suave. Las aplicaciones lo tratan como desplazamiento de trackpad, incluido el rebote elástico en Safari y Vista Previa.
+**Desplazamiento con dos dedos** – Desliza dos dedos en una dirección. Las apps suelen tratarlo como desplazamiento de trackpad.
 
-**Reverse direction** – On: el contenido se desplaza en sentido contrario al movimiento de los dedos, como una rueda de ratón clásica. Off (valor predeterminado): el contenido sigue a tus dedos.
+**Pellizcar para hacer zoom** – Separa o junta dos dedos para hacer zoom.
+
+**Girar** – Coloca dos dedos sobre la tableta y gíralos en el sentido horario o antihorario para rotar la vista.
+
+**Invertir dirección** – On: el contenido se desplaza en sentido contrario al movimiento de los dedos, como una rueda de ratón clásica.
+
+**Desplazamiento con inercia** – El desplazamiento con dos dedos continúa brevemente después de levantar los dedos, igual que la inercia de un trackpad. Desactívalo para apps que no manejan bien el efecto.
 
 ## Área táctil
 
-El área táctil funciona de forma independiente al área activa del lápiz. Arrastra los tiradores de la vista previa para recortar la superficie táctil; la entrada de dedos fuera del rectángulo no tiene efecto. La mayoría de la gente deja toda la superficie habilitada para el tacto y recorta solo el área del lápiz.
+El área táctil funciona de forma independiente al área activa del lápiz. Arrastra los tiradores de la vista previa para recortar la superficie táctil disponible. La entrada de dedos fuera del rectángulo no tiene efecto.
 
-**Reset to full surface** – Restablece el área táctil a toda la superficie compatible con tacto.
+**Restablecer a superficie completa** – Restablece el área táctil a toda la superficie compatible con tacto.
 
-## Lo que el tacto no puede hacer
+## Limitaciones
 
-MockTab no puede enviar Mission Control, Spaces, Launchpad ni otros gestos multitáctiles de todo el sistema. macOS reserva estas funciones para canales privados de eventos de trackpad usados por los controladores de Apple. Para la navegación del sistema, usa un trackpad o atajos de teclado.
+MockTab no admite todavía Mission Control, Spaces, Launchpad ni App Exposé desde el tacto.
 
 [display]
 
@@ -127,11 +133,11 @@ MockTab no puede enviar Mission Control, Spaces, Launchpad ni otros gestos multi
 
 El mapeo de pantalla determina qué pantalla trata la tableta como activa.
 
-**All Displays** – La tableta abarca todo el escritorio de forma proporcional. Este modo va bien para flujos de trabajo que se mueven entre varios monitores.
+**Todas las pantallas** – Mayús-clic en cualquier pantalla del diagrama para abarcar todo el escritorio de forma proporcional. Va bien para flujos de trabajo que se mueven entre varios monitores.
 
-**Single Display** – El área activa se asigna a una pantalla concreta. Al seleccionar una pantalla de la lista, la vista previa se actualiza para mostrar el mapeo.
+**Una sola pantalla** – Haz clic en una pantalla del diagrama para asignar el área activa solo a esa pantalla.
 
-**Display Toggle** – Asigna la acción Display Toggle a una tecla express o a un botón lateral para recorrer las pantallas conectadas sin abrir los ajustes.
+**Cambiar pantalla** – Asigna la acción Cambiar pantalla a una tecla express o a un botón lateral para recorrer las pantallas conectadas sin abrir los ajustes.
 
 [devices]
 
@@ -153,11 +159,11 @@ Si otro controlador de tabletas, como el controlador oficial de Wacom, se ejecut
 
 Un perfil es una instantánea de la configuración de la tableta: área activa, curva de presión, asignaciones de botones y mapeo de pantalla. Al cambiar de perfil, todos esos ajustes se aplican de inmediato.
 
-**Auto-restore** – Cuando está activado en un perfil, MockTab activa automáticamente ese perfil al conectar la tableta asociada.
+**Cambio automático** – Cambia automáticamente al perfil correspondiente en cuanto se conecta su tableta.
 
 ## Crear y renombrar
 
-Haz clic en **Save as New Profile** para guardar la configuración actual como un perfil nuevo. Haz doble clic en el nombre de un perfil para cambiarlo.
+Haz clic en **Crear perfil** para guardar la configuración actual como un perfil nuevo. Haz doble clic en el nombre de un perfil para cambiarlo.
 
 ## Overrides por app en los perfiles
 
@@ -175,7 +181,7 @@ El scratchpad es un lienzo de prueba sensible a la presión. Sirve para comproba
 
 Tanto la opacidad como el grosor del trazo responden a la presión de la punta. La inclinación afecta al ángulo del trazo cuando el lápiz admite entrada de inclinación. El panel no conserva los trazos; al cerrarlo o limpiarlo, se descarta su contenido.
 
-**Clear** – Elimina todos los trazos del lienzo.
+**Limpiar** – Elimina todos los trazos del lienzo.
 
 [info]
 
@@ -185,9 +191,9 @@ El panel Info muestra en tiempo real los valores del lápiz: posición X/Y, pres
 
 Esta vista ayuda a diagnosticar comportamientos inesperados, por ejemplo para confirmar si la presión llega a su valor máximo o si la tableta informa de inclinación.
 
-## Collect Device Data
+## Recopilar datos del dispositivo
 
-**Collect Device Data** graba lo que la tableta envía mientras la usas. El resultado es un archivo JSON compacto que puedes adjuntar a una solicitud para añadir o mejorar la compatibilidad con un dispositivo.
+**Recopilar datos del dispositivo** graba lo que la tableta envía mientras la usas. El resultado es un archivo JSON compacto que puedes adjuntar a una solicitud para añadir o mejorar la compatibilidad con un dispositivo.
 
 [website]
 

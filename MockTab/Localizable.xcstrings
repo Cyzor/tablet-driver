@@ -4378,7 +4378,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プロフィールを作成"
+            "value" : "プロファイルを作成"
           }
         }
       }
@@ -5329,7 +5329,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deaktiviert Neigung, um Drehhülsen‑Rotation in unterstützten Apps zu aktivieren"
+            "value" : "Deaktiviert Neigung, um Drehhülsen‑Rotation in unterstützten Apps zu aktivieren."
           }
         },
         "es" : {
@@ -10676,7 +10676,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プロフィールなし"
+            "value" : "プロファイルなし"
           }
         }
       }
@@ -10705,7 +10705,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プロフィールはまだありません。以下で作成してください。"
+            "value" : "プロファイルはまだありません。以下で作成してください。"
           }
         }
       }
@@ -12590,7 +12590,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プロフィール"
+            "value" : "プロファイル"
           }
         }
       }
@@ -12689,7 +12689,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プロフィール名"
+            "value" : "プロファイル名"
           }
         }
       }
