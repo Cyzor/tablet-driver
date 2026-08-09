@@ -86,7 +86,7 @@ swift test
 - Per-app overrides that activate automatically.
 - Display mapping to any connected display.
 - Wireless support through Bluetooth and USB dongle protocols.
-- Capacitive touch with two-finger scroll, tap-to-click, and adjustable touch area on supported models.
+- Capacitive touch with two-finger scroll, pinch to zoom, rotate, tap-to-click, and adjustable touch area on supported models.
 - Live scratchpad for input testing.
 - Profile import and export.
 - Menu bar mode with no Dock icon.

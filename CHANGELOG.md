@@ -3,6 +3,7 @@
 Full details for each release live in [`release-notes/`](release-notes/). This
 file is a one-line index.
 
+- [v0.4.1](release-notes/v0.4.1.md) — pressure threshold setting; more reliable touch controls; device-recognition fixes; lower idle memory use.
 - [v0.4.0](release-notes/v0.4.0.md) — pen feel and Pan View; per-unit tablet settings; Xencelabs Pen Display controls; broader device recognition.
 - [v0.3.0](release-notes/v0.3.0.md) — full Xencelabs Pen Display bundle support, wired and wireless; input reliability under load; interface polish.
 - [v0.2.6](release-notes/v0.2.6.md) — Wacom CTH-690 support; Accessibility permission prompt fix.
