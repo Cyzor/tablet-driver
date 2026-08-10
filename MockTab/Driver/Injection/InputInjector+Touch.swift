@@ -226,6 +226,10 @@ extension InputInjector {
         usePhases: Bool
     ) {
         if !usePhases, dx == 0, dy == 0 { return }
+        // Read once and reuse below — the wheel event and its companion
+        // gesture event describe the same instant, so a second WindowServer
+        // round-trip a few microseconds later gains nothing.
+        let loc = currentCursorPosition()
         // A real trackpad driver posts a gesture-scroll companion event
         // alongside the wheel event; apps that build their own gesture-scroll
         // physics (rather than relying on NSScrollView's free coast) key off
@@ -234,9 +238,8 @@ extension InputInjector {
         // real trackpad's ordering looks like and avoids a stutter seen when
         // ordered the other way. Only meaningful with a real phase.
         if usePhases {
-            postTouchScrollGesture(dx: dx, dy: dy, phase: phase)
+            postTouchScrollGesture(dx: dx, dy: dy, phase: phase, location: loc)
         }
-        let loc = currentCursorPosition()
         // .pixel units + the scroll-phase field is what makes apps treat the
         // stream as a trackpad scroll (smooth, with rubber-banding) rather
         // than a discrete wheel-tick scroll.
@@ -265,10 +268,12 @@ extension InputInjector {
     /// directly rather than a magnification factor. Not sent during the
     /// momentum tail — a real trackpad's momentum stream is wheel-event only,
     /// this event only accompanies a live, phase-bracketed gesture.
-    private func postTouchScrollGesture(dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase) {
+    private func postTouchScrollGesture(
+        dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase, location: CGPoint
+    ) {
         guard let e = CGEvent(source: nil) else { return }
         e.type = Self.nsEventTypeGesture
-        e.location = currentCursorPosition()
+        e.location = location
         e.setIntegerValueField(Self.fieldIOHIDEventSubtype, value: Self.iohidEventTypeScroll)
         e.setIntegerValueField(Self.fieldGesturePhase, value: Int64(phase.rawValue))
         e.setDoubleValueField(Self.fieldGestureDeltaX, value: dx)

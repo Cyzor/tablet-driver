@@ -58,6 +58,8 @@ This setting controls how close two taps must be to count as a double-click. Inc
 
 Sets how fast content pans while a Pan View button is held. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping to use it.
 
+Pan View coasts briefly after release when its momentum setting (in Pen Feel) is on. Response varies by app.
+
 ## Click Behavior
 
 **Tip-up Assist** – holds the pen click open briefly after the tip lifts, if you're still moving quickly, to prevent unintended stroke breaks during fast drawing. Drag to Off to disable.
@@ -115,7 +117,7 @@ Tablets with a capacitive touch surface report finger contacts alongside pen inp
 
 **Reverse direction** – On: content moves opposite to finger motion, like a conventional mouse wheel.
 
-**Momentum Scrolling** – Two-finger scroll coasts briefly after you lift your fingers, the same as trackpad inertia. Turn off for apps that don't handle the effect well.
+**Momentum Scrolling** – Two-finger scroll coasts briefly after you lift your fingers, the same as trackpad inertia. Response varies by app.
 
 ## Touch Area
 

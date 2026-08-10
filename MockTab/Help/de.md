@@ -58,6 +58,8 @@ Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müss
 
 Legt fest, wie schnell sich Inhalte verschieben, während eine Pan-View-Taste gedrückt gehalten wird. Weise die Aktion Pan View in Button Mapping einer Stifttaste, Express-Taste oder Puck-Taste zu, um sie zu nutzen.
 
+Pan View läuft nach dem Loslassen kurz nach, wenn die zugehörige Trägheitseinstellung (in Stiftgefühl) aktiv ist. Die Reaktion hängt von der App ab.
+
 ## Klickverhalten
 
 **Aufhebehilfe** – Hält den Stiftklick nach dem Abheben der Spitze noch kurz offen, wenn du dich weiterhin schnell bewegst, damit schnelle Zeichenzüge nicht unbeabsichtigt unterbrochen werden. Ziehe den Regler auf Off, um die Funktion auszuschalten.
@@ -115,7 +117,7 @@ Grafiktabletts mit kapazitiver Touch-Oberfläche melden Fingerkontakte zusätzli
 
 **Richtung umkehren** – Der Inhalt bewegt sich entgegengesetzt zur Fingerbewegung, wie bei einem klassischen Mausrad.
 
-**Scrollen mit Nachlauf** – Nach dem Abheben der Finger läuft der Scrollvorgang kurz nach, ähnlich wie beim Trackpad. Schalte die Option für Apps aus, die mit diesem Effekt nicht gut zurechtkommen.
+**Scrollen mit Nachlauf** – Nach dem Abheben der Finger läuft der Scrollvorgang kurz nach, ähnlich wie beim Trackpad. Schalte die Option für Apps aus, die mit diesem Effekt nicht gut zurechtkommen. Die Reaktion hängt von der App ab.
 
 ## Berührungsbereich
 

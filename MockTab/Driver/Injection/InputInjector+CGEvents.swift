@@ -1069,10 +1069,14 @@ extension InputInjector {
             // with no phase envelope to deliver them, skip them as no-ops.
             guard dx != 0 || dy != 0 else { return }
         }
+        // Read once and reuse below — the wheel event and its companion
+        // gesture event describe the same instant, so a second WindowServer
+        // round-trip a few microseconds later gains nothing.
+        let loc = currentCursorPosition()
         // See postTouchScrollGesture (InputInjector+Touch.swift) for why this
         // companion event exists and why it's posted before the wheel event.
         if panScrollUsePhases {
-            postPanScrollGesture(dx: dx, dy: dy, phase: phase)
+            postPanScrollGesture(dx: dx, dy: dy, phase: phase, location: loc)
         }
         guard
             let e = CGEvent(
@@ -1083,7 +1087,7 @@ extension InputInjector {
                 wheel2: Int32(dx),
                 wheel3: 0)
         else { return }
-        e.location = currentCursorPosition()
+        e.location = loc
         e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
         if panScrollUsePhases {
             e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
@@ -1095,10 +1099,12 @@ extension InputInjector {
 
     /// Companion to `postPanScroll` — same technique as `postTouchScrollGesture`,
     /// not sent during the momentum tail. Field numbers documented there.
-    private func postPanScrollGesture(dx: Double, dy: Double, phase: PanScrollTracker.ScrollPhase) {
+    private func postPanScrollGesture(
+        dx: Double, dy: Double, phase: PanScrollTracker.ScrollPhase, location: CGPoint
+    ) {
         guard let e = CGEvent(source: nil) else { return }
         e.type = CGEventType(rawValue: 29)!
-        e.location = currentCursorPosition()
+        e.location = location
         e.setIntegerValueField(CGEventField(rawValue: 110)!, value: 6)
         e.setIntegerValueField(CGEventField(rawValue: 132)!, value: Int64(phase.rawValue))
         e.setDoubleValueField(CGEventField(rawValue: 116)!, value: dx)
