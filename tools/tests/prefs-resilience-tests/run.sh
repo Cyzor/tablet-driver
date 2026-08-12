@@ -6,7 +6,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../.." && pwd)"
+ROOT="$(cd "$DIR/../../.." && pwd)"
 SETTINGS="$ROOT/MockTab/Settings"
 TEST="$DIR/main.swift"
 BIN="$(mktemp -d)/prefs-resilience-tests"

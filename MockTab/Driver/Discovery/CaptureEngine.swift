@@ -384,7 +384,7 @@ final class CaptureEngine: ObservableObject {
     ///
     /// The primary interface (first, by contract of `startDiscovery`) also
     /// fills the top-level `reports`/`hidReportDescriptor`/`deviceInfo`, which
-    /// is what a `captureVersion` 6 reader — `tools/triage_discovery.py` as
+    /// is what a `captureVersion` 6 reader — `TabletKit/tools/triage_discovery.py` as
     /// shipped — knows how to read. Every interface, primary included, is
     /// additionally listed in `interfaces`. Tool codes are unioned across
     /// interfaces, since a tool entering proximity is a property of the tablet

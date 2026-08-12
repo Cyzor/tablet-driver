@@ -89,11 +89,11 @@ echo "==> Releasing MockTab $VERSION (tag $TAG)"
 
 # ─── 3. Build, sign, notarize, package ────────────────────────────────────────
 
-tools/release.sh
+tools/release/release.sh
 
 DMG_PATH="dist/MockTab-$VERSION.dmg"
 if [[ ! -f "$DMG_PATH" ]]; then
-    echo "error: expected $DMG_PATH after tools/release.sh" >&2
+    echo "error: expected $DMG_PATH after tools/release/release.sh" >&2
     exit 1
 fi
 

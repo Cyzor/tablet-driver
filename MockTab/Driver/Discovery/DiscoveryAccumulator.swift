@@ -123,7 +123,7 @@ struct ByteValueSet: Sendable, Equatable {
 /// tens of megabytes, a `Task { @MainActor }` hop per report while the user
 /// was drawing, and a multi-second main-thread reduction when they clicked
 /// Done. Everything the capture file reports — and everything
-/// `tools/triage_discovery.py` reads — is derivable incrementally, so it is
+/// `TabletKit/tools/triage_discovery.py` reads — is derivable incrementally, so it is
 /// derived incrementally, in fixed space.
 final class DiscoveryAccumulator: Sendable {
 

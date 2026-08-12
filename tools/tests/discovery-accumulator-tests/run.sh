@@ -6,7 +6,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../.." && pwd)"
+ROOT="$(cd "$DIR/../../.." && pwd)"
 SRC="$ROOT/MockTab/Driver/Discovery/DiscoveryAccumulator.swift"
 TEST="$DIR/DiscoveryAccumulatorTests.swift"
 BIN="$(mktemp -d)/discovery-accumulator-tests"

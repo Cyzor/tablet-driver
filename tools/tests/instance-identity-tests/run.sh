@@ -6,7 +6,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../.." && pwd)"
+ROOT="$(cd "$DIR/../../.." && pwd)"
 SRC="$ROOT/MockTab/Driver/Devices/DeviceInstanceKey.swift"
 TEST="$DIR/InstanceIdentityTests.swift"
 BIN="$(mktemp -d)/instance-identity-tests"

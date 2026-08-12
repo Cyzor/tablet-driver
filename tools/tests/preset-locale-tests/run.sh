@@ -6,7 +6,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../.." && pwd)"
+ROOT="$(cd "$DIR/../../.." && pwd)"
 SRC1="$ROOT/MockTab/Settings/Model/ButtonBinding.swift"
 SRC2="$ROOT/MockTab/Settings/Model/ControlSlot.swift"
 SRC3="$ROOT/MockTab/Settings/Serialization/UnknownFieldsCodable.swift"

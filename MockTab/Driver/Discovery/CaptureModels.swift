@@ -38,7 +38,7 @@ struct CaptureInitReport: Codable, Identifiable {
 /// Output of a discovery session. Records every report ID seen and, for each,
 /// which byte positions varied and what values they took.
 ///
-/// Consumed by `tools/triage_discovery.py` and read by hand when adding a new
+/// Consumed by `TabletKit/tools/triage_discovery.py` and read by hand when adding a new
 /// device to the registry.
 struct DiscoveryResult: Codable {
     /// 5: `byteSampleValues` replaced by `byteStats` (adds per-byte min/max and
@@ -60,7 +60,7 @@ struct DiscoveryResult: Codable {
     let deviceInfo: DiscoveryDeviceInfo
     /// The **primary** interface's reports — the pen interface on a tablet
     /// that has one. Duplicated from `interfaces[0]` rather than replaced by
-    /// it so a reader that predates `captureVersion` 7 (`tools/
+    /// it so a reader that predates `captureVersion` 7 (`TabletKit/tools/
     /// triage_discovery.py` as shipped, and every capture file already
     /// submitted against it) still finds the block it looks for, in the shape
     /// it expects. A few KB of duplication buys that.

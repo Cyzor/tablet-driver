@@ -5,7 +5,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../.." && pwd)"
+ROOT="$(cd "$DIR/../../.." && pwd)"
 SRC="$ROOT/MockTab/Driver/Injection/TouchStateTracker.swift"
 TEST="$DIR/TouchStateTrackerTests.swift"
 BIN="$(mktemp -d)/touch-state-tracker-tests"

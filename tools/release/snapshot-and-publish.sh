@@ -53,11 +53,11 @@ echo "==> Snapshotting MockTab ($SHA_SHORT)"
 
 # ─── 2. Build, sign, notarize, package ────────────────────────────────────────
 
-tools/build-snapshot.sh
+tools/release/build-snapshot.sh
 
 DMG_PATH="dist/MockTab-snapshot.dmg"
 if [[ ! -f "$DMG_PATH" ]]; then
-    echo "error: expected $DMG_PATH after tools/build-snapshot.sh" >&2
+    echo "error: expected $DMG_PATH after tools/release/build-snapshot.sh" >&2
     exit 1
 fi
 

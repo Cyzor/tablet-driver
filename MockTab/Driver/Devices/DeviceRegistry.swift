@@ -195,7 +195,7 @@ final class DeviceRegistry: ObservableObject {
     /// dependent.
     /// The claim logic itself lives in `DeviceInstanceClaims` (Foundation-
     /// only, injectable UserDefaults) so the standalone harness in
-    /// `tools/instance-identity-tests/` can exercise it; this is the app's
+    /// `tools/tests/instance-identity-tests/` can exercise it; this is the app's
     /// live instance.
     private var claims: DeviceInstanceClaims {
         DeviceInstanceClaims(ud: ud) { pidHex in

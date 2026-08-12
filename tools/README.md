@@ -4,6 +4,15 @@ Project-side scripts that aren't part of the app build but are used to maintain
 the registry, audit it against upstream sources, triage submitted captures, and
 capture HID traffic.
 
+```
+tools/
+  tests/     standalone test harnesses (no XCTest target) — see Contributing.md
+  release/   build, sign, notarize, publish
+  capture/   HID capture probes + unwired app source
+  latency/   latency measurement suite
+  registry/  upstream cross-check + dimension backfill (non-Wacom)
+```
+
 The registry lives at `TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift`.
 Most scripts read it (a few edit it in place) or produce Swift that gets pasted
 in.  None are wired into a build step — run them from the repo root by hand,
@@ -31,7 +40,7 @@ rejects pairings whose implied per-axis LPI disagrees by more than 8% — the
 signature of a stale libwacom row or a cross-product PID collision.
 
 ```
-python3 tools/backfill_libwacom_dimensions.py \
+python3 tools/registry/backfill_libwacom_dimensions.py \
     --libwacom-data /path/to/libwacom/data \
     --registry TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift \
     --dry-run
@@ -47,7 +56,7 @@ used by `VendorDeviceRegistry` for devices the registry *names* but doesn't
 yet decode.
 
 ```
-python3 tools/import_vendor_configs.py \
+python3 tools/registry/import_vendor_configs.py \
     /path/to/OTD/Configurations \
     --vendors Huion Xencelabs XP-Pen
 ```

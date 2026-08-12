@@ -5,7 +5,7 @@
 # an already-tagged version, then create a DRAFT GitHub Release with the DMG
 # attached. Nothing is public until you click Publish on GitHub.
 #
-# `tools/release-and-publish.sh` is the primary release path and does all of
+# `tools/release/release-and-publish.sh` is the primary release path and does all of
 # this locally. This workflow is a manual-only backup for when that isn't
 # available (e.g. away from the signing Mac) — it does NOT trigger on tag
 # push, specifically so running the local script never also fires this
@@ -19,7 +19,7 @@
 #   DEVELOPER_ID_CERT_PASSWORD  the password set when exporting that .p12
 #   NOTARY_APPLE_ID             Apple ID email used for notarization
 #   NOTARY_PASSWORD             app-specific password for that Apple ID
-# Team ID (3R62GZR6Q2) is not secret and is read from tools/ExportOptions.plist.
+# Team ID (3R62GZR6Q2) is not secret and is read from tools/release/ExportOptions.plist.
 #
 # NOTE: GitHub-hosted runners ship a fixed set of Xcode versions. MockTab is
 # developed against Xcode 26 / the macOS 26 SDK; if the runner's newest Xcode is
@@ -122,7 +122,7 @@ jobs:
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
-        run: tools/release.sh
+        run: tools/release/release.sh
 
       - name: Create draft GitHub Release
         if: steps.precheck.outputs.skip != 'true'

@@ -719,7 +719,7 @@ struct CaptureGuideView: View {
         let deviceProductID = IOHIDDeviceGetProperty(dev, kIOHIDProductIDKey as CFString) as? Int
 
         // A capture whose header can't name the hardware can't become a
-        // registry entry — tools/triage_discovery.py rejects exactly this.
+        // registry entry — TabletKit/tools/triage_discovery.py rejects exactly this.
         // Better to say so now than after an hour of collecting.
         guard let vendorID, let deviceProductID, deviceProductID != 0 else { return nil }
 

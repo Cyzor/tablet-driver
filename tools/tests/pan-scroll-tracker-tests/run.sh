@@ -6,7 +6,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../.." && pwd)"
+ROOT="$(cd "$DIR/../../.." && pwd)"
 SRC="$ROOT/MockTab/Driver/Injection/PanScrollTracker.swift"
 TEST="$DIR/PanScrollTrackerTests.swift"
 BIN="$(mktemp -d)/pan-scroll-tracker-tests"

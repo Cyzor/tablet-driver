@@ -209,7 +209,7 @@ struct PanScrollTracker {
     /// timing independent of debounce length, so a future longer window (the
     /// 0.25 s `buttonUpDebounceMenuInterval` reaching a drag-style binding,
     /// say) can't quietly start suppressing flicks. Verified by the checks in
-    /// tools/pan-scroll-tracker-tests/ — do not "restore" a bug narrative here.
+    /// tools/tests/pan-scroll-tracker-tests/ — do not "restore" a bug narrative here.
     mutating func disengage(backdate: Double = 0) -> Intent {
         guard isActive else { return .none }
         let offset = max(0, backdate)

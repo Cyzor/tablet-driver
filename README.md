@@ -167,7 +167,7 @@ MockTab’s protocol knowledge and device data draw from several open-source pro
 
 Bug reports, device-support requests, translation corrections, and decoder work are all in scope. See [`Contributing.md`](Contributing.md) for details. Decoder PRs belong on [TabletKit](https://github.com/Cyzor/TabletKit). Forking is another option for consideration.
 
-For decoder analysis, `tools/wacom_capture.d` records raw USB traffic before any decoder interprets it. It provides higher fidelity than the in-app capture flow, but it requires disabling System Integrity Protection. See [TabletKit’s CONTRIBUTING](https://github.com/Cyzor/TabletKit/blob/main/Contributing.md#data-sources-in-order-of-confidence) for the data-source hierarchy.
+For decoder analysis, `tools/capture/wacom_capture.d` records raw USB traffic before any decoder interprets it. It provides higher fidelity than the in-app capture flow, but it requires disabling System Integrity Protection. See [TabletKit’s CONTRIBUTING](https://github.com/Cyzor/TabletKit/blob/main/Contributing.md#data-sources-in-order-of-confidence) for the data-source hierarchy.
 
 ***
 

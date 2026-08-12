@@ -76,7 +76,7 @@ struct DeviceInstanceKey: Hashable, Codable {
 }
 
 /// The claim-the-legacy-prefix rule, over an injectable UserDefaults so the
-/// standalone harness in `tools/instance-identity-tests/` can exercise it
+/// standalone harness in `tools/tests/instance-identity-tests/` can exercise it
 /// against a scratch suite. `DeviceRegistry` owns the app's live instance
 /// (`UserDefaults.standard`); nothing else should construct one.
 struct DeviceInstanceClaims {

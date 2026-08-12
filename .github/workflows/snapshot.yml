@@ -70,7 +70,7 @@ jobs:
         env:
           NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
-        run: tools/build-snapshot.sh
+        run: tools/release/build-snapshot.sh
 
       - name: Move the snapshot tag to this commit
         run: |

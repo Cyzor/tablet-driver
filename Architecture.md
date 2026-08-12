@@ -80,7 +80,7 @@ Two device wrappers sit between IOHIDManager and the decoders. Each schedules it
 - `WacomKnownDevice` — a tablet whose VID/PID matches an entry in `WacomDeviceRegistry`. Carries the device's `DigitizerSpec` and a decoder instance. The common case.
 - `WacomFallbackDevice` — a Wacom-vendor tablet with no registry entry. Reads the HID descriptor and synthesizes a best-effort spec.
 
-`tools/WacomProbeDevice.swift` is a third, temporary one: a one-shot probe that logs coordinate/pressure maxima for an unrecognized device, meant to be copied into `Devices/` and wired into `TabletManager.deviceConnected(_:)` only for the duration of a research session — see the file header. It isn't part of the Xcode target.
+`tools/capture/WacomProbeDevice.swift` is a third, temporary one: a one-shot probe that logs coordinate/pressure maxima for an unrecognized device, meant to be copied into `Devices/` and wired into `TabletManager.deviceConnected(_:)` only for the duration of a research session — see the file header. It isn't part of the Xcode target.
 
 `VendorDeviceRegistry` covers non-Wacom vendors with a similar shape.
 
