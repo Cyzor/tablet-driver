@@ -13,16 +13,9 @@ open MockTab.xcodeproj
 
 Requires Xcode 15 or later. Select the **MockTab** scheme and build. Run the
 decoder test suite with `cd TabletKit && swift test`. App-side logic that has no
-XCTest target has standalone checks under `tools/tests/` — run
-`tools/tests/calibration-tests/run.sh` (calibration fitting math),
-`tools/tests/conflict-detection-tests/run.sh` (driver conflict detection),
-`tools/tests/descriptor-opacity-tests/run.sh` (HID descriptor readability),
-`tools/tests/discovery-accumulator-tests/run.sh` (device-data collection analysis),
-`tools/tests/instance-identity-tests/run.sh` (per-unit device identity),
-`tools/tests/pan-scroll-tracker-tests/run.sh` (Pan View release-velocity math),
-`tools/tests/prefs-resilience-tests/run.sh` (settings version-skew resilience),
-`tools/tests/preset-locale-tests/run.sh` (preset localization), and
-`tools/tests/touch-state-tracker-tests/run.sh` (touch gesture intent).
+XCTest target has standalone checks under `tools/tests/` — run all of them with
+`tools/tests/run-all-tests.sh`, or run an individual harness directly by name
+(e.g. `tools/tests/calibration-tests/run.sh`).
 See the [README's Build from source section](README.md#build-from-source)
 for more detail.
 
