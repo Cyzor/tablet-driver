@@ -327,6 +327,15 @@ extension InputInjector {
             // event, leaving Pages in a state where selection never begins.
             let forceFirstDrag = dragging && activeAppProfile == .pagesPlainMouse && !didEmitDragSinceDown
 
+            // Stale-backlog suppression covers both cursor-moving post
+            // streams, not just the plain hover move below — a report this
+            // old is backlog regardless of which stream carries it.
+            // Computed once so both gates see the same answer for this
+            // report. Never suppressed while dragging: tip-down stroke data
+            // (pressure/tilt/rotation history) stays untouched even if the
+            // pen's screen position momentarily reads as backlog.
+            let isStale = !dragging && isStaleHoverMove()
+
             if moved || forceFirstDrag {
                 // Track velocity for tip-up assist.
                 if hasPostedPoint {
@@ -335,7 +344,7 @@ extension InputInjector {
                         screenPoint.y - lastPostedPoint.y)
                     smoother.recordMoveDelta(delta)
                 }
-                if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
+                if !activeToolIsMouse && activeAppNeedsTabletPointerEvents && !isStale {
                     postTabletPointerEvent(
                         at: screenPoint, pressure: pressure, point: point, pose: pose,
                         snapshot: snap)
@@ -370,6 +379,16 @@ extension InputInjector {
                     postMouseDrag(
                         button: dragBtn, at: screenPoint, pressure: 0, point: point,
                         pose: pose, snapshot: snap)
+                } else if isStale {
+                    // Backlogged report, suppressed outright — see the
+                    // `isStale` doc comment above and `isStaleHoverMove`'s.
+                    // `lastPostedPoint` still advances below so the delta
+                    // gate and jitter tracking stay correct; only the
+                    // CGEventPost itself is skipped, and it stays skipped for
+                    // every report in the backlog, not just rate-limited —
+                    // the cursor freezes and jumps once when live data
+                    // resumes, instead of crawling through stale history at a
+                    // reduced rate.
                 } else {
                     postMouseMoved(
                         at: screenPoint, point: point, pose: pose,
@@ -444,6 +463,32 @@ extension InputInjector {
         if point.mouseWheelDelta != 0 {
             postScrollWheelEvent(delta: point.mouseWheelDelta, at: screenPoint)
         }
+    }
+
+    /// True when the current report is stale backlog (see
+    /// `staleReportThresholdMs`'s doc comment), meaning the plain hover-move
+    /// post for this report should be skipped outright. A live report — the
+    /// overwhelming majority of the time — always returns false, so the
+    /// common case is unaffected.
+    ///
+    /// No rate limiting: an earlier version posted a throttled sample of the
+    /// backlog instead of suppressing it outright, on the theory that some
+    /// visible motion during a stall beats none. In practice that still
+    /// visibly played through old, stale intermediate positions on the way
+    /// to the real one — thinner, but still history, still "spooled events
+    /// long since stale" (hardware-tested, unconvincing). Suppressing
+    /// entirely while stale freezes the cursor at its last good position and
+    /// jumps once, directly to wherever the pen actually is, the moment a
+    /// report comes in under the threshold again — no intermediate history
+    /// gets shown at all. `lastPostedPoint`/`lastPostedPressure` keep
+    /// updating regardless (unconditionally, below), so the delta gate and
+    /// jitter tracking never see a gap.
+    private func isStaleHoverMove() -> Bool {
+        guard InputInjector.currentReportTimestampNs != 0 else { return false }
+        let nowNs = UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)
+        guard nowNs > InputInjector.currentReportTimestampNs else { return false }
+        let staleMs = Double(nowNs - InputInjector.currentReportTimestampNs) / 1_000_000.0
+        return staleMs > Self.staleReportThresholdMs
     }
 
     /// Runs the proximity-exit cleanup: releases the tip, any held USB/middle

@@ -14,8 +14,12 @@ dist/
 # Generated tool output (regenerate with tools/audit_registry.py)
 tools/registry_audit.csv
 
-# Compiled diagnostic tool (build with the clang line in its header comment)
+# Compiled diagnostic tools (build with the compile line in each header comment)
 tools/scroll_event_capture
+tools/scroll_momentum_probe
+tools/gpu_stress_probe
+tools/gpu_bandwidth_stress_probe
+tools/ram_pressure_probe
 
 # Xcode user-specific settings (editor state, breakpoints, etc.)
 xcuserdata/

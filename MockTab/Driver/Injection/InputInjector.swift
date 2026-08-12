@@ -349,6 +349,35 @@ final class InputInjector: @unchecked Sendable {
     static let positionEpsilon: CGFloat = 0.5  // sub-pixel, not worth posting
     static let pressureEpsilon: Double = 0.002
 
+    // MARK: - Stale-report suppression
+    //
+    // Under severe system-wide scheduling starvation (observed with a local
+    // LLM saturating GPU/unified memory), HID reports back up somewhere
+    // upstream of HIDThread and arrive in a rapid burst once the OS resumes
+    // scheduling us. Each report is still decoded and cheap to post
+    // individually (LatencyProbe's stage-2 − stage-1 delta stays under a
+    // millisecond even during a multi-second backlog — posting was never the
+    // bottleneck), but faithfully posting every backlogged point makes the
+    // cursor visibly animate through several seconds of stale history before
+    // catching up to the pen's real position — a "ghost cursor" trailing
+    // behind. This only suppresses the *plain hover-move* post
+    // (`postMouseMoved` in the final `else` branch of the movement gate in
+    // `inject()`) — drag/pan/tablet-pointer-event posts are untouched, so
+    // clicks, drags, and stroke data are never suppressed or delayed.
+    //
+    // A rate-limited "post a throttled sample of the backlog" version was
+    // tried first and was hardware-tested unconvincing — it still visibly
+    // played through old intermediate positions, just fewer of them. Full
+    // suppression while stale (`isStaleHoverMove` in
+    // InputInjector+PenInjection.swift) freezes the cursor and jumps once,
+    // directly to the real position, when live data resumes — no
+    // intermediate history shown at all, hence no per-flush state needed
+    // here beyond the threshold itself.
+
+    /// A report whose kernel timestamp is older than this by the time it's
+    /// decoded is backlog, not a live sample — see the section doc above.
+    static let staleReportThresholdMs: Double = 50.0
+
     // MARK: - Tip-down pressure threshold
     //
     // Curve-mapped pressure above which a report counts as tip contact (drives
