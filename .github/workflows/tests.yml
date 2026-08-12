@@ -1,0 +1,27 @@
+name: Tests
+
+# Build and check on every push to main and every pull request. Deliberately
+# separate from release.yml and snapshot.yml, which are manual-only so that
+# the local release script can never double-fire a signed release. Nothing
+# here signs or notarizes, so this job needs no secrets.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # TabletKit is a submodule; the app does not compile without it.
+          submodules: true
+      - name: Build app
+        run: |
+          xcodebuild -project MockTab.xcodeproj -scheme MockTab \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            build
+      - name: Run standalone checks
+        run: sh tools/tests/run-all-tests.sh
