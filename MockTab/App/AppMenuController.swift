@@ -899,10 +899,19 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         // The timer block is @Sendable, but it only ever fires on the main
         // run loop; the unsafe capture just carries the non-Sendable NSMenu
         // across into MainActor.assumeIsolated.
-        nonisolated(unsafe) weak let menuRef = menu
+        // Captured strongly on purpose. This is the app menu
+        // (`NSApp.mainMenu?.items.first?.submenu`, per the guard above), which
+        // lives as long as the process, so retaining it for the timer's life
+        // leaks nothing and forms no cycle — the menu has no reference back to
+        // the timer, and the timer is invalidated on the next menu open.
+        // A weak binding is deliberately avoided: `weak let` requires Swift 6.2
+        // (newer than the macos-15 CI runner) and `weak var` warns as never
+        // mutated on newer compilers, so neither spelling builds warning-free
+        // on both toolchains.
+        nonisolated(unsafe) let menuRef = menu
         let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
-                if let menu = menuRef { self?.updateFactoryResetVisibility(in: menu) }
+                self?.updateFactoryResetVisibility(in: menuRef)
             }
         }
         RunLoop.main.add(timer, forMode: .eventTracking)
