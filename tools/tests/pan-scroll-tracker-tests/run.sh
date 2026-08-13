@@ -9,25 +9,21 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
 SRC="$ROOT/MockTab/Driver/Injection/PanScrollTracker.swift"
 TEST="$DIR/PanScrollTrackerTests.swift"
-BIN="$(mktemp -d)/pan-scroll-tracker-tests"
+T="$(mktemp -d)"
+BIN="$T/pan-scroll-tracker-tests"
 
-(
-  cd "$ROOT/TabletKit"
-  swift build --quiet
-)
-MODULES="$(find "$ROOT/TabletKit/.build" -type d -path '*/debug/Modules' -print -quit)"
-if [ -z "$MODULES" ]; then
-  echo "TabletKit Swift module was not built" >&2
-  exit 1
-fi
+# TabletKit is compiled straight from source rather than located inside its
+# SwiftPM .build directory. That layout is not stable across toolchains — newer
+# ones emit libTabletKit.a and put the module beside the products, older ones
+# emit no archive and use debug/Modules/ — so any `find` for it passes on one
+# machine and fails on another. This harness therefore builds what it needs and
+# depends on no SwiftPM output at all; it runs correctly with .build absent.
+# Whether the package itself builds is TabletKit's own `swift test` job.
+# PanScrollTracker calls into TabletKit (PanSmoother), so the archive has to be
+# linked, not just the module imported.
+KIT_SRCS=$(find "$ROOT/TabletKit/Sources/TabletKit" -name '*.swift')
+swiftc -O -emit-module -emit-library -static -module-name TabletKit \
+  -emit-module-path "$T/TabletKit.swiftmodule" -o "$T/libTabletKit.a" $KIT_SRCS
 
-# Unlike the touch tracker, PanScrollTracker calls into TabletKit (PanSmoother),
-# so the static library has to be linked, not just its module map imported.
-LIB="$(find "$ROOT/TabletKit/.build" -name 'libTabletKit.a' -print -quit)"
-if [ -z "$LIB" ]; then
-  echo "libTabletKit.a was not built" >&2
-  exit 1
-fi
-
-swiftc -O -I "$MODULES" "$SRC" "$TEST" "$LIB" -o "$BIN"
+swiftc -O -I "$T" "$SRC" "$TEST" "$T/libTabletKit.a" -o "$BIN"
 "$BIN"
