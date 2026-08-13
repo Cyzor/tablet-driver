@@ -821,7 +821,9 @@ final class TabletSettings: ObservableObject {
         guard let um = undoManager else { return }
         um.setActionName(actionName)
         um.registerUndo(withTarget: self) { [weak self] target in
-            guard let self else { return }
+            // Liveness check only — don't replay undo against a deallocated
+            // settings object. `self` itself is deliberately unused.
+            guard self != nil else { return }
             undo()
         }
     }

@@ -291,7 +291,7 @@ struct QuickKeysSectionView: View {
     /// coalescing lives inside LEDColorControl; the binding just reads and
     /// writes the slot's stored color (nil = factory palette default).
     private func slotLEDWell(at index: Int) -> LEDColorControl {
-        let defaults = XencelabsControl.defaultSlotColors
+        let defaults = XencelabsOutputProtocol.defaultSlotColors
         let d = defaults[((index % defaults.count) + defaults.count) % defaults.count]
         return LEDColorControl(
             style: .well,

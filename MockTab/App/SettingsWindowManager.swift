@@ -2,7 +2,13 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import AppKit
+// `@preconcurrency` on AppKit: the one-shot close observer in `observeClose`
+// captures its own `NSObjectProtocol` token so it can unregister itself. That
+// type comes from ObjectiveC (re-exported by AppKit) and is not `Sendable`,
+// though the closure is delivered on `.main` and immediately enters
+// `MainActor.assumeIsolated`. This suppresses the Sendable diagnostics only —
+// it changes no code generation.
+@preconcurrency import AppKit
 import Combine
 import SwiftUI
 import TabletKit

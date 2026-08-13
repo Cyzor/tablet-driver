@@ -18,7 +18,7 @@ struct LEDSwatch {
 
 extension LEDSwatch {
     /// Xencelabs' 8-color factory palette (bezel LED and dial LED share the
-    /// same light hardware family). Wire values from `XencelabsControl`,
+    /// same light hardware family). Wire values from `XencelabsOutputProtocol`,
     /// display colors and names matching the vendor UI's swatch row.
     static let xencelabsPalette: [LEDSwatch] = {
         let names: [(String, Color)] = [
@@ -31,7 +31,7 @@ extension LEDSwatch {
             (String(localized: "Orange", comment: "LED swatch name"), .orange),
             (String(localized: "Red", comment: "LED swatch name"), .red),
         ]
-        return zip(names, XencelabsControl.ledPalette).map {
+        return zip(names, XencelabsOutputProtocol.ledPalette).map {
             LEDSwatch(name: $0.0, display: $0.1, wire: $1)
         }
     }()
