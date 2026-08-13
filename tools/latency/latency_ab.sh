@@ -7,9 +7,9 @@
 # the two logs to latency_summary.py.
 #
 # Usage:
-#   tools/latency_ab.sh <vid-hex> <pid-hex> <label>
-#   e.g. tools/latency_ab.sh 28bd 0914 vendor
-#        tools/latency_ab.sh 28bd 0914 mocktab
+#   tools/latency/latency_ab.sh <vid-hex> <pid-hex> <label>
+#   e.g. tools/latency/latency_ab.sh 28bd 0914 vendor
+#        tools/latency/latency_ab.sh 28bd 0914 mocktab
 
 set -e
 
@@ -62,4 +62,4 @@ echo
 echo "Saved: $LOG_FILE"
 echo "Run the other leg next (vendor or mocktab, whichever you"
 echo "haven't done yet), then:"
-echo "  python3 tools/latency_summary.py $LOG_DIR/<vendor-log> $LOG_DIR/<mocktab-log>"
+echo "  python3 tools/latency/latency_summary.py $LOG_DIR/<vendor-log> $LOG_DIR/<mocktab-log>"

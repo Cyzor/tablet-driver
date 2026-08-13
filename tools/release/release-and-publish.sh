@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # MockTab — full release pipeline (build → notarize → DMG → tag → draft release).
 #
-# Wraps tools/release.sh with the surrounding git + GitHub work so the entire
+# Wraps tools/release/release.sh with the surrounding git + GitHub work so the entire
 # release can be triggered as one action (from Xcode's "Release" aggregate target
 # or directly from the terminal).
 #
@@ -14,7 +14,7 @@
 # Flow:
 #   1. Sanity: clean working tree, on main, gh installed and authenticated.
 #   2. Read MARKETING_VERSION; verify tag v<version> doesn't exist yet.
-#   3. Run tools/release.sh (archive → export → DMG → notarize → staple).
+#   3. Run tools/release/release.sh (archive → export → DMG → notarize → staple).
 #   4. Tag HEAD and push the tag.
 #   5. gh release create --draft with the DMG attached.
 #   6. Open the draft release in the browser.
@@ -36,7 +36,8 @@ set -euo pipefail
 # Restore homebrew so xcodebuild can find gh, xcrun finds notarytool, etc.
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-cd "$(dirname "$0")/.."
+# Repo root is two levels up: this script lives in tools/release/.
+cd "$(dirname "$0")/../.."
 
 # ─── 1. Sanity checks ─────────────────────────────────────────────────────────
 

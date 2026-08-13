@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # MockTab — full snapshot pipeline (build → notarize → DMG → tag → draft pre-release).
 #
-# Wraps tools/build-snapshot.sh with the surrounding git + GitHub work, mirroring
-# tools/release-and-publish.sh but for the rolling "snapshot" pre-release instead
+# Wraps tools/release/build-snapshot.sh with the surrounding git + GitHub work, mirroring
+# tools/release/release-and-publish.sh but for the rolling "snapshot" pre-release instead
 # of a numbered version. Lets you publish "here's roughly where main stands"
 # offline/by hand without touching the Actions tab.
 #
@@ -12,7 +12,7 @@
 #
 # Flow:
 #   1. Sanity: clean working tree, gh installed and authenticated.
-#   2. Run tools/build-snapshot.sh (archive → export → DMG → notarize → staple).
+#   2. Run tools/release/build-snapshot.sh (archive → export → DMG → notarize → staple).
 #   3. Force-move the "snapshot" tag to HEAD and push it.
 #   4. Delete any existing "snapshot" release, then gh release create --draft
 #      with the DMG attached. There is only ever one snapshot at a time — no
@@ -28,7 +28,8 @@ set -euo pipefail
 # Restore homebrew so xcodebuild can find gh, xcrun finds notarytool, etc.
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-cd "$(dirname "$0")/.."
+# Repo root is two levels up: this script lives in tools/release/.
+cd "$(dirname "$0")/../.."
 
 # ─── 1. Sanity checks ─────────────────────────────────────────────────────────
 

@@ -2,21 +2,22 @@
 # MockTab snapshot pipeline: archive → export → DMG → notarize → staple.
 #
 # Builds an unversioned, notarized pre-release DMG from the current commit on
-# main. Unlike tools/release.sh, this does NOT read or require a bumped
+# main. Unlike tools/release/release.sh, this does NOT read or require a bumped
 # MARKETING_VERSION — it always produces dist/MockTab-snapshot.dmg, identified
 # by commit SHA rather than a version number. Intended to be replaced wholesale
 # by the next snapshot build, not archived alongside older ones.
 #
-# Prerequisites: same as tools/release.sh (Developer ID cert, notary
+# Prerequisites: same as tools/release/release.sh (Developer ID cert, notary
 # credentials under the MockTabNotary keychain profile or NOTARY_* env vars,
 # ENABLE_HARDENED_RUNTIME = YES).
 #
-# Usage: tools/build-snapshot.sh
+# Usage: tools/release/build-snapshot.sh
 #   Produces dist/MockTab-snapshot.dmg.
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+# Repo root is two levels up: this script lives in tools/release/.
+cd "$(dirname "$0")/../.."
 
 SCHEME="MockTab"
 PROJECT="MockTab.xcodeproj"

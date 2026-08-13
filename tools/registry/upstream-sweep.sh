@@ -5,11 +5,12 @@
 # Output is a single markdown report under Notes/Scratch/upstream-sweep-<date>.md.
 # Bump the SHAs in upstream-pins.md by hand after reviewing the report.
 #
-# Usage: tools/upstream-sweep.sh
+# Usage: tools/registry/upstream-sweep.sh
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Repo root is two levels up: this script lives in tools/registry/.
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 UPSTREAM="$REPO_ROOT/Notes/Scratch/upstream"
 PINS="$REPO_ROOT/Notes/Scratch/upstream-pins.md"
 OUT="$REPO_ROOT/Notes/Scratch/upstream-sweep-$(date +%Y-%m-%d).md"

@@ -10,12 +10,13 @@
 #          --password <app-specific-password>
 #   3. Xcode build setting ENABLE_HARDENED_RUNTIME = YES on the MockTab target.
 #
-# Usage: tools/release.sh
+# Usage: tools/release/release.sh
 #   Reads MARKETING_VERSION from the project; produces dist/MockTab-<ver>.dmg.
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+# Repo root is two levels up: this script lives in tools/release/.
+cd "$(dirname "$0")/../.."
 
 SCHEME="MockTab"
 PROJECT="MockTab.xcodeproj"
