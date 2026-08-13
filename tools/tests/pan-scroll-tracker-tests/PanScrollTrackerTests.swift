@@ -8,7 +8,7 @@
 //
 // The app has no XCTest target, so these run as a small executable compiled
 // against the real PanScrollTracker.swift. Run via
-// tools/pan-scroll-tracker-tests/run.sh. Exits non-zero on the first failure.
+// tools/tests/pan-scroll-tracker-tests/run.sh. Exits non-zero on the first failure.
 
 import Foundation
 

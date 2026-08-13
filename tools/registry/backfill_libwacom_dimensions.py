@@ -20,10 +20,10 @@ capture.  We therefore:
     libwacom-advertised rather than hand-measured.
 
 Usage:
-    python3 tools/backfill_libwacom_dimensions.py \\
+    python3 tools/registry/backfill_libwacom_dimensions.py \\
         --libwacom-data /path/to/libwacom/data \\
         --registry TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift
-    python3 tools/backfill_libwacom_dimensions.py ... --dry-run   # preview only
+    python3 tools/registry/backfill_libwacom_dimensions.py ... --dry-run   # preview only
 """
 
 import argparse

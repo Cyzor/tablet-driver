@@ -8,7 +8,7 @@
  * no dtrace, no vendor cooperation required.
  *
  * Build:
- *   clang -framework IOKit -framework CoreFoundation tools/hid_input_capture.c \
+ *   clang -framework IOKit -framework CoreFoundation tools/capture/hid_input_capture.c \
  *         -o /tmp/hid_input_capture
  *
  * Run:

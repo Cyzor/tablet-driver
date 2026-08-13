@@ -21,7 +21,7 @@
  *
  * Build:
  *   clang -framework IOKit -framework CoreFoundation \
- *         tools/xencelabs_flicker_capture.c -o /tmp/xencelabs_flicker_capture
+ *         tools/capture/xencelabs_flicker_capture.c -o /tmp/xencelabs_flicker_capture
  *
  * Run (defaults to VID 28bd, any PID):
  *   /tmp/xencelabs_flicker_capture [pid-hex]

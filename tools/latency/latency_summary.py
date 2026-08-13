@@ -2,12 +2,12 @@
 """latency_summary.py — summarize and compare driver_latency_probe.c logs.
 
 Usage:
-    python3 tools/latency_summary.py <log-a> <log-b>
-    python3 tools/latency_summary.py <log-a> <log-b> --label-a vendor --label-b mocktab
+    python3 tools/latency/latency_summary.py <log-a> <log-b>
+    python3 tools/latency/latency_summary.py <log-a> <log-b> --label-a vendor --label-b mocktab
 
 Reads lines of the form:
     report->pointer-event latency: 12.34 ms
-(as produced by tools/latency_ab.sh / driver_latency_probe.c) and prints
+(as produced by tools/latency/latency_ab.sh / driver_latency_probe.c) and prints
 count, p50, p90, and max for each log side by side.
 """
 

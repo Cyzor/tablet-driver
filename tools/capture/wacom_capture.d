@@ -9,13 +9,13 @@
  * adds for the connect sequence.
  *
  * Requires SIP disabled (pid$target provider). Superseded for most read-only
- * capture needs by tools/hid_input_capture.c and tools/hid_descriptor_dump.c,
+ * capture needs by tools/capture/hid_input_capture.c and tools/capture/hid_descriptor_dump.c,
  * which need no SIP disable — keep this for cases that need to see outbound
  * SetReport/GetReport traffic a specific driver process is sending, not just
  * inbound reports.
  *
  * Usage:
- *   sudo dtrace -s tools/wacom_capture.d -p $(pgrep WacomTabletDriver)
+ *   sudo dtrace -s tools/capture/wacom_capture.d -p $(pgrep WacomTabletDriver)
  *   Then trigger the button/action you want to observe.
  */
 

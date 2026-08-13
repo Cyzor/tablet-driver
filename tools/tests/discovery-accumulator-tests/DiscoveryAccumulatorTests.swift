@@ -17,7 +17,7 @@
 //
 // The app has no XCTest target (by design — see the project's test
 // conventions), so this runs as a small executable compiled against the real
-// source file. Run via tools/discovery-accumulator-tests/run.sh.
+// source file. Run via tools/tests/discovery-accumulator-tests/run.sh.
 // Exits non-zero on the first failure.
 
 import Foundation

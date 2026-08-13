@@ -6,7 +6,7 @@
 //
 // The app has no XCTest target, so these run as a small executable compiled
 // against the real TouchStateTracker.swift. Run via
-// tools/touch-state-tracker-tests/run.sh. Exits non-zero on the first failure.
+// tools/tests/touch-state-tracker-tests/run.sh. Exits non-zero on the first failure.
 
 import Foundation
 

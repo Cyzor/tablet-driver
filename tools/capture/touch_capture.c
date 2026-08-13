@@ -5,7 +5,7 @@
  * is not claimed by MockTab, so it can be opened directly without seizing.
  *
  * Build:
- *   clang -framework IOKit -framework CoreFoundation tools/touch_capture.c \
+ *   clang -framework IOKit -framework CoreFoundation tools/capture/touch_capture.c \
  *         -o /tmp/touch_capture
  *
  * Run (sudo required to open HID device):

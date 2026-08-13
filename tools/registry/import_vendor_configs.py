@@ -10,7 +10,7 @@ recognition-only shape used by `VendorDeviceRegistry` for devices we name but
 don't yet decode.
 
 Usage:
-    python3 tools/import_vendor_configs.py \\
+    python3 tools/registry/import_vendor_configs.py \\
         /path/to/OpenTabletDriver/OpenTabletDriver.Configurations/Configurations \\
         --vendors Huion Xencelabs XP-Pen
 

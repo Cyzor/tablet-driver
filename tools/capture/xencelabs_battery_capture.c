@@ -12,7 +12,7 @@
  *
  * Build:
  *   clang -framework IOKit -framework CoreFoundation \
- *         tools/xencelabs_battery_capture.c -o /tmp/xencelabs_battery_capture
+ *         tools/capture/xencelabs_battery_capture.c -o /tmp/xencelabs_battery_capture
  *
  * Run:
  *   /tmp/xencelabs_battery_capture

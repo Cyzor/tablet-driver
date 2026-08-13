@@ -26,7 +26,7 @@ private let probeLog = Logger(subsystem: "com.cyzor.mocktab", category: "probe")
 /// Lives in `tools/`, not the Xcode target: copy it into
 /// `MockTab/Driver/Devices/` and wire it into `TabletManager.deviceConnected(_:)`
 /// only for the duration of the research session, the same way you would use
-/// `tools/wacom_capture.d`. It depends on `TabletDevice` and `hidSetReport`
+/// `tools/capture/wacom_capture.d`. It depends on `TabletDevice` and `hidSetReport`
 /// from that folder, so it won't compile in place.
 final class WacomProbeDevice: TabletDevice {
 

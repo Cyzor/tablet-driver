@@ -10,7 +10,7 @@
 //
 // The app has no XCTest target (by design — see the project's test conventions),
 // so this runs as a small executable compiled against the real HIDDescriptorReader.swift.
-// Run via tools/descriptor-opacity-tests/run.sh. Exits non-zero on the first failure.
+// Run via tools/tests/descriptor-opacity-tests/run.sh. Exits non-zero on the first failure.
 
 import Foundation
 

@@ -8,7 +8,7 @@
  *   1. IOHIDDeviceRegisterInputReportWithTimeStampCallback gives the kernel
  *      receipt time of each raw report straight off the wire (mach_absolute_time
  *      domain), independent of which driver is running — this tool opens the
- *      device non-exclusively, same as tools/hid_input_capture.c, so it can
+ *      device non-exclusively, same as tools/capture/hid_input_capture.c, so it can
  *      listen alongside Wacom Desktop Center or Xencelabs Driver Hub without
  *      taking the device away from them.
  *   2. A CGEventTap on mouse-moved/dragged events timestamps the first
@@ -24,7 +24,7 @@
  *
  * Build:
  *   clang -framework IOKit -framework CoreFoundation -framework ApplicationServices \
- *         tools/driver_latency_probe.c -o /tmp/driver_latency_probe
+ *         tools/capture/driver_latency_probe.c -o /tmp/driver_latency_probe
  *
  * Run (needs Accessibility/Input Monitoring granted to the terminal, same as
  * any CGEventTap consumer):
@@ -36,7 +36,7 @@
  *      few seconds of continuous pen strokes, Ctrl-C.
  *   2. Quit the vendor driver. Launch MockTab. Run this tool again, same
  *      strokes as best you can reproduce, Ctrl-C.
- *   3. Compare the printed p50/p90/max — see tools/latency_report.py (or just
+ *   3. Compare the printed p50/p90/max — see tools/latency/latency_summary.py (or just
  *      eyeball the per-report lines) for the two runs.
  *
  * Only one driver should be moving the pointer at a time, or the tap can't

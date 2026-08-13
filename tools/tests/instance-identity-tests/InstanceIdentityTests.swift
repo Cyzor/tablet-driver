@@ -8,7 +8,7 @@
 // The app has no XCTest target (by design — see the project's test
 // conventions), so these run as a small executable compiled against the real
 // DeviceInstanceKey.swift, seeded into a scratch UserDefaults suite. Run via
-// tools/instance-identity-tests/run.sh. Exits non-zero on the first failure.
+// tools/tests/instance-identity-tests/run.sh. Exits non-zero on the first failure.
 
 import Foundation
 

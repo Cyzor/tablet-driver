@@ -9,8 +9,8 @@
  * sends to the tablet at enumeration and during use. Requires SIP disabled;
  * dtrace's pid$target provider is blocked otherwise.
  *
- * Usage: sudo dtrace -s tools/hid_setreport_capture.d -p <pid>
- *    or: sudo dtrace -s tools/hid_setreport_capture.d -c '<path-to-driver-binary>'
+ * Usage: sudo dtrace -s tools/capture/hid_setreport_capture.d -p <pid>
+ *    or: sudo dtrace -s tools/capture/hid_setreport_capture.d -c '<path-to-driver-binary>'
  */
 
 BEGIN { printf("=== hid_setreport_capture running — trigger the device action now ===\n"); }

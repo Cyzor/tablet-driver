@@ -6,7 +6,7 @@
 //
 // The app has no XCTest target (by design — see the project's test conventions),
 // so these run as a small executable compiled against the real CalibrationData.swift.
-// Run via tools/calibration-tests/run.sh. Exits non-zero on the first failure.
+// Run via tools/tests/calibration-tests/run.sh. Exits non-zero on the first failure.
 
 import Foundation
 

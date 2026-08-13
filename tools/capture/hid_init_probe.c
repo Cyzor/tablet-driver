@@ -7,7 +7,7 @@
 // Quick Keys over direct USB) wakes up after the known init handshake.
 // Companion to hid_input_capture.c; no SIP or dtrace needed.
 //
-// Build:  clang -framework IOKit -framework CoreFoundation tools/hid_init_probe.c -o hid_init_probe
+// Build:  clang -framework IOKit -framework CoreFoundation tools/capture/hid_init_probe.c -o hid_init_probe
 // Usage:  hid_init_probe <vid-hex> <pid-hex> [init-byte-hex ...]
 //         Default init payload if none given: 02 b0 04 (report ID 2),
 //         zero-padded to the device's MaxOutputReportSize.

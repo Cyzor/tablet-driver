@@ -8,7 +8,7 @@
  * safe to run alongside a vendor driver that already has it open.
  *
  * Build:
- *   clang -framework IOKit -framework CoreFoundation tools/hid_descriptor_dump.c \
+ *   clang -framework IOKit -framework CoreFoundation tools/capture/hid_descriptor_dump.c \
  *         -o /tmp/hid_descriptor_dump
  *
  * Run:

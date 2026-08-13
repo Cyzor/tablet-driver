@@ -24,7 +24,7 @@
 //
 // The app has no XCTest target (by design — see the project's test
 // conventions), so this runs as a small executable compiled against the
-// real source files. Run via tools/prefs-resilience-tests/run.sh. Exits
+// real source files. Run via tools/tests/prefs-resilience-tests/run.sh. Exits
 // non-zero on the first failure.
 
 import Foundation
