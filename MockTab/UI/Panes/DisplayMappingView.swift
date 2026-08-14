@@ -703,7 +703,19 @@ struct DisplayInfo {
     var bounds: CGRect  // in CGDisplayBounds / Quartz coordinates
     var name: String  // localised device name if available
     var resolution: String  // e.g. "2560×1440"
-    var wallpaper: NSImage?  // desktop image, or nil for solid color / animated backdrops
+    /// Desktop image thumbnail, or nil when none could be loaded.
+    ///
+    /// Known inaccuracy: since the Wallpaper settings pane replaced Desktop &
+    /// Screen Saver, `NSWorkspace.desktopImageURL(for:)` only reports still
+    /// images set the old way. Solid colors, aerials, dynamic wallpapers and
+    /// per-Space choices all live in the private `com.apple.wallpaper` store,
+    /// and the API returns `/System/Library/CoreServices/DefaultDesktop.heic`
+    /// instead — so those setups show a stock image here rather than what is
+    /// actually on screen. Reading the private store or screenshotting the
+    /// desktop (Screen Recording permission) are the only alternatives, and
+    /// neither is worth it for a decorative thumbnail. Revisit only if Apple
+    /// ships a supported query.
+    var wallpaper: NSImage?
 
     var pickerLabel: String { "\(name) (\(resolution))" }
 
