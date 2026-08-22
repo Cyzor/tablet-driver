@@ -77,17 +77,20 @@ final class WacomKnownDevice: TabletDevice {
     private var isBluetooth = false
 
     // ── Bluetooth batch pacing ──────────────────────────────────────────────
-    // See PenBatchPacer.swift and dispatchPenBatch(_:reportTimestampNs:) below.
+    // See BatchFramePacer.swift and dispatchBatch(_:reportTimestampNs:) below.
     // HIDThread-confined, like everything else `handleReport` touches.
-    private lazy var penBatchPacer = PenBatchPacer { [weak self] point, timestampNs in
+    private lazy var batchFramePacer = BatchFramePacer { [weak self] frame, timestampNs in
         guard let self else { return }
         InputInjector.currentReportTimestampNs = timestampNs
-        self.onTablet(point)
+        switch frame {
+        case .pen(let point): self.onTablet(point)
+        case .touch(let contacts): self.onTouch?(contacts)
+        }
         InputInjector.currentReportTimestampNs = 0
     }
     /// Kernel timestamp of the previous report that decoded to more than one
-    /// pen sample, for measuring the real inter-batch interval. 0 until the
-    /// first such report is seen.
+    /// pen/touch sample combined, for measuring the real inter-batch
+    /// interval. 0 until the first such report is seen.
     private var lastBatchReportTimestampNs: UInt64 = 0
 
     // ── Callback-context lifetime ─────────────────────────────────────────────
@@ -1305,15 +1308,22 @@ final class WacomKnownDevice: TabletDevice {
                 report: report, length: length, spec: spec, state: &state,
                 deviceFamily: deviceSpec.family)
         }
-        // Pen samples are collected rather than dispatched inline so a report
-        // that decoded to more than one (a Bluetooth batch — see
-        // PenBatchPacer.swift) can be paced across the interval it actually
+        // Pen and touch samples are collected, in decode order, rather than
+        // dispatched inline — a report that decoded to more than one
+        // combined (a Bluetooth batch: pen frames packed at [1..98], touch
+        // frames at [109..280] of the same 361-byte report — see
+        // BatchFramePacer.swift) is paced across the interval it actually
         // spans instead of bursting through CGEventPost in a fraction of a
-        // millisecond. Every other result kind dispatches immediately as
+        // millisecond. They must share one ordered queue, not two
+        // independent ones: `InputInjector.injectTouch`'s `penBusy` gate
+        // reads live pen-proximity state, so a touch frame delivered while
+        // an older, still-queued pen frame is waiting its turn would read
+        // stale proximity. Every other result kind dispatches immediately as
         // before; a batch's toolEnter/aux/etc. entries always precede its
-        // pen entries in `results` (see IntuosV2Decoder+BT), so deferring
-        // only the pen delivery doesn't reorder anything that depends on it.
-        var penPoints: [TabletPoint] = []
+        // pen/touch entries in `results` (see IntuosV2Decoder+BT), so
+        // deferring only those two doesn't reorder anything that depends on
+        // them.
+        var batchFrames: [BatchedFrame] = []
         for result in results {
             switch result {
             case .none:
@@ -1321,7 +1331,7 @@ final class WacomKnownDevice: TabletDevice {
             case .pen(let point):
                 // Wireless dongle: suppress pen events until RF link is confirmed active.
                 guard !isWireless || wirelessReady else { break }
-                penPoints.append(point)
+                batchFrames.append(.pen(point))
             case .toolEnter(let identity):
                 guard !isWireless || wirelessReady else { break }
                 onToolEnter?(identity)
@@ -1400,44 +1410,64 @@ final class WacomKnownDevice: TabletDevice {
             case .wheel(let index, let delta):
                 onWheel?(index, delta)
             case .touch(let contacts):
-                onTouch?(contacts)
+                batchFrames.append(.touch(contacts))
             case .toolCompatibility(let message):
                 logger.info("\(name, privacy: .public): \(message, privacy: .public)")
             }
         }
-        let didDeferPenFrames = dispatchPenBatch(penPoints, reportTimestampNs: reportTimestampNs)
+        let didDeferFrames = dispatchBatch(batchFrames, reportTimestampNs: reportTimestampNs)
         // Stage-2: decode + all injection callbacks have returned; CGEvents
         // for this report are posted. Kernel receipt → here is the total
         // in-app pipeline cost surfaced in the diagnostics pane. Skipped when
-        // this report's pen samples were handed to the batch pacer — some of
+        // this report's samples were handed to the batch pacer — some of
         // them post well after this function returns (see
-        // dispatchPenBatch/PenBatchPacer), so "complete" isn't true yet and
+        // dispatchBatch/BatchFramePacer), so "complete" isn't true yet and
         // this stage-2 stamp would understate real latency for exactly the
         // reports it matters most on.
-        if kernelTimestamp != 0 && !didDeferPenFrames {
+        if kernelTimestamp != 0 && !didDeferFrames {
             LatencyProbe.shared.recordPipelineComplete(kernelTimestamp: kernelTimestamp)
         }
     }
 
-    /// Delivers this report's decoded pen samples to `onTablet`, pacing them
-    /// across the report's real interval when there's more than one (a
-    /// Bluetooth batch — see PenBatchPacer.swift's header for the measured
-    /// mechanism). Returns `true` if any frames were handed to the pacer for
-    /// deferred delivery rather than posted synchronously before this call
-    /// returns.
+    /// Delivers this report's decoded pen/touch samples to `onTablet`/
+    /// `onTouch`, pacing them across the report's real interval when there's
+    /// more than one combined (a Bluetooth batch — see
+    /// `BatchFramePacer.swift`'s header for the measured mechanism). Returns
+    /// `true` if any frames were handed to the pacer for deferred delivery
+    /// rather than posted synchronously before this call returns.
     ///
     /// `reportTimestampNs` is this report's own kernel-receipt stamp, passed
     /// explicitly rather than read back from `InputInjector.currentReportTimestampNs`
     /// — `handleReport`'s own `defer` clears that static the moment this
     /// function returns, before any deferred pacer delivery can happen.
     @discardableResult
-    private func dispatchPenBatch(_ points: [TabletPoint], reportTimestampNs: UInt64) -> Bool {
-        guard let first = points.first else { return false }
-        guard points.count > 1 else {
+    private func dispatchBatch(_ frames: [BatchedFrame], reportTimestampNs: UInt64) -> Bool {
+        // Flush unconditionally, before anything else in this function runs —
+        // including the single-frame and bypass paths below, which post
+        // synchronously. A still-queued frame from an earlier report is
+        // strictly older than anything decoded just now; letting a
+        // synchronous delivery here run ahead of it breaks chronological
+        // order. Concretely: a pen lift decodes to exactly one `.pen` frame
+        // (the synthetic exit point — `decodeBTPen` breaks the loop there),
+        // which used to take the single-frame fast path and post
+        // immediately, while 1-4 real in-proximity frames from the
+        // *previous* batch were still sitting in the pacer's queue. Those
+        // fired afterward, re-asserting `inProximity: true` after the exit
+        // had already been delivered, leaving `InputInjector.lastProximity`
+        // stuck true forever (nothing else clears it). That silently killed
+        // touch — `InputInjector.injectTouch`'s `penBusy` gate reads
+        // `lastProximity` and drops every touch frame while it's true — with
+        // exactly the reported symptom: touch registers contacts but
+        // produces no cursor movement or gesture, and only after a few
+        // lifts happened to line up this way. Confirmed 2026-08-22.
+        batchFramePacer.flush()
+
+        guard let first = frames.first else { return false }
+        guard frames.count > 1 else {
             // The overwhelmingly common case (USB, and any single-sample BT
             // report): identical to the pre-pacing behavior, no timer, no
             // allocation beyond the array already built above.
-            onTablet(first)
+            deliver(first, timestampNs: reportTimestampNs)
             return false
         }
 
@@ -1459,7 +1489,7 @@ final class WacomKnownDevice: TabletDevice {
         guard measuredIntervalNs >= minPlausibleIntervalNs,
               measuredIntervalNs <= maxPlausibleIntervalNs
         else {
-            for point in points { onTablet(point) }
+            for frame in frames { deliver(frame, timestampNs: reportTimestampNs) }
             return false
         }
 
@@ -1469,14 +1499,32 @@ final class WacomKnownDevice: TabletDevice {
         // immediately and pace only the remaining, fresher frames across the
         // rest of the interval, each carrying an interpolated timestamp so
         // stale-report suppression still sees an accurate age per frame.
-        onTablet(first)
-        let perFrameDelayNs = measuredIntervalNs / UInt64(points.count)
-        let scheduled: [(point: TabletPoint, timestampNs: UInt64)] = points.dropFirst()
-            .enumerated().map { offset, point in
-                let framesFromEnd = UInt64(points.count - 1 - (offset + 1))
-                return (point, reportTimestampNs - framesFromEnd * perFrameDelayNs)
+        //
+        // Pen and touch share one combined `perFrameDelayNs` derived from
+        // the report's total frame count, even though each may sample at a
+        // different native rate — a pragmatic approximation, not a measured
+        // per-kind rate, but it preserves relative order between the two
+        // (the actual bug this exists to fix) and paces both close enough to
+        // their real cadence to remove the burst.
+        deliver(first, timestampNs: reportTimestampNs)
+        let perFrameDelayNs = measuredIntervalNs / UInt64(frames.count)
+        let scheduled: [(frame: BatchedFrame, timestampNs: UInt64)] = frames.dropFirst()
+            .enumerated().map { offset, frame in
+                let framesFromEnd = UInt64(frames.count - 1 - (offset + 1))
+                return (frame, reportTimestampNs - framesFromEnd * perFrameDelayNs)
             }
-        penBatchPacer.schedule(scheduled, interval: TimeInterval(perFrameDelayNs) / 1_000_000_000.0)
+        batchFramePacer.schedule(scheduled, interval: TimeInterval(perFrameDelayNs) / 1_000_000_000.0)
         return true
+    }
+
+    /// Synchronous delivery — called while `InputInjector.currentReportTimestampNs`
+    /// is still this report's own stamp (`handleReport`'s `defer` hasn't run
+    /// yet), so no extra set/clear is needed here, unlike the pacer's
+    /// deferred `deliver` closure in `batchFramePacer`'s initializer.
+    private func deliver(_ frame: BatchedFrame, timestampNs: UInt64) {
+        switch frame {
+        case .pen(let point): onTablet(point)
+        case .touch(let contacts): onTouch?(contacts)
+        }
     }
 }
