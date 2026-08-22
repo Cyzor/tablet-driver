@@ -496,7 +496,7 @@ extension InputInjector {
     /// state. Called immediately from `inject()` for every device, or from
     /// `proximityExitDebounceTimer`'s handler for Xencelabs once a real exit
     /// has been confirmed (see that property's declaration).
-    private func commitProximityExit(snap: InjectionSnapshot) {
+    func commitProximityExit(snap: InjectionSnapshot) {
         activeToolIsEraser = false
         lastEraserMode = false
         let exitPoint = smoother.smoothedPoint

@@ -539,6 +539,13 @@ final class InputInjector: @unchecked Sendable {
     private var watchdogTimer: CFRunLoopTimer?
     private let watchdogInterval: TimeInterval = 0.4
 
+    /// How long the tablet may sit idle while `lastProximity` is still true
+    /// before the 1Hz leak watchdog forces a proximity exit. See that
+    /// watchdog's stuck-proximity block for the decoder-side asymmetry this
+    /// backstops. A pen genuinely in proximity reports continuously at
+    /// 100+ Hz, so this never fires during real use.
+    private static let stuckProximityTimeout: TimeInterval = 2.0
+
     /// Xencelabs-only: holds off the proximity-exit cleanup below so range
     /// loss doesn't cut a held barrel-button click/modifier short. This
     /// hardware's out-of-range tag (`XencelabsDecoder.tagOutOfRange`) trips
@@ -714,9 +721,42 @@ final class InputInjector: @unchecked Sendable {
     /// Hops to HIDThread to read/mutate modifier state without races.
     private func checkLeakWatchdog() {
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
-            guard let self, !self.groundTruthSyntheticFlags.isEmpty else { return }
-            let heldInterval = Date().timeIntervalSince(self.lastSyntheticFlagChangeAt)
+            guard let self else { return }
             let idleInterval = Date().timeIntervalSince(self.lastInjectCallAt)
+
+            // Stuck-pen-proximity backstop. `IntuosV2Decoder+BT` (TabletKit,
+            // decodeBTPen) debounces *exit* two ways — an immediate signal
+            // when both prox and inRange clear, or a 3-frame threshold for
+            // ambiguous boundary noise — but hardcodes `inProximity: true`
+            // unconditionally for any frame that survives those checks,
+            // including the "continue to decode point data" boundary-noise
+            // path (see that file, the frame loop around the `!inRange`
+            // branch). There is no equivalent debounce on entry. Confirmed
+            // on hardware (2026-08-22): a clean exit fires correctly, but a
+            // single noisy report arriving ~11ms later — ordinary BT
+            // boundary chatter as the pen actually leaves range — can
+            // satisfy the unguarded "valid, not-a-clean-exit" case and
+            // re-assert `inProximity: true`. If the tablet then goes truly
+            // idle (confirmed separately: zero raw HID reports arrive while
+            // genuinely out of range), nothing ever corrects it again —
+            // `lastProximity` latches true forever, which silently kills
+            // touch (`injectTouch`'s `penBusy` gate reads it) until the
+            // process restarts. This is a backstop, not the fix — the real
+            // asymmetry lives in the decoder, a separate public repo serving
+            // multiple device families, and belongs in its own release
+            // rather than a patch under tonight's time pressure. A pen
+            // genuinely in proximity streams at 100+ Hz, so idling this long
+            // while `lastProximity` is true is unambiguous — no false-fire
+            // risk during real use.
+            if self.lastProximity, idleInterval > Self.stuckProximityTimeout,
+                let snap = self.injectionSnapshot
+            {
+                injectLog.notice("leak-watchdog: forcing stuck pen-proximity exit (idle \(Int(idleInterval))s) — see IntuosV2Decoder+BT entry-debounce asymmetry")
+                self.commitProximityExit(snap: snap)
+            }
+
+            guard !self.groundTruthSyntheticFlags.isEmpty else { return }
+            let heldInterval = Date().timeIntervalSince(self.lastSyntheticFlagChangeAt)
             // As with the idle watchdog above, a device that only reports on state
             // change (Xencelabs QuickKeys) can sit idle for a long legitimate hold —
             // trust the last known button state, not just elapsed time.
