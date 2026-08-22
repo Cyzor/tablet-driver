@@ -76,6 +76,20 @@ final class WacomKnownDevice: TabletDevice {
     private var reportBuffer: [UInt8]
     private var isBluetooth = false
 
+    // ── Bluetooth batch pacing ──────────────────────────────────────────────
+    // See PenBatchPacer.swift and dispatchPenBatch(_:reportTimestampNs:) below.
+    // HIDThread-confined, like everything else `handleReport` touches.
+    private lazy var penBatchPacer = PenBatchPacer { [weak self] point, timestampNs in
+        guard let self else { return }
+        InputInjector.currentReportTimestampNs = timestampNs
+        self.onTablet(point)
+        InputInjector.currentReportTimestampNs = 0
+    }
+    /// Kernel timestamp of the previous report that decoded to more than one
+    /// pen sample, for measuring the real inter-batch interval. 0 until the
+    /// first such report is seen.
+    private var lastBatchReportTimestampNs: UInt64 = 0
+
     // ── Callback-context lifetime ─────────────────────────────────────────────
     // One retain backs every IOHIDDeviceRegisterInputReportCallback context for
     // this driver. Created lazily at first registration, released on HIDThread
@@ -1141,9 +1155,10 @@ final class WacomKnownDevice: TabletDevice {
         // Publish this report's kernel receipt time (mach ticks → ns) for
         // finalizeAndPost, and clear it on every exit path so timer-fired
         // posts after this frame never inherit a stale stamp.
-        InputInjector.currentReportTimestampNs =
+        let reportTimestampNs: UInt64 =
             kernelTimestamp == 0
             ? 0 : UInt64(Double(kernelTimestamp) * LatencyProbe.timebaseFactor)
+        InputInjector.currentReportTimestampNs = reportTimestampNs
         defer { InputInjector.currentReportTimestampNs = 0 }
         let name = deviceSpec.name
         HIDCapture.shared.record(tag: name, report: report, length: length)
@@ -1290,6 +1305,15 @@ final class WacomKnownDevice: TabletDevice {
                 report: report, length: length, spec: spec, state: &state,
                 deviceFamily: deviceSpec.family)
         }
+        // Pen samples are collected rather than dispatched inline so a report
+        // that decoded to more than one (a Bluetooth batch — see
+        // PenBatchPacer.swift) can be paced across the interval it actually
+        // spans instead of bursting through CGEventPost in a fraction of a
+        // millisecond. Every other result kind dispatches immediately as
+        // before; a batch's toolEnter/aux/etc. entries always precede its
+        // pen entries in `results` (see IntuosV2Decoder+BT), so deferring
+        // only the pen delivery doesn't reorder anything that depends on it.
+        var penPoints: [TabletPoint] = []
         for result in results {
             switch result {
             case .none:
@@ -1297,7 +1321,7 @@ final class WacomKnownDevice: TabletDevice {
             case .pen(let point):
                 // Wireless dongle: suppress pen events until RF link is confirmed active.
                 guard !isWireless || wirelessReady else { break }
-                onTablet(point)
+                penPoints.append(point)
             case .toolEnter(let identity):
                 guard !isWireless || wirelessReady else { break }
                 onToolEnter?(identity)
@@ -1381,11 +1405,78 @@ final class WacomKnownDevice: TabletDevice {
                 logger.info("\(name, privacy: .public): \(message, privacy: .public)")
             }
         }
+        let didDeferPenFrames = dispatchPenBatch(penPoints, reportTimestampNs: reportTimestampNs)
         // Stage-2: decode + all injection callbacks have returned; CGEvents
         // for this report are posted. Kernel receipt → here is the total
-        // in-app pipeline cost surfaced in the diagnostics pane.
-        if kernelTimestamp != 0 {
+        // in-app pipeline cost surfaced in the diagnostics pane. Skipped when
+        // this report's pen samples were handed to the batch pacer — some of
+        // them post well after this function returns (see
+        // dispatchPenBatch/PenBatchPacer), so "complete" isn't true yet and
+        // this stage-2 stamp would understate real latency for exactly the
+        // reports it matters most on.
+        if kernelTimestamp != 0 && !didDeferPenFrames {
             LatencyProbe.shared.recordPipelineComplete(kernelTimestamp: kernelTimestamp)
         }
+    }
+
+    /// Delivers this report's decoded pen samples to `onTablet`, pacing them
+    /// across the report's real interval when there's more than one (a
+    /// Bluetooth batch — see PenBatchPacer.swift's header for the measured
+    /// mechanism). Returns `true` if any frames were handed to the pacer for
+    /// deferred delivery rather than posted synchronously before this call
+    /// returns.
+    ///
+    /// `reportTimestampNs` is this report's own kernel-receipt stamp, passed
+    /// explicitly rather than read back from `InputInjector.currentReportTimestampNs`
+    /// — `handleReport`'s own `defer` clears that static the moment this
+    /// function returns, before any deferred pacer delivery can happen.
+    @discardableResult
+    private func dispatchPenBatch(_ points: [TabletPoint], reportTimestampNs: UInt64) -> Bool {
+        guard let first = points.first else { return false }
+        guard points.count > 1 else {
+            // The overwhelmingly common case (USB, and any single-sample BT
+            // report): identical to the pre-pacing behavior, no timer, no
+            // allocation beyond the array already built above.
+            onTablet(first)
+            return false
+        }
+
+        let measuredIntervalNs =
+            lastBatchReportTimestampNs != 0 && reportTimestampNs > lastBatchReportTimestampNs
+            ? reportTimestampNs - lastBatchReportTimestampNs : 0
+        lastBatchReportTimestampNs = reportTimestampNs
+
+        // Plausible steady-state batch interval band. Below it: not real
+        // batching (clock noise). Above it: a stall/reconnect/dongle hiccup
+        // produced this multi-sample report, not the device's normal
+        // batching cadence — pacing evenly across a multi-second gap would
+        // reintroduce exactly the "cursor crawls through stale history"
+        // problem stale-report suppression exists to prevent (see
+        // isStaleHoverMove's doc comment in InputInjector+PenInjection.swift).
+        // Bypass pacing and post the whole batch immediately in both cases.
+        let minPlausibleIntervalNs: UInt64 = 4_000_000
+        let maxPlausibleIntervalNs: UInt64 = 80_000_000
+        guard measuredIntervalNs >= minPlausibleIntervalNs,
+              measuredIntervalNs <= maxPlausibleIntervalNs
+        else {
+            for point in points { onTablet(point) }
+            return false
+        }
+
+        // Frame 0 (oldest) is already the stalest sample in the batch — it
+        // was captured natively up to (count-1) native periods before this
+        // report arrived, so delaying it further buys nothing. Post it
+        // immediately and pace only the remaining, fresher frames across the
+        // rest of the interval, each carrying an interpolated timestamp so
+        // stale-report suppression still sees an accurate age per frame.
+        onTablet(first)
+        let perFrameDelayNs = measuredIntervalNs / UInt64(points.count)
+        let scheduled: [(point: TabletPoint, timestampNs: UInt64)] = points.dropFirst()
+            .enumerated().map { offset, point in
+                let framesFromEnd = UInt64(points.count - 1 - (offset + 1))
+                return (point, reportTimestampNs - framesFromEnd * perFrameDelayNs)
+            }
+        penBatchPacer.schedule(scheduled, interval: TimeInterval(perFrameDelayNs) / 1_000_000_000.0)
+        return true
     }
 }
