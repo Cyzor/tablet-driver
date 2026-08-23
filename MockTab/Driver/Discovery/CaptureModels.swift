@@ -148,6 +148,31 @@ struct DiscoveryTouchPipeline: Codable {
     /// Contacts dropped by `TouchStateTracker.screenPoint` returning nil —
     /// i.e. falling outside the touch-area crop above.
     var contactsOffArea: Int = 0
+    /// Extremes of the raw contact coordinates the decoder produced, in device
+    /// units, before any projection.
+    ///
+    /// These answer a question the counters cannot: whether the registry's
+    /// `touchMaxX`/`touchMaxY` match what the sensor actually reaches. Touch
+    /// pointer motion is relative, scaled by `coordinate / touchMax`, so a
+    /// ceiling set above the reachable range makes a full-surface swipe cover
+    /// only that fraction of the screen — the PTH-651 report in issue #12,
+    /// where a full sweep stopped short of the right edge. A capture taken
+    /// while tracing the four edges puts the true range in the file.
+    ///
+    /// Nil until the first contact, so a session with no touch records no
+    /// misleading zeroes.
+    var observedMinX: Int?
+    var observedMaxX: Int?
+    var observedMinY: Int?
+    var observedMaxY: Int?
+
+    /// Fold one contact's raw position into the observed extents.
+    mutating func noteExtent(x: Int, y: Int) {
+        observedMinX = Swift.min(observedMinX ?? x, x)
+        observedMaxX = Swift.max(observedMaxX ?? x, x)
+        observedMinY = Swift.min(observedMinY ?? y, y)
+        observedMaxY = Swift.max(observedMaxY ?? y, y)
+    }
     /// Frames that reached the gesture tracker with at least one contact.
     var framesTracked: Int = 0
     /// Intents the tracker produced, by kind. All zero while `framesTracked`

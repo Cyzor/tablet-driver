@@ -932,6 +932,7 @@ final class TabletManager: ObservableObject {
             TouchPipelineProbe.note {
                 $0.framesDecoded += 1
                 $0.contactsDecoded += contacts.count
+                for contact in contacts { $0.noteExtent(x: contact.x, y: contact.y) }
             }
             guard let context, context.settings.touchEnabled else {
                 TouchPipelineProbe.note { $0.framesTouchDisabled += 1 }
