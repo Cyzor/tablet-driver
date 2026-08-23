@@ -376,8 +376,14 @@ struct TouchStateTracker {
     ) -> CGPoint? {
         let mx = Double(Swift.max(maxX, 1))
         let my = Double(Swift.max(maxY, 1))
-        let rx = Double(contact.x) / mx
-        let ry = Double(contact.y) / my
+        // Clamped, because a coordinate past the ceiling means the registry's
+        // ceiling is too low, not that the finger left the surface — and the
+        // crop test below would read the difference as "outside the crop" and
+        // drop the contact, killing touch along that edge. Clamping keeps
+        // crop semantics intact (a partial crop still rejects the region it
+        // excludes) while making a low ceiling cost a thin dead band instead.
+        let rx = Swift.min(Swift.max(Double(contact.x) / mx, 0), 1)
+        let ry = Swift.min(Swift.max(Double(contact.y) / my, 0), 1)
         let w = Swift.max(areaWidth, 0.001)
         let h = Swift.max(areaHeight, 0.001)
         // Reject contacts outside the crop rect entirely.
