@@ -428,13 +428,20 @@ final class WacomKnownDevice: TabletDevice {
             // for input delivery; that same open is sufficient for IOHIDDeviceSetReport.
             secondaryDevice = device
         }
-        // The InputMode element may be on either interface depending on arrival order.
-        // Attempt init on every registered interface; skips gracefully if not present.
-        if deviceSpec.parser == .intuosV2 && !isBluetooth {
+        // InputMode may live on either interface; try each, harmless if absent.
+        // Gate on this interface's transport, not the driver's: PTH-660/860 use
+        // one PID for both transports, so USB interfaces fold onto a live
+        // Bluetooth driver and would inherit its latched `isBluetooth`, skipping
+        // the mode-switch write. Without it the tablet sends touch but no pen.
+        let interfaceIsBluetooth = transport.lowercased().contains("bluetooth")
+        if deviceSpec.parser == .intuosV2 && !interfaceIsBluetooth {
             sendWacomInputModeInit(device, tag: name)
-            // Secondary interface just arrived — apply any LED slot that was requested
-            // before it was available (mirrors the registerLEDDevice pattern).
-            setRingLED(index: pendingLEDIndex)
+            // Apply any LED slot requested before this interface existed.
+            // Driver-level `isBluetooth` on purpose — setRingLED picks its
+            // report format from it.
+            if !isBluetooth {
+                setRingLED(index: pendingLEDIndex)
+            }
         }
 
         // Xencelabs re-enumerates shortly after the initial connect (observed
