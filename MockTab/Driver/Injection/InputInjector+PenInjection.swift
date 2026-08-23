@@ -148,9 +148,20 @@ extension InputInjector {
                 smoother.smoothingStrength = tool.smoothingStrength
                 pressureSmoother.smoothingStrength = tool.pressureSmoothingStrength
                 lastProximity = true
+                proximityConfirmStartTime = CFAbsoluteTimeGetCurrent()
             } else {
                 commitProximityExit(snap: snap)
             }
+        }
+
+        // ── Touch-arbitration confirmation gate ────────────────────────────
+        // See `touchPenConfirmedBusy`'s declaration. Runs every call, not just
+        // on transition, so a session that started below the hold-off gets
+        // confirmed once it's persisted long enough.
+        if point.inProximity, !touchPenConfirmedBusy,
+            tipDown || CFAbsoluteTimeGetCurrent() - proximityConfirmStartTime >= Self.touchBusyHoldOff
+        {
+            touchPenConfirmedBusy = true
         }
 
         // ── Eraser/tip flip (while in proximity) ───────────────────────────────
@@ -590,9 +601,10 @@ extension InputInjector {
         // accepting contacts again — prevents the palm rejection failure
         // pattern where lifting the pen drops a stray finger on the
         // tablet and the touch path races the pen-up.
-        if lastProximity {
+        if touchPenConfirmedBusy {
             penProximityExitTime = CFAbsoluteTimeGetCurrent()
         }
+        touchPenConfirmedBusy = false
         lastProximity = false
 
         // Release any barrel buttons still down at exit, finalizing any

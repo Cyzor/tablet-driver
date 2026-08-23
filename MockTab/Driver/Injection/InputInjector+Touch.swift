@@ -18,9 +18,10 @@ extension InputInjector {
     ///
     /// Behaviour:
     ///   • `touchEnabled == false` → no-op.
-    ///   • Pen in proximity, or pen lifted within `touchArbitrationGrace`
-    ///     → drop the frame (and reset tracker so a stale gesture mid-touch
-    ///     doesn't persist when the pen interrupts).
+    ///   • Pen confirmed busy (`touchPenConfirmedBusy` — in proximity past
+    ///     `touchBusyHoldOff`, or already down), or lifted within
+    ///     `touchArbitrationGrace` → drop the frame (and reset tracker so a
+    ///     stale gesture mid-touch doesn't persist when the pen interrupts).
     ///   • Otherwise project each contact through the user's touch-area
     ///     mapping into screen-space, hand to `TouchStateTracker`, and
     ///     translate its `Intent` into CGEvents:
@@ -60,7 +61,7 @@ extension InputInjector {
         // per-app event arbitration was inconsistent.  Git history has the
         // prototype if another attempt is ever made.
         let now = CFAbsoluteTimeGetCurrent()
-        let penBusy = lastProximity ||
+        let penBusy = touchPenConfirmedBusy ||
             now - penProximityExitTime < Self.touchArbitrationGrace
         if penBusy {
             touchPalmRejector.reset()

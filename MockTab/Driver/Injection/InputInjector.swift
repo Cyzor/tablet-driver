@@ -724,34 +724,27 @@ final class InputInjector: @unchecked Sendable {
             guard let self else { return }
             let idleInterval = Date().timeIntervalSince(self.lastInjectCallAt)
 
-            // Stuck-pen-proximity backstop. `IntuosV2Decoder+BT` (TabletKit,
-            // decodeBTPen) debounces *exit* two ways — an immediate signal
-            // when both prox and inRange clear, or a 3-frame threshold for
-            // ambiguous boundary noise — but hardcodes `inProximity: true`
-            // unconditionally for any frame that survives those checks,
-            // including the "continue to decode point data" boundary-noise
-            // path (see that file, the frame loop around the `!inRange`
-            // branch). There is no equivalent debounce on entry. Confirmed
-            // on hardware (2026-08-22): a clean exit fires correctly, but a
-            // single noisy report arriving ~11ms later — ordinary BT
-            // boundary chatter as the pen actually leaves range — can
-            // satisfy the unguarded "valid, not-a-clean-exit" case and
-            // re-assert `inProximity: true`. If the tablet then goes truly
-            // idle (confirmed separately: zero raw HID reports arrive while
-            // genuinely out of range), nothing ever corrects it again —
-            // `lastProximity` latches true forever, which silently kills
-            // touch (`injectTouch`'s `penBusy` gate reads it) until the
-            // process restarts. This is a backstop, not the fix — the real
-            // asymmetry lives in the decoder, a separate public repo serving
-            // multiple device families, and belongs in its own release
-            // rather than a patch under tonight's time pressure. A pen
-            // genuinely in proximity streams at 100+ Hz, so idling this long
-            // while `lastProximity` is true is unambiguous — no false-fire
-            // risk during real use.
+            // Stuck-pen-proximity backstop. Confirmed on hardware
+            // (2026-08-22, raw HID capture against a live BT session): a
+            // Bluetooth Intuos Pro 2's proximity signal genuinely — not as
+            // decoder noise — cycles true/false in bursts as short as 5ms
+            // while the pen is merely held near the tablet, e.g. during
+            // two-finger touch scrolling with the same hand. `lastProximity`
+            // itself is expected to track that real signal faithfully; the
+            // actual fix for the touch-arbitration symptom this used to
+            // chase is `touchPenConfirmedBusy` (see its declaration below),
+            // which requires proximity to persist past `touchBusyHoldOff`
+            // before treating the pen as "in use" for touch-blocking
+            // purposes. This watchdog stays as pure defense-in-depth: if
+            // `lastProximity` ever does latch true with nothing correcting
+            // it (a dropped exit report, a reconnect edge case), idling this
+            // long while it's still true is unambiguous — a pen genuinely in
+            // proximity streams at 100+ Hz — so force the exit rather than
+            // leave the injector stuck until the process restarts.
             if self.lastProximity, idleInterval > Self.stuckProximityTimeout,
                 let snap = self.injectionSnapshot
             {
-                injectLog.notice("leak-watchdog: forcing stuck pen-proximity exit (idle \(Int(idleInterval))s) — see IntuosV2Decoder+BT entry-debounce asymmetry")
+                injectLog.notice("leak-watchdog: forcing stuck pen-proximity exit (idle \(Int(idleInterval))s)")
                 self.commitProximityExit(snap: snap)
             }
 
@@ -931,6 +924,29 @@ final class InputInjector: @unchecked Sendable {
     var penProximityExitTime: CFAbsoluteTime = 0
     /// Per-Wacom-driver convention; tunable if reports show false positives.
     static let touchArbitrationGrace: CFAbsoluteTime = 0.08
+    /// True once the current proximity session has either produced tip
+    /// contact or persisted past `touchBusyHoldOff` — the confirmed signal
+    /// `injectTouch`'s pen-priority arbitration gates on, instead of raw
+    /// `lastProximity`. Needed because a BT digitizer's proximity signal can
+    /// flap true/false in bursts of 5-45ms — far shorter than any real
+    /// stroke — while the pen is merely held near the tablet during
+    /// two-finger touch scrolling with the same hand (confirmed on hardware
+    /// 2026-08-22: raw HID capture showed genuine, fully-confirmed
+    /// prox+inRange frames arriving in repeated short bursts, not decoder
+    /// noise). Gating `penBusy` on raw `lastProximity` left touch blocked
+    /// almost continuously in that scenario, since `lastProximity` spent
+    /// far more time true than false across the whole session.
+    /// `lastProximity` itself keeps its existing semantics for every other
+    /// consumer (proximity events, relative-anchor logic, eraser flip).
+    var touchPenConfirmedBusy: Bool = false
+    /// Wall-clock time the current proximity session began, for measuring
+    /// `touchBusyHoldOff` against.
+    var proximityConfirmStartTime: CFAbsoluteTime = 0
+    /// How long proximity must persist, uninterrupted, before touch treats
+    /// the pen as actually in use. Comfortably longer than the ~100ms flap
+    /// bursts measured on hardware; short enough to be imperceptible before
+    /// a genuine stroke. Bypassed entirely by tip contact — see `inject()`.
+    static let touchBusyHoldOff: CFAbsoluteTime = 0.15
 
     // ── Screen-edge pinning (Dock reveal / hot corners) ─────────────────────
     // A hidden Dock and hot corners never trigger from injected moves that
