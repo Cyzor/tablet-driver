@@ -926,7 +926,17 @@ final class TabletManager: ObservableObject {
         // `TabletManager` (which is every settings pane), making the UI
         // choppy and burning CPU even though no input is being injected.
         let onTouch: ([TouchContact]) -> Void = { [weak self, weak context] contacts in
-            guard let context, context.settings.touchEnabled else { return }
+            // First stage of the pipeline probe: everything the decoder
+            // produced, counted before any gate can discard it. See
+            // TouchPipelineProbe.
+            TouchPipelineProbe.note {
+                $0.framesDecoded += 1
+                $0.contactsDecoded += contacts.count
+            }
+            guard let context, context.settings.touchEnabled else {
+                TouchPipelineProbe.note { $0.framesTouchDisabled += 1 }
+                return
+            }
             context.injector.injectTouch(contacts: contacts, settings: context.settings)
             // Skip the publish path entirely when no UI is observing — the
             // scratchpad sets `isPublishingEnabled` only while it is the

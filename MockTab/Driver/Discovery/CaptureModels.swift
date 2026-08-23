@@ -53,7 +53,13 @@ struct DiscoveryResult: Codable {
     /// 7: adds `interfaces` — a device whose reports arrive on more than one
     /// HID interface is now recorded on all of them at once, each with its own
     /// reports and descriptor, instead of only whichever one was captured.
-    var captureVersion: Int = 7
+    /// 8: adds `touchSettings` and `touchPipeline`. A capture until now
+    /// recorded only what the *device* sent, which is half the picture when a
+    /// report arrives well-formed and produces nothing: the answer is then
+    /// somewhere in the app, and the file said nothing about the app. These
+    /// two blocks close that — what the user's touch settings were, and how
+    /// many contacts each stage of the injection pipeline let through.
+    var captureVersion: Int = 8
     let capturedAt: Date
     let mode: String  // always "discovery"
     let duration: TimeInterval
@@ -78,8 +84,87 @@ struct DiscoveryResult: Codable {
     /// `0x080A` eraser). The clearest evidence of which tools a device reports
     /// distinctly, which no amount of byte-level analysis recovers on its own.
     var observedToolCodes: [String]?
+    /// The touch-related settings in force during the session. Present only
+    /// for a device whose spec declares finger touch — on everything else
+    /// these settings are inert and would be misleading noise.
+    var touchSettings: DiscoveryTouchSettings?
+    /// Per-stage tallies of what the touch injection pipeline did with the
+    /// contacts it decoded. Present only when the pipeline saw at least one
+    /// frame, so a pen-only session doesn't carry a block of zeroes.
+    var touchPipeline: DiscoveryTouchPipeline?
     var notes: String?
     var submitterContact: String?
+}
+
+/// The user's touch configuration at capture time.
+///
+/// Every field here can independently silence touch, and none of them is
+/// visible in a report stream. Recording them turns "touch does nothing" from
+/// a question that has to be asked into a fact the file already carries.
+struct DiscoveryTouchSettings: Codable {
+    let touchEnabled: Bool
+    let tapToClick: Bool
+    let twoFingerScroll: Bool
+    let pinchZoom: Bool
+    let sensitivity: Double
+    /// Touch-area crop as a fraction of the surface (x, y, width, height).
+    /// A crop that excludes where the tester's fingers actually landed drops
+    /// every contact at projection — indistinguishable from dead touch
+    /// without this.
+    let areaX: Double
+    let areaY: Double
+    let areaWidth: Double
+    let areaHeight: Double
+}
+
+/// How far touch contacts got through the injection pipeline.
+///
+/// Read top to bottom, these localize a touch failure to one stage without
+/// any further round trip: contacts decoded but zero intents posted, with the
+/// drop counted against exactly one gate, names the gate.
+///
+/// Counts are of *frames* where the whole frame was rejected, and of
+/// *contacts* where individual contacts were filtered out of a surviving
+/// frame — the distinction matters, since a partially filtered frame still
+/// reaches the gesture tracker.
+struct DiscoveryTouchPipeline: Codable {
+    /// Frames the decoder emitted (`DecodeResult.touch`), and the total
+    /// contacts across them. A nonzero `framesDecoded` with everything else
+    /// zero means the decode half is working and the loss is downstream.
+    var framesDecoded: Int = 0
+    var contactsDecoded: Int = 0
+    /// Frames dropped because "Enable Finger Touch" was off.
+    var framesTouchDisabled: Int = 0
+    /// Frames dropped because no injection snapshot existed yet — a startup
+    /// race, not a user setting.
+    var framesNoSnapshot: Int = 0
+    /// Frames dropped by pen arbitration (`touchPenConfirmedBusy` or inside
+    /// `touchArbitrationGrace`). A large count here with the pen untouched is
+    /// the signature of a latched proximity state.
+    var framesPenBusy: Int = 0
+    /// Contacts removed by `TouchPalmRejector`. Only ever nonzero on the
+    /// calibrated PTH-660/860 family.
+    var contactsPalmRejected: Int = 0
+    /// Contacts dropped by `TouchStateTracker.screenPoint` returning nil —
+    /// i.e. falling outside the touch-area crop above.
+    var contactsOffArea: Int = 0
+    /// Frames that reached the gesture tracker with at least one contact.
+    var framesTracked: Int = 0
+    /// Intents the tracker produced, by kind. All zero while `framesTracked`
+    /// is large means the gesture tracker is receiving contacts and refusing
+    /// to commit to a gesture.
+    var pointerMoves: Int = 0
+    var scrolls: Int = 0
+    var zooms: Int = 0
+    var rotates: Int = 0
+    var taps: Int = 0
+
+    /// True when the pipeline saw anything at all, so a pen-only capture can
+    /// omit the block entirely.
+    var isEmpty: Bool {
+        framesDecoded == 0 && framesTouchDisabled == 0 && framesNoSnapshot == 0
+            && framesPenBusy == 0
+    }
 }
 
 /// One HID interface of a captured device, with the reports it sent and the

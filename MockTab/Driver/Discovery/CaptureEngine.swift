@@ -59,6 +59,11 @@ final class CaptureEngine: ObservableObject {
     /// own data. Registered in `startDiscovery`, deregistered in
     /// `cancelDiscovery`/`finishDiscovery`. Lock-guarded because drivers call
     /// `recordRaw` from HIDThread, never the main actor.
+    /// The device's touch settings as of `startDiscovery`, recorded into the
+    /// capture file. Nil for a device without finger touch, where these
+    /// settings are inert.
+    private var capturedTouchSettings: DiscoveryTouchSettings?
+
     private nonisolated static let activeAccumulators =
         OSAllocatedUnfairLock<[ObjectIdentifier: DiscoveryAccumulator]>(initialState: [:])
 
@@ -129,7 +134,11 @@ final class CaptureEngine: ObservableObject {
     ///   the point: which interface carries the interesting traffic is exactly
     ///   what a tester submitting an unknown device cannot be expected to
     ///   know, and recording them all costs a few KB.
-    func startDiscovery(devices: [(IOHIDDevice, CaptureDeviceInfo)], duration: TimeInterval = 60) {
+    func startDiscovery(
+        devices: [(IOHIDDevice, CaptureDeviceInfo)],
+        duration: TimeInterval = 60,
+        touchSettings: DiscoveryTouchSettings? = nil
+    ) {
         guard !devices.isEmpty else { return }
         stopTimers()
         deregisterAccumulators()
@@ -137,6 +146,10 @@ final class CaptureEngine: ObservableObject {
         initReportsSent = []
         discoverySampleCount = 0
         discoveryStartTime = Date()
+        // Zeroed per session so the counters describe this recording rather
+        // than everything since launch.
+        TouchPipelineProbe.reset()
+        capturedTouchSettings = touchSettings
 
         let started = devices.map {
             InterfaceSession(device: $0.0, info: $0.1, accumulator: DiscoveryAccumulator())
@@ -443,6 +456,7 @@ final class CaptureEngine: ObservableObject {
         // one whose name the registry lookup was built around.
         let deviceInfo = sessions[0].info
         let toolCodeHex = allToolCodes.map { String(format: "0x%04X", $0) }.sorted()
+        let touchPipeline = TouchPipelineProbe.snapshot()
         var notes = "Observed tool codes: \(toolCodeHex.isEmpty ? "none" : toolCodeHex.joined(separator: ", "))"
         if allToolCodes.contains(0x080A) {
             notes += " (eraser capable)"
@@ -453,6 +467,15 @@ final class CaptureEngine: ObservableObject {
             let quiet = interfaces.filter { $0.sampleCount == 0 }.count
             notes += ". Recorded \(interfaces.count) interfaces"
             notes += quiet == 0 ? "." : ", \(quiet) of which sent nothing."
+        }
+        // Surfaced in the notes line, not just the structured block: the one
+        // number that says whether a touch problem is ours is how many
+        // contacts we decoded versus how many reached a gesture, and it
+        // should be readable without opening the file to the right key.
+        if !touchPipeline.isEmpty {
+            notes += " Touch: decoded \(touchPipeline.framesDecoded) frames"
+            notes += "/\(touchPipeline.contactsDecoded) contacts, tracked"
+            notes += " \(touchPipeline.framesTracked)."
         }
 
         return DiscoveryResult(
@@ -472,6 +495,8 @@ final class CaptureEngine: ObservableObject {
             interfaces: interfaces.count > 1 ? interfaces : nil,
             initReports: initReportsSent.isEmpty ? nil : initReportsSent,
             observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
+            touchSettings: capturedTouchSettings,
+            touchPipeline: touchPipeline.isEmpty ? nil : touchPipeline,
             notes: notes,
             submitterContact: nil
         )

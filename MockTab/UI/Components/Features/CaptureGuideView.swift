@@ -282,6 +282,28 @@ struct CaptureGuideView: View {
         return [primary] + listed.filter { $0 !== primary }
     }
 
+    /// This tablet's touch configuration, for the capture file.
+    ///
+    /// Nil for a device whose spec declares no finger touch: these settings
+    /// exist on every `TabletSettings` but do nothing without a touch sensor,
+    /// and recording them there would invite reading a meaningless `false` as
+    /// a cause.
+    private func touchSettingsSnapshot() -> DiscoveryTouchSettings? {
+        guard let settings = tabletManager.contexts[productID]?.settings,
+            WacomDeviceRegistry.spec(for: productID)?.hasFingerTouch == true
+        else { return nil }
+        return DiscoveryTouchSettings(
+            touchEnabled: settings.touchEnabled,
+            tapToClick: settings.tapToClick,
+            twoFingerScroll: settings.twoFingerScroll,
+            pinchZoom: settings.pinchZoomEnabled,
+            sensitivity: settings.touchSensitivity,
+            areaX: settings.touchAreaX,
+            areaY: settings.touchAreaY,
+            areaWidth: settings.touchAreaWidth,
+            areaHeight: settings.touchAreaHeight)
+    }
+
     /// Change notifications from this tablet's `DeviceContext`, or a publisher
     /// that never fires when there's no context to watch.
     private var contextChanges: ObservableObjectPublisher {
@@ -653,7 +675,8 @@ struct CaptureGuideView: View {
                 }
             }
         }
-        engine.startDiscovery(devices: targets, duration: 3600)
+        engine.startDiscovery(
+            devices: targets, duration: 3600, touchSettings: touchSettingsSnapshot())
     }
 
     /// Parses the device's own raw descriptor bytes for a mode-switch feature

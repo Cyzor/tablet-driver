@@ -34,7 +34,14 @@ extension InputInjector {
     /// plumbing for when a per-family touch decoder lands.
     func injectTouch(contacts: [TouchContact], settings: TabletSettings?) {
         rearmWatchdog()
-        guard let snap = injectionSnapshot, snap.touchEnabled else { return }
+        guard let snap = injectionSnapshot else {
+            TouchPipelineProbe.note { $0.framesNoSnapshot += 1 }
+            return
+        }
+        guard snap.touchEnabled else {
+            TouchPipelineProbe.note { $0.framesTouchDisabled += 1 }
+            return
+        }
 
         // Cache touch coordinate maximums per device.  Without this, the
         // registry lookup (linear scan over ~80 specs) ran on every HID
@@ -64,6 +71,7 @@ extension InputInjector {
         let penBusy = touchPenConfirmedBusy ||
             now - penProximityExitTime < Self.touchArbitrationGrace
         if penBusy {
+            TouchPipelineProbe.note { $0.framesPenBusy += 1 }
             touchPalmRejector.reset()
             if !contacts.isEmpty {
                 _ = touchTracker.process(
@@ -85,6 +93,10 @@ extension InputInjector {
             },
             productID: deviceProductID)
         let filteredContacts = contacts.filter { filtered.acceptedIDs.contains($0.id) }
+        if filteredContacts.count < contacts.count {
+            let dropped = contacts.count - filteredContacts.count
+            TouchPipelineProbe.note { $0.contactsPalmRejected += dropped }
+        }
         if !filtered.newlyRejectedIDs.isEmpty || !filtered.newlyAcceptedIDs.isEmpty {
             let rejected = contacts
                 .filter { filtered.newlyRejectedIDs.contains($0.id) }
@@ -115,6 +127,13 @@ extension InputInjector {
                 displayBounds: displayBounds)
             else { continue }
             projected.append((id: c.id, screen: p))
+        }
+        if projected.count < filteredContacts.count {
+            let dropped = filteredContacts.count - projected.count
+            TouchPipelineProbe.note { $0.contactsOffArea += dropped }
+        }
+        if !projected.isEmpty {
+            TouchPipelineProbe.note { $0.framesTracked += 1 }
         }
 
         // A real trackpad stops a coasting flick the instant two fingers land
@@ -171,12 +190,18 @@ extension InputInjector {
             touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
             now: now)
 
+        // Final stage of the pipeline probe. Counted per resolved intent, not
+        // per posted CGEvent: a gesture that reaches here and commits to a
+        // mode is working as far as this diagnostic is concerned, and the
+        // post helpers below have their own failure paths.
         switch intent {
         case .none:
             return
         case .pointerMove(let dx, let dy):
+            TouchPipelineProbe.note { $0.pointerMoves += 1 }
             postTouchPointerMove(dx: dx, dy: dy)
         case .scrollDelta(let dx, let dy, let phase):
+            TouchPipelineProbe.note { $0.scrolls += 1 }
             if phase == .began {
                 // A fresh two-finger scroll halts any coasting tail from the
                 // previous gesture, same as touching a real trackpad mid-momentum.
@@ -189,12 +214,16 @@ extension InputInjector {
                 touchMomentumTail.start(velocity: touchTracker.releaseVelocity)
             }
         case .zoomMagnify(let magnification, let phase):
+            TouchPipelineProbe.note { $0.zooms += 1 }
             postTouchMagnify(magnification: magnification, phase: phase)
         case .smartZoom:
+            TouchPipelineProbe.note { $0.zooms += 1 }
             postTouchSmartZoom()
         case .rotate(let rotation, let phase):
+            TouchPipelineProbe.note { $0.rotates += 1 }
             postTouchRotate(rotation: rotation, phase: phase)
         case .tapClick:
+            TouchPipelineProbe.note { $0.taps += 1 }
             postTouchTapClick(snapshot: snap, settings: settings)
         }
     }
