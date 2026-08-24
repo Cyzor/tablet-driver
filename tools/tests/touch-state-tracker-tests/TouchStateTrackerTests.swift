@@ -175,41 +175,35 @@ private func testSingleContactFrameDoesNotCommitPan() {
                 "a 1-contact frame while undecided must not commit a phantom pan")
 }
 
-/// A dropped report mid-drag (e.g. a capacitive signal dropout) must not
-/// discard the drag's position — the cursor should resume from where it
-/// was, not jump/reset, once the finger reappears within the grace window.
-private func testPointerDragBridgesShortDropout() {
-    var tracker = TouchStateTracker()
-    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
-    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 20, y: 0))], at: 0.13)  // crosses onsetDelay
-    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 40, y: 0))], at: 0.14)
-    expectEqual(process(&tracker, [], at: 0.15), .none,
-                "a dropped report mid-drag must not be treated as a lift")
-    expectEqual(process(&tracker, [(id: 1, screen: CGPoint(x: 50, y: 0))], at: 0.17),
-                .pointerMove(dx: 10, dy: 0),
-                "the drag resumes from its last known position, not the reappearance point")
-}
-
-/// If the finger really did lift, the bridge must not hold forever — once
-/// the grace window elapses the sequence tears down and a later touch-down
-/// starts fresh (re-arming the onset delay) instead of resuming.
-private func testPointerDragTearsDownAfterGraceExpires() {
+/// Regression guard: a real lift must reset tracking immediately (no
+/// deferred/bridged teardown — tried once, reverted, see git history), so a
+/// later touch at a completely different location starts a fresh relative
+/// sequence instead of computing its first delta against the old drag's
+/// stale position. A bridged design that holds `.pointer` mode open past a
+/// genuine lift (waiting for a report that may never come, since a real
+/// lift produces no further reports until the *next*, unrelated touch)
+/// reproduces exactly this: the next touch-down, especially if it reuses
+/// the same contact id (a small slot-id range makes that likely), jumps the
+/// cursor by the distance between the two unrelated locations — reported as
+/// tapping in different spots "teleporting" the cursor, absolute-position-
+/// style.
+private func testNewTouchAfterLiftDoesNotJumpFromOldPosition() {
     var tracker = TouchStateTracker()
     _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
     _ = process(&tracker, [(id: 1, screen: CGPoint(x: 20, y: 0))], at: 0.13)
-    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 40, y: 0))], at: 0.14)
-    _ = process(&tracker, [], at: 0.15)
-    expectEqual(process(&tracker, [], at: 0.21), .none,
-                "grace expiry with no reappearance just finalizes the lift silently")
-    _ = process(&tracker, [(id: 2, screen: CGPoint(x: 40, y: 0))], at: 0.30)
-    expectEqual(process(&tracker, [(id: 2, screen: CGPoint(x: 41, y: 0))], at: 0.31), .none,
-                "a genuinely new sequence re-arms the onset delay instead of resuming")
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 300, y: 300))], at: 0.14)
+    _ = process(&tracker, [], at: 0.15)  // a real lift
+    // A brand-new touch far away, reusing the same contact id.
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: -900, y: -900))], at: 1.0)
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: -895, y: -900))], at: 1.14)  // crosses onsetDelay
+    expectEqual(process(&tracker, [(id: 1, screen: CGPoint(x: -890, y: -900))], at: 1.15),
+                .pointerMove(dx: 5, dy: 0),
+                "a fresh touch after a real lift must not jump from the previous location")
 }
 
-/// The dropout bridge only holds a drag (past `tapMaxDistance`) — a tap that
-/// happens to have already crossed into `.pointer` mode without real motion
-/// must still resolve the instant it lifts.
-private func testPointerModeTapNotDelayedByDropoutBridge() {
+/// A tap must resolve the instant it lifts, whether or not it already
+/// crossed into `.pointer` mode.
+private func testTapResolvesImmediatelyOnLift() {
     var tracker = TouchStateTracker()
     _ = tracker.process(
         contacts: [(id: 1, screen: .zero)], tapToClick: true, twoFingerScroll: true,
@@ -541,9 +535,8 @@ enum TouchStateTrackerTestRunner {
         testPinchMagnifyEnvelope()
         testPreCommitLiftHasNoScrollEnd()
         testSingleContactFrameDoesNotCommitPan()
-        testPointerDragBridgesShortDropout()
-        testPointerDragTearsDownAfterGraceExpires()
-        testPointerModeTapNotDelayedByDropoutBridge()
+        testNewTouchAfterLiftDoesNotJumpFromOldPosition()
+        testTapResolvesImmediatelyOnLift()
         testPinchCommitsWithTwoFingerScrollDisabled()
         testPanStaysSilentWithTwoFingerScrollDisabled()
         testRotateCommitsWithTwoFingerScrollDisabled()

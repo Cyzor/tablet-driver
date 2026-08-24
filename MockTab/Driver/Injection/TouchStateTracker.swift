@@ -306,10 +306,6 @@ struct TouchStateTracker {
     /// the first.
     private var lastTwoFingerTapEndTime: CFAbsoluteTime?
 
-    /// Set on the first empty-contacts frame seen mid-drag; bridges a brief
-    /// capacitive dropout so it isn't treated as a real lift. See `process`.
-    private var pendingPointerLiftoffTime: CFAbsoluteTime?
-
     // MARK: - Tunables
 
     /// Maximum drift (in screen points) that still counts as a tap.
@@ -324,14 +320,6 @@ struct TouchStateTracker {
     /// having dragged the cursor in the meantime.  Same trick trackpads use;
     /// the cost is pointer motion starting ~0.1 s late.
     static let onsetDelay: CFAbsoluteTime = 0.12
-    /// Grace window for a dropped touch report mid-drag before it's treated
-    /// as a real lift — bridges a brief capacitive signal loss (weak/slow
-    /// contact, worse near the surface edges) without losing the drag's
-    /// position or re-arming `onsetDelay`. Only applies once a drag is
-    /// already committed (past `tapMaxDistance`); taps and other gestures
-    /// still resolve immediately on lift. Below `onsetDelay` so a real quick
-    /// re-touch still reads as a fresh sequence, not a bridged one.
-    static let liftoffGraceDelay: CFAbsoluteTime = 0.05
     /// Motion (screen points) needed to commit pan vs pinch for a sequence.
     /// Slightly above finger-jitter so a sliding pan doesn't decide on noise.
     static let twoFingerDecideDistance: Double = 6.0
@@ -504,19 +492,6 @@ struct TouchStateTracker {
         // that never outlived the onset delay can still be a tap (a tap is by
         // definition shorter than most onset windows).
         if contacts.isEmpty {
-            // Bridge a dropped report mid-drag instead of tearing the
-            // sequence down immediately: taps and other gestures still need
-            // their lift-triggered intent (tap/`.ended`) to fire right away,
-            // but a plain drag has nothing to flush, so it can wait out a
-            // short grace window before being treated as a real lift.
-            if mode == .pointer, tapMaxDelta >= Self.tapMaxDistance {
-                if let pending = pendingPointerLiftoffTime {
-                    if now - pending < Self.liftoffGraceDelay { return .none }
-                } else {
-                    pendingPointerLiftoffTime = now
-                    return .none
-                }
-            }
             let priorMode = mode
             let priorPhase = lastScrollPhase
             let priorKind = twoFingerKind
@@ -563,7 +538,6 @@ struct TouchStateTracker {
                 return .none
             }
         }
-        pendingPointerLiftoffTime = nil
 
         // First contact — hold in pending until the onset delay elapses, so
         // the opening frames of a sequence (where a palm smush or the second
@@ -875,9 +849,7 @@ struct TouchStateTracker {
     }
 
     /// Also called directly by the injector to force an immediate hard reset
-    /// (e.g. pen arbitration taking over) — bypassing the drag-dropout grace
-    /// window in `process`, which only makes sense while touch itself is
-    /// still authoritative.
+    /// (e.g. pen arbitration taking over).
     mutating func reset() {
         mode = .idle
         lastPositions.removeAll(keepingCapacity: true)
@@ -899,7 +871,6 @@ struct TouchStateTracker {
         undecidedStartTime = 0
         recentVelocities.removeAll()
         lastFrameTime = 0
-        pendingPointerLiftoffTime = nil
         lastMotionTime = 0
     }
 
