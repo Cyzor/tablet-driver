@@ -228,6 +228,11 @@ final class TabletManager: ObservableObject {
     private var uiUpdateCounter = 0
     private static let uiUpdateInterval = 8  // every 8th report ≈ 16 Hz at 133 Hz
 
+    /// A contact alive this many frames or fewer when it disappears counts
+    /// as "short-lived" for `DiscoveryTouchPipeline.shortLivedContacts` — at
+    /// ~100 Hz touch reporting, roughly 30 ms, well under any deliberate tap.
+    private static let shortLivedContactFrames = 3
+
     // MARK: - Device name helpers
 
     /// Vendor ID last seen for a given product ID, recorded as devices connect.
@@ -925,7 +930,48 @@ final class TabletManager: ObservableObject {
         // them to `liveTouchContacts` invalidates every view that observes
         // `TabletManager` (which is every settings pane), making the UI
         // choppy and burning CPU even though no input is being injected.
+        // Per-contact-id position, area, and lifetime, purely to derive the
+        // erratic-touch diagnostics below (`maxContactJump`/
+        // `shortLivedContacts`/`maxStallBeforeLift`) — not used by
+        // injection. Lives for this device connection's lifetime, same as
+        // the closures below.
+        var touchContactTrack: [Int: (x: Int, y: Int, area: Int?, framesAlive: Int, stalledFrames: Int)] = [:]
+
         let onTouch: ([TouchContact]) -> Void = { [weak self, weak context] contacts in
+            // Erratic-touch diagnostics: a same-id jump far larger than a
+            // finger can move in one ~10ms report period, a contact that
+            // flickers away again within a couple of frames, or a contact
+            // whose position stops advancing while still reported "down" are
+            // each a distinct signature a noisy/wet/dirty/marginal
+            // capacitive surface can produce — see the probe fields' doc
+            // comments.
+            var frameMaxJump: Int?
+            let currentIDs = Set(contacts.map(\.id))
+            for contact in contacts {
+                if let prev = touchContactTrack[contact.id] {
+                    let dx = contact.x - prev.x, dy = contact.y - prev.y
+                    let stalledFrames = (dx == 0 && dy == 0) ? prev.stalledFrames + 1 : 0
+                    let jump = Int(sqrt(Double(dx * dx + dy * dy)))
+                    frameMaxJump = Swift.max(frameMaxJump ?? 0, jump)
+                    touchContactTrack[contact.id] =
+                        (contact.x, contact.y, contact.contactArea, prev.framesAlive + 1, stalledFrames)
+                } else {
+                    touchContactTrack[contact.id] = (contact.x, contact.y, contact.contactArea, 1, 0)
+                }
+            }
+            var newlyShortLived = 0
+            var longestDepartingStall: (frames: Int, area: Int?, x: Int, y: Int)?
+            for id in touchContactTrack.keys where !currentIDs.contains(id) {
+                let departed = touchContactTrack[id]!
+                if departed.framesAlive <= Self.shortLivedContactFrames {
+                    newlyShortLived += 1
+                }
+                if departed.stalledFrames > (longestDepartingStall?.frames ?? -1) {
+                    longestDepartingStall = (departed.stalledFrames, departed.area, departed.x, departed.y)
+                }
+                touchContactTrack.removeValue(forKey: id)
+            }
+
             // First stage of the pipeline probe: everything the decoder
             // produced, counted before any gate can discard it. See
             // TouchPipelineProbe.
@@ -933,6 +979,16 @@ final class TabletManager: ObservableObject {
                 $0.framesDecoded += 1
                 $0.contactsDecoded += contacts.count
                 for contact in contacts { $0.noteExtent(x: contact.x, y: contact.y) }
+                if let frameMaxJump {
+                    $0.maxContactJump = Swift.max($0.maxContactJump ?? 0, frameMaxJump)
+                }
+                $0.shortLivedContacts += newlyShortLived
+                if let stall = longestDepartingStall, stall.frames > ($0.maxStallBeforeLift ?? -1) {
+                    $0.maxStallBeforeLift = stall.frames
+                    $0.stallAreaAtLift = stall.area
+                    $0.stallX = stall.x
+                    $0.stallY = stall.y
+                }
             }
             guard let context, context.settings.touchEnabled else {
                 TouchPipelineProbe.note { $0.framesTouchDisabled += 1 }

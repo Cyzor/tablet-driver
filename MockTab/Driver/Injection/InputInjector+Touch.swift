@@ -25,10 +25,12 @@ extension InputInjector {
     ///   • Otherwise project each contact through the user's touch-area
     ///     mapping into screen-space, hand to `TouchStateTracker`, and
     ///     translate its `Intent` into CGEvents:
-    ///       - `.pointerMove`   → `mouseMoved`
-    ///       - `.scrollDelta`   → smooth scroll-wheel event with phase
-    ///       - `.zoomMagnify`   → synthesized magnify gesture with phase
-    ///       - `.tapClick`      → left-click at the current cursor position
+    ///       - `.pointerMove`      → `mouseMoved`
+    ///       - `.scrollDelta`      → smooth scroll-wheel event with phase
+    ///       - `.twoFingerGesture` → synthesized magnify and/or rotate
+    ///                               gesture(s) with phase, independently —
+    ///                               both may post in the same frame
+    ///       - `.tapClick`         → left-click at the current cursor position
     ///
     /// No shipping decoder produces touch frames yet; this is hot-path
     /// plumbing for when a per-family touch decoder lands.
@@ -74,10 +76,7 @@ extension InputInjector {
             TouchPipelineProbe.note { $0.framesPenBusy += 1 }
             touchPalmRejector.reset()
             if !contacts.isEmpty {
-                _ = touchTracker.process(
-                    contacts: [], tapToClick: false, twoFingerScroll: false,
-                    reverseScrollDirection: false, sensitivity: 1.0,
-                    pinchZoom: false, now: now)
+                touchTracker.reset()
             }
             return
         }
@@ -158,6 +157,22 @@ extension InputInjector {
             touchMomentumTail.stop()
         }
 
+        // Diagnostic: tally how this two-or-more-finger sequence resolves,
+        // once per sequence rather than per frame — see
+        // `DiscoveryTouchPipeline.twoFingerResolved*`. A lift with no prior
+        // commit closes out a sequence that saw 2+ fingers but never
+        // resolved to any gesture; the commit side is tallied in the intent
+        // switch below.
+        if projected.isEmpty {
+            if touchSequenceSawTwoFingers, !touchSequenceCommitted {
+                TouchPipelineProbe.note { $0.twoFingerResolvedNone += 1 }
+            }
+            touchSequenceSawTwoFingers = false
+            touchSequenceCommitted = false
+        } else if projected.count >= 2 {
+            touchSequenceSawTwoFingers = true
+        }
+
         // Only built when Rotate is on — the raw-position dictionary would
         // otherwise allocate on every frame for no reason. Converted to
         // millimeters, not left in raw device units: the touch coordinate
@@ -203,6 +218,8 @@ extension InputInjector {
         case .scrollDelta(let dx, let dy, let phase):
             TouchPipelineProbe.note { $0.scrolls += 1 }
             if phase == .began {
+                touchSequenceCommitted = true
+                TouchPipelineProbe.note { $0.twoFingerResolvedPan += 1 }
                 // A fresh two-finger scroll halts any coasting tail from the
                 // previous gesture, same as touching a real trackpad mid-momentum.
                 touchMomentumTail.cancel()
@@ -213,15 +230,31 @@ extension InputInjector {
             if phase == .ended, snap.twoFingerScrollMomentum {
                 touchMomentumTail.start(velocity: touchTracker.releaseVelocity)
             }
-        case .zoomMagnify(let magnification, let phase):
-            TouchPipelineProbe.note { $0.zooms += 1 }
-            postTouchMagnify(magnification: magnification, phase: phase)
+        case .twoFingerGesture(let magnify, let rotateGesture):
+            // Independent components, either or both present this frame —
+            // a real trackpad can magnify and rotate at once (see
+            // `TouchStateTracker.TwoFingerKind`'s doc comment), so this
+            // posts up to two separate CGEvents in the same HID frame,
+            // exactly as a real trackpad driver would.
+            if let magnify {
+                TouchPipelineProbe.note { $0.zooms += 1 }
+                if magnify.phase == .began {
+                    touchSequenceCommitted = true
+                    TouchPipelineProbe.note { $0.twoFingerResolvedPinch += 1 }
+                }
+                postTouchMagnify(magnification: magnify.value, phase: magnify.phase)
+            }
+            if let rotateGesture {
+                TouchPipelineProbe.note { $0.rotates += 1 }
+                if rotateGesture.phase == .began {
+                    touchSequenceCommitted = true
+                    TouchPipelineProbe.note { $0.twoFingerResolvedRotate += 1 }
+                }
+                postTouchRotate(rotation: rotateGesture.value, phase: rotateGesture.phase)
+            }
         case .smartZoom:
             TouchPipelineProbe.note { $0.zooms += 1 }
             postTouchSmartZoom()
-        case .rotate(let rotation, let phase):
-            TouchPipelineProbe.note { $0.rotates += 1 }
-            postTouchRotate(rotation: rotation, phase: phase)
         case .tapClick:
             TouchPipelineProbe.note { $0.taps += 1 }
             postTouchTapClick(snapshot: snap, settings: settings)

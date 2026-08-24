@@ -50,6 +50,17 @@ private func process(
     )
 }
 
+/// Shorthand for a `.twoFingerGesture` with only a magnify component —
+/// most pinch-only test expectations don't care about a concurrent rotate.
+private func magnify(_ value: Double, phase: TouchStateTracker.ScrollPhase) -> TouchStateTracker.Intent {
+    .twoFingerGesture(magnify: TouchStateTracker.GestureDelta(value: value, phase: phase), rotate: nil)
+}
+
+/// Shorthand for a `.twoFingerGesture` with only a rotate component.
+private func rotateOnly(_ value: Double, phase: TouchStateTracker.ScrollPhase) -> TouchStateTracker.Intent {
+    .twoFingerGesture(magnify: nil, rotate: TouchStateTracker.GestureDelta(value: value, phase: phase))
+}
+
 /// Like `process`, but with rotate enabled and raw device-unit positions
 /// supplied for the separation gate.
 private func rprocess(
@@ -73,11 +84,11 @@ private func rprocess(
     )
 }
 
-/// Assert `intent` is `.rotate(_, phase: .changed)` with a magnitude at
-/// least `minMagnitude`, without pinning an exact Double — angle values here
-/// pass through `atan2`, so bit-exact equality against a hand-computed
-/// expectation would be fragile. Sign/phase/magnitude is what actually
-/// matters for this test.
+/// Assert `intent` is a `.twoFingerGesture` with a rotate component at
+/// `phase: .changed` and a magnitude at least `minMagnitude`, without
+/// pinning an exact Double — angle values here pass through `atan2`, so
+/// bit-exact equality against a hand-computed expectation would be fragile.
+/// Sign/phase/magnitude is what actually matters for this test.
 private func expectRotateChanged(
     _ intent: TouchStateTracker.Intent,
     minMagnitude: Double = 0.05,
@@ -86,7 +97,9 @@ private func expectRotateChanged(
     line: UInt = #line
 ) {
     checks += 1
-    guard case let .rotate(rotation, phase) = intent, phase == .changed, abs(rotation) >= minMagnitude else {
+    guard case let .twoFingerGesture(_, .some(rotate)) = intent,
+        rotate.phase == .changed, abs(rotate.value) >= minMagnitude
+    else {
         failures += 1
         FileHandle.standardError.write(
             Data("FAIL (\(file):\(line)): \(message()) — got \(intent)\n".utf8)
@@ -129,16 +142,16 @@ private func testPinchMagnifyEnvelope() {
     expectEqual(process(&tracker, contacts(distance: 20), at: 0.01), .none,
                 "two-finger pinch waits for a decisive motion")
     expectEqual(process(&tracker, contacts(distance: 30), at: 0.02),
-                .zoomMagnify(magnification: 0, phase: .began),
+                magnify(0, phase: .began),
                 "distance-dominant motion commits to pinch and opens the envelope")
     expectEqual(process(&tracker, contacts(distance: 45), at: 0.03),
-                .zoomMagnify(magnification: 15.0 / 30.0, phase: .changed),
+                magnify(15.0 / 30.0, phase: .changed),
                 "spreading fingers emits the exact relative growth since last frame")
     expectEqual(process(&tracker, contacts(distance: 30), at: 0.04),
-                .zoomMagnify(magnification: -15.0 / 45.0, phase: .changed),
+                magnify(-15.0 / 45.0, phase: .changed),
                 "closing fingers emits negative relative growth")
     expectEqual(process(&tracker, [], at: 0.05),
-                .zoomMagnify(magnification: 0, phase: .ended),
+                magnify(0, phase: .ended),
                 "lifting fingers closes the magnify envelope")
 }
 
@@ -160,6 +173,128 @@ private func testSingleContactFrameDoesNotCommitPan() {
     expectEqual(process(&tracker, [(id: 2, screen: CGPoint(x: 20, y: 0))], at: 0.02),
                 .none,
                 "a 1-contact frame while undecided must not commit a phantom pan")
+}
+
+/// A dropped report mid-drag (e.g. a capacitive signal dropout) must not
+/// discard the drag's position — the cursor should resume from where it
+/// was, not jump/reset, once the finger reappears within the grace window.
+private func testPointerDragBridgesShortDropout() {
+    var tracker = TouchStateTracker()
+    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 20, y: 0))], at: 0.13)  // crosses onsetDelay
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 40, y: 0))], at: 0.14)
+    expectEqual(process(&tracker, [], at: 0.15), .none,
+                "a dropped report mid-drag must not be treated as a lift")
+    expectEqual(process(&tracker, [(id: 1, screen: CGPoint(x: 50, y: 0))], at: 0.17),
+                .pointerMove(dx: 10, dy: 0),
+                "the drag resumes from its last known position, not the reappearance point")
+}
+
+/// If the finger really did lift, the bridge must not hold forever — once
+/// the grace window elapses the sequence tears down and a later touch-down
+/// starts fresh (re-arming the onset delay) instead of resuming.
+private func testPointerDragTearsDownAfterGraceExpires() {
+    var tracker = TouchStateTracker()
+    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 20, y: 0))], at: 0.13)
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 40, y: 0))], at: 0.14)
+    _ = process(&tracker, [], at: 0.15)
+    expectEqual(process(&tracker, [], at: 0.21), .none,
+                "grace expiry with no reappearance just finalizes the lift silently")
+    _ = process(&tracker, [(id: 2, screen: CGPoint(x: 40, y: 0))], at: 0.30)
+    expectEqual(process(&tracker, [(id: 2, screen: CGPoint(x: 41, y: 0))], at: 0.31), .none,
+                "a genuinely new sequence re-arms the onset delay instead of resuming")
+}
+
+/// The dropout bridge only holds a drag (past `tapMaxDistance`) — a tap that
+/// happens to have already crossed into `.pointer` mode without real motion
+/// must still resolve the instant it lifts.
+private func testPointerModeTapNotDelayedByDropoutBridge() {
+    var tracker = TouchStateTracker()
+    _ = tracker.process(
+        contacts: [(id: 1, screen: .zero)], tapToClick: true, twoFingerScroll: true,
+        reverseScrollDirection: false, sensitivity: 1, now: 0)
+    _ = tracker.process(
+        contacts: [(id: 1, screen: CGPoint(x: 1, y: 0))], tapToClick: true, twoFingerScroll: true,
+        reverseScrollDirection: false, sensitivity: 1, now: 0.13)
+    expectEqual(
+        tracker.process(
+            contacts: [], tapToClick: true, twoFingerScroll: true,
+            reverseScrollDirection: false, sensitivity: 1, now: 0.14),
+        .tapClick,
+        "a tap that crossed into .pointer mode without real drag motion must still resolve immediately")
+}
+
+/// Two fingers a fixed distance apart, both shifted by `offset` — pure
+/// translation, no scale or angle change, to test the pan fallback in
+/// isolation from pinch/rotate.
+private func sweepPan(offset: Double) -> [(id: Int, screen: CGPoint)] {
+    [(id: 1, screen: CGPoint(x: offset - 20, y: 0)), (id: 2, screen: CGPoint(x: offset + 20, y: 0))]
+}
+
+/// Scroll, pinch, and rotate are independent toggles, not scroll-gated
+/// features: a pinch must still commit even with two-finger scroll off.
+private func testPinchCommitsWithTwoFingerScrollDisabled() {
+    var tracker = TouchStateTracker()
+    _ = tracker.process(
+        contacts: [(id: 1, screen: .zero)], tapToClick: false, twoFingerScroll: false,
+        reverseScrollDirection: false, sensitivity: 1, pinchZoom: true, now: 0)
+    _ = tracker.process(
+        contacts: contacts(distance: 20), tapToClick: false, twoFingerScroll: false,
+        reverseScrollDirection: false, sensitivity: 1, pinchZoom: true, now: 0.01)
+    expectEqual(
+        tracker.process(
+            contacts: contacts(distance: 30), tapToClick: false, twoFingerScroll: false,
+            reverseScrollDirection: false, sensitivity: 1, pinchZoom: true, now: 0.02),
+        magnify(0, phase: .began),
+        "pinch must commit even when two-finger scroll is disabled")
+}
+
+/// With two-finger scroll off, pan is not a candidate at all — pure
+/// translation (which would otherwise fall back to pan) must stay silent
+/// indefinitely rather than ever emit a scroll, even with pinch enabled and
+/// clearly not winning.
+private func testPanStaysSilentWithTwoFingerScrollDisabled() {
+    var tracker = TouchStateTracker()
+    _ = tracker.process(
+        contacts: [(id: 1, screen: .zero)], tapToClick: false, twoFingerScroll: false,
+        reverseScrollDirection: false, sensitivity: 1, pinchZoom: true, now: 0)
+    _ = tracker.process(
+        contacts: sweepPan(offset: 0), tapToClick: false, twoFingerScroll: false,
+        reverseScrollDirection: false, sensitivity: 1, pinchZoom: true, now: 0.01)
+    expectEqual(
+        tracker.process(
+            contacts: sweepPan(offset: 30), tapToClick: false, twoFingerScroll: false,
+            reverseScrollDirection: false, sensitivity: 1, pinchZoom: true, now: 0.03),
+        .none,
+        "pure translation must not fall back to pan when two-finger scroll is disabled")
+    expectEqual(
+        tracker.process(
+            contacts: sweepPan(offset: 60), tapToClick: false, twoFingerScroll: false,
+            reverseScrollDirection: false, sensitivity: 1, pinchZoom: true, now: 0.05),
+        .none,
+        "continued translation still must not fall back to pan")
+}
+
+/// Rotate must also commit on its own with two-finger scroll off.
+private func testRotateCommitsWithTwoFingerScrollDisabled() {
+    var tracker = TouchStateTracker()
+    let wide = rawPositions(distance: 700)
+    _ = tracker.process(
+        contacts: [(id: 1, screen: .zero)], tapToClick: false, twoFingerScroll: false,
+        reverseScrollDirection: false, sensitivity: 1, rotate: true,
+        rawPositions: wide, touchDiagonal: testTouchDiagonal, now: 0)
+    _ = tracker.process(
+        contacts: circleContacts(radius: 40, angle: 0), tapToClick: false, twoFingerScroll: false,
+        reverseScrollDirection: false, sensitivity: 1, rotate: true,
+        rawPositions: wide, touchDiagonal: testTouchDiagonal, now: 0.01)
+    expectEqual(
+        tracker.process(
+            contacts: circleContacts(radius: 40, angle: 0.30), tapToClick: false, twoFingerScroll: false,
+            reverseScrollDirection: false, sensitivity: 1, rotate: true,
+            rawPositions: wide, touchDiagonal: testTouchDiagonal, now: 0.10),
+        rotateOnly(0, phase: .began),
+        "rotate must commit even when two-finger scroll is disabled")
 }
 
 private func rawContact(
@@ -263,7 +398,7 @@ private func testRotateWideSwivelResolvesRotate() {
     // Elapsed time is now past the dwell window.
     expectEqual(
         rprocess(&tracker, circleContacts(radius: 40, angle: 0.30), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.10),
-        .rotate(rotation: 0, phase: .began),
+        rotateOnly(0, phase: .began),
         "a wide two-finger swivel clearing both the decide threshold and the dwell window must commit to rotate")
     let changed = rprocess(&tracker, circleContacts(radius: 40, angle: 0.50), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.12)
     expectRotateChanged(changed, "continued swiveling must emit a nonzero rotate delta")
@@ -271,20 +406,21 @@ private func testRotateWideSwivelResolvesRotate() {
     // clockwise in math convention) — screen coordinates are y-down, which
     // hardware testing 2026-08-08 confirmed flips the perceived direction,
     // so the emitted, corrected value must be negative here.
-    if case let .rotate(rotation, _) = changed {
-        expectEqual(rotation < 0, true, "an increasing raw angle must emit a negative (sign-corrected) rotation")
+    if case let .twoFingerGesture(_, .some(rotate)) = changed {
+        expectEqual(rotate.value < 0, true, "an increasing raw angle must emit a negative (sign-corrected) rotation")
     }
     expectEqual(
         rprocess(&tracker, [], rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.13),
-        .rotate(rotation: 0, phase: .ended),
+        rotateOnly(0, phase: .ended),
         "lifting fingers must close the rotate envelope, not a stray scroll end")
 }
 
 /// A real pinch with some incidental angle wobble, wide enough apart for
-/// rotate to be geometrically eligible, must still resolve `.pinch` — the
-/// regression `crossCandidateDominanceRatio` exists to prevent. Scale change
-/// here is well past `rotateDwellBypassDistance`, so this also exercises the
-/// dwell bypass for a fast, obvious gesture.
+/// rotate to be geometrically eligible, must still resolve pinch-only — the
+/// regression `companionSuppressionRatio` exists to prevent (scale change
+/// 30 vs tangential motion 11 here, ratio 0.37, below the 0.5 suppression
+/// bar). Scale change here is well past `rotateDwellBypassDistance`, so this
+/// also exercises the dwell bypass for a fast, obvious gesture.
 private func testRotateEnabledDoesNotRegressPinch() {
     var tracker = TouchStateTracker()
     let wide = rawPositions(distance: 700)
@@ -297,8 +433,51 @@ private func testRotateEnabledDoesNotRegressPinch() {
     _ = rprocess(&tracker, tilted(distance: 80, tilt: 0.05), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.01)
     expectEqual(
         rprocess(&tracker, tilted(distance: 110, tilt: 0.25), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.02),
-        .zoomMagnify(magnification: 0, phase: .began),
-        "a real pinch with incidental twist wobble must still resolve pinch when rotate is enabled")
+        magnify(0, phase: .began),
+        "a real pinch with incidental twist wobble must still resolve pinch-only when rotate is enabled")
+}
+
+/// The actual point of the redesign: comparable spread and twist at once
+/// must commit to *both* — a real trackpad's "magnify and rotate together"
+/// case, which the old exclusive design couldn't represent at all. Scale
+/// change 30 vs tangential motion 16.5 (ratio 0.55) both clear their own
+/// floor and sit above `companionSuppressionRatio`, so neither suppresses
+/// the other.
+private func testConcurrentPinchAndRotate() {
+    var tracker = TouchStateTracker()
+    let wide = rawPositions(distance: 700)
+    func spreadAndTwist(distance: Double, tilt: Double) -> [(id: Int, screen: CGPoint)] {
+        let half = distance / 2
+        let d = CGPoint(x: half * cos(tilt), y: half * sin(tilt))
+        return [(id: 1, screen: CGPoint(x: -d.x, y: -d.y)), (id: 2, screen: d)]
+    }
+    _ = rprocess(&tracker, [(id: 1, screen: .zero)], rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0)
+    _ = rprocess(&tracker, spreadAndTwist(distance: 80, tilt: 0), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.01)
+    // Past the dwell window (elapsed 0.09s), so this tests the qualify/
+    // suppression math, not the dwell gate.
+    expectEqual(
+        rprocess(&tracker, spreadAndTwist(distance: 110, tilt: 0.3), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.10),
+        .twoFingerGesture(
+            magnify: TouchStateTracker.GestureDelta(value: 0, phase: .began),
+            rotate: TouchStateTracker.GestureDelta(value: 0, phase: .began)),
+        "comparable spread and twist must commit to both pinch and rotate at once")
+    let changed = rprocess(&tracker, spreadAndTwist(distance: 130, tilt: 0.5), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.11)
+    guard case let .twoFingerGesture(magnify, rotate) = changed else {
+        failures += 1; checks += 1
+        FileHandle.standardError.write(Data("FAIL: expected a concurrent twoFingerGesture, got \(changed)\n".utf8))
+        return
+    }
+    checks += 1
+    if magnify == nil || rotate == nil {
+        failures += 1
+        FileHandle.standardError.write(Data("FAIL: continued concurrent motion must report both components, got magnify=\(String(describing: magnify)) rotate=\(String(describing: rotate))\n".utf8))
+    }
+    expectEqual(
+        rprocess(&tracker, [], rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.12),
+        .twoFingerGesture(
+            magnify: TouchStateTracker.GestureDelta(value: 0, phase: .ended),
+            rotate: TouchStateTracker.GestureDelta(value: 0, phase: .ended)),
+        "lifting fingers must close both envelopes at once")
 }
 
 /// A wide, diagonally-held pair translating together (the thumb-and-index
@@ -362,6 +541,12 @@ enum TouchStateTrackerTestRunner {
         testPinchMagnifyEnvelope()
         testPreCommitLiftHasNoScrollEnd()
         testSingleContactFrameDoesNotCommitPan()
+        testPointerDragBridgesShortDropout()
+        testPointerDragTearsDownAfterGraceExpires()
+        testPointerModeTapNotDelayedByDropoutBridge()
+        testPinchCommitsWithTwoFingerScrollDisabled()
+        testPanStaysSilentWithTwoFingerScrollDisabled()
+        testRotateCommitsWithTwoFingerScrollDisabled()
         testPalmRejectionOnCalibratedFamily()
         testPalmFilteringIsFamilySpecific()
         testSmartZoomDoubleTap()
@@ -372,6 +557,7 @@ enum TouchStateTrackerTestRunner {
         testRotateAnchoredArcResolvesPan()
         testRotateEnabledDoesNotRegressPinch()
         testRotateEnabledDoesNotRegressDiagonalPan()
+        testConcurrentPinchAndRotate()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

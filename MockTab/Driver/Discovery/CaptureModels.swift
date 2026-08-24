@@ -173,6 +173,41 @@ struct DiscoveryTouchPipeline: Codable {
         observedMinY = Swift.min(observedMinY ?? y, y)
         observedMaxY = Swift.max(observedMaxY ?? y, y)
     }
+
+    /// Largest same-ID frame-to-frame movement seen, in raw device units.
+    /// A finger cannot cross a large fraction of the surface in one ~10ms
+    /// report period; a value here that's a large fraction of touchMaxX/Y
+    /// is a contact "teleporting" — the signature of a noisy, wet, or dirty
+    /// capacitive surface reporting a spurious position, not a real touch.
+    /// Nil until two consecutive frames share a contact id.
+    var maxContactJump: Int?
+    /// Contacts that appeared and vanished again within a handful of
+    /// frames (see `TabletManager.shortLivedContactFrames`) — flickering
+    /// touchdown/liftoff rather than a deliberate tap or lift. A high count
+    /// here alongside a normal-looking `maxContactJump` still points at a
+    /// marginal surface: the symptom just shows up as chatter instead of
+    /// large jumps.
+    var shortLivedContacts: Int = 0
+
+    /// Longest run of consecutive frames, immediately before a contact
+    /// disappeared, where its reported position did not change at all while
+    /// still "down". A high value — motion frozen right up to the moment a
+    /// touch vanishes, rather than a genuine deliberate hold — is the
+    /// signature of the sensor's coordinate stalling (signal too weak to
+    /// update, likely as contact area collapses near a surface edge) before
+    /// the firmware finally reports liftoff. Neither `sensitivity` nor a
+    /// tighter touch-area crop can compensate for this: both only scale up
+    /// motion that's actually reported, and a frozen coordinate has no delta
+    /// left to scale. `stallAreaAtLift`/`stallX`/`stallY` capture the
+    /// contact area and raw position at that longest stall, so a cluster of
+    /// stalls at a consistent position/shrinking area supports the theory; a
+    /// scatter across the surface argues against it. All nil until some
+    /// contact both moves and later disappears.
+    var maxStallBeforeLift: Int?
+    var stallAreaAtLift: Int?
+    var stallX: Int?
+    var stallY: Int?
+
     /// Frames that reached the gesture tracker with at least one contact.
     var framesTracked: Int = 0
     /// Intents the tracker produced, by kind. All zero while `framesTracked`
@@ -183,6 +218,22 @@ struct DiscoveryTouchPipeline: Codable {
     var zooms: Int = 0
     var rotates: Int = 0
     var taps: Int = 0
+
+    /// How two-or-more-finger sequences resolved, tallied once per sequence
+    /// (at the moment it commits to a gesture, or at teardown if it never
+    /// commits to anything) — not once per frame, unlike the counts above.
+    /// Answers a question `zooms`/`rotates` alone cannot: whether a "gesture
+    /// didn't work" complaint is a *discrimination* failure (the sequence
+    /// resolved as pan when the user meant to pinch or rotate — check
+    /// `twoFingerResolvedPan` against expectations) or *non-detection*
+    /// (`twoFingerResolvedNone`, nothing ever committed at all). Distinct
+    /// mechanisms, distinct fixes: the former is a dominance/timing tuning
+    /// issue in `TouchStateTracker`, the latter suggests the gesture never
+    /// cleared its own threshold in the first place.
+    var twoFingerResolvedPan: Int = 0
+    var twoFingerResolvedPinch: Int = 0
+    var twoFingerResolvedRotate: Int = 0
+    var twoFingerResolvedNone: Int = 0
 
     /// True when the pipeline saw anything at all, so a pen-only capture can
     /// omit the block entirely.

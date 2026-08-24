@@ -917,6 +917,12 @@ final class InputInjector: @unchecked Sendable {
     /// Per-contact palm classification. HIDThread-owned alongside the
     /// tracker, so a palm can never enter its gesture state.
     var touchPalmRejector = TouchPalmRejector()
+    /// Whether the touch sequence currently in progress has had 2+ contacts
+    /// at some point, and whether it has committed to a gesture (pan/pinch/
+    /// rotate) yet. Purely for `DiscoveryTouchPipeline.twoFingerResolved*` —
+    /// see `injectTouch`'s use of these. Reset on every sequence teardown.
+    var touchSequenceSawTwoFingers = false
+    var touchSequenceCommitted = false
     /// CFAbsoluteTime when the pen last left proximity.  Touch is suppressed
     /// while the pen is in proximity and for a brief grace window after exit
     /// so palm-rejection bounces (finger contact arriving 1–2 frames after

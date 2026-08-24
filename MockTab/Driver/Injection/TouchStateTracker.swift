@@ -125,17 +125,23 @@ struct TouchStateTracker {
         case scroll         // two contacts: pan scroll and/or pinch-zoom
     }
 
-    /// Sticky two-finger sub-mode once significant motion is seen.
-    /// Pan vs pinch vs rotate is chosen once per sequence (same sticky
-    /// policy as Mode). Exclusive by design: a real trackpad can magnify
-    /// and rotate at once, this tracker cannot — twist-while-spreading
-    /// resolves to whichever dominates, never both. Documented limitation,
-    /// not a bug to chase.
+    /// Sticky two-finger sub-mode once significant motion is seen. Chosen
+    /// once per sequence (same sticky policy as Mode): `.pan` vs `.gesture`
+    /// doesn't change once committed, and within `.gesture`, which of
+    /// pinch/rotate are in play (`pinchInGesture`/`rotateInGesture`) is
+    /// fixed at the same commit, not re-evaluated frame to frame — a pinch
+    /// that grows a twist mid-sequence still resolves as pinch-only, a
+    /// known, deliberate v1 limitation, not a bug to chase.
+    ///
+    /// `.pan` is still exclusive with `.gesture`: translating the centroid
+    /// (pan) is a fundamentally different action from the fingers moving
+    /// relative to *each other* in place (pinch/rotate), and a real trackpad
+    /// treats them exclusively too. Pinch and rotate are not exclusive with
+    /// each other — see `pinchInGesture`/`rotateInGesture`.
     enum TwoFingerKind {
         case undecided
         case pan
-        case pinch
-        case rotate
+        case gesture
     }
 
     enum Intent: Equatable {
@@ -150,28 +156,49 @@ struct TouchStateTracker {
         /// (CG `kCGScrollWheelEventScrollPhase` values: 1=Began, 2=Changed,
         /// 4=Ended).  Sign convention follows the natural-scrolling setting.
         case scrollDelta(dx: Double, dy: Double, phase: ScrollPhase)
-        /// Pinch-zoom magnify delta + phase, mirroring `scrollDelta`'s
-        /// envelope. `magnification` is the exact relative growth of
+        /// Smart Zoom: two-finger double-tap, posted as a single one-shot
+        /// zoom-to-fit event — no phase envelope, unlike `twoFingerGesture`.
+        case smartZoom
+        /// Pinch-zoom and/or two-finger rotate, independently — a real
+        /// trackpad can magnify and rotate at once (see `TwoFingerKind`'s
+        /// doc comment), so this carries one optional, independently
+        /// phase-bracketed component per gesture rather than forcing a
+        /// choice between them. `nil` means that gesture isn't part of this
+        /// touch's committed set at all (see `pinchInGesture`/
+        /// `rotateInGesture`) *or* it is, but has nothing new to report this
+        /// frame (its own `.changed` phase carries no zero-delta frames,
+        /// same as the exclusive design this replaced) — the receiving
+        /// phase field on the non-nil side is what actually opens/closes
+        /// each stream; a still-active component simply isn't present in a
+        /// zero-delta frame.
+        ///
+        /// `magnify.magnification` is the exact relative growth of
         /// inter-finger distance this frame — (newDistance / oldDistance) - 1
         /// — which is what a real trackpad's magnify gesture reports, and
         /// what makes per-frame deltas compound to the correct total scale
         /// factor (Π(1 + dᵢ) telescopes to distance_final / distance_initial).
         /// Fingers spreading → positive.
-        case zoomMagnify(magnification: Double, phase: ScrollPhase)
-        /// Smart Zoom: two-finger double-tap, posted as a single one-shot
-        /// zoom-to-fit event — no phase envelope, unlike `zoomMagnify`.
-        case smartZoom
-        /// Two-finger rotate delta + phase, mirroring `zoomMagnify`'s
-        /// envelope. `rotation` is this frame's change in the pair's angle,
-        /// in radians, sign-corrected to match the actual direction of
-        /// finger twist as the user perceives it on screen — hardware-
-        /// confirmed 2026-08-08 that raw `atan2` reads backwards here (screen
+        ///
+        /// `rotate.rotation` is this frame's change in the pair's angle, in
+        /// radians, sign-corrected to match the actual direction of finger
+        /// twist as the user perceives it on screen — hardware-confirmed
+        /// 2026-08-08 that raw `atan2` reads backwards here (screen
         /// coordinates are y-down, which flips its usual y-up handedness).
         /// Left in radians deliberately: the CGEvent field's actual expected
         /// unit is unverified (see `postTouchRotate`'s doc comment), so any
         /// unit conversion belongs at the posting layer, not baked into this
         /// tracker's internal math.
-        case rotate(rotation: Double, phase: ScrollPhase)
+        case twoFingerGesture(magnify: GestureDelta?, rotate: GestureDelta?)
+    }
+
+    /// A pinch or rotate component's per-frame value and phase — same shape
+    /// for both, disambiguated by which `twoFingerGesture` argument label
+    /// it's under (`value` is a magnification for `magnify`, radians for
+    /// `rotate`). A plain tuple can't be used here: enum associated values
+    /// need a nominal `Equatable` type to synthesize `Intent`'s conformance.
+    struct GestureDelta: Equatable {
+        let value: Double
+        let phase: ScrollPhase
     }
 
     enum ScrollPhase: Int {
@@ -199,12 +226,26 @@ struct TouchStateTracker {
     /// possible (sequence has become a drag).
     private var tapMaxDelta: Double = 0
 
-    /// Last-emitted scroll phase, used to ensure we emit a single `.ended`
-    /// when the last contact lifts.
+    /// Last-emitted scroll phase for `.pan`, used to ensure we emit a single
+    /// `.ended` when the last contact lifts. Pinch/rotate track their own
+    /// phases separately — see `pinchPhase`/`rotatePhase`.
     private var lastScrollPhase: ScrollPhase = .ended
 
-    /// Sticky pan vs pinch vs rotate once motion crosses `twoFingerDecideDistance`.
+    /// Sticky pan vs gesture (pinch and/or rotate) once motion crosses
+    /// `twoFingerDecideDistance`.
     private var twoFingerKind: TwoFingerKind = .undecided
+    /// Whether pinch/rotate are part of the current `.gesture` sequence's
+    /// committed set — fixed at the commit decision, not re-evaluated per
+    /// frame (see `TwoFingerKind`'s doc comment). Meaningless while
+    /// `twoFingerKind != .gesture`.
+    private var pinchInGesture = false
+    private var rotateInGesture = false
+    /// Independent phase envelopes for the pinch and rotate components of a
+    /// `.gesture` sequence — each opens with its own `.began` when that
+    /// component is included at commit, and closes with its own `.ended` at
+    /// teardown, regardless of what the other component is doing.
+    private var pinchPhase: ScrollPhase = .ended
+    private var rotatePhase: ScrollPhase = .ended
     /// Last inter-finger distance in screen points (pinch tracking).
     private var lastPinchDistance: Double = 0
     /// Centroid / distance at the start of an undecided two-finger sequence.
@@ -265,6 +306,10 @@ struct TouchStateTracker {
     /// the first.
     private var lastTwoFingerTapEndTime: CFAbsoluteTime?
 
+    /// Set on the first empty-contacts frame seen mid-drag; bridges a brief
+    /// capacitive dropout so it isn't treated as a real lift. See `process`.
+    private var pendingPointerLiftoffTime: CFAbsoluteTime?
+
     // MARK: - Tunables
 
     /// Maximum drift (in screen points) that still counts as a tap.
@@ -279,23 +324,50 @@ struct TouchStateTracker {
     /// having dragged the cursor in the meantime.  Same trick trackpads use;
     /// the cost is pointer motion starting ~0.1 s late.
     static let onsetDelay: CFAbsoluteTime = 0.12
+    /// Grace window for a dropped touch report mid-drag before it's treated
+    /// as a real lift — bridges a brief capacitive signal loss (weak/slow
+    /// contact, worse near the surface edges) without losing the drag's
+    /// position or re-arming `onsetDelay`. Only applies once a drag is
+    /// already committed (past `tapMaxDistance`); taps and other gestures
+    /// still resolve immediately on lift. Below `onsetDelay` so a real quick
+    /// re-touch still reads as a fresh sequence, not a bridged one.
+    static let liftoffGraceDelay: CFAbsoluteTime = 0.05
     /// Motion (screen points) needed to commit pan vs pinch for a sequence.
     /// Slightly above finger-jitter so a sliding pan doesn't decide on noise.
     static let twoFingerDecideDistance: Double = 6.0
-    /// Pinch/rotate win only when their own signal clearly exceeds centroid
-    /// translation. Equal/noisy signal vs pan → stay pan (scroll). This is
-    /// the bar that protects "pan wins on ambiguity" — see
-    /// `crossCandidateDominanceRatio` for the separate, gentler bar pinch
-    /// and rotate use against *each other*.
+    /// Pinch/rotate qualify only when their own signal clearly exceeds
+    /// centroid translation. Equal/noisy signal vs pan → stay pan (scroll)
+    /// when pan is even available, `.none` otherwise (see `process`'s
+    /// `twoFingerScroll` guard). This is the bar that protects "pan wins on
+    /// ambiguity"; it does not compare pinch and rotate against each other —
+    /// see `pinchNoiseFloor`/`rotateNoiseFloor` for that.
     static let pinchDominanceRatio: Double = 1.75
-    /// Bar pinch and rotate must clear against each other (not against pan).
-    /// Deliberately gentler than `pinchDominanceRatio`: a real pinch has
-    /// some incidental angle jitter, a real twist has some incidental
-    /// separation drift, and requiring either to dominate the other by the
-    /// same 1.75× reserved for beating pan made a real pinch with a modest
-    /// twist wobble misclassify as pan once rotate was enabled — a pinch
-    /// regression, confirmed by hand-computed example before this was added.
-    static let crossCandidateDominanceRatio: Double = 1.0
+    /// Absolute floor (screen points, same unit as `twoFingerDecideDistance`)
+    /// each of pinch and rotate must independently clear before qualifying,
+    /// on top of beating pan by `pinchDominanceRatio`. Rotate's floor is
+    /// deliberately the stricter of the two: a document that tilts during a
+    /// clean zoom is a worse experience than a zoom that doesn't quite add
+    /// rotation. Not hardware-tuned — chosen at `twoFingerDecideDistance`
+    /// (the existing "not noise" bar) for pinch, 1.5× that for rotate;
+    /// revisit once this can be measured directly. On its own this floor
+    /// only screens out small-in-absolute-terms jitter; see
+    /// `companionSuppressionRatio` for the case both floors clear but one
+    /// signal is still negligible next to the other.
+    static let pinchNoiseFloor: Double = twoFingerDecideDistance
+    static let rotateNoiseFloor: Double = twoFingerDecideDistance * 1.5
+    /// When both pinch and rotate independently clear their own floor, the
+    /// smaller of the two is still suppressed as the larger one's incidental
+    /// companion (jitter/drift, not a second real gesture) unless it reaches
+    /// at least this fraction of the larger one's magnitude — verified
+    /// against a real-capture example (a pinch with genuine incidental
+    /// twist wobble: scale change 30, tangential motion 11, ratio 0.37 —
+    /// below this threshold, so rotate is correctly suppressed there).
+    /// Comparable signals (near this ratio or above) both survive, which is
+    /// what makes true concurrent pinch+rotate possible — and is strictly
+    /// more permissive to rotate than the exclusive dominance rule this
+    /// replaced: a near-tie that used to hand pinch an outright win (e.g.
+    /// tangential 25 vs scale 26) now clears suppression on both sides.
+    static let companionSuppressionRatio: Double = 0.5
     /// How far back to look for the fastest recent sample when seeding
     /// momentum release velocity — matches `PanScrollTracker.peakVelocityWindow`.
     static let peakVelocityWindow: CFAbsoluteTime = 0.06
@@ -432,9 +504,24 @@ struct TouchStateTracker {
         // that never outlived the onset delay can still be a tap (a tap is by
         // definition shorter than most onset windows).
         if contacts.isEmpty {
+            // Bridge a dropped report mid-drag instead of tearing the
+            // sequence down immediately: taps and other gestures still need
+            // their lift-triggered intent (tap/`.ended`) to fire right away,
+            // but a plain drag has nothing to flush, so it can wait out a
+            // short grace window before being treated as a real lift.
+            if mode == .pointer, tapMaxDelta >= Self.tapMaxDistance {
+                if let pending = pendingPointerLiftoffTime {
+                    if now - pending < Self.liftoffGraceDelay { return .none }
+                } else {
+                    pendingPointerLiftoffTime = now
+                    return .none
+                }
+            }
             let priorMode = mode
             let priorPhase = lastScrollPhase
             let priorKind = twoFingerKind
+            let priorPinchPhase = pinchPhase
+            let priorRotatePhase = rotatePhase
             let tap = tapToClick && (priorMode == .pointer || priorMode == .pending)
                 && now - tapStart <= Self.tapMaxDuration
                 && tapMaxDelta < Self.tapMaxDistance
@@ -451,15 +538,16 @@ struct TouchStateTracker {
             releaseVelocity = now - lastMotionTime <= Self.momentumRecencyWindow ? peak : .zero
             reset()
             switch priorMode {
-            case .scroll where priorKind == .pinch && priorPhase != .ended:
-                return .zoomMagnify(magnification: 0, phase: .ended)
-            // Must precede the generic pan-ended case below: rotate also
-            // leaves `lastScrollPhase` at .began/.changed once committed, so
-            // without this case a rotate teardown would emit a stray
-            // scrollDelta(.ended) instead and its own phase envelope would
-            // never close.
-            case .scroll where priorKind == .rotate && priorPhase != .ended:
-                return .rotate(rotation: 0, phase: .ended)
+            // Must precede the generic pan-ended case below: pinch/rotate
+            // also leave `lastScrollPhase` untouched (they track their own
+            // phases), so without this case an open pinch/rotate envelope
+            // would never close. Pinch and rotate close independently —
+            // either, both, or (if the sequence never actually committed to
+            // either) neither may be open here.
+            case .scroll where priorPinchPhase != .ended || priorRotatePhase != .ended:
+                return .twoFingerGesture(
+                    magnify: priorPinchPhase != .ended ? GestureDelta(value: 0, phase: .ended) : nil,
+                    rotate: priorRotatePhase != .ended ? GestureDelta(value: 0, phase: .ended) : nil)
             case .scroll where priorPhase != .ended:
                 return .scrollDelta(dx: 0, dy: 0, phase: .ended)
             case .scroll where twoFingerTap:
@@ -475,6 +563,7 @@ struct TouchStateTracker {
                 return .none
             }
         }
+        pendingPointerLiftoffTime = nil
 
         // First contact — hold in pending until the onset delay elapses, so
         // the opening frames of a sequence (where a palm smush or the second
@@ -491,14 +580,21 @@ struct TouchStateTracker {
         // Escalate to scroll once two contacts are present, if enabled.
         // From pending this means the fingers landed together (the normal
         // two-finger gesture) — the scroll starts with zero cursor drift.
+        // Scroll, pinch, and rotate are alternate resolutions of the same
+        // two-contact gesture, not scroll plus two features layered on top
+        // of it — so escalation itself must not require `twoFingerScroll`
+        // specifically. Any one of the three being enabled is enough to
+        // start tracking; which one(s) can actually win is decided per-frame
+        // below via each flag independently.
+        let anyTwoFingerGesture = twoFingerScroll || pinchZoom || rotate || smartZoom
         if mode == .pending || mode == .pointer, contacts.count >= 2 {
-            if twoFingerScroll {
+            if anyTwoFingerGesture {
                 mode = .scroll
                 let pair = Array(contacts.prefix(2))
                 lastPositions = Dictionary(uniqueKeysWithValues:
                     pair.map { ($0.id, $0.screen) })
                 tapAnchor = nil  // tap is off the table once we go to two fingers
-                twoFingerKind = (pinchZoom || rotate) ? .undecided : .pan
+                twoFingerKind = (pinchZoom || rotate || smartZoom) ? .undecided : .pan
                 lastPinchDistance = Self.distance(between: pair)
                 undecidedOriginCentroid = centroid(of: pair.map(\.screen))
                 undecidedOriginDistance = lastPinchDistance
@@ -523,14 +619,17 @@ struct TouchStateTracker {
                 // Defer Began until pan/pinch/rotate commits when
                 // discrimination is on — leave lastScrollPhase .ended so a
                 // lift before commit does not emit a stray scroll Ended.
-                if pinchZoom || rotate {
+                if twoFingerKind == .undecided {
                     return .none
                 }
+                // Only reachable with twoFingerScroll on and pinchZoom/rotate/
+                // smartZoom all off — the one case where pan is decided
+                // immediately rather than discriminated.
                 lastScrollPhase = .began
                 return .scrollDelta(dx: 0, dy: 0, phase: .began)
             } else if mode == .pointer {
-                // Two-finger scroll disabled: ignore the second contact,
-                // keep pointer-tracking the first.
+                // No two-finger gesture enabled at all: ignore the second
+                // contact, keep pointer-tracking the first.
                 if let first = contacts.first, lastPositions[first.id] == nil {
                     lastPositions[first.id] = first.screen
                 }
@@ -580,7 +679,12 @@ struct TouchStateTracker {
             let dx = newCentroid.x - oldCentroid.x
             let dy = newCentroid.y - oldCentroid.y
 
-            if pinchZoom || rotate {
+            // Not just `pinchZoom || rotate`: an .undecided sequence reaches
+            // here whenever any non-pan candidate was in play at escalation
+            // (see `anyTwoFingerGesture`), and an already-committed .pinch/
+            // .rotate sequence must keep being tracked here even if its flag
+            // were somehow toggled off mid-gesture.
+            if twoFingerKind != .pan {
                 if twoFingerKind == .undecided {
                     // A 1-contact frame collapses the centroid onto that single
                     // finger, roughly half the finger separation away from the
@@ -635,68 +739,102 @@ struct TouchStateTracker {
                     {
                         return .none
                     }
-                    // Prefer pan unless one rival clearly dominates *both*
-                    // others — the three-way generalization of the original
-                    // pinch-vs-pan dominance rule. Pan is the only rival both
-                    // others must beat by the full `pinchDominanceRatio`;
-                    // that's the bar that matters for "pan wins on
-                    // ambiguity" (including the anchored-finger-arc case,
-                    // which has real translation *and* real angle change at
-                    // once — documented, intentional limitation, not a bug).
-                    // Pinch-vs-rotate uses a gentler
-                    // `crossCandidateDominanceRatio`: a real pinch has some
-                    // incidental angle jitter and a real twist has some
-                    // incidental separation drift, and neither should be
-                    // able to veto the other at the same strict bar reserved
-                    // for outvoting pan.
-                    let pinchWins = pinchZoom
+                    // Pinch and rotate are evaluated independently — each
+                    // just needs to beat pan's translation by
+                    // `pinchDominanceRatio` (the bar that matters for "pan
+                    // wins on ambiguity", including the anchored-finger-arc
+                    // case — documented, intentional limitation, not a bug)
+                    // and clear its own absolute noise floor. No *exclusive*
+                    // bar between them: a real trackpad can magnify and
+                    // rotate at once (see `TwoFingerKind`'s doc comment), so
+                    // both may qualify together here.
+                    var pinchQualifies = pinchZoom
                         && totalScaleChange > totalTranslation * Self.pinchDominanceRatio
-                        && totalScaleChange > totalTangentialMotion * Self.crossCandidateDominanceRatio
-                    let rotateWins = rotate && rotateEligible
+                        && totalScaleChange >= Self.pinchNoiseFloor
+                    var rotateQualifies = rotate && rotateEligible
                         && totalTangentialMotion > totalTranslation * Self.pinchDominanceRatio
-                        && totalTangentialMotion > totalScaleChange * Self.crossCandidateDominanceRatio
+                        && totalTangentialMotion >= Self.rotateNoiseFloor
+                    // Independent floors alone let a much smaller companion
+                    // signal ride along with a much larger dominant one — a
+                    // real pinch's incidental angle jitter (or a real
+                    // twist's incidental separation drift) can each clear
+                    // their own floor without being a genuine second
+                    // gesture. Suppress whichever signal is small relative
+                    // to the other (below `companionSuppressionRatio` of
+                    // it); comparable signals still both survive, which is
+                    // what makes true concurrent pinch+rotate possible here.
+                    // Symmetric and gentler than the exclusive dominance
+                    // rule it replaced — a near-tie (say tangential 25 vs
+                    // scale 26, which used to hand pinch an outright win)
+                    // now clears suppression on both sides and fires both.
+                    if pinchQualifies, rotateQualifies {
+                        if totalTangentialMotion < totalScaleChange * Self.companionSuppressionRatio {
+                            rotateQualifies = false
+                        } else if totalScaleChange < totalTangentialMotion * Self.companionSuppressionRatio {
+                            pinchQualifies = false
+                        }
+                    }
+                    if pinchQualifies || rotateQualifies {
+                        twoFingerKind = .gesture
+                        pinchInGesture = pinchQualifies
+                        rotateInGesture = rotateQualifies
+                        if pinchQualifies { pinchPhase = .began }
+                        if rotateQualifies { rotatePhase = .began }
+                        return .twoFingerGesture(
+                            magnify: pinchQualifies ? GestureDelta(value: 0, phase: .began) : nil,
+                            rotate: rotateQualifies ? GestureDelta(value: 0, phase: .began) : nil)
+                    }
+                    // Neither qualified. Pan isn't a candidate at all when
+                    // twoFingerScroll is off — stay undecided (rather than
+                    // lock in a fallback that will never be emitted) so a
+                    // clearer pinch/rotate signal later in the same sequence
+                    // can still win.
+                    guard twoFingerScroll else { return .none }
                     lastScrollPhase = .began
-                    if pinchWins {
-                        twoFingerKind = .pinch
-                        return .zoomMagnify(magnification: 0, phase: .began)
-                    }
-                    if rotateWins {
-                        twoFingerKind = .rotate
-                        return .rotate(rotation: 0, phase: .began)
-                    }
                     twoFingerKind = .pan
                     return .scrollDelta(dx: 0, dy: 0, phase: .began)
                 }
-                if twoFingerKind == .pinch {
-                    guard scaleDelta != 0, oldDistance > 0 else { return .none }
-                    // Exact relative growth this frame — see the `zoomMagnify`
-                    // doc comment for why this is the correct (not approximate)
-                    // per-frame value for a multiplicative magnify stream.
-                    let magnification = scaleDelta / oldDistance
-                    lastScrollPhase = .changed
-                    return .zoomMagnify(magnification: magnification, phase: .changed)
-                }
-                if twoFingerKind == .rotate {
-                    // Hold the last angle on a 1-contact frame instead of
-                    // computing — same treatment `lastPinchDistance` gets
-                    // above, for the same reason (a lone survivor's angle
-                    // relative to nothing is meaningless and would invent a
-                    // huge delta).
-                    let sortedPair = current.count >= 2 ? current.sorted { $0.id < $1.id } : current
-                    let newAngle = current.count >= 2 ? Self.angle(between: sortedPair) : lastPairAngle
-                    let delta = Self.wrappedDelta(from: lastPairAngle, to: newAngle)
-                    lastPairAngle = newAngle
-                    guard delta != 0 else { return .none }
-                    lastScrollPhase = .changed
-                    // Negated: hardware-confirmed 2026-08-08 that raw atan2
-                    // delta reads backwards from the actual finger twist.
-                    // `atan2`'s "positive is counter-clockwise" convention
-                    // holds in math coordinates (y-up); screen coordinates
-                    // here are y-down, which flips the handedness. Internal
-                    // tracking (`lastPairAngle`, `undecidedCumulativeAngle`)
-                    // stays in the raw, unflipped convention — only the
-                    // emitted intent is corrected, right at the boundary.
-                    return .rotate(rotation: -delta, phase: .changed)
+                if twoFingerKind == .gesture {
+                    // Each component was fixed at commit (see
+                    // `TwoFingerKind`'s doc comment) and now just reports its
+                    // own per-frame delta, independently of the other.
+                    var magnify: GestureDelta?
+                    if pinchInGesture, scaleDelta != 0, oldDistance > 0 {
+                        // Exact relative growth this frame — see the
+                        // `twoFingerGesture` doc comment for why this is the
+                        // correct (not approximate) per-frame value for a
+                        // multiplicative magnify stream.
+                        pinchPhase = .changed
+                        magnify = GestureDelta(value: scaleDelta / oldDistance, phase: .changed)
+                    }
+                    var rotateComponent: GestureDelta?
+                    if rotateInGesture {
+                        // Hold the last angle on a 1-contact frame instead of
+                        // computing — same treatment `lastPinchDistance` gets
+                        // above, for the same reason (a lone survivor's angle
+                        // relative to nothing is meaningless and would
+                        // invent a huge delta).
+                        let sortedPair = current.count >= 2 ? current.sorted { $0.id < $1.id } : current
+                        let newAngle = current.count >= 2 ? Self.angle(between: sortedPair) : lastPairAngle
+                        let delta = Self.wrappedDelta(from: lastPairAngle, to: newAngle)
+                        lastPairAngle = newAngle
+                        if delta != 0 {
+                            rotatePhase = .changed
+                            // Negated: hardware-confirmed 2026-08-08 that raw
+                            // atan2 delta reads backwards from the actual
+                            // finger twist. `atan2`'s "positive is counter-
+                            // clockwise" convention holds in math coordinates
+                            // (y-up); screen coordinates here are y-down,
+                            // which flips the handedness. Internal tracking
+                            // (`lastPairAngle`, `undecidedCumulativeAngle`)
+                            // stays in the raw, unflipped convention — only
+                            // the emitted intent is corrected, right at the
+                            // boundary.
+                            rotateComponent = GestureDelta(value: -delta, phase: .changed)
+                        }
+                    }
+                    guard magnify != nil || rotateComponent != nil else { return .none }
+                    return .twoFingerGesture(magnify: magnify, rotate: rotateComponent)
                 }
             }
 
@@ -736,7 +874,11 @@ struct TouchStateTracker {
         }
     }
 
-    private mutating func reset() {
+    /// Also called directly by the injector to force an immediate hard reset
+    /// (e.g. pen arbitration taking over) — bypassing the drag-dropout grace
+    /// window in `process`, which only makes sense while touch itself is
+    /// still authoritative.
+    mutating func reset() {
         mode = .idle
         lastPositions.removeAll(keepingCapacity: true)
         tapAnchor = nil
@@ -744,6 +886,10 @@ struct TouchStateTracker {
         tapMaxDelta = 0
         lastScrollPhase = .ended
         twoFingerKind = .undecided
+        pinchInGesture = false
+        rotateInGesture = false
+        pinchPhase = .ended
+        rotatePhase = .ended
         lastPinchDistance = 0
         undecidedOriginCentroid = .zero
         undecidedOriginDistance = 0
@@ -753,6 +899,7 @@ struct TouchStateTracker {
         undecidedStartTime = 0
         recentVelocities.removeAll()
         lastFrameTime = 0
+        pendingPointerLiftoffTime = nil
         lastMotionTime = 0
     }
 
