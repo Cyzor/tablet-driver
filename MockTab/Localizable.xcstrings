@@ -18366,8 +18366,12 @@
         }
       }
     },
+    "Two fingers held well apart, swiveling about their center, rotate — the same as a trackpad rotate gesture. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own." : {
+
+    },
     "Two fingers held well apart, swiveling about their center, rotate — the same as a trackpad rotate gesture. Two fingers close together keep scrolling as usual." : {
       "comment" : "Help text for the \"Rotate\" toggle in the TouchView.",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -18415,6 +18419,7 @@
     },
     "Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch — works anywhere a trackpad pinch would, including Safari, Preview, and Photoshop." : {
       "comment" : "Help text for the \"Pinch to Zoom\" toggle in the TouchView.",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -18441,6 +18446,9 @@
           }
         }
       }
+    },
+    "Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch — works anywhere a trackpad pinch would, including Safari, Preview, and Photoshop. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own." : {
+
     },
     "Two rapid clicks in succession" : {
       "comment" : "A description of the \"Double Click\" button action.",
