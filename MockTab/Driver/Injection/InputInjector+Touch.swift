@@ -73,7 +73,7 @@ extension InputInjector {
         let penBusy = touchPenConfirmedBusy ||
             now - penProximityExitTime < Self.touchArbitrationGrace
         if penBusy {
-            TouchPipelineProbe.note { $0.framesPenBusy += 1 }
+            TouchPipelineProbe.note { $0.noteTouchPenBusy() }
             touchPalmRejector.reset()
             if !contacts.isEmpty {
                 // A bare reset() discards state without telling the app a
@@ -98,6 +98,8 @@ extension InputInjector {
             }
             return
         }
+
+        TouchPipelineProbe.note { $0.noteTouchNotPenBusy() }
 
         // Palm classification must happen before projection and gesture
         // tracking. On the IntuosV2 touch family it preserves a simultaneous

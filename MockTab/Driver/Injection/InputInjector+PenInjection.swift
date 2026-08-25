@@ -19,6 +19,7 @@ extension InputInjector {
     func inject(point: TabletPoint, settings: TabletSettings?) {
         rearmWatchdog()
         lastPenInjectCallAt = Date()
+        TouchPipelineProbe.note { $0.framesPenDelivered += 1 }
         // The snapshot is seeded synchronously in DeviceContext.observeInjectionSnapshot()
         // before any HID report can arrive, so this guard is defense-in-depth.
         guard let snap = injectionSnapshot else { return }
@@ -144,6 +145,7 @@ extension InputInjector {
                     eraser: point.eraser)
             }
             if point.inProximity {
+                TouchPipelineProbe.note { $0.penProximityEnters += 1 }
                 activeToolIsEraser = point.eraser
                 lastEraserMode = point.eraser
                 smoother.smoothingStrength = tool.smoothingStrength
@@ -151,6 +153,7 @@ extension InputInjector {
                 lastProximity = true
                 proximityConfirmStartTime = CFAbsoluteTimeGetCurrent()
             } else {
+                TouchPipelineProbe.note { $0.penProximityExits += 1 }
                 commitProximityExit(snap: snap)
             }
         }

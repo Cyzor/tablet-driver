@@ -142,6 +142,42 @@ struct DiscoveryTouchPipeline: Codable {
     /// `touchArbitrationGrace`). A large count here with the pen untouched is
     /// the signature of a latched proximity state.
     var framesPenBusy: Int = 0
+    /// Pen frames actually delivered to `InputInjector.inject(point:settings:)`
+    /// during this capture — i.e. real proximity/tip data flowing, not just
+    /// the arbitration flag. Compared against `framesPenBusy`: pen frames
+    /// streaming continuously while `framesPenBusy` is high means arbitration
+    /// is correctly reacting to genuine sustained proximity (the pen really
+    /// is held in-hand throughout a touch gesture); near-zero pen frames
+    /// during a long busy run instead means `touchPenConfirmedBusy` latched
+    /// stuck true with nothing left to justify it. Same mechanism, opposite
+    /// fixes — see `longestPenBusyStreak`.
+    var framesPenDelivered: Int = 0
+    /// Longest unbroken run of touch frames dropped by pen-busy arbitration
+    /// in a row, with no non-busy touch frame in between.
+    var longestPenBusyStreak: Int = 0
+    var currentPenBusyStreak: Int = 0
+    /// Count of `point.inProximity` transitions seen by
+    /// `InputInjector.inject(point:settings:)`, each direction tallied
+    /// separately. `commitProximityExit` — the only thing that clears
+    /// `touchPenConfirmedBusy` for a non-Xencelabs device — fires only on an
+    /// exit transition. `penProximityEnters` far outrunning
+    /// `penProximityExits` means exit frames are being lost somewhere
+    /// between decode and `inject` (a real dispatch/decoder bug, distinct
+    /// from arbitration policy); the two staying roughly equal instead means
+    /// proximity is genuinely toggling as reported and any long busy streak
+    /// reflects the pen really being held in range that whole time.
+    var penProximityEnters: Int = 0
+    var penProximityExits: Int = 0
+
+    mutating func noteTouchPenBusy() {
+        framesPenBusy += 1
+        currentPenBusyStreak += 1
+        longestPenBusyStreak = Swift.max(longestPenBusyStreak, currentPenBusyStreak)
+    }
+
+    mutating func noteTouchNotPenBusy() {
+        currentPenBusyStreak = 0
+    }
     /// Contacts removed by `TouchPalmRejector`. Only ever nonzero on the
     /// calibrated PTH-660/860 family.
     var contactsPalmRejected: Int = 0
@@ -234,6 +270,26 @@ struct DiscoveryTouchPipeline: Codable {
     var twoFingerResolvedPinch: Int = 0
     var twoFingerResolvedRotate: Int = 0
     var twoFingerResolvedNone: Int = 0
+
+    /// Largest combined pen+touch frame count seen in one Bluetooth-batched
+    /// HID report (`BatchFramePacer`/`WacomKnownDevice.dispatchBatch`), and
+    /// the number of batches at or above `largeBatchThreshold` (6 — bigger
+    /// than the 4-5 pure-pen batches this pacer was originally measured
+    /// against). `perFrameDelayNs` is the report's real interval divided by
+    /// this count: a report combining several pen frames with several touch
+    /// frames (pen held near the tablet during a touch gesture) drives the
+    /// count well past pure-pen batches, over-slicing the interval and
+    /// delaying the tail frame much longer than pacing was designed for.
+    /// Answers, from a single capture, whether "stalls only when pen is near
+    /// touch" tracks batch size the way that theory predicts.
+    var maxBatchFrameCount: Int = 0
+    var largeBatchCount: Int = 0
+    static let largeBatchThreshold = 6
+
+    mutating func noteBatch(frameCount: Int) {
+        maxBatchFrameCount = Swift.max(maxBatchFrameCount, frameCount)
+        if frameCount >= Self.largeBatchThreshold { largeBatchCount += 1 }
+    }
 
     /// True when the pipeline saw anything at all, so a pen-only capture can
     /// omit the block entirely.

@@ -1540,6 +1540,23 @@ final class WacomKnownDevice: TabletDevice {
         // lifts happened to line up this way. Confirmed 2026-08-22.
         batchFramePacer.flush()
 
+        if !frames.isEmpty {
+            TouchPipelineProbe.note { $0.noteBatch(frameCount: frames.count) }
+        }
+
+        // Stamped on every report, single-frame or not — a stream that's
+        // mostly single-frame reports (touch-heavy PTH-860 BT traffic, ~89%
+        // in a measured capture) used to only update this on the rare
+        // multi-frame report, so `measuredIntervalNs` below measured the
+        // span since the last *multi-frame* report — often several single-
+        // frame reports back, and often past `maxPlausibleIntervalNs` — not
+        // this report's real interval. That produced wildly wrong
+        // `perFrameDelayNs`, which fed skewed interpolated timestamps into
+        // gesture qualification (rotateMinDwell etc.) on top of the visible
+        // lag. Confirmed 2026-08-25 against a PTH-860 BT capture.
+        let previousBatchReportTimestampNs = lastBatchReportTimestampNs
+        lastBatchReportTimestampNs = reportTimestampNs
+
         guard let first = frames.first else { return false }
         guard frames.count > 1 else {
             // The overwhelmingly common case (USB, and any single-sample BT
@@ -1550,9 +1567,8 @@ final class WacomKnownDevice: TabletDevice {
         }
 
         let measuredIntervalNs =
-            lastBatchReportTimestampNs != 0 && reportTimestampNs > lastBatchReportTimestampNs
-            ? reportTimestampNs - lastBatchReportTimestampNs : 0
-        lastBatchReportTimestampNs = reportTimestampNs
+            previousBatchReportTimestampNs != 0 && reportTimestampNs > previousBatchReportTimestampNs
+            ? reportTimestampNs - previousBatchReportTimestampNs : 0
 
         // Plausible steady-state batch interval band. Below it: not real
         // batching (clock noise). Above it: a stall/reconnect/dongle hiccup
