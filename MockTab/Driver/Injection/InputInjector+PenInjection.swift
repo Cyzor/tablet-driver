@@ -166,6 +166,14 @@ extension InputInjector {
             tipDown || CFAbsoluteTimeGetCurrent() - proximityConfirmStartTime >= Self.touchBusyHoldOff
         {
             touchPenConfirmedBusy = true
+            touchPenBusyConfirmedAt = CFAbsoluteTimeGetCurrent()
+            touchPenBusyHadTipSinceConfirmed = tipDown
+        }
+        // See `staleBusyTimeout`'s declaration — any real tip contact during
+        // an already-confirmed busy episode marks it as genuine pen use, not
+        // idle ambiguous proximity, regardless of how it started.
+        if touchPenConfirmedBusy, tipDown {
+            touchPenBusyHadTipSinceConfirmed = true
         }
 
         // ── Eraser/tip flip (while in proximity) ───────────────────────────────
@@ -609,6 +617,8 @@ extension InputInjector {
             penProximityExitTime = CFAbsoluteTimeGetCurrent()
         }
         touchPenConfirmedBusy = false
+        touchPenBusyConfirmedAt = 0
+        touchPenBusyHadTipSinceConfirmed = false
         lastProximity = false
 
         // Release any barrel buttons still down at exit, finalizing any

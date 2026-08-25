@@ -972,6 +972,44 @@ final class InputInjector: @unchecked Sendable {
     /// a genuine stroke. Bypassed entirely by tip contact — see `inject()`.
     static let touchBusyHoldOff: CFAbsoluteTime = 0.15
 
+    /// Wall-clock time `touchPenConfirmedBusy` most recently flipped true.
+    var touchPenBusyConfirmedAt: CFAbsoluteTime = 0
+    /// Whether the pen has actually made tip contact since this busy episode
+    /// was confirmed. See `staleBusyTimeout`'s doc comment — a busy episode
+    /// with no tip contact for that long is a pen sitting idle in ambiguous
+    /// range, not one about to draw.
+    var touchPenBusyHadTipSinceConfirmed: Bool = false
+    /// How long `touchPenConfirmedBusy` may stay true with no tip contact at
+    /// all before touch arbitration treats it as stale and lets touch
+    /// through again, even though the pen technically remains "confirmed
+    /// busy" underneath.
+    ///
+    /// Exists for Bluetooth's wireless proximity signal, which — unlike
+    /// USB's electrically solid on/off transition — can sit in an ambiguous,
+    /// neither-clearly-in-nor-out state for many seconds at a stretch (a
+    /// PTH-860 BT capture measured only 1.1% of reports carrying a clean
+    /// "definitely gone" flag during such a stretch, vs. 74% empty or
+    /// boundary-noise; confirmed 2026-08-25). The decoder deliberately does
+    /// not exit proximity during that ambiguity — an earlier, stricter
+    /// design that did could permanently kill proximity when the pen's
+    /// later recovery didn't produce a clean re-entry signal, which was
+    /// worse. So on Bluetooth, a hand's natural motion during a two-finger
+    /// touch gesture can hold the pen in this ambiguous zone — genuinely
+    /// reported as "in proximity" the whole time — for far longer than the
+    /// 150ms `touchBusyHoldOff` was ever meant to bridge, leaving touch
+    /// blocked for the duration even though the user has no intention of
+    /// drawing. `touchBusyHoldOff` alone can't distinguish "about to draw"
+    /// from "ambiguously near, doing nothing," because both look identical
+    /// for the first 150ms; this timeout is the distinguishing signal for
+    /// everything past that point. Chosen well above any reasonable
+    /// hover-before-a-stroke pause, so a user who is genuinely about to draw
+    /// is never interrupted — this only fires for a pen that has done
+    /// nothing at all for multiple seconds. A single real tip-down at any
+    /// point resets it instantly (see `touchPenBusyHadTipSinceConfirmed`),
+    /// so the moment the user actually starts drawing, touch is blocked
+    /// again with no perceptible delay.
+    static let staleBusyTimeout: CFAbsoluteTime = 3.0
+
     // ── Screen-edge pinning (Dock reveal / hot corners) ─────────────────────
     // A hidden Dock and hot corners never trigger from injected moves that
     // stop at the integer bounds edge; the OS detector wants the pointer

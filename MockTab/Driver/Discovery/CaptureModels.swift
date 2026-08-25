@@ -168,6 +168,12 @@ struct DiscoveryTouchPipeline: Codable {
     /// reflects the pen really being held in range that whole time.
     var penProximityEnters: Int = 0
     var penProximityExits: Int = 0
+    /// Touch frames let through by the `staleBusyTimeout` escape hatch —
+    /// i.e. `touchPenConfirmedBusy` was true, but with no tip contact for
+    /// long enough that arbitration treated it as an idle, ambiguously-near
+    /// pen rather than genuine use. Nonzero confirms the mechanism actually
+    /// engaged during a capture.
+    var framesStaleBusyRecovered: Int = 0
 
     mutating func noteTouchPenBusy() {
         framesPenBusy += 1

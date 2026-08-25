@@ -70,8 +70,21 @@ extension InputInjector {
         // per-app event arbitration was inconsistent.  Git history has the
         // prototype if another attempt is ever made.
         let now = CFAbsoluteTimeGetCurrent()
-        let penBusy = touchPenConfirmedBusy ||
+        // `staleBusy` is much narrower than that prototype: it only lets
+        // touch through once a busy pen has sat with no tip contact at all
+        // for `staleBusyTimeout`, which is specifically the "ambiguous
+        // Bluetooth proximity, pen not actually being used" case documented
+        // at `touchPenBusyConfirmedAt`'s declaration — not concurrent
+        // touch-while-drawing, which is still excluded by `touchPenConfirmedBusy`
+        // continuing to gate every tip-down.
+        let staleBusy = touchPenConfirmedBusy
+            && !touchPenBusyHadTipSinceConfirmed
+            && now - touchPenBusyConfirmedAt >= Self.staleBusyTimeout
+        let penBusy = (touchPenConfirmedBusy && !staleBusy) ||
             now - penProximityExitTime < Self.touchArbitrationGrace
+        if staleBusy, !penBusy {
+            TouchPipelineProbe.note { $0.framesStaleBusyRecovered += 1 }
+        }
         if penBusy {
             TouchPipelineProbe.note { $0.noteTouchPenBusy() }
             touchPalmRejector.reset()
