@@ -505,6 +505,9 @@
         }
       }
     },
+    "%@" : {
+      "comment" : "Build date label in about view"
+    },
     "%@ · %@" : {
       "localizations" : {
         "en" : {

@@ -17,6 +17,13 @@ struct AboutView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?.?"
     }
 
+    /// Stamped by the "Stamp Build Date" build phase on every build (Debug,
+    /// Release, or Archive) — not a version-bump script's business, so it
+    /// stays accurate for a local Cmd-R build even between releases.
+    private var buildDate: String? {
+        Bundle.main.object(forInfoDictionaryKey: "MockTabBuildDate") as? String
+    }
+
     private var copyrightYears: String {
         let startYear = 2026
         let currentYear = Calendar.current.component(.year, from: Date())
@@ -94,6 +101,12 @@ struct AboutView: View {
             }
             .appFont(.settingsLabel)
             .foregroundColor(.secondary)
+
+            if let buildDate {
+                Text(String(localized: "\(buildDate)", comment: "Build date label in about view"))
+                    .appFont(.settingsBadge)
+                    .foregroundColor(.secondary)
+            }
 
             Divider()
                 .frame(maxWidth: 220)
