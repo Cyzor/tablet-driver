@@ -690,8 +690,23 @@ struct TouchStateTracker {
                     }
 
                     let decide = Self.twoFingerDecideDistance
+                    // Tangential motion's own leg uses `rotateNoiseFloor`
+                    // (9.0), not `decide` (6.0): rotate's actual
+                    // qualification bar below is the higher floor, so
+                    // ending the "still just landing noise" wait at the
+                    // lower `decide` opened a dead zone — tangential motion
+                    // between 6 and 9 stopped the wait but couldn't yet
+                    // qualify, and neither pinch nor pan had cleared their
+                    // own bars either, so the sequence fell through to the
+                    // "neither qualified" pan default below regardless.
+                    // That default only makes sense once every live
+                    // candidate has had a real chance to clear its own bar
+                    // — confirmed against hardware captures (2026-08-25)
+                    // showing genuine rotate gestures losing the race to an
+                    // instant, premature pan commit before tangential
+                    // motion ever reached 9.
                     if totalScaleChange < decide, totalTranslation < decide,
-                        totalTangentialMotion < decide
+                        totalTangentialMotion < Self.rotateNoiseFloor
                     {
                         return .none
                     }
