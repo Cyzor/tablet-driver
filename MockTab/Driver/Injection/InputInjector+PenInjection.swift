@@ -18,6 +18,7 @@ extension InputInjector {
 
     func inject(point: TabletPoint, settings: TabletSettings?) {
         rearmWatchdog()
+        lastPenInjectCallAt = Date()
         // The snapshot is seeded synchronously in DeviceContext.observeInjectionSnapshot()
         // before any HID report can arrive, so this guard is defense-in-depth.
         guard let snap = injectionSnapshot else { return }

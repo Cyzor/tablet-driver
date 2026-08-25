@@ -646,6 +646,14 @@ final class InputInjector: @unchecked Sendable {
     /// Timestamp of the last tablet HID report (inject / injectAux / injectMouseButtons).
     /// Stamped inside rearmWatchdog(), which every entry point calls.
     private var lastInjectCallAt: Date = .distantPast
+    /// Timestamp of the last *pen* HID report specifically. Stamped only from
+    /// `inject(point:settings:)`, the pen path — unlike `lastInjectCallAt`,
+    /// touch traffic never refreshes this. `checkLeakWatchdog`'s stuck-proximity
+    /// backstop needs it: a two-finger gesture on Bluetooth streams touch
+    /// reports continuously, which kept `lastInjectCallAt` fresh and left the
+    /// watchdog blind to a pen stream that had actually gone silent — the
+    /// exact case (touch active, pen stuck busy) it exists to catch.
+    var lastPenInjectCallAt: Date = .distantPast
 
     // MARK: - Physical modifier state tap
     //
@@ -723,6 +731,7 @@ final class InputInjector: @unchecked Sendable {
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
             guard let self else { return }
             let idleInterval = Date().timeIntervalSince(self.lastInjectCallAt)
+            let penIdleInterval = Date().timeIntervalSince(self.lastPenInjectCallAt)
 
             // Stuck-pen-proximity backstop. Confirmed on hardware
             // (2026-08-22, raw HID capture against a live BT session): a
@@ -741,10 +750,19 @@ final class InputInjector: @unchecked Sendable {
             // long while it's still true is unambiguous — a pen genuinely in
             // proximity streams at 100+ Hz — so force the exit rather than
             // leave the injector stuck until the process restarts.
-            if self.lastProximity, idleInterval > Self.stuckProximityTimeout,
+            //
+            // Gated on `penIdleInterval`, not the generic `idleInterval`
+            // (2026-08-24, found from a BT capture where touch frames were
+            // 85-90% blocked by a stuck `lastProximity` for the whole
+            // session): a two-finger gesture keeps touch reports streaming
+            // continuously, which keeps `lastInjectCallAt` fresh and this
+            // watchdog blind, even though the pen stream itself — the thing
+            // whose silence actually proves proximity is stuck — has gone
+            // quiet. Touch traffic must never mask a stuck pen.
+            if self.lastProximity, penIdleInterval > Self.stuckProximityTimeout,
                 let snap = self.injectionSnapshot
             {
-                injectLog.notice("leak-watchdog: forcing stuck pen-proximity exit (idle \(Int(idleInterval))s)")
+                injectLog.notice("leak-watchdog: forcing stuck pen-proximity exit (pen idle \(Int(penIdleInterval))s)")
                 self.commitProximityExit(snap: snap)
             }
 

@@ -76,7 +76,25 @@ extension InputInjector {
             TouchPipelineProbe.note { $0.framesPenBusy += 1 }
             touchPalmRejector.reset()
             if !contacts.isEmpty {
-                touchTracker.reset()
+                // A bare reset() discards state without telling the app a
+                // gesture in progress ever ended — the app's own recognizer
+                // (e.g. Krita's pinch/rotate handler) is left waiting for a
+                // phase-ended event that will now never come, so it reads as
+                // permanently "stuck engaged" and rejects the next gesture.
+                // Wind down through the same path a real all-fingers-lifted
+                // frame would take, so any open magnify/rotate/scroll phase
+                // closes properly before the state is dropped.
+                let windDown = touchTracker.process(
+                    contacts: [],
+                    tapToClick: snap.tapToClick,
+                    twoFingerScroll: snap.twoFingerScroll,
+                    reverseScrollDirection: snap.reverseScrollDirection,
+                    sensitivity: snap.touchSensitivity,
+                    pinchZoom: snap.pinchZoomEnabled,
+                    smartZoom: snap.smartZoomEnabled,
+                    rotate: snap.rotateEnabled,
+                    now: now)
+                handleTouchIntent(windDown, snap: snap, settings: settings)
             }
             return
         }
@@ -205,10 +223,21 @@ extension InputInjector {
             touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
             now: now)
 
-        // Final stage of the pipeline probe. Counted per resolved intent, not
-        // per posted CGEvent: a gesture that reaches here and commits to a
-        // mode is working as far as this diagnostic is concerned, and the
-        // post helpers below have their own failure paths.
+        handleTouchIntent(intent, snap: snap, settings: settings)
+    }
+
+    /// Translates a resolved `Intent` into CGEvents. Shared by the normal
+    /// per-frame path above and by `injectTouch`'s pen-arbitration branch,
+    /// which feeds it a synthetic all-fingers-lifted wind-down intent so an
+    /// open gesture phase always closes instead of vanishing mid-stream.
+    private func handleTouchIntent(
+        _ intent: TouchStateTracker.Intent,
+        snap: InjectionSnapshot, settings: TabletSettings?
+    ) {
+        // Counted per resolved intent, not per posted CGEvent: a gesture
+        // that reaches here and commits to a mode is working as far as this
+        // diagnostic is concerned, and the post helpers below have their
+        // own failure paths.
         switch intent {
         case .none:
             return
