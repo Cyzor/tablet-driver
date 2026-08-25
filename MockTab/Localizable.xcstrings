@@ -506,7 +506,27 @@
       }
     },
     "%@" : {
-      "comment" : "Build date label in about view"
+      "comment" : "Build date label in about view",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        }
+      }
     },
     "%@ · %@" : {
       "localizations" : {
@@ -18370,7 +18390,27 @@
       }
     },
     "Two fingers held well apart, swiveling about their center, rotate — the same as a trackpad rotate gesture. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own." : {
-
+      "comment" : "Help text for the \"Rotate\" toggle in the TouchView.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Zwei Finger, die weit auseinander liegen und sich um ihre Mitte drehen, rotieren – genau wie die Dreh-Geste am Trackpad. Unabhängig von Zwei-Finger-Scrollen: Scrollen, Zoomen und Rotieren sind alternative Deutungen derselben Zwei-Finger-Geste, sodass jede einzeln ein- oder ausgeschaltet werden kann."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Dos dedos bien separados que giran alrededor de su centro rotan, igual que el gesto de girar de un trackpad. Independiente del desplazamiento con dos dedos: desplazamiento, pellizco y rotación son lecturas alternativas del mismo gesto de dos dedos, por lo que cada uno se puede activar o desactivar por separado."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "2本指を大きく離して中心を軸に回すと回転します。トラックパッドの回転ジェスチャーと同じ動作です。2本指スクロールとは独立しています。スクロール、ピンチ、回転は同じ2本指ジェスチャーの異なる解釈であり、それぞれを個別にオン・オフできます。"
+          }
+        }
+      }
     },
     "Two fingers held well apart, swiveling about their center, rotate — the same as a trackpad rotate gesture. Two fingers close together keep scrolling as usual." : {
       "comment" : "Help text for the \"Rotate\" toggle in the TouchView.",
@@ -18451,7 +18491,27 @@
       }
     },
     "Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch — works anywhere a trackpad pinch would, including Safari, Preview, and Photoshop. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own." : {
-
+      "comment" : "Help text for the \"Pinch to Zoom\" toggle in the TouchView.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Zwei Finger, die sich spreizen oder zusammenziehen, zoomen hinein oder heraus – genau wie eine Trackpad-Zieh-Geste. Funktioniert überall dort, wo eine Trackpad-Zieh-Geste funktionieren würde, darunter Safari, Vorschau und Photoshop. Unabhängig von Zwei-Finger-Scrollen: Scrollen, Zoomen und Rotieren sind alternative Deutungen derselben Zwei-Finger-Geste, sodass jede einzeln ein- oder ausgeschaltet werden kann."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Separar o juntar dos dedos amplía o reduce el zoom, igual que un pellizco de trackpad; funciona en cualquier lugar donde funcionaría un pellizco de trackpad, incluidos Safari, Vista Previa y Photoshop. Independiente del desplazamiento con dos dedos: desplazamiento, pellizco y rotación son lecturas alternativas del mismo gesto de dos dedos, por lo que cada uno se puede activar o desactivar por separado."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "2本指を広げたりつまんだりすると、トラックパッドのピンチ操作と同じようにズームイン・ズームアウトします。Safari、プレビュー、Photoshopなど、トラックパッドのピンチが使える場所ならどこでも動作します。2本指スクロールとは独立しています。スクロール、ピンチ、回転は同じ2本指ジェスチャーの異なる解釈であり、それぞれを個別にオン・オフできます。"
+          }
+        }
+      }
     },
     "Two rapid clicks in succession" : {
       "comment" : "A description of the \"Double Click\" button action.",

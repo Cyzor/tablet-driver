@@ -123,6 +123,15 @@ final class WacomKnownDevice: TabletDevice {
     /// the primary (0xFF00) interface doesn't declare the control reports.
     private var secondaryDevice: IOHIDDevice?
 
+    /// `.intuosV1` only: whichever registered interface actually declares a
+    /// Feature report (see `hasAnyFeatureReport`). Set once, in `open()` or
+    /// `registerDevice()`, whichever finds a qualifying interface first.
+    /// `setRingLED` and the init-step retry in `registerDevice()` target this
+    /// instead of `device` — `device` is just "whichever interface won the
+    /// enumeration race," which for this family isn't guaranteed to be the
+    /// one that can accept feature writes.
+    private var intuosV1CapableDevice: IOHIDDevice?
+
     /// Vendor writes issued before the vendor-tunnel interface existed.
     ///
     /// Quick Keys enumerates its decorative digitizer interface first, so
@@ -336,7 +345,22 @@ final class WacomKnownDevice: TabletDevice {
         // silently discarded until the link is up, so it is re-run when 0x80/0x02
         // confirms link-up (see the wireless-ready handler below).
         if !isBluetooth {
-            executeInitSteps()
+            // `.intuosV1` multi-interface devices (PTH-850, ACK-40401) have no
+            // DeviceRouter deferral guaranteeing `device` is the feature-capable
+            // interface — see `hasAnyFeatureReport`. Only send here if it
+            // actually is; otherwise wait for the capable sibling to arrive via
+            // registerDevice() rather than firing a write this interface will
+            // just NAK.
+            if deviceSpec.parser == .intuosV1 {
+                if hasAnyFeatureReport(device) {
+                    intuosV1CapableDevice = device
+                    executeInitSteps()
+                } else {
+                    logger.info("\(name, privacy: .public): primary interface declares no feature reports — deferring init to a sibling interface via registerDevice()")
+                }
+            } else {
+                executeInitSteps()
+            }
 
             // Query hardware serial from WACOM_REPORT_USB (Report ID 0x03) for device
             // unification: same physical tablet via USB, BT, or dongle has the same serial.
@@ -398,6 +422,28 @@ final class WacomKnownDevice: TabletDevice {
         }
     }
 
+    /// True if `candidate`'s HID descriptor declares any Feature report at all.
+    ///
+    /// `.intuosV1` multi-interface devices with `seizeUSB: false` (PTH-850 and
+    /// the ACK-40401 dongle are the only `hasFingerTouch` ones today) have no
+    /// `DeviceRouter` deferral to guarantee which physical interface becomes
+    /// `device` — unlike `.intuosV2`, where `seizeUSB: true` always defers the
+    /// non-vendor interface. So `device` may land on PTH-850's 0xFF00 touch
+    /// interface, which declares only `input:0x02` — no feature capability at
+    /// all — while the pen interface (0x0001, `feature:0x02`…`0xDD`) is the
+    /// one that can actually accept the `[0x02, 0x02]` data-mode init and the
+    /// `0x20` LED-control write. Used to pick the right target instead of
+    /// firing a doomed `hidSetReport` (confirmed live 2026-08-25: repeated
+    /// `initStep[0] failed: 0xe0005000` / `IntuosV1 LED slot=0 failed:
+    /// 0xe0005000` on a session where a raw HID capture showed zero touch
+    /// containers ever arriving — the sensor was simply never armed).
+    private func hasAnyFeatureReport(_ candidate: IOHIDDevice) -> Bool {
+        guard let hex = HIDDescriptorReader.read(candidate).rawHex,
+            let layout = try? HIDReportDescriptorParser.parse(hex: hex)
+        else { return false }
+        return layout.reports.contains { $0.direction == .feature }
+    }
+
     /// Used for multi-interface devices (e.g. ACK-40401 wireless dongle) that
     /// enumerate separate IOHIDDevices for each interface (digitizer, wireless status, etc).
     func registerDevice(_ device: IOHIDDevice) {
@@ -444,6 +490,20 @@ final class WacomKnownDevice: TabletDevice {
             }
         }
 
+        // `.intuosV1` multi-interface devices (PTH-850, ACK-40401): the primary
+        // interface picked in `open()` may not have been the feature-capable
+        // one (see `hasAnyFeatureReport`). If it wasn't, and this newly
+        // registered sibling is, send the init sequence and any pending LED
+        // slot here instead — the first (and only) time a capable interface
+        // is found. If `open()` already found one, this is a no-op.
+        if deviceSpec.parser == .intuosV1 && !interfaceIsBluetooth && intuosV1CapableDevice == nil
+            && hasAnyFeatureReport(device)
+        {
+            intuosV1CapableDevice = device
+            executeInitSteps(on: device)
+            setRingLED(index: pendingLEDIndex)
+        }
+
         // Xencelabs re-enumerates shortly after the initial connect (observed
         // 2026-07-01: ~5s after "opened", a second IOHIDDevice arrives for the
         // same PID and lands here instead of deviceConnected). The original
@@ -483,6 +543,7 @@ final class WacomKnownDevice: TabletDevice {
             IOHIDDeviceClose(sec, IOOptionBits(kIOHIDOptionsTypeNone))
             secondaryDevice = nil
         }
+        intuosV1CapableDevice = nil
         pendingVendorWrites.removeAll()
         pendingVendorWritesDropped = false
         // Balance the callback-context retain. Deferred to HIDThread so it runs
@@ -611,15 +672,25 @@ final class WacomKnownDevice: TabletDevice {
                 //   buf[2] = hlv & 0x1f  (high-luminance value, 0–31)
                 //   buf[3..8] = 0x00
                 // Official driver observed values: llv=0x14 (20), hlv=0x01 — used as defaults.
-                // Sent to primary device (no companion interface on Intuos5 USB).
+                // Sent to whichever registered interface actually declares Feature
+                // reports (see `hasAnyFeatureReport`) — on a multi-interface unit
+                // like PTH-850, `device` itself may be the touch/vendor interface,
+                // which doesn't. Before that interface is known, `resyncActiveDriverDisplayState()`
+                // can call this on connect and race ahead of it (confirmed live
+                // 2026-08-25: the touch interface won primary, this fired against
+                // it and failed, then `registerDevice()`'s retry corrected it 23ms
+                // later once the pen interface registered) — downgrade to
+                // best-effort in that specific window so the expected, self-correcting
+                // miss doesn't log as an `.error`.
                 let llv: UInt8 = 0x14
                 let hlv: UInt8 = 0x01
                 var buf = [UInt8](repeating: 0, count: 9)
                 buf[0] = 0x20  // WAC_CMD_LED_CONTROL
                 buf[1] = (llv & 0x1f) | (UInt8(index & 0x07) << 5)
                 buf[2] = hlv & 0x1f
-                hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf,
-                             tag: "\(name) IntuosV1 LED slot=\(index)", log: logger)
+                hidSetReport(intuosV1CapableDevice ?? device, reportID: CFIndex(buf[0]), bytes: &buf,
+                             tag: "\(name) IntuosV1 LED slot=\(index)",
+                             severity: intuosV1CapableDevice == nil ? .bestEffort : .required, log: logger)
             }
 
         case .xencelabs:
