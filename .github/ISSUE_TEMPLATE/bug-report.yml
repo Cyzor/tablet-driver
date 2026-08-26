@@ -8,7 +8,7 @@ body:
       value: |
         **Before submitting:** in MockTab, open the Info pane and press **Copy Diagnostics** to bundle your driver state into a text block. Paste it in the **Diagnostics** field below.
 
-        **If this bug involves the pen, touch, or buttons behaving wrong** (not tracking, wrong pressure/tilt, missed clicks, dropped touch, etc.), also use *Collect Device Data…* in the same Info tab to capture the raw HID traffic while the problem happens, and paste it in the **Capture data** field. Without it, confirming a later fix actually worked depends on you coming back to test it — a capture can be replayed against a fix without needing your hardware or a reply from you.
+        **If your tablet is connected, please also use *Collect Device Data…* in the same Info tab** and paste the result in the **Capture data** field, even if the bug doesn't look device-related. It's most valuable for anything involving the pen, touch, or buttons — that's what lets a fix be verified against your exact hardware state later without needing you to come back and retest — but it also helps in less direct ways (e.g. catching an unrelated device quirk while it's on hand). Skip it for bugs with no device angle at all (a mislabeled menu item, a UI color, etc.).
 
   - type: input
     id: macos
@@ -51,7 +51,7 @@ body:
     attributes:
       label: Capture data
       description: |
-        If the bug is about pen/touch/button behavior, paste the JSON from Info pane → Collect Device Data… while reproducing it. This is what lets a fix be verified against your exact hardware state later, even if you're not available to retest. Leave blank for bugs that aren't about device input (UI, menus, settings, etc.).
+        Paste the JSON from Info pane → Collect Device Data…, ideally while reproducing the bug. Worth including even if the bug seems unrelated to your device — it's cheap to grab and can turn out useful in ways that aren't obvious upfront. Leave blank only for bugs with no device angle (UI, menus, settings, etc.).
       placeholder: |
         ```json
         <paste capture JSON here, or leave blank>
