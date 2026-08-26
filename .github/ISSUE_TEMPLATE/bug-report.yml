@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a problem with MockTab on supported hardware
+description: Report a problem with MockTab — a device capture helps verify the fix
 title: "Bug: "
 labels: ["bug"]
 body:
