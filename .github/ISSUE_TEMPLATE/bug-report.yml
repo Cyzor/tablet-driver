@@ -8,6 +8,8 @@ body:
       value: |
         **Before submitting:** in MockTab, open the Info pane and press **Copy Diagnostics** to bundle your driver state into a text block. Paste it in the **Diagnostics** field below.
 
+        **If this bug involves the pen, touch, or buttons behaving wrong** (not tracking, wrong pressure/tilt, missed clicks, dropped touch, etc.), also use *Collect Device Data…* in the same Info tab to capture the raw HID traffic while the problem happens, and paste it in the **Capture data** field. Without it, confirming a later fix actually worked depends on you coming back to test it — a capture can be replayed against a fix without needing your hardware or a reply from you.
+
   - type: input
     id: macos
     attributes:
@@ -43,6 +45,19 @@ body:
         ```
     validations:
       required: true
+
+  - type: textarea
+    id: capture
+    attributes:
+      label: Capture data
+      description: |
+        If the bug is about pen/touch/button behavior, paste the JSON from Info pane → Collect Device Data… while reproducing it. This is what lets a fix be verified against your exact hardware state later, even if you're not available to retest. Leave blank for bugs that aren't about device input (UI, menus, settings, etc.).
+      placeholder: |
+        ```json
+        <paste capture JSON here, or leave blank>
+        ```
+    validations:
+      required: false
 
   - type: checkboxes
     id: ack
