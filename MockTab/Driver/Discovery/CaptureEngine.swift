@@ -479,6 +479,8 @@ final class CaptureEngine: ObservableObject {
         }
 
         return DiscoveryResult(
+            appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+            appBuildDate: Bundle.main.object(forInfoDictionaryKey: "MockTabBuildDate") as? String,
             capturedAt: Date(),
             mode: "discovery",
             duration: Date().timeIntervalSince(discoveryStartTime),

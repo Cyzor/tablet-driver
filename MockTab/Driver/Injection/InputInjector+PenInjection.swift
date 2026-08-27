@@ -153,7 +153,9 @@ extension InputInjector {
                 lastProximity = true
                 proximityConfirmStartTime = CFAbsoluteTimeGetCurrent()
             } else {
-                TouchPipelineProbe.note { $0.penProximityExits += 1 }
+                // `commitProximityExit` now does the `penProximityExits` tally
+                // itself (guarded on `lastProximity`), so every exit path is
+                // counted, not just this report-driven one.
                 commitProximityExit(snap: snap)
             }
         }
@@ -619,6 +621,15 @@ extension InputInjector {
         touchPenConfirmedBusy = false
         touchPenBusyConfirmedAt = 0
         touchPenBusyHadTipSinceConfirmed = false
+        // Count the exit here, not only on the report-driven transition — the
+        // leak-watchdog and Xencelabs debounce also land here, and a capture
+        // that saw `penProximityEnters` with zero `penProximityExits` (real,
+        // on a BT PTH-660 whose clean exit reports don't arrive) misread as a
+        // stuck latch when it was actually the watchdog silently recovering.
+        // Guard on `lastProximity` so a redundant call can't double-count.
+        if lastProximity {
+            TouchPipelineProbe.note { $0.penProximityExits += 1 }
+        }
         lastProximity = false
 
         // Release any barrel buttons still down at exit, finalizing any

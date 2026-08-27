@@ -231,9 +231,59 @@ struct TouchStateTracker {
     /// phases separately — see `pinchPhase`/`rotatePhase`.
     private var lastScrollPhase: ScrollPhase = .ended
 
+    /// When a committed `.pan` scroll first dropped below two contacts, or 0
+    /// while two are present. Drives `scrollSingleContactGrace`.
+    private var scrollDroppedToOneContactAt: CFAbsoluteTime = 0
+    /// The flick velocity captured at the instant a `.pan` first dropped to one
+    /// contact — i.e. from the last frame both fingers were down and their
+    /// samples were still fresh. The wind-down that fires `scrollSingleContactGrace`
+    /// later can't recompute this: by then every sample is older than
+    /// `peakVelocityWindow`, so a recompute always yields zero and the flick
+    /// never coasts. `.zero` when the drop was a deliberate brake (no recent
+    /// motion) — same rule as the all-fingers-lifted path.
+    private var scrollVelocityAtDrop: CGVector = .zero
+    /// Diagnostic snapshots taken alongside `scrollVelocityAtDrop`, for the
+    /// same reason: the `contacts.isEmpty` release path and the wind-down both
+    /// fire too late to measure these meaningfully. `suppressedByRecencyAtDrop`
+    /// feeds `releaseSuppressedByRecency`; the two gaps feed `releaseFrameGap`/
+    /// `releaseMotionGap`.
+    private var suppressedByRecencyAtDrop = false
+    private var frameGapAtDrop: CFAbsoluteTime = -1
+    private var motionGapAtDrop: CFAbsoluteTime = -1
+    /// Set once a `.scroll` sequence has been wound down early (see
+    /// `scrollSingleContactGrace`) but not every finger has lifted yet.
+    /// While true, `process` emits nothing for any non-empty frame whose
+    /// contacts overlap the wound-down gesture's — the gesture is finished;
+    /// its remaining finger(s) must not resurrect it. Cleared by the real
+    /// `reset()` on all-fingers-lifted, by an entirely new contact set
+    /// (`scrollWoundDownExpiresAt`'s frame), or by a wall-clock backstop, so a
+    /// never-arriving empty frame can't latch touch off.
+    private var scrollWoundDown = false
+    /// Wall-clock backstop for `scrollWoundDown`: if no clean exit has cleared
+    /// it by this time, clear it anyway. Guards against an all-fingers-lifted
+    /// frame that never arrives (the exact failure this whole change targets)
+    /// latching touch permanently.
+    private var scrollWoundDownExpiresAt: CFAbsoluteTime = 0
+
     /// Sticky pan vs gesture (pinch and/or rotate) once motion crosses
     /// `twoFingerDecideDistance`.
     private var twoFingerKind: TwoFingerKind = .undecided
+
+    /// Whether the live two-finger sequence has committed to pan (scroll), for
+    /// the injector's stuck-scroll diagnostic only — keeps the probe out of
+    /// this type. Meaningless outside `.scroll` mode.
+    var committedToPan: Bool { twoFingerKind == .pan }
+
+    /// Set true by exactly the `process()` call that wound a `.pan` down early
+    /// (`scrollSingleContactGrace`), for the injector's `scrollWindDowns`
+    /// counter. Read-and-clear: the injector zeroes it after each frame.
+    var scrollWoundDownThisFrame = false
+
+    /// Whether a wound-down `.pan` is currently in its post-wind-down hold
+    /// (gesture finished, its finger(s) still lingering). Mode stays `.scroll`
+    /// through the hold, so the injector's stuck-scroll diagnostic must skip
+    /// these frames — they're the fix *working*, not the bug.
+    var isHoldingWoundDownScroll: Bool { scrollWoundDown }
     /// Whether pinch/rotate are part of the current `.gesture` sequence's
     /// committed set — fixed at the commit decision, not re-evaluated per
     /// frame (see `TwoFingerKind`'s doc comment). Meaningless while
@@ -298,6 +348,20 @@ struct TouchStateTracker {
     /// Captured at scroll-gesture end; read by the posting layer to start a
     /// momentum decay tail. Unused while the gesture is still active.
     private(set) var releaseVelocity: CGVector = .zero
+    /// Diagnostic only: when the most recent release produced a zero
+    /// `releaseVelocity`, which leg zeroed it — `true` if a fast sample was
+    /// present but the recency gate (a deliberate brake, or a batched-delivery
+    /// gap that looks like one) rejected it, `false` if the peak-velocity
+    /// window was simply empty. Meaningless when `releaseVelocity` is nonzero.
+    private(set) var releaseSuppressedByRecency = false
+    /// Diagnostic only: at the most recent release, how long since the last
+    /// `.scroll` frame of any kind (`releaseFrameGap`) and since the last one
+    /// that actually moved (`releaseMotionGap`). Both large ⇒ frames stopped
+    /// arriving (a delivery gap — bug B). Only the motion gap large ⇒ frames
+    /// kept coming but stationary (a genuine brake). Set on every scroll
+    /// release; -1 before the first.
+    private(set) var releaseFrameGap: CFAbsoluteTime = -1
+    private(set) var releaseMotionGap: CFAbsoluteTime = -1
 
     /// End time of the most recent qualifying two-finger tap, for Smart Zoom
     /// double-tap detection. Deliberately *not* cleared by `reset()` — every
@@ -359,11 +423,31 @@ struct TouchStateTracker {
     /// How far back to look for the fastest recent sample when seeding
     /// momentum release velocity — matches `PanScrollTracker.peakVelocityWindow`.
     static let peakVelocityWindow: CFAbsoluteTime = 0.06
+    /// Minimum frame spacing for a `delta/dt` sample to be trusted as a real
+    /// velocity — see the `.scroll` case. Below the device's true touch cadence,
+    /// above a Bluetooth burst's inter-frame gap.
+    static let minVelocityDt: CFAbsoluteTime = 0.002
     /// A lift is only treated as a flick-release if motion happened within
     /// this many seconds of it — otherwise the fingers were held still
     /// (braking) and release velocity is suppressed regardless of any fast
     /// sample still sitting in the peak-velocity window.
     static let momentumRecencyWindow: CFAbsoluteTime = 0.05
+    /// Grace period after a committed `.pan` scroll drops from two contacts to
+    /// one before the gesture is wound down. A brief 1-contact frame is normal
+    /// mid-scroll — palm filtering churns the set, or one finger momentarily
+    /// lifts — and the `.scroll` case tolerates it (see `lastPinchDistance`
+    /// hold). But a `.pan` gesture kept alive on a *single* finger keeps
+    /// emitting `scrollDelta` from that finger's own motion indefinitely: the
+    /// user lifts one finger, keeps the other down, and every subsequent
+    /// move — even an unrelated single-finger touch later — still scrolls the
+    /// view. Once one finger has been gone this long the gesture is over;
+    /// close it out and hold wound-down until all fingers actually lift.
+    static let scrollSingleContactGrace: CFAbsoluteTime = 0.1
+    /// Wall-clock backstop clearing `scrollWoundDown` even if an
+    /// all-fingers-lifted frame never arrives. Generous — a real gesture is
+    /// long over well before this — but bounded, so a dropped lift frame can
+    /// never latch touch permanently off.
+    static let scrollWoundDownBackstop: CFAbsoluteTime = 2.0
     /// Maximum hold duration for a two-finger contact to still count as a
     /// Smart Zoom tap rather than a rest. Deliberately does *not* need a
     /// separate max-deviation check: a still-`.undecided` teardown already
@@ -488,6 +572,61 @@ struct TouchStateTracker {
         now: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     ) -> Intent {
 
+        // Per-frame diagnostic flag — set only by the wind-down return below.
+        scrollWoundDownThisFrame = false
+
+        // A scroll wound down early (one finger lifted, the other lingered —
+        // see `scrollSingleContactGrace`). The phase envelope and
+        // `releaseVelocity` were already handled at wind-down. Emit nothing
+        // while the wound-down gesture's own finger(s) linger, but clear the
+        // hold — never latch it — on any of: all fingers lifted (the real
+        // teardown), a contact set that no longer overlaps the wound-down
+        // gesture (these are new fingers, a fresh sequence), or the wall-clock
+        // backstop. The overlap and backstop escapes exist precisely because
+        // "the all-lifted frame never arrives" is the failure this change
+        // targets — it must not become a way to wedge touch off entirely.
+        if scrollWoundDown {
+            let overlapsOldContacts = contacts.contains { lastPositions[$0.id] != nil }
+            if contacts.isEmpty {
+                reset()
+                return .none
+            }
+            if !overlapsOldContacts {
+                // Entirely new fingers — a genuinely fresh sequence. Full
+                // reset so this frame starts from idle (onset delay, tap
+                // clock, the lot).
+                scrollWoundDown = false
+                scrollWoundDownExpiresAt = 0
+                lastPositions.removeAll(keepingCapacity: true)
+                scrollDroppedToOneContactAt = 0
+                mode = .idle
+                twoFingerKind = .undecided
+                lastScrollPhase = .ended
+                // Fall through.
+            } else if now >= scrollWoundDownExpiresAt {
+                // Backstop: the wound-down gesture's own finger(s) are still
+                // down after the whole backstop window — an all-lifted frame
+                // was apparently lost. Release the hold, but resume as a plain
+                // pointer, NOT a fresh `.pending`: seeding a new `tapStart`
+                // here would make this lingering finger tap-eligible, so a
+                // pan → lift-one → rest → lift would fire a phantom click.
+                // Leaving `tapStart` stale means the isEmpty branch's
+                // `now - tapStart <= tapMaxDuration` fails and no tap can.
+                scrollWoundDown = false
+                scrollWoundDownExpiresAt = 0
+                scrollDroppedToOneContactAt = 0
+                twoFingerKind = .undecided
+                lastScrollPhase = .ended
+                mode = .pointer
+                tapAnchor = nil
+                lastPositions = Dictionary(uniqueKeysWithValues:
+                    contacts.prefix(1).map { ($0.id, $0.screen) })
+                return .none
+            } else {
+                return .none
+            }
+        }
+
         // All fingers lifted — wrap up any in-progress gesture.  A sequence
         // that never outlived the onset delay can still be a tap (a tap is by
         // definition shorter than most onset windows).
@@ -507,10 +646,33 @@ struct TouchStateTracker {
             let twoFingerTap = smartZoom && priorMode == .scroll && priorKind == .undecided
                 && now - tapStart <= Self.twoFingerTapMaxDuration
             let thisTapStart = tapStart
-            let peak = recentVelocities
-                .filter { now - $0.time <= Self.peakVelocityWindow }
-                .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
-            releaseVelocity = now - lastMotionTime <= Self.momentumRecencyWindow ? peak : .zero
+            if scrollDroppedToOneContactAt != 0 {
+                // The gesture already dropped to one contact and everything was
+                // snapshotted then, while samples were fresh. Recomputing here
+                // loses it: the grace-window frames returned `.none` before the
+                // velocity-sampling line, so `recentVelocities` has nothing
+                // inside `peakVelocityWindow` and the gaps would read ~0.
+                releaseVelocity = scrollVelocityAtDrop
+                releaseSuppressedByRecency = suppressedByRecencyAtDrop
+                releaseFrameGap = frameGapAtDrop
+                releaseMotionGap = motionGapAtDrop
+            } else if priorMode == .scroll {
+                let peak = recentVelocities
+                    .filter { now - $0.time <= Self.peakVelocityWindow }
+                    .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
+                let braked = now - lastMotionTime > Self.momentumRecencyWindow
+                releaseVelocity = braked ? .zero : peak
+                releaseSuppressedByRecency = braked && (peak.dx != 0 || peak.dy != 0)
+                releaseFrameGap = lastFrameTime == 0 ? -1 : now - lastFrameTime
+                releaseMotionGap = lastMotionTime == 0 ? -1 : now - lastMotionTime
+            } else {
+                let peak = recentVelocities
+                    .filter { now - $0.time <= Self.peakVelocityWindow }
+                    .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
+                let braked = now - lastMotionTime > Self.momentumRecencyWindow
+                releaseVelocity = braked ? .zero : peak
+                releaseSuppressedByRecency = braked && (peak.dx != 0 || peak.dy != 0)
+            }
             reset()
             switch priorMode {
             // Must precede the generic pan-ended case below: pinch/rotate
@@ -649,6 +811,67 @@ struct TouchStateTracker {
             lastPositions = Dictionary(uniqueKeysWithValues:
                 current.map { ($0.id, $0.screen) })
             lastPinchDistance = newDistance
+
+            // A committed pan that has dropped to a single contact for longer
+            // than the grace window is finished — the user lifted one finger
+            // and kept the other down. Without this it would keep emitting
+            // `scrollDelta` from the lone finger's motion until every finger
+            // lifted, so a later unrelated single-finger touch keeps scrolling
+            // the view (`scrollWoundDown` blocks that resurrection). Capture
+            // the flick velocity now, from the window when both fingers were
+            // still moving, then close the phase envelope. Pinch/rotate are
+            // excluded: `newDistance` collapses to nonsense on one contact, so
+            // a 1-contact frame there is already ignored above.
+            if twoFingerKind == .pan {
+                if current.count >= 2 {
+                    scrollDroppedToOneContactAt = 0
+                } else {
+                    if scrollDroppedToOneContactAt == 0 {
+                        // First frame of the drop — both fingers were still
+                        // down last frame, so `recentVelocities` is fresh
+                        // right now. Snapshot the flick velocity *and* the
+                        // frame/motion gaps here; the wind-down below fires too
+                        // late for any of it to be recomputed meaningfully.
+                        scrollDroppedToOneContactAt = now
+                        let peak = recentVelocities
+                            .filter { now - $0.time <= Self.peakVelocityWindow }
+                            .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
+                        let braked = now - lastMotionTime > Self.momentumRecencyWindow
+                        scrollVelocityAtDrop = braked ? .zero : peak
+                        suppressedByRecencyAtDrop = braked && (peak.dx != 0 || peak.dy != 0)
+                        // `dt` is this frame's real spacing from the previous
+                        // one (`lastFrameTime` was reassigned to `now` above,
+                        // so recomputing here would read ~0).
+                        frameGapAtDrop = dt
+                        // `lastMotionTime == 0` means the scroll never had a
+                        // moving frame — the gap is undefined, not enormous.
+                        motionGapAtDrop = lastMotionTime == 0 ? -1 : now - lastMotionTime
+                    }
+                    if now - scrollDroppedToOneContactAt >= Self.scrollSingleContactGrace {
+                        let priorPhase = lastScrollPhase
+                        // All release diagnostics come from the drop-site
+                        // snapshot — this frame is far too late to measure any
+                        // of them (see `scrollVelocityAtDrop`).
+                        releaseVelocity = scrollVelocityAtDrop
+                        releaseSuppressedByRecency = suppressedByRecencyAtDrop
+                        releaseFrameGap = frameGapAtDrop
+                        releaseMotionGap = motionGapAtDrop
+                        scrollWoundDown = true
+                        scrollWoundDownThisFrame = true
+                        scrollWoundDownExpiresAt = now + Self.scrollWoundDownBackstop
+                        return priorPhase != .ended
+                            ? .scrollDelta(dx: 0, dy: 0, phase: .ended)
+                            : .none
+                    }
+                    // Inside the grace window: emit nothing rather than the
+                    // lone finger's delta, so the symptom doesn't just shrink
+                    // to the grace duration. `lastPositions`/`lastPinchDistance`
+                    // were re-seeded above, so a returning second finger picks
+                    // the pan back up cleanly.
+                    return .none
+                }
+            }
+
             guard !tracked.isEmpty else { return .none }
             let dx = newCentroid.x - oldCentroid.x
             let dy = newCentroid.y - oldCentroid.y
@@ -832,7 +1055,17 @@ struct TouchStateTracker {
             let sign = reverseScrollDirection ? -1.0 : 1.0
             let outDx = sign * dx
             let outDy = sign * dy
-            if dt > 0 {
+            // Only sample velocity from frames spaced at least `minVelocityDt`
+            // apart. A Bluetooth batch delivered in a burst puts several frames
+            // microseconds apart (see `BatchFramePacer` / `subMillisecondDtFrames`);
+            // `delta / dt` on one of those is a velocity 10–100× the real finger
+            // speed, and `peak` below is a max, so it latches onto exactly that
+            // sample and seeds a runaway coast. The device's true touch cadence
+            // is ~5.6ms on BT (a ~22.5ms batch carrying ~4 touch frames), so
+            // 2ms is comfortably below real spacing and above burst spacing.
+            // `lastMotionTime` still updates from burst frames (it gates on
+            // delta, not dt), so brake detection is unaffected.
+            if dt >= Self.minVelocityDt {
                 recentVelocities.append((time: now, v: CGVector(dx: outDx / dt, dy: outDy / dt)))
                 recentVelocities.removeAll { now - $0.time > Self.peakVelocityWindow }
             }
@@ -872,6 +1105,13 @@ struct TouchStateTracker {
         tapStart = 0
         tapMaxDelta = 0
         lastScrollPhase = .ended
+        scrollDroppedToOneContactAt = 0
+        scrollVelocityAtDrop = .zero
+        suppressedByRecencyAtDrop = false
+        frameGapAtDrop = -1
+        motionGapAtDrop = -1
+        scrollWoundDown = false
+        scrollWoundDownExpiresAt = 0
         twoFingerKind = .undecided
         pinchInGesture = false
         rotateInGesture = false

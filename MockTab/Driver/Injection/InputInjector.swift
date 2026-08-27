@@ -763,6 +763,7 @@ final class InputInjector: @unchecked Sendable {
                 let snap = self.injectionSnapshot
             {
                 injectLog.notice("leak-watchdog: forcing stuck pen-proximity exit (pen idle \(Int(penIdleInterval))s)")
+                TouchPipelineProbe.note { $0.penProximityForcedExits += 1 }
                 self.commitProximityExit(snap: snap)
             }
 
@@ -941,6 +942,15 @@ final class InputInjector: @unchecked Sendable {
     /// see `injectTouch`'s use of these. Reset on every sequence teardown.
     var touchSequenceSawTwoFingers = false
     var touchSequenceCommitted = false
+    /// Wall-clock time `injectTouch` last ran with contacts, for the
+    /// sub-millisecond-gap diagnostic (`DiscoveryTouchPipeline.subMillisecondDtFrames`)
+    /// that flags a batched-Bluetooth burst delivering frames faster than the
+    /// device really samples. 0 until the first touch frame.
+    var lastTouchFrameTime: CFAbsoluteTime = 0
+    /// Whether the previous touch frame was already in the "palm rejection
+    /// dropped a ≥2-contact frame below two" condition, so
+    /// `palmRejectionBrokeTwoFingerFrames` counts entries, not every held frame.
+    var palmRejectionBrokeTwoFingerActive = false
     /// CFAbsoluteTime when the pen last left proximity.  Touch is suppressed
     /// while the pen is in proximity and for a brief grace window after exit
     /// so palm-rejection bounces (finger contact arriving 1–2 frames after

@@ -529,10 +529,187 @@ private func testRotateAnchoredArcResolvesPan() {
         "an anchored-finger arc must resolve pan — translation and rotation are too close to call")
 }
 
+/// A plain pan (no pinch/rotate/smartZoom, so `twoFingerKind` commits to
+/// `.pan` immediately) that drops to one contact keeps scrolling only until
+/// `scrollSingleContactGrace` elapses, then emits a single `.ended` and goes
+/// quiet — a lingering single finger, or a later unrelated one-finger touch,
+/// must not keep scrolling the view.
+private func panProcess(
+    _ tracker: inout TouchStateTracker,
+    _ contacts: [(id: Int, screen: CGPoint)],
+    at time: CFAbsoluteTime
+) -> TouchStateTracker.Intent {
+    tracker.process(
+        contacts: contacts, tapToClick: false, twoFingerScroll: true,
+        reverseScrollDirection: false, sensitivity: 1, now: time)
+}
+
+private func testPanDropToOneContactWindsDownAfterGrace() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweepPan(offset: 0), at: 0.01)
+    // Commit the pan with real translation.
+    _ = panProcess(&tracker, sweepPan(offset: 20), at: 0.02)
+    _ = panProcess(&tracker, sweepPan(offset: 40), at: 0.03)
+    // One finger lifts at 0.05 (drop recorded here). Inside the grace window:
+    // no scroll from the lone finger.
+    expectEqual(
+        panProcess(&tracker, [(id: 1, screen: CGPoint(x: 100, y: 0))], at: 0.05),
+        .none,
+        "a lone finger inside the grace window must not scroll")
+    // Past the grace window (>= 0.1s since the drop at 0.05): close the envelope.
+    expectEqual(
+        panProcess(&tracker, [(id: 1, screen: CGPoint(x: 160, y: 0))], at: 0.16),
+        .scrollDelta(dx: 0, dy: 0, phase: .ended),
+        "the pan must wind down with a single .ended once the grace elapses")
+    // Still one finger, still moving — must stay silent (no resurrection).
+    expectEqual(
+        panProcess(&tracker, [(id: 1, screen: CGPoint(x: 220, y: 0))], at: 0.18),
+        .none,
+        "a wound-down scroll must not resume from a lingering finger")
+    // A fresh unrelated single-finger touch after full lift is a pointer move,
+    // not a scroll.
+    _ = panProcess(&tracker, [], at: 0.20)
+    _ = panProcess(&tracker, [(id: 5, screen: CGPoint(x: 500, y: 500))], at: 1.0)
+    _ = panProcess(&tracker, [(id: 5, screen: CGPoint(x: 505, y: 500))], at: 1.13)
+    expectEqual(
+        panProcess(&tracker, [(id: 5, screen: CGPoint(x: 510, y: 500))], at: 1.14),
+        .pointerMove(dx: 5, dy: 0),
+        "a new single-finger touch after wind-down moves the pointer, not scroll")
+}
+
+/// The lingering-finger flick must still coast: `releaseVelocity` is captured
+/// at the 2→1 drop (samples still fresh), not recomputed at wind-down (by when
+/// every sample is older than `peakVelocityWindow` and a recompute yields zero).
+private func testPanWindDownPreservesReleaseVelocity() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweepPan(offset: 0), at: 0.01)
+    // Fast pan: 60 pts in 20ms per frame = 3000 pts/s.
+    _ = panProcess(&tracker, sweepPan(offset: 60), at: 0.03)
+    _ = panProcess(&tracker, sweepPan(offset: 120), at: 0.05)
+    // Drop to one contact at 0.06 — snapshot happens here.
+    _ = panProcess(&tracker, [(id: 1, screen: CGPoint(x: 100, y: 0))], at: 0.06)
+    // Wind down past the grace window.
+    _ = panProcess(&tracker, [(id: 1, screen: CGPoint(x: 100, y: 0))], at: 0.17)
+    let v = tracker.releaseVelocity
+    checks += 1
+    if hypot(v.dx, v.dy) < 100 {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: wind-down lost the flick velocity — got \(v)\n".utf8))
+    }
+}
+
+/// The wound-down hold must not depend on an all-fingers-lifted frame ever
+/// arriving: a contact set that no longer overlaps the wound-down gesture
+/// clears the hold and starts a fresh sequence.
+private func testPanWindDownClearsWithoutEmptyFrame() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweepPan(offset: 0), at: 0.01)
+    _ = panProcess(&tracker, sweepPan(offset: 20), at: 0.02)
+    _ = panProcess(&tracker, sweepPan(offset: 40), at: 0.03)
+    _ = panProcess(&tracker, [(id: 1, screen: CGPoint(x: 20, y: 0))], at: 0.05)
+    _ = panProcess(&tracker, [(id: 1, screen: CGPoint(x: 20, y: 0))], at: 0.16)  // wound down
+    // No empty frame. A completely new contact id well past onsetDelay must
+    // resume as a normal pointer move, proving the hold cleared.
+    _ = panProcess(&tracker, [(id: 9, screen: CGPoint(x: 400, y: 400))], at: 0.30)
+    _ = panProcess(&tracker, [(id: 9, screen: CGPoint(x: 405, y: 400))], at: 0.43)
+    expectEqual(
+        panProcess(&tracker, [(id: 9, screen: CGPoint(x: 410, y: 400))], at: 0.44),
+        .pointerMove(dx: 5, dy: 0),
+        "a new contact set must clear the wound-down hold without an empty frame")
+}
+
+/// A burst frame — one delivered microseconds after the previous, as a
+/// Bluetooth batch flush does — must not seed the momentum velocity: `delta/dt`
+/// on a sub-millisecond `dt` is 10–100× the real finger speed and `peak` is a
+/// max, so an unfiltered burst sample makes the coast fly.
+private func testBurstFrameDoesNotPoisonReleaseVelocity() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweepPan(offset: 0), at: 0.01)
+    // Steady, moderate pan: 20 pts per 10ms frame = 2000 pts/s.
+    _ = panProcess(&tracker, sweepPan(offset: 20), at: 0.02)
+    _ = panProcess(&tracker, sweepPan(offset: 40), at: 0.03)
+    _ = panProcess(&tracker, sweepPan(offset: 60), at: 0.04)
+    // A burst frame 100µs later carrying a big jump — dt below minVelocityDt.
+    _ = panProcess(&tracker, sweepPan(offset: 150), at: 0.0401)
+    // Lift immediately.
+    _ = panProcess(&tracker, [], at: 0.045)
+    let v = tracker.releaseVelocity
+    let mag = hypot(v.dx, v.dy)
+    checks += 1
+    // The real pan was ~2000 pts/s; the burst frame would imply ~900000. Any
+    // value near the real speed is fine; anything above a sane flick is the bug.
+    if mag > 8000 {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: burst frame poisoned release velocity — got \(mag) pts/s\n".utf8))
+    }
+}
+
+/// Backstop clear (same finger still down past `scrollWoundDownBackstop`) must
+/// resume as a plain pointer, never re-arm the tap clock — otherwise
+/// pan → lift-one → rest → lift fires a phantom click with tap-to-click on.
+private func testPanWindDownBackstopDoesNotFireTap() {
+    var tracker = TouchStateTracker()
+    let tapProc: (inout TouchStateTracker, [(id: Int, screen: CGPoint)], CFAbsoluteTime)
+        -> TouchStateTracker.Intent = { t, c, time in
+            t.process(
+                contacts: c, tapToClick: true, twoFingerScroll: true,
+                reverseScrollDirection: false, sensitivity: 1, now: time)
+        }
+    _ = tapProc(&tracker, [(id: 1, screen: .zero)], 0)
+    _ = tapProc(&tracker, sweepPan(offset: 0), 0.01)
+    _ = tapProc(&tracker, sweepPan(offset: 20), 0.02)
+    _ = tapProc(&tracker, sweepPan(offset: 40), 0.03)
+    // Finger 2 lifts at 0.05; wind down at 0.16.
+    _ = tapProc(&tracker, [(id: 1, screen: CGPoint(x: 20, y: 0))], 0.05)
+    _ = tapProc(&tracker, [(id: 1, screen: CGPoint(x: 20, y: 0))], 0.16)
+    // Same finger held way past the 2s backstop, then lifted.
+    _ = tapProc(&tracker, [(id: 1, screen: CGPoint(x: 20, y: 0))], 2.5)
+    expectEqual(
+        tapProc(&tracker, [], 2.6),
+        .none,
+        "a lingering finger released after the backstop must not fire a tap click")
+}
+
+/// A momentary one-contact frame (palm filter churn) shorter than the grace
+/// window must not wind the pan down — the second finger returning resumes the
+/// scroll cleanly.
+private func testPanBriefOneContactFrameDoesNotWindDown() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweepPan(offset: 0), at: 0.01)
+    _ = panProcess(&tracker, sweepPan(offset: 20), at: 0.02)
+    _ = panProcess(&tracker, sweepPan(offset: 40), at: 0.03)
+    // One frame with a single contact, well inside the grace window.
+    _ = panProcess(&tracker, [(id: 1, screen: CGPoint(x: 20, y: 0))], at: 0.04)
+    // Second finger back; pan continues (a Changed scroll, not an Ended).
+    guard case .scrollDelta(_, _, .changed) =
+        panProcess(&tracker, sweepPan(offset: 60), at: 0.05)
+    else {
+        failures += 1
+        checks += 1
+        FileHandle.standardError.write(
+            Data("FAIL: a brief 1-contact frame must not wind the pan down\n".utf8))
+        return
+    }
+    checks += 1
+}
+
 @main
 enum TouchStateTrackerTestRunner {
     static func main() {
         testPinchMagnifyEnvelope()
+        testPanDropToOneContactWindsDownAfterGrace()
+        testPanBriefOneContactFrameDoesNotWindDown()
+        testPanWindDownPreservesReleaseVelocity()
+        testPanWindDownClearsWithoutEmptyFrame()
+        testPanWindDownBackstopDoesNotFireTap()
+        testBurstFrameDoesNotPoisonReleaseVelocity()
         testPreCommitLiftHasNoScrollEnd()
         testSingleContactFrameDoesNotCommitPan()
         testNewTouchAfterLiftDoesNotJumpFromOldPosition()

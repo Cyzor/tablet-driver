@@ -93,14 +93,19 @@ final class BatchFramePacer {
     }
 
     /// Delivers everything still queued, immediately, in order. No-op if
-    /// nothing is pending.
-    func flush() {
+    /// nothing is pending. Returns how many frames it delivered — a nonzero
+    /// return in steady state means a batch didn't finish pacing before the
+    /// next report arrived, and those frames reached the injector bunched
+    /// (see `DiscoveryTouchPipeline.pacerFlushDeliveredFrames`).
+    @discardableResult
+    func flush() -> Int {
         timer.map { CFRunLoopTimerInvalidate($0) }
         timer = nil
-        guard !pending.isEmpty else { return }
+        guard !pending.isEmpty else { return 0 }
         let rest = pending
         pending = []
         for item in rest { deliver(item.frame, item.timestampNs) }
+        return rest.count
     }
 
     private func scheduleTick() {

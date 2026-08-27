@@ -1538,10 +1538,13 @@ final class WacomKnownDevice: TabletDevice {
         // exactly the reported symptom: touch registers contacts but
         // produces no cursor movement or gesture, and only after a few
         // lifts happened to line up this way. Confirmed 2026-08-22.
-        batchFramePacer.flush()
+        let flushed = batchFramePacer.flush()
 
         if !frames.isEmpty {
             TouchPipelineProbe.note { $0.noteBatch(frameCount: frames.count) }
+        }
+        if flushed > 0 {
+            TouchPipelineProbe.note { $0.pacerFlushDeliveredFrames += flushed }
         }
 
         // Stamped on every report, single-frame or not — a stream that's

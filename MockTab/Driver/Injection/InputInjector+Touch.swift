@@ -88,7 +88,16 @@ extension InputInjector {
         if penBusy {
             TouchPipelineProbe.note { $0.noteTouchPenBusy() }
             touchPalmRejector.reset()
-            if !contacts.isEmpty {
+            // Wind down whenever a gesture is live, regardless of whether this
+            // particular frame carried contacts. The empty-contacts frame *is*
+            // the lift signal, and gating the wind-down behind
+            // `!contacts.isEmpty` meant a lift that landed inside a pen-busy
+            // window never closed the gesture — `TouchStateTracker` stayed in
+            // `.scroll`/`.pan`, and every later touch kept scrolling. Gate on
+            // `mode != .idle` (not an unconditional call) so the tracker isn't
+            // driven — and `recentVelocities` isn't scanned — on every hover
+            // frame while nothing is in progress.
+            if touchTracker.mode != .idle {
                 // A bare reset() discards state without telling the app a
                 // gesture in progress ever ended — the app's own recognizer
                 // (e.g. Krita's pinch/rotate handler) is left waiting for a
@@ -129,6 +138,18 @@ extension InputInjector {
             let dropped = contacts.count - filteredContacts.count
             TouchPipelineProbe.note { $0.contactsPalmRejected += dropped }
         }
+        // A frame that had ≥2 contacts but leaves palm filtering with <2 can no
+        // longer start or sustain a two-finger gesture — palm rejection just
+        // cost a potential pinch/scroll/rotate. Counted once per *entry* into
+        // that condition, not per frame: a resting palm alongside one finger
+        // holds it at report rate, and hundreds of frames for one event would
+        // swamp the signal. `contactsPalmRejected` alone can't tell a gesture
+        // loss from correctly dropping a lone palm; this can.
+        let brokeTwoFingerNow = contacts.count >= 2 && filteredContacts.count < 2
+        if brokeTwoFingerNow, !palmRejectionBrokeTwoFingerActive {
+            TouchPipelineProbe.note { $0.palmRejectionBrokeTwoFingerFrames += 1 }
+        }
+        palmRejectionBrokeTwoFingerActive = brokeTwoFingerNow
         if !filtered.newlyRejectedIDs.isEmpty || !filtered.newlyAcceptedIDs.isEmpty {
             let rejected = contacts
                 .filter { filtered.newlyRejectedIDs.contains($0.id) }
@@ -167,6 +188,27 @@ extension InputInjector {
         if !projected.isEmpty {
             TouchPipelineProbe.note { $0.framesTracked += 1 }
         }
+
+        // Diagnostic: a committed pan scroll running on fewer than two contacts
+        // is the "stuck scroll" signature — see
+        // `DiscoveryTouchPipeline.scrollSingleContactFrames`. Sampled here, from
+        // the injector, so `TouchStateTracker` keeps taking no dependency on the
+        // probe. `now` is the same wall clock the tracker sees, so a
+        // sub-millisecond gap between touch frames — the batched-Bluetooth
+        // burst that corrupts the release-velocity estimate — is visible too.
+        if touchTracker.mode == .scroll, touchTracker.committedToPan,
+            !touchTracker.isHoldingWoundDownScroll
+        {
+            if projected.count >= 2 {
+                TouchPipelineProbe.note { $0.noteScrollTwoContactFrame() }
+            } else {
+                TouchPipelineProbe.note { $0.noteScrollSingleContactFrame() }
+            }
+        }
+        if lastTouchFrameTime != 0, now - lastTouchFrameTime < 0.001 {
+            TouchPipelineProbe.note { $0.subMillisecondDtFrames += 1 }
+        }
+        lastTouchFrameTime = now
 
         // A real trackpad stops a coasting flick the instant two fingers land
         // on the surface — before any gesture is even recognized, like
@@ -238,6 +280,9 @@ extension InputInjector {
             touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
             now: now)
 
+        if touchTracker.scrollWoundDownThisFrame {
+            TouchPipelineProbe.note { $0.scrollWindDowns += 1 }
+        }
         handleTouchIntent(intent, snap: snap, settings: settings)
     }
 
@@ -272,7 +317,40 @@ extension InputInjector {
                 dx: dx, dy: dy, phase: phase,
                 usePhases: snap.twoFingerScrollMomentum)
             if phase == .ended, snap.twoFingerScrollMomentum {
-                touchMomentumTail.start(velocity: touchTracker.releaseVelocity)
+                let raw = touchTracker.releaseVelocity
+                let rawMag = hypot(raw.dx, raw.dy)
+                // Clamp the seed here, not in `MomentumTail` — that type is
+                // shared with `panMomentumTail`, whose feel is separately
+                // tuned. A constant-deceleration tail travels v²/(2·decel), so
+                // capping the magnitude caps the coast distance: 6000 pts/s ⇒
+                // ~3000 pts. Above that is a corrupted sample from a Bluetooth
+                // burst (see `TouchStateTracker.minVelocityDt`), not a real
+                // flick, and it reads as an occasional runaway coast.
+                let v: CGVector
+                if rawMag > Self.touchMomentumMaxSeedVelocity {
+                    let s = Self.touchMomentumMaxSeedVelocity / rawMag
+                    v = CGVector(dx: raw.dx * s, dy: raw.dy * s)
+                } else {
+                    v = raw
+                }
+                let suppressedByRecency = touchTracker.releaseSuppressedByRecency
+                touchMomentumTail.start(velocity: v)
+                // `start()` calls `cancel()` first, so a post-call `isRunning`
+                // means specifically "this release started a tail".
+                let started = touchMomentumTail.isRunning
+                let frameGap = touchTracker.releaseFrameGap
+                let motionGap = touchTracker.releaseMotionGap
+                TouchPipelineProbe.note {
+                    $0.maxReleaseVelocity = Swift.max($0.maxReleaseVelocity, rawMag)
+                    $0.noteReleaseGaps(frameGap: frameGap, motionGap: motionGap)
+                    if started {
+                        $0.momentumTailStarts += 1
+                    } else if suppressedByRecency {
+                        $0.momentumSuppressedStale += 1
+                    } else {
+                        $0.momentumSuppressedSlow += 1
+                    }
+                }
             }
         case .twoFingerGesture(let magnify, let rotateGesture):
             // Independent components, either or both present this frame —
@@ -459,6 +537,14 @@ extension InputInjector {
         e.setDoubleValueField(Self.fieldRotation, value: rotation * 180.0 / .pi)
         finalizeAndPost(e)
     }
+
+    /// Upper bound on the touch momentum-tail seed velocity (points/second).
+    /// A constant-deceleration tail travels v²/(2·`MomentumTail.deceleration`),
+    /// so this caps the coast at ~3000 points — a hard flick, but not the
+    /// screen-clearing runaway a burst-corrupted sample would produce. Applied
+    /// at this call site rather than inside `MomentumTail` because that type is
+    /// shared with the separately-tuned `panMomentumTail`.
+    static let touchMomentumMaxSeedVelocity: Double = 6000
 
     /// Undocumented CGEvent type/field numbers for gesture synthesis —
     /// see `postTouchMagnify`'s doc comment for provenance and license note.

@@ -59,7 +59,30 @@ struct DiscoveryResult: Codable {
     /// somewhere in the app, and the file said nothing about the app. These
     /// two blocks close that — what the user's touch settings were, and how
     /// many contacts each stage of the injection pipeline let through.
-    var captureVersion: Int = 8
+    /// 9: `touchSettings` gains `twoFingerScrollMomentum`, `reverseScrollDirection`,
+    /// `rotateEnabled`, `smartZoomEnabled` — the gesture toggles a reader
+    /// otherwise had to ask the user about. `touchPipeline` gains the
+    /// scroll-wind-down and momentum-tail counters (`scrollSingleContactFrames`,
+    /// `longestScrollSingleContactRun`, `scrollWindDowns`, `momentumTailStarts`,
+    /// `momentumSuppressedStale`, `momentumSuppressedSlow`,
+    /// `maxReleaseVelocity`, `maxReleaseFrameGap`, `maxReleaseMotionGap`) plus
+    /// `subMillisecondDtFrames` / `pacerFlushDeliveredFrames` for diagnosing a
+    /// batched-Bluetooth scroll that coasts erratically. All new
+    /// `touchPipeline` fields default to 0 and all new `touchSettings` fields
+    /// are optional, so a v8 reader and v8 files still decode.
+    /// 10: adds `appVersion` / `appBuildDate` — which binary produced the file,
+    /// so a capture can't be mis-attributed to a build that lacks the fix under
+    /// test. `touchPipeline` gains `penProximityForcedExits` (leak-watchdog
+    /// recoveries, split out of `penProximityExits` which now counts *every*
+    /// exit path) and `palmRejectionBrokeTwoFingerFrames` (a ≥2-contact frame
+    /// filtered below two — palm rejection costing a gesture, as distinct from
+    /// `contactsPalmRejected` correctly dropping a lone palm).
+    var captureVersion: Int = 10
+    /// App marketing version and build-date stamp (`MockTabBuildDate` from the
+    /// bundle) of the binary that recorded this capture. Nil only if the keys
+    /// are somehow absent.
+    var appVersion: String?
+    var appBuildDate: String?
     let capturedAt: Date
     let mode: String  // always "discovery"
     let duration: TimeInterval
@@ -106,6 +129,15 @@ struct DiscoveryTouchSettings: Codable {
     let tapToClick: Bool
     let twoFingerScroll: Bool
     let pinchZoom: Bool
+    /// Gesture toggles that are otherwise invisible in a report stream and had
+    /// to be asked about after the fact — `reverseScrollDirection` alone
+    /// explains a "scroll goes the wrong way" report, and `twoFingerScrollMomentum`
+    /// being off makes "no coasting" expected rather than a bug. Optional so a
+    /// v8 capture file (which lacks them) still decodes.
+    var twoFingerScrollMomentum: Bool?
+    var reverseScrollDirection: Bool?
+    var rotateEnabled: Bool?
+    var smartZoom: Bool?
     let sensitivity: Double
     /// Touch-area crop as a fraction of the surface (x, y, width, height).
     /// A crop that excludes where the tester's fingers actually landed drops
@@ -167,7 +199,20 @@ struct DiscoveryTouchPipeline: Codable {
     /// proximity is genuinely toggling as reported and any long busy streak
     /// reflects the pen really being held in range that whole time.
     var penProximityEnters: Int = 0
+    /// Every committed proximity exit, whichever path triggered it — the
+    /// report-driven transition, the Xencelabs debounce, or the leak-watchdog.
+    /// (Before v10 this counted only the report-driven transition, so a device
+    /// whose clean exit reports don't arrive — a BT PTH-660 — showed enters
+    /// with zero exits and read as a stuck latch when the watchdog was in fact
+    /// recovering it every time.)
     var penProximityExits: Int = 0
+    /// A **subset** of `penProximityExits` (not a separate total — don't add
+    /// them): how many of those exits were forced by the leak-watchdog rather
+    /// than driven by a real exit report. A high count means the device is
+    /// genuinely failing to report proximity loss and only the timeout
+    /// recovers it — the real shape of "bug C", distinct from touch being
+    /// suppressed.
+    var penProximityForcedExits: Int = 0
     /// Touch frames let through by the `staleBusyTimeout` escape hatch —
     /// i.e. `touchPenConfirmedBusy` was true, but with no tip contact for
     /// long enough that arbitration treated it as an idle, ambiguously-near
@@ -187,6 +232,16 @@ struct DiscoveryTouchPipeline: Codable {
     /// Contacts removed by `TouchPalmRejector`. Only ever nonzero on the
     /// calibrated PTH-660/860 family.
     var contactsPalmRejected: Int = 0
+    /// Count of *entries* into the state where a ≥2-contact frame left palm
+    /// filtering with fewer than two — palm rejection preventing or
+    /// interrupting a two-finger gesture. Counted once per entry, not per held
+    /// frame (a resting palm holds the state at report rate). The number to
+    /// weigh against `contactsPalmRejected` when a "gesture didn't take" report
+    /// comes in: a nonzero value here during a failed pinch/scroll attempt is
+    /// palm rejection being too aggressive, not the gesture tracker failing to
+    /// commit. Name kept `…Frames` for capture-file compatibility though it now
+    /// counts events.
+    var palmRejectionBrokeTwoFingerFrames: Int = 0
     /// Contacts dropped by `TouchStateTracker.screenPoint` returning nil —
     /// i.e. falling outside the touch-area crop above.
     var contactsOffArea: Int = 0
@@ -296,6 +351,83 @@ struct DiscoveryTouchPipeline: Codable {
         maxBatchFrameCount = Swift.max(maxBatchFrameCount, frameCount)
         if frameCount >= Self.largeBatchThreshold { largeBatchCount += 1 }
     }
+
+    /// Frames a committed two-finger pan scroll ran with only one contact
+    /// present, and the longest unbroken run of them. A `.pan` gesture kept
+    /// alive on a single finger keeps scrolling from that finger's motion —
+    /// large numbers here are the signature of "scroll gets stuck, one finger
+    /// keeps scrolling the view". `TouchStateTracker.scrollSingleContactGrace`
+    /// now winds the gesture down once such a run exceeds the grace window;
+    /// `scrollWindDowns` counts how often that fired.
+    var scrollSingleContactFrames: Int = 0
+    var longestScrollSingleContactRun: Int = 0
+    var currentScrollSingleContactRun: Int = 0
+    var scrollWindDowns: Int = 0
+
+    mutating func noteScrollSingleContactFrame() {
+        scrollSingleContactFrames += 1
+        currentScrollSingleContactRun += 1
+        longestScrollSingleContactRun =
+            Swift.max(longestScrollSingleContactRun, currentScrollSingleContactRun)
+    }
+
+    mutating func noteScrollTwoContactFrame() {
+        currentScrollSingleContactRun = 0
+    }
+
+    /// Momentum-tail outcomes at scroll release. `momentumTailStarts` is a coast
+    /// actually beginning. `momentumSuppressedStale` is a release that *had* a
+    /// fast recent sample but the recency gate rejected it because motion
+    /// stopped more than `momentumRecencyWindow` ago — a deliberate brake, or a
+    /// batched-delivery gap that *looks* like one (the suspected cause of
+    /// "Bluetooth scroll doesn't coast"). `momentumSuppressedSlow` is every
+    /// other non-start: genuinely slow motion, or no recent motion and no fast
+    /// sample at all. `maxReleaseVelocity` is the largest release-velocity
+    /// magnitude seen (points/sec) — an implausible value points at a
+    /// delivery-timing bug corrupting the per-frame `dt`.
+    var momentumTailStarts: Int = 0
+    var momentumSuppressedStale: Int = 0
+    var momentumSuppressedSlow: Int = 0
+    var maxReleaseVelocity: Double = 0
+
+    /// At each scroll release: the largest gap seen since the last `.scroll`
+    /// frame of any kind (`maxReleaseFrameGap`) and since the last one that
+    /// moved (`maxReleaseMotionGap`), seconds. Plus counts of releases where
+    /// each gap exceeded `releaseGapThreshold` — a single max can't tell one
+    /// outlier from a systematic pattern, these can.
+    ///
+    /// The discriminator for a suppressed coast: `motionGapExceeded` high while
+    /// `frameGapExceeded` stays low ⇒ frames kept arriving but fingers held
+    /// still (a genuine brake — correct suppression). Both high together ⇒
+    /// frames stopped arriving (a batched-delivery gap — bug B).
+    var maxReleaseFrameGap: Double = 0
+    var maxReleaseMotionGap: Double = 0
+    var releaseFrameGapExceeded: Int = 0
+    var releaseMotionGapExceeded: Int = 0
+    /// Seconds. A gap beyond this at release is well past both
+    /// `peakVelocityWindow` (0.06) and `momentumRecencyWindow` (0.05), so it's
+    /// a real stall, not report jitter.
+    static let releaseGapThreshold: Double = 0.1
+
+    mutating func noteReleaseGaps(frameGap: Double, motionGap: Double) {
+        if frameGap >= 0 {
+            maxReleaseFrameGap = Swift.max(maxReleaseFrameGap, frameGap)
+            if frameGap > Self.releaseGapThreshold { releaseFrameGapExceeded += 1 }
+        }
+        if motionGap >= 0 {
+            maxReleaseMotionGap = Swift.max(maxReleaseMotionGap, motionGap)
+            if motionGap > Self.releaseGapThreshold { releaseMotionGapExceeded += 1 }
+        }
+    }
+
+    /// Touch frames whose measured `dt` since the previous frame was under a
+    /// millisecond, and the number of frames the `BatchFramePacer` delivered
+    /// via an immediate `flush()` rather than a paced tick. A batched-Bluetooth
+    /// stream whose frames arrive bunched (near-zero `dt`) produces a wildly
+    /// inflated per-frame velocity estimate; these two localize that to the
+    /// pacer's flush path.
+    var subMillisecondDtFrames: Int = 0
+    var pacerFlushDeliveredFrames: Int = 0
 
     /// True when the pipeline saw anything at all, so a pen-only capture can
     /// omit the block entirely.
