@@ -448,6 +448,10 @@ struct TouchStateTracker {
     /// long over well before this — but bounded, so a dropped lift frame can
     /// never latch touch permanently off.
     static let scrollWoundDownBackstop: CFAbsoluteTime = 2.0
+    /// Above this, a release "gap" is the idle between two separate gestures
+    /// (the ending frame arriving with the next touch), not a within-gesture
+    /// stall — the release-gap diagnostics record -1 instead.
+    static let releaseGapPlausibleMax: CFAbsoluteTime = 1.0
     /// Maximum hold duration for a two-finger contact to still count as a
     /// Smart Zoom tap rather than a rest. Deliberately does *not* need a
     /// separate max-deviation check: a still-`.undecided` teardown already
@@ -663,8 +667,16 @@ struct TouchStateTracker {
                 let braked = now - lastMotionTime > Self.momentumRecencyWindow
                 releaseVelocity = braked ? .zero : peak
                 releaseSuppressedByRecency = braked && (peak.dx != 0 || peak.dy != 0)
-                releaseFrameGap = lastFrameTime == 0 ? -1 : now - lastFrameTime
-                releaseMotionGap = lastMotionTime == 0 ? -1 : now - lastMotionTime
+                // The `contacts.isEmpty` frame that ends a scroll can arrive
+                // seconds later, bundled with the *next* touch's first contact —
+                // touch reports don't stream while nothing is on the surface.
+                // A gap beyond `releaseGapPlausibleMax` is that inter-gesture
+                // idle, not a within-gesture stall; record -1 (undefined)
+                // rather than poisoning the diagnostic with idle time.
+                let frameGap = lastFrameTime == 0 ? -1 : now - lastFrameTime
+                let motionGap = lastMotionTime == 0 ? -1 : now - lastMotionTime
+                releaseFrameGap = frameGap > Self.releaseGapPlausibleMax ? -1 : frameGap
+                releaseMotionGap = motionGap > Self.releaseGapPlausibleMax ? -1 : motionGap
             } else {
                 let peak = recentVelocities
                     .filter { now - $0.time <= Self.peakVelocityWindow }
@@ -841,11 +853,13 @@ struct TouchStateTracker {
                         suppressedByRecencyAtDrop = braked && (peak.dx != 0 || peak.dy != 0)
                         // `dt` is this frame's real spacing from the previous
                         // one (`lastFrameTime` was reassigned to `now` above,
-                        // so recomputing here would read ~0).
-                        frameGapAtDrop = dt
+                        // so recomputing here would read ~0). Cap idle gaps to
+                        // -1 as on the isEmpty path.
+                        frameGapAtDrop = dt > Self.releaseGapPlausibleMax ? -1 : dt
                         // `lastMotionTime == 0` means the scroll never had a
                         // moving frame — the gap is undefined, not enormous.
-                        motionGapAtDrop = lastMotionTime == 0 ? -1 : now - lastMotionTime
+                        let mGap = lastMotionTime == 0 ? -1 : now - lastMotionTime
+                        motionGapAtDrop = mGap > Self.releaseGapPlausibleMax ? -1 : mGap
                     }
                     if now - scrollDroppedToOneContactAt >= Self.scrollSingleContactGrace {
                         let priorPhase = lastScrollPhase
