@@ -521,6 +521,112 @@ extension InputInjector {
     /// state. Called immediately from `inject()` for every device, or from
     /// `proximityExitDebounceTimer`'s handler for Xencelabs once a real exit
     /// has been confirmed (see that property's declaration).
+    /// Release every pointer button this injector is holding, posting the
+    /// matching mouse-up so the *system* button comes up too — clearing our
+    /// own tracking alone would leave the click stuck everywhere.
+    ///
+    /// Extracted from `commitProximityExit` (2026-08-27), which used to be the
+    /// only caller and used to run constantly: on an intuosV1 tablet the pen
+    /// decoder fabricated a proximity exit every few frames, so this ran ~13×/s
+    /// and swept up any lost button release for free. `c5219a5` fixed the
+    /// fabricated exits, which also removed that accidental sweep — leaving a
+    /// held button with no release path but a genuine proximity exit. Hence the
+    /// tool-change caller in `TabletManager.onToolEnter`.
+    ///
+    /// Deliberately *not* covered by the idle watchdog: `tabletIsQuiescent`
+    /// counts `lastUSBMouseMask != 0` as "not quiescent" on purpose, because a
+    /// held button is normally legitimate state. That is the right call for a
+    /// button genuinely down, and the reason this needs event-driven callers
+    /// rather than a timeout.
+    ///
+    /// HIDThread-confined, like the state it touches.
+    func releaseHeldPointerButtons(at location: CGPoint, snapshot: InjectionSnapshot) {
+        // USB HID mouse buttons held when the tool left the tablet (e.g. the
+        // user yanked the KC-100 off the surface mid-drag, or swapped to the
+        // pen with the wheel button still logically down).
+        if lastUSBMouseMask != 0 {
+            if usbMouseLeftHeld {
+                postMouseUp(
+                    button: .left, at: location,
+                    clickCount: activeClickCount,
+                    snapshot: snapshot)
+                usbMouseLeftHeld = false
+            }
+            if (lastUSBMouseMask & 0x02) != 0 {
+                postMouseUp(
+                    button: .right, at: location, clickCount: 1,
+                    snapshot: snapshot)
+            }
+            if (lastUSBMouseMask & 0x04) != 0 {
+                if let e = CGEvent(
+                    mouseEventSource: sessionSource, mouseType: .otherMouseUp,
+                    mouseCursorPosition: location, mouseButton: .center)
+                {
+                    e.flags = currentEventFlags
+                    finalizeAndPost(e)
+                }
+            }
+            lastUSBMouseMask = 0
+        }
+        if lastMiddleDown {
+            if let e = CGEvent(
+                mouseEventSource: sessionSource, mouseType: .otherMouseUp,
+                mouseCursorPosition: location, mouseButton: .center)
+            {
+                e.flags = currentEventFlags
+                finalizeAndPost(e)
+            }
+            lastMiddleDown = false
+        }
+    }
+
+    /// Release a button held by a click binding (`.leftClick`/`.rightClick`/
+    /// `.middleClick`), posting the matching up.
+    ///
+    /// Separate from `releaseHeldPointerButtons` and deliberately **not** called
+    /// from `commitProximityExit`: a barrel or puck button held across a
+    /// proximity blip is legitimate — the gesture is owned by the button, not by
+    /// proximity (see the Scroll Drag note in `commitProximityExit`), and
+    /// releasing it there would break "hold the button, lift the pen, carry on".
+    ///
+    /// A *tool change* is different: the previous tool is off the tablet, so a
+    /// button it was holding cannot still be down. That is the one transition
+    /// where forcing the release is unambiguously correct, and it is the one
+    /// that stranded a middle click when App Exposé took the screen on the down
+    /// and swallowed the up (2026-08-27, PTH-850 + KC-100 puck).
+    func releaseBindingHeldButton(at location: CGPoint, snapshot: InjectionSnapshot) {
+        guard let held = hoverDragButton else { return }
+        switch held {
+        case .left:
+            postMouseUp(
+                button: .left, at: location, clickCount: activeClickCount,
+                snapshot: snapshot)
+        case .right:
+            postMouseUp(button: .right, at: location, clickCount: 1, snapshot: snapshot)
+        default:
+            if let e = CGEvent(
+                mouseEventSource: sessionSource, mouseType: .otherMouseUp,
+                mouseCursorPosition: location, mouseButton: .center)
+            {
+                e.flags = currentEventFlags
+                finalizeAndPost(e)
+            }
+        }
+        hoverDragButton = nil
+        injectLog.notice("released a binding-held pointer button on tool change")
+    }
+
+    /// Called when the active tool changes. The previous tool is off the tablet,
+    /// so anything it was holding must be released — see
+    /// `releaseBindingHeldButton` for why proximity exit is not the place for
+    /// this and a tool change is.
+    func releaseHeldStateForToolChange() {
+        guard let snap = injectionSnapshot else { return }
+        let loc = currentCursorPosition()
+        releaseHeldPointerButtons(at: loc, snapshot: snap)
+        releaseBindingHeldButton(at: loc, snapshot: snap)
+    }
+
     func commitProximityExit(snap: InjectionSnapshot) {
         activeToolIsEraser = false
         lastEraserMode = false
@@ -532,42 +638,7 @@ extension InputInjector {
                 snapshot: snap)
             lastTipDown = false
         }
-        // Release any USB HID mouse buttons that were held when the tool left
-        // the tablet (e.g. user yanked the KC-100 off the surface mid-drag).
-        if lastUSBMouseMask != 0 {
-            if usbMouseLeftHeld {
-                postMouseUp(
-                    button: .left, at: exitPoint,
-                    clickCount: activeClickCount,
-                    snapshot: snap)
-                usbMouseLeftHeld = false
-            }
-            if (lastUSBMouseMask & 0x02) != 0 {
-                postMouseUp(
-                    button: .right, at: exitPoint, clickCount: 1,
-                    snapshot: snap)
-            }
-            if (lastUSBMouseMask & 0x04) != 0 {
-                if let e = CGEvent(
-                    mouseEventSource: sessionSource, mouseType: .otherMouseUp,
-                    mouseCursorPosition: exitPoint, mouseButton: .center)
-                {
-                    e.flags = currentEventFlags
-                    finalizeAndPost(e)
-                }
-            }
-            lastUSBMouseMask = 0
-        }
-        if lastMiddleDown {
-            if let e = CGEvent(
-                mouseEventSource: sessionSource, mouseType: .otherMouseUp,
-                mouseCursorPosition: exitPoint, mouseButton: .center)
-            {
-                e.flags = currentEventFlags
-                finalizeAndPost(e)
-            }
-            lastMiddleDown = false
-        }
+        releaseHeldPointerButtons(at: exitPoint, snapshot: snap)
         // Safety valve: release any modifier keys stranded by a missed decoder
         // release event (e.g. BT packet drop leaving lastBTPadKeys non-zero).
         // Per-transport fixes (Defect A/B) prevent accumulation; this ensures

@@ -644,6 +644,20 @@ final class TabletManager: ObservableObject {
         let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
             Task { @MainActor [weak self, weak context] in
             guard self != nil, let context else { return }
+            // A different tool just came into range, so the previous one is off
+            // the tablet and anything it was holding must come up. Hop to
+            // HIDThread: the held-button state is confined there, same as
+            // `releaseOnAppSwitch`. See `releaseBindingHeldButton` for why a
+            // tool change is the right trigger and proximity exit is not.
+            if identity.toolCode != context.injector.activeToolCode {
+                let injector = context.injector
+                CFRunLoopPerformBlock(
+                    HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue
+                ) {
+                    injector.releaseHeldStateForToolChange()
+                }
+                CFRunLoopWakeUp(HIDThread.shared.runLoop)
+            }
             context.activeToolSerial = identity.serial
             context.activeToolIsMouse = identity.isMouse
             context.activeToolCode = identity.toolCode

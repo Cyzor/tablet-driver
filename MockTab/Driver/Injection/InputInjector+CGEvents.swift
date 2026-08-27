@@ -608,6 +608,19 @@ extension InputInjector {
                 mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: .left)
             {
+                // Same tablet stamping as `.rightClick`/`.middleClick` below.
+                // This case used to post a bare mouse event while its three
+                // siblings stamped subtype/devID/ptBtns, which made a binding's
+                // down and a pen tip's up (which always stamps, via
+                // `postMouseUp`) look like two different input streams — enough
+                // for AppKit's gesture recognizer to reject the up as
+                // `receivedEventMidStream`. Pressure stays 0: this is a button
+                // press, not a tip contact.
+                e.setIntegerValueField(.mouseEventSubtype, value: 1)
+                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                e.setIntegerValueField(.tabletEventPointButtons, value: down ? 1 : 0)
+                e.setDoubleValueField(.tabletEventPointPressure, value: 0.0)
+                e.setDoubleValueField(.mouseEventPressure, value: 0.0)
                 e.flags = currentEventFlags
                 finalizeAndPost(e)
             }
