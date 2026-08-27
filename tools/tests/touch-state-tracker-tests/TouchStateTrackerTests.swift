@@ -700,6 +700,133 @@ private func testPanBriefOneContactFrameDoesNotWindDown() {
     checks += 1
 }
 
+// MARK: - Onset delay
+
+/// Pin the shipped default. `touchOnsetDelayMs` (settings, no UI) defaults to
+/// 40 ms and feeds this via `InjectionSnapshot`; the injector plumbing isn't
+/// reachable from this harness, so this at least catches an accidental edit to
+/// the constant the whole feature is calibrated around.
+private func testOnsetDelayDefaultIsFortyMs() {
+    expectEqual(TouchStateTracker.onsetDelay, 0.04,
+                "shipped onsetDelay default must stay 40 ms unless deliberately retuned")
+}
+
+/// The onset window withholds *pointer motion*, not gesture escalation. A
+/// second finger landing after the window has closed (sequence already in
+/// `.pointer`) must still escalate to a scroll — the cost is only that the
+/// first finger emitted a little cursor drift first, and that drift must stay
+/// small.
+private func testSecondFingerAfterOnsetStillEscalatesWithBoundedDrift() {
+    var tracker = TouchStateTracker()
+    // Finger 1 lands, then drifts slowly for longer than the 40 ms default
+    // onset window — it is in `.pointer` by the time finger 2 arrives.
+    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
+    var drift = 0.0
+    for (i, t) in stride(from: 0.02, through: 0.10, by: 0.02).enumerated() {
+        let x = Double(i + 1) * 3  // 3 pts/frame
+        if case let .pointerMove(dx, _) = process(
+            &tracker, [(id: 1, screen: CGPoint(x: x, y: 0))], at: t)
+        {
+            drift += abs(dx)
+        }
+    }
+    checks += 1
+    if drift > 20 {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: pre-escalation drift \(drift) pts exceeds bound\n".utf8))
+    }
+    // Second finger lands — must escalate (a Began scroll or a committed
+    // gesture), not keep pointer-tracking finger 1.
+    let escalated = process(
+        &tracker,
+        [(id: 1, screen: CGPoint(x: 15, y: 0)), (id: 2, screen: CGPoint(x: 55, y: 0))],
+        at: 0.12)
+    checks += 1
+    switch escalated {
+    case .scrollDelta, .twoFingerGesture, .none:
+        // `.none` is fine here: an undecided two-finger sequence emits nothing
+        // until it commits. What matters is the next frame producing a scroll.
+        break
+    default:
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: second finger after onset did not escalate — got \(escalated)\n".utf8))
+    }
+    // Translate both fingers far enough to commit the pan; the first committed
+    // frame is a `.began`, subsequent ones `.changed`.
+    _ = process(
+        &tracker,
+        [(id: 1, screen: CGPoint(x: 15, y: 40)), (id: 2, screen: CGPoint(x: 55, y: 40))],
+        at: 0.14)
+    if case .scrollDelta(_, _, .changed) = process(
+        &tracker,
+        [(id: 1, screen: CGPoint(x: 15, y: 80)), (id: 2, screen: CGPoint(x: 55, y: 80))],
+        at: 0.16)
+    {
+        checks += 1
+    } else {
+        failures += 1
+        checks += 1
+        FileHandle.standardError.write(
+            Data("FAIL: two-finger pan after onset did not scroll\n".utf8))
+    }
+}
+
+/// A tap that lands and lifts entirely inside the onset window must still
+/// register as a click.
+private func testTapInsideOnsetWindowStillClicks() {
+    var tracker = TouchStateTracker()
+    _ = tracker.process(
+        contacts: [(id: 1, screen: .zero)], tapToClick: true, twoFingerScroll: true,
+        reverseScrollDirection: false, sensitivity: 1, now: 0)
+    // Lift at 0.03 — inside the 40 ms window, negligible drift.
+    expectEqual(
+        tracker.process(
+            contacts: [], tapToClick: true, twoFingerScroll: true,
+            reverseScrollDirection: false, sensitivity: 1, now: 0.03),
+        .tapClick,
+        "a tap wholly inside the onset window must still click")
+}
+
+/// The `onsetDelay:` parameter overrides the static default: a value longer
+/// than the default keeps the sequence silent past where the default would
+/// have advanced it to `.pointer`.
+private func testOnsetDelayParameterIsHonored() {
+    var tracker = TouchStateTracker()
+    let longDelay: CFAbsoluteTime = 0.20
+    _ = tracker.process(
+        contacts: [(id: 1, screen: .zero)], tapToClick: false, twoFingerScroll: true,
+        reverseScrollDirection: false, sensitivity: 1, onsetDelay: longDelay, now: 0)
+    // At 0.08 the default (0.04) would already be in `.pointer` and emit motion.
+    expectEqual(
+        tracker.process(
+            contacts: [(id: 1, screen: CGPoint(x: 30, y: 0))], tapToClick: false,
+            twoFingerScroll: true, reverseScrollDirection: false, sensitivity: 1,
+            onsetDelay: longDelay, now: 0.08),
+        .none,
+        "a longer onsetDelay must keep the sequence silent past the default window")
+    // The frame that crosses the delay flips to `.pointer` but emits nothing
+    // (motion is measured from that anchor); the frame after it moves the
+    // cursor.
+    _ = tracker.process(
+        contacts: [(id: 1, screen: CGPoint(x: 35, y: 0))], tapToClick: false,
+        twoFingerScroll: true, reverseScrollDirection: false, sensitivity: 1,
+        onsetDelay: longDelay, now: 0.22)
+    if case .pointerMove = tracker.process(
+        contacts: [(id: 1, screen: CGPoint(x: 40, y: 0))], tapToClick: false,
+        twoFingerScroll: true, reverseScrollDirection: false, sensitivity: 1,
+        onsetDelay: longDelay, now: 0.24)
+    {
+        checks += 1
+    } else {
+        failures += 1
+        checks += 1
+        FileHandle.standardError.write(
+            Data("FAIL: motion did not resume after the custom onsetDelay elapsed\n".utf8))
+    }
+}
+
 @main
 enum TouchStateTrackerTestRunner {
     static func main() {
@@ -728,6 +855,10 @@ enum TouchStateTrackerTestRunner {
         testRotateEnabledDoesNotRegressPinch()
         testRotateEnabledDoesNotRegressDiagonalPan()
         testConcurrentPinchAndRotate()
+        testOnsetDelayDefaultIsFortyMs()
+        testSecondFingerAfterOnsetStillEscalatesWithBoundedDrift()
+        testTapInsideOnsetWindowStillClicks()
+        testOnsetDelayParameterIsHonored()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

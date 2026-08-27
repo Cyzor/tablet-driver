@@ -241,6 +241,18 @@ Use `Swift.min(Swift.max(...))` — never define `clamped(to:)` extension; Swift
 
 ---
 
+## Advanced defaults keys (no UI)
+
+Read through the same device/profile/app-override layering as every other
+setting, so a bare `defaults write com.cyzor.mocktab <key> <value>` is the
+lowest layer and any per-device value overrides it.
+
+| Key | Type | Default | Effect |
+|-----|------|---------|--------|
+| `touchOnsetDelayMs` | Double, clamped 0–500 | `40` | Milliseconds a finger touch emits nothing after landing (`TouchStateTracker.onsetDelay`). Lower for a snappier touch start; raise if a resting palm nudges the cursor. `0` shrinks the dead span to a ~2-frame floor (~20 ms) — it does not make touch instant, and a palm can then move the cursor before the pen tips down. |
+
+---
+
 ## Bugs Fixed (Reference)
 
 | Bug | Fix |

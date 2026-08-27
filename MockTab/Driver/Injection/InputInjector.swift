@@ -951,6 +951,20 @@ final class InputInjector: @unchecked Sendable {
     /// dropped a ≥2-contact frame below two" condition, so
     /// `palmRejectionBrokeTwoFingerFrames` counts entries, not every held frame.
     var palmRejectionBrokeTwoFingerActive = false
+    /// `touchTracker.mode` as of the previous `injectTouch` frame, for spotting
+    /// `.idle` → `.pending` transitions (onset windows) without the tracker
+    /// having to report them. `.idle` initially.
+    var prevTouchMode: TouchStateTracker.Mode = .idle
+    /// Wall-clock time the last touch sequence tore down (tracker returned to
+    /// `.idle`). A new onset window opening within
+    /// `DiscoveryTouchPipeline.reArmWindow` of this is one interrupted drag
+    /// re-paying the onset delay, not a fresh deliberate touch. 0 until the
+    /// first teardown.
+    var lastTouchTeardownTime: CFAbsoluteTime = 0
+    /// Wall-clock time the current single-contact pointer drag began, for
+    /// `DiscoveryTouchPipeline.longestSingleContactDragMs`. 0 when not in a
+    /// single-contact drag.
+    var singleContactDragStart: CFAbsoluteTime = 0
     /// CFAbsoluteTime when the pen last left proximity.  Touch is suppressed
     /// while the pen is in proximity and for a brief grace window after exit
     /// so palm-rejection bounces (finger contact arriving 1–2 frames after

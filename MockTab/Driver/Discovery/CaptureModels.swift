@@ -77,7 +77,16 @@ struct DiscoveryResult: Codable {
     /// exit path) and `palmRejectionBrokeTwoFingerFrames` (a ≥2-contact frame
     /// filtered below two — palm rejection costing a gesture, as distinct from
     /// `contactsPalmRejected` correctly dropping a lone palm).
-    var captureVersion: Int = 10
+    /// 11: `touchSettings` gains `touchOnsetDelayMs` — the onset window is now a
+    /// silent user-settable `defaults` value, so a file that doesn't carry it
+    /// can't rule it out as the cause of "a palm moved the cursor" / "touch
+    /// starts laggy". `touchPipeline` gains `onsetWindowsEntered`,
+    /// `onsetWindowsReArmedWithin`, `longestSingleContactDragMs` — whether a
+    /// slow full-surface swipe is re-paying the onset delay per re-land (the
+    /// PTH-651 issue #12 "swipe covers only part of the screen" report). New
+    /// pipeline fields default 0, the new settings field is optional, so v10
+    /// readers and files still decode.
+    var captureVersion: Int = 11
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -138,6 +147,13 @@ struct DiscoveryTouchSettings: Codable {
     var reverseScrollDirection: Bool?
     var rotateEnabled: Bool?
     var smartZoom: Bool?
+    /// Milliseconds a touch sequence emits nothing after landing
+    /// (`TabletSettings.touchOnsetDelayMs`, default 40). User-settable via a
+    /// `defaults` key with no UI, so it is invisible in a report stream: a
+    /// value of 0 makes "a palm moved the cursor" or "no onset pause" expected
+    /// rather than a bug, and a large value explains a laggy-feeling touch
+    /// start. Optional so pre-v11 files still decode.
+    var touchOnsetDelayMs: Double?
     let sensitivity: Double
     /// Touch-area crop as a fraction of the surface (x, y, width, height).
     /// A crop that excludes where the tester's fingers actually landed drops
@@ -428,6 +444,31 @@ struct DiscoveryTouchPipeline: Codable {
     /// pacer's flush path.
     var subMillisecondDtFrames: Int = 0
     var pacerFlushDeliveredFrames: Int = 0
+
+    /// Onset-window lifecycle. `onsetWindowsEntered` counts `.idle` → `.pending`
+    /// transitions (one per touch sequence). `onsetWindowsReArmedWithin` counts
+    /// how many of those started within `reArmWindow` of the previous
+    /// sequence's teardown — a single slow finger drag that dips below the
+    /// sensor's contact threshold and re-lands pays the onset delay again each
+    /// time, so a full-surface swipe stutters. `longestSingleContactDragMs` is
+    /// the longest unbroken single-contact pointer drag seen; a large value
+    /// next to a high re-arm count says the "swipe covers only part of the
+    /// screen" report is churn, not a real short drag. The onset-delay change
+    /// (2026-08-27) shortens each re-arm's cost from ~120 ms to the configured
+    /// value but does not remove the re-arm itself — these measure whether it
+    /// still matters.
+    ///
+    /// `TouchPipelineProbe` is global, so on a bench with two tablets connected
+    /// `onsetWindowsEntered` sums both — don't read
+    /// `onsetWindowsReArmedWithin / onsetWindowsEntered` as a fraction there.
+    /// A single-tablet capture (a normal user, and issue #12's reporter) is fine.
+    var onsetWindowsEntered: Int = 0
+    var onsetWindowsReArmedWithin: Int = 0
+    var longestSingleContactDragMs: Int = 0
+    /// Seconds. A gap between one sequence's teardown and the next's onset
+    /// shorter than this reads as one interrupted drag rather than two
+    /// deliberate touches.
+    static let reArmWindow: Double = 0.25
 
     /// True when the pipeline saw anything at all, so a pen-only capture can
     /// omit the block entirely.

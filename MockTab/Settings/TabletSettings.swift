@@ -423,6 +423,15 @@ final class TabletSettings: ObservableObject {
     @Published var tapToClick: Bool = false {
         didSet { persist("tapToClick", tapToClick) }
     }
+    /// Milliseconds a touch sequence emits nothing after landing — see
+    /// `TouchStateTracker.onsetDelay`.  Default 40.  No UI: an advanced
+    /// `defaults`-only knob for users who find the onset pause too long (set
+    /// lower) or who see a palm move the cursor before their pen tips down (set
+    /// higher).  Clamped 0…500 in `reloadAll()`.  0 does not make touch
+    /// instant — a ~2-frame floor remains regardless (see `onsetDelay`).
+    @Published var touchOnsetDelayMs: Double = 40.0 {
+        didSet { persist("touchOnsetDelayMs", touchOnsetDelayMs) }
+    }
     /// When true, two-finger motion is translated into a smooth scroll-wheel
     /// CGEvent stream (with phase Began/Changed/Ended), which apps interpret as
     /// trackpad scroll.  Disable to ignore second-finger contacts.

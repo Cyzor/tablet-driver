@@ -62,6 +62,7 @@ extension TabletSettings {
         touchEnabled = loadBool("touchEnabled", default: false)
         touchSensitivity = Swift.max(0.25, Swift.min(loadDouble("touchSensitivity", default: 1.0), 4.0))
         tapToClick = loadBool("tapToClick", default: false)
+        touchOnsetDelayMs = Swift.max(0.0, Swift.min(loadDouble("touchOnsetDelayMs", default: 40.0), 500.0))
         twoFingerScroll = loadBool("twoFingerScroll", default: true)
         reverseScrollDirection = loadBool("naturalScrolling", default: false)
         twoFingerScrollMomentum = loadBool("twoFingerScrollMomentum", default: true)

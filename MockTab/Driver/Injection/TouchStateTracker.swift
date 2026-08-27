@@ -377,13 +377,32 @@ struct TouchStateTracker {
     /// Maximum tap duration (seconds); longer touches become drags or scrolls.
     static let tapMaxDuration: CFAbsoluteTime = 0.30
     /// Onset delay: a touch sequence emits nothing until it has been down this
-    /// long.  Two jobs: (1) a pen+palm landing posts its proximity report
+    /// long.  Two jobs: (1) a palm landing just before the pen tips down does so
     /// within this window, so the injector resets the tracker before the palm
-    /// has moved the cursor or scrolled anything; (2) a second finger landing
-    /// within the window starts a scroll directly, without the first finger
-    /// having dragged the cursor in the meantime.  Same trick trackpads use;
-    /// the cost is pointer motion starting ~0.1 s late.
-    static let onsetDelay: CFAbsoluteTime = 0.12
+    /// has moved the cursor; (2) a second finger landing within the window
+    /// starts a scroll directly, without the first finger having dragged the
+    /// cursor in the meantime.  Same trick trackpads use; the cost is pointer
+    /// motion starting this late.
+    ///
+    /// Default lowered 0.12 → 0.04 (2026-08-27): a two-finger gesture from rest
+    /// lands its fingers 1–3 frames (~10–30 ms) apart, so 40 ms covers job (2)
+    /// with margin — reasoned, not measured.  Job (1) only ever covered
+    /// palm-before-tip-down: a *hovering* pen takes `touchBusyHoldOff` (150 ms,
+    /// longer than the old window) to confirm busy, and tip-down bypasses that
+    /// hold-off.  What the window guards is a palm *drifting* the cursor before
+    /// tip-down — not an irreversible action (a palm can't tap: drift exceeds
+    /// `tapMaxDistance`; can't scroll: needs two contacts), and pen absolute
+    /// positioning corrects the cursor on its next report.  Overridable per
+    /// device via the `touchOnsetDelayMs` defaults key; the value reaches
+    /// `process` through `InjectionSnapshot`.
+    ///
+    /// Setting it to 0 does not make the first frame move the cursor: the
+    /// `.idle` frame returns `.none`, and the frame that clears the delay
+    /// re-anchors `lastPositions` and also returns `.none`, so first motion is
+    /// the third frame (~20 ms at container rate) and the first ~2 frames of
+    /// travel are discarded, not replayed.  0 shrinks the dead span to that
+    /// floor; it does not remove it.
+    static let onsetDelay: CFAbsoluteTime = 0.04
     /// Motion (screen points) needed to commit pan vs pinch for a sequence.
     /// Slightly above finger-jitter so a sliding pan doesn't decide on noise.
     static let twoFingerDecideDistance: Double = 6.0
@@ -573,6 +592,7 @@ struct TouchStateTracker {
         rotate: Bool = false,
         rawPositions: [Int: CGPoint] = [:],
         touchDiagonal: Double = 0,
+        onsetDelay: CFAbsoluteTime = TouchStateTracker.onsetDelay,
         now: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     ) -> Intent {
 
@@ -796,7 +816,7 @@ struct TouchStateTracker {
                 }
                 lastPositions = [first.id: first.screen]
             }
-            if now - tapStart >= Self.onsetDelay {
+            if now - tapStart >= onsetDelay {
                 mode = .pointer
             }
             return .none
@@ -1110,8 +1130,11 @@ struct TouchStateTracker {
         }
     }
 
-    /// Also called directly by the injector to force an immediate hard reset
-    /// (e.g. pen arbitration taking over).
+    /// Clears all sequence state back to `.idle`. Called internally on
+    /// all-fingers-lifted and on the non-overlapping-contacts wound-down
+    /// escape; the injector no longer calls this directly — pen arbitration
+    /// now feeds `process(contacts: [])` so an open gesture phase closes
+    /// through the normal wind-down path instead of vanishing.
     mutating func reset() {
         mode = .idle
         lastPositions.removeAll(keepingCapacity: true)

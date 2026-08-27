@@ -115,7 +115,9 @@ extension InputInjector {
                     pinchZoom: snap.pinchZoomEnabled,
                     smartZoom: snap.smartZoomEnabled,
                     rotate: snap.rotateEnabled,
+                    onsetDelay: snap.touchOnsetDelay,
                     now: now)
+                noteOnsetLifecycle(now: now)
                 handleTouchIntent(windDown, snap: snap, settings: settings)
             }
             return
@@ -278,12 +280,51 @@ extension InputInjector {
             rotate: snap.rotateEnabled,
             rawPositions: rawTouchPositionsMM,
             touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
+            onsetDelay: snap.touchOnsetDelay,
             now: now)
 
         if touchTracker.scrollWoundDownThisFrame {
             TouchPipelineProbe.note { $0.scrollWindDowns += 1 }
         }
+        noteOnsetLifecycle(now: now)
         handleTouchIntent(intent, snap: snap, settings: settings)
+    }
+
+    /// Fold this frame's `touchTracker.mode` into the onset-window lifecycle
+    /// counters. `.idle` → `.pending` is a new sequence (one onset window); if
+    /// the previous sequence tore down less than `reArmWindow` ago it's one
+    /// interrupted drag re-paying the delay, which the onset-delay change
+    /// shortened but did not remove. Also tracks the running single-contact
+    /// pointer-drag duration for `longestSingleContactDragMs`. Must be called
+    /// on every `injectTouch` frame that advanced the tracker, the pen-busy
+    /// wind-down included, so a teardown there isn't mistaken for a re-arm on
+    /// the next real touch.
+    func noteOnsetLifecycle(now: CFAbsoluteTime) {
+        let mode = touchTracker.mode
+        defer { prevTouchMode = mode }
+
+        if prevTouchMode == .idle, mode == .pending {
+            let reArmed = lastTouchTeardownTime != 0
+                && now - lastTouchTeardownTime < DiscoveryTouchPipeline.reArmWindow
+            TouchPipelineProbe.note {
+                $0.onsetWindowsEntered += 1
+                if reArmed { $0.onsetWindowsReArmedWithin += 1 }
+            }
+        }
+
+        if prevTouchMode != .idle, mode == .idle {
+            lastTouchTeardownTime = now
+        }
+
+        if mode == .pointer {
+            if singleContactDragStart == 0 { singleContactDragStart = now }
+            let ms = Int((now - singleContactDragStart) * 1000)
+            TouchPipelineProbe.note {
+                $0.longestSingleContactDragMs = Swift.max($0.longestSingleContactDragMs, ms)
+            }
+        } else {
+            singleContactDragStart = 0
+        }
     }
 
     /// Translates a resolved `Intent` into CGEvents. Shared by the normal

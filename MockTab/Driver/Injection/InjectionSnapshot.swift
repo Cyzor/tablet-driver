@@ -59,6 +59,10 @@ struct InjectionSnapshot: Sendable, Equatable {
 
     var touchEnabled: Bool
     var touchSensitivity: Double
+    /// Seconds a touch sequence emits nothing after landing (from
+    /// `TabletSettings.touchOnsetDelayMs`, converted from ms). Passed to
+    /// `TouchStateTracker.process` as its `onsetDelay:` argument.
+    var touchOnsetDelay: Double
     var tapToClick: Bool
     var twoFingerScroll: Bool
     var reverseScrollDirection: Bool
@@ -141,6 +145,7 @@ extension TabletSettings {
             touchRingActiveSlotIndex: touchRingActiveSlotIndex,
             touchEnabled: touchEnabled,
             touchSensitivity: touchSensitivity,
+            touchOnsetDelay: touchOnsetDelayMs / 1000.0,
             tapToClick: tapToClick,
             twoFingerScroll: twoFingerScroll,
             reverseScrollDirection: reverseScrollDirection,
