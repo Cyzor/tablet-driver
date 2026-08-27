@@ -125,13 +125,21 @@ struct TouchStateTracker {
         case scroll         // two contacts: pan scroll and/or pinch-zoom
     }
 
-    /// Sticky two-finger sub-mode once significant motion is seen. Chosen
-    /// once per sequence (same sticky policy as Mode): `.pan` vs `.gesture`
-    /// doesn't change once committed, and within `.gesture`, which of
-    /// pinch/rotate are in play (`pinchInGesture`/`rotateInGesture`) is
-    /// fixed at the same commit, not re-evaluated frame to frame — a pinch
-    /// that grows a twist mid-sequence still resolves as pinch-only, a
-    /// known, deliberate v1 limitation, not a bug to chase.
+    /// Sticky two-finger sub-mode once significant motion is seen. `.pan` vs
+    /// `.gesture` is chosen once per sequence and doesn't change once
+    /// committed.
+    ///
+    /// Within `.gesture`, which of pinch/rotate are in play
+    /// (`pinchInGesture`/`rotateInGesture`) is *not* frozen at commit: a
+    /// component that wasn't qualified there can join later in the same
+    /// sequence, so a pinch that grows a twist becomes a concurrent
+    /// pinch+rotate instead of resolving pinch-only. (It was frozen through
+    /// 2026-08-27, which is what made simultaneous zoom-and-rotate so hard to
+    /// invoke — the evidence for the second gesture almost never arrives in
+    /// the same frame as the first. See the late-join block in `process`.)
+    /// Joining is one-way: a component that has begun is never dropped
+    /// mid-sequence, because retracting it means posting an `.ended` that
+    /// apps read as the gesture finishing.
     ///
     /// `.pan` is still exclusive with `.gesture`: translating the centroid
     /// (pan) is a fundamentally different action from the fingers moving
@@ -326,6 +334,12 @@ struct TouchStateTracker {
     /// `newAngle - originAngle` so a rotation exceeding π during the decide
     /// window still accumulates correctly instead of wrapping back on itself.
     private var undecidedCumulativeAngle: Double = 0
+    /// Per-frame gesture signal over the last `lateJoinWindow`, for the
+    /// late-join test only. Kept as a trailing window rather than a running
+    /// total so the bar a joining component has to clear stays constant
+    /// instead of climbing with the gesture's own duration.
+    private var recentGestureDeltas:
+        [(time: CFAbsoluteTime, scale: Double, tangential: Double, translation: Double)] = []
 
     /// Recent per-frame instantaneous velocities (points/second), each frame's
     /// raw `delta/dt` with a timestamp — the momentum-tail seed. An EMA was
@@ -519,6 +533,13 @@ struct TouchStateTracker {
     /// pan or pinch shouldn't wait on a timer meant to disambiguate a
     /// *slow*, deliberate twist onset. Set to 2× `twoFingerDecideDistance`.
     static let rotateDwellBypassDistance: Double = 12.0
+    /// Trailing window the late-join test sums its evidence over (see the
+    /// late-join block in `process`).  Long enough to accumulate a deliberate
+    /// motion at report rate (~25 frames at 100 Hz, comparable to what a
+    /// commit sees), short enough that the bar doesn't drift upward as the
+    /// gesture runs.  Not hardware-tuned — reasoned from the commit path's own
+    /// timescale; revisit against a v12 capture's `twoFingerLateJoins`.
+    static let lateJoinWindow: CFAbsoluteTime = 0.25
 
     // MARK: - Process
 
@@ -1041,9 +1062,105 @@ struct TouchStateTracker {
                     return .scrollDelta(dx: 0, dy: 0, phase: .began)
                 }
                 if twoFingerKind == .gesture {
-                    // Each component was fixed at commit (see
-                    // `TwoFingerKind`'s doc comment) and now just reports its
-                    // own per-frame delta, independently of the other.
+                    // Angle tracking runs for the whole sequence, not just while
+                    // rotate is an active component: the late-join window below
+                    // needs a per-frame angle delta even while rotate is
+                    // dormant, and a gap in `lastPairAngle` would make the
+                    // first delta after a join one large jump.
+                    //
+                    // Hold the last angle on a 1-contact frame instead of
+                    // computing — same treatment `lastPinchDistance` gets
+                    // above, for the same reason (a lone survivor's angle
+                    // relative to nothing is meaningless and would invent a
+                    // huge delta).
+                    var frameAngleDelta = 0.0
+                    if rotate, rotateEligible {
+                        let sortedPair = current.count >= 2 ? current.sorted { $0.id < $1.id } : current
+                        let newAngle = current.count >= 2 ? Self.angle(between: sortedPair) : lastPairAngle
+                        frameAngleDelta = Self.wrappedDelta(from: lastPairAngle, to: newAngle)
+                        lastPairAngle = newAngle
+                    }
+
+                    // Late join. The commit above picks the components from one
+                    // frame's evidence; a hand that starts as a clean zoom and
+                    // then adds a twist (or the reverse) produced that evidence
+                    // *later*, and freezing the set at commit meant the second
+                    // gesture could never arrive — the sequence had to be lifted
+                    // and restarted. A trackpad has no such commit: it derives
+                    // magnification and rotation independently every frame. This
+                    // re-runs the qualification for whichever component isn't in
+                    // play yet, so the second gesture joins when its evidence
+                    // arrives.
+                    //
+                    // Measured over a trailing window, *not* cumulative since
+                    // the sequence origin the commit uses. Since-origin totals
+                    // make the join bar climb with the gesture's own length:
+                    // `companionSuppressionRatio` asks the newcomer to reach
+                    // half of a scale change that has been growing the whole
+                    // time, so a twist that joins after ~20° a moment after
+                    // commit needed ~46° once the zoom had been running (probed
+                    // 2026-08-27, which is why this isn't the commit's own
+                    // accumulators). A window keeps the bar constant, and "how
+                    // hard am I twisting *now*" is the question this is actually
+                    // asking.
+                    //
+                    // Latch-on only: a component that has begun is never removed
+                    // mid-sequence. Removal would mean posting an `.ended` and
+                    // then a fresh `.began` if it came back, and apps read that
+                    // envelope churn as separate gestures. Growth is safe;
+                    // retraction isn't.
+                    if current.count >= 2 {
+                        recentGestureDeltas.append((
+                            time: now,
+                            scale: abs(scaleDelta),
+                            tangential: abs(frameAngleDelta) * (newDistance / 2),
+                            translation: hypot(dx, dy)))
+                        recentGestureDeltas.removeAll { now - $0.time > Self.lateJoinWindow }
+                    }
+                    if current.count >= 2, !pinchInGesture || !rotateInGesture {
+                        let totalTranslation = recentGestureDeltas.reduce(0) { $0 + $1.translation }
+                        let totalScaleChange = recentGestureDeltas.reduce(0) { $0 + $1.scale }
+                        let totalTangentialMotion = (rotate && rotateEligible)
+                            ? recentGestureDeltas.reduce(0) { $0 + $1.tangential }
+                            : 0
+                        var pinchQualifies = pinchZoom
+                            && totalScaleChange > totalTranslation * Self.pinchDominanceRatio
+                            && totalScaleChange >= Self.pinchNoiseFloor
+                        var rotateQualifies = rotate && rotateEligible
+                            && totalTangentialMotion > totalTranslation * Self.pinchDominanceRatio
+                            && totalTangentialMotion >= Self.rotateNoiseFloor
+                        // Same companion suppression as at commit, and it is
+                        // what keeps this from firing on drift: over a long
+                        // pinch the incidental angle wobble does eventually
+                        // clear `rotateNoiseFloor` in absolute terms, but it
+                        // stays far below `companionSuppressionRatio` of the
+                        // scale change unless the user is really twisting.
+                        if pinchQualifies, rotateQualifies {
+                            if totalTangentialMotion < totalScaleChange * Self.companionSuppressionRatio {
+                                rotateQualifies = false
+                            } else if totalScaleChange < totalTangentialMotion * Self.companionSuppressionRatio {
+                                pinchQualifies = false
+                            }
+                        }
+                        let joinPinch = !pinchInGesture && pinchQualifies
+                        let joinRotate = !rotateInGesture && rotateQualifies
+                        if joinPinch || joinRotate {
+                            if joinPinch { pinchInGesture = true; pinchPhase = .began }
+                            if joinRotate { rotateInGesture = true; rotatePhase = .began }
+                            // Open the new envelope with a zero delta and skip
+                            // the already-active component's delta for this one
+                            // frame, exactly as the commit path does. One frame
+                            // at report rate is imperceptible; mixing a `.began`
+                            // and a `.changed` for different components in one
+                            // return is not worth the extra state.
+                            return .twoFingerGesture(
+                                magnify: joinPinch ? GestureDelta(value: 0, phase: .began) : nil,
+                                rotate: joinRotate ? GestureDelta(value: 0, phase: .began) : nil)
+                        }
+                    }
+
+                    // Each active component reports its own per-frame delta,
+                    // independently of the other.
                     var magnify: GestureDelta?
                     if pinchInGesture, scaleDelta != 0, oldDistance > 0 {
                         // Exact relative growth this frame — see the
@@ -1055,15 +1172,7 @@ struct TouchStateTracker {
                     }
                     var rotateComponent: GestureDelta?
                     if rotateInGesture {
-                        // Hold the last angle on a 1-contact frame instead of
-                        // computing — same treatment `lastPinchDistance` gets
-                        // above, for the same reason (a lone survivor's angle
-                        // relative to nothing is meaningless and would
-                        // invent a huge delta).
-                        let sortedPair = current.count >= 2 ? current.sorted { $0.id < $1.id } : current
-                        let newAngle = current.count >= 2 ? Self.angle(between: sortedPair) : lastPairAngle
-                        let delta = Self.wrappedDelta(from: lastPairAngle, to: newAngle)
-                        lastPairAngle = newAngle
+                        let delta = frameAngleDelta
                         if delta != 0 {
                             rotatePhase = .changed
                             // Negated: hardware-confirmed 2026-08-08 that raw
@@ -1161,6 +1270,7 @@ struct TouchStateTracker {
         lastPairAngle = 0
         undecidedCumulativeAngle = 0
         undecidedStartTime = 0
+        recentGestureDeltas.removeAll()
         recentVelocities.removeAll()
         lastFrameTime = 0
         lastMotionTime = 0

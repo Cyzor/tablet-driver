@@ -827,6 +827,166 @@ private func testOnsetDelayParameterIsHonored() {
     }
 }
 
+// MARK: - Late join (a component entering an already-committed gesture)
+
+/// Fingers spread cleanly first (pinch commits alone), then twist. The twist
+/// must join the gesture in progress rather than being locked out for the
+/// rest of the sequence — the behaviour that made simultaneous zoom-and-
+/// rotate nearly impossible to invoke before 2026-08-27.
+private func testRotateJoinsACommittedPinch() {
+    var tracker = TouchStateTracker()
+    let wide = rawPositions(distance: 700)
+    func pair(distance: Double, tilt: Double) -> [(id: Int, screen: CGPoint)] {
+        let half = distance / 2
+        let d = CGPoint(x: half * cos(tilt), y: half * sin(tilt))
+        return [(id: 1, screen: CGPoint(x: -d.x, y: -d.y)), (id: 2, screen: d)]
+    }
+    _ = rprocess(&tracker, [(id: 1, screen: .zero)], rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0)
+    _ = rprocess(&tracker, pair(distance: 80, tilt: 0), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.01)
+    // Pure spread, no tilt: pinch alone commits.
+    expectEqual(
+        rprocess(&tracker, pair(distance: 130, tilt: 0), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.10),
+        .twoFingerGesture(
+            magnify: TouchStateTracker.GestureDelta(value: 0, phase: .began),
+            rotate: nil),
+        "a clean spread must commit to pinch alone")
+    // Now twist, holding the spread. Tangential motion has to clear
+    // `rotateNoiseFloor` and half the scale change (`companionSuppressionRatio`),
+    // so this is a deliberate turn, not a wobble.
+    var joined = false
+    for (i, tilt) in [0.35, 0.7, 1.05, 1.4].enumerated() {
+        let out = rprocess(
+            &tracker, pair(distance: 130, tilt: tilt),
+            rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.11 + 0.01 * Double(i))
+        if case let .twoFingerGesture(_, r) = out, r?.phase == .began { joined = true; break }
+    }
+    checks += 1
+    if !joined {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: a twist added to a committed pinch never joined the gesture\n".utf8))
+    }
+    // Latch-on only: rotate must still be live at teardown, so the lift closes
+    // both envelopes rather than just the pinch's.
+    expectEqual(
+        rprocess(&tracker, [], rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.20),
+        .twoFingerGesture(
+            magnify: TouchStateTracker.GestureDelta(value: 0, phase: .ended),
+            rotate: TouchStateTracker.GestureDelta(value: 0, phase: .ended)),
+        "a joined component must stay in the gesture until the fingers lift")
+}
+
+/// The late-join test above must not mean *any* long pinch eventually grows a
+/// rotate. A steady spread carrying only incidental angle wobble stays
+/// pinch-only for the whole sequence — `companionSuppressionRatio` is what
+/// separates the two cases, and this is its regression guard.
+private func testSteadyPinchWithWobbleNeverJoinsRotate() {
+    var tracker = TouchStateTracker()
+    let wide = rawPositions(distance: 700)
+    func pair(distance: Double, tilt: Double) -> [(id: Int, screen: CGPoint)] {
+        let half = distance / 2
+        let d = CGPoint(x: half * cos(tilt), y: half * sin(tilt))
+        return [(id: 1, screen: CGPoint(x: -d.x, y: -d.y)), (id: 2, screen: d)]
+    }
+    _ = rprocess(&tracker, [(id: 1, screen: .zero)], rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0)
+    _ = rprocess(&tracker, pair(distance: 80, tilt: 0), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.01)
+    _ = rprocess(&tracker, pair(distance: 130, tilt: 0), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.10)
+    // Keep spreading hard; tilt only jitters by ±0.02 rad.
+    var sawRotate = false
+    for i in 0..<20 {
+        let tilt = (i % 2 == 0) ? 0.02 : -0.02
+        let out = rprocess(
+            &tracker, pair(distance: 140 + Double(i) * 10, tilt: tilt),
+            rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.11 + 0.01 * Double(i))
+        if case let .twoFingerGesture(_, r) = out, r != nil { sawRotate = true }
+    }
+    checks += 1
+    if sawRotate {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: incidental angle wobble during a pinch spawned a rotate\n".utf8))
+    }
+}
+
+
+/// The join bar must not climb with the gesture's own duration. A twist added
+/// to a pinch that has already been running a long time has to join on about
+/// the same amount of turn as one added right after commit — that's the whole
+/// reason the late-join test measures a trailing window instead of the
+/// commit's cumulative-since-origin totals (a since-origin version needed ~46°
+/// here versus ~20° right after commit; probed 2026-08-27).
+private func testRotateJoinsALongRunningPinch() {
+    var tracker = TouchStateTracker()
+    let wide = rawPositions(distance: 700)
+    func pair(distance: Double, tilt: Double) -> [(id: Int, screen: CGPoint)] {
+        let half = distance / 2
+        let d = CGPoint(x: half * cos(tilt), y: half * sin(tilt))
+        return [(id: 1, screen: CGPoint(x: -d.x, y: -d.y)), (id: 2, screen: d)]
+    }
+    _ = rprocess(&tracker, [(id: 1, screen: .zero)], rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0)
+    _ = rprocess(&tracker, pair(distance: 80, tilt: 0), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.01)
+    _ = rprocess(&tracker, pair(distance: 130, tilt: 0), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.10)
+    // A long clean spread first: 130 -> 400 over 27 frames.
+    var t = 0.11
+    for i in 0..<27 {
+        _ = rprocess(&tracker, pair(distance: 130 + Double(i) * 10, tilt: 0),
+                     rawPositions: wide, touchDiagonal: testTouchDiagonal, at: t)
+        t += 0.01
+    }
+    // Then a deliberate twist at a held separation.
+    var joinTilt: Double?
+    for i in 0..<40 {
+        let tilt = Double(i + 1) * 0.05
+        let out = rprocess(&tracker, pair(distance: 400, tilt: tilt),
+                           rawPositions: wide, touchDiagonal: testTouchDiagonal, at: t)
+        t += 0.01
+        if case let .twoFingerGesture(_, r) = out, r?.phase == .began { joinTilt = tilt; break }
+    }
+    checks += 1
+    // 0.6 rad ~= 34 degrees. Generous next to the ~0.45 measured, tight enough
+    // to catch a regression back to since-origin totals (~0.8).
+    guard let joinTilt, joinTilt <= 0.6 else {
+        failures += 1
+        FileHandle.standardError.write(Data(
+            "FAIL: twist joining a long-running pinch needed \(joinTilt.map { String($0) } ?? "no join") rad; the bar is climbing with gesture duration\n".utf8))
+        return
+    }
+}
+
+/// The wobble guard's complement: a *monotonic* slow drift in finger angle
+/// during a long pinch (as opposed to a cancelling jitter) must also not spawn
+/// a rotate. Cumulative tracking would let this cross the noise floor on its
+/// own given enough time; the trailing window plus companion suppression is
+/// what keeps it out.
+private func testMonotonicAngleDriftDuringPinchNeverJoinsRotate() {
+    var tracker = TouchStateTracker()
+    let wide = rawPositions(distance: 700)
+    func pair(distance: Double, tilt: Double) -> [(id: Int, screen: CGPoint)] {
+        let half = distance / 2
+        let d = CGPoint(x: half * cos(tilt), y: half * sin(tilt))
+        return [(id: 1, screen: CGPoint(x: -d.x, y: -d.y)), (id: 2, screen: d)]
+    }
+    _ = rprocess(&tracker, [(id: 1, screen: .zero)], rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0)
+    _ = rprocess(&tracker, pair(distance: 80, tilt: 0), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.01)
+    _ = rprocess(&tracker, pair(distance: 130, tilt: 0), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.10)
+    var sawRotate = false
+    var t = 0.11
+    // Steady spread with a 0.15 deg/frame drift — 9 degrees total over 60
+    // frames, the shape of a hand slowly rolling during a zoom.
+    for i in 0..<60 {
+        let out = rprocess(&tracker, pair(distance: 140 + Double(i) * 8, tilt: Double(i) * 0.0026),
+                           rawPositions: wide, touchDiagonal: testTouchDiagonal, at: t)
+        t += 0.01
+        if case let .twoFingerGesture(_, r) = out, r != nil { sawRotate = true }
+    }
+    checks += 1
+    if sawRotate {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: slow monotonic angle drift during a pinch spawned a rotate\n".utf8))
+    }
+}
+
 @main
 enum TouchStateTrackerTestRunner {
     static func main() {
@@ -855,6 +1015,10 @@ enum TouchStateTrackerTestRunner {
         testRotateEnabledDoesNotRegressPinch()
         testRotateEnabledDoesNotRegressDiagonalPan()
         testConcurrentPinchAndRotate()
+        testRotateJoinsACommittedPinch()
+        testSteadyPinchWithWobbleNeverJoinsRotate()
+        testRotateJoinsALongRunningPinch()
+        testMonotonicAngleDriftDuringPinchNeverJoinsRotate()
         testOnsetDelayDefaultIsFortyMs()
         testSecondFingerAfterOnsetStillEscalatesWithBoundedDrift()
         testTapInsideOnsetWindowStillClicks()

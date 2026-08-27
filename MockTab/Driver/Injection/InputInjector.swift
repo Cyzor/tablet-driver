@@ -942,6 +942,13 @@ final class InputInjector: @unchecked Sendable {
     /// see `injectTouch`'s use of these. Reset on every sequence teardown.
     var touchSequenceSawTwoFingers = false
     var touchSequenceCommitted = false
+    /// Which gesture components have opened an envelope during the sequence
+    /// in progress, and whether it has already been tallied as running both.
+    /// Separate from the frame-local view because a component can now join
+    /// partway through — see `noteGestureComponentBegan`.
+    var touchSequenceSawPinch = false
+    var touchSequenceSawRotate = false
+    var touchSequenceBothCounted = false
     /// Wall-clock time `injectTouch` last ran with contacts, for the
     /// sub-millisecond-gap diagnostic (`DiscoveryTouchPipeline.subMillisecondDtFrames`)
     /// that flags a batched-Bluetooth burst delivering frames faster than the

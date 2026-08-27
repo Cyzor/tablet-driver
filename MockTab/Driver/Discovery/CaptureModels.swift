@@ -86,7 +86,13 @@ struct DiscoveryResult: Codable {
     /// PTH-651 issue #12 "swipe covers only part of the screen" report). New
     /// pipeline fields default 0, the new settings field is optional, so v10
     /// readers and files still decode.
-    var captureVersion: Int = 11
+    /// 12: `touchPipeline` gains `twoFingerResolvedBoth` and
+    /// `twoFingerLateJoins`, which measure concurrent pinch+rotate — the
+    /// per-component tallies alone can't distinguish one sequence running
+    /// both from two separate sequences. Added alongside the change that
+    /// lets a component join a gesture after commit. Both default 0, so v11
+    /// readers and files still decode.
+    var captureVersion: Int = 12
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -465,6 +471,20 @@ struct DiscoveryTouchPipeline: Codable {
     var onsetWindowsEntered: Int = 0
     var onsetWindowsReArmedWithin: Int = 0
     var longestSingleContactDragMs: Int = 0
+    /// Concurrent pinch+rotate. `twoFingerResolvedPinch`/`Rotate` are tallied
+    /// per component per sequence, so a file showing 9 and 29 cannot say
+    /// whether any *one* sequence ran both or whether they were 38 separate
+    /// single-component gestures — the exact question behind "simultaneous
+    /// zoom and rotate is hard to invoke". `twoFingerResolvedBoth` counts
+    /// sequences that ended up running both at once; `twoFingerLateJoins`
+    /// counts components that opened their envelope after the sequence had
+    /// already committed, which is the late-join path (added 2026-08-27)
+    /// firing. A high `Both` with a high `LateJoins` means concurrency is
+    /// arriving the new way — the first gesture commits, the second joins
+    /// when its evidence shows up — rather than needing both signals to
+    /// qualify in the same frame.
+    var twoFingerResolvedBoth: Int = 0
+    var twoFingerLateJoins: Int = 0
     /// Seconds. A gap between one sequence's teardown and the next's onset
     /// shorter than this reads as one interrupted drag rather than two
     /// deliberate touches.

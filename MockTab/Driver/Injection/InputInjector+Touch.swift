@@ -246,6 +246,9 @@ extension InputInjector {
             }
             touchSequenceSawTwoFingers = false
             touchSequenceCommitted = false
+            touchSequenceSawPinch = false
+            touchSequenceSawRotate = false
+            touchSequenceBothCounted = false
         } else if projected.count >= 2 {
             touchSequenceSawTwoFingers = true
         }
@@ -288,6 +291,27 @@ extension InputInjector {
         }
         noteOnsetLifecycle(now: now)
         handleTouchIntent(intent, snap: snap, settings: settings)
+    }
+
+    /// Record that a pinch or rotate component opened its envelope this frame.
+    ///
+    /// Two things fall out of this that a per-frame "both present" test can't
+    /// see, now that a component can join partway through a sequence:
+    /// `twoFingerResolvedBoth` (this sequence ended up running both at once —
+    /// the thing `twoFingerResolvedPinch`/`Rotate` genuinely cannot
+    /// distinguish from two separate single-component sequences), and
+    /// `twoFingerLateJoins` (a `.began` arriving on a sequence that had
+    /// already committed — i.e. the late-join path firing at all).
+    func noteGestureComponentBegan(pinch: Bool) {
+        if touchSequenceCommitted {
+            TouchPipelineProbe.note { $0.twoFingerLateJoins += 1 }
+        }
+        touchSequenceCommitted = true
+        if pinch { touchSequenceSawPinch = true } else { touchSequenceSawRotate = true }
+        if touchSequenceSawPinch, touchSequenceSawRotate, !touchSequenceBothCounted {
+            touchSequenceBothCounted = true
+            TouchPipelineProbe.note { $0.twoFingerResolvedBoth += 1 }
+        }
     }
 
     /// Fold this frame's `touchTracker.mode` into the onset-window lifecycle
@@ -402,7 +426,7 @@ extension InputInjector {
             if let magnify {
                 TouchPipelineProbe.note { $0.zooms += 1 }
                 if magnify.phase == .began {
-                    touchSequenceCommitted = true
+                    noteGestureComponentBegan(pinch: true)
                     TouchPipelineProbe.note { $0.twoFingerResolvedPinch += 1 }
                 }
                 postTouchMagnify(magnification: magnify.value, phase: magnify.phase)
@@ -410,7 +434,7 @@ extension InputInjector {
             if let rotateGesture {
                 TouchPipelineProbe.note { $0.rotates += 1 }
                 if rotateGesture.phase == .began {
-                    touchSequenceCommitted = true
+                    noteGestureComponentBegan(pinch: false)
                     TouchPipelineProbe.note { $0.twoFingerResolvedRotate += 1 }
                 }
                 postTouchRotate(rotation: rotateGesture.value, phase: rotateGesture.phase)
