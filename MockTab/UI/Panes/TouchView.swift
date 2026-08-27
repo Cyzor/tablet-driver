@@ -113,7 +113,7 @@ struct TouchView: View {
                     set: { settings.touchSensitivity = $0 }),
                 in: 0.25...4.0,
                 valueText: String(format: "%.2f×", settings.touchSensitivity),
-                caption: "Multiplier for cursor motion from finger drag."
+                caption: "At 1.00×, one full sweep of the touch area crosses the screen once."
             )
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
@@ -204,7 +204,7 @@ struct TouchView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
 
-            TouchAreaCropView(settings: settings, spec: spec)
+            TouchAreaCropView(settings: settings, spec: spec, productID: productID)
                 .frame(height: 200)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
@@ -215,14 +215,21 @@ struct TouchView: View {
                 Spacer()
                 Button(String(localized: "Reset to Full Surface",
                               comment: "Touch pane: reset the touch area to cover the entire touch surface")) {
-                    applyTouchAreaReset(
-                        to: (0, 0, 1, 1),
-                        undoTo: (settings.touchAreaX, settings.touchAreaY,
-                                 settings.touchAreaWidth, settings.touchAreaHeight))
+                    let snap = TabletSettings.AreaSnapshot(
+                        x: settings.touchAreaX, y: settings.touchAreaY,
+                        w: settings.touchAreaWidth, h: settings.touchAreaHeight)
+                    settings.touchAreaX = 0; settings.touchAreaY = 0
+                    settings.touchAreaWidth = 1; settings.touchAreaHeight = 1
+                    settings.recordTouchAreaDrag(before: snap)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                // Gated on `touchEnabled` only — deliberately not also on
+                // "the rect is already full", which the pen pane doesn't do
+                // either. A reset button that greys out at exactly the state
+                // it produces reads as broken rather than as already-done.
                 .disabled(!settings.touchEnabled)
+                .help("Reset the touch area to the full touch surface (undoable).")
             }
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
@@ -231,14 +238,37 @@ struct TouchView: View {
 
     // MARK: - Touch area crop editor
 
-    /// Visual, drag-based editor for the touch active area.  Aspect ratio
-    /// comes from the device's touch-coordinate maxima; the editor itself
-    /// is the shared `NormalizedAreaEditor` used by the pen pane.
+    /// Visual, drag-based editor for the touch active area — the shared
+    /// `NormalizedAreaEditor` the pen pane uses, configured to match it.
+    ///
+    /// Deliberately *not* matched on one point: `TabletAreaView` swaps the
+    /// aspect ratio for a rotated tablet orientation, and this doesn't,
+    /// because the touch mapping itself ignores orientation (see
+    /// `TouchStateTracker.screenPoint`).  Showing a rotated box here would
+    /// promise a mapping the injector doesn't perform.
     private struct TouchAreaCropView: View {
         @ObservedObject var settings: TabletSettings
         let spec: WacomDeviceSpec?
+        let productID: Int?
 
+        /// Same derivation as `TabletAreaView.activeAspectRatio`, and for the
+        /// same reason: raw coordinate density isn't equal on both axes, so a
+        /// maxima ratio isn't a stand-in for the surface's visual shape.  It
+        /// is worst on the two models whose touch space the kernel hardcodes
+        /// to a square 4096×4096 — PTH-850 and PTH-651 — where `touchMaxX /
+        /// touchMaxY` is 1.00 against a physical 1.60, drawing a square box
+        /// for a widescreen tablet (reported on issue #12).  Physical
+        /// millimetres first; the maxima only as a fallback.
         private var aspectRatio: Double {
+            if let pid = productID,
+                let profile = VendorDeviceRegistry.profile(forProductID: pid),
+                let w = profile.activeWidthMM, w > 0, let h = profile.activeHeightMM, h > 0
+            {
+                return w / h
+            }
+            if let w = spec?.activeWidthMM, w > 0, let h = spec?.activeHeightMM, h > 0 {
+                return w / h
+            }
             let mx = spec?.touchMaxX ?? 0
             let my = spec?.touchMaxY ?? 0
             guard mx > 0, my > 0 else { return 16.0 / 10.0 }
@@ -262,7 +292,15 @@ struct TouchView: View {
         }
 
         var body: some View {
-            NormalizedAreaEditor(aspectRatio: aspectRatio, rect: rectBinding)
+            // `onCommit` fires once on drag-end, so a crop drag is undoable
+            // here exactly as it is in the pen pane.
+            NormalizedAreaEditor(
+                aspectRatio: aspectRatio,
+                rect: rectBinding,
+                onCommit: { oldRect in
+                    settings.recordTouchAreaDrag(before: TabletSettings.AreaSnapshot(
+                        x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
+                })
         }
     }
 
@@ -283,18 +321,6 @@ struct TouchView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-        }
-    }
-
-    /// Self-recursive so "Touch Area Reset" also redoes — see
-    /// `TabletSettings.recordAreaDrag` for the same pattern.
-    private func applyTouchAreaReset(
-        to new: (Double, Double, Double, Double), undoTo old: (Double, Double, Double, Double)
-    ) {
-        (settings.touchAreaX, settings.touchAreaY,
-         settings.touchAreaWidth, settings.touchAreaHeight) = new
-        settings.record(String(localized: "Touch Area Reset", comment: "Undo action name: resetting the touch active area in the Touch pane")) {
-            self.applyTouchAreaReset(to: old, undoTo: new)
         }
     }
 

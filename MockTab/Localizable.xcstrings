@@ -2356,6 +2356,9 @@
         }
       }
     },
+    "At 1.00×, one full sweep of the touch area crosses the screen once." : {
+
+    },
     "Auto-Switch" : {
       "comment" : "Section heading in Profiles tab",
       "localizations" : {
@@ -10433,6 +10436,7 @@
       }
     },
     "Multiplier for cursor motion from finger drag." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14250,6 +14254,9 @@
           }
         }
       }
+    },
+    "Reset the touch area to the full touch surface (undoable)." : {
+
     },
     "Reset to Defaults" : {
       "comment" : "Undo action name: restoring a pane's controls to their defaults",
@@ -18078,6 +18085,7 @@
     },
     "Touch Area Reset" : {
       "comment" : "Undo action name: resetting the touch active area in the Touch pane",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

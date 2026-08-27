@@ -870,4 +870,21 @@ final class TabletSettings: ObservableObject {
         }
     }
 
+    /// `recordAreaDrag` for the Touch pane's crop rect.  Separate settings,
+    /// same contract: one undo entry per completed gesture, registered from
+    /// the editor's drag-end callback.
+    func recordTouchAreaDrag(before snap: AreaSnapshot) {
+        record(String(localized: "Touch Area")) { [weak self] in
+            guard let self else { return }
+            let after = AreaSnapshot(
+                x: self.touchAreaX, y: self.touchAreaY,
+                w: self.touchAreaWidth, h: self.touchAreaHeight)
+            self.touchAreaX = snap.x
+            self.touchAreaY = snap.y
+            self.touchAreaWidth = snap.w
+            self.touchAreaHeight = snap.h
+            self.recordTouchAreaDrag(before: after)  // re-registers as redo
+        }
+    }
+
 }
