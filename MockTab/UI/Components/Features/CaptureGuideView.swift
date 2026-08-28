@@ -681,7 +681,8 @@ struct CaptureGuideView: View {
             }
         }
         engine.startDiscovery(
-            devices: targets, duration: 3600, touchSettings: touchSettingsSnapshot())
+            devices: targets, duration: 3600, touchSettings: touchSettingsSnapshot(),
+            bluetoothAddressCandidate: tabletManager.contexts[productID]?.bluetoothAddressCandidate)
     }
 
     /// Parses the device's own raw descriptor bytes for a mode-switch feature

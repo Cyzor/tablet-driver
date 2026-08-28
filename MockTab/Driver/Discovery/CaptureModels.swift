@@ -92,7 +92,18 @@ struct DiscoveryResult: Codable {
     /// both from two separate sequences. Added alongside the change that
     /// lets a component join a gesture after commit. Both default 0, so v11
     /// readers and files still decode.
-    var captureVersion: Int = 12
+    /// 13: adds `bluetoothLink` — RSSI and link-quality samples taken during
+    /// the capture, for a Bluetooth device only. Answers "was this specific
+    /// choppy session a weak-signal problem or something else" without
+    /// asking the reporter to guess. The address used to find the device is
+    /// a best-effort match (`BluetoothLinkMonitor`'s doc comment explains
+    /// why), so the block also carries `addressLikelyWrong` — set if the
+    /// resolved device's own connection state ever disagreed with reality
+    /// during the session — and a reader should treat the numbers as
+    /// unreliable when that's true. Nil on USB, and nil if no paired device
+    /// could be matched at all. Optional, so v12 readers and files still
+    /// decode.
+    var captureVersion: Int = 13
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -130,8 +141,34 @@ struct DiscoveryResult: Codable {
     /// contacts it decoded. Present only when the pipeline saw at least one
     /// frame, so a pen-only session doesn't carry a block of zeroes.
     var touchPipeline: DiscoveryTouchPipeline?
+    /// RSSI/link-quality samples taken during the session, Bluetooth only.
+    /// See `captureVersion` 13's doc line for the address-match caveat.
+    var bluetoothLink: DiscoveryBluetoothLink?
     var notes: String?
     var submitterContact: String?
+}
+
+/// RSSI and link-quality summary for a Bluetooth capture session. See
+/// `BluetoothLinkMonitor` for how it's gathered and the address-match
+/// caveat this block exists to carry along with the numbers.
+struct DiscoveryBluetoothLink: Codable {
+    /// The candidate BD_ADDR string used to find the device. Not proof it's
+    /// correct — kept so a reader can spot-check it against `ioreg` or
+    /// System Settings if the numbers look implausible.
+    let addressCandidate: String
+    let sampleCount: Int
+    let disconnectedSampleCount: Int
+    /// True if the resolved device's own `isConnected` state ever disagreed
+    /// with the fact that reports were actively arriving from some
+    /// Bluetooth tablet during this session. When true, treat every other
+    /// field in this block as describing the wrong device.
+    let addressLikelyWrong: Bool
+    let rssiMin: Int?
+    let rssiMax: Int?
+    let rssiAvg: Double?
+    let rawRSSIMin: Int?
+    let rawRSSIMax: Int?
+    let rawRSSIAvg: Double?
 }
 
 /// The user's touch configuration at capture time.

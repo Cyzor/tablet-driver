@@ -634,6 +634,9 @@ final class TabletManager: ObservableObject {
         context.isConnected = true
         context.transport = transport
         context.usbSpeed = Self.connectionInfo(for: device).speed
+        // Diagnostic-only candidate for BluetoothLinkMonitor — see that
+        // property's doc comment for why this is never used for identity.
+        if isBLE { context.bluetoothAddressCandidate = rawSerialProbe }
 
         // First tablet is the moment injection becomes possible — prompt for
         // Accessibility here rather than at launch so the request has context.

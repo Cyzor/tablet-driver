@@ -63,6 +63,13 @@ final class CaptureEngine: ObservableObject {
     /// capture file. Nil for a device without finger touch, where these
     /// settings are inert.
     private var capturedTouchSettings: DiscoveryTouchSettings?
+    /// Live for the session only — created in `startDiscovery` when the
+    /// device is Bluetooth and a candidate address is available, torn down
+    /// in `finishDiscovery`/`cancelDiscovery`. Not a standing per-device
+    /// monitor: polling bluetoothd for the whole time a tablet sits connected
+    /// would be needless background chatter for something only useful while
+    /// actively diagnosing.
+    private var bluetoothLinkMonitor: BluetoothLinkMonitor?
 
     private nonisolated static let activeAccumulators =
         OSAllocatedUnfairLock<[ObjectIdentifier: DiscoveryAccumulator]>(initialState: [:])
@@ -137,7 +144,8 @@ final class CaptureEngine: ObservableObject {
     func startDiscovery(
         devices: [(IOHIDDevice, CaptureDeviceInfo)],
         duration: TimeInterval = 60,
-        touchSettings: DiscoveryTouchSettings? = nil
+        touchSettings: DiscoveryTouchSettings? = nil,
+        bluetoothAddressCandidate: String? = nil
     ) {
         guard !devices.isEmpty else { return }
         stopTimers()
@@ -150,6 +158,9 @@ final class CaptureEngine: ObservableObject {
         // than everything since launch.
         TouchPipelineProbe.reset()
         capturedTouchSettings = touchSettings
+        bluetoothLinkMonitor = bluetoothAddressCandidate.flatMap {
+            BluetoothLinkMonitor(addressCandidate: $0)
+        }
 
         let started = devices.map {
             InterfaceSession(device: $0.0, info: $0.1, accumulator: DiscoveryAccumulator())
@@ -216,6 +227,8 @@ final class CaptureEngine: ObservableObject {
         deregisterAccumulators()
         isRunning = false
         discoverySampleCount = 0
+        _ = bluetoothLinkMonitor?.stopAndSummarize()
+        bluetoothLinkMonitor = nil
     }
 
     /// Remove every interface's accumulator from the routing table so
@@ -258,8 +271,13 @@ final class CaptureEngine: ObservableObject {
             return nil
         }
 
+        // Stopped before building: the result needs the final summary, and
+        // sampling any later than this can't land in a file already written.
+        let bluetoothSummary = bluetoothLinkMonitor?.stopAndSummarize()
+        bluetoothLinkMonitor = nil
+
         // Built before deregistering: `sessions` holds the data being read.
-        let result = buildDiscoveryResult(sessions: sessions)
+        let result = buildDiscoveryResult(sessions: sessions, bluetoothLink: bluetoothSummary)
         deregisterAccumulators()
         onDiscoveryComplete?(result)
         return result
@@ -402,7 +420,9 @@ final class CaptureEngine: ObservableObject {
     /// additionally listed in `interfaces`. Tool codes are unioned across
     /// interfaces, since a tool entering proximity is a property of the tablet
     /// rather than of whichever interface happened to report it.
-    private func buildDiscoveryResult(sessions: [InterfaceSession]) -> DiscoveryResult {
+    private func buildDiscoveryResult(
+        sessions: [InterfaceSession], bluetoothLink: BluetoothLinkMonitor.Summary?
+    ) -> DiscoveryResult {
         // Which interface fills the top-level block: the one the driver
         // designated, unless it recorded nothing, in which case the busiest.
         //
@@ -478,6 +498,25 @@ final class CaptureEngine: ObservableObject {
             notes += " \(touchPipeline.framesTracked)."
         }
 
+        // Only worth recording if any RSSI sample actually landed — a
+        // candidate that resolved to the wrong (or no) device produces a
+        // block of pure zeros/nils that would read as "signal is fine"
+        // rather than "we have no data."
+        let discoveryBluetoothLink = bluetoothLink.flatMap { summary -> DiscoveryBluetoothLink? in
+            guard summary.sampleCount > 0 else { return nil }
+            return DiscoveryBluetoothLink(
+                addressCandidate: summary.addressCandidate,
+                sampleCount: summary.sampleCount,
+                disconnectedSampleCount: summary.disconnectedSampleCount,
+                addressLikelyWrong: summary.addressLikelyWrong,
+                rssiMin: summary.rssiMin,
+                rssiMax: summary.rssiMax,
+                rssiAvg: summary.rssiAvg,
+                rawRSSIMin: summary.rawRSSIMin,
+                rawRSSIMax: summary.rawRSSIMax,
+                rawRSSIAvg: summary.rawRSSIAvg)
+        }
+
         return DiscoveryResult(
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
             appBuildDate: Bundle.main.object(forInfoDictionaryKey: "MockTabBuildDate") as? String,
@@ -499,6 +538,7 @@ final class CaptureEngine: ObservableObject {
             observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
             touchSettings: capturedTouchSettings,
             touchPipeline: touchPipeline.isEmpty ? nil : touchPipeline,
+            bluetoothLink: discoveryBluetoothLink,
             notes: notes,
             submitterContact: nil
         )

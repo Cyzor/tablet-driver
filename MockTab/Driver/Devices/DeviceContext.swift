@@ -25,6 +25,15 @@ final class DeviceContext: ObservableObject, Identifiable {
     private(set) var usbSerial: String?  // IOKit serial at last connect; nil if none
     private(set) var locationID: Int = 0  // IOKit port location at last connect; 0 if none
 
+    /// The raw `kIOHIDSerialNumberKey` string read on a Bluetooth interface,
+    /// kept **only** as a candidate Bluetooth address for
+    /// `BluetoothLinkMonitor` diagnostics. Deliberately never fed into
+    /// `usbSerial` or `instanceKey` — the same value is untrusted for
+    /// identity purposes over Bluetooth (see `TabletManager`'s
+    /// `rawSerialProbe` read site), and mixing the two uses would risk
+    /// re-introducing that bug for a much smaller benefit. `nil` on USB.
+    var bluetoothAddressCandidate: String?
+
     /// Identifiable key. Stored (not derived from `instanceKey`) so it is
     /// nonisolated for the protocol and stays stable when a restore stub
     /// adopts its real instance mid-session.
