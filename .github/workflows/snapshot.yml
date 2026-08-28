@@ -29,7 +29,10 @@ concurrency:
 
 jobs:
   snapshot:
-    runs-on: macos-15
+    # Proving ground for the runner bump: this notarizes a real DMG, so a
+    # clean snapshot here is the evidence release.yml needs before it moves
+    # off macos-15 too. Xcode 26.6 is the image default.
+    runs-on: macos-26
     env:
       NOTARY_TEAM_ID: 3R62GZR6Q2
     steps:

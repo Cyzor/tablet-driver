@@ -42,10 +42,12 @@ permissions:
 
 jobs:
   release:
-    # macOS 27 prep: bump to macos-26 once GitHub ships that image, so the DMG
-    # is built and notarized against the macOS 26+ SDK. Pair this with the
-    # "Select Xcode" step below. Verify the signed build still notarizes before
-    # making it the default runner.
+    # macOS 27 prep: `macos-26` now exists (it is `macos-latest`) and carries
+    # Xcode 26.6 as the image default, so the "Select Xcode" step below stays
+    # unnecessary. Deliberately still pinned here: tests.yml and snapshot.yml
+    # moved first, and snapshot notarizes a real DMG. Move this only after a
+    # snapshot run has notarized cleanly on macos-26 — a release is the wrong
+    # place to discover a signing or notarization difference.
     runs-on: macos-15
     env:
       NOTARY_TEAM_ID: 3R62GZR6Q2

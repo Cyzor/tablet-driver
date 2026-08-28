@@ -11,7 +11,10 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    # Xcode 26.6 is the default on this image, so no xcode-select step is
+    # needed. Moved here first because it ships nothing — if the toolchain
+    # has a problem, it surfaces without risking a build users install.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
         with:
