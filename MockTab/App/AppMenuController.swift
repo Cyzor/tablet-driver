@@ -543,10 +543,22 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         // NSWorkspace.open() won't spawn a second instance while this one is
         // still alive, so we delegate the open to a detached shell that polls
         // until our PID exits and then calls `open`.
+        //
+        // Waiting for the exit is load-bearing, not incidental: MockTab claims
+        // HID devices for the whole process lifetime, so two overlapping
+        // instances would contend for them and the newcomer could come up with
+        // no tablet at all. That rules out `NSWorkspace.openApplication` with
+        // `createsNewApplicationInstance`, which overlaps them by design.
+        //
+        // PID and path go in as positional parameters rather than interpolated
+        // script text — a bundle path containing a quote or `$` would otherwise
+        // close the quoting and run as shell code.
         let bundlePath = Bundle.main.bundleURL.path
         let pid = ProcessInfo.processInfo.processIdentifier
-        let script = "while kill -0 \(pid) 2>/dev/null; do sleep 0.1; done; open \"\(bundlePath)\""
-        Process.launchedProcess(launchPath: "/bin/sh", arguments: ["-c", script])
+        let script = #"while kill -0 "$1" 2>/dev/null; do sleep 0.1; done; open "$2""#
+        Process.launchedProcess(
+            launchPath: "/bin/sh",
+            arguments: ["-c", script, "sh", String(pid), bundlePath])
         NSApp.terminate(nil)
     }
 
