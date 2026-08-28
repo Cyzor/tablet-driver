@@ -20,6 +20,7 @@ tools/scroll_momentum_probe
 tools/gpu_stress_probe
 tools/gpu_bandwidth_stress_probe
 tools/ram_pressure_probe
+tools/pages-click-probe/pages-click-probe
 
 # Xcode user-specific settings (editor state, breakpoints, etc.)
 xcuserdata/
