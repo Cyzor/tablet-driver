@@ -2357,7 +2357,26 @@
       }
     },
     "At 1.00×, one full sweep of the touch area crosses the screen once." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei 1,00× überquert ein vollständiger Zug über die Berührungsfläche den Bildschirm genau einmal."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A 1,00×, un recorrido completo del área táctil cruza la pantalla una vez."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1.00× では、タッチエリアを端から端までなぞると画面をちょうど1回横切ります。"
+          }
+        }
+      }
     },
     "Auto-Switch" : {
       "comment" : "Section heading in Profiles tab",
@@ -14256,7 +14275,26 @@
       }
     },
     "Reset the touch area to the full touch surface (undoable)." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Berührungsbereich auf die gesamte Berührungsfläche zurücksetzen (widerrufbar)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablezca el área táctil a la superficie táctil completa (reversible)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タッチエリアをタッチ面全体にリセット（元に戻せます）。"
+          }
+        }
+      }
     },
     "Reset to Defaults" : {
       "comment" : "Undo action name: restoring a pane's controls to their defaults",

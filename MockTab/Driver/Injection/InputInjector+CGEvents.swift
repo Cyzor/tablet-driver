@@ -616,11 +616,19 @@ extension InputInjector {
                 // for AppKit's gesture recognizer to reject the up as
                 // `receivedEventMidStream`. Pressure stays 0: this is a button
                 // press, not a tip contact.
-                e.setIntegerValueField(.mouseEventSubtype, value: 1)
-                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-                e.setIntegerValueField(.tabletEventPointButtons, value: down ? 1 : 0)
-                e.setDoubleValueField(.tabletEventPointPressure, value: 0.0)
-                e.setDoubleValueField(.mouseEventPressure, value: 0.0)
+                //
+                // Profile-gated, unlike the siblings: this button's release can
+                // arrive from `postMouseUp` (pen tip, `releaseBindingHeldButton`),
+                // which skips stamping entirely under `pagesPlainMouse`. Stamping
+                // unconditionally here would pair a stamped down with an unstamped
+                // up in Pages — the same mismatch, inverted.
+                if activeAppProfile != .pagesPlainMouse {
+                    e.setIntegerValueField(.mouseEventSubtype, value: 1)
+                    e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                    e.setIntegerValueField(.tabletEventPointButtons, value: down ? 1 : 0)
+                    e.setDoubleValueField(.tabletEventPointPressure, value: 0.0)
+                    e.setDoubleValueField(.mouseEventPressure, value: 0.0)
+                }
                 e.flags = currentEventFlags
                 finalizeAndPost(e)
             }
