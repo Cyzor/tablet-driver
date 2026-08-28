@@ -1206,7 +1206,16 @@ final class TabletManager: ObservableObject {
             }
         }
 
-        // No transport remains — fully disconnected.
+        // No transport remains — fully disconnected. Anything the departing
+        // tool was holding (a barrel button, a puck's mouse-mode click, a
+        // Scroll Drag pan) gets no proximity-exit report to release it —
+        // there's no more device to send one. Same release call as a tool
+        // change; see `releaseHeldStateForToolChange`.
+        let injector = context.injector
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            injector.releaseHeldStateForToolChange()
+        }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         context.hasWiredDriverLifecycle = false
         context.isConnected = false
         context.transport = "—"
