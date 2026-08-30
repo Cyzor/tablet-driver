@@ -117,6 +117,7 @@ extension InputInjector {
                     rotate: snap.rotateEnabled,
                     absoluteTouch: snap.touchAbsoluteMode,
                     onsetDelay: snap.touchOnsetDelay,
+                    tapStabilizationPt: snap.touchTapStabilizationPt,
                     now: now)
                 noteOnsetLifecycle(now: now)
                 handleTouchIntent(windDown, snap: snap, settings: settings)
@@ -286,6 +287,7 @@ extension InputInjector {
             touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
             absoluteTouch: snap.touchAbsoluteMode,
             onsetDelay: snap.touchOnsetDelay,
+            tapStabilizationPt: snap.touchTapStabilizationPt,
             now: now)
 
         if touchTracker.scrollWoundDownThisFrame {

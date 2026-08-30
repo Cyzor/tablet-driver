@@ -1025,6 +1025,183 @@ private func testOnsetDelayParameterIsHonored() {
     }
 }
 
+// MARK: - Tap stabilization
+
+/// An omitted `tapStabilizationPt:` (every production call) must hold a
+/// barely-moving finger past onset; an explicit `0` must restore passthrough.
+/// Guards the shipped default and the `> 0` disable short-circuit.
+private func testTapStabilizationShippedDefaultHoldsAndZeroDisables() {
+    // Sanity: the constant the whole feature is calibrated around.
+    checks += 1
+    if TouchStateTracker.tapStabilizationPt <= 0 || TouchStateTracker.tapStabilizationPt > 4 {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: shipped tapStabilizationPt \(TouchStateTracker.tapStabilizationPt) outside the sane 0<x<=4 band\n".utf8))
+    }
+
+    // A finger that creeps ~0.2 pt/frame stays inside the ~1.5 pt default
+    // tolerance well past the 40 ms onset (frame 6 reaches only 1.2 pt).
+    // Omitted param — the production call shape.
+    var held = TouchStateTracker()
+    _ = held.process(
+        contacts: [(id: 1, screen: .zero)], tapToClick: false, twoFingerScroll: true,
+        reverseScrollDirection: false, sensitivity: 1, now: 0)
+    for i in 1...6 {
+        expectEqual(
+            held.process(
+                contacts: [(id: 1, screen: CGPoint(x: Double(i) * 0.2, y: 0))],
+                tapToClick: false, twoFingerScroll: true, reverseScrollDirection: false,
+                sensitivity: 1, now: Double(i) * 0.01),
+            .none,
+            "frame \(i): shipped default should still be holding a sub-tolerance creep")
+    }
+
+    // Explicit 0: same creep must move the cursor the frame after onset.
+    var raw = TouchStateTracker()
+    _ = raw.process(
+        contacts: [(id: 1, screen: .zero)], tapToClick: false, twoFingerScroll: true,
+        reverseScrollDirection: false, sensitivity: 1, tapStabilizationPt: 0, now: 0)
+    _ = raw.process(  // 0.05 s: crosses onset, commits, emits nothing
+        contacts: [(id: 1, screen: CGPoint(x: 0.3, y: 0))], tapToClick: false,
+        twoFingerScroll: true, reverseScrollDirection: false, sensitivity: 1,
+        tapStabilizationPt: 0, now: 0.05)
+    checks += 1
+    if case .pointerMove = raw.process(
+        contacts: [(id: 1, screen: CGPoint(x: 0.6, y: 0))], tapToClick: false,
+        twoFingerScroll: true, reverseScrollDirection: false, sensitivity: 1,
+        tapStabilizationPt: 0, now: 0.06) {
+        // ok
+    } else {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: explicit tapStabilizationPt 0 did not restore raw passthrough\n".utf8))
+    }
+}
+
+/// A stabilization hold keeps the sequence in `.pending`, so a second finger
+/// landing must still escalate to scroll — rest one finger, drop the second to
+/// scroll. Sibling test covers this only from `.pointer` (stab = 0).
+private func testSecondFingerEscalatesWhileStabilizationHolds() {
+    var tracker = TouchStateTracker()
+    let stab = 8.0
+    _ = tracker.process(
+        contacts: [(id: 1, screen: .zero)], tapToClick: false, twoFingerScroll: true,
+        reverseScrollDirection: false, sensitivity: 1, tapStabilizationPt: stab, now: 0)
+    // Hold finger 1 nearly still, well past the 40 ms onset — it stays in
+    // `.pending` because drift never leaves the 8 pt radius.
+    for i in 1...10 {
+        expectEqual(
+            tracker.process(
+                contacts: [(id: 1, screen: CGPoint(x: Double(i) * 0.3, y: 0))],
+                tapToClick: false, twoFingerScroll: true, reverseScrollDirection: false,
+                sensitivity: 1, tapStabilizationPt: stab, now: Double(i) * 0.008),
+            .none,
+            "frame \(i): held finger should stay silent")
+    }
+    // Finger 2 lands at 0.10 s.
+    _ = tracker.process(
+        contacts: [(id: 1, screen: CGPoint(x: 3, y: 0)), (id: 2, screen: CGPoint(x: 43, y: 0))],
+        tapToClick: false, twoFingerScroll: true, reverseScrollDirection: false,
+        sensitivity: 1, tapStabilizationPt: stab, now: 0.10)
+    // Translate both fingers to commit the pan.
+    _ = tracker.process(
+        contacts: [(id: 1, screen: CGPoint(x: 3, y: 40)), (id: 2, screen: CGPoint(x: 43, y: 40))],
+        tapToClick: false, twoFingerScroll: true, reverseScrollDirection: false,
+        sensitivity: 1, tapStabilizationPt: stab, now: 0.12)
+    let scrolled = tracker.process(
+        contacts: [(id: 1, screen: CGPoint(x: 3, y: 80)), (id: 2, screen: CGPoint(x: 43, y: 80))],
+        tapToClick: false, twoFingerScroll: true, reverseScrollDirection: false,
+        sensitivity: 1, tapStabilizationPt: stab, now: 0.14)
+    checks += 1
+    if case .scrollDelta(_, _, .changed) = scrolled {
+        // ok
+    } else {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: second finger during stabilization hold did not escalate to scroll — got \(scrolled)\n".utf8))
+    }
+}
+
+/// A finger held inside the tolerance stays pinned past onset; once it clears
+/// the tolerance, the first motion frame carries only that frame's delta — no
+/// catch-up jump spanning the held travel.
+private func testTapStabilizationHoldsThenReleasesWithoutJump() {
+    var tracker = TouchStateTracker()
+    let stab = 6.0
+    _ = tracker.process(
+        contacts: [(id: 1, screen: .zero)], tapToClick: false, twoFingerScroll: true,
+        reverseScrollDirection: false, sensitivity: 1,
+        tapStabilizationPt: stab, now: 0)
+    // Creep 1 pt/frame for 100 ms — past the 40 ms onset, but always inside
+    // the 6 pt tolerance. Every frame must stay silent.
+    for i in 1...12 {
+        let t = Double(i) * 0.008
+        expectEqual(
+            tracker.process(
+                contacts: [(id: 1, screen: CGPoint(x: Double(i) * 0.4, y: 0))],
+                tapToClick: false, twoFingerScroll: true, reverseScrollDirection: false,
+                sensitivity: 1, tapStabilizationPt: stab, now: t),
+            .none,
+            "frame \(i): cursor moved while still inside the stabilization radius")
+    }
+    // Now jump the finger to x = 10 (drift 10 > 6): this frame crosses the
+    // tolerance and commits to `.pointer`, but — like the onset commit frame —
+    // emits nothing itself.
+    expectEqual(
+        tracker.process(
+            contacts: [(id: 1, screen: CGPoint(x: 10, y: 0))],
+            tapToClick: false, twoFingerScroll: true, reverseScrollDirection: false,
+            sensitivity: 1, tapStabilizationPt: stab, now: 0.104),
+        .none,
+        "the frame that crosses the tolerance should commit silently")
+    // The next frame moves the cursor. Its delta must be ~this frame's travel
+    // (2 pts, times gain), NOT the ~10 pts the finger covered since landing.
+    let moved = tracker.process(
+        contacts: [(id: 1, screen: CGPoint(x: 12, y: 0))],
+        tapToClick: false, twoFingerScroll: true, reverseScrollDirection: false,
+        sensitivity: 1, tapStabilizationPt: stab, now: 0.112)
+    checks += 1
+    if case let .pointerMove(dx, _) = moved {
+        // 2 pt raw × low-speed gain (≥ 0.85) ⇒ well under 5; a catch-up jump
+        // would be ≥ 10.
+        if abs(dx) > 5 {
+            failures += 1
+            FileHandle.standardError.write(
+                Data("FAIL: first post-release delta \(dx) looks like a catch-up jump\n".utf8))
+        }
+    } else {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: cursor did not resume after the tolerance was exceeded — got \(moved)\n".utf8))
+    }
+}
+
+/// Absolute mode ignores `tapStabilizationPt`: it warps to the finger every
+/// frame regardless, and the commit stays purely time-based.
+private func testTapStabilizationDoesNotAffectAbsoluteMode() {
+    var tracker = TouchStateTracker()
+    let stab = 20.0
+    // Land, then hold nearly still well past the onset window.
+    _ = tracker.process(
+        contacts: [(id: 1, screen: CGPoint(x: 100, y: 100))], tapToClick: false,
+        twoFingerScroll: true, reverseScrollDirection: false, sensitivity: 1,
+        absoluteTouch: true, tapStabilizationPt: stab, now: 0)
+    // A tiny move at 0.10 (past onset). Absolute mode must warp to it, not
+    // withhold it the way a stabilizing relative sequence would.
+    let intent = tracker.process(
+        contacts: [(id: 1, screen: CGPoint(x: 103, y: 100))], tapToClick: false,
+        twoFingerScroll: true, reverseScrollDirection: false, sensitivity: 1,
+        absoluteTouch: true, tapStabilizationPt: stab, now: 0.10)
+    checks += 1
+    if case .pointerWarp(let to) = intent, to == CGPoint(x: 103, y: 100) {
+        // ok
+    } else {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: absolute mode should warp to the finger regardless of tapStabilizationPt — got \(intent)\n".utf8))
+    }
+}
+
 // MARK: - Late join (a component entering an already-committed gesture)
 
 /// Fingers spread cleanly first (pinch commits alone), then twist. The twist
@@ -1213,9 +1390,13 @@ private func testPointerGainCurveShape() {
 private func testSlowDragIsDamped() {
     var tracker = TouchStateTracker()
     _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
-    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 1, y: 0))], at: 0.14)  // cross onsetDelay
+    // Cross onsetDelay AND the tap-stabilization tolerance (default 1.5 pt),
+    // then take one more frame so a prior `.pointer` speed sample exists for
+    // the damping EMA to work from.
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 4, y: 0))], at: 0.14)  // commits, emits nothing
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 4.2, y: 0))], at: 0.15)  // first .pointer frame
     // 0.2 points per 20ms frame = 10 pts/s, well under pointerGainLowSpeed (30).
-    guard case let .pointerMove(dx, _) = process(&tracker, [(id: 1, screen: CGPoint(x: 1.2, y: 0))], at: 0.16)
+    guard case let .pointerMove(dx, _) = process(&tracker, [(id: 1, screen: CGPoint(x: 4.4, y: 0))], at: 0.16)
     else {
         failures += 1
         checks += 1
@@ -1358,6 +1539,10 @@ enum TouchStateTrackerTestRunner {
         testSecondFingerAfterOnsetStillEscalatesWithBoundedDrift()
         testTapInsideOnsetWindowStillClicks()
         testOnsetDelayParameterIsHonored()
+        testTapStabilizationShippedDefaultHoldsAndZeroDisables()
+        testTapStabilizationHoldsThenReleasesWithoutJump()
+        testTapStabilizationDoesNotAffectAbsoluteMode()
+        testSecondFingerEscalatesWhileStabilizationHolds()
         testPointerGainCurveShape()
         testSlowDragIsDamped()
         testFirstPointerFrameIsNotDamped()

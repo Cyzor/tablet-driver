@@ -486,6 +486,14 @@ struct TouchStateTracker {
     /// travel are discarded, not replayed.  0 shrinks the dead span to that
     /// floor; it does not remove it.
     static let onsetDelay: CFAbsoluteTime = 0.04
+
+    /// Screen points a single-finger touch may drift before it starts moving
+    /// the cursor: absorbs lift-off skitter on a tap and the first point or
+    /// two of a slow drag from rest, below where response feels sticky. Fed
+    /// from `TabletSettings.touchTapStabilizationPt`; this static is what the
+    /// test harness and direct callers see. Relative mode only — see `process`.
+    static let tapStabilizationPt: Double = 1.5
+
     /// Motion (screen points) needed to commit pan vs pinch for a sequence.
     /// Slightly above finger-jitter so a sliding pan doesn't decide on noise.
     static let twoFingerDecideDistance: Double = 6.0
@@ -758,6 +766,7 @@ struct TouchStateTracker {
         touchDiagonal: Double = 0,
         absoluteTouch: Bool = false,
         onsetDelay: CFAbsoluteTime = TouchStateTracker.onsetDelay,
+        tapStabilizationPt: Double = TouchStateTracker.tapStabilizationPt,
         now: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     ) -> Intent {
 
@@ -998,6 +1007,12 @@ struct TouchStateTracker {
             // where the finger is), and skipping the warp here would leave
             // the cursor stale for a tap that lifts before onset ever
             // elapses (see `Intent.pointerWarp`'s doc comment).
+            //
+            // Tap stabilization extends that hold from a time bound to
+            // time-and-distance: a barely-moving finger stays pinned past
+            // `onsetDelay` until it clears `tapStabilizationPt`. `lastPositions`
+            // is rewritten every frame below, so the release delta is still
+            // one frame's worth of motion — no catch-up jump.
             if let first = contacts.first {
                 if let anchor = tapAnchor {
                     tapMaxDelta = Swift.max(tapMaxDelta, hypot(
@@ -1005,6 +1020,9 @@ struct TouchStateTracker {
                 }
                 lastPositions = [first.id: first.screen]
                 if absoluteTouch {
+                    // Absolute mode holds on time only — no drift to suppress
+                    // (every frame warps to the finger), and skipping the warp
+                    // would break `absoluteLastWarpedTo`'s warp-once invariant.
                     if absolutePrimaryContactID == nil {
                         absolutePrimaryContactID = first.id
                     }
@@ -1018,7 +1036,12 @@ struct TouchStateTracker {
                     return .none
                 }
             }
-            if now - tapStart >= onsetDelay {
+            // Relative mode: commit once onset has elapsed and the finger has
+            // cleared the stabilization tolerance (`tapMaxDelta` is this
+            // frame's, updated just above; `> 0` guard = feature off / no-op).
+            let heldForStabilization =
+                tapStabilizationPt > 0 && tapMaxDelta < tapStabilizationPt
+            if now - tapStart >= onsetDelay, !heldForStabilization {
                 mode = .pointer
             }
             return .none
