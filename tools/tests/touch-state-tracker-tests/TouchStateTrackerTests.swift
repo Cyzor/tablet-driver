@@ -719,6 +719,185 @@ private func testPanBriefOneContactFrameDoesNotWindDown() {
     checks += 1
 }
 
+// MARK: - Dominant-axis lock (committed .pan)
+
+/// Two fingers 40pt apart, both translated `(dx, dy)` from origin — a
+/// straight sweep in an arbitrary direction, for the axis-lock tests.
+private func sweep(dx: Double, dy: Double) -> [(id: Int, screen: CGPoint)] {
+    [(id: 1, screen: CGPoint(x: dx - 20, y: dy)),
+     (id: 2, screen: CGPoint(x: dx + 20, y: dy))]
+}
+
+/// A near-vertical two-finger scroll (tiny horizontal drift) must lock to the
+/// vertical axis and zero the horizontal component for the rest of the
+/// gesture — the failure mode is that drift bleeding into a phase-free stream
+/// and being swallowed by a nested column view.
+private func testNearVerticalScrollLocksOutHorizontalDrift() {
+    // Commit the pan, then keep sweeping down with a small +x drift each frame.
+    let frames: [(t: CFAbsoluteTime, c: [(id: Int, screen: CGPoint)])] = [
+        (0, [(id: 1, screen: .zero)]),
+        (0.01, sweep(dx: 0, dy: 0)),
+        (0.02, sweep(dx: 1, dy: 12)),   // commit — mostly vertical
+        (0.03, sweep(dx: 2, dy: 24)),
+        (0.04, sweep(dx: 3, dy: 36)),
+        (0.05, sweep(dx: 4, dy: 48)),
+        (0.06, sweep(dx: 5, dy: 60)),
+    ]
+    var tracker = TouchStateTracker()
+    var sawLock = false
+    for (i, f) in frames.enumerated() {
+        let intent = panProcess(&tracker, f.c, at: f.t)
+        // After the lock window (26pt+ of travel by ~frame 4), horizontal
+        // must be exactly zero even though the fingers keep drifting +x.
+        if i >= 5, case let .scrollDelta(dx, _, _) = intent {
+            sawLock = true
+            expectEqual(dx, 0.0,
+                "near-vertical scroll must zero horizontal drift once axis-locked")
+        }
+    }
+    checks += 1
+    if !sawLock {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: near-vertical scroll never produced a post-lock scroll frame\n".utf8))
+    }
+}
+
+/// Symmetric: a near-horizontal scroll locks out vertical drift. This is the
+/// case that was actually broken — horizontal column-view scroll swallowed
+/// because it carried a vertical component.
+private func testNearHorizontalScrollLocksOutVerticalDrift() {
+    var tracker = TouchStateTracker()
+    let frames: [(t: CFAbsoluteTime, c: [(id: Int, screen: CGPoint)])] = [
+        (0, [(id: 1, screen: .zero)]),
+        (0.01, sweep(dx: 0, dy: 0)),
+        (0.02, sweep(dx: 12, dy: 1)),
+        (0.03, sweep(dx: 24, dy: 2)),
+        (0.04, sweep(dx: 36, dy: 3)),
+        (0.05, sweep(dx: 48, dy: 4)),
+        (0.06, sweep(dx: 60, dy: 5)),
+    ]
+    var sawLock = false
+    for (i, f) in frames.enumerated() {
+        let intent = panProcess(&tracker, f.c, at: f.t)
+        if i >= 5, case let .scrollDelta(_, dy, _) = intent {
+            sawLock = true
+            expectEqual(dy, 0.0,
+                "near-horizontal scroll must zero vertical drift once axis-locked")
+        }
+    }
+    checks += 1
+    if !sawLock {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: near-horizontal scroll never produced a post-lock scroll frame\n".utf8))
+    }
+}
+
+/// A genuinely diagonal two-finger drag (roughly 45°, well inside the 2:1
+/// ratio on both axes) must NOT lock — both components keep flowing, the way
+/// a native Hand-tool free pan does. This is the regression the lock could
+/// introduce.
+private func testDiagonalScrollStaysOmnidirectional() {
+    var tracker = TouchStateTracker()
+    let frames: [(t: CFAbsoluteTime, c: [(id: Int, screen: CGPoint)])] = [
+        (0, [(id: 1, screen: .zero)]),
+        (0.01, sweep(dx: 0, dy: 0)),
+        (0.02, sweep(dx: 10, dy: 10)),
+        (0.03, sweep(dx: 20, dy: 20)),
+        (0.04, sweep(dx: 30, dy: 30)),
+        (0.05, sweep(dx: 40, dy: 40)),
+        (0.06, sweep(dx: 50, dy: 50)),
+        (0.07, sweep(dx: 60, dy: 60)),
+    ]
+    var checkedPostWindow = false
+    for (i, f) in frames.enumerated() {
+        let intent = panProcess(&tracker, f.c, at: f.t)
+        if i >= 5, case let .scrollDelta(dx, dy, _) = intent {
+            checkedPostWindow = true
+            checks += 1
+            if abs(dx) < 0.001 || abs(dy) < 0.001 {
+                failures += 1
+                FileHandle.standardError.write(
+                    Data("FAIL: diagonal drag got pinned to one axis — got (\(dx), \(dy))\n".utf8))
+            }
+        }
+    }
+    checks += 1
+    if !checkedPostWindow {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: diagonal drag never produced a post-window scroll frame\n".utf8))
+    }
+}
+
+/// The unlocked prefix is bounded: a pure-vertical scroll's *first* few
+/// frames (before the lock window fills) still pass horizontal through
+/// unchanged — there just isn't any here, so the guarantee to check is that
+/// the lock commits within `scrollAxisLockWindow` of travel, not that early
+/// frames are altered.
+private func testAxisLockCommitsWithinWindow() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweep(dx: 0, dy: 0), at: 0.01)
+    _ = panProcess(&tracker, sweep(dx: 0, dy: 10), at: 0.02)   // commit
+    // ~20pt of vertical travel by now — well past scrollAxisLockWindow (8pt).
+    // A frame with a large horizontal jump must have its dx zeroed by the lock.
+    _ = panProcess(&tracker, sweep(dx: 0, dy: 20), at: 0.03)
+    if case let .scrollDelta(dx, _, _) = panProcess(&tracker, sweep(dx: 40, dy: 30), at: 0.04) {
+        expectEqual(dx, 0.0,
+            "once past scrollAxisLockWindow of vertical travel, a horizontal jump must be zeroed")
+    } else {
+        checks += 1
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: expected a scroll frame after the lock window\n".utf8))
+    }
+}
+
+/// A contact id swapping mid-stroke (finger re-landed, or palm filtering
+/// churned the set) gives a frame with `current.count == 2` but only one
+/// tracked contact. The lock decision skips such frames (`tracked.count >= 2`
+/// guard) — this pins that an id swap in the pre-lock prefix doesn't disturb
+/// an otherwise-clean near-vertical scroll's lock. The single-tracked-contact
+/// centroid is consistent old-vs-new so it wouldn't inject a jump either way;
+/// this is the only test that exercises churn through the lock path at all.
+private func testAxisLockIgnoresContactChurnFrame() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweep(dx: 0, dy: 0), at: 0.01)
+    _ = panProcess(&tracker, sweep(dx: 0, dy: 6), at: 0.02)    // commit, mostly vertical
+    _ = panProcess(&tracker, sweep(dx: 0, dy: 12), at: 0.03)
+    // Churn frame: both fingers present but id 2 → id 3, positions unchanged.
+    // `tracked` drops to {1}; centroid collapses toward x = -20.
+    _ = panProcess(&tracker,
+        [(id: 1, screen: CGPoint(x: -20, y: 12)), (id: 3, screen: CGPoint(x: 20, y: 12))],
+        at: 0.04)
+    // Continue the vertical sweep with the new id pair.
+    _ = panProcess(&tracker,
+        [(id: 1, screen: CGPoint(x: -20, y: 20)), (id: 3, screen: CGPoint(x: 20, y: 20))],
+        at: 0.05)
+    if case let .scrollDelta(dx, dy, _) = panProcess(&tracker,
+        [(id: 1, screen: CGPoint(x: -18, y: 34)), (id: 3, screen: CGPoint(x: 22, y: 34))],
+        at: 0.06)
+    {
+        // Locked vertical: the small +x drift is zeroed, dy flows.
+        expectEqual(dx, 0.0,
+            "a churn frame must not pin a near-vertical scroll to the horizontal axis")
+        checks += 1
+        if dy == 0.0 {
+            failures += 1
+            FileHandle.standardError.write(
+                Data("FAIL: vertical component lost after churn frame\n".utf8))
+        }
+    } else {
+        checks += 1
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: expected a scroll frame after the churn frame\n".utf8))
+    }
+}
+
 // MARK: - Onset delay
 
 /// Pin the shipped default. `touchOnsetDelayMs` (settings, no UI) defaults to
@@ -1144,6 +1323,11 @@ enum TouchStateTrackerTestRunner {
         testPinchMagnifyEnvelope()
         testPanDropToOneContactWindsDownAfterGrace()
         testPanBriefOneContactFrameDoesNotWindDown()
+        testNearVerticalScrollLocksOutHorizontalDrift()
+        testNearHorizontalScrollLocksOutVerticalDrift()
+        testDiagonalScrollStaysOmnidirectional()
+        testAxisLockCommitsWithinWindow()
+        testAxisLockIgnoresContactChurnFrame()
         testPanWindDownPreservesReleaseVelocity()
         testPanWindDownClearsWithoutEmptyFrame()
         testPanWindDownBackstopDoesNotFireTap()
