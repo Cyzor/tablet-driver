@@ -60,9 +60,12 @@ extension TabletSettings {
         dragThreshold = loadDouble("dragThreshold", default: 0.0)
         pressureSmoothingStrength = loadDouble("pressureSmoothingStrength", default: 0.0)
         touchEnabled = loadBool("touchEnabled", default: false)
-        touchSensitivity = Swift.max(0.25, Swift.min(loadDouble("touchSensitivity", default: 1.0), 4.0))
+        touchSensitivity = Swift.max(0.25, Swift.min(loadDouble("touchSensitivity", default: 1.25), 4.0))
         tapToClick = loadBool("tapToClick", default: false)
         touchOnsetDelayMs = Swift.max(0.0, Swift.min(loadDouble("touchOnsetDelayMs", default: 40.0), 500.0))
+        // touchAbsoluteMode is deliberately global — see its doc comment —
+        // and reads straight from UserDefaults.standard, not through this
+        // per-device load chain.
         twoFingerScroll = loadBool("twoFingerScroll", default: true)
         reverseScrollDirection = loadBool("naturalScrolling", default: false)
         twoFingerScrollMomentum = loadBool("twoFingerScrollMomentum", default: true)

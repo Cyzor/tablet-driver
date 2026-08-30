@@ -115,6 +115,7 @@ extension InputInjector {
                     pinchZoom: snap.pinchZoomEnabled,
                     smartZoom: snap.smartZoomEnabled,
                     rotate: snap.rotateEnabled,
+                    absoluteTouch: snap.touchAbsoluteMode,
                     onsetDelay: snap.touchOnsetDelay,
                     now: now)
                 noteOnsetLifecycle(now: now)
@@ -283,6 +284,7 @@ extension InputInjector {
             rotate: snap.rotateEnabled,
             rawPositions: rawTouchPositionsMM,
             touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
+            absoluteTouch: snap.touchAbsoluteMode,
             onsetDelay: snap.touchOnsetDelay,
             now: now)
 
@@ -371,6 +373,9 @@ extension InputInjector {
         case .pointerMove(let dx, let dy):
             TouchPipelineProbe.note { $0.pointerMoves += 1 }
             postTouchPointerMove(dx: dx, dy: dy)
+        case .pointerWarp(let target):
+            TouchPipelineProbe.note { $0.pointerMoves += 1 }
+            postTouchPointerWarp(to: target)
         case .scrollDelta(let dx, let dy, let phase):
             TouchPipelineProbe.note { $0.scrolls += 1 }
             if phase == .began {
@@ -452,7 +457,17 @@ extension InputInjector {
 
     private func postTouchPointerMove(dx: Double, dy: Double) {
         let loc = currentCursorPosition()
-        var target = CGPoint(x: loc.x + dx, y: loc.y + dy)
+        postTouchPointerWarp(to: CGPoint(x: loc.x + dx, y: loc.y + dy))
+    }
+
+    /// Shared by both touch pointer intents: `.pointerMove` (relative mode)
+    /// resolves its delta into an absolute target and calls through here;
+    /// `.pointerWarp` (absolute mode) already has one from
+    /// `TouchStateTracker.screenPoint`. Edge-pinning runs either way — a
+    /// no-op if the target's already in bounds, protective if a mapping
+    /// edge case put it just outside.
+    private func postTouchPointerWarp(to point: CGPoint) {
+        var target = point
         if let snap = injectionSnapshot {
             target = Self.pinNearScreenEdges(target, in: displayMapper.displayBounds(for: snap))
         }

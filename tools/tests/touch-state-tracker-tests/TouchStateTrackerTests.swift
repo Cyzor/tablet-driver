@@ -50,6 +50,25 @@ private func process(
     )
 }
 
+private func processAbsolute(
+    _ tracker: inout TouchStateTracker,
+    _ contacts: [(id: Int, screen: CGPoint)],
+    at time: CFAbsoluteTime,
+    tapToClick: Bool = true
+) -> TouchStateTracker.Intent {
+    tracker.process(
+        contacts: contacts,
+        tapToClick: tapToClick,
+        twoFingerScroll: true,
+        reverseScrollDirection: false,
+        sensitivity: 1,
+        pinchZoom: true,
+        smartZoom: true,
+        absoluteTouch: true,
+        now: time
+    )
+}
+
 /// Shorthand for a `.twoFingerGesture` with only a magnify component —
 /// most pinch-only test expectations don't care about a concurrent rotate.
 private func magnify(_ value: Double, phase: TouchStateTracker.ScrollPhase) -> TouchStateTracker.Intent {
@@ -1047,6 +1066,78 @@ private func testFirstPointerFrameIsNotDamped() {
                 "the first .pointer-mode frame must use flat gain, not the low-speed floor")
 }
 
+/// In absolute mode, a single-finger touch must warp the cursor to the
+/// finger's own screen position, not drag it by delta — no gain, no
+/// smoothing, direct 1:1 mapping.
+private func testAbsoluteTouchWarpsToPosition() {
+    var tracker = TouchStateTracker()
+    _ = processAbsolute(&tracker, [(id: 1, screen: CGPoint(x: 100, y: 200))], at: 0)
+    expectEqual(
+        processAbsolute(&tracker, [(id: 1, screen: CGPoint(x: 150, y: 220))], at: 0.14),
+        .pointerWarp(to: CGPoint(x: 150, y: 220)),
+        "absolute mode must warp directly to the contact's screen position")
+}
+
+/// A tap that lifts entirely inside the onset window (never reaching
+/// `.pointer` mode) must still have warped the cursor to the tap's own
+/// position, so `.tapClick`'s "click at the current cursor position"
+/// resolves in the right place. This is the bug relative mode's own
+/// zero-delta/emit-nothing-in-.pending behavior would cause if reused
+/// as-is for absolute mode: the cursor would still be sitting wherever it
+/// was before the tap.
+private func testAbsoluteTapClicksAtTapPosition() {
+    var tracker = TouchStateTracker()
+    expectEqual(
+        processAbsolute(&tracker, [(id: 1, screen: CGPoint(x: 300, y: 400))], at: 0),
+        .pointerWarp(to: CGPoint(x: 300, y: 400)),
+        "absolute mode must warp even in .pending, before onset elapses")
+    // Lift at 0.03 — inside the 40ms onset window, never reaches .pointer.
+    expectEqual(
+        processAbsolute(&tracker, [], at: 0.03),
+        .tapClick,
+        "a tap wholly inside the onset window must still click, now that the cursor is at the right spot")
+}
+
+/// A still finger in absolute mode must warp once (so a motionless tap
+/// still resolves at the right position — see
+/// testAbsoluteTapClicksAtTapPosition) and then go silent, not re-warp to
+/// the same position every frame. An unguarded repeat-warp would post
+/// ~100 identical .mouseMoved CGEvents/sec for a finger just resting on
+/// the tablet — the same class of waste the scroll case's dead-frame skip
+/// exists to avoid.
+private func testAbsoluteTouchDoesNotRewarpAMotionlessFinger() {
+    var tracker = TouchStateTracker()
+    expectEqual(
+        processAbsolute(&tracker, [(id: 1, screen: CGPoint(x: 50, y: 60))], at: 0),
+        .pointerWarp(to: CGPoint(x: 50, y: 60)),
+        "the first frame of a sequence must always warp")
+    // Crosses onsetDelay into .pointer, finger hasn't moved.
+    expectEqual(
+        processAbsolute(&tracker, [(id: 1, screen: CGPoint(x: 50, y: 60))], at: 0.14),
+        .none,
+        "a motionless finger must not re-warp to the position it's already at")
+    expectEqual(
+        processAbsolute(&tracker, [(id: 1, screen: CGPoint(x: 50, y: 60))], at: 0.20),
+        .none,
+        "repeated motionless frames must stay silent, not post a warp each time")
+}
+
+/// If the driving finger lifts while a second finger lingers (or contact
+/// ids otherwise reorder), absolute mode must not re-derive "the" contact
+/// from `.first` and teleport to it — the sequence stays pinned to
+/// whichever contact id started it.
+private func testAbsoluteTouchIgnoresContactAfterPrimaryLifts() {
+    var tracker = TouchStateTracker()
+    _ = processAbsolute(&tracker, [(id: 1, screen: CGPoint(x: 0, y: 0))], at: 0)
+    _ = processAbsolute(&tracker, [(id: 1, screen: CGPoint(x: 10, y: 0))], at: 0.14)
+    // id 1 (the primary) lifts; a different id 2 is now contacts.first.
+    // Must not warp to id 2's position — the primary is gone, so no target.
+    expectEqual(
+        processAbsolute(&tracker, [(id: 2, screen: CGPoint(x: 900, y: 900))], at: 0.16),
+        .none,
+        "a non-primary contact surviving after the primary lifts must not steal the warp")
+}
+
 @main
 enum TouchStateTrackerTestRunner {
     static func main() {
@@ -1086,6 +1177,10 @@ enum TouchStateTrackerTestRunner {
         testPointerGainCurveShape()
         testSlowDragIsDamped()
         testFirstPointerFrameIsNotDamped()
+        testAbsoluteTouchWarpsToPosition()
+        testAbsoluteTapClicksAtTapPosition()
+        testAbsoluteTouchDoesNotRewarpAMotionlessFinger()
+        testAbsoluteTouchIgnoresContactAfterPrimaryLifts()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

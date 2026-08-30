@@ -438,6 +438,35 @@ final class TabletSettings: ObservableObject {
     @Published var touchOnsetDelayMs: Double = 40.0 {
         didSet { persist("touchOnsetDelayMs", touchOnsetDelayMs) }
     }
+    /// When true, single-finger touch positions the cursor directly (the
+    /// touch surface maps 1:1 to the display, like the pen's absolute mode)
+    /// instead of dragging it by delta (the default, trackpad-style
+    /// behavior — see `TouchStateTracker`'s speed-gain curve, which only
+    /// applies in that default mode). No UI: an advanced `defaults`-only
+    /// knob, off by default, for testing whether Wacom's own absolute-touch
+    /// option (present in their driver) is worth a real setting here.
+    /// `touchSensitivity`'s slider stays visible but has no effect while
+    /// this is on — there's no "speed" in a 1:1 position mapping. A palm
+    /// contact that survives the family's palm filter now warps the cursor
+    /// straight to it instead of nudging it by a small delta, so this is
+    /// only worth trying on a family with solid palm rejection.
+    ///
+    /// Deliberately global, not per-device like the rest of this file: read
+    /// straight from `UserDefaults.standard` under an unprefixed key rather
+    /// than going through `persist()`/`loadBool()`'s per-device-then-legacy-
+    /// key fallback chain (the pattern every other setting here uses). That
+    /// chain only falls back to an unprefixed write until a device's own
+    /// prefixed key gets written — which happens routinely, via `persist()`
+    /// firing on nearly any settings change — so with multiple tablets
+    /// attached, a bare `defaults write` would apply inconsistently across
+    /// devices and could silently stop applying to a given one over time.
+    /// Someone turning this on almost certainly wants it everywhere, so it
+    /// bypasses per-device storage entirely instead. Same pattern as
+    /// `AppearancePrefs`/dock-visibility elsewhere in the app.
+    static var touchAbsoluteMode: Bool {
+        get { UserDefaults.standard.bool(forKey: "touchAbsoluteMode") }
+        set { UserDefaults.standard.set(newValue, forKey: "touchAbsoluteMode") }
+    }
     /// When true, two-finger motion is translated into a smooth scroll-wheel
     /// CGEvent stream (with phase Began/Changed/Ended), which apps interpret as
     /// trackpad scroll.  Disable to ignore second-finger contacts.

@@ -63,6 +63,9 @@ struct InjectionSnapshot: Sendable, Equatable {
     /// `TabletSettings.touchOnsetDelayMs`, converted from ms). Passed to
     /// `TouchStateTracker.process` as its `onsetDelay:` argument.
     var touchOnsetDelay: Double
+    /// From `TabletSettings.touchAbsoluteMode`. Passed to
+    /// `TouchStateTracker.process` as its `absoluteTouch:` argument.
+    var touchAbsoluteMode: Bool
     var tapToClick: Bool
     var twoFingerScroll: Bool
     var reverseScrollDirection: Bool
@@ -146,6 +149,7 @@ extension TabletSettings {
             touchEnabled: touchEnabled,
             touchSensitivity: touchSensitivity,
             touchOnsetDelay: touchOnsetDelayMs / 1000.0,
+            touchAbsoluteMode: Self.touchAbsoluteMode,
             tapToClick: tapToClick,
             twoFingerScroll: twoFingerScroll,
             reverseScrollDirection: reverseScrollDirection,

@@ -157,6 +157,11 @@ struct TouchStateTracker {
         /// Move the cursor by (dx, dy) screen points, optionally posting a click
         /// at the move's destination when the gesture finishes as a tap.
         case pointerMove(dx: Double, dy: Double)
+        /// Absolute-mode counterpart to `pointerMove`: warp the cursor
+        /// directly to this screen point (already touch-area→display
+        /// mapped) rather than moving it by a delta. Only emitted when
+        /// `absoluteTouch` is true — see `process(...)`'s doc comment.
+        case pointerWarp(to: CGPoint)
         /// Tap-to-click: a touch sequence that began and ended on roughly the
         /// same point within `tapMaxDuration`.  Posted as a single left click.
         case tapClick
@@ -238,6 +243,29 @@ struct TouchStateTracker {
     /// couple of frames after every pause, however fast the actual resumed
     /// motion is.
     private var pointerSpeed: Double = -1
+
+    /// In `absoluteTouch` mode, the contact id that started this `.pointer`
+    /// sequence — deliberately re-read as `contacts.first` only when this is
+    /// nil, not every frame. Relative mode tolerates `.first` changing
+    /// mid-sequence because a new id's first delta is defined as zero (see
+    /// `lastPositions[first.id] ?? first.screen`); absolute mode has no
+    /// delta to zero out, so if a second finger landed and briefly sorted
+    /// ahead of the driving one, re-deriving "the" contact from `.first`
+    /// would warp the cursor straight to it. Reset alongside `tapAnchor` and
+    /// `lastPositions` in `reset()`; irrelevant (never set) when
+    /// `absoluteTouch` is false.
+    private var absolutePrimaryContactID: Int?
+    /// Last screen position this sequence has already warped the cursor to
+    /// in `absoluteTouch` mode — a still finger must not re-warp every
+    /// frame (that's ~100 identical `.mouseMoved` CGEvents/sec, the same
+    /// class of waste the scroll case's dead-frame skip exists to avoid).
+    /// Warping once per sequence regardless of motion is still needed for
+    /// the tap-position fix, so this tracks "have we ever warped" and "to
+    /// where", not just a this-frame delta. `nil` means no warp has been
+    /// emitted yet this sequence — the case that must always warp, even
+    /// with zero motion, so `.tapClick`'s "click at current cursor
+    /// position" lands correctly.
+    private var absoluteLastWarpedTo: CGPoint?
     /// Wall-clock time of the last `.pointer` sample, for staleness detection
     /// and computing `dt` for the `pointerSpeed` EMA.
     private var lastPointerSampleTime: CFAbsoluteTime = 0
@@ -670,7 +698,12 @@ struct TouchStateTracker {
     /// touch surface's X/Y axes, which are not equally scaled — only
     /// consulted when `rotate` is true, so callers not using rotate may
     /// pass `[:]`. `touchDiagonal` is the touch surface's diagonal in the
-    /// same unit (millimeters).
+    /// same unit (millimeters). `absoluteTouch` switches `.pointer` mode
+    /// from relative (trackpad-style delta, the default, gated by
+    /// `sensitivity`/the speed-gain curve) to absolute (the finger's own
+    /// position on the touch surface warps the cursor 1:1, mirroring what
+    /// the tablet's active area does for the pen) — hidden `defaults`-only
+    /// knob, no UI; see `TabletSettings.touchAbsoluteMode`.
     mutating func process(
         contacts: [(id: Int, screen: CGPoint)],
         tapToClick: Bool,
@@ -682,6 +715,7 @@ struct TouchStateTracker {
         rotate: Bool = false,
         rawPositions: [Int: CGPoint] = [:],
         touchDiagonal: Double = 0,
+        absoluteTouch: Bool = false,
         onsetDelay: CFAbsoluteTime = TouchStateTracker.onsetDelay,
         now: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     ) -> Intent {
@@ -735,6 +769,14 @@ struct TouchStateTracker {
                 tapAnchor = nil
                 lastPositions = Dictionary(uniqueKeysWithValues:
                     contacts.prefix(1).map { ($0.id, $0.screen) })
+                // A two-finger sequence never ran absolute-mode's own
+                // primary-pinning — clear both so `.pointer where
+                // absoluteTouch` re-derives cleanly from this frame's
+                // contact rather than chasing a stale id from before the
+                // scroll started (or warping again to a position it
+                // never actually warped to yet this sequence).
+                absolutePrimaryContactID = nil
+                absoluteLastWarpedTo = nil
                 return .none
             } else {
                 return .none
@@ -832,6 +874,15 @@ struct TouchStateTracker {
             tapAnchor = first.screen
             tapStart = now
             tapMaxDelta = 0
+            if absoluteTouch {
+                // Warp immediately on contact-down — see the `.pending`
+                // case below and `Intent.pointerWarp`'s doc comment for why
+                // absolute mode can't wait for `.pointer` mode the way
+                // relative mode does.
+                absolutePrimaryContactID = first.id
+                absoluteLastWarpedTo = first.screen
+                return .pointerWarp(to: first.screen)
+            }
             return .none
         }
 
@@ -896,15 +947,33 @@ struct TouchStateTracker {
 
         switch mode {
         case .pending:
-            // Track motion for tap detection, but emit nothing.  Anchor at the
-            // contact's current position on commit so motion accumulated during
-            // the window is discarded rather than replayed as a cursor jump.
+            // Track motion for tap detection. Relative mode emits nothing
+            // here and anchors at commit instead, so motion accumulated
+            // during the window is discarded rather than replayed as a
+            // cursor jump — there's no equivalent hazard in absolute mode
+            // (a warp is never a "jump" relative to prior motion, it's just
+            // where the finger is), and skipping the warp here would leave
+            // the cursor stale for a tap that lifts before onset ever
+            // elapses (see `Intent.pointerWarp`'s doc comment).
             if let first = contacts.first {
                 if let anchor = tapAnchor {
                     tapMaxDelta = Swift.max(tapMaxDelta, hypot(
                         first.screen.x - anchor.x, first.screen.y - anchor.y))
                 }
                 lastPositions = [first.id: first.screen]
+                if absoluteTouch {
+                    if absolutePrimaryContactID == nil {
+                        absolutePrimaryContactID = first.id
+                    }
+                    if now - tapStart >= onsetDelay {
+                        mode = .pointer
+                    }
+                    if absoluteLastWarpedTo != first.screen {
+                        absoluteLastWarpedTo = first.screen
+                        return .pointerWarp(to: first.screen)
+                    }
+                    return .none
+                }
             }
             if now - tapStart >= onsetDelay {
                 mode = .pointer
@@ -1290,6 +1359,33 @@ struct TouchStateTracker {
             lastScrollPhase = .changed
             return .scrollDelta(dx: outDx, dy: outDy, phase: .changed)
 
+        case .pointer where absoluteTouch:
+            // Pin to the contact that started this sequence rather than
+            // re-reading `contacts.first` every frame — see
+            // `absolutePrimaryContactID`'s doc comment for why relative
+            // mode's own "just take .first" approach would misbehave here.
+            let primaryID = absolutePrimaryContactID ?? contacts.first?.id
+            absolutePrimaryContactID = primaryID
+            guard let primaryID, let primary = contacts.first(where: { $0.id == primaryID })
+            else { return .none }
+            lastPositions[primary.id] = primary.screen
+            if let anchor = tapAnchor {
+                tapMaxDelta = Swift.max(tapMaxDelta, hypot(
+                    primary.screen.x - anchor.x, primary.screen.y - anchor.y))
+            }
+            // Skip a repeat warp to the same position — a still finger
+            // would otherwise post ~100 identical .mouseMoved CGEvents/sec,
+            // the same waste the scroll case's dead-frame skip above exists
+            // to avoid. `absoluteLastWarpedTo` still gets set on the first
+            // frame regardless of motion (from the .idle/.pending
+            // transitions above), which is what makes a motionless
+            // tap-to-click resolve at the right position — this guard only
+            // suppresses *repeats* of a warp already emitted, never the
+            // first one.
+            if absoluteLastWarpedTo == primary.screen { return .none }
+            absoluteLastWarpedTo = primary.screen
+            return .pointerWarp(to: primary.screen)
+
         case .pointer:
             guard let first = contacts.first else { return .none }
             let prev = lastPositions[first.id] ?? first.screen
@@ -1346,6 +1442,8 @@ struct TouchStateTracker {
         lastPositions.removeAll(keepingCapacity: true)
         pointerSpeed = -1
         lastPointerSampleTime = 0
+        absolutePrimaryContactID = nil
+        absoluteLastWarpedTo = nil
         tapAnchor = nil
         tapStart = 0
         tapMaxDelta = 0
