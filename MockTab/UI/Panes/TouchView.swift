@@ -112,8 +112,9 @@ struct TouchView: View {
                     get: { settings.touchSensitivity },
                     set: { settings.touchSensitivity = $0 }),
                 in: 0.25...4.0,
+                step: 0.25,
                 valueText: String(format: "%.2f×", settings.touchSensitivity),
-                caption: "At 1.00×, one full sweep of the touch area crosses the screen once."
+                caption: "Multiplier for cursor motion from finger drag."
             )
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)

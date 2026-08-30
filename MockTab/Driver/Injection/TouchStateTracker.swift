@@ -225,6 +225,23 @@ struct TouchStateTracker {
     /// deliberately ignored (Phase 2 territory).
     private var lastPositions: [Int: CGPoint] = [:]
 
+    /// Smoothed screen-space speed (points/sec) for `.pointer` mode, feeding
+    /// `TouchStateTracker.pointerGain`. A single frame's `delta/dt` is too
+    /// noisy to drive a gain curve directly — at slow sweep speeds a finger
+    /// can advance ~1 device unit per frame, so instantaneous velocity flaps
+    /// between 0 and 1 unit/frame's worth of speed. This exponential moving
+    /// average smooths that out while still tracking real speed changes
+    /// within a couple of frames. `-1` means "no history": set on lift
+    /// (`reset()`) and after a stale gap (`pointerVelocityStaleGap`), it
+    /// tells the next sample to seed directly from its own instant speed
+    /// rather than EMA-ing up from 0 — the latter would damp the first
+    /// couple of frames after every pause, however fast the actual resumed
+    /// motion is.
+    private var pointerSpeed: Double = -1
+    /// Wall-clock time of the last `.pointer` sample, for staleness detection
+    /// and computing `dt` for the `pointerSpeed` EMA.
+    private var lastPointerSampleTime: CFAbsoluteTime = 0
+
     /// First-frame screen position for tap-to-click detection.  Only the
     /// primary contact (id of the first finger down) is tracked.
     private var tapAnchor: CGPoint?
@@ -460,6 +477,58 @@ struct TouchStateTracker {
     /// velocity — see the `.scroll` case. Below the device's true touch cadence,
     /// above a Bluetooth burst's inter-frame gap.
     static let minVelocityDt: CFAbsoluteTime = 0.002
+    /// EMA time-constant for `pointerSpeed`: smaller = smoother/slower to
+    /// react, larger = snappier/noisier. 0.5 means each new sample pulls the
+    /// smoothed speed roughly a third of the way to the instantaneous value
+    /// at the device's native ~100Hz report rate — enough to kill the
+    /// 1-unit/frame quantization noise seen in slow-sweep captures without
+    /// perceptibly lagging a real speed change.
+    static let pointerSpeedEmaFactor: Double = 0.5
+    /// A gap this long since the last `.pointer` sample means the finger was
+    /// effectively still or freshly landed; the smoothed speed is stale and
+    /// must not carry forward into a new motion.
+    static let pointerVelocityStaleGap: CFAbsoluteTime = 0.1
+    /// Screen points/sec below which `pointerGain` treats motion as
+    /// fine-placement speed (gain floor) — and above which it treats motion
+    /// as a fast reposition (gain ceiling). Chosen so an ordinary, unhurried
+    /// sweep across a typical display falls in the flat midrange between
+    /// them, matching the existing "1.00x = one sweep, one crossing" mental
+    /// model for normal-speed use; only the slow and fast tails are reshaped.
+    static let pointerGainLowSpeed: Double = 30
+    static let pointerGainHighSpeed: Double = 900
+    /// Gain multiplier applied at/below `pointerGainLowSpeed` and at/above
+    /// `pointerGainHighSpeed`, on top of the user's `sensitivity`. Mirrors
+    /// libinput's adaptive-profile bounds (deceleration floor, acceleration
+    /// ceiling), not copied verbatim — retuned much closer to 1.0 on the low
+    /// end than libinput's mouse curve. Unlike a mouse, the whole touch
+    /// surface maps to the whole screen (see the Cursor Speed caption): a
+    /// floor as low as libinput's would mean a deliberate, unhurried sweep
+    /// can no longer reach the far edge at 1.00x, recreating the exact
+    /// "sweep doesn't cross the screen" complaint this feature exists
+    /// alongside, not to reintroduce. The floor only bites at genuine
+    /// micro-adjustment speeds now, below `pointerGainLowSpeed`.
+    static let pointerGainFloor: Double = 0.85
+    static let pointerGainCeiling: Double = 1.6
+
+    /// Speed-dependent gain multiplier for `.pointer` mode, on a 0..1..∞
+    /// scale where 1.0 is the flat, un-accelerated multiplier this replaces.
+    /// Flat (1.0) between the two thresholds, linearly interpolated to
+    /// `pointerGainFloor`/`pointerGainCeiling` outside them. `speed` is the
+    /// smoothed screen-points/sec value from `pointerSpeed`, already past
+    /// the EMA — this function itself is a pure lookup with no state.
+    static func pointerGain(forSpeed speed: Double) -> Double {
+        if speed <= pointerGainLowSpeed {
+            let t = pointerGainLowSpeed > 0 ? speed / pointerGainLowSpeed : 1
+            return pointerGainFloor + (1 - pointerGainFloor) * t
+        }
+        if speed >= pointerGainHighSpeed {
+            let over = speed - pointerGainHighSpeed
+            let span = pointerGainHighSpeed - pointerGainLowSpeed
+            let t = min(over / span, 1)
+            return 1 + (pointerGainCeiling - 1) * t
+        }
+        return 1
+    }
     /// A lift is only treated as a flick-release if motion happened within
     /// this many seconds of it — otherwise the fingers were held still
     /// (braking) and release velocity is suppressed regardless of any fast
@@ -1224,8 +1293,36 @@ struct TouchStateTracker {
         case .pointer:
             guard let first = contacts.first else { return .none }
             let prev = lastPositions[first.id] ?? first.screen
-            let dx = (first.screen.x - prev.x) * sensitivity
-            let dy = (first.screen.y - prev.y) * sensitivity
+            let rawDx = first.screen.x - prev.x
+            let rawDy = first.screen.y - prev.y
+
+            let dt = lastPointerSampleTime == 0 ? 0 : now - lastPointerSampleTime
+            var gain = sensitivity
+            if lastPointerSampleTime == 0 || dt > Self.pointerVelocityStaleGap {
+                // No usable prior sample — either the first frame of a new
+                // sequence, or one after a pause long enough that the old
+                // smoothed speed no longer describes anything real. Apply
+                // flat gain for this one frame rather than assuming slow;
+                // `pointerSpeed = -1` marks "no history" so the next frame
+                // seeds directly from its own instant speed instead of
+                // EMA-ing up from 0, which would otherwise damp the first
+                // couple of frames after every pause — the same felt
+                // "hesitation" this feature exists to get away from, not
+                // reintroduce elsewhere.
+                pointerSpeed = -1
+            } else if dt >= Self.minVelocityDt {
+                let instant = hypot(rawDx, rawDy) / dt
+                if pointerSpeed < 0 {
+                    pointerSpeed = instant
+                } else {
+                    pointerSpeed += (instant - pointerSpeed) * Self.pointerSpeedEmaFactor
+                }
+                gain = sensitivity * Self.pointerGain(forSpeed: pointerSpeed)
+            }
+            lastPointerSampleTime = now
+
+            let dx = rawDx * gain
+            let dy = rawDy * gain
             lastPositions[first.id] = first.screen
             if let anchor = tapAnchor {
                 tapMaxDelta = Swift.max(tapMaxDelta, hypot(
@@ -1247,6 +1344,8 @@ struct TouchStateTracker {
     mutating func reset() {
         mode = .idle
         lastPositions.removeAll(keepingCapacity: true)
+        pointerSpeed = -1
+        lastPointerSampleTime = 0
         tapAnchor = nil
         tapStart = 0
         tapMaxDelta = 0

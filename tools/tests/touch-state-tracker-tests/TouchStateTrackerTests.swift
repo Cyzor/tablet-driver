@@ -987,6 +987,66 @@ private func testMonotonicAngleDriftDuringPinchNeverJoinsRotate() {
     }
 }
 
+/// Locks the shape of `pointerGain(forSpeed:)`: floor below the low knee,
+/// flat through the midrange (where "1.00x" continues to mean what the
+/// Cursor Speed caption says), ceiling above the high knee, and continuous
+/// at both knees (no jump when crossing them).
+private func testPointerGainCurveShape() {
+    let low = TouchStateTracker.pointerGainLowSpeed
+    let high = TouchStateTracker.pointerGainHighSpeed
+    checks += 1
+    if TouchStateTracker.pointerGain(forSpeed: 0) != TouchStateTracker.pointerGainFloor {
+        failures += 1
+        FileHandle.standardError.write(Data("FAIL: pointerGain(0) must equal the floor\n".utf8))
+    }
+    expectEqual(TouchStateTracker.pointerGain(forSpeed: 500), 1.0,
+                "midrange speed must be flat, un-accelerated gain")
+    expectEqual(TouchStateTracker.pointerGain(forSpeed: high + 2000), TouchStateTracker.pointerGainCeiling,
+                "far past the high knee must clamp at the ceiling, not keep climbing")
+    expectEqual(TouchStateTracker.pointerGain(forSpeed: low), 1.0,
+                "exactly at the low knee must already read as flat")
+    expectEqual(TouchStateTracker.pointerGain(forSpeed: high), 1.0,
+                "exactly at the high knee must still read as flat")
+}
+
+/// A slow, deliberate drag (well under the low knee) must come out damped —
+/// this is the whole point of the curve, and nothing else in this file
+/// exercises a sub-knee speed.
+private func testSlowDragIsDamped() {
+    var tracker = TouchStateTracker()
+    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 1, y: 0))], at: 0.14)  // cross onsetDelay
+    // 0.2 points per 20ms frame = 10 pts/s, well under pointerGainLowSpeed (30).
+    guard case let .pointerMove(dx, _) = process(&tracker, [(id: 1, screen: CGPoint(x: 1.2, y: 0))], at: 0.16)
+    else {
+        failures += 1
+        checks += 1
+        FileHandle.standardError.write(Data("FAIL: expected a pointerMove\n".utf8))
+        return
+    }
+    checks += 1
+    if dx >= 0.2 {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: slow drag was not damped — got dx=\(dx), expected < 0.2\n".utf8))
+    }
+}
+
+/// The very first pointer-mode frame of a sequence has no prior sample to
+/// measure speed from. It must not be treated as slow — that would damp
+/// every fresh touch-and-drag's opening frame regardless of actual speed,
+/// which is the general form of the bug the initial implementation had
+/// (caught by three pre-existing tests expecting flat gain on their first
+/// post-onset frame).
+private func testFirstPointerFrameIsNotDamped() {
+    var tracker = TouchStateTracker()
+    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = process(&tracker, [(id: 1, screen: CGPoint(x: 5, y: 0))], at: 0.14)  // crosses onsetDelay
+    expectEqual(process(&tracker, [(id: 1, screen: CGPoint(x: 10, y: 0))], at: 0.15),
+                .pointerMove(dx: 5, dy: 0),
+                "the first .pointer-mode frame must use flat gain, not the low-speed floor")
+}
+
 @main
 enum TouchStateTrackerTestRunner {
     static func main() {
@@ -1023,6 +1083,9 @@ enum TouchStateTrackerTestRunner {
         testSecondFingerAfterOnsetStillEscalatesWithBoundedDrift()
         testTapInsideOnsetWindowStillClicks()
         testOnsetDelayParameterIsHonored()
+        testPointerGainCurveShape()
+        testSlowDragIsDamped()
+        testFirstPointerFrameIsNotDamped()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

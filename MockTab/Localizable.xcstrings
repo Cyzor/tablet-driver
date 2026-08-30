@@ -2357,6 +2357,7 @@
       }
     },
     "At 1.00×, one full sweep of the touch area crosses the screen once." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10455,7 +10456,6 @@
       }
     },
     "Multiplier for cursor motion from finger drag." : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

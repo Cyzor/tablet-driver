@@ -289,6 +289,8 @@ extension InputInjector {
         if touchTracker.scrollWoundDownThisFrame {
             TouchPipelineProbe.note { $0.scrollWindDowns += 1 }
         }
+
+
         noteOnsetLifecycle(now: now)
         handleTouchIntent(intent, snap: snap, settings: settings)
     }

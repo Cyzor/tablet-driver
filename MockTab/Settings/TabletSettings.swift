@@ -411,10 +411,16 @@ final class TabletSettings: ObservableObject {
     @Published var touchEnabled: Bool = false {
         didSet { persist("touchEnabled", touchEnabled) }
     }
-    /// Scalar applied to cursor movement from finger drag in pointer mode.
-    /// 0.25 (slow) – 4.0 (fast); 1.0 is "one tablet-unit per device-unit through
-    /// the touch-area mapping".
-    @Published var touchSensitivity: Double = 1.0 {
+    /// Scalar applied to cursor movement from finger drag in pointer mode, on
+    /// top of `TouchStateTracker`'s speed-dependent gain curve. 0.25 (slow) –
+    /// 4.0 (fast); 1.0 is "one tablet-unit per device-unit through the
+    /// touch-area mapping" at a normal drag speed. Defaults to 1.25, not
+    /// 1.0: hardware testing found 1.0 alone reaches only ~80-95% of a full
+    /// screen crossing on a slow, deliberate sweep (the curve's low-speed
+    /// damping band, there to keep fine placement steady, costs some slow-
+    /// speed reach) — 1.25 recovers a comfortable full-screen reach at any
+    /// speed without giving up that precision benefit.
+    @Published var touchSensitivity: Double = 1.25 {
         didSet { persist("touchSensitivity", touchSensitivity) }
     }
     /// When true, a brief single-finger touch (down→up without significant motion)
