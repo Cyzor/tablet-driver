@@ -63,6 +63,11 @@ struct InjectionSnapshot: Sendable, Equatable {
     /// `TabletSettings.touchOnsetDelayMs`, converted from ms). Passed to
     /// `TouchStateTracker.process` as its `onsetDelay:` argument.
     var touchOnsetDelay: Double
+    /// Screen points a single-finger touch may drift before it starts moving
+    /// the cursor (from `TabletSettings.touchTapStabilizationPt`). Passed to
+    /// `TouchStateTracker.process` as its `tapStabilizationPt:` argument. 0
+    /// disables.
+    var touchTapStabilizationPt: Double
     /// From `TabletSettings.touchAbsoluteMode`. Passed to
     /// `TouchStateTracker.process` as its `absoluteTouch:` argument.
     var touchAbsoluteMode: Bool
@@ -149,6 +154,7 @@ extension TabletSettings {
             touchEnabled: touchEnabled,
             touchSensitivity: touchSensitivity,
             touchOnsetDelay: touchOnsetDelayMs / 1000.0,
+            touchTapStabilizationPt: touchTapStabilizationPt,
             touchAbsoluteMode: Self.touchAbsoluteMode,
             tapToClick: tapToClick,
             twoFingerScroll: twoFingerScroll,

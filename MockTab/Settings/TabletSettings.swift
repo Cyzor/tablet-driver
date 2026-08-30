@@ -438,6 +438,16 @@ final class TabletSettings: ObservableObject {
     @Published var touchOnsetDelayMs: Double = 40.0 {
         didSet { persist("touchOnsetDelayMs", touchOnsetDelayMs) }
     }
+    /// Screen points a single-finger touch may drift before it starts moving
+    /// the cursor — see `TouchStateTracker.process`'s `tapStabilizationPt:`.
+    /// The small nonzero default absorbs lift-off skitter on a tap without
+    /// perceptible stiction: a "you shouldn't notice it" default, not a knob,
+    /// so there's no UI.  The key exists only to retune or disable (`0`) per
+    /// device.  Clamped 0…4 in `reloadAll()` — past ~2 it feels sticky.
+    /// Relative touch mode only (absolute warps to the finger every frame).
+    @Published var touchTapStabilizationPt: Double = 1.5 {
+        didSet { persist("touchTapStabilizationPt", touchTapStabilizationPt) }
+    }
     /// When true, single-finger touch positions the cursor directly (the
     /// touch surface maps 1:1 to the display, like the pen's absolute mode)
     /// instead of dragging it by delta (the default, trackpad-style
