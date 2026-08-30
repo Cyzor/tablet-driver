@@ -33,8 +33,6 @@ Other devices may not work yet. Filing an issue with diagnostic details can help
 
 - macOS 13 Ventura or later.
 
-> **macOS 27 Golden Gate beta:** Activating a background window by clicking its visible content is not currently reliable.  Instead, first click the window's titlebar to bring it forward, then use the pen normally.
-
 ***
 
 ## Install
@@ -178,8 +176,6 @@ Note that it still might be possible to coax Wacom's native driver to cooperate 
 If the tablet light is on but Wacom Center shows “No device connected,” or Wacom’s installer says “Supported tablet not found,” the driver may consider your model to be discontinued. See [mocktab.org/troubleshooting.html](https://mocktab.org/troubleshooting.html) for symptoms, affected hardware, and steps to try.
 
 For post-install issues such as pressure not working, conflict warnings, or tablet recognition failures, the same page covers each case.
-
-**Pen taps not activating background windows (macOS 27 Golden Gate beta only):** see the note under [Requirements](#requirements).
 
 **Pen clicks ignored in Little Snitch:** enable Little Snitch's own Preferences → Security → Other → "Allow GUI Scripting access to Little Snitch." It rejects simulated input by default as an anti-spoofing measure.
 
