@@ -59,6 +59,8 @@ You need Xcode 15 or later. Select the **MockTab** scheme and build. If you buil
 
 If you already cloned the repo without `--recurse-submodules`, run `git submodule update --init`.
 
+Opening the project can cause Xcode to rewrite `Package.resolved`, which may later block a `git pull` with "you have unstaged changes." If that happens, run `git checkout -- MockTab.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` and pull again.
+
 To run the decoder test suite:
 
 ```sh
