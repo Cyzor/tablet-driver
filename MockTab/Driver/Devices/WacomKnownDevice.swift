@@ -36,8 +36,8 @@ final class WacomKnownDevice: TabletDevice {
             maxTouchContacts: spec.maxTouchContacts)
     }
 
-    private let device: IOHIDDevice
-    private var deviceSpec: WacomDeviceSpec
+    let device: IOHIDDevice
+    var deviceSpec: WacomDeviceSpec
     /// True when this interface must be seized (kIOHIDOptionsTypeSeizeDevice).
     /// Only set by TabletManager when the interface is the standard HID-mouse
     /// interface (usagePage=0x01) AND the device spec requires seizure.
@@ -92,7 +92,7 @@ final class WacomKnownDevice: TabletDevice {
     private var decoder: any TabletReportDecoder
     private var state = DecoderState()
     private var reportBuffer: [UInt8]
-    private var isBluetooth = false
+    var isBluetooth = false
 
     // ── Bluetooth batch pacing ──────────────────────────────────────────────
     // See BatchFramePacer.swift and dispatchBatch(_:reportTimestampNs:) below.
@@ -135,11 +135,11 @@ final class WacomKnownDevice: TabletDevice {
     // Some composite devices (e.g. DTK-2400) expose LED control on a separate
     // USB interface with its own PID. That IOHIDDevice is handed to us via
     // registerLEDDevice() once TabletManager enumerates it.
-    private var ledDevice: IOHIDDevice?
+    var ledDevice: IOHIDDevice?
     /// Secondary interface (e.g. usagePage=0x01 digitizer on PTH-660/860).
     /// Stored in registerDevice() so LED commands can be routed to it when
     /// the primary (0xFF00) interface doesn't declare the control reports.
-    private var secondaryDevice: IOHIDDevice?
+    var secondaryDevice: IOHIDDevice?
 
     /// `.intuosV1` only: whichever registered interface actually declares a
     /// Feature report (see `hasAnyFeatureReport`). Set once, in `open()` or
@@ -148,7 +148,7 @@ final class WacomKnownDevice: TabletDevice {
     /// instead of `device` — `device` is just "whichever interface won the
     /// enumeration race," which for this family isn't guaranteed to be the
     /// one that can accept feature writes.
-    private var intuosV1CapableDevice: IOHIDDevice?
+    var intuosV1CapableDevice: IOHIDDevice?
 
     /// Vendor writes issued before the vendor-tunnel interface existed.
     ///
@@ -165,15 +165,15 @@ final class WacomKnownDevice: TabletDevice {
     /// Queue instead of write, then flush in arrival order once the tunnel
     /// registers. Bounded — a device whose tunnel never arrives must not
     /// accumulate writes forever.
-    private var pendingVendorWrites: [(bytes: [UInt8], tag: String)] = []
-    private var pendingVendorWritesDropped = false
-    private static let maxPendingVendorWrites = 64
+    var pendingVendorWrites: [(bytes: [UInt8], tag: String)] = []
+    var pendingVendorWritesDropped = false
+    static let maxPendingVendorWrites = 64
     /// Last index requested via setRingLED. Applied immediately when ledDevice
     /// is registered so the LED syncs even if the companion connects after init.
-    private var pendingLEDIndex: Int = 0
+    var pendingLEDIndex: Int = 0
     /// Per-slot custom dial colors pushed from settings via setRingLEDColors
     /// (Xencelabs Quick Keys only). nil entries fall back to the factory palette.
-    private var dialSlotColors: [(r: UInt8, g: UInt8, b: UInt8)?] = []
+    var dialSlotColors: [(r: UInt8, g: UInt8, b: UInt8)?] = []
 
     /// The Xencelabs Quick Keys/Pen Tablet family enumerates as several separate
     /// IOHIDDevices for one physical product (digitizer usage page 0x0D/0x02,
@@ -199,7 +199,7 @@ final class WacomKnownDevice: TabletDevice {
         acceptsReports(from: candidate)
     }
 
-    private func acceptsReports(from candidate: IOHIDDevice) -> Bool {
+    func acceptsReports(from candidate: IOHIDDevice) -> Bool {
         guard deviceSpec.parser == .xencelabs else { return true }
         return hidIntProperty(candidate, kIOHIDPrimaryUsagePageKey)
             == Self.xencelabsVendorUsagePage
@@ -210,11 +210,11 @@ final class WacomKnownDevice: TabletDevice {
     // confirmed by a 0x80 wireless status report (d[1] bit 0 set = connected).
     // On link-up the decoder state is reset and the feature init is re-sent once.
     // On link-lost the gate closes again so stale reports from a dropped connection are not forwarded.
-    private let isWireless: Bool
+    let isWireless: Bool
     private var wirelessReady: Bool = false
     /// PID of the dongle's paired tablet whose spec is currently applied.
     /// 0 until the first 0x80 status report identifies the tablet.
-    private var pairedPID: Int = 0
+    var pairedPID: Int = 0
     /// True after the first .active status for this RF link session.
     /// Prevents resending feature init on subsequent status reports.
     private var wirelessLinkConfirmed: Bool = false
@@ -244,13 +244,13 @@ final class WacomKnownDevice: TabletDevice {
     private var xencelabsPostRelinkResynced = false
     /// The puck's 6-byte identity read off the relink report, kept so the
     /// resync's label-reset write can address the same puck.
-    private var xencelabsDongleIdentity: [UInt8]?
+    var xencelabsDongleIdentity: [UInt8]?
     /// Repeating battery-level poll, started once the dongle relink
     /// succeeds and invalidated in `close()`. The reply (tag 0xF2,
     /// XencelabsDecoder) is unsolicited-looking but is actually only ever
     /// sent in response to this poll — there's no push update on this
     /// hardware.
-    private var xencelabsBatteryPollTimer: DispatchSourceTimer?
+    var xencelabsBatteryPollTimer: DispatchSourceTimer?
 
     /// Devices whose report-2 tunnel can relay a wireless Quick Keys puck and
     /// therefore need the relink/re-arm/resync handling: the standalone USB
@@ -566,561 +566,43 @@ final class WacomKnownDevice: TabletDevice {
         }
     }
 
-    // MARK: - LED control
-
-    /// Update the ring LED to reflect the active slot index.
-    /// IntuosV2 (USB) and CintiqV1 families only — other families are no-ops.
-    func setRingLED(index: Int) {
-        pendingLEDIndex = index
-        let name = deviceSpec.name
-        switch deviceSpec.parser {
-        case .intuosV2 where !isBluetooth:
-            // USB ring LED: reports 0x31 (brightness) + 0x32 (slot selection), both sent
-            // to the primary device. Format confirmed by USB capture against official
-            // Wacom driver (6.3.46-2) on PTH-660 (PID 0x0357) and PTH-860 (PID 0x0358):
-            //   Report 0x31 (6 bytes): [0x31, 0x46, 0x46, 0x46, 0x46, 0x46]
-            //     — sets brightness for all ring LED channels (0x46 = 70, max observed)
-            //   Report 0x32 (3 bytes): [0x32, 0x46, slot]
-            //     — selects active ring LED slot (0–3); 0x46 byte is a fixed preamble
-            // The pair is sent every time the slot changes (including at init).
-            //
-            // Hardware LED byte 0 = BL, 1 = TL, 2 = TR, 3 = BR.  Our slot 0 is TL
-            // (Mode 1 = upper-left), so we add 1 for quarterly rings before sending.
-            let ledByte = UInt8((index + (deviceSpec.ringSlotCount == 4 ? 1 : 0)) & 0x03)
-            var r31: [UInt8] = [0x31, 0x46, 0x46, 0x46, 0x46, 0x46]
-            hidSetReport(device, reportID: CFIndex(0x31), bytes: &r31,
-                         tag: "\(name) USB LED brightness", severity: .bestEffort, log: logger)
-            var r32: [UInt8] = [0x32, 0x46, ledByte]
-            hidSetReport(device, reportID: CFIndex(0x32), bytes: &r32,
-                         tag: "\(name) USB LED slot=\(index)", log: logger)
-
-        case .intuosV2 where isBluetooth:
-            // BT ring LED: report 0x82 (WAC_CMD_WL_INTUOSP2), 51-byte feature report.
-            // Format confirmed by USB capture against official Wacom driver (6.3.46-2)
-            // on PTH-660 (Intuos Pro M, PID 0x0357) over Bluetooth:
-            //   buf[0]    = 0x82
-            //   buf[1]    = 0x02  (fixed preamble — 0x00 is wrong)
-            //   buf[4..9] = 0x46 each  (brightness for all 6 channels)
-            //   buf[10]   = ring LED slot (0–3)
-            //   buf[11..] = 0x00
-            // The GetReport response carries current state in the same layout;
-            // the serial number occupies buf[11..18] in the device's reply but
-            // we clear those bytes on write (official driver does the same).
-            let ledByteBT = UInt8((index + (deviceSpec.ringSlotCount == 4 ? 1 : 0)) & 0x03)
-            var buf = [UInt8](repeating: 0, count: 51)
-            buf[0]  = 0x82
-            buf[1]  = 0x02
-            buf[4]  = 0x46; buf[5] = 0x46; buf[6] = 0x46
-            buf[7]  = 0x46; buf[8] = 0x46; buf[9] = 0x46
-            buf[10] = ledByteBT
-            hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf,
-                         tag: "\(name) BT LED ring slot=\(index)", log: logger)
-
-        case .cintiqV1:
-            // LED control via WAC_CMD_LED_CONTROL (0x20), 9-byte feature report.
-            //
-            // Format confirmed by USB capture against official Wacom driver (6.3.46-2):
-            //   buf[0] = 0x20
-            //   buf[1] = 0x44 | (rightRingSlot & 0x03) | ((leftRingSlot & 0x03) << 4)
-            //     bit2 (0x04) = right ring enabled
-            //     bit6 (0x40) = left  ring enabled
-            //     bits[1:0]   = right ring LED slot (0–2)  ← confirmed by live hardware test
-            //     bits[5:4]   = left  ring LED slot (0–2)
-            //   buf[2..8] = 0x00  (official driver sends no brightness bytes)
-            //
-            // On DTK-2400 (0x00F4) the report descriptor declares 0x20 on the single
-            // digitizer interface — ledCompanionPID 0x0056 does not appear on the bus.
-            // Fall back to the primary device when ledDevice is absent.
-            //
-            // Both rings currently share touchRingActiveSlotIndex (single settings slot).
-            // Mirror the same slot to both rings so both LEDs track mode changes.
-            // TODO: independent left/right ring tracking requires touchRing2ActiveSlotIndex,
-            // new .ring2SelectSlot action type, and a second DeviceContext observer.
-            let ledTarget = ledDevice ?? device
-            let slot = UInt8(index & 0x03)
-            var buf = [UInt8](repeating: 0, count: 9)
-            buf[0] = 0x20  // WAC_CMD_LED_CONTROL
-            buf[1] = 0x44 | slot | (slot << 4)  // mirror: both rings track same slot
-            hidSetReport(ledTarget, reportID: CFIndex(buf[0]), bytes: &buf,
-                         tag: "\(name) CintiqV1 LED slot=\(slot) (both rings)", log: logger)
-
-        case .intuosV1:
-            // The Linux kernel's wacom_led_control() switches report format
-            // once the device is reached through the ACK-40401 wireless
-            // dongle rather than direct USB:
-            //   - Wired:    Report ID 0x20 (WAC_CMD_LED_CONTROL), 9 bytes.
-            //   - Wireless: Report ID 0x03 (WAC_CMD_WL_LED_CONTROL), 13 bytes.
-            // Only the wired format has been confirmed against real hardware
-            // (see below); the wireless branch is unverified against a real
-            // ACK-40401 dongle and sent best-effort so a rejected report
-            // can't surface as a user-facing error.
-            if isWireless && pairedPID > 0 {
-                // Wireless dongle: WAC_CMD_WL_LED_CONTROL, 13-byte feature report.
-                // Format from kernel wacom_sys.c (INTUOS5 branch), unverified here:
-                //   buf[0] = 0x03
-                //   buf[4] = (cropLum << 4) | (ringLum << 2) | ringSlot
-                //     bits[1:0] = ring LED slot (0–3)
-                //     bits[3:2] = ring luminance (0=low … 3=off)
-                //     bits[5:4] = crop-mark luminance (same encoding, usually 0)
-                let slot = UInt8(index & 0x03)
-                let ringLum: UInt8 = 1  // medium
-                var buf = [UInt8](repeating: 0, count: 13)
-                buf[0] = 0x03  // WAC_CMD_WL_LED_CONTROL
-                buf[4] = (ringLum << 2) | slot
-                hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf,
-                             tag: "\(name) IntuosV1 WL LED slot=\(index)", severity: .bestEffort, log: logger)
-            } else {
-                // USB LED control via WAC_CMD_LED_CONTROL (0x20), 9-byte feature report.
-                // Format confirmed by USB capture against official Wacom driver (6.3.46-2)
-                // on PTH-850 (Intuos5 L, PID 0x0028):
-                //   buf[0] = 0x20
-                //   buf[1] = (llv & 0x1f) | ((ringSelect & 0x07) << 5)
-                //     bits[4:0] = llv luminance (0–31)
-                //     bits[7:5] = ring LED slot (0–3 for 4-slot; 0–2 for 3-slot devices)
-                //   buf[2] = hlv & 0x1f  (high-luminance value, 0–31)
-                //   buf[3..8] = 0x00
-                // Official driver observed values: llv=0x14 (20), hlv=0x01 — used as defaults.
-                // Sent to whichever registered interface actually declares Feature
-                // reports (see `hasAnyFeatureReport`) — on a multi-interface unit
-                // like PTH-850, `device` itself may be the touch/vendor interface,
-                // which doesn't. Before that interface is known, `resyncActiveDriverDisplayState()`
-                // can call this on connect and race ahead of it (confirmed live
-                // 2026-08-25: the touch interface won primary, this fired against
-                // it and failed, then `registerDevice()`'s retry corrected it 23ms
-                // later once the pen interface registered) — downgrade to
-                // best-effort in that specific window so the expected, self-correcting
-                // miss doesn't log as an `.error`.
-                let llv: UInt8 = 0x14
-                let hlv: UInt8 = 0x01
-                var buf = [UInt8](repeating: 0, count: 9)
-                buf[0] = 0x20  // WAC_CMD_LED_CONTROL
-                buf[1] = (llv & 0x1f) | (UInt8(index & 0x07) << 5)
-                buf[2] = hlv & 0x1f
-                hidSetReport(intuosV1CapableDevice ?? device, reportID: CFIndex(buf[0]), bytes: &buf,
-                             tag: "\(name) IntuosV1 LED slot=\(index)",
-                             severity: intuosV1CapableDevice == nil ? .bestEffort : .required, log: logger)
-            }
-
-        case .xencelabs:
-            // Quick Keys dial LED: vendor output report 0xB4 sub-op 0x01 with
-            // literal RGB (see XencelabsOutputProtocol). Colors follow Xencelabs'
-            // own per-mode factory palette so the ring reads the same way it
-            // does under their software. Best-effort: the Pen Display has no
-            // dial and ignores/rejects the write harmlessly.
-            //
-            // Dongle-relayed dongle/puck traffic must carry the puck's 6-byte
-            // identity in the address field or the dongle has nothing to
-            // route the write to — confirmed 2026-07-07 via dtrace on
-            // XencelabsDriver: every 0xB4/0xB1 write it sends over the dongle
-            // carries the identity, none carry an all-zero address.
-            let address = xencelabsDongleIdentity ?? []
-            // Reassert upright screen orientation, as the vendor stack does
-            // during its own reconnect init. Sending anything else here
-            // visibly rotates the OLED text (confirmed on hardware).
-            sendXencelabsOutput(
-                XencelabsOutputProtocol.orientationPayload(rotationSteps: 0, address: address),
-                tag: "screen orientation upright")
-            let colors = XencelabsOutputProtocol.defaultSlotColors
-            let custom = dialSlotColors.indices.contains(index) ? dialSlotColors[index] : nil
-            let c = custom ?? colors[((index % colors.count) + colors.count) % colors.count]
-            sendXencelabsOutput(
-                XencelabsOutputProtocol.dialColorPayload(r: c.r, g: c.g, b: c.b, address: address),
-                tag: "dial LED slot=\(index)")
-            // The native driver always pairs a dial-color write with a
-            // sensitivity write (0xB4 sub-op 0x04); we'd never sent this one
-            // before. Default matches the vendor default of 3.
-            sendXencelabsOutput(
-                XencelabsOutputProtocol.dialSensitivityPayload(3, address: address),
-                tag: "dial sensitivity slot=\(index)")
-
-        default:
-            break
-        }
-    }
-
-    // MARK: - Xencelabs OLED / dial output
+    // MARK: - Vendor output state
+    //
+    // Dedup/pacing state for the OLED, LED, and display-control paths, whose
+    // methods live in WacomKnownDevice+XencelabsOutput.swift and
+    // +DisplayOutput.swift. Stored properties can't live in an extension, so
+    // they stay here with the rest of the class's state.
 
     /// Last text pushed per OLED field+index, to suppress redundant writes —
     /// the settings pipeline re-fires on every settings change, and the OLED
     /// only needs traffic when something it shows actually changed.
-    private var xencelabsSentText: [String: String] = [:]
-
+    var xencelabsSentText: [String: String] = [:]
     /// Last label pushed per Intuos4 key index, to suppress redundant writes.
     /// Kept separate from `xencelabsSentText`: a full key-OLED image sync is
     /// ~1KB per key (versus a short text-protocol write for Xencelabs), so
     /// dedup matters more here.
-    private var intuos4SentKeyLabels: [String] = []
-
-    /// Adopt per-slot custom dial colors (nil = factory palette) and re-send
-    /// the active slot's color if anything changed. Deduped here because the
-    /// settings pipeline re-fires this on every settings change.
-    func setRingLEDColors(_ colors: [(r: UInt8, g: UInt8, b: UInt8)?]) {
-        guard deviceSpec.parser == .xencelabs else { return }
-        guard !dialSlotColors.elementsEqual(colors, by: { a, b in
-            a?.r == b?.r && a?.g == b?.g && a?.b == b?.b
-        }) else { return }
-        dialSlotColors = colors
-        setRingLED(index: pendingLEDIndex)
-    }
-
-    /// Show the active dial mode's name on the Quick Keys OLED mode line.
-    func setRingModeLabel(_ label: String) {
-        guard deviceSpec.parser == .xencelabs else { return }
-        guard xencelabsSentText["mode"] != label else { return }
-        xencelabsSentText["mode"] = label
-        for payload in XencelabsOutputProtocol.textPayloads(
-            field: .modeName, text: label, address: xencelabsDongleIdentity ?? [])
-        {
-            sendXencelabsOutput(payload, tag: "OLED mode label")
-        }
-    }
-
-    /// Sync per-key labels (labels[0] = key 1) to the Quick Keys OLED.
-    func setAuxKeyLabels(_ labels: [String]) {
-        if deviceSpec.parser == .xencelabs {
-            let joined = labels.joined(separator: "\u{1F}")
-            guard xencelabsSentText["keys"] != joined else { return }
-            xencelabsSentText["keys"] = joined
-            for payload in XencelabsOutputProtocol.keyLabelPayloads(labels, address: xencelabsDongleIdentity ?? []) {
-                sendXencelabsOutput(payload, tag: "OLED key labels")
-            }
-        } else if deviceSpec.hasKeyOLEDs {
-            setIntuos4KeyOLEDLabels(labels)
-        }
-    }
-
-    /// Render each label to a bitmap and push it to the Intuos4's per-key
-    /// OLED, USB transport only (see `WacomOutputProtocol`'s header for
-    /// provenance — kernel-sourced, not hardware-verified).
-    ///
-    /// Deduped per key against `intuos4SentKeyLabels`, since a full image
-    /// sync is ~1KB of feature-report traffic per key versus a short text
-    /// write for Xencelabs.
-    private func setIntuos4KeyOLEDLabels(_ labels: [String]) {
-        for (index, label) in labels.enumerated() where index < 8 {
-            let previous = index < intuos4SentKeyLabels.count ? intuos4SentKeyLabels[index] : nil
-            guard previous != label else { continue }
-            while intuos4SentKeyLabels.count <= index {
-                intuos4SentKeyLabels.append("")
-            }
-            intuos4SentKeyLabels[index] = label
-
-            let bitmap = IntuosOLEDImageEncoder.renderTextLabel(label)
-            guard let packed = IntuosOLEDImageEncoder.interleaveRows(bitmap) else { continue }
-
-            sendIntuos4Feature(WacomOutputProtocol.imageStartPayload(), tag: "Intuos4 OLED key\(index) start")
-            for chunk in WacomOutputProtocol.keyImagePayloadsUSB(image: packed, buttonID: index) {
-                sendIntuos4Feature(chunk, tag: "Intuos4 OLED key\(index) chunk")
-            }
-            sendIntuos4Feature(WacomOutputProtocol.imageStopPayload(), tag: "Intuos4 OLED key\(index) stop")
-        }
-    }
-
-    /// Send one Intuos4 OLED feature-report payload. Best-effort: a garbled
-    /// write shows a garbled label on the key's own OLED and nothing else —
-    /// there's no persistent device state at risk, so failures are logged
-    /// rather than treated as fatal.
-    private func sendIntuos4Feature(_ payload: [UInt8], tag: String) {
-        var bytes = payload
-        let reportID = CFIndex(payload[0])
-        hidSetReport(device, reportID: reportID, bytes: &bytes, tag: tag, severity: .bestEffort, log: logger)
-    }
-
-    /// Panel brightness is exposed on Xencelabs pen displays via the vendor
-    /// 0xB5 display-control frame family (see XencelabsOutputProtocol).
-    var hasDisplayBrightnessControl: Bool {
-        deviceSpec.parser == .xencelabs && deviceSpec.isPenDisplay
-    }
-
+    var intuos4SentKeyLabels: [String] = []
     /// Last Quick Keys OLED orientation sent, to suppress redundant writes.
-    private var lastQuickKeysOrientation: Int = -1
-
-    /// Set the Quick Keys OLED text orientation, in 90° steps (0 = upright,
-    /// 1–3 = 90°/180°/270°). Same wire command already used to reassert
-    /// upright orientation on relink (`resyncXencelabsOutputsAfterRelink`);
-    /// this is an independent, settings-driven entry point pre-wired ahead
-    /// of a UI control — no caller sets a value other than the sentinel yet.
-    func setQuickKeysOrientation(steps: Int) {
-        guard deviceSpec.parser == .xencelabs else { return }
-        let clamped = ((steps % 4) + 4) % 4
-        guard clamped != lastQuickKeysOrientation else { return }
-        lastQuickKeysOrientation = clamped
-        sendXencelabsOutput(
-            XencelabsOutputProtocol.orientationPayload(
-                rotationSteps: clamped, address: xencelabsDongleIdentity ?? []),
-            tag: "quick keys orientation \(clamped)")
-    }
-
+    var lastQuickKeysOrientation: Int = -1
     /// Last Quick Keys sleep timer sent, to suppress redundant writes.
-    private var lastQuickKeysSleepMinutes: Int = -1
-
-    /// Set the Quick Keys' auto-sleep timer, in minutes (0 = never sleep).
-    /// Hardware-confirmed 2026-07-26: a value written this way survives a
-    /// puck power cycle and reads back correctly in the native panel.
-    func setQuickKeysSleepMinutes(_ minutes: Int) {
-        guard deviceSpec.parser == .xencelabs else { return }
-        let clamped = min(max(minutes, 0), 255)
-        guard clamped != lastQuickKeysSleepMinutes else { return }
-        lastQuickKeysSleepMinutes = clamped
-        sendXencelabsOutput(
-            XencelabsOutputProtocol.sleepTimerPayload(
-                minutes: UInt8(clamped), address: xencelabsDongleIdentity ?? []),
-            tag: "quick keys sleep timer \(clamped)m")
-    }
-
+    var lastQuickKeysSleepMinutes: Int = -1
     /// Last Quick Keys OLED brightness sent, to suppress redundant writes.
-    private var lastQuickKeysOledBrightness: Int = -1
-
-    /// Set the Quick Keys OLED's brightness level, 0 (off) through 3
-    /// (bright). Distinct from `setDisplayBrightness`, which controls a pen
-    /// display's panel backlight over a different frame family.
-    func setQuickKeysOledBrightness(_ level: Int) {
-        guard deviceSpec.parser == .xencelabs else { return }
-        let clamped = min(max(level, 0), 3)
-        guard clamped != lastQuickKeysOledBrightness else { return }
-        lastQuickKeysOledBrightness = clamped
-        sendXencelabsOutput(
-            XencelabsOutputProtocol.oledBrightnessPayload(
-                UInt8(clamped), address: xencelabsDongleIdentity ?? []),
-            tag: "quick keys OLED brightness \(clamped)")
-    }
-
+    var lastQuickKeysOledBrightness: Int = -1
     /// Last panel brightness sent, to suppress redundant writes while a
     /// slider drags.
-    private var lastDisplayBrightness: Int = -1
-
-    /// Set the pen display's panel backlight brightness (0–100).
-    func setDisplayBrightness(_ percent: Int) {
-        guard hasDisplayBrightnessControl else { return }
-        let clamped = min(max(percent, 0), 100)
-        guard clamped != lastDisplayBrightness else { return }
-        lastDisplayBrightness = clamped
-        sendXencelabsOutput(
-            XencelabsOutputProtocol.displayBrightnessPayload(
-                UInt8(clamped), address: xencelabsDongleIdentity ?? []),
-            tag: "panel brightness \(clamped)")
-    }
-
+    var lastDisplayBrightness: Int = -1
     /// Last bezel LED color sent, to suppress redundant writes while the
     /// color picker drags.
-    private var lastBezelLED: (r: UInt8, g: UInt8, b: UInt8)?
-
-    /// Set the shared backlight LED behind the pen display's bezel buttons.
-    /// Same wire command as the Quick Keys dial LED; brightness arrives
-    /// premultiplied into the RGB (the LED has no brightness register).
-    func setBezelLEDColor(r: UInt8, g: UInt8, b: UInt8) {
-        guard hasDisplayBrightnessControl else { return }
-        guard lastBezelLED?.r != r || lastBezelLED?.g != g || lastBezelLED?.b != b
-        else { return }
-        lastBezelLED = (r, g, b)
-        sendXencelabsOutput(
-            XencelabsOutputProtocol.dialColorPayload(
-                r: r, g: g, b: b, address: xencelabsDongleIdentity ?? []),
-            tag: "bezel LED")
-    }
-
+    var lastBezelLED: (r: UInt8, g: UInt8, b: UInt8)?
     /// Last panel contrast sent, to suppress redundant writes during a drag.
-    private var lastDisplayContrast: Int = -1
-
-    /// Set the pen display's panel contrast (0–100). Same 0xB5 control family
-    /// as brightness (see XencelabsOutputProtocol.DisplayControl).
-    func setDisplayContrast(_ percent: Int) {
-        guard hasDisplayBrightnessControl else { return }
-        let clamped = min(max(percent, 0), 100)
-        guard clamped != lastDisplayContrast else { return }
-        lastDisplayContrast = clamped
-        sendXencelabsOutput(
-            XencelabsOutputProtocol.displayContrastPayload(
-                UInt8(clamped), address: xencelabsDongleIdentity ?? []),
-            tag: "panel contrast \(clamped)")
-    }
-
+    var lastDisplayContrast: Int = -1
     /// Last gamma sent (as gamma × 10), to suppress redundant writes.
-    private var lastDisplayGamma: Int = -1
-
-    /// Set the pen display's gamma, passed as gamma × 10 (e.g. 22 = 2.2).
-    func setDisplayGamma(_ gammaTimesTen: Int) {
-        guard hasDisplayBrightnessControl else { return }
-        let clamped = min(max(gammaTimesTen, 0), 255)
-        guard clamped != lastDisplayGamma else { return }
-        lastDisplayGamma = clamped
-        sendXencelabsOutput(
-            XencelabsOutputProtocol.displayGammaPayload(
-                UInt8(clamped), address: xencelabsDongleIdentity ?? []),
-            tag: "panel gamma \(clamped)")
-    }
-
+    var lastDisplayGamma: Int = -1
     /// Last color-mode index sent, to suppress redundant writes.
-    private var lastColorMode: Int = -1
-
-    /// Select one of the panel's built-in color-space presets (Adobe RGB,
-    /// sRGB, REC 709, DCI-P3, REC 2020, Pantone, Custom), by row index (0 =
-    /// Adobe RGB ... 6 = Custom, matching `DisplayMappingView.colorModeChoices`).
-    ///
-    /// Empirically confirmed 2026-07-12 by cycling MockTab's list against the
-    /// vendor driver's own preset selector on the same panel: wire byte 0
-    /// isn't a valid preset (it produced the original "too dark/warm" Adobe
-    /// RGB bug), and every named preset is one byte higher than its row
-    /// index — Adobe RGB=1, sRGB=2, REC 709=3, DCI-P3=4, REC 2020=5,
-    /// Pantone=6, Custom presumed=7 (untested — one past anything we'd sent
-    /// before this fix, consistent with never having matched Pantone).
-    ///
-    /// Followed by the apply-batch commit frame the vendor also sends after
-    /// a preset switch — without it, a prior stray gamma/contrast write can
-    /// linger on the panel instead of being reset to the new preset's own
-    /// stored values (found 2026-07-12 comparing against the vendor driver).
-    func setColorMode(_ index: Int) {
-        guard hasDisplayBrightnessControl else { return }
-        guard index != lastColorMode else { return }
-        lastColorMode = index
-        let address = xencelabsDongleIdentity ?? []
-        sendXencelabsOutput(
-            XencelabsOutputProtocol.colorModePayload(UInt8(index + 1), address: address),
-            tag: "panel color mode \(index)")
-        sendXencelabsOutput(
-            XencelabsOutputProtocol.displayCommitPayload(address: address),
-            tag: "panel color mode commit")
-    }
-
-    /// Send the tablet-mode relink handshake ([0x02, 0xB0, 0x04] with the
-    /// puck's identity appended) to the dongle's vendor interface, padded to
-    /// the declared output size. Used at first sight of the puck and again
-    /// after its ~5 s wake window (see the relink block in `handleReport`).
-    @discardableResult
-    private func sendXencelabsRelink(identity: [UInt8]) -> IOReturn {
-        let target = secondaryDevice ?? device
-        var relink: [UInt8] = [0x02, 0xB0, 0x04, 0, 0, 0, 0, 0, 0, 0] + identity
-        let declared = hidIntProperty(target, kIOHIDMaxOutputReportSizeKey)
-        if declared > relink.count {
-            relink += [UInt8](repeating: 0, count: declared - relink.count)
-        }
-        paceXencelabsWrite()
-        return hidSetReport(
-            target, type: kIOHIDReportTypeOutput, reportID: CFIndex(relink[0]),
-            bytes: &relink, tag: "\(deviceSpec.name) dongle relink", log: logger)
-    }
-
-    /// Resend the ring LED and OLED labels once a dongle relink is confirmed
-    /// live. `setRingLED` has no dedup, so it's safe to call as-is; the OLED
-    /// label setters dedup against `xencelabsSentText`, so that cache is
-    /// cleared first to force the resend of whatever was last requested.
-    private func resyncXencelabsOutputsAfterRelink() {
-        // What captures showed as a "reset labels" write here (0xB1 0x01)
-        // is really the screen orientation command set to upright —
-        // `setRingLED` below reasserts it, so no separate write is needed.
-        // The three extra opcodes in every native resync capture turned
-        // out to be status GET polls (0xB4 0x08 sleep time, 0xB4 0x10
-        // battery, 0xB1 0x0A OLED brightness; byte 3 = 0x01 set / 0x00
-        // get) — decoded 2026-07-10 from the vendor agent's disassembly.
-        // Replaying them is kept: they're cheap, present in every native
-        // capture, and may double as wake pokes during the reconnect
-        // window.
-        if let identity = xencelabsDongleIdentity {
-            sendXencelabsOutput([0x02, 0xB4, 0x08, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "sleep-time poll")
-            sendXencelabsOutput([0x02, 0xB4, 0x10, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "battery poll")
-            sendXencelabsOutput([0x02, 0xB1, 0x0A, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "OLED brightness poll")
-        }
-        let ledIndex = pendingLEDIndex
-        let modeLabel = xencelabsSentText["mode"]
-        let keysJoined = xencelabsSentText["keys"]
-        xencelabsSentText.removeAll()
-        setRingLED(index: ledIndex)
-        if let modeLabel { setRingModeLabel(modeLabel) }
-        if let keysJoined { setAuxKeyLabels(keysJoined.components(separatedBy: "\u{1F}")) }
-    }
-
-    /// Starts (or restarts) the repeating battery-level poll once a dongle
-    /// relink is confirmed live. 60 s cadence: battery drains slowly enough
-    /// that this is purely a "keep the status bar honest" refresh, not a
-    /// latency-sensitive read. Runs on a background queue rather than main
-    /// since `sendXencelabsOutput` can block for a few ms on write pacing.
-    private func startXencelabsBatteryPolling() {
-        xencelabsBatteryPollTimer?.cancel()
-        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "xencelabs.battery.poll"))
-        timer.schedule(deadline: .now() + 60, repeating: 60)
-        timer.setEventHandler { [weak self] in
-            guard let self, let identity = self.xencelabsDongleIdentity else { return }
-            self.sendXencelabsOutput([0x02, 0xB4, 0x10, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "battery poll")
-        }
-        timer.resume()
-        xencelabsBatteryPollTimer = timer
-    }
-
+    var lastColorMode: Int = -1
     /// Uptime of the most recent Xencelabs vendor write, for pacing.
-    private var lastXencelabsWriteUptime: UInt64 = 0
+    var lastXencelabsWriteUptime: UInt64 = 0
 
-    /// Space vendor writes at least 3 ms apart. The vendor stack sleeps
-    /// after every frame it sends (3 ms in its driver's color path, 1.3 ms
-    /// between OLED label chunks, 10 ms between the color/sensitivity/label
-    /// blocks on an app change — confirmed 2026-07-10 by disassembling
-    /// XencelabsAgent/XencelabsDriver). The firmware silently drops output
-    /// reports that arrive while it is busy repainting, and the transport
-    /// still returns success, so back-to-back writes "succeed" without ever
-    /// reaching the display.
-    private func paceXencelabsWrite() {
-        let gap: UInt64 = 3_000_000  // 3 ms in nanoseconds
-        let now = DispatchTime.now().uptimeNanoseconds
-        if lastXencelabsWriteUptime != 0 {
-            let elapsed = now &- lastXencelabsWriteUptime
-            if elapsed < gap {
-                usleep(UInt32((gap - elapsed) / 1_000))
-            }
-        }
-        lastXencelabsWriteUptime = DispatchTime.now().uptimeNanoseconds
-    }
-
-    /// Replay writes that arrived before the vendor tunnel did, in order.
-    /// Called once, from `registerDevice`, the moment `secondaryDevice` is
-    /// set — every one of these would otherwise have been lost.
-    private func flushPendingVendorWrites() {
-        guard !pendingVendorWrites.isEmpty else { return }
-        let queued = pendingVendorWrites
-        pendingVendorWrites.removeAll()
-        pendingVendorWritesDropped = false
-        logger.info("\(self.deviceSpec.name, privacy: .public): vendor tunnel registered — replaying \(queued.count, privacy: .public) queued write(s)")
-        for write in queued {
-            sendXencelabsOutput(write.bytes, tag: write.tag)
-        }
-    }
-
-    /// Send a Xencelabs vendor output report, zero-padded to the device's
-    /// declared MaxOutputReportSize (short writes return success but are
-    /// silently ignored by this firmware — same rule as the init path).
-    private func sendXencelabsOutput(_ bytes: [UInt8], tag: String) {
-        // `device` is fixed at construction to whichever interface arrived
-        // first — for Quick Keys that's usually the decorative digitizer
-        // interface, not the vendor tunnel (0xFF0A). `secondaryDevice` is
-        // updated in registerDevice() to the vendor interface once it's seen
-        // (see acceptsReports(from:)), so prefer it here; this was still
-        // pointed at the wrong interface even after that fix landed, which is
-        // why OLED/dial-LED writes kept failing with 0xe0005000. Confirmed
-        // 2026-07-05.
-        // No tunnel yet, and the interface we were constructed with is not
-        // one: this write cannot succeed. Hold it for the flush in
-        // `registerDevice` rather than burning it on the wrong interface.
-        if deviceSpec.parser == .xencelabs, secondaryDevice == nil,
-            !acceptsReports(from: device)
-        {
-            if pendingVendorWrites.count < Self.maxPendingVendorWrites {
-                pendingVendorWrites.append((bytes, tag))
-            } else if !pendingVendorWritesDropped {
-                pendingVendorWritesDropped = true
-                logger.info("\(self.deviceSpec.name, privacy: .public): vendor tunnel still absent after \(Self.maxPendingVendorWrites, privacy: .public) queued writes — dropping the rest")
-            }
-            return
-        }
-
-        let target = (deviceSpec.parser == .xencelabs ? secondaryDevice : nil) ?? device
-        let declared = hidIntProperty(target, kIOHIDMaxOutputReportSizeKey)
-        var padded = bytes
-        if declared > padded.count {
-            padded += [UInt8](repeating: 0, count: declared - padded.count)
-        }
-        paceXencelabsWrite()
-        hidSetReport(target, type: kIOHIDReportTypeOutput,
-                     reportID: CFIndex(padded[0]), bytes: &padded,
-                     tag: "\(deviceSpec.name) \(tag)", severity: .bestEffort, log: logger)
-    }
 
     /// Enable or disable capacitive finger touch on the hardware.
     ///

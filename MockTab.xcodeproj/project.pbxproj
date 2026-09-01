@@ -48,6 +48,8 @@
 		AA000044 /* ToolSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* ToolSettings.swift */; };
 		AA000045 /* WacomFallbackDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000045 /* WacomFallbackDevice.swift */; };
 		AA000049 /* WacomKnownDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* WacomKnownDevice.swift */; };
+		AA0000A2 /* WacomKnownDevice+XencelabsOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000A2 /* WacomKnownDevice+XencelabsOutput.swift */; };
+		AA0000A1 /* WacomKnownDevice+DisplayOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000A1 /* WacomKnownDevice+DisplayOutput.swift */; };
 		AA00PBP1 /* BatchFramePacer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00PBP1 /* BatchFramePacer.swift */; };
 		AA000052 /* AppOverrideBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* AppOverrideBar.swift */; };
 		AA000076 /* ButtonBindingControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000076 /* ButtonBindingControl.swift */; };
@@ -157,6 +159,8 @@
 		AB000044 /* ToolSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolSettings.swift; sourceTree = "<group>"; };
 		AB000045 /* WacomFallbackDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomFallbackDevice.swift; sourceTree = "<group>"; };
 		AB000049 /* WacomKnownDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomKnownDevice.swift; sourceTree = "<group>"; };
+		AB0000A2 /* WacomKnownDevice+XencelabsOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WacomKnownDevice+XencelabsOutput.swift"; sourceTree = "<group>"; };
+		AB0000A1 /* WacomKnownDevice+DisplayOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WacomKnownDevice+DisplayOutput.swift"; sourceTree = "<group>"; };
 		AB00PBP1 /* BatchFramePacer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchFramePacer.swift; sourceTree = "<group>"; };
 		AB000052 /* AppOverrideBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverrideBar.swift; sourceTree = "<group>"; };
 		AB000076 /* ButtonBindingControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonBindingControl.swift; sourceTree = "<group>"; };
@@ -300,6 +304,8 @@
 				AB000039 /* DeviceRegistry.swift */,
 				AB00DK01 /* DeviceInstanceKey.swift */,
 				AB000049 /* WacomKnownDevice.swift */,
+				AB0000A2 /* WacomKnownDevice+XencelabsOutput.swift */,
+				AB0000A1 /* WacomKnownDevice+DisplayOutput.swift */,
 				AB00PBP1 /* BatchFramePacer.swift */,
 				AB000045 /* WacomFallbackDevice.swift */,
 				AB00GD01 /* GenericHIDDigitizer.swift */,
@@ -635,6 +641,8 @@
 				AA00MT01 /* MomentumTail.swift in Sources */,
 				AA00TV01 /* TouchView.swift in Sources */,
 				AA000049 /* WacomKnownDevice.swift in Sources */,
+				AA0000A2 /* WacomKnownDevice+XencelabsOutput.swift in Sources */,
+				AA0000A1 /* WacomKnownDevice+DisplayOutput.swift in Sources */,
 				AA00PBP1 /* BatchFramePacer.swift in Sources */,
 				AA000039 /* DeviceRegistry.swift in Sources */,
 				053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */,
