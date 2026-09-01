@@ -123,10 +123,17 @@ final class SharedPanScrollState {
 /// ⚠ VERIFY — the disconnect route (`releaseHeldStateForToolChange`) releases
 /// held *buttons* but invalidates no timers: a `pendingMouseUp`,
 /// `button*UpDebounceTimer`, or `proximityExitDebounceTimer` armed at the moment
-/// a tablet is unplugged stays live until deinit, and its handler runs against a
-/// device that is gone. Harmless today only because those handlers post through
-/// a snapshot that outlives the device and deinit follows shortly after; worth a
-/// deliberate look before adding any new timer to that set.
+/// a tablet is unplugged stays live, and its handler then runs against a device
+/// that is gone.
+///
+/// deinit is *not* a bound on that window. `TabletManager`'s full-disconnect
+/// path field-resets the `DeviceContext` (`isConnected = false`, `transport`,
+/// `livePoint`) but never removes it from `deviceContexts` — the context is kept
+/// deliberately so a known-but-unplugged tablet still has settings and a window.
+/// Since `injector` is a `let` on that context, the injector and any timer it
+/// armed survive until the app quits or the context is replaced. Whether a
+/// stale handler can do damage in that window is unverified; check before
+/// adding any new timer to this set.
 final class InputInjector: @unchecked Sendable {
 
     // MARK: - Device identity
