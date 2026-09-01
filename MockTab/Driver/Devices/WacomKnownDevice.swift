@@ -738,6 +738,12 @@ final class WacomKnownDevice: TabletDevice {
     /// only needs traffic when something it shows actually changed.
     private var xencelabsSentText: [String: String] = [:]
 
+    /// Last label pushed per Intuos4 key index, to suppress redundant writes.
+    /// Kept separate from `xencelabsSentText`: a full key-OLED image sync is
+    /// ~1KB per key (versus a short text-protocol write for Xencelabs), so
+    /// dedup matters more here.
+    private var intuos4SentKeyLabels: [String] = []
+
     /// Adopt per-slot custom dial colors (nil = factory palette) and re-send
     /// the active slot's color if anything changed. Deduped here because the
     /// settings pipeline re-fires this on every settings change.
@@ -764,13 +770,53 @@ final class WacomKnownDevice: TabletDevice {
 
     /// Sync per-key labels (labels[0] = key 1) to the Quick Keys OLED.
     func setAuxKeyLabels(_ labels: [String]) {
-        guard deviceSpec.parser == .xencelabs else { return }
-        let joined = labels.joined(separator: "\u{1F}")
-        guard xencelabsSentText["keys"] != joined else { return }
-        xencelabsSentText["keys"] = joined
-        for payload in XencelabsOutputProtocol.keyLabelPayloads(labels, address: xencelabsDongleIdentity ?? []) {
-            sendXencelabsOutput(payload, tag: "OLED key labels")
+        if deviceSpec.parser == .xencelabs {
+            let joined = labels.joined(separator: "\u{1F}")
+            guard xencelabsSentText["keys"] != joined else { return }
+            xencelabsSentText["keys"] = joined
+            for payload in XencelabsOutputProtocol.keyLabelPayloads(labels, address: xencelabsDongleIdentity ?? []) {
+                sendXencelabsOutput(payload, tag: "OLED key labels")
+            }
+        } else if deviceSpec.hasKeyOLEDs {
+            setIntuos4KeyOLEDLabels(labels)
         }
+    }
+
+    /// Render each label to a bitmap and push it to the Intuos4's per-key
+    /// OLED, USB transport only (see `WacomOutputProtocol`'s header for
+    /// provenance — kernel-sourced, not hardware-verified).
+    ///
+    /// Deduped per key against `intuos4SentKeyLabels`, since a full image
+    /// sync is ~1KB of feature-report traffic per key versus a short text
+    /// write for Xencelabs.
+    private func setIntuos4KeyOLEDLabels(_ labels: [String]) {
+        for (index, label) in labels.enumerated() where index < 8 {
+            let previous = index < intuos4SentKeyLabels.count ? intuos4SentKeyLabels[index] : nil
+            guard previous != label else { continue }
+            while intuos4SentKeyLabels.count <= index {
+                intuos4SentKeyLabels.append("")
+            }
+            intuos4SentKeyLabels[index] = label
+
+            let bitmap = IntuosOLEDImageEncoder.renderTextLabel(label)
+            guard let packed = IntuosOLEDImageEncoder.interleaveRows(bitmap) else { continue }
+
+            sendIntuos4Feature(WacomOutputProtocol.imageStartPayload(), tag: "Intuos4 OLED key\(index) start")
+            for chunk in WacomOutputProtocol.keyImagePayloadsUSB(image: packed, buttonID: index) {
+                sendIntuos4Feature(chunk, tag: "Intuos4 OLED key\(index) chunk")
+            }
+            sendIntuos4Feature(WacomOutputProtocol.imageStopPayload(), tag: "Intuos4 OLED key\(index) stop")
+        }
+    }
+
+    /// Send one Intuos4 OLED feature-report payload. Best-effort: a garbled
+    /// write shows a garbled label on the key's own OLED and nothing else —
+    /// there's no persistent device state at risk, so failures are logged
+    /// rather than treated as fatal.
+    private func sendIntuos4Feature(_ payload: [UInt8], tag: String) {
+        var bytes = payload
+        let reportID = CFIndex(payload[0])
+        hidSetReport(device, reportID: reportID, bytes: &bytes, tag: tag, severity: .bestEffort, log: logger)
     }
 
     /// Panel brightness is exposed on Xencelabs pen displays via the vendor
