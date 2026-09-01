@@ -77,7 +77,7 @@ The pure-logic decoder layer lives in the [TabletKit repo](https://github.com/Cy
 
 Two device wrappers sit between IOHIDManager and the decoders. Each schedules its own HID device on `HIDThread.shared.runLoop`.
 
-- `WacomKnownDevice` — a tablet whose VID/PID matches an entry in `WacomDeviceRegistry`. Carries the device's `DigitizerSpec` and a decoder instance. The common case.
+- `WacomKnownDevice` — a tablet whose VID/PID matches an entry in `WacomDeviceRegistry`. Carries the device's `DigitizerSpec` and a decoder instance. The common case. Like `InputInjector`, it spans several files: `WacomKnownDevice.swift` holds every stored property plus open/close, report dispatch, and the init handshake, while `WacomKnownDevice+XencelabsOutput.swift` (OLED text, dial colors, display controls, and the paced vendor-write path they share) and `WacomKnownDevice+DisplayOutput.swift` (ring/status LEDs and Intuos4 per-key OLED images) hold the vendor output paths.
 - `WacomFallbackDevice` — a Wacom-vendor tablet with no registry entry. Reads the HID descriptor and synthesizes a best-effort spec.
 
 `tools/capture/WacomProbeDevice.swift` is a third, temporary one: a one-shot probe that logs coordinate/pressure maxima for an unrecognized device, meant to be copied into `Devices/` and wired into `TabletManager.deviceConnected(_:)` only for the duration of a research session — see the file header. It isn't part of the Xcode target.
