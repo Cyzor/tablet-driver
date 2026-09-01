@@ -515,10 +515,10 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = AE000010 /* Build configuration list for PBXNativeTarget "MockTab" */;
 			buildPhases = (
+				AD000099 /* Stamp Build Date */,
 				AD000010 /* Sources */,
 				AD000011 /* Frameworks */,
 				AD000012 /* Resources */,
-				AD000099 /* Stamp Build Date */,
 			);
 			buildRules = (
 			);
@@ -589,21 +589,24 @@
 /* Begin PBXShellScriptBuildPhase section */
 		AD000099 /* Stamp Build Date */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"$(SRCROOT)/MockTab/Info.plist",
 			);
 			name = "Stamp Build Date";
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Info.plist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "plist=\"${CODESIGNING_FOLDER_PATH}/Contents/Info.plist\"\n/usr/libexec/PlistBuddy -c \"Delete :MockTabBuildDate\" \"$plist\" 2>/dev/null\n/usr/libexec/PlistBuddy -c \"Add :MockTabBuildDate string $(date '+%Y-%m-%d %H:%M')\" \"$plist\"\n";
+			shellScript = "mkdir -p \"${DERIVED_FILE_DIR}\"\nplist=\"${DERIVED_FILE_DIR}/Info.plist\"\ncp \"${SRCROOT}/MockTab/Info.plist\" \"$plist\"\n/usr/libexec/PlistBuddy -c \"Add :MockTabBuildDate string $(date '+%Y-%m-%d %H:%M')\" \"$plist\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -840,7 +843,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = MockTab/Info.plist;
+				INFOPLIST_FILE = "$(DERIVED_FILE_DIR)/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = MockTab;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -874,7 +877,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = MockTab/Info.plist;
+				INFOPLIST_FILE = "$(DERIVED_FILE_DIR)/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = MockTab;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
