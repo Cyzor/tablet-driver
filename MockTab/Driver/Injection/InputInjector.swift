@@ -85,6 +85,48 @@ final class SharedPanScrollState {
 /// (+PenInjection), finger touch (+Touch), express keys/rings/wheels
 /// (+AuxInput), and the CGEvent posting layer (+CGEvents). The threading rules
 /// above apply unchanged across all of them.
+///
+/// ## Latched state and its release paths
+///
+/// Every entry below is state that, once armed, keeps something held down or
+/// suppressed until an explicit release runs. Five separate "accidental
+/// watchdog" leaks have been found and fixed here over the project's history —
+/// the last because a full disconnect had no release path at all — so the table
+/// exists to make the arm/release pairing enumerable rather than rediscovered.
+/// It is documentation only; rows marked `⚠ VERIFY` are flagged for human
+/// review, not known bugs.
+///
+/// The three cross-cutting release funnels referenced below:
+/// - **proximity exit** — `commitProximityExit` (+PenInjection), on confirmed
+///   pen-out-of-range.
+/// - **tool change / disconnect** — `releaseHeldStateForToolChange`
+///   (+PenInjection), called on tool swap and from `TabletManager`'s
+///   full-disconnect path.
+/// - **deinit** — invalidates every timer listed here.
+///
+/// | State | Armed by | Released by | Leaks if stuck |
+/// |---|---|---|---|
+/// | `groundTruthSyntheticFlags` | aux/barrel binding posting a modifier | `releaseAllSyntheticModifiers` via proximity exit, 0.4s idle `watchdogTimer`, 1Hz `leakWatchdogTimer`, app switch (`releaseOnAppSwitch`) | Modifier stuck down system-wide |
+/// | `lastTipDown` | curved pressure ≥ `tipPressureThreshold` | tip-up in `inject`, proximity exit | Stroke never ends; button reads held |
+/// | `hoverDragButton` | barrel-button click binding down | binding up edge, proximity exit, `releaseBindingHeldButton` on tool change/disconnect | Movement posts drags instead of hover |
+/// | `lastMiddleDown`, `lastUSBMouseMask` / `usbMouseLeftHeld` | puck/KC-100 mouse button down | `releaseHeldPointerButtons` — proximity exit and tool change/disconnect | Mouse button stuck down |
+/// | `pendingMouseUp` (timer) | tip-up while still moving, tip-up assist enabled | tip re-down (`cancelPendingMouseUp`), proximity exit, deinit | mouseUp never posted — stroke stays open |
+/// | `panScroll` (PanScrollTracker) | `.scrollDrag` binding engaged | binding release edge; deliberately **survives** proximity blips (`suspend()`), `cancelPanScrollSafetyNet` + `panScrollSafetyNetTimer` backstop | Pen motion scrolls instead of moving cursor |
+/// | `button1/2/3UpDebounceTimer` | Xencelabs barrel-button up edge | reassert within window, timer fire, proximity exit (invalidates + commits), deinit | Release never committed — button reads held |
+/// | `proximityExitDebounceTimer` | Xencelabs range loss | pen returning in range, timer fire → `commitProximityExit`, deinit | Exit cleanup never runs |
+/// | `watchdogTimer` | rearmed on every inject/injectAux/injectMouseButtons | fires after 0.4s idle → releases synthetic flags; deinit | (Safety net; see leak watchdog) |
+/// | `leakWatchdogTimer` (1Hz) | `init`, runs continuously | deinit only — by design, it must outlive quiescence | Backstop absent for the rows above |
+/// | `lastProximity` | pen in range | proximity exit; 1Hz watchdog forces exit after `stuckProximityTimeout` | Touch gated off as "pen busy" |
+/// | `lastAuxButtons`, `lastRingButtonDown` | express key / ring center down | matching up edge in `injectAux`; 0.4s `watchdogTimer` for modifier flags | Express-key binding stuck held |
+/// | `panMomentumTail`, `touchMomentumTail`, `dialCoaster` | flick release with velocity | decay to zero, new gesture start, `cancel()` in deinit | Scrolling continues after release |
+///
+/// ⚠ VERIFY — the disconnect route (`releaseHeldStateForToolChange`) releases
+/// held *buttons* but invalidates no timers: a `pendingMouseUp`,
+/// `button*UpDebounceTimer`, or `proximityExitDebounceTimer` armed at the moment
+/// a tablet is unplugged stays live until deinit, and its handler runs against a
+/// device that is gone. Harmless today only because those handlers post through
+/// a snapshot that outlives the device and deinit follows shortly after; worth a
+/// deliberate look before adding any new timer to that set.
 final class InputInjector: @unchecked Sendable {
 
     // MARK: - Device identity
