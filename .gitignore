@@ -30,6 +30,10 @@ xcuserdata/
 # Swift Package Manager
 .build/
 .swiftpm/
+# Xcode rewrites and deletes this on its own (a `swift test` inside TabletKit
+# removes it), and TabletKit is a local package reference with no remote
+# versions to pin, so tracking it only produced a permanently dirty tree.
+MockTab.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # Python bytecode cache
 __pycache__/
