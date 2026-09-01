@@ -18,6 +18,24 @@ final class WacomKnownDevice: TabletDevice {
 
     var spec: DigitizerSpec
 
+    /// Registry spec → decoder spec. Both the initial device and a wirelessly
+    /// paired tablet build one, so adding a capability field means editing here
+    /// only — miss a site and a paired-transport device silently loses it.
+    private static func makeDigitizerSpec(from spec: WacomDeviceSpec) -> DigitizerSpec {
+        DigitizerSpec(
+            maxX: spec.maxX,
+            maxY: spec.maxY,
+            maxPressure: spec.maxPressure,
+            buttonCount: spec.buttonCount,
+            hasTilt: spec.hasTilt,
+            hasDualRings: spec.hasDualRings,
+            bezelButtonCount: spec.bezelButtonCount,
+            isPenDisplay: spec.isPenDisplay,
+            ringSlotCount: spec.ringSlotCount,
+            hasFingerTouch: spec.hasFingerTouch,
+            maxTouchContacts: spec.maxTouchContacts)
+    }
+
     private let device: IOHIDDevice
     private var deviceSpec: WacomDeviceSpec
     /// True when this interface must be seized (kIOHIDOptionsTypeSeizeDevice).
@@ -273,18 +291,7 @@ final class WacomKnownDevice: TabletDevice {
         self.onTouch = onTouch
         self.onPairedPID = onPairedPID
 
-        self.spec = DigitizerSpec(
-            maxX: deviceSpec.maxX,
-            maxY: deviceSpec.maxY,
-            maxPressure: deviceSpec.maxPressure,
-            buttonCount: deviceSpec.buttonCount,
-            hasTilt: deviceSpec.hasTilt,
-            hasDualRings: deviceSpec.hasDualRings,
-            bezelButtonCount: deviceSpec.bezelButtonCount,
-            isPenDisplay: deviceSpec.isPenDisplay,
-            ringSlotCount: deviceSpec.ringSlotCount,
-            hasFingerTouch: deviceSpec.hasFingerTouch,
-            maxTouchContacts: deviceSpec.maxTouchContacts)
+        self.spec = Self.makeDigitizerSpec(from: deviceSpec)
 
         // Parser → decoder dispatch. Each parser family corresponds to a wire
         // format (report ID, byte layout, coordinate encoding, pressure depth);
@@ -1314,18 +1321,7 @@ final class WacomKnownDevice: TabletDevice {
                 pairedSpec.maxX > 0 && pairedSpec.maxY > 0
             {
                 // Update our spec with the paired tablet's actual dimensions
-                spec = DigitizerSpec(
-                    maxX: pairedSpec.maxX,
-                    maxY: pairedSpec.maxY,
-                    maxPressure: pairedSpec.maxPressure,
-                    buttonCount: pairedSpec.buttonCount,
-                    hasTilt: pairedSpec.hasTilt,
-                    hasDualRings: pairedSpec.hasDualRings,
-                    bezelButtonCount: pairedSpec.bezelButtonCount,
-                    isPenDisplay: pairedSpec.isPenDisplay,
-                    ringSlotCount: pairedSpec.ringSlotCount,
-                    hasFingerTouch: pairedSpec.hasFingerTouch,
-                    maxTouchContacts: pairedSpec.maxTouchContacts)
+                spec = Self.makeDigitizerSpec(from: pairedSpec)
                 pairedPID = pairedTabletPID
                 onPairedPID?(pairedTabletPID)
                 logger.info("\(name, privacy: .public): paired tablet 0x\(String(pairedTabletPID, radix: 16, uppercase: true), privacy: .public) — maxX=\(pairedSpec.maxX, privacy: .public) maxY=\(pairedSpec.maxY, privacy: .public) maxPressure=\(pairedSpec.maxPressure, privacy: .public)")
