@@ -107,7 +107,7 @@ final class SharedPanScrollState {
 /// | State | Armed by | Released by | Leaks if stuck |
 /// |---|---|---|---|
 /// | `groundTruthSyntheticFlags` | aux/barrel binding posting a modifier | `releaseAllSyntheticModifiers` via proximity exit, 0.4s idle `watchdogTimer`, 1Hz `leakWatchdogTimer`, app switch (`releaseOnAppSwitch`) | Modifier stuck down system-wide |
-/// | `lastTipDown` | curved pressure ≥ `tipPressureThreshold` | tip-up in `inject`, proximity exit | Stroke never ends; button reads held |
+/// | `lastTipDown` | curved pressure ≥ `tipPressureThreshold` | tip-up in `inject`, proximity exit (incl. the 1Hz watchdog's forced exit — the only release on an unplug with the tip down) | Stroke never ends; button reads held |
 /// | `hoverDragButton` | barrel-button click binding down | binding up edge, proximity exit, `releaseBindingHeldButton` on tool change/disconnect | Movement posts drags instead of hover |
 /// | `lastMiddleDown`, `lastUSBMouseMask` / `usbMouseLeftHeld` | puck/KC-100 mouse button down | `releaseHeldPointerButtons` — proximity exit and tool change/disconnect | Mouse button stuck down |
 /// | `pendingMouseUp` (timer) | tip-up while still moving, tip-up assist enabled | tip re-down (`cancelPendingMouseUp`), proximity exit, deinit | mouseUp never posted — stroke stays open |
@@ -120,20 +120,35 @@ final class SharedPanScrollState {
 /// | `lastAuxButtons`, `lastRingButtonDown` | express key / ring center down | matching up edge in `injectAux`; 0.4s `watchdogTimer` for modifier flags | Express-key binding stuck held |
 /// | `panMomentumTail`, `touchMomentumTail`, `dialCoaster` | flick release with velocity | decay to zero, new gesture start, `cancel()` in deinit | Scrolling continues after release |
 ///
-/// ⚠ VERIFY — the disconnect route (`releaseHeldStateForToolChange`) releases
-/// held *buttons* but invalidates no timers: a `pendingMouseUp`,
-/// `button*UpDebounceTimer`, or `proximityExitDebounceTimer` armed at the moment
-/// a tablet is unplugged stays live, and its handler then runs against a device
-/// that is gone.
+/// On disconnect: `releaseHeldStateForToolChange` releases held buttons but
+/// invalidates no timers, so a `pendingMouseUp`, `button*UpDebounceTimer`, or
+/// `proximityExitDebounceTimer` armed at the moment a tablet is unplugged still
+/// fires afterwards. That is survivable by construction rather than by luck, and
+/// the reasoning is worth keeping because it is what makes adding a *new* timer
+/// here safe or unsafe:
 ///
-/// deinit is *not* a bound on that window. `TabletManager`'s full-disconnect
-/// path field-resets the `DeviceContext` (`isConnected = false`, `transport`,
-/// `livePoint`) but never removes it from `deviceContexts` — the context is kept
-/// deliberately so a known-but-unplugged tablet still has settings and a window.
-/// Since `injector` is a `let` on that context, the injector and any timer it
-/// armed survive until the app quits or the context is replaced. Whether a
-/// stale handler can do damage in that window is unverified; check before
-/// adding any new timer to this set.
+/// - Every timer above is one-shot (`CFRunLoopTimerCreateWithHandler` with
+///   interval 0) and none re-arms, so the pending window is bounded by that
+///   timer's own delay — at most `proximityExitHeldButtonSafetyInterval` (4s).
+/// - The handlers *post the release* rather than stranding it: the debounce
+///   commits the button up, `commitProximityExit` posts mouseUp for a held tip
+///   and releases pointer buttons and synthetic modifiers. Firing after unplug
+///   completes cleanup the disconnect path skipped.
+/// - The injector outliving the device is what allows that. `TabletManager`
+///   field-resets the `DeviceContext` on full disconnect but keeps it in
+///   `deviceContexts`, so a known-but-unplugged tablet retains settings and a
+///   window — and `injectionSnapshot`, which the handlers post through, is never
+///   nilled.
+/// - A tip held down at unplug is the one case no debounce covers, since
+///   `releaseHeldStateForToolChange` does not clear `lastTipDown`. The 1 Hz
+///   `leakWatchdogTimer` is the backstop: it forces `commitProximityExit` after
+///   `stuckProximityTimeout` (2s), gated only on `lastProximity` and pen-report
+///   idleness — both injector-internal — so it stays reachable with the device
+///   gone.
+///
+/// A new timer here inherits none of that automatically. It must be one-shot,
+/// short, and safe to fire against a departed device, or the disconnect path
+/// needs to invalidate it explicitly.
 final class InputInjector: @unchecked Sendable {
 
     // MARK: - Device identity
