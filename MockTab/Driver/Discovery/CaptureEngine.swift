@@ -7,7 +7,7 @@ import Combine
 import Foundation
 import IOKit.hid
 import OSLog
-import TabletKit
+@_spi(TabletKitInternals) import TabletKit
 import UniformTypeIdentifiers
 import os
 
