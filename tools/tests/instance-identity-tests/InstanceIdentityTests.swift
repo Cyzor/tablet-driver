@@ -2,15 +2,22 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// InstanceIdentityTests.swift — Standalone checks for the instance-identity
-// claim rule (DeviceInstanceKey + DeviceInstanceClaims).
+// InstanceIdentityTests.swift — Standalone checks for the settings-namespace
+// claim rule (DeviceInstanceClaims).
 //
 // The app has no XCTest target (by design — see the project's test
 // conventions), so these run as a small executable compiled against the real
-// DeviceInstanceKey.swift, seeded into a scratch UserDefaults suite. Run via
-// tools/tests/instance-identity-tests/run.sh. Exits non-zero on the first failure.
+// DeviceInstanceClaims.swift and the TabletKit module it imports, seeded into
+// a scratch UserDefaults suite. Run via
+// tools/tests/instance-identity-tests/run.sh. Exits non-zero on the first
+// failure.
+//
+// DeviceInstanceKey's own value semantics (string round-trip, token selection,
+// placeholder serials) live in TabletKit and are covered by
+// DeviceInstanceKeyTests there.
 
 import Foundation
+import TabletKit
 
 // MARK: - Tiny assertion harness
 
@@ -40,57 +47,6 @@ private func scratchDefaults(_ name: String) -> UserDefaults {
 }
 
 private let pth860 = 0x0357
-
-// MARK: - Key string round-trip
-
-private func testKeyStringRoundTrip() {
-    let cases = [
-        DeviceInstanceKey(productID: pth860, instance: ""),
-        DeviceInstanceKey(productID: pth860, instance: "9KL0123456"),
-        DeviceInstanceKey(productID: 0x5202, instance: "loc-14200000"),
-        DeviceInstanceKey(productID: 0xF4, instance: "serial with spaces"),
-    ]
-    for key in cases {
-        expectEqual(DeviceInstanceKey(stringValue: key.stringValue), key,
-                    "round-trip \(key.stringValue)")
-    }
-    expectEqual(DeviceInstanceKey(productID: pth860, instance: "").stringValue, "0x357",
-                "empty-instance string form")
-    expect(DeviceInstanceKey(stringValue: "357") == nil, "missing 0x prefix rejected")
-    expect(DeviceInstanceKey(stringValue: "0xZZ") == nil, "non-hex PID rejected")
-}
-
-private func testTokenSelection() {
-    expectEqual(
-        DeviceInstanceKey(productID: pth860, usbSerial: "ABC", locationID: 0x14200000).instance,
-        "ABC", "serial wins over locationID")
-    expectEqual(
-        DeviceInstanceKey(productID: pth860, usbSerial: "", locationID: 0x14200000).instance,
-        "loc-14200000", "empty serial falls back to locationID")
-    expectEqual(
-        DeviceInstanceKey(productID: pth860, usbSerial: nil, locationID: 0).instance,
-        "", "neither → empty token (legacy identity)")
-}
-
-/// The Xencelabs Quick Keys wireless dongle relay reports the puck's serial
-/// as a literal all-zero string rather than omitting it — that must not be
-/// taken as a real instance token (it used to split a wirelessly-connected
-/// puck into its own row and settings namespace next to the wired one).
-private func testPlaceholderSerialTreatedAsAbsent() {
-    expect(DeviceInstanceKey.isPlaceholderSerial("000000000000"),
-           "all-zero serial recognized as placeholder")
-    expect(DeviceInstanceKey.isPlaceholderSerial("00:00:00:00:00:00"),
-           "all-zero MAC-style serial recognized as placeholder")
-    expect(!DeviceInstanceKey.isPlaceholderSerial("XP213BV1001188"),
-           "real serial not mistaken for placeholder")
-    expectEqual(
-        DeviceInstanceKey(productID: 0x5202, usbSerial: "000000000000", locationID: 0x14200000)
-            .instance,
-        "loc-14200000", "placeholder serial falls back to locationID like an absent one")
-    expectEqual(
-        DeviceInstanceKey(productID: 0x5202, usbSerial: "000000000000", locationID: 0).instance,
-        "", "placeholder serial with no locationID falls back to legacy identity")
-}
 
 // MARK: - Claim rule
 
@@ -196,9 +152,6 @@ private func testNormalization() {
 @main
 enum InstanceIdentityTestRunner {
     static func main() {
-        testKeyStringRoundTrip()
-        testTokenSelection()
-        testPlaceholderSerialTreatedAsAbsent()
         testFirstInstanceClaimsLegacyPrefix()
         testClaimIsSticky()
         testSecondInstanceInheritsNothing()

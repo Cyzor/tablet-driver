@@ -4,6 +4,7 @@
 
 import AppKit
 import SwiftUI
+import TabletKit
 import UniformTypeIdentifiers
 
 // MARK: - ProfilesView

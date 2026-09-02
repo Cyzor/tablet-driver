@@ -7,6 +7,7 @@
 // bindings, and battery indicator mapping.
 
 import SwiftUI
+import TabletKit
 
 // MARK: - Undo-recording bindings
 

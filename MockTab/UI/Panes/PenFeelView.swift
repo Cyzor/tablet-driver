@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import TabletKit
 
 /// Stylus feel settings: pressure curve, stabilization, click behavior, and rotation.
 struct PenFeelView: View {

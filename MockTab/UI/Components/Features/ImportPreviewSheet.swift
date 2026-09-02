@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import TabletKit
 
 /// Pre-import confirmation sheet showing all tablets in a backup file
 /// with checkboxes to include/exclude each one before applying.
