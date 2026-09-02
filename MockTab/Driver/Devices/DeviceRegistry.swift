@@ -374,7 +374,7 @@ final class DeviceRegistry: ObservableObject {
 
         // Check tool support for this device family
         let deviceSpec = WacomDeviceRegistry.spec(for: deviceID)
-        let family = deviceSpec?.family ?? "universal"
+        let family = deviceSpec?.family
         let caps = WacomToolCatalog.capabilities(forToolCode: identity.toolCode, family: family)
 
         knownTools.append(
@@ -639,7 +639,7 @@ final class DeviceRegistry: ObservableObject {
 
         var changed = false
         let deviceSpec = WacomDeviceRegistry.spec(for: deviceID)
-        let family = deviceSpec?.family ?? "universal"
+        let family = deviceSpec?.family
         for i in list.indices {
             let freshKind: String
             if let tc = list[i].toolCode {
