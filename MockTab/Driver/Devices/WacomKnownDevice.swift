@@ -418,8 +418,7 @@ final class WacomKnownDevice: TabletDevice {
     /// earlier interface, or reserved above) is never overwritten.
     private func deriveTouchDecoders(from device: IOHIDDevice) {
         guard deviceSpec.hasFingerTouch else { return }
-        let parsed = HIDDescriptorReader.read(device)
-        guard let hex = parsed.rawHex,
+        guard let hex = hidReportDescriptorHex(device),
             let layout = try? HIDReportDescriptorParser.parse(hex: hex)
         else { return }
         let reserved: Set<UInt8> = deviceSpec.parser == .intuosV2 ? Self.intuosV2ReservedReportIDs : []
@@ -446,7 +445,7 @@ final class WacomKnownDevice: TabletDevice {
     /// 0xe0005000` on a session where a raw HID capture showed zero touch
     /// containers ever arriving — the sensor was simply never armed).
     private func hasAnyFeatureReport(_ candidate: IOHIDDevice) -> Bool {
-        guard let hex = HIDDescriptorReader.read(candidate).rawHex,
+        guard let hex = hidReportDescriptorHex(candidate),
             let layout = try? HIDReportDescriptorParser.parse(hex: hex)
         else { return false }
         return layout.reports.contains { $0.direction == .feature }

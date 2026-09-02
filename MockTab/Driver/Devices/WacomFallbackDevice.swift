@@ -148,8 +148,10 @@ final class WacomFallbackDevice: TabletDevice {
 
         // Query HID descriptor for coordinate and pressure ranges.
         spec = Self.querySpec(device: device, family: family)
+        // Two reads of the same descriptor: the parsed field model for
+        // diagnostic display, and the raw hex for decoder derivation.
         parsedDescriptor = HIDDescriptorReader.read(device)
-        penDecoders = Self.derivePenDecoders(from: parsedDescriptor)
+        penDecoders = Self.derivePenDecoders(from: device)
     }
 
     /// Builds a descriptor-driven pen decoder for every pen report the
@@ -157,9 +159,10 @@ final class WacomFallbackDevice: TabletDevice {
     /// parsed or declares no pen fields, which is the ordinary answer for
     /// classic Wacom hardware.
     private static func derivePenDecoders(
-        from parsed: HIDDescriptorReader.Parsed
+        from device: IOHIDDevice
     ) -> [UInt8: GenericPenDecoder] {
-        guard let hex = parsed.rawHex, let layout = try? HIDReportDescriptorParser.parse(hex: hex)
+        guard let hex = hidReportDescriptorHex(device),
+            let layout = try? HIDReportDescriptorParser.parse(hex: hex)
         else { return [:] }
 
         var decoders: [UInt8: GenericPenDecoder] = [:]
