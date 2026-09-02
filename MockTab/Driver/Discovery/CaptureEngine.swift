@@ -89,13 +89,20 @@ final class CaptureEngine: ObservableObject {
     ///     and would invent a new "report ID" on nearly every sample.
     ///   - pointer: the callback's report buffer. Only read for the duration
     ///     of this call — nothing retains it.
+    ///   - contactDown: whether a touch contact was down as of the driver's
+    ///     most recent decode. Used only to split the arrival-gap histogram
+    ///     (see `DiscoveryAccumulator.record`); `nil` when the caller has no
+    ///     touch state to offer, which is every non-touch report and every
+    ///     driver that doesn't decode touch.
     nonisolated static func recordRaw(
-        device: IOHIDDevice, reportID: UInt32, pointer: UnsafePointer<UInt8>, length: CFIndex
+        device: IOHIDDevice, reportID: UInt32, pointer: UnsafePointer<UInt8>, length: CFIndex,
+        contactDown: Bool? = nil
     ) {
         guard let accumulator = activeAccumulators.withLock({ $0[ObjectIdentifier(device)] })
         else { return }
         accumulator.record(
-            reportID: UInt8(truncatingIfNeeded: reportID), pointer: pointer, length: Int(length))
+            reportID: UInt8(truncatingIfNeeded: reportID), pointer: pointer, length: Int(length),
+            contactDown: contactDown)
     }
 
     // MARK: - Published UI State
@@ -135,10 +142,12 @@ final class CaptureEngine: ObservableObject {
     /// instance's session, even one running concurrently on another device.
     ///
     /// - Parameter devices: each interface to record, paired with its own
-    ///   identity and descriptor, **primary interface first** — that one names
-    ///   the hardware in the capture header and supplies the top-level
-    ///   `reports` block older triage tooling reads. Passing more than one is
-    ///   the point: which interface carries the interesting traffic is exactly
+    ///   identity and descriptor. `devices[0]` names the hardware in the
+    ///   capture header (`deviceInfo`); the interface that supplies the
+    ///   top-level `reports` block is chosen from descriptor contents at
+    ///   build time — see `buildDiscoveryResult` — so callers no longer have
+    ///   to sort a pen interface to the front. Passing more than one is the
+    ///   point: which interface carries the interesting traffic is exactly
     ///   what a tester submitting an unknown device cannot be expected to
     ///   know, and recording them all costs a few KB.
     func startDiscovery(
@@ -413,40 +422,58 @@ final class CaptureEngine: ObservableObject {
 
     /// Assemble the file from every interface's accumulator.
     ///
-    /// The primary interface (first, by contract of `startDiscovery`) also
-    /// fills the top-level `reports`/`hidReportDescriptor`/`deviceInfo`, which
-    /// is what a `captureVersion` 6 reader — `TabletKit/tools/triage_discovery.py` as
-    /// shipped — knows how to read. Every interface, primary included, is
-    /// additionally listed in `interfaces`. Tool codes are unioned across
-    /// interfaces, since a tool entering proximity is a property of the tablet
-    /// rather than of whichever interface happened to report it.
+    /// The primary interface — chosen just below, by descriptor contents —
+    /// also fills the top-level `reports`/`hidReportDescriptor`, which is what
+    /// a `captureVersion` 6 reader (`TabletKit/tools/triage_discovery.py` as
+    /// shipped) knows how to read. `deviceInfo` stays keyed to `sessions[0]`,
+    /// the interface the registry lookup was built around. Every interface,
+    /// primary included, is additionally listed in `interfaces`. Tool codes
+    /// are unioned across interfaces, since a tool entering proximity is a
+    /// property of the tablet rather than of whichever interface reported it.
     private func buildDiscoveryResult(
         sessions: [InterfaceSession], bluetoothLink: BluetoothLinkMonitor.Summary?
     ) -> DiscoveryResult {
-        // Which interface fills the top-level block: the one the driver
-        // designated, unless it recorded nothing, in which case the busiest.
+        // Which interface fills the top-level block, in order of preference:
         //
-        // A PTH-850 capture made the fallback necessary: its vendor interface
-        // attached first and so led the session, but sat silent for the whole
-        // run while the other interface carried all 391 samples. Leading with
-        // the silent one put an empty `reports` at the top level, which is the
-        // *entire* capture as far as a `captureVersion` 6 reader is concerned —
-        // the file read as "recorded nothing" while holding a full recording
-        // one section down.
+        //  1. The one whose descriptor declares pen fields (pressure/tilt/…),
+        //     *unless* it carried almost no traffic this session. The pen
+        //     interface is the one a reader means by "the device's pen
+        //     report", and which interface declares pen fields is a fixed
+        //     property of the hardware — not of attach order or of what the
+        //     tester exercised. The PTH-860 USB needs this: its pen interface
+        //     attaches second and advertises a Generic Desktop / Mouse
+        //     primary usage, so nothing but the descriptor contents picks it
+        //     out. But when the pen is simply absent for the whole session
+        //     (a touch-only recording), that interface streams a handful of
+        //     status reports and nothing else — leading with it would put a
+        //     near-empty block at the top level, the same failure step 3
+        //     guards against. So it only wins if it carried at least
+        //     `minPrimaryShare` of the busiest interface's sample count.
+        //     Across the PTH-860 captures the split is unambiguous: pen
+        //     present ⇒ the pen interface is the busiest (share 1.0); pen
+        //     absent ⇒ share ~0.03.
+        //  2. Else the driver-designated interface, if it recorded anything.
+        //  3. Else the busiest — the PTH-850 case, where the vendor interface
+        //     attaches first, leads the session, and then sits silent for the
+        //     whole run while the other carries every sample. Leading with the
+        //     silent one would put an empty `reports` at the top level.
         //
-        // Ranking purely by sample count would fix that and introduce a worse
-        // problem: the top-level block would then be whichever interface the
-        // tester happened to exercise most, so two captures of the same tablet
-        // would disagree about what the primary is — a pen-heavy session and a
-        // touch-heavy one landing different data in the block that triage
-        // tooling treats as the device's own. Preferring the designated
-        // interface keeps that stable, and only a genuinely silent one gives
-        // the slot up.
+        // Sample count alone was rejected as the *primary* rule deliberately:
+        // it would make a pen-heavy and a touch-heavy capture of the same
+        // tablet disagree about the primary. The descriptor predicate stays
+        // primary; sample share is only a floor under it.
+        let minPrimaryShare = 0.1
+        let busiestCount = sessions.map(\.accumulator.sampleCount).max() ?? 0
         let primaryDevice =
-            sessions[0].accumulator.sampleCount > 0
-            ? sessions[0].device
-            : (sessions.max { $0.accumulator.sampleCount < $1.accumulator.sampleCount }
-                ?? sessions[0]).device
+            sessions.first(where: {
+                $0.info.parsedDescriptor?.declaresPenFields == true
+                    && (busiestCount == 0
+                        || Double($0.accumulator.sampleCount) >= Double(busiestCount) * minPrimaryShare)
+            })?.device
+            ?? (sessions[0].accumulator.sampleCount > 0
+                ? sessions[0].device
+                : (sessions.max { $0.accumulator.sampleCount < $1.accumulator.sampleCount }
+                    ?? sessions[0]).device)
 
         var interfaces: [DiscoveryInterface] = []
         var allToolCodes: Set<UInt16> = []
@@ -607,6 +634,22 @@ final class CaptureEngine: ObservableObject {
                 .detect(signatures: signatures)
                 .map(Self.discoveryRepeatingStructure)
 
+            // Only meaningful once a report has arrived more than once — a
+            // single-arrival report has no gap and `gapBuckets` is all zeros.
+            let arrivalGaps: DiscoveryArrivalGaps? =
+                stats.sampleCount > 1
+                ? DiscoveryArrivalGaps(
+                    bucketEdgesMs: DiscoveryAccumulator.ReportStats.gapBucketEdgesMs,
+                    buckets: stats.gapBuckets,
+                    inGestureBuckets: stats.inGestureGapBuckets.contains { $0 != 0 }
+                        ? stats.inGestureGapBuckets : nil,
+                    idleBuckets: stats.idleGapBuckets.contains { $0 != 0 }
+                        ? stats.idleGapBuckets : nil,
+                    longestGaps: stats.longestGaps.map {
+                        DiscoveryArrivalGaps.Gap(ms: $0.ms, endedAtSessionMs: $0.atElapsedMs)
+                    })
+                : nil
+
             reportSummaries[idHex] = DiscoveryReportSummary(
                 reportID: reportID,
                 length: stats.firstLength,
@@ -621,7 +664,8 @@ final class CaptureEngine: ObservableObject {
                 byteStats: byteStats.isEmpty ? nil : byteStats,
                 descriptorReadable: descriptorReadable,
                 repeatingStructure: repeatingStructure,
-                byteStatsByDiscriminator: Self.discriminatedStats(stats)
+                byteStatsByDiscriminator: Self.discriminatedStats(stats),
+                arrivalGaps: arrivalGaps
             )
         }
 

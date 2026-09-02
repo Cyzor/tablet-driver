@@ -166,6 +166,85 @@ final class DiscoveryAccumulator: Sendable {
         var byDiscriminator: [UInt8: [ByteValueSet]] = [:]
         var discriminatorSampleCounts: [UInt8: Int] = [:]
 
+        // MARK: Inter-arrival gaps
+        //
+        // How long between one report of this ID and the next, in fixed
+        // millisecond buckets plus the handful of longest gaps kept whole.
+        // The question this answers: when a touch stream stops feeding the
+        // momentum path right before a finger lifts, is that a clean
+        // multi-hundred-ms dropout or a gradual thinning — and does it land
+        // mid-gesture or only in the idle between gestures. Buckets show the
+        // shape; the retained longest gaps carry a session-elapsed timestamp
+        // so a reader can see where in the session they fell.
+        //
+        // Two bucket arrays, split on whether a contact was down at BOTH ends
+        // of the gap (`inGestureGapBuckets`) or not (`idleGapBuckets`). A
+        // finger-off pause between flicks lands in `idle`; a stall while the
+        // finger is still on the tablet lands in `inGesture`. The gap that
+        // spans a lift — contact down before, up after — is an `idle` gap by
+        // this rule, which is correct: it is the boundary, not a mid-gesture
+        // stall, and keeping it visible in `idle` beats discarding it. The
+        // caller supplies the contact-down flag (it has the decoded touch
+        // state; the accumulator does not); `nil` means "caller doesn't
+        // know", and those gaps go only to the combined `gapBuckets`.
+
+        /// Upper edges, in milliseconds, of the gap buckets. A gap of exactly
+        /// an edge value falls in the lower bucket. Each bucket array has one
+        /// more slot than this has edges — the last catches everything `>=`
+        /// the final edge.
+        static let gapBucketEdgesMs: [Double] = [2, 5, 10, 20, 50, 100, 500]
+
+        /// Count of every inter-arrival gap per bucket, regardless of contact
+        /// state. `gapBucketEdgesMs.count + 1` wide.
+        var gapBuckets: [Int] = Array(repeating: 0, count: gapBucketEdgesMs.count + 1)
+        /// Gaps with a contact down at both ends — a stall while the gesture
+        /// was in progress. Only populated when the caller supplies the flag.
+        var inGestureGapBuckets: [Int] = Array(repeating: 0, count: gapBucketEdgesMs.count + 1)
+        /// Gaps with no contact at one or both ends — idle between gestures,
+        /// or the lift boundary itself. Only populated when the caller
+        /// supplies the flag.
+        var idleGapBuckets: [Int] = Array(repeating: 0, count: gapBucketEdgesMs.count + 1)
+
+        /// One retained inter-arrival gap: how long it was, and the
+        /// session-elapsed time it ended at (the arrival that closed it).
+        struct Gap: Sendable, Equatable {
+            var ms: Double
+            var atElapsedMs: Double
+        }
+
+        /// The longest inter-arrival gaps seen, largest first, capped at
+        /// `maxRetainedGaps`.
+        var longestGaps: [Gap] = []
+        static let maxRetainedGaps = 8
+
+        /// `mach_absolute_time()` of the last report of this ID, or 0 before
+        /// the first. Not published — cleared on `start()` with the rest.
+        var lastArrivalMachTime: UInt64 = 0
+        /// Contact-down flag the caller supplied with the *previous* report of
+        /// this ID — the "before" end of the next gap. `nil` until the caller
+        /// supplies one.
+        var lastContactDown: Bool? = nil
+
+        /// - Parameter bothEndsContactDown: `true` if a contact was down at
+        ///   both the previous and current report; `false` if not; `nil` if
+        ///   the caller can't say. Routes the gap to `inGestureGapBuckets`,
+        ///   `idleGapBuckets`, or neither.
+        mutating func noteGap(ms: Double, atElapsedMs: Double, bothEndsContactDown: Bool?) {
+            let slot = Self.gapBucketEdgesMs.firstIndex { ms < $0 } ?? Self.gapBucketEdgesMs.count
+            gapBuckets[slot] += 1
+            switch bothEndsContactDown {
+            case .some(true): inGestureGapBuckets[slot] += 1
+            case .some(false): idleGapBuckets[slot] += 1
+            case .none: break
+            }
+
+            if longestGaps.count < Self.maxRetainedGaps || ms > (longestGaps.last?.ms ?? 0) {
+                longestGaps.append(Gap(ms: ms, atElapsedMs: atElapsedMs))
+                longestGaps.sort { $0.ms > $1.ms }
+                if longestGaps.count > Self.maxRetainedGaps { longestGaps.removeLast() }
+            }
+        }
+
         var lengthVaried: Bool { minLength != maxLength }
 
         /// How each byte position of this report behaved.
@@ -202,9 +281,20 @@ final class DiscoveryAccumulator: Sendable {
         var reports: [UInt8: ReportStats] = [:]
         var totalSamples = 0
         var toolCodes: Set<UInt16> = []
+        /// `mach_absolute_time()` at `start()`, the origin for the elapsed
+        /// timestamps attached to retained gaps.
+        var sessionStartMachTime: UInt64 = 0
     }
 
     private let state = OSAllocatedUnfairLock<State>(initialState: State())
+
+    /// `mach_absolute_time()` ticks → milliseconds. Read once; the timebase
+    /// is fixed for the life of the process.
+    private static let machMsPerTick: Double = {
+        var info = mach_timebase_info_data_t()
+        mach_timebase_info(&info)
+        return Double(info.numer) / Double(info.denom) / 1_000_000
+    }()
 
     // MARK: Control
 
@@ -214,6 +304,7 @@ final class DiscoveryAccumulator: Sendable {
             $0.reports.removeAll()
             $0.totalSamples = 0
             $0.toolCodes.removeAll()
+            $0.sessionStartMachTime = mach_absolute_time()
             $0.isCapturing = true
         }
     }
@@ -258,12 +349,23 @@ final class DiscoveryAccumulator: Sendable {
     /// no copy of the report. The `isCapturing` check happens inside the same
     /// lock acquisition, so a report arriving while collection is off costs one
     /// uncontended `os_unfair_lock` round trip and nothing else.
-    func record(reportID: UInt8, pointer: UnsafePointer<UInt8>, length: Int) {
+    ///
+    /// - Parameter contactDown: whether a touch contact was down as of this
+    ///   report, from the caller's decoded touch state. Splits the
+    ///   inter-arrival gap ending at this report into `inGestureGapBuckets`
+    ///   vs `idleGapBuckets` — a gap counts as in-gesture only when a contact
+    ///   was down at *both* ends. `nil` (the default, and always for a report
+    ///   the caller doesn't decode as touch) leaves the split untouched; the
+    ///   combined `gapBuckets` still counts every gap.
+    func record(
+        reportID: UInt8, pointer: UnsafePointer<UInt8>, length: Int, contactDown: Bool? = nil
+    ) {
         guard length > 0 else { return }
         // `withLockUnchecked` rather than `withLock`: the body is synchronous
         // and can't outlive this call, but the report pointer isn't `Sendable`
         // and a `@Sendable` closure would reject it. Copying the report just to
         // satisfy that is the per-report allocation this path exists to avoid.
+        let now = mach_absolute_time()
         state.withLockUnchecked { s in
             guard s.isCapturing else { return }
             s.totalSamples += 1
@@ -281,6 +383,17 @@ final class DiscoveryAccumulator: Sendable {
                     let disc = pointer[ReportStats.discriminatorByteIndex]
                     Self.foldDiscriminated(&stats, disc: disc, pointer: pointer, length: length)
                 }
+                if stats.lastArrivalMachTime != 0 {
+                    let gapMs = Double(now - stats.lastArrivalMachTime) * Self.machMsPerTick
+                    let elapsedMs = Double(now - s.sessionStartMachTime) * Self.machMsPerTick
+                    let bothEnds: Bool? =
+                        (stats.lastContactDown != nil || contactDown != nil)
+                        ? ((stats.lastContactDown ?? false) && (contactDown ?? false))
+                        : nil
+                    stats.noteGap(ms: gapMs, atElapsedMs: elapsedMs, bothEndsContactDown: bothEnds)
+                }
+                stats.lastArrivalMachTime = now
+                stats.lastContactDown = contactDown
                 s.reports[reportID] = stats
             } else {
                 var byteValues = [ByteValueSet](repeating: ByteValueSet(), count: length)
@@ -296,6 +409,10 @@ final class DiscoveryAccumulator: Sendable {
                     let disc = pointer[ReportStats.discriminatorByteIndex]
                     Self.foldDiscriminated(&stats, disc: disc, pointer: pointer, length: length)
                 }
+                // First report of this ID: no predecessor, so no gap. Just
+                // arm the clock and contact state for the next one.
+                stats.lastArrivalMachTime = now
+                stats.lastContactDown = contactDown
                 s.reports[reportID] = stats
             }
         }

@@ -50,6 +50,17 @@ private func feed(_ acc: DiscoveryAccumulator, _ reportID: UInt8, _ bytes: [UInt
     }
 }
 
+/// Feed one report with a contact-down flag, as a touch-decoding driver does.
+private func contactFeed(
+    _ acc: DiscoveryAccumulator, _ reportID: UInt8, _ bytes: [UInt8], contactDown: Bool?
+) {
+    bytes.withUnsafeBufferPointer { buf in
+        acc.record(
+            reportID: reportID, pointer: buf.baseAddress!, length: buf.count,
+            contactDown: contactDown)
+    }
+}
+
 private func stats(_ acc: DiscoveryAccumulator, _ reportID: UInt8)
     -> DiscoveryAccumulator.ReportStats?
 {
@@ -425,6 +436,97 @@ private func testDiscriminatorSkippedForShortReports() {
     expect(s.byDiscriminator.isEmpty, "no discriminator bucket for a report with no byte 1")
 }
 
+// MARK: - Inter-arrival gaps
+
+private func testGapBucketBoundaries() {
+    typealias RS = DiscoveryAccumulator.ReportStats
+    // edges: [2, 5, 10, 20, 50, 100, 500] → 8 buckets, index 0 is <2ms,
+    // index 7 is >=500ms. A gap equal to an edge falls in the *lower*
+    // bucket's neighbour — i.e. `ms < edge` puts it below, so 2.0 is not
+    // < 2 and lands in bucket 1.
+    var s = RS(firstLength: 4, minLength: 4, maxLength: 4, sampleCount: 2,
+               firstSample: [0, 0, 0, 0], byteValues: [])
+    s.noteGap(ms: 0.5, atElapsedMs: 10, bothEndsContactDown: nil)     // < 2   → 0
+    s.noteGap(ms: 2.0, atElapsedMs: 20, bothEndsContactDown: nil)     // == 2  → 1
+    s.noteGap(ms: 4.9, atElapsedMs: 30, bothEndsContactDown: nil)     // < 5   → 1
+    s.noteGap(ms: 10.0, atElapsedMs: 40, bothEndsContactDown: nil)    // == 10 → 3
+    s.noteGap(ms: 47.0, atElapsedMs: 50, bothEndsContactDown: nil)    // < 50  → 4
+    s.noteGap(ms: 499.9, atElapsedMs: 60, bothEndsContactDown: nil)   // < 500 → 6
+    s.noteGap(ms: 500.0, atElapsedMs: 70, bothEndsContactDown: nil)   // >= 500 → 7
+    s.noteGap(ms: 830.0, atElapsedMs: 80, bothEndsContactDown: nil)   // >= 500 → 7
+    expectEqual(s.gapBuckets, [1, 2, 0, 1, 1, 0, 1, 2], "gaps land in the expected buckets")
+    expect(s.inGestureGapBuckets.allSatisfy { $0 == 0 }, "nil flag leaves inGesture empty")
+    expect(s.idleGapBuckets.allSatisfy { $0 == 0 }, "nil flag leaves idle empty")
+}
+
+private func testGapContactSplit() {
+    typealias RS = DiscoveryAccumulator.ReportStats
+    var s = RS(firstLength: 4, minLength: 4, maxLength: 4, sampleCount: 2,
+               firstSample: [0, 0, 0, 0], byteValues: [])
+    s.noteGap(ms: 30, atElapsedMs: 10, bothEndsContactDown: true)   // 20-50 → 4, inGesture
+    s.noteGap(ms: 30, atElapsedMs: 20, bothEndsContactDown: true)   // 20-50 → 4, inGesture
+    s.noteGap(ms: 600, atElapsedMs: 30, bothEndsContactDown: false) // >=500 → 7, idle
+    s.noteGap(ms: 8, atElapsedMs: 40, bothEndsContactDown: nil)     // 5-10  → 2, neither split
+    expectEqual(s.gapBuckets[4], 2, "combined counts both in-gesture gaps")
+    expectEqual(s.gapBuckets[7], 1, "combined counts the idle gap")
+    expectEqual(s.gapBuckets[2], 1, "combined counts the unclassified gap")
+    expectEqual(s.inGestureGapBuckets[4], 2, "in-gesture array has the two contact-both-ends gaps")
+    expectEqual(s.inGestureGapBuckets.reduce(0, +), 2, "in-gesture array has nothing else")
+    expectEqual(s.idleGapBuckets[7], 1, "idle array has the lift/idle gap")
+    expectEqual(s.idleGapBuckets.reduce(0, +), 1, "idle array has nothing else")
+}
+
+private func testLiftBoundaryGapIsIdle() {
+    // A gap that spans a lift: contact down before, up after. `record` passes
+    // bothEndsContactDown = (prev && current) = (true && false) = false, so
+    // the gap lands in idle — it is the boundary, not a mid-gesture stall.
+    let acc = DiscoveryAccumulator()
+    acc.start()
+    contactFeed(acc, 0x21, [1, 1, 1, 1], contactDown: true)   // arm: contact down
+    contactFeed(acc, 0x21, [1, 1, 1, 1], contactDown: true)   // gap 1: both down → inGesture
+    contactFeed(acc, 0x21, [0, 0, 0, 0], contactDown: false)  // gap 2: lift boundary → idle
+    let s = stats(acc, 0x21)
+    expectEqual(s?.inGestureGapBuckets.reduce(0, +), 1, "one in-gesture gap before the lift")
+    expectEqual(s?.idleGapBuckets.reduce(0, +), 1, "the lift-spanning gap is idle")
+}
+
+private func testLongestGapsRetainedLargestFirstWithTimestamp() {
+    typealias RS = DiscoveryAccumulator.ReportStats
+    var s = RS(firstLength: 4, minLength: 4, maxLength: 4, sampleCount: 2,
+               firstSample: [0, 0, 0, 0], byteValues: [])
+    // More than maxRetainedGaps (8) gaps; only the 8 largest survive.
+    for i in 1...12 {
+        s.noteGap(ms: Double(i) * 10, atElapsedMs: Double(i) * 100, bothEndsContactDown: nil)
+    }
+    expectEqual(s.longestGaps.count, RS.maxRetainedGaps, "retained list is capped")
+    expectEqual(s.longestGaps.first?.ms, 120.0, "largest gap is first")
+    expectEqual(s.longestGaps.last?.ms, 50.0, "smallest retained gap is the 8th largest")
+    expectEqual(s.longestGaps.first?.atElapsedMs, 1200.0, "each gap keeps its own end time")
+}
+
+private func testFirstReportOfIdRecordsNoGap() {
+    let acc = DiscoveryAccumulator()
+    acc.start()
+    feed(acc, 0x10, [1, 2, 3, 4])
+    let s = stats(acc, 0x10)
+    expectEqual(s?.gapBuckets.reduce(0, +), 0, "one arrival yields no gap")
+    expect(s?.longestGaps.isEmpty ?? false, "one arrival retains no gap")
+    // A second arrival, however fast, now records exactly one gap.
+    feed(acc, 0x10, [1, 2, 3, 4])
+    expectEqual(stats(acc, 0x10)?.gapBuckets.reduce(0, +), 1, "second arrival records one gap")
+}
+
+private func testGapsAreSeparatePerReportID() {
+    let acc = DiscoveryAccumulator()
+    acc.start()
+    feed(acc, 0x10, [1, 2, 3, 4])
+    feed(acc, 0x21, [9, 9, 9, 9])
+    feed(acc, 0x10, [1, 2, 3, 4])   // one 0x10 gap
+    feed(acc, 0x10, [1, 2, 3, 4])   // two 0x10 gaps
+    expectEqual(stats(acc, 0x10)?.gapBuckets.reduce(0, +), 2, "0x10 has two gaps")
+    expectEqual(stats(acc, 0x21)?.gapBuckets.reduce(0, +), 0, "0x21 has none")
+}
+
 // MARK: - Degenerate input
 
 private func testEmptyReportIgnored() {
@@ -454,6 +556,12 @@ enum DiscoveryAccumulatorTestRunner {
         testDiscriminatorSeparatesPacketShapes()
         testDiscriminatorSingleBucketWhenByteOneConstant()
         testDiscriminatorSkippedForShortReports()
+        testGapBucketBoundaries()
+        testGapContactSplit()
+        testLiftBoundaryGapIsIdle()
+        testLongestGapsRetainedLargestFirstWithTimestamp()
+        testFirstReportOfIdRecordsNoGap()
+        testGapsAreSeparatePerReportID()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

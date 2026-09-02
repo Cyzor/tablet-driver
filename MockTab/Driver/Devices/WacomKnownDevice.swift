@@ -111,6 +111,18 @@ final class WacomKnownDevice: TabletDevice {
     /// interval. 0 until the first such report is seen.
     private var lastBatchReportTimestampNs: UInt64 = 0
 
+    /// Whether the most recent report *on a given interface* decoded to at
+    /// least one touch contact. Handed to `CaptureEngine.recordRaw` on that
+    /// interface's next report so a discovery capture can tell a mid-gesture
+    /// arrival gap from a finger-off idle one (see `DiscoveryAccumulator
+    /// .record`'s `contactDown`). Keyed per interface — one
+    /// `WacomKnownDevice` serves every registered interface and pen/touch
+    /// often arrive on separate ones, so a shared flag would let a
+    /// pen-interface report clobber the touch interface's state. HIDThread-
+    /// confined like everything else `handleReport` touches. Absent for an
+    /// interface until one of its reports has decoded as touch.
+    private var lastReportHadContact: [ObjectIdentifier: Bool] = [:]
+
     // ── Callback-context lifetime ─────────────────────────────────────────────
     // One retain backs every IOHIDDeviceRegisterInputReportCallback context for
     // this driver. Created lazily at first registration, released on HIDThread
@@ -791,8 +803,10 @@ final class WacomKnownDevice: TabletDevice {
         // reports into a pen interface's 10-byte report ID 2 stream under
         // one capture bucket — confirmed on a PTH-850 discovery capture
         // whose byte offsets ran past what its pen report could ever hold.
+        let captureInterface = sender ?? device
         CaptureEngine.recordRaw(
-            device: sender ?? device, reportID: reportID, pointer: report, length: length)
+            device: captureInterface, reportID: reportID, pointer: report, length: length,
+            contactDown: lastReportHadContact[ObjectIdentifier(captureInterface)])
         // For wireless dongles, extract paired tablet PID from 0x80 status report and
         // use its spec for accurate coordinate ranges (instead of fallback guesses).
         if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {
@@ -1017,6 +1031,23 @@ final class WacomKnownDevice: TabletDevice {
             case .toolCompatibility(let message):
                 logger.info("\(name, privacy: .public): \(message, privacy: .public)")
             }
+        }
+        // Contact-down state for this interface's *next* report, used only by
+        // the discovery-capture gap classification. A report that decoded as
+        // touch records whether any contact was present (an empty touch
+        // result — wind-down, or the decoder seeing a lift — is a genuine
+        // "no contact"). Any other report on this interface clears the entry:
+        // a gap that spans a pen report, or a touch report ID that produced
+        // nothing because touch was disabled or a pen was busy, can't
+        // honestly be called mid-gesture, so it goes unclassified rather
+        // than into `inGestureBuckets`.
+        let ifaceKey = ObjectIdentifier(captureInterface)
+        if results.contains(where: { if case .touch = $0 { return true } else { return false } }) {
+            lastReportHadContact[ifaceKey] = batchFrames.contains {
+                if case .touch(let c) = $0 { return !c.isEmpty } else { return false }
+            }
+        } else {
+            lastReportHadContact[ifaceKey] = nil
         }
         let didDeferFrames = dispatchBatch(batchFrames, reportTimestampNs: reportTimestampNs)
         // Stage-2: decode + all injection callbacks have returned; CGEvents

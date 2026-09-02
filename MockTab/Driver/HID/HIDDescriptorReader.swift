@@ -80,6 +80,27 @@ enum HIDDescriptorReader {
         var hasAnyReadableField: Bool {
             reports.values.contains(where: \.isReadable)
         }
+
+        /// True if any report declares a field carrying pen (stylus) meaning:
+        /// pressure, tilt, twist, or a barrel/eraser switch. This is what tells
+        /// a tablet's pen interface apart from its touch tunnel — the touch
+        /// interface declares contact-id/contact-count/width/height instead —
+        /// and the PTH-860 USB is the case that needs it: the pen interface
+        /// advertises a *Generic Desktop / Mouse* primary usage, so only the
+        /// descriptor contents identify it. Standard Digitizer page (0x0D) or
+        /// Wacom's vendor digitizer page (0xFF0D+); both carry these usages.
+        var declaresPenFields: Bool {
+            let penUsages: Set<UInt32> = [
+                DigitizerUsage.tipPressure, DigitizerUsage.tiltX, DigitizerUsage.tiltY,
+                DigitizerUsage.twist, DigitizerUsage.barrelSwitch, DigitizerUsage.eraserSwitch,
+            ]
+            return reports.values.contains { report in
+                report.fields.contains { field in
+                    (field.usagePage == 0x0D || field.usagePage >= 0xFF00)
+                        && penUsages.contains(field.usage)
+                }
+            }
+        }
     }
 
     static func read(_ device: IOHIDDevice) -> Parsed {

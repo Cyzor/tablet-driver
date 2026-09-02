@@ -103,7 +103,26 @@ struct DiscoveryResult: Codable {
     /// unreliable when that's true. Nil on USB, and nil if no paired device
     /// could be matched at all. Optional, so v12 readers and files still
     /// decode.
-    var captureVersion: Int = 13
+    /// 14: two changes.
+    /// (a) The top-level `reports`/`hidReportDescriptor` block now comes from
+    /// the interface whose descriptor declares pen fields (pressure/tilt/…),
+    /// not the one that attached first. On a multi-interface Wacom device
+    /// whose pen interface enumerates second and behind a Generic Desktop
+    /// primary usage — the PTH-860 over USB — v13 and earlier put the touch
+    /// tunnel's reports at the top level while the pen samples sat in
+    /// `interfaces[]`; v14 puts the pen interface there as the block's name
+    /// always implied. Single-interface captures and devices whose pen
+    /// interface already led are unchanged. `interfaces[]` still carries
+    /// every interface, so nothing is lost either way.
+    /// (b) each `DiscoveryReportSummary` gains `arrivalGaps` — a histogram of
+    /// the time between consecutive reports of that ID, plus the longest few
+    /// gaps kept whole, split by whether a touch contact was down at both
+    /// ends of the gap. A capture recorded what reports *contained* but never
+    /// when they arrived, so a stream that stalls mid-gesture left no trace;
+    /// the contact-state split then separates a real mid-gesture stall from a
+    /// finger-off pause between gestures. New field is optional, so v13
+    /// readers and files still decode.
+    var captureVersion: Int = 14
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -114,11 +133,14 @@ struct DiscoveryResult: Codable {
     let duration: TimeInterval
     let deviceInfo: DiscoveryDeviceInfo
     /// The **primary** interface's reports — the pen interface on a tablet
-    /// that has one. Duplicated from `interfaces[0]` rather than replaced by
-    /// it so a reader that predates `captureVersion` 7 (`TabletKit/tools/
-    /// triage_discovery.py` as shipped, and every capture file already
-    /// submitted against it) still finds the block it looks for, in the shape
-    /// it expects. A few KB of duplication buys that.
+    /// that has one (`captureVersion` 14+ selects it by descriptor contents,
+    /// so this holds even when the pen interface attached second or hid
+    /// behind a non-digitizer primary usage; see the version note above).
+    /// Duplicated from `interfaces[0]` rather than replaced by it so a reader
+    /// that predates `captureVersion` 7 (`TabletKit/tools/triage_discovery.py`
+    /// as shipped, and every capture file already submitted against it) still
+    /// finds the block it looks for, in the shape it expects. A few KB of
+    /// duplication buys that.
     let reports: [String: DiscoveryReportSummary]
     /// Likewise the primary interface's descriptor.
     var hidReportDescriptor: HIDDescriptorReader.Parsed?
@@ -655,6 +677,59 @@ struct DiscoveryReportSummary: Codable {
     /// capture file without it means byte 1 was constant for every sample of
     /// this report, or its own stats already told the whole story.
     var byteStatsByDiscriminator: [String: DiscoveryDiscriminatedStats]?
+    /// How long this report ID went between arrivals — `captureVersion` 14+.
+    /// `captureVersion` 13 and earlier recorded what each report *contained*
+    /// but nothing about when it arrived, so a Bluetooth stream that stalls
+    /// mid-gesture — the two-finger-scroll coast that dies because the touch
+    /// stream stopped feeding the momentum path before the finger lifted —
+    /// left no trace in the file. Present for every report ID; `nil` only for
+    /// a report that arrived exactly once (no gap to measure).
+    var arrivalGaps: DiscoveryArrivalGaps?
+}
+
+/// Inter-arrival timing for one report ID: a fixed-bucket histogram of the
+/// gaps between consecutive reports, plus the longest few kept whole with
+/// the session-elapsed time each ended at.
+///
+/// The histogram shows the *shape* of a stall — one clean multi-hundred-ms
+/// dropout reads as a single count in a high bucket, a gradual thinning as a
+/// spread across the middle buckets. The retained longest gaps show *where*:
+/// clustered at gesture ends, or scattered through the session.
+///
+/// `inGestureBuckets` / `idleBuckets` split `buckets` by whether a touch
+/// contact was down at both ends of the gap. A finger-off pause between
+/// flicks lands in `idle`; a stall while the finger stays on the tablet
+/// lands in `inGesture` — which is the one that matters for "why did the
+/// coast die". Both are nil unless the driver supplied touch state (it does
+/// for the USB touch report; not yet for the Bluetooth 0x80 wrapper, whose
+/// touch frames are packed inside it and never reach this counter as their
+/// own report — there `buckets` is wrapper-arrival cadence, not touch).
+struct DiscoveryArrivalGaps: Codable {
+    /// Upper edges of the histogram buckets, in milliseconds, copied from
+    /// `DiscoveryAccumulator.ReportStats.gapBucketEdgesMs` so a reader has
+    /// them without the source. Each bucket array is one longer — the final
+    /// slot counts everything at or above the last edge.
+    let bucketEdgesMs: [Double]
+    /// Gap count per bucket, every gap regardless of contact state.
+    /// `buckets[0]` is `< bucketEdgesMs[0]`; the last entry is
+    /// `>= bucketEdgesMs.last`.
+    let buckets: [Int]
+    /// Subset of `buckets`: gaps with a contact down at both ends — a stall
+    /// mid-gesture. Nil when no touch state was available.
+    let inGestureBuckets: [Int]?
+    /// Subset of `buckets`: gaps with no contact at one or both ends — idle
+    /// between gestures, or the lift boundary. Nil when no touch state was
+    /// available.
+    let idleBuckets: [Int]?
+    /// The longest gaps, largest first.
+    let longestGaps: [Gap]
+
+    /// One retained gap: its length and the session-elapsed time it closed at.
+    struct Gap: Codable {
+        let ms: Double
+        /// Milliseconds from session start to the arrival that ended this gap.
+        let endedAtSessionMs: Double
+    }
 }
 
 /// One discriminator-value bucket of `DiscoveryReportSummary
