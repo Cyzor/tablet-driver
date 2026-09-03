@@ -941,6 +941,8 @@ final class WacomKnownDevice: TabletDevice {
         // deferring only those two doesn't reorder anything that depends on
         // them.
         var batchFrames: [BatchedFrame] = []
+        // Device-clock stamp per batch-frame index, for frames that carry one.
+        var touchFrameStamps: [Int: UInt16] = [:]
         for result in results {
             switch result {
             case .none:
@@ -1027,6 +1029,16 @@ final class WacomKnownDevice: TabletDevice {
             case .wheel(let index, let delta):
                 onWheel?(index, delta)
             case .touch(let contacts):
+                // Device-clock stamp for this frame, if the decoder recorded
+                // one (BT 361-byte container only). Indexed by how many touch
+                // frames have been appended so far — `decodeBTTouch` appends
+                // one stamp per emitted frame, in the same order.
+                let touchIndex = batchFrames.reduce(into: 0) {
+                    if case .touch = $1 { $0 += 1 }
+                }
+                if touchIndex < state.btTouchFrameStamps.count {
+                    touchFrameStamps[batchFrames.count] = state.btTouchFrameStamps[touchIndex]
+                }
                 batchFrames.append(.touch(contacts))
             case .toolCompatibility(let message):
                 logger.info("\(name, privacy: .public): \(message, privacy: .public)")
@@ -1049,7 +1061,9 @@ final class WacomKnownDevice: TabletDevice {
         } else {
             lastReportHadContact[ifaceKey] = nil
         }
-        let didDeferFrames = dispatchBatch(batchFrames, reportTimestampNs: reportTimestampNs)
+        let didDeferFrames = dispatchBatch(
+            batchFrames, reportTimestampNs: reportTimestampNs,
+            touchFrameStamps: touchFrameStamps)
         // Stage-2: decode + all injection callbacks have returned; CGEvents
         // for this report are posted. Kernel receipt → here is the total
         // in-app pipeline cost surfaced in the diagnostics pane. Skipped when
@@ -1075,7 +1089,10 @@ final class WacomKnownDevice: TabletDevice {
     /// — `handleReport`'s own `defer` clears that static the moment this
     /// function returns, before any deferred pacer delivery can happen.
     @discardableResult
-    private func dispatchBatch(_ frames: [BatchedFrame], reportTimestampNs: UInt64) -> Bool {
+    private func dispatchBatch(
+        _ frames: [BatchedFrame], reportTimestampNs: UInt64,
+        touchFrameStamps: [Int: UInt16] = [:]
+    ) -> Bool {
         // Flush unconditionally, before anything else in this function runs —
         // including the single-frame and bypass paths below, which post
         // synchronously. A still-queued frame from an earlier report is
@@ -1161,10 +1178,47 @@ final class WacomKnownDevice: TabletDevice {
         // their real cadence to remove the burst.
         deliver(first, timestampNs: reportTimestampNs)
         let perFrameDelayNs = measuredIntervalNs / UInt64(frames.count)
+        // A touch frame's real sample time comes from the device's own clock
+        // when the decoder recorded one (BT 361-byte container). Interpolating
+        // by frame count assumes every sample in the batch is evenly spaced at
+        // one shared rate, which the pacer's own header calls an approximation
+        // — pen and touch sample at different rates. The device stamp replaces
+        // the guess for touch with the tablet's measurement.
+        //
+        // Only differences *within* this container are used, anchored to the
+        // newest stamped frame, so the 14.75 s wrap can't be reached: the
+        // whole container spans a few hundred counts. A frame whose stamp is
+        // missing, or which reads as older than the anchor by more than the
+        // batch could plausibly span, falls back to interpolation.
+        let anchor = touchFrameStamps.keys.max().flatMap { key in
+            touchFrameStamps[key].map { (index: key, stamp: $0) }
+        }
+        let maxPlausibleSpanCounts = UInt64(DecoderState.btTouchCountsPerFrame) * 16
         let scheduled: [(frame: BatchedFrame, timestampNs: UInt64)] = frames.dropFirst()
             .enumerated().map { offset, frame in
-                let framesFromEnd = UInt64(frames.count - 1 - (offset + 1))
-                return (frame, reportTimestampNs - framesFromEnd * perFrameDelayNs)
+                let index = offset + 1
+                let framesFromEnd = UInt64(frames.count - 1 - index)
+                let interpolated = reportTimestampNs - framesFromEnd * perFrameDelayNs
+                guard let anchor, let stamp = touchFrameStamps[index] else {
+                    return (frame, interpolated)
+                }
+                // Unsigned wrap on UInt16 gives the count back to this frame
+                // from the anchor without needing a signed conversion.
+                let countsBehind = UInt64(anchor.stamp &- stamp)
+                guard countsBehind <= maxPlausibleSpanCounts else {
+                    return (frame, interpolated)
+                }
+                // The anchor lands at the report's own arrival stamp. That is
+                // only correct because `IntuosV2Decoder` appends the container's
+                // touch frames after its pen frames, so the newest stamped
+                // frame is also the batch's last frame whenever touch is
+                // present. If that order ever changes, anchor to the newest
+                // frame overall instead, or stamped touch frames will be placed
+                // later than they were sampled.
+                let nsBehind = UInt64(
+                    Double(countsBehind) * DecoderState.btTouchMsPerCount * 1_000_000.0)
+                guard reportTimestampNs > nsBehind else { return (frame, interpolated) }
+                return (frame, reportTimestampNs - nsBehind)
             }
         batchFramePacer.schedule(scheduled, interval: TimeInterval(perFrameDelayNs) / 1_000_000_000.0)
         return true
