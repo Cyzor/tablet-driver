@@ -44,7 +44,18 @@ static void matchCallback(void *context, IOReturn result, void *sender,
     char nameBuf[128] = "?";
     if (name) CFStringGetCString(name, nameBuf, sizeof nameBuf, kCFStringEncodingUTF8);
     int32_t maxOut = intProp(dev, CFSTR(kIOHIDMaxOutputReportSizeKey));
-    printf("[matched] %s — MaxOutputReportSize=%d\n", nameBuf, maxOut);
+    {
+        long vid = 0, pid = 0;
+        CFNumberRef nvid = IOHIDDeviceGetProperty(dev, CFSTR(kIOHIDVendorIDKey));
+        CFNumberRef npid = IOHIDDeviceGetProperty(dev, CFSTR(kIOHIDProductIDKey));
+        if (nvid) CFNumberGetValue(nvid, kCFNumberLongType, &vid);
+        if (npid) CFNumberGetValue(npid, kCFNumberLongType, &pid);
+        /* Name the hardware in the output — a filename or a remembered PID
+           is not evidence once a file is passed along. Same
+           `[matched] <name>  vid=… pid=…` shape the other capture tools use. */
+        printf("[matched] %s  vid=0x%04lx pid=0x%04lx — MaxOutputReportSize=%d\n",
+               nameBuf, vid, pid, maxOut);
+    }
 
     IOHIDDeviceRegisterInputReportCallback(dev, reportBuf, sizeof reportBuf,
                                            inputCallback, NULL);

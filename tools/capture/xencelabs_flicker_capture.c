@@ -160,6 +160,26 @@ static void print_summary(int sig)
     exit(0);
 }
 
+/* Names the hardware in the output. This tool matched on VID alone and
+   printed only that, so a saved capture could not say which Xencelabs
+   device produced it — a filename is not evidence once a file is passed
+   along. Same `[matched] <name>  vid=… pid=…` shape the other capture tools
+   use, which tools/capture/touch_speed_summarize.py already parses. */
+static void device_matched(void *ctx, IOReturn result, void *sender,
+                            IOHIDDeviceRef device)
+{
+    char name[256] = "(unknown)";
+    CFStringRef prop = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDProductKey));
+    if (prop) CFStringGetCString(prop, name, sizeof(name), kCFStringEncodingUTF8);
+    long vid = 0, pid = 0;
+    CFNumberRef nvid = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDVendorIDKey));
+    CFNumberRef npid = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDProductIDKey));
+    if (nvid) CFNumberGetValue(nvid, kCFNumberLongType, &vid);
+    if (npid) CFNumberGetValue(npid, kCFNumberLongType, &pid);
+    printf("[matched] %s  vid=0x%04lx pid=0x%04lx\n", name, vid, pid);
+    fflush(stdout);
+}
+
 int main(int argc, char **argv)
 {
     mach_timebase_info(&timebase);
@@ -185,6 +205,7 @@ int main(int argc, char **argv)
     IOHIDManagerSetDeviceMatching(mgr, match);
     CFRelease(match);
 
+    IOHIDManagerRegisterDeviceMatchingCallback(mgr, device_matched, NULL);
     IOHIDManagerRegisterInputReportCallback(mgr, report_cb, NULL);
     IOHIDManagerScheduleWithRunLoop(mgr, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
     IOReturn r = IOHIDManagerOpen(mgr, kIOHIDOptionsTypeNone);

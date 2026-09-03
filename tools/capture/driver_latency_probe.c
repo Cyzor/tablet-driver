@@ -72,13 +72,28 @@ static void report_cb(void *ctx, IOReturn result, void *sender,
     g_report_count++;
 }
 
+/* Reads this device's VID/PID so every capture names the hardware it came
+   from. A filename or a remembered PID is not evidence: two tablets in one
+   session, or a file passed along later, both lose that context. Printed in
+   the same `[matched] <name>  vid=… pid=…` shape the other capture tools
+   use, which tools/capture/touch_speed_summarize.py already parses. */
+static void print_matched(IOHIDDeviceRef device, const char *name, const char *suffix)
+{
+    long vid = 0, pid = 0;
+    CFNumberRef nvid = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDVendorIDKey));
+    CFNumberRef npid = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDProductIDKey));
+    if (nvid) CFNumberGetValue(nvid, kCFNumberLongType, &vid);
+    if (npid) CFNumberGetValue(npid, kCFNumberLongType, &pid);
+    printf("[matched] %s  vid=0x%04lx pid=0x%04lx — %s\n", name, vid, pid, suffix);
+}
+
 static void device_matched(void *ctx, IOReturn result, void *sender,
                             IOHIDDeviceRef device)
 {
     char name[256] = "(unknown)";
     CFStringRef prop = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDProductKey));
     if (prop) CFStringGetCString(prop, name, sizeof(name), kCFStringEncodingUTF8);
-    printf("[matched] %s — registering timestamped report callback\n", name);
+    print_matched(device, name, "registering timestamped report callback");
     fflush(stdout);
 
     static uint8_t buf[512];
