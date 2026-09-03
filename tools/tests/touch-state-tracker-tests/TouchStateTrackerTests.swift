@@ -669,6 +669,119 @@ private func testBurstFrameDoesNotPoisonReleaseVelocity() {
     }
 }
 
+/// A Bluetooth delivery stall right before lift — frames stop arriving for
+/// ~200 ms while the finger keeps flicking — must still coast. The plain
+/// recency gate would see "no motion in 200 ms" and suppress it as a brake;
+/// the gap-tolerant path recognises `frameGap ≈ motionGap` (both grew, so
+/// frames stopped, not the finger) and seeds from the last good pre-stall
+/// sample. This is the `project_bt_scroll_stuck_and_nocoast` bug B fix.
+private func testDeliveryGapStillCoasts() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweepPan(offset: 0), at: 0.01)
+    // Fast flick: 60 pts / 20 ms = 3000 pts/s, sustained.
+    _ = panProcess(&tracker, sweepPan(offset: 60), at: 0.03)
+    _ = panProcess(&tracker, sweepPan(offset: 120), at: 0.05)
+    _ = panProcess(&tracker, sweepPan(offset: 180), at: 0.07)
+    // Delivery stall: next frame is the lift, 200 ms later. No frames in
+    // between — frameGap and motionGap both ≈ 0.2s.
+    _ = panProcess(&tracker, [], at: 0.27)
+    let v = tracker.releaseVelocity
+    checks += 1
+    if hypot(v.dx, v.dy) < 1000 {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: a delivery-gap lift lost the coast — got \(v)\n".utf8))
+    }
+    checks += 1
+    if !tracker.releaseSuppressedByRecency {
+        // releaseSuppressedByRecency should be false here — the coast fired.
+    } else {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: delivery gap still flagged as recency-suppressed\n".utf8))
+    }
+}
+
+/// A *short* flick into a delivery stall: 3 frames of decelerating motion
+/// (fast then easing), then a 200 ms stall, then lift. Under a peak-over-the-
+/// widened-window seed this would pick the fastest early frame; the coast
+/// should instead seed from the newest good sample — how fast the finger was
+/// actually moving when reports stopped — which on a decelerating flick is
+/// slower than the peak. Guards the delivery-gap branch's newest-non-zero
+/// rule against regressing to `peak`.
+private func testShortDeliveryGapSeedsFromNewestNotPeak() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweepPan(offset: 0), at: 0.01)
+    // Frame 1: 90 pts / 15 ms = 6000 pts/s (the peak).
+    _ = panProcess(&tracker, sweepPan(offset: 90), at: 0.025)
+    // Frame 2: 45 pts / 15 ms = 3000 pts/s (easing).
+    _ = panProcess(&tracker, sweepPan(offset: 135), at: 0.040)
+    // Frame 3: 15 pts / 15 ms = 1000 pts/s (nearly stopped — the release speed).
+    _ = panProcess(&tracker, sweepPan(offset: 150), at: 0.055)
+    // 200 ms stall, then lift.
+    _ = panProcess(&tracker, [], at: 0.255)
+    let mag = hypot(tracker.releaseVelocity.dx, tracker.releaseVelocity.dy)
+    checks += 1
+    // It must still coast (not zero), but seeded from ~1000, not the ~6000
+    // peak. Anything at/above the peak means it regressed to max-over-window.
+    if mag < 200 || mag > 3500 {
+        failures += 1
+        let msg = "FAIL: short delivery-gap flick seeded wrong — got \(mag) pts/s "
+            + "(want ~1000, the newest sample, not ~6000 the peak)\n"
+        FileHandle.standardError.write(Data(msg.utf8))
+    }
+}
+
+/// A deliberate brake — fingers held still on the surface for 200 ms, frames
+/// still arriving the whole time — must still suppress the coast. Here only
+/// `motionGap` grows; `frameGap` stays at the frame cadence, so the
+/// gap-tolerant path does not fire and the recency gate zeroes the velocity.
+private func testDeliberateBrakeStillSuppresses() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweepPan(offset: 0), at: 0.01)
+    _ = panProcess(&tracker, sweepPan(offset: 60), at: 0.03)
+    _ = panProcess(&tracker, sweepPan(offset: 120), at: 0.05)
+    // Fingers stop but stay down — frames keep coming at ~15 ms cadence,
+    // same position, for 200 ms.
+    var t = 0.065
+    while t < 0.25 {
+        _ = panProcess(&tracker, sweepPan(offset: 120), at: t)
+        t += 0.015
+    }
+    _ = panProcess(&tracker, [], at: 0.26)
+    let v = tracker.releaseVelocity
+    checks += 1
+    if hypot(v.dx, v.dy) > 1 {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: a deliberate brake still coasted — got \(v)\n".utf8))
+    }
+}
+
+/// A gap longer than `releaseGapPlausibleMax` (1 s) — the ~1 Hz Bluetooth
+/// housekeeping event, or true inter-gesture idle — must NOT be treated as a
+/// recoverable delivery stall: `frameGap` reads -1 there, so `deliveryGap`
+/// is false and the normal recency gate applies.
+private func testTooLongGapDoesNotCoast() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = panProcess(&tracker, sweepPan(offset: 0), at: 0.01)
+    _ = panProcess(&tracker, sweepPan(offset: 60), at: 0.03)
+    _ = panProcess(&tracker, sweepPan(offset: 120), at: 0.05)
+    // Lift 1.4 s later — past releaseGapPlausibleMax.
+    _ = panProcess(&tracker, [], at: 1.45)
+    let v = tracker.releaseVelocity
+    checks += 1
+    if hypot(v.dx, v.dy) > 1 {
+        failures += 1
+        FileHandle.standardError.write(
+            Data("FAIL: a >1s gap was treated as a recoverable stall — got \(v)\n".utf8))
+    }
+}
+
 /// Backstop clear (same finger still down past `scrollWoundDownBackstop`) must
 /// resume as a plain pointer, never re-arm the tap clock — otherwise
 /// pan → lift-one → rest → lift fires a phantom click with tap-to-click on.
@@ -1513,6 +1626,10 @@ enum TouchStateTrackerTestRunner {
         testPanWindDownClearsWithoutEmptyFrame()
         testPanWindDownBackstopDoesNotFireTap()
         testBurstFrameDoesNotPoisonReleaseVelocity()
+        testDeliveryGapStillCoasts()
+        testShortDeliveryGapSeedsFromNewestNotPeak()
+        testDeliberateBrakeStillSuppresses()
+        testTooLongGapDoesNotCoast()
         testPreCommitLiftHasNoScrollEnd()
         testSingleContactFrameDoesNotCommitPan()
         testNewTouchAfterLiftDoesNotJumpFromOldPosition()

@@ -631,6 +631,14 @@ struct TouchStateTracker {
     /// (the ending frame arriving with the next touch), not a within-gesture
     /// stall — the release-gap diagnostics record -1 instead.
     static let releaseGapPlausibleMax: CFAbsoluteTime = 1.0
+    /// How close `frameGap` and `motionGap` must be, at a scroll release, to
+    /// call it a delivery gap (frames stopped arriving) rather than a
+    /// deliberate brake (frames kept coming, finger held still). On a healthy
+    /// USB release the two differ by ~10 ms of ordinary jitter (measured:
+    /// 0.0101 vs 0.0200); a Bluetooth delivery stall makes them identical to
+    /// the digit. 30 ms clears the jitter and still separates every observed
+    /// stall. See `releaseKinematics`.
+    static let deliveryGapBrakeSlack: CFAbsoluteTime = 0.030
     /// Maximum hold duration for a two-finger contact to still count as a
     /// Smart Zoom tap rather than a rest. Deliberately does *not* need a
     /// separate max-deviation check: a still-`.undecided` teardown already
@@ -865,29 +873,15 @@ struct TouchStateTracker {
                 releaseFrameGap = frameGapAtDrop
                 releaseMotionGap = motionGapAtDrop
             } else if priorMode == .scroll {
-                let peak = recentVelocities
-                    .filter { now - $0.time <= Self.peakVelocityWindow }
-                    .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
-                let braked = now - lastMotionTime > Self.momentumRecencyWindow
-                releaseVelocity = braked ? .zero : peak
-                releaseSuppressedByRecency = braked && (peak.dx != 0 || peak.dy != 0)
-                // The `contacts.isEmpty` frame that ends a scroll can arrive
-                // seconds later, bundled with the *next* touch's first contact —
-                // touch reports don't stream while nothing is on the surface.
-                // A gap beyond `releaseGapPlausibleMax` is that inter-gesture
-                // idle, not a within-gesture stall; record -1 (undefined)
-                // rather than poisoning the diagnostic with idle time.
-                let frameGap = lastFrameTime == 0 ? -1 : now - lastFrameTime
-                let motionGap = lastMotionTime == 0 ? -1 : now - lastMotionTime
-                releaseFrameGap = frameGap > Self.releaseGapPlausibleMax ? -1 : frameGap
-                releaseMotionGap = motionGap > Self.releaseGapPlausibleMax ? -1 : motionGap
+                let k = releaseKinematics(now: now)
+                releaseVelocity = k.velocity
+                releaseSuppressedByRecency = k.suppressedByRecency
+                releaseFrameGap = k.frameGap
+                releaseMotionGap = k.motionGap
             } else {
-                let peak = recentVelocities
-                    .filter { now - $0.time <= Self.peakVelocityWindow }
-                    .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
-                let braked = now - lastMotionTime > Self.momentumRecencyWindow
-                releaseVelocity = braked ? .zero : peak
-                releaseSuppressedByRecency = braked && (peak.dx != 0 || peak.dy != 0)
+                let k = releaseKinematics(now: now)
+                releaseVelocity = k.velocity
+                releaseSuppressedByRecency = k.suppressedByRecency
             }
             reset()
             switch priorMode {
@@ -1089,22 +1083,14 @@ struct TouchStateTracker {
                         // right now. Snapshot the flick velocity *and* the
                         // frame/motion gaps here; the wind-down below fires too
                         // late for any of it to be recomputed meaningfully.
+                        // `dt` is this frame's real spacing (`lastFrameTime`
+                        // was reassigned to `now` earlier this frame).
                         scrollDroppedToOneContactAt = now
-                        let peak = recentVelocities
-                            .filter { now - $0.time <= Self.peakVelocityWindow }
-                            .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
-                        let braked = now - lastMotionTime > Self.momentumRecencyWindow
-                        scrollVelocityAtDrop = braked ? .zero : peak
-                        suppressedByRecencyAtDrop = braked && (peak.dx != 0 || peak.dy != 0)
-                        // `dt` is this frame's real spacing from the previous
-                        // one (`lastFrameTime` was reassigned to `now` above,
-                        // so recomputing here would read ~0). Cap idle gaps to
-                        // -1 as on the isEmpty path.
-                        frameGapAtDrop = dt > Self.releaseGapPlausibleMax ? -1 : dt
-                        // `lastMotionTime == 0` means the scroll never had a
-                        // moving frame — the gap is undefined, not enormous.
-                        let mGap = lastMotionTime == 0 ? -1 : now - lastMotionTime
-                        motionGapAtDrop = mGap > Self.releaseGapPlausibleMax ? -1 : mGap
+                        let k = releaseKinematics(now: now, frameGapOverride: dt)
+                        scrollVelocityAtDrop = k.velocity
+                        suppressedByRecencyAtDrop = k.suppressedByRecency
+                        frameGapAtDrop = k.frameGap
+                        motionGapAtDrop = k.motionGap
                     }
                     if now - scrollDroppedToOneContactAt >= Self.scrollSingleContactGrace {
                         let priorPhase = lastScrollPhase
@@ -1610,6 +1596,83 @@ struct TouchStateTracker {
         let sx = points.reduce(0) { $0 + $1.x } / n
         let sy = points.reduce(0) { $0 + $1.y } / n
         return CGPoint(x: sx, y: sy)
+    }
+
+    /// The release kinematics for a scroll gesture ending *now*: the flick
+    /// velocity to seed a coast with, whether the recency gate suppressed it,
+    /// and the frame/motion gaps for diagnostics.
+    ///
+    /// Called from all three scroll-release sites (all-fingers-lifted, the
+    /// 2→1 contact drop, and the wind-down snapshot) so the brake-vs-delivery-
+    /// gap logic lives in one place.
+    ///
+    /// The plain recency gate — "no motion within `momentumRecencyWindow`
+    /// ⇒ deliberate brake ⇒ no coast" — is right when frames kept arriving
+    /// and the finger held still. It is *wrong* when frames simply stopped
+    /// arriving: a Bluetooth touch stream stalls 100–500 ms mid-flick
+    /// (measured, `project_bt_scroll_stuck_and_nocoast`), the finger was
+    /// still moving fast the whole time, and the user lifts expecting a
+    /// coast. The two cases are told apart by the gaps: a brake keeps
+    /// `frameGap` small while `motionGap` grows; a delivery stall grows both
+    /// together. When they track (within `deliveryGapBrakeSlack`) and the gap
+    /// is a plausible within-gesture stall (≤ `releaseGapPlausibleMax`), widen
+    /// the velocity window and skip the recency gate so the last good
+    /// pre-stall sample seeds the coast. A too-long gap (≥ 1 s — the ~1 Hz
+    /// Bluetooth housekeeping event, or true inter-gesture idle) is left to
+    /// the normal path: `frameGap` reads -1 there and `deliveryGap` is false.
+    /// - Parameter frameGapOverride: the true spacing from the previous frame,
+    ///   for the 2→1-drop caller which has already reassigned `lastFrameTime`
+    ///   to `now` before reaching here (so `now - lastFrameTime` would read
+    ///   ~0). Every other caller omits it.
+    private func releaseKinematics(
+        now: CFAbsoluteTime, frameGapOverride: CFAbsoluteTime? = nil
+    ) -> (velocity: CGVector, suppressedByRecency: Bool,
+          frameGap: CFAbsoluteTime, motionGap: CFAbsoluteTime) {
+        let rawFrameGap = frameGapOverride ?? (lastFrameTime == 0 ? -1 : now - lastFrameTime)
+        let rawMotionGap = lastMotionTime == 0 ? -1 : now - lastMotionTime
+        let frameGap = rawFrameGap > Self.releaseGapPlausibleMax ? -1 : rawFrameGap
+        let motionGap = rawMotionGap > Self.releaseGapPlausibleMax ? -1 : rawMotionGap
+
+        let deliveryGap =
+            frameGap > 0 && motionGap > 0
+            && abs(frameGap - motionGap) <= Self.deliveryGapBrakeSlack
+
+        let seed: CGVector
+        if deliveryGap {
+            // On a delivery stall the surviving samples are all from the
+            // ≤`peakVelocityWindow` slice right before reports stopped —
+            // pruning ran on the last frame that arrived, and the stall
+            // delivered no more. Taking the *fastest* of that slice is the
+            // wrong question: on a short flick it lands on a mid-stroke peak
+            // and the coast overshoots. What the coast wants is how fast the
+            // finger was moving when the stream cut out — the newest non-zero
+            // sample. (A long steady flick's newest and fastest samples are
+            // the same plateau value, so this only changes short flicks.)
+            // The `+ frameGap` on the filter is a safety margin: normally the
+            // array already excludes anything older, but if a caller reaches
+            // here with samples that outlived a prune, don't silently drop
+            // the very sample we're after.
+            seed = recentVelocities
+                .filter {
+                    now - $0.time <= Self.peakVelocityWindow + frameGap
+                        && ($0.v.dx != 0 || $0.v.dy != 0)
+                }
+                .last?.v ?? .zero
+        } else {
+            // Normal release: a brief flick's fastest sample may not be its
+            // last, so take the peak over the recency window (matches
+            // `PanScrollTracker`).
+            seed = recentVelocities
+                .filter { now - $0.time <= Self.peakVelocityWindow }
+                .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
+        }
+        let braked = !deliveryGap && now - lastMotionTime > Self.momentumRecencyWindow
+
+        return (
+            velocity: braked ? .zero : seed,
+            suppressedByRecency: braked && (seed.dx != 0 || seed.dy != 0),
+            frameGap: frameGap,
+            motionGap: motionGap)
     }
 
     private static func distance(between contacts: [(id: Int, screen: CGPoint)]) -> Double {
