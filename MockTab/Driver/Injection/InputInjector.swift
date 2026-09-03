@@ -1013,6 +1013,10 @@ final class InputInjector: @unchecked Sendable {
     var touchSequenceSawPinch = false
     var touchSequenceSawRotate = false
     var touchSequenceBothCounted = false
+    /// Owned cursor position for relative touch pointer motion — see
+    /// `postTouchPointerMove`. `nil` between sequences; seeded from the OS on
+    /// the first move of a sequence.
+    var touchOwnedPointerPosition: CGPoint?
     /// Wall-clock time `injectTouch` last ran with contacts, for the
     /// sub-millisecond-gap diagnostic (`DiscoveryTouchPipeline.subMillisecondDtFrames`)
     /// that flags a batched-Bluetooth burst delivering frames faster than the

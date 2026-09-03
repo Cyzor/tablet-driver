@@ -88,6 +88,7 @@ extension InputInjector {
         if penBusy {
             TouchPipelineProbe.note { $0.noteTouchPenBusy() }
             touchPalmRejector.reset()
+            touchOwnedPointerPosition = nil
             // Wind down whenever a gesture is live, regardless of whether this
             // particular frame carried contacts. The empty-contacts frame *is*
             // the lift signal, and gating the wind-down behind
@@ -251,6 +252,7 @@ extension InputInjector {
             touchSequenceSawPinch = false
             touchSequenceSawRotate = false
             touchSequenceBothCounted = false
+            touchOwnedPointerPosition = nil
         } else if projected.count >= 2 {
             touchSequenceSawTwoFingers = true
         }
@@ -377,6 +379,7 @@ extension InputInjector {
             postTouchPointerMove(dx: dx, dy: dy)
         case .pointerWarp(let target):
             TouchPipelineProbe.note { $0.pointerMoves += 1 }
+            touchOwnedPointerPosition = nil
             postTouchPointerWarp(to: target)
         case .scrollDelta(let dx, let dy, let phase):
             TouchPipelineProbe.note { $0.scrolls += 1 }
@@ -452,14 +455,30 @@ extension InputInjector {
             TouchPipelineProbe.note { $0.zooms += 1 }
             postTouchSmartZoom()
         case .tapClick:
+            touchOwnedPointerPosition = nil
             TouchPipelineProbe.note { $0.taps += 1 }
             postTouchTapClick(snapshot: snap, settings: settings)
         }
     }
 
+    /// Relative motion accumulates on an owned float position, never on a
+    /// per-frame OS readback: at ~100 Hz the readback races WindowServer's
+    /// async commit of the previous post, so consecutive frames add their
+    /// deltas to the same stale base and only the last one lands — slow
+    /// sweeps fall short of the screen edge (issue #13). Same defect and
+    /// same fix as `DisplayMapper.ownedRelativePosition` for pen relative
+    /// mode. Seeded from the OS once per sequence and cleared wherever
+    /// something else moves the cursor: sequence end, pen priority, an
+    /// absolute warp, a tap. Pinned here as well as in the warp so the owned
+    /// copy can't run off-screen and then need "catching up" on reversal.
     private func postTouchPointerMove(dx: Double, dy: Double) {
-        let loc = currentCursorPosition()
-        postTouchPointerWarp(to: CGPoint(x: loc.x + dx, y: loc.y + dy))
+        let base = touchOwnedPointerPosition ?? currentCursorPosition()
+        var target = CGPoint(x: base.x + dx, y: base.y + dy)
+        if let snap = injectionSnapshot {
+            target = Self.pinNearScreenEdges(target, in: displayMapper.displayBounds(for: snap))
+        }
+        touchOwnedPointerPosition = target
+        postTouchPointerWarp(to: target)
     }
 
     /// Shared by both touch pointer intents: `.pointerMove` (relative mode)
