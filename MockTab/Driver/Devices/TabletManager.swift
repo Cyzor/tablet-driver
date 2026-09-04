@@ -363,8 +363,14 @@ final class TabletManager: ObservableObject {
         guard !hidManagerOpen else { return true }
         let ret = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
         hidManagerOpen = (ret == kIOReturnSuccess)
+        // .notice, not .info: this fires at most once per launch and only on a
+        // state change, and it's the difference between a working tablet and a
+        // row that says Granted over a dead one — exactly what a support dump
+        // needs to show. .info wouldn't survive to the log store.
         if hidManagerOpen {
-            logger.info("TabletManager: HID manager opened on retry after permission grant.")
+            logger.notice("TabletManager: HID manager opened on retry after permission grant.")
+        } else {
+            logger.notice("TabletManager: HID manager retry failed (\(ret, privacy: .public)) despite Input Monitoring being granted.")
         }
         return hidManagerOpen
     }
