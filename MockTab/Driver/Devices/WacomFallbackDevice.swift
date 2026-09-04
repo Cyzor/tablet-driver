@@ -46,7 +46,7 @@ final class WacomFallbackDevice: TabletDevice {
     let spec: DigitizerSpec
 
     /// Parsed HID report descriptor, captured once at init for diagnostic display.
-    let parsedDescriptor: HIDDescriptorReader.Parsed
+    let parsedDescriptor: LiveHIDDescriptorInspector.Parsed
 
     private let device: IOHIDDevice
     private let onTablet: (TabletPoint) -> Void
@@ -150,7 +150,7 @@ final class WacomFallbackDevice: TabletDevice {
         spec = Self.querySpec(device: device, family: family)
         // Two reads of the same descriptor: the parsed field model for
         // diagnostic display, and the raw hex for decoder derivation.
-        parsedDescriptor = HIDDescriptorReader.read(device)
+        parsedDescriptor = LiveHIDDescriptorInspector.read(device)
         penDecoders = Self.derivePenDecoders(from: device)
     }
 
@@ -322,7 +322,7 @@ final class WacomFallbackDevice: TabletDevice {
         let maxX = spec.maxX; let maxY = spec.maxY; let maxP = spec.maxPressure
         logger.info("\(t, privacy: .public): generic driver attached (\(familyName, privacy: .public), maxX=\(maxX, privacy: .public) maxY=\(maxY, privacy: .public) maxP=\(maxP, privacy: .public))")
 
-        let summary = HIDDescriptorReader.summarize(parsedDescriptor)
+        let summary = LiveHIDDescriptorInspector.summarize(parsedDescriptor)
         logger.info("\(t, privacy: .public):\n\(summary, privacy: .public)")
     }
 

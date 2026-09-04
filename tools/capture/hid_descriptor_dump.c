@@ -1,7 +1,7 @@
 /*
  * hid_descriptor_dump.c — dump a device's parsed HID report descriptor.
  *
- * Mirrors MockTab/Driver/HID/HIDDescriptorReader.swift's element walk (usage
+ * Mirrors MockTab/Driver/HID/LiveHIDDescriptorInspector.swift's element walk (usage
  * page / usage / size / count per field, grouped by report ID + direction),
  * so we can see exactly what the app's descriptor-driven logic would see,
  * without building the app. Read-only: does not open the device, so it's

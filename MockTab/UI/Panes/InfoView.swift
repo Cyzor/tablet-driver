@@ -730,7 +730,7 @@ struct InfoView: View {
         if let fallback = fallbackDevice {
             lines += [""]
             lines += ["─── HID Report Descriptor (fallback driver) ───"]
-            lines += [HIDDescriptorReader.summarize(fallback.parsedDescriptor)]
+            lines += [LiveHIDDescriptorInspector.summarize(fallback.parsedDescriptor)]
             if let hex = fallback.parsedDescriptor.rawHex {
                 lines += [""]
                 lines += ["Raw bytes:"]

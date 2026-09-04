@@ -1,12 +1,12 @@
 #!/bin/sh
 # Compile and run the HID descriptor readability checks against the real source file.
 # The app has no XCTest target, so this builds a small executable from
-# HIDDescriptorReader.swift plus the test main and runs it. Exits non-zero on failure.
+# LiveHIDDescriptorInspector.swift plus the test main and runs it. Exits non-zero on failure.
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/HID/HIDDescriptorReader.swift"
+SRC="$ROOT/MockTab/Driver/HID/LiveHIDDescriptorInspector.swift"
 TEST="$DIR/DescriptorOpacityTests.swift"
 T="$(mktemp -d)"
 BIN="$T/descriptor-opacity-tests"

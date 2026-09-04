@@ -759,7 +759,7 @@ struct CaptureGuideView: View {
         let productString = IOHIDDeviceGetProperty(dev, kIOHIDProductKey as CFString) as? String
         let locationID   = (IOHIDDeviceGetProperty(dev, kIOHIDLocationIDKey  as CFString) as? Int)
             .map { String(format: "0x%08X", $0) }
-        let parsed = HIDDescriptorReader.read(dev)
+        let parsed = LiveHIDDescriptorInspector.read(dev)
 
         let registryName =
             vendorID == Self.wacomVendorID

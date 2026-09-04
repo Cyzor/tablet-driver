@@ -581,7 +581,7 @@ final class CaptureEngine: ObservableObject {
     ///   interfaces that `WacomKnownDevice`'s `sender`-based routing fixed.
     private static func reportSummaries(
         _ reports: [UInt8: DiscoveryAccumulator.ReportStats],
-        descriptor: HIDDescriptorReader.Parsed?
+        descriptor: LiveHIDDescriptorInspector.Parsed?
     ) -> [String: DiscoveryReportSummary] {
         var reportSummaries: [String: DiscoveryReportSummary] = [:]
 

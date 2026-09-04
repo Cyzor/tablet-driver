@@ -2,14 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// DescriptorOpacityTests.swift — Standalone checks for HIDDescriptorReader's
+// DescriptorOpacityTests.swift — Standalone checks for LiveHIDDescriptorInspector's
 // readability primitive, against three real hardware captures:
 //   - Wacom CTH-690:        Notes/Scratch/Discovery-Data-Caputure/mocktab_discovery_0x033E_20260703_004619.json
 //   - Wacom Intuos5 touch L: Notes/Scratch/Discovery-Data-Caputure/descriptor_wacom_intuos5touch_0x0028_20260717.txt
 //   - Xencelabs (pen + Quick Keys interfaces): Notes/Scratch/Discovery-Data-Caputure/descriptor_xencelabs_0x28bd_20260717.txt
 //
 // The app has no XCTest target (by design — see the project's test conventions),
-// so this runs as a small executable compiled against the real HIDDescriptorReader.swift.
+// so this runs as a small executable compiled against the real LiveHIDDescriptorInspector.swift.
 // Run via tools/tests/descriptor-opacity-tests/run.sh. Exits non-zero on the first failure.
 
 import Foundation
@@ -30,8 +30,8 @@ private func expect(_ condition: Bool, _ message: @autoclosure () -> String,
 
 // MARK: - Field fixture helper
 
-private func field(page: UInt32, usage: UInt32) -> HIDDescriptorReader.Field {
-    HIDDescriptorReader.Field(
+private func field(page: UInt32, usage: UInt32) -> LiveHIDDescriptorInspector.Field {
+    LiveHIDDescriptorInspector.Field(
         usagePage: page, usage: usage, bitSize: 8, reportCount: 1,
         logicalMin: 0, logicalMax: 255, physicalMin: 0, physicalMax: 0,
         unit: 0, unitExponent: 0)
@@ -41,8 +41,8 @@ private func field(page: UInt32, usage: UInt32) -> HIDDescriptorReader.Field {
 
 /// Wacom CTH-690, USB 0x056A:0x033E — both input reports live entirely on a
 /// vendor-defined page. The obvious opacity case.
-private func cth690() -> HIDDescriptorReader.Parsed {
-    let reports: [String: HIDDescriptorReader.ReportLayout] = [
+private func cth690() -> LiveHIDDescriptorInspector.Parsed {
+    let reports: [String: LiveHIDDescriptorInspector.ReportLayout] = [
         "input:0x02": .init(reportID: 0x02, direction: .input,
                              fields: [field(page: 0xFF00, usage: 0x01)]),
         "input:0x03": .init(reportID: 0x03, direction: .input,
@@ -54,8 +54,8 @@ private func cth690() -> HIDDescriptorReader.Parsed {
 /// Wacom Intuos5 touch L, USB 0x056A:0x0028 — pen/touch reports sit on the
 /// *correct* Digitizer page (0x0D) but every usage code is 0x00 (undefined).
 /// The trap: page alone says "Digitizer," usage says "meaningless."
-private func intuos5TouchL() -> HIDDescriptorReader.Parsed {
-    let reports: [String: HIDDescriptorReader.ReportLayout] = [
+private func intuos5TouchL() -> LiveHIDDescriptorInspector.Parsed {
+    let reports: [String: LiveHIDDescriptorInspector.ReportLayout] = [
         // Readable: standard button/X/Y/wheel report.
         "input:0x01": .init(reportID: 0x01, direction: .input, fields: [
             field(page: 0x09, usage: 0x01),
@@ -84,8 +84,8 @@ private func intuos5TouchL() -> HIDDescriptorReader.Parsed {
 /// Generic-Desktop usages; a separate interface opaques its LED/OLED control
 /// channel behind a vendor-defined page. Opacity here is scoped to one channel,
 /// not the whole device.
-private func xencelabsPenDisplay() -> HIDDescriptorReader.Parsed {
-    let reports: [String: HIDDescriptorReader.ReportLayout] = [
+private func xencelabsPenDisplay() -> LiveHIDDescriptorInspector.Parsed {
+    let reports: [String: LiveHIDDescriptorInspector.ReportLayout] = [
         "input:0x07": .init(reportID: 0x07, direction: .input, fields: [
             field(page: 0x0D, usage: 0x42), // TipSwitch
             field(page: 0x0D, usage: 0x44), // BarrelSwitch

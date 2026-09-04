@@ -143,7 +143,7 @@ struct DiscoveryResult: Codable {
     /// duplication buys that.
     let reports: [String: DiscoveryReportSummary]
     /// Likewise the primary interface's descriptor.
-    var hidReportDescriptor: HIDDescriptorReader.Parsed?
+    var hidReportDescriptor: LiveHIDDescriptorInspector.Parsed?
     /// Every interface recorded, primary first — present only when there was
     /// more than one, so single-interface captures (the overwhelming majority)
     /// stay byte-for-byte the shape they always were.
@@ -585,7 +585,7 @@ struct DiscoveryInterface: Codable {
     let reports: [String: DiscoveryReportSummary]
     /// This interface's own descriptor — the one every `descriptorReadable`
     /// flag in `reports` above was judged against.
-    var hidReportDescriptor: HIDDescriptorReader.Parsed?
+    var hidReportDescriptor: LiveHIDDescriptorInspector.Parsed?
 }
 
 struct DiscoveryDeviceInfo: Codable {
@@ -646,7 +646,7 @@ struct DiscoveryReportSummary: Codable {
     /// took more than one value, plus every optional position.
     var byteStats: [Int: DiscoveryByteStat]?
     /// Whether the HID report descriptor exposes at least one standard-usage
-    /// field for this report ID (see `HIDDescriptorReader.Field.isReadable`).
+    /// field for this report ID (see `LiveHIDDescriptorInspector.Field.isReadable`).
     /// `false` flags a report whose bytes vary (real signal, per the above
     /// fields) but whose meaning is opaque from the descriptor alone — the
     /// triage-relevant case, since those bytes need a captured-sample
@@ -791,7 +791,7 @@ struct CaptureDeviceInfo {
     let locationID: String?
     var manufacturer: String? = nil
     var transport: String? = nil
-    var parsedDescriptor: HIDDescriptorReader.Parsed? = nil
+    var parsedDescriptor: LiveHIDDescriptorInspector.Parsed? = nil
     /// HID primary usage page/usage of the specific interface this describes.
     /// Every field above is a property of the *tablet* and is identical across
     /// its interfaces; these two are what tell them apart in the capture file.

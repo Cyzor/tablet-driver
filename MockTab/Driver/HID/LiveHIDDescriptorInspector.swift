@@ -16,7 +16,7 @@ import TabletKit
 ///
 /// Bit offsets within a report are not computed: IOKit doesn't expose a stable
 /// per-report ordering, and the raw bytes preserve the layout for offline tools.
-enum HIDDescriptorReader {
+enum LiveHIDDescriptorInspector {
 
     struct Field: Codable {
         let usagePage: UInt32
