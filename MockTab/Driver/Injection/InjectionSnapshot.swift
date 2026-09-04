@@ -5,6 +5,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import TabletKit
 
 /// Immutable, value-typed projection of every TabletSettings/ToolSettings field that
 /// `InputInjector.inject()` (and its callees) reads on the per-report hot path.

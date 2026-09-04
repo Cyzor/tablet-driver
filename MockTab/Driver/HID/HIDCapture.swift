@@ -5,6 +5,7 @@
 import Foundation
 import OSLog
 import os
+import TabletKit
 
 private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "capture")
 

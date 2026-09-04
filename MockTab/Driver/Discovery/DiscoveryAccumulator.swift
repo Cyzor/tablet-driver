@@ -4,6 +4,7 @@
 
 import Foundation
 import os
+import TabletKit
 
 // MARK: - Byte value set
 

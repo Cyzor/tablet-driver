@@ -4,6 +4,7 @@
 
 import Foundation
 import os
+import TabletKit
 
 /// Counts what each stage of the touch injection pipeline did with the
 /// contacts handed to it, for inclusion in a discovery capture.

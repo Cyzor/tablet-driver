@@ -4,6 +4,7 @@
 
 import CoreGraphics
 import Foundation
+import TabletKit
 
 /// `kCGMomentumScrollPhase` values (distinct from and mutually exclusive with
 /// the `kCGScrollPhase` lifecycle that brackets a live gesture).
