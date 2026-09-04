@@ -83,7 +83,15 @@ Press any button while the window is open to highlight its position; this helps 
 
 ## Touch Ring and Dial
 
-Rings, dials, and touch strips support multiple mode slots. Each mode appears as a one-line summary; click a mode row — or its wedge in the diagram beside the list — to open its settings in place: the action, its speed, and the shortcuts for each direction. Assign Touch Ring Mode → **Cycle** to a button to step through modes, or **Jump to Mode** to jump directly to a specific mode.
+Rings, dials, and touch strips support multiple mode slots. Each mode appears as a one-line summary; click a mode row — or its wedge in the diagram beside the list — to open its settings in place. Assign Touch Ring Mode → **Cycle** to a button to step through modes, or **Jump to Mode** to jump directly to a specific mode.
+
+**Scroll** – Turns the ring or dial into a scroll wheel. Speed is a multiplier, where 1× gives one scroll line per step.
+
+**Zoom** and **Rotate** – Magnify and swivel the canvas, the way a trackpad pinch or twist does, instead of repeating a keyboard shortcut. At full speed, one turn of the ring takes the canvas all the way around. Support varies by app.
+
+**Key** – Sends a keyboard shortcut for each direction.
+
+Zoom and Rotate show a speed from Off to Max rather than a number.
 
 ## Lighting
 
@@ -113,11 +121,11 @@ Tablets with a capacitive touch surface report finger contacts alongside pen inp
 
 **Pinch to zoom** – Spread or pinch two fingers to zoom.
 
-**Rotate** – Place two fingers on the tablet and twist either clockwise or counter-clockwise to rotate the view.
+**Rotate** – Place two fingers well apart on the tablet and swivel them about their center. Scroll, pinch, and rotate read the same two-finger gesture in different ways.
 
 **Reverse direction** – On: content moves opposite to finger motion, like a conventional mouse wheel.
 
-**Momentum Scrolling** – Two-finger scroll coasts briefly after you lift your fingers, the same as trackpad inertia. Response varies by app.
+**Momentum Scrolling** – Two-finger scroll coasts briefly after you lift your fingers, the same as trackpad inertia. Disable to improve scrolling compatibility in some apps, including Calendar's Month and Year views, at the cost of the coasting effect.
 
 ## Touch Area
 

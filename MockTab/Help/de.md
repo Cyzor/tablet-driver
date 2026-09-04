@@ -83,7 +83,15 @@ Drücke bei geöffnetem Fenster eine beliebige Taste, um ihre Position hervorzuh
 
 ## Berührungsring und Dial
 
-Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus erscheint als kurze Ein-Zeilen-Zusammenfassung; ein Klick auf eine Moduszeile — oder auf ihren Keil im Diagramm neben der Liste — öffnet die Einstellungen direkt an Ort und Stelle: Aktion, Geschwindigkeit und die Shortcuts für jede Richtung. Weise Touch-Ring-Modus → **Wechseln** einer Taste zu, um durch die Modi zu schalten, oder **Zu Modus springen**, um direkt zu einem bestimmten Modus zu springen.
+Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus erscheint als kurze Ein-Zeilen-Zusammenfassung; ein Klick auf eine Moduszeile — oder auf ihren Keil im Diagramm neben der Liste — öffnet die Einstellungen direkt an Ort und Stelle. Weise Touch-Ring-Modus → **Wechseln** einer Taste zu, um durch die Modi zu schalten, oder **Zu Modus springen**, um direkt zu einem bestimmten Modus zu springen.
+
+**Scrollen** – Macht aus Ring oder Dial ein Scrollrad. Die Geschwindigkeit ist ein Faktor: 1× entspricht einer Scrollzeile pro Schritt.
+
+**Zoomen** und **Drehen** – Vergrößern und drehen die Arbeitsfläche, so wie es eine Trackpad-Geste tut, statt ein Tastenkürzel zu wiederholen. Bei voller Geschwindigkeit dreht eine Ringumdrehung die Arbeitsfläche einmal komplett herum. Die Unterstützung hängt von der App ab.
+
+**Taste** – Sendet für jede Richtung ein Tastenkürzel.
+
+Bei Zoomen und Drehen reicht die Geschwindigkeit von Aus bis Maximum statt einer Zahl.
 
 ## Beleuchtung
 
@@ -113,11 +121,11 @@ Grafiktabletts mit kapazitiver Touch-Oberfläche melden Fingerkontakte zusätzli
 
 **Zum Zoomen zusammenziehen** – Zwei Finger spreizen oder zusammenziehen, um zu zoomen.
 
-**Drehen** – Zwei Finger auf das Tablett legen und im oder gegen den Uhrzeigersinn drehen, um die Ansicht zu rotieren.
+**Drehen** – Zwei Finger weit auseinander auf das Tablett legen und um ihre Mitte schwenken. Scrollen, Zoomen und Drehen sind unterschiedliche Deutungen derselben Zwei-Finger-Geste und lassen sich einzeln ein- oder ausschalten.
 
 **Richtung umkehren** – Der Inhalt bewegt sich entgegengesetzt zur Fingerbewegung, wie bei einem klassischen Mausrad.
 
-**Scrollen mit Nachlauf** – Nach dem Abheben der Finger läuft der Scrollvorgang kurz nach, ähnlich wie beim Trackpad. Schalte die Option für Apps aus, die mit diesem Effekt nicht gut zurechtkommen. Die Reaktion hängt von der App ab.
+**Scrollen mit Nachlauf** – Nach dem Abheben der Finger läuft der Scrollvorgang kurz nach, ähnlich wie beim Trackpad. Ausschalten verbessert die Scroll-Kompatibilität in manchen Apps, etwa in der Monats- und Jahresansicht von Kalender, dafür entfällt der Nachlauf.
 
 ## Berührungsbereich
 

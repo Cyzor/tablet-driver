@@ -81,7 +81,15 @@ Pulsa cualquier botón mientras la ventana está abierta para resaltar su posici
 
 ## Touch Ring y dial
 
-Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio: la acción, su velocidad y los atajos de cada dirección. Asigna Touch Ring Mode → **Ciclo** a un botón para ir pasando de un modo a otro, o **Ir al modo** para saltar directamente a un modo concreto.
+Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio. Asigna Touch Ring Mode → **Ciclo** a un botón para ir pasando de un modo a otro, o **Ir al modo** para saltar directamente a un modo concreto.
+
+**Desplazar** – Convierte el anillo o dial en una rueda de desplazamiento. La velocidad es un multiplicador: 1× equivale a una línea por paso.
+
+**Zoom** y **Girar** – Amplían y giran el lienzo, igual que un gesto en el trackpad, en vez de repetir un atajo de teclado. A velocidad máxima, una vuelta del anillo gira el lienzo por completo. La compatibilidad varía según la app.
+
+**Tecla** – Envía un atajo de teclado en cada dirección.
+
+En Zoom y Girar la velocidad va de Desactivado a Máximo en lugar de un número.
 
 ## Iluminación
 
@@ -111,11 +119,11 @@ Las tabletas con superficie táctil capacitiva informan de los contactos de los 
 
 **Pellizcar para hacer zoom** – Separa o junta dos dedos para hacer zoom.
 
-**Girar** – Coloca dos dedos sobre la tableta y gíralos en el sentido horario o antihorario para rotar la vista.
+**Girar** – Coloca dos dedos bien separados sobre la tableta y gíralos alrededor de su centro. Desplazar, hacer zoom y girar son lecturas distintas del mismo gesto con dos dedos, así que cada uno se activa o desactiva por separado.
 
 **Invertir dirección** – On: el contenido se desplaza en sentido contrario al movimiento de los dedos, como una rueda de ratón clásica.
 
-**Desplazamiento con inercia** – El desplazamiento con dos dedos continúa brevemente después de levantar los dedos, igual que la inercia de un trackpad. Desactívalo para apps que no manejan bien el efecto.
+**Desplazamiento con inercia** – El desplazamiento con dos dedos continúa brevemente después de levantar los dedos, igual que la inercia de un trackpad. Desactívalo para mejorar la compatibilidad del desplazamiento en algunas apps, como las vistas de Mes y Año de Calendario, a costa de perder la inercia.
 
 ## Área táctil
 
