@@ -67,7 +67,13 @@ private struct HelpDetailView: View {
             MarkdownBodyView(source: section.markdownSource, fontSizeStep: fontSizeStep)
                 .textSelection(.enabled)
                 .frame(maxWidth: 580, alignment: .leading)
-                .padding(EdgeInsets(top: 24, leading: 28, bottom: 32, trailing: 28))
+                // Top inset comes from the safe area, not from this padding —
+                // the window is full-size content (see `HelpWindowController`),
+                // so SwiftUI insets the pane by the toolbar's real height and
+                // tracks it when the OS changes that height. The 24pt this used
+                // to hardcode cleared macOS 26's toolbar and hid the first
+                // lines under the taller one on 27.
+                .padding(EdgeInsets(top: 12, leading: 28, bottom: 32, trailing: 28))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }

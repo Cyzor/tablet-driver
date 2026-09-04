@@ -57,12 +57,23 @@ final class HelpWindowController: NSWindowController, ObservableObject {
     private func ensureWindow() {
         guard window == nil else { return }
 
+        // Full-size content with a transparent titlebar, the way Apple's own
+        // Help Viewer is built: the sidebar then runs the full height of the
+        // window rather than starting below a band that spans both panes.
+        //
+        // This is also what makes the split view's panes agree. Without it the
+        // detail pane is handed a top safe-area inset of zero while the sidebar
+        // is inset by the system, so the two sides disagree by the toolbar's
+        // height and any correction is a guess; with it the detail pane gets a
+        // real inset (measured: the toolbar's exact height) and both panes are
+        // placed by the same mechanism.
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
+        window.titlebarAppearsTransparent = true
         window.title = String(localized: "MockTab Help", comment: "Help window title")
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 520, height: 380)
