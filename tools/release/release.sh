@@ -90,13 +90,19 @@ xcrun stapler staple "$APP_PATH"
 xcrun stapler validate "$APP_PATH"
 
 echo "==> Building DMG"
-mkdir -p "$DMG_STAGING"
-cp -R "$APP_PATH" "$DMG_STAGING/"
-ln -s /Applications "$DMG_STAGING/Applications"
-hdiutil create -volname "MockTab $VERSION" \
-    -srcfolder "$DMG_STAGING" \
-    -ov -format UDZO \
-    "$DMG_PATH"
+if command -v dmgbuild >/dev/null 2>&1; then
+    dmgbuild -s tools/release/dmg_settings.py -D app="$APP_PATH" \
+        "MockTab $VERSION" "$DMG_PATH"
+else
+    echo "warning: dmgbuild not found, falling back to plain hdiutil DMG (no custom window/background)" >&2
+    mkdir -p "$DMG_STAGING"
+    cp -R "$APP_PATH" "$DMG_STAGING/"
+    ln -s /Applications "$DMG_STAGING/Applications"
+    hdiutil create -volname "MockTab $VERSION" \
+        -srcfolder "$DMG_STAGING" \
+        -ov -format UDZO \
+        "$DMG_PATH"
+fi
 
 echo "==> Notarizing DMG"
 xcrun notarytool submit "$DMG_PATH" \
