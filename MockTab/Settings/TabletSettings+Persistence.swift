@@ -49,6 +49,7 @@ extension TabletSettings {
         touchRingButtonRaw = loadString("touchRingButtonBinding", default: "")
         loadTouchRingSlots()
         touchRingActiveSlotIndex = loadInt("touchRingActiveSlotIndex", default: 0)
+        reverseRingDirection = loadBool("reverseRingDirection", default: false)
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
         invertRotation = loadBool("invertRotation", default: false)
         relativeCursorMovement = loadBool("relativeCursorMovement", default: false)

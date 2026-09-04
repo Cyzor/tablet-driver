@@ -199,21 +199,23 @@ struct ButtonMappingView: View {
     )
     private typealias ButtonSettingsState = (
         expressKeys: [ButtonBinding], touchRingButton: ButtonBinding,
-        touchRingSlots: [ControlSlot], touchRingActiveSlot: Int
+        touchRingSlots: [ControlSlot], touchRingActiveSlot: Int,
+        reverseRingDirection: Bool
     )
 
     private func resetToDefaults() {
         let toolOld: ButtonToolState = (tool.tipBinding, tool.eraserBinding, tool.penButton1Binding, tool.penButton2Binding)
         let settingsOld: ButtonSettingsState = (
             settings.expressKeyBindings, settings.touchRingButtonBinding,
-            settings.touchRingSlots, settings.touchRingActiveSlotIndex
+            settings.touchRingSlots, settings.touchRingActiveSlotIndex,
+            settings.reverseRingDirection
         )
         let isMouse = activeToolSpec?.toolType == .mouse
         let toolDefaults: ButtonToolState = (.leftClick, .eraser, .rightClick, isMouse ? .rightClick : .middleClick)
         let vendorID = tabletManager.context(forKey: instanceKey)?.vendorID ?? 0x056A
         let settingsDefaults: ButtonSettingsState = (
             TabletSettings.defaultExpressKeyBindings(vendorID: vendorID),
-            ButtonBinding(kind: .ringCycle), ControlSlot.defaults, 0
+            ButtonBinding(kind: .ringCycle), ControlSlot.defaults, 0, false
         )
 
         settings.undoManager?.beginUndoGrouping()
@@ -241,6 +243,7 @@ struct ButtonMappingView: View {
         settings.touchRingButtonBinding = new.touchRingButton
         settings.touchRingSlots = new.touchRingSlots
         settings.touchRingActiveSlotIndex = new.touchRingActiveSlot
+        settings.reverseRingDirection = new.reverseRingDirection
         settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applyButtonSettingsReset(old, undoTo: new)
         }
@@ -408,6 +411,8 @@ struct ButtonMappingView: View {
         // section is a second live view of the same slots, not its own
         // storage. A per-ring binding would need the work listed in
         // WacomKnownDevice.swift's ring2 TODO.
+        // The direction toggle is device-wide, so it belongs to whichever of
+        // these sections comes last rather than repeating in each.
         if hasTouchRing {
             if hasDualRings {
                 Section("Touch Ring — Left") { touchRingBlock(lb: lb) }
@@ -417,9 +422,13 @@ struct ButtonMappingView: View {
                             localized: "Touch Ring",
                             comment: "Section header / row label for touch ring"),
                         isActive: lb.touchRing2Active, showsDiagram: true)
+                    if !hasTouchStrips { reverseRingDirectionToggle }
                 }
             } else {
-                Section("Touch Ring") { touchRingBlock(lb: lb) }
+                Section("Touch Ring") {
+                    touchRingBlock(lb: lb)
+                    if !hasTouchStrips { reverseRingDirectionToggle }
+                }
             }
         }
 
@@ -431,6 +440,7 @@ struct ButtonMappingView: View {
                 touchRingSlotsSection(
                     String(localized: "Right", comment: "Right touch strip row label"),
                     isActive: lb.touchStrip2Active)
+                reverseRingDirectionToggle
             }
         }
 
@@ -456,6 +466,36 @@ struct ButtonMappingView: View {
                 comment: "Section header / row label for touch ring"),
             isActive: lb.touchRingActive, showsDiagram: true,
             onCenterTap: { centerRecordToken += 1 })
+    }
+
+    /// Direction preference for every ring/dial/strip on the device — one
+    /// setting, deliberately not per-ring or per-slot: a user reaches for this
+    /// because their muscle memory disagrees with the hardware convention, and
+    /// that disagreement is uniform. The caption follows Pen Feel's "Invert
+    /// Rotation Direction" — naming the current direction with an arrow glyph
+    /// rather than describing what each mode does, which stays short and stays
+    /// true whatever the four slots are set to.
+    @ViewBuilder
+    private var reverseRingDirectionToggle: some View {
+        DescribedToggle(
+            "Reverse Direction",
+            isOn: settings.recordingBinding(
+                String(localized: "Ring Direction", comment: "Undo action name: touch ring/dial direction toggle in the Buttons pane"),
+                get: { settings.reverseRingDirection },
+                set: { settings.reverseRingDirection = $0 })
+        ) {
+            Text("Current: ")
+                + Text(
+                    Image(
+                        systemName: settings.reverseRingDirection
+                            ? "arrow.counterclockwise"
+                            : "arrow.clockwise"))
+                + Text(
+                    settings.reverseRingDirection
+                        ? " Counter-clockwise."
+                        : " Clockwise.")
+        }
+        .help("Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation.")
     }
 
     /// Express keys + dial for a connected companion puck/dongle, folded
@@ -556,6 +596,7 @@ struct ButtonMappingView: View {
                 String(
                     localized: "Touch Ring", comment: "Section header / row label for touch ring"),
                 isActive: lb.touchRing2Active, showsDiagram: true)
+            reverseRingDirectionToggle
         }
     }
 

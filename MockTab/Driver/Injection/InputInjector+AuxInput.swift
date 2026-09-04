@@ -281,8 +281,10 @@ extension InputInjector {
         } else {
             // No slot configured — fall back to a direct scroll, applying the
             // same nominal-CW-scrolls-down + natural-scrolling convention as
-            // dispatchRingDelta's `.scroll` case.
-            postScrollWheelEvent(delta: Self.naturalScrollingEnabled ? delta : -delta, at: cursorPos)
+            // dispatchRingDelta's `.scroll` case, plus the user's direction
+            // preference, which that path applies on entry.
+            let d = snap.reverseRingDirection ? -delta : delta
+            postScrollWheelEvent(delta: Self.naturalScrollingEnabled ? d : -d, at: cursorPos)
         }
     }
 }

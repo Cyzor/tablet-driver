@@ -931,9 +931,15 @@ extension InputInjector {
     /// fires scroll lines or key taps. Caps key repeat at 4 per pulse to prevent
     /// runaway at high speed + large delta.
     func dispatchRingDelta(
-        rawDelta: Int, slot: ControlSlot, accum: inout Double,
+        rawDelta unflippedDelta: Int, slot: ControlSlot, accum: inout Double,
         at location: CGPoint, snapshot: InjectionSnapshot, settings: TabletSettings?
     ) {
+        // User-facing direction preference, applied once here rather than at
+        // each of the six call sites (two rings, two strips, two wheels) so
+        // every mechanism and every slot action gets it identically. Distinct
+        // from `ringDeltaIsInverted`, which has already normalized the raw
+        // hardware convention by the time deltas reach this point.
+        let rawDelta = snapshot.reverseRingDirection ? -unflippedDelta : unflippedDelta
         // Mechanical-dial hardware (Xencelabs dial; PTK-470/670/870 gen-3 —
         // see `hasMechanicalDial`), scrolling: hand the click to the
         // inertial emitter instead of posting for it. Everything else about

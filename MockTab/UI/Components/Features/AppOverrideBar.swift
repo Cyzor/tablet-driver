@@ -127,7 +127,7 @@ struct AppOverrideBar: View {
         "tipBinding", "eraserBinding",
         "expressKeyBindings",
         "touchRingButtonBinding",
-        "touchRingSlotsJSON", "touchRingActiveSlotIndex",
+        "touchRingSlotsJSON", "touchRingActiveSlotIndex", "reverseRingDirection",
     ]
 
     static let touchKeys: Set<String> = [

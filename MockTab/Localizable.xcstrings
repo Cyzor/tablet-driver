@@ -5249,6 +5249,29 @@
         }
       }
     },
+    "Dial Direction" : {
+      "comment" : "Undo action name: Quick Keys dial direction toggle in the Buttons pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drehregler-Richtung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dirección del dial"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤルの方向"
+          }
+        }
+      }
+    },
     "Dial Slot %lld Action" : {
       "comment" : "Undo action name: Quick Keys dial slot binding in the Buttons pane",
       "localizations" : {
@@ -7401,6 +7424,52 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "180°回転 — 左利き用または逆ケーブル配線に便利です。"
+          }
+        }
+      }
+    },
+    "Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation." : {
+
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kehrt die Richtung jedes Rings, Drehreglers und Streifens auf diesem Grafiktablett um, unabhängig vom eingestellten Modus. Aktiviere dies, wenn die Hardware entgegen deiner Erwartung läuft."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invierte la dirección de todos los anillos, diales y bandas de esta tableta, sea cual sea el modo de cada uno. Actívalo si el hardware funciona al contrario de lo que esperas."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モードの設定にかかわらず、このタブレットのすべてのリング、ダイヤル、ストリップの方向を反転します。ハードウェアの動作が予想と逆の場合にオンにします。"
+          }
+        }
+      }
+    },
+    "Flips the direction of the dial, whatever its mode is set to. Turn on if the dial runs opposite to your expectation." : {
+
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kehrt die Richtung des Drehreglers um, unabhängig vom eingestellten Modus. Aktiviere dies, wenn der Drehregler entgegen deiner Erwartung läuft."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invierte la dirección del dial, sea cual sea su modo. Actívalo si el dial funciona al contrario de lo que esperas."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "モードの設定にかかわらず、ダイヤルの方向を反転します。ダイヤルの動作が予想と逆の場合にオンにします。"
           }
         }
       }
@@ -14910,6 +14979,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "リング — 右"
+          }
+        }
+      }
+    },
+    "Ring Direction" : {
+      "comment" : "Undo action name: touch ring/dial direction toggle in the Buttons pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ring-Richtung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dirección del anillo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リングの方向"
           }
         }
       }

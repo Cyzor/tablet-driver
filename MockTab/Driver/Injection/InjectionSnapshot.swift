@@ -55,6 +55,7 @@ struct InjectionSnapshot: Sendable, Equatable {
     var touchRingButtonBinding: ButtonBinding
     var touchRingSlots: [ControlSlot]
     var touchRingActiveSlotIndex: Int
+    var reverseRingDirection: Bool
 
     // MARK: - Capacitive finger touch
 
@@ -152,6 +153,7 @@ extension TabletSettings {
             touchRingButtonBinding: touchRingButtonBinding,
             touchRingSlots: touchRingSlots,
             touchRingActiveSlotIndex: touchRingActiveSlotIndex,
+            reverseRingDirection: reverseRingDirection,
             touchEnabled: touchEnabled,
             touchSensitivity: touchSensitivity,
             touchOnsetDelay: touchOnsetDelayMs / 1000.0,

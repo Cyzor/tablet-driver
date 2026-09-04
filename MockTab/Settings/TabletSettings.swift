@@ -549,6 +549,17 @@ final class TabletSettings: ObservableObject {
     @Published var touchRingActiveSlotIndex: Int = 0 {
         didSet { persist("touchRingActiveSlotIndex", touchRingActiveSlotIndex) }
     }
+    /// When true, the sign of every ring/dial/strip delta is flipped before the
+    /// slot's action sees it, so clockwise does what counter-clockwise did.
+    /// Applies to all four actions (scroll, zoom, rotate, key press) and to
+    /// every mechanism — capacitive ring, mechanical dial, linear strip — since
+    /// it lands at the single `dispatchRingDelta` chokepoint they all share.
+    /// Distinct from `ringDeltaIsInverted`, which normalizes hardware families
+    /// to one convention; this is the user's preference on top of that.
+    /// Defaults to false.
+    @Published var reverseRingDirection: Bool = false {
+        didSet { persist("reverseRingDirection", reverseRingDirection) }
+    }
 
     // MARK: - Button bindings (JSON-encoded ButtonBinding)
 
