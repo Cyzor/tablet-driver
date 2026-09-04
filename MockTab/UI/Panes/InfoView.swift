@@ -4,6 +4,7 @@
 
 import AppKit
 import Combine
+import IOKit.hid
 import ServiceManagement
 import SwiftUI
 import TabletKit
@@ -18,6 +19,12 @@ struct InfoView: View {
     private var productID: Int? { instanceKey?.productID }
 
     @State private var accessibilityGranted = AXIsProcessTrusted()
+    /// Granted state for Input Monitoring, which gates *reading* the tablet at
+    /// all. Denial already surfaces as "HID Manager: failed to open", but that
+    /// names the mechanism rather than the cause and offers no way out; this
+    /// row states the cause and carries the fix.
+    @State private var inputMonitoringGranted =
+        IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
     @State private var launchAtLogin = false
     @State private var diagnosticsExpanded = false
     @State private var diagnosticSnapshot = ""
@@ -231,14 +238,47 @@ struct InfoView: View {
                     : String(localized: "Idle", comment: "Driver status value — device is idle"),
                 ok: isConnected ? true : nil)
 
+            // Both permission rows are labeled with the exact names System
+            // Settings uses, so the user is looking for the same words we do.
+            //
+            // Granted rows keep a button rather than going bare: revoking is
+            // something only the user can do, in a pane that is hard to find
+            // on purpose, so the one thing we *can* offer is the trip there.
+            // "Open System Settings" is Apple's own wording for this (see
+            // SystemPolicy.framework) and promises navigation, not a revoke
+            // we're unable to perform.
             row(
-                String(localized: "Permission", comment: "Row label in Info tab status table — Accessibility permission"),
+                String(localized: "Input Monitoring", comment: "Row label in Info tab status table — Input Monitoring permission"),
+                value: inputMonitoringGranted
+                    ? String(localized: "Granted", comment: "Permission status value")
+                    : String(localized: "Not granted", comment: "Permission status value"),
+                ok: inputMonitoringGranted,
+                action: inputMonitoringGranted
+                    ? { openSettingsPane(Self.inputMonitoringAnchor) }
+                    : requestInputMonitoring,
+                actionLabel: inputMonitoringGranted
+                    ? String(localized: "Open System Settings", comment: "Button on a granted permission row, opens the matching Privacy & Security pane")
+                    : String(localized: "Grant…", comment: "Button that requests a system permission from the Info tab"),
+                actionHelp: inputMonitoringGranted
+                    ? String(localized: "Review or turn off MockTab's permission to read your tablet.", comment: "Tooltip on Open System Settings button for a granted permission")
+                    : String(localized: "Allow MockTab to read your tablet. Without this, the tablet is detected but sends nothing.", comment: "Tooltip on Grant button for Input Monitoring permission")
+            )
+
+            row(
+                String(localized: "Accessibility", comment: "Row label in Info tab status table — Accessibility permission"),
                 value: accessibilityGranted
-                    ? String(localized: "Granted", comment: "Accessibility permission status value")
-                    : String(localized: "Not granted", comment: "Accessibility permission status value"),
+                    ? String(localized: "Granted", comment: "Permission status value")
+                    : String(localized: "Not granted", comment: "Permission status value"),
                 ok: accessibilityGranted,
-                fix: accessibilityGranted ? nil : requestAccessibility,
-                fixHelp: String(localized: "Open System Settings to grant MockTab permission to inject keyboard and mouse events into other apps.", comment: "Tooltip on Fix button for Accessibility permission")
+                action: accessibilityGranted
+                    ? { openSettingsPane(Self.accessibilityAnchor) }
+                    : requestAccessibility,
+                actionLabel: accessibilityGranted
+                    ? String(localized: "Open System Settings", comment: "Button on a granted permission row, opens the matching Privacy & Security pane")
+                    : String(localized: "Grant…", comment: "Button that requests a system permission from the Info tab"),
+                actionHelp: accessibilityGranted
+                    ? String(localized: "Review or turn off MockTab's permission to move the pointer and press keys.", comment: "Tooltip on Open System Settings button for a granted permission")
+                    : String(localized: "Allow MockTab to move the pointer and press keys. Without this, the pen is read but moves nothing.", comment: "Tooltip on Grant button for Accessibility permission")
             )
 
             row(
@@ -259,11 +299,17 @@ struct InfoView: View {
                     ? String(localized: "Enabled", comment: "Launch at Login status value")
                     : String(localized: "Disabled", comment: "Launch at Login status value"),
                 ok: launchAtLogin ? true : nil,
-                fix: launchAtLogin ? nil : enableLaunchAtLogin,
                 // A disabled preference isn't a fault — label the action for
-                // what it does instead of the repair-framed "Fix".
-                fixLabel: String(localized: "Enable", comment: "Button that turns on Launch at Login from the Info tab"),
-                fixHelp: String(localized: "Enable MockTab to start automatically when you log in.", comment: "Tooltip on Enable button for Launch at Login"))
+                // what it does instead of the repair-framed "Fix". Unlike the
+                // permissions above, this one we set ourselves in one click,
+                // so we owe the user a one-click way back out.
+                action: launchAtLogin ? disableLaunchAtLogin : enableLaunchAtLogin,
+                actionLabel: launchAtLogin
+                    ? String(localized: "Disable", comment: "Button that turns off Launch at Login from the Info tab")
+                    : String(localized: "Enable", comment: "Button that turns on Launch at Login from the Info tab"),
+                actionHelp: launchAtLogin
+                    ? String(localized: "Stop MockTab from starting automatically when you log in.", comment: "Tooltip on Disable button for Launch at Login")
+                    : String(localized: "Enable MockTab to start automatically when you log in.", comment: "Tooltip on Enable button for Launch at Login"))
 
             row(
                 String(localized: "Conflicts", comment: "Row label in Info tab status table"),
@@ -271,21 +317,39 @@ struct InfoView: View {
                     ? String(localized: "None detected", comment: "Conflicts status value — no conflicts")
                     : String(localized: "\(conflicts.count) detected", comment: "Conflicts status value when conflicts are found, showing count"),
                 ok: conflicts.isEmpty ? true : false,
-                fix: conflicts.isEmpty ? nil : showConflictAlert,
-                fixHelp: String(localized: "Show details about detected conflicts with other tablet drivers and how to resolve them.", comment: "Tooltip on Fix button for Conflicts row")
+                action: conflicts.isEmpty ? nil : showConflictAlert,
+                // Ellipsis: this opens an alert listing the conflicts rather
+                // than repairing anything, so it needs the "more to come" cue.
+                actionLabel: String(localized: "Fix…", comment: "Button on the Conflicts row that opens an alert describing the detected conflicts"),
+                actionHelp: String(localized: "Show details about detected conflicts with other tablet drivers and how to resolve them.", comment: "Tooltip on Fix button for Conflicts row")
             )
         }
     }
 
+    /// One status row, optionally carrying a trailing action button.
+    ///
+    /// The button is offered whenever the row's state is *actionable*, which is
+    /// not the same as faulty: a granted permission is healthy but still worth
+    /// a route to System Settings, since a user who granted something they
+    /// didn't mean to has no other way back. Rows with nothing to do in either
+    /// state — Device, Speed, Status, Profile — pass no action at all, which
+    /// is what makes the button's presence meaningful.
+    ///
+    /// Label an action with a trailing ellipsis only when clicking it needs
+    /// something further from the user before the action completes — a prompt,
+    /// an alert, a sheet, a switch to flip elsewhere. "Enable" and "Disable"
+    /// act at once and take none; "Grant…" and "Fix…" do and take one. Opening
+    /// a window is itself the completed action, so "Open System Settings" takes
+    /// none either (matching Apple's own label for it).
     @ViewBuilder
     private func row(
         _ label: String, value: String,
         ok: Bool?,
         leadingSymbol: String? = nil,
         symbolColor: Color? = nil,
-        fix: (() -> Void)? = nil,
-        fixLabel: String? = nil,
-        fixHelp: String? = nil
+        action: (() -> Void)? = nil,
+        actionLabel: String? = nil,
+        actionHelp: String? = nil
     ) -> some View {
         GridRow {
             Text(label)
@@ -293,6 +357,9 @@ struct InfoView: View {
                 .scaledFrame(minWidth: 150, alignment: .trailing)
                 .gridColumnAlignment(.trailing)
 
+            // Sized to its content, not stretched: the flexible space now sits
+            // after the button column, so values and their buttons stay next
+            // to each other instead of being pushed to opposite edges.
             HStack(spacing: 8) {
                 if let sym = leadingSymbol {
                     Image(systemName: sym)
@@ -302,14 +369,35 @@ struct InfoView: View {
                     statusIcon(ok)
                 }
                 Text(value)
-                if let fix {
-                    Button(fixLabel ?? String(localized: "Fix", comment: "Default button label for repairing a failed status row in the Info tab"), action: fix)
+            }
+            .gridColumnAlignment(.leading)
+
+            // Buttons live in their own grid column so they share one left
+            // edge down the table, instead of each starting wherever its
+            // row's value text happened to end. Rows without an action still
+            // occupy the cell, which is what keeps the column from collapsing
+            // — see `DevicesView`'s always-present rename button for the same
+            // "the trailing edge never moves" rule.
+            HStack(spacing: 0) {
+                // `actionLabel` is required alongside an action rather than
+                // defaulted: a generic fallback would silently pick the wrong
+                // ellipsis convention for whatever the new action does.
+                if let action, let actionLabel {
+                    Button(actionLabel, action: action)
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .help(fixHelp ?? "")
+                        .help(actionHelp ?? "")
+                        // Left-aligned at a shared edge, but sized to their
+                        // own labels: forcing equal widths would stretch
+                        // "Enable" to the width of "Open System Settings"
+                        // (much worse in German), spending horizontal space
+                        // the table doesn't have to fix a raggedness the
+                        // shared left edge already hides.
+                        .fixedSize()
                 }
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .gridColumnAlignment(.leading)
         }
     }
 
@@ -582,7 +670,8 @@ struct InfoView: View {
 
         lines += [""]
         lines += [String(localized: "HID Manager    : \(tabletManager.hidManagerOpen ? String(localized: "open", comment: "HID Manager status") : String(localized: "failed to open", comment: "HID Manager status"))", comment: "Diagnostic: HID Manager status")]
-        lines += [String(localized: "Accessibility  : \(accessibilityGranted ? String(localized: "granted", comment: "Accessibility permission status") : String(localized: "not granted", comment: "Accessibility permission status"))", comment: "Diagnostic: Accessibility permission")]
+        lines += [String(localized: "Input Monitor  : \(inputMonitoringGranted ? String(localized: "granted", comment: "Permission status") : String(localized: "not granted", comment: "Permission status"))", comment: "Diagnostic: Input Monitoring permission")]
+        lines += [String(localized: "Accessibility  : \(accessibilityGranted ? String(localized: "granted", comment: "Permission status") : String(localized: "not granted", comment: "Permission status"))", comment: "Diagnostic: Accessibility permission")]
         lines += [String(localized: "Launch at login: \(launchAtLogin ? String(localized: "enabled", comment: "Launch at login status") : String(localized: "disabled", comment: "Launch at login status"))", comment: "Diagnostic: Launch at login setting")]
         lines += [String(localized: "Profile        : \(presetLabel)", comment: "Diagnostic: active profile name")]
 
@@ -655,10 +744,28 @@ struct InfoView: View {
     // MARK: - Actions
 
     private func refresh() {
-        accessibilityGranted = AXIsProcessTrusted()
+        refreshPermissions()
         launchAtLogin = SMAppService.mainApp.status == .enabled
         conflicts = detectConflicts()
         refreshDiagnosticSnapshot()
+    }
+
+    /// Both permission checks, split out so a grant made in System Settings can
+    /// be picked up on app reactivation without rebuilding the whole snapshot.
+    ///
+    /// Re-opens the HID manager as a side effect when Input Monitoring is
+    /// present: a grant that arrives after launch leaves the manager closed
+    /// from its failed open, so without this the row would read Granted while
+    /// the tablet stayed dead. Doing it here rather than only in the Grant
+    /// button also covers the likelier path — granting in System Settings and
+    /// switching back, which lands on the reactivation refresh.
+    private func refreshPermissions() {
+        accessibilityGranted = AXIsProcessTrusted()
+        inputMonitoringGranted =
+            IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
+        if inputMonitoringGranted {
+            tabletManager.reopenIfClosed()
+        }
     }
 
     /// Single choke point for updating `diagnosticSnapshot`, so every
@@ -672,10 +779,51 @@ struct InfoView: View {
         textHasSelection = false
     }
 
+    /// Ask for Accessibility: the system alert when it can still appear,
+    /// System Settings when it can't.
+    ///
+    /// The alert only shows on an app's *first* ask and is silent forever
+    /// after, so calling both unconditionally would stack a redundant Settings
+    /// window behind the alert on a fresh install — the alert already carries
+    /// its own "Open System Settings" button. `promptForAccessibilityIfNeeded`
+    /// reports whether it actually asked, which is the signal for whether we
+    /// still owe the user a route.
     private func requestAccessibility() {
-        _ = AXIsProcessTrustedWithOptions(
-            ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        )
+        if tabletManager.promptForAccessibilityIfNeeded() { return }
+        openSettingsPane(Self.accessibilityAnchor)
+    }
+
+    /// Ask for Input Monitoring.
+    ///
+    /// Unlike Accessibility this genuinely prompts in place, so the pane is a
+    /// fallback rather than the main route: it opens only when the request
+    /// comes back denied, which covers both a fresh refusal and an app that
+    /// was denied earlier (where the prompt no longer appears and the call
+    /// returns false immediately).
+    ///
+    /// `IOHIDRequestAccess` blocks until the user answers, so its return value
+    /// is the answer — checking on a later runloop pass instead would race the
+    /// dialog and drop Settings on top of the prompt still awaiting a click.
+    private func requestInputMonitoring() {
+        let granted = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+        refreshPermissions()
+        if !granted {
+            openSettingsPane(Self.inputMonitoringAnchor)
+        }
+    }
+
+    // Privacy & Security pane anchors, verified against the strings in
+    // macOS 27's SecurityPrivacyExtension. Note macOS 27 retitles the
+    // Accessibility pane to "Device Control and Data Access" — the anchor
+    // name is unchanged, so the link still lands correctly.
+    private static let inputMonitoringAnchor = "Privacy_ListenEvent"
+    private static let accessibilityAnchor = "Privacy_Accessibility"
+
+    private func openSettingsPane(_ anchor: String) {
+        guard let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?\(anchor)")
+        else { return }
+        NSWorkspace.shared.open(url)
     }
 
     // MARK: - Conflict detection
@@ -730,10 +878,30 @@ struct InfoView: View {
             try SMAppService.mainApp.register()
             refresh()
         } catch {
-            NSWorkspace.shared.open(
-                URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!
-            )
+            openLoginItemsPane()
         }
+    }
+
+    /// Turn off launch-at-login, falling back to Login Items if the system
+    /// refuses. Worth having as a real action rather than a link: we register
+    /// this from a single click in this same table, so it's the one item here
+    /// a user can enable without meaning to — and until now the Enable button
+    /// simply vanished afterwards, leaving System Settings as the only way
+    /// back. `unregister()` throws in the same shapes `register()` does, so
+    /// the fallback mirrors it.
+    private func disableLaunchAtLogin() {
+        do {
+            try SMAppService.mainApp.unregister()
+            refresh()
+        } catch {
+            openLoginItemsPane()
+        }
+    }
+
+    private func openLoginItemsPane() {
+        NSWorkspace.shared.open(
+            URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!
+        )
     }
 }
 

@@ -349,6 +349,26 @@ final class TabletManager: ObservableObject {
         }
     }
 
+    /// Re-attempt the manager open after an Input Monitoring grant.
+    ///
+    /// A denied grant makes `IOHIDManagerOpen` fail outright, so the permission
+    /// arriving later doesn't retroactively bring the tablet to life — matching
+    /// callbacks were registered but the manager was never opened. Deliberately
+    /// *not* a second `start()`: that would re-register the callbacks and leak
+    /// another `passRetained` self-reference. Everything except the open is
+    /// already in place from launch, so only the open is repeated, and only
+    /// when it previously failed.
+    @discardableResult
+    func reopenIfClosed() -> Bool {
+        guard !hidManagerOpen else { return true }
+        let ret = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        hidManagerOpen = (ret == kIOReturnSuccess)
+        if hidManagerOpen {
+            logger.info("TabletManager: HID manager opened on retry after permission grant.")
+        }
+        return hidManagerOpen
+    }
+
     // MARK: - Adobe shim bridge
 
     /// Subscribe to distributed notifications posted by WacomShim when Adobe apps
@@ -1384,13 +1404,24 @@ final class TabletManager: ObservableObject {
 
     /// One-shot per launch. CGEventPost silently drops events without the
     /// Accessibility grant, so the pen would move nothing with no explanation.
-    private var accessibilityPromptShown = false
+    ///
+    /// Also read by the Info tab: the system alert appears only on an app's
+    /// *first* ask and is silent forever after, so this doubles as "has the
+    /// alert already had its one chance this launch" — see
+    /// `requestAccessibility` there, which uses it to decide whether it still
+    /// needs to open System Settings itself.
+    private(set) var accessibilityPromptShown = false
 
-    private func promptForAccessibilityIfNeeded() {
-        guard !accessibilityPromptShown, !AXIsProcessTrusted() else { return }
+    /// Show the Accessibility alert if it hasn't been shown yet this launch.
+    /// Returns whether it was actually asked for — false means the caller is
+    /// on its own for getting the user to the setting.
+    @discardableResult
+    func promptForAccessibilityIfNeeded() -> Bool {
+        guard !accessibilityPromptShown, !AXIsProcessTrusted() else { return false }
         accessibilityPromptShown = true
         let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true]
         AXIsProcessTrustedWithOptions(opts)
+        return true
     }
 
     private func updateDockBadge() {
