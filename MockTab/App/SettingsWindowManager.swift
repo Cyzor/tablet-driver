@@ -31,7 +31,15 @@ final class SettingsWindowManager: ObservableObject {
     @Published private(set) var windowDescriptors: [WindowDescriptor] = []
 
     private var defaultWindow: SettingsWindowController?
+    /// Connected PIDs as of the last `deviceObserver` fire, so a genuine
+    /// arrival can be told from the same set being republished. The sink
+    /// combines two publishers and `deviceContexts` is written once per HID
+    /// *interface*, so a single multi-interface tablet plugging in fires it
+    /// several times — without this diff, a window would be re-fronted on
+    /// each of those.
+    private var lastConnectedIDs: Set<Int> = []
     private var deviceObserver: AnyCancellable?
+    private var firstContactObserver: AnyCancellable?
     private var isTerminating = false
     private var skipWindowSave = false
 
@@ -120,6 +128,45 @@ final class SettingsWindowManager: ObservableObject {
                 // only by explicit user action (status item, menus, dock
                 // reopen) or session restore — keeping the idle driver free
                 // of any SwiftUI/window instantiation.
+                //
+                // A window that's *already* open, though, comes forward when
+                // its tablet arrives. That costs no allocation (see
+                // `frontExistingWindow`) and addresses the long-standing
+                // confusion of editing a disconnected tablet's window while
+                // believing it's the one in hand.
+                let current = Set(ids)
+                let arrived = current.subtracting(self.lastConnectedIDs)
+                self.lastConnectedIDs = current
+                for pid in arrived
+                where !VendorDeviceRegistry.isConnectedCompanion(
+                    productID: pid, connectedProductIDs: ids)
+                {
+                    self.frontExistingWindow(forProductID: pid)
+                }
+            }
+
+        // The one exception to "connecting a device never spawns a window":
+        // a unit MockTab has never seen before. Every other connect is a
+        // return visit, where a silent front-or-nothing is right — but on a
+        // first contact there may be no window, no saved row, and nothing on
+        // screen, so staying silent is indistinguishable from the app not
+        // having noticed the tablet at all. Fires at most once per unit (see
+        // `DeviceRegistry.firstContact`), so the SwiftUI cost is paid once,
+        // at the moment it buys the most.
+        firstContactObserver = DeviceRegistry.shared.firstContact
+            .receive(on: RunLoop.main)
+            .sink { [weak self] key in
+                guard let self else { return }
+                // Companions fold into their owner's window rather than
+                // getting one of their own — a Quick Keys puck arriving with
+                // its tablet must not open a second window.
+                if VendorDeviceRegistry.isConnectedCompanion(
+                    productID: key.productID,
+                    connectedProductIDs: TabletManager.shared.connectedProductIDs)
+                {
+                    return
+                }
+                self.openWindow(forInstanceKey: key)
             }
 
         restoreWindows()
@@ -320,8 +367,13 @@ final class SettingsWindowManager: ObservableObject {
 
             let wc = makeWindow(instanceKey: instanceKey, tabIndex: tabIndex, frame: frame)
             if index == 0 { defaultWindow = wc }
-            wc.show()
-            wc.showTab(at: tabIndex)
+            // `orderFront`, not `show`: `show()` makes each window key in
+            // turn, so restoring several of them meant N successive
+            // activations, each stealing key status from the last — the
+            // flicker-and-shuffle a restored stack showed at launch. Ordering
+            // them places the stack in saved order in one pass; the tab-group
+            // pass below picks the one window that ends up key.
+            wc.orderFrontWithTab(at: tabIndex)
             created.append((wc, entry))
         }
 
@@ -361,6 +413,20 @@ final class SettingsWindowManager: ObservableObject {
                 id: wc.instanceKey?.stringValue ?? "generic",
                 label: displayLabel(forKey: wc.instanceKey))
         }
+    }
+
+    /// Brings an already-open window for `productID` forward, without
+    /// activating MockTab and **without ever creating a window**.
+    ///
+    /// The no-window case is the contract, not an oversight: connecting a
+    /// tablet must not instantiate SwiftUI, which is the whole point of the
+    /// no-auto-open behavior in `deviceObserver`. Deliberately not routed
+    /// through `focusWindow(id:)`, whose "generic" branch calls
+    /// `ensureDefaultWindow()` and *does* allocate.
+    private func frontExistingWindow(forProductID productID: Int) {
+        let key = resolveKey(forProductID: productID)
+        guard let wc = window(for: key) else { return }
+        wc.orderFront()
     }
 
     /// Bring an open window to front by its descriptor ID

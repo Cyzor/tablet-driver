@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import Combine
 import Foundation
 import OSLog
 import TabletKit
@@ -84,6 +85,12 @@ final class DeviceRegistry: ObservableObject {
     /// A pen used on multiple tablets appears once (first tablet wins for
     /// nickname if the user has renamed it differently per device).
     @Published var allKnownTools: [KnownTool] = []
+
+    /// Fires once per unit, the first time it is ever recorded — see the
+    /// send site in `recordTablet`. A bare signal rather than `@Published`
+    /// state: "this just happened" has no meaningful current value, and a
+    /// subscriber must not re-run it on every registry change.
+    let firstContact = PassthroughSubject<DeviceInstanceKey, Never>()
 
     private let ud = UserDefaults.standard
 
@@ -304,6 +311,13 @@ final class DeviceRegistry: ObservableObject {
                     usbSerial: usbSerial,
                     vendorID: vendorID))
             saveTablets()
+            // This branch runs once in a tablet's lifetime with MockTab —
+            // the moment a unit is first recorded. `SettingsWindowManager`
+            // opens a window on it, the one case where connecting a device
+            // is allowed to spawn UI: with nothing on screen and no saved
+            // row, a silent first connection is indistinguishable from the
+            // app having ignored the tablet.
+            firstContact.send(instanceKey)
         }
         loadTools(for: instanceKey)
     }

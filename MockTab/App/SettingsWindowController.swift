@@ -546,8 +546,36 @@ final class SettingsWindowController: NSWindowController {
         if !NSApp.isActive {
             NSApp.activate(ignoringOtherApps: true)
         }
-        // Sync the Info-tab visibility flag for whichever tab is already selected.
-        // Only set true if the window is key (in focus) and tab is Info or Buttons.
+        syncLiveStateVisibility()
+    }
+
+    /// Brings the window forward within this app's own window layer without
+    /// activating MockTab. Used where the window should be ready when the
+    /// user next switches over, but must never pull focus out of whatever
+    /// they're working in — a tablet reconnecting mid-stroke, or a batch of
+    /// windows being restored at launch, neither of which is a request to
+    /// leave the frontmost app.
+    func orderFront() {
+        // `showWindow(nil)` would also call `NSApp.activate`, which is the
+        // focus grab being avoided here. Load the window if needed, then
+        // raise it within this app's own layer.
+        _ = window
+        // `makeKeyAndOrderFront`, not `orderFront`: raising a window without
+        // making it key leaves whichever window *was* key still taking input,
+        // so the tablet you just plugged in ends up on top while your typing
+        // goes to a different tablet's window — the exact wrong-window
+        // editing this is meant to prevent. AppKit refuses to make a window
+        // key while the app is inactive (verified), so this stays focus-safe:
+        // backgrounded it behaves as a plain raise, and the window becomes key
+        // when the user switches to MockTab on their own.
+        window?.makeKeyAndOrderFront(nil)
+        syncLiveStateVisibility()
+    }
+
+    /// Sync the Info-tab visibility flag for whichever tab is already
+    /// selected. Only true if the window is key (in focus) and the tab is
+    /// one that renders live pen state.
+    private func syncLiveStateVisibility() {
         let label = tabVC.tabViewItems[safe: tabVC.selectedTabViewItemIndex]?.label
         let visible =
             (label == Self.tabLabels[Tab.info.rawValue]
@@ -564,6 +592,18 @@ final class SettingsWindowController: NSWindowController {
         // the flag is in place before viewDidAppear fires.
         suppressAutoResize()
         show()
+        selectTab(at: index)
+    }
+
+    /// `showTab(at:)` without the activation — for callers that have already
+    /// placed the window with `orderFront()` and must not pull focus.
+    func orderFrontWithTab(at index: Int) {
+        suppressAutoResize()
+        orderFront()
+        selectTab(at: index)
+    }
+
+    private func selectTab(at index: Int) {
         guard index >= 0, index < tabVC.tabViewItems.count else { return }
         tabVC.selectedTabViewItemIndex = index
     }
