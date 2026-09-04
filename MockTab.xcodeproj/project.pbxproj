@@ -85,7 +85,7 @@
 		AA00GD01 /* GenericHIDDigitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00GD01 /* GenericHIDDigitizer.swift */; };
 		AA00HD01 /* HIDDescriptorReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HD01 /* HIDDescriptorReader.swift */; };
 		AA00HH01 /* HIDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HH01 /* HIDHelpers.swift */; };
-		AA00HT01 /* HIDThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HT01 /* HIDThread.swift */; };
+		AA00HT01 /* LatencyProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HT01 /* LatencyProbe.swift */; };
 		AA00IS01 /* InjectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00IS01 /* InjectionSnapshot.swift */; };
 		AA00TT01 /* TouchStateTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00TT01 /* TouchStateTracker.swift */; };
 		AA00PS01 /* PanScrollTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00PS01 /* PanScrollTracker.swift */; };
@@ -207,7 +207,7 @@
 		AB00GD01 /* GenericHIDDigitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenericHIDDigitizer.swift; sourceTree = "<group>"; };
 		AB00HD01 /* HIDDescriptorReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDDescriptorReader.swift; sourceTree = "<group>"; };
 		AB00HH01 /* HIDHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDHelpers.swift; sourceTree = "<group>"; };
-		AB00HT01 /* HIDThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDThread.swift; sourceTree = "<group>"; };
+		AB00HT01 /* LatencyProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatencyProbe.swift; sourceTree = "<group>"; };
 		AB00IS01 /* InjectionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjectionSnapshot.swift; sourceTree = "<group>"; };
 		AB00TT01 /* TouchStateTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchStateTracker.swift; sourceTree = "<group>"; };
 		AB00PS01 /* PanScrollTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanScrollTracker.swift; sourceTree = "<group>"; };
@@ -287,7 +287,7 @@
 		AC0000B1 /* HID */ = {
 			isa = PBXGroup;
 			children = (
-				AB00HT01 /* HIDThread.swift */,
+				AB00HT01 /* LatencyProbe.swift */,
 				AB000070 /* HIDCapture.swift */,
 				AB00HH01 /* HIDHelpers.swift */,
 				AB00HD01 /* HIDDescriptorReader.swift */,
@@ -651,7 +651,7 @@
 				053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */,
 				AA000042 /* DeviceContext.swift in Sources */,
 				AA000035 /* AppWatcher.swift in Sources */,
-				AA00HT01 /* HIDThread.swift in Sources */,
+				AA00HT01 /* LatencyProbe.swift in Sources */,
 				05BFE59C2F79FE5200782B9E /* AboutWindowController.swift in Sources */,
 				AA000008 /* InputInjector.swift in Sources */,
 				AA000081 /* InputInjector+PenInjection.swift in Sources */,
