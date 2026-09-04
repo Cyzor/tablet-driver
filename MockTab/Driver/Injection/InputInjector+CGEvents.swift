@@ -949,26 +949,12 @@ extension InputInjector {
         // the behaviour that was already known good for zoom.
         let zoomModifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
         let modifierHeld = !moveSafeEventFlags.intersection(zoomModifiers).isEmpty
-        // closeGesture(), not cancel(): a .zoom/.rotate spin may have an open
-        // envelope here (a plain cancel() would leak it — the app never sees
-        // .ended). No-op for scroll, which never opens one.
-        if modifierHeld { dialCoaster.closeGesture() }
-        if hasMechanicalDial, !modifierHeld, slot.action == .zoom || slot.action == .rotate {
-            // .zoom/.rotate on mechanical-dial hardware: bypass the
-            // integer-line accumulator below entirely — quantizing to whole
-            // "lines" is exactly the steppiness this feature exists to
-            // remove. Feed the coaster a small fractional delta instead; its
-            // .began/.changed/.ended envelope is synthesized from decay to
-            // zero (see DialScrollCoaster), unlike scroll's fire-and-forget
-            // impulses. `delta` here is already through `ringDeltaIsInverted`
-            // at the call site (+AuxInput.swift), so polarity is correct for
-            // free — do not re-derive it from a separate raw value.
-            dialGestureKind = slot.action == .zoom ? .zoom : .rotate
-            let lines = Double(rawDelta) * slot.speed
-            dialCoaster.impulse(
-                lines: Self.naturalScrollingEnabled ? lines : -lines, gesture: true)
-            return
-        }
+        // Posts .ended if a .zoom/.rotate gesture is currently open on
+        // mechanical-dial hardware — a modifier held mid-spin must not
+        // leave the app stuck mid-pinch/-rotate. No-op for scroll, which
+        // never opens one, and for capacitive hardware, whose envelope is
+        // owned by injectAux's touchRingActive edge instead.
+        if modifierHeld { closeMechanicalDialGesture() }
         if hasMechanicalDial, !modifierHeld, case .scroll = slot.action {
             // The dial's Speed slider was given a 20x ceiling (44e22ad) purely
             // so one click's line count could cross the chunk threshold that
@@ -981,15 +967,53 @@ extension InputInjector {
             dialCoaster.impulse(lines: Self.naturalScrollingEnabled ? lines : -lines)
             return
         }
-        if !hasMechanicalDial, slot.action == .zoom || slot.action == .rotate {
-            // Capacitive ring: no coaster, no accumulator. The envelope
-            // (.began/.ended) is owned by injectAux's touchRingActive edge;
-            // this call only ever posts .changed, once per report, scaled
-            // directly from the ring's own continuous signal rather than a
-            // decay-driven approximation of one.
+        if slot.action == .zoom || slot.action == .rotate {
+            // One post per raw tick, linearly scaled — no accumulator, no
+            // physics, on *either* mechanism. This branch used to be
+            // capacitive-ring-only, with mechanical-dial hardware routed
+            // through `dialCoaster`'s inertial physics instead; that was
+            // wrong (see `closeMechanicalDialGesture`'s doc comment) — a
+            // dial click is a discrete, already-quantized ±1 tick (confirmed
+            // for the Xencelabs dial: `XencelabsDecoder`'s "Dial clicks
+            // arrive as discrete events, not a counter"), and feeding a
+            // single already-final click through inertial buildup for
+            // "smoothness" was solving a problem that didn't exist while
+            // creating one that did — nonlinear compounding zoom/rotation
+            // per click, a confirmed hardware finding on the Xencelabs puck.
+            // Note: unlike the mechanical branch this replaced,
+            // `naturalScrollingEnabled` is deliberately NOT applied here —
+            // it is a scroll-direction preference, and this ring/dial
+            // gesture path never applied it even for the capacitive ring,
+            // which is the case already validated as feeling right.
             let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
-            let scale = kind == .zoom ? Self.dialGestureZoomScale : Self.dialGestureRotateScale
+            // Both zoom and rotate need a mechanism-specific scale — the
+            // ring and the mechanical dial have different, measured
+            // steps/revolution (72 vs. 13), and zoom's multiplicative
+            // compounding makes that difference matter for it too, not just
+            // rotate. See `dialGestureZoomScaleMechanical`'s and
+            // `dialGestureRotateScaleMechanical`'s doc comments.
+            let scale: Double
+            switch (kind, hasMechanicalDial) {
+            case (.zoom, false): scale = Self.dialGestureZoomScale
+            case (.zoom, true): scale = Self.dialGestureZoomScaleMechanical
+            case (.rotate, false): scale = Self.dialGestureRotateScale
+            case (.rotate, true): scale = Self.dialGestureRotateScaleMechanical
+            }
             let delta = Double(rawDelta) * slot.speed * scale
+            if hasMechanicalDial {
+                // No finger-presence signal exists to bracket .began/.ended
+                // the way injectAux's touchRingActive edge does for the
+                // capacitive ring — a bare rotary encoder only ever reports
+                // "a click happened". Envelope open/close is instead owned
+                // by an idle timer: rearmed on every tick, closes the
+                // gesture once clicks actually stop arriving.
+                if !mechanicalDialGestureOpen {
+                    mechanicalDialGestureOpen = true
+                    mechanicalDialGestureKind = kind
+                    postRingGesture(delta: 0, phase: .began, kind: kind)
+                }
+                rearmMechanicalDialGestureIdleTimer(kind: kind)
+            }
             postRingGesture(delta: delta, phase: .changed, kind: kind)
             return
         }
@@ -1095,26 +1119,45 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Per-tick magnification-fraction scale, applied to `dialCoaster`'s raw
-    /// point delta before it reaches `postTouchMagnify`. `magnify.value` in
-    /// touch's own pinch path is a relative-growth fraction (e.g. 0.02 =
-    /// "2% bigger this frame"), not points — this constant is the conversion
-    /// factor. Untested starting point pending a hardware pass, same
-    /// footing as `DialScrollCoaster.kick`/`MomentumTail.deceleration` when
-    /// they were first written: order 0.01–0.05 per detent at 1x speed was
-    /// the design's own estimate, and dividing a `kick`-seeded per-tick
-    /// delta (order 1-12 points, see `DialScrollCoaster.kick`'s doc comment)
-    /// by 300 lands in roughly that range for a slow, deliberate turn.
-    /// Confirmed "about right" on the PTH-860 (2026-09) at the current
-    /// value — unlike `dialGestureRotateScale`, this has no equivalent
-    /// physical 1:1 anchor to derive from (zoom has no natural "one
-    /// revolution = X%" mapping the way rotate has "one revolution = 360°"),
-    /// so it stays an empirically-tuned constant, not a derived one.
+    /// Per-tick magnification-fraction scale, applied to `dispatchRingDelta`'s
+    /// raw ±1 (or larger) ring/dial tick before it reaches `postTouchMagnify`.
+    /// `magnify.value` in touch's own pinch path is a relative-growth
+    /// fraction (e.g. 0.02 = "2% bigger this frame"), not points — this
+    /// constant is the conversion factor. Empirically tuned, not derived —
+    /// zoom has no natural "one revolution = X%" mapping the way rotate has
+    /// "one revolution = 360°" — confirmed "about right" on the PTH-860
+    /// (2026-09).
+    ///
+    /// **Ring only.** Originally shared with the mechanical dial on the
+    /// reasoning that both deliver an already-final, discrete tick — true,
+    /// but irrelevant here: `magnify.value` *compounds* multiplicatively
+    /// per tick (`(1 + scale·speed)` per event), so the same scale produces
+    /// wildly different totals per revolution depending on how many ticks
+    /// that revolution contains. At max speed the ring's 72 ticks/revolution
+    /// gives ≈6.65x; the dial's 13 (see `dialGestureRotateScaleMechanical`'s
+    /// doc comment for how that count was measured) gives only ≈1.41x under
+    /// this same constant — confirmed on hardware (2026-09) as "even maximum
+    /// feels more like 1x." See `dialGestureZoomScaleMechanical` for the
+    /// dial's own, tick-count-corrected constant.
     static let dialGestureZoomScale = 1.0 / 300.0
+
+    /// **Mechanical dial only.** `dialGestureZoomScale` scaled by the ratio
+    /// of tick counts (ring 72 : dial 13) so one full revolution produces
+    /// roughly the same zoom-per-revolution on either mechanism, despite
+    /// the dial needing far fewer, much larger per-tick jumps to get there.
+    /// Not exact — `magnify.value`'s multiplicative compounding means a
+    /// per-tick linear correction can only approximate the ring's smoother,
+    /// finer-grained curve, not reproduce it — but it closes the ~4.7x gap
+    /// down to matching within a few percent at max speed (measured: ring
+    /// ≈6.65x/revolution, dial ≈5.99x/revolution at this value). PTK-470/
+    /// 670/870's gen-3 dials share this constant for now (see
+    /// `dialGestureRotateScaleMechanical`'s doc comment on why, and its
+    /// caveat about their own tick count being unmeasured).
+    static let dialGestureZoomScaleMechanical = dialGestureZoomScale * 72.0 / 13.0
 
     /// Rotation scale — radians per raw ring/dial tick, at 1x speed.
     ///
-    /// Calibrated, not a guess, for the **capacitive ring path**: the ring
+    /// Calibrated, not a guess, for the **capacitive ring**: the ring
     /// reports 72 fixed steps per physical revolution (see
     /// `InputInjector+AuxInput.swift`'s "72 steps (0-71, ~5° each)" comment),
     /// so `π/36` radians/step (5°/step) makes one full physical revolution
@@ -1124,56 +1167,60 @@ extension InputInjector {
     /// 1x) needed ~25x speed to reach 1:1, an unreasonably tall slider range
     /// for what should be the natural default.
     ///
-    /// **This physical anchor does NOT carry over to the mechanical-dial
-    /// path** (Xencelabs dial, PTK-x70): that path applies this same
-    /// constant to `dialCoaster`'s emitted point deltas — already reshaped
-    /// by `impulse`'s `kick` and `tick`'s `friction`/velocity-cap physics —
-    /// not to a raw per-revolution tick count, and a mechanical dial has no
-    /// fixed steps-per-revolution to anchor against in the first place. Its
-    /// rotate feel is therefore whatever this constant produces through that
-    /// nonlinear coaster response, not a defined 1:1 relationship — expect
-    /// it to need its own independent hardware pass, and do not "fix" the
-    /// dial's feel by changing this constant on the assumption its meaning
-    /// is the same as the ring's.
+    /// **Ring only** — do not apply to mechanical-dial hardware. The
+    /// Xencelabs dial has a different, measured steps/revolution (13, not
+    /// 72 — see `dialGestureRotateScaleMechanical` just below); reusing
+    /// this constant for the dial was tried and produced ~330°/revolution
+    /// instead of 360°/revolution, confirmed on hardware (2026-09).
     static let dialGestureRotateScale = Double.pi / 36.0
 
-    /// Routes `dialCoaster`'s gesture-phase output to the same
-    /// `NSEventTypeGesture` synthesis touch's pinch/rotate already uses —
-    /// see `postTouchMagnify`/`postTouchRotate` for the technique and its
-    /// provenance. `delta` is `dialCoaster`'s raw per-tick point value;
-    /// `.began`/`.ended` always carry `0` from the coaster (matching
-    /// `TouchStateTracker`'s own `GestureDelta` convention for those
-    /// phases), so only `.changed` needs the scale applied — `.began`/
-    /// `.ended` pass a magnitude of 0 through regardless of `delta`'s value.
+    /// **Mechanical dial only** (Xencelabs puck; also PTK-470/670/870's
+    /// gen-3 dials, pending their own measurement — see the note below).
     ///
-    /// Mechanical-dial path only — a thin wrapper around `postRingGesture`
-    /// that exists because the coaster's phase vocabulary
-    /// (`DialScrollCoaster.GesturePhase`) is distinct from
-    /// `TouchStateTracker.ScrollPhase`. The capacitive-ring path
-    /// (`injectAux`) calls `postRingGesture` directly with its own already-
-    /// scaled per-report delta — it has no coaster and no separate phase
-    /// enum to translate.
-    func postDialGesture(
-        delta: Double, phase: DialScrollCoaster.GesturePhase, kind: RingGestureKind
-    ) {
-        let touchPhase: TouchStateTracker.ScrollPhase
-        switch phase {
-        case .began: touchPhase = .began
-        case .changed: touchPhase = .changed
-        case .ended: touchPhase = .ended
-        }
-        let magnitude = phase == .changed ? delta : 0
-        postRingGesture(delta: magnitude, phase: touchPhase, kind: kind)
-    }
+    /// Same derivation as `dialGestureRotateScale`, using the dial's own
+    /// steps/revolution in place of the ring's 72: `2π/13` radians/step
+    /// (≈27.7°/step) makes one full physical revolution of the dial equal
+    /// exactly one full 360° canvas rotation at 1x speed.
+    ///
+    /// The 13 was measured directly via `tools/capture/hid_input_capture.c`
+    /// against report ID 0x02 (2026-09): one full slow physical revolution
+    /// produced exactly 13 identical `02 f0 00 00 00 00 00 01 00 00` input
+    /// reports, one per detent-equivalent step — no field in that report
+    /// carries anything finer (seven of its nine bytes are always zero; the
+    /// descriptor bounds it to flat 8-bit fields, no sub-step position or
+    /// magnitude). A faster revolution produced only 10 reports for the
+    /// same physical turn, meaning the encoder or its firmware drops steps
+    /// under fast rotation — a real hardware ceiling, not something this
+    /// scale can compensate for. An earlier, indirect measurement (binding
+    /// rotation to a keypress in the vendor's own native driver and
+    /// counting 14 key-repeats per turn) was close but one off; the direct
+    /// capture above is the more trustworthy count and superseded it.
+    ///
+    /// `speedRange(for: .rotate)`'s 1.0 ceiling still applies unchanged: it
+    /// means "one dial revolution" here exactly as it means "one ring
+    /// revolution" for the capacitive case — the per-device scale is what
+    /// carries the physical difference, not the ceiling. The dial's
+    /// intrinsically coarse ~27.7°-per-step granularity (confirmed above as
+    /// a hardware limit, not a software one) is why rotation on this
+    /// mechanism reads as steppier than the ring's smoother 5°-per-step feel
+    /// even once the revolution-to-360° mapping is correct — there is
+    /// nothing left to extract from the input stream to smooth it further.
+    ///
+    /// PTK-470/670/870's gen-3 dials are a different physical mechanism
+    /// from the Xencelabs dial (see `WacomDeviceSpec.hasMechanicalDial`'s
+    /// doc comment) and share `hasMechanicalDial: true`, hence this
+    /// constant today — but their own steps/revolution has not been
+    /// separately measured. If their rotate feel turns out wrong, that's
+    /// this constant needing to become genuinely per-model rather than
+    /// per-mechanism, not evidence the Xencelabs measurement above is wrong.
+    static let dialGestureRotateScaleMechanical = 2.0 * Double.pi / 13.0
 
-    /// Mechanism-neutral gesture post: both the mechanical-dial path (via
-    /// `postDialGesture`) and the capacitive-ring path (`injectAux`, direct)
-    /// funnel through here. `delta` is expected pre-scaled by the caller for
-    /// the capacitive case (see `dispatchRingDelta`'s `.zoom`/`.rotate`
-    /// branch); for the dial case it's already `dialGestureZoomScale`/
-    /// `dialGestureRotateScale`-adjusted by `postDialGesture`. `.began`/
-    /// `.ended` should always be called with `delta: 0` — this function
-    /// applies no phase-based zeroing itself, callers own that convention.
+    /// Mechanism-neutral gesture post: both the mechanical-dial and
+    /// capacitive-ring paths in `dispatchRingDelta`, plus `injectAux`'s
+    /// capacitive envelope open/close, funnel through here. `delta` is
+    /// expected pre-scaled by the caller. `.began`/`.ended` should always be
+    /// called with `delta: 0` — this function applies no phase-based
+    /// zeroing itself, callers own that convention.
     func postRingGesture(delta: Double, phase: TouchStateTracker.ScrollPhase, kind: RingGestureKind) {
         switch kind {
         case .zoom: postTouchMagnify(magnification: delta, phase: phase)

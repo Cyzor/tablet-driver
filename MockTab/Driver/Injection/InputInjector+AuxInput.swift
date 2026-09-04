@@ -197,16 +197,15 @@ extension InputInjector {
     /// `Notes/Scratch/ring-dial-analog-zoom-rotate-design.md`.
     ///
     /// Deliberately NOT hooked to live in-place slot edits in the settings
-    /// UI (a different case from the mode-cycle binding above): on
-    /// mechanical-dial hardware the coaster's own decay-to-zero closes the
-    /// envelope within `DialScrollCoaster.friction`'s bounded window
-    /// regardless (well under a second from any realistic velocity) — a live
-    /// edit produces at most a fraction of a second of stale `.changed`
-    /// events, not a leaked-open gesture, so no separate hook earns its
-    /// complexity. The capacitive case is already covered per-report by
-    /// `injectAux`'s own `else if ring{1,2}GestureOpen` fallback above.
+    /// UI (a different case from the mode-cycle binding above): the
+    /// mechanical-dial idle timer closes its envelope within
+    /// `mechanicalDialGestureIdleTimeout` regardless — a live edit produces
+    /// at most a fraction of a second of stale `.changed` events, not a
+    /// leaked-open gesture, so no separate hook earns its complexity. The
+    /// capacitive case is already covered per-report by `injectAux`'s own
+    /// `else if ring{1,2}GestureOpen` fallback above.
     func closeRingGestureEnvelopes() {
-        dialCoaster.closeGesture()
+        closeMechanicalDialGesture()
         if ring1GestureOpen {
             ring1GestureOpen = false
             postRingGesture(delta: 0, phase: .ended, kind: ring1GestureKind)
@@ -215,6 +214,41 @@ extension InputInjector {
             ring2GestureOpen = false
             postRingGesture(delta: 0, phase: .ended, kind: ring2GestureKind)
         }
+    }
+
+    /// Rearms the idle-close timer for a mechanical-dial `.zoom`/`.rotate`
+    /// gesture — called on every dispatched tick, same "invalidate then
+    /// recreate" pattern as `rearmWatchdog()`. `kind` is passed through so
+    /// the eventual close posts `.ended` for whichever gesture was actually
+    /// open, even if it's not the caller's own — the timer always fires
+    /// against whatever `mechanicalDialGestureKind` holds at fire time via
+    /// `closeMechanicalDialGesture()`, not a captured value, so a slot
+    /// change between ticks can't cause it to close the wrong kind.
+    func rearmMechanicalDialGestureIdleTimer(kind: RingGestureKind) {
+        if let t = mechanicalDialGestureIdleTimer { CFRunLoopTimerInvalidate(t) }
+        let timer = CFRunLoopTimerCreateWithHandler(
+            kCFAllocatorDefault,
+            CFAbsoluteTimeGetCurrent() + Self.mechanicalDialGestureIdleTimeout,
+            0, 0, 0
+        ) { [weak self] _ in
+            self?.closeMechanicalDialGesture()
+        }
+        mechanicalDialGestureIdleTimer = timer
+        if let timer { CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes) }
+    }
+
+    /// Closes the mechanical-dial `.zoom`/`.rotate` envelope, if one is
+    /// open: invalidates the idle timer and posts `.ended`. Safe to call
+    /// unconditionally — a no-op when nothing is open (scroll, or capacitive
+    /// hardware, which never sets `mechanicalDialGestureOpen`). Called by
+    /// the idle timer itself, `closeRingGestureEnvelopes()`, and the
+    /// modifier-held branch in `dispatchRingDelta`.
+    func closeMechanicalDialGesture() {
+        mechanicalDialGestureIdleTimer.map { CFRunLoopTimerInvalidate($0) }
+        mechanicalDialGestureIdleTimer = nil
+        guard mechanicalDialGestureOpen else { return }
+        mechanicalDialGestureOpen = false
+        postRingGesture(delta: 0, phase: .ended, kind: mechanicalDialGestureKind)
     }
 
     /// Called on HIDThread for each non-zero wheel step from a device with

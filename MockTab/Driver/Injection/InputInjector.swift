@@ -119,7 +119,7 @@ final class SharedPanScrollState {
 /// | `lastProximity` | pen in range | proximity exit; 1Hz watchdog forces exit after `stuckProximityTimeout` | Touch gated off as "pen busy" |
 /// | `lastAuxButtons`, `lastRingButtonDown` | express key / ring center down | matching up edge in `injectAux`; 0.4s `watchdogTimer` for modifier flags | Express-key binding stuck held |
 /// | `panMomentumTail`, `touchMomentumTail`, `dialCoaster` | flick release with velocity | decay to zero, new gesture start, `cancel()` in deinit | Scrolling continues after release |
-/// | `dialCoaster`'s open gesture, `ring1/2GestureOpen` | `.zoom`/`.rotate` ring slot engaged (dial spin or ring contact) | decay to zero (`.ended` posted, dial only) or ring contact lift (capacitive); explicit `closeRingGestureEnvelopes()` on ring-mode-cycle/select-slot bindings and the modifier-held zoom fallback; **`deinit` closes silently** (`dialCoaster.cancel()`, no `.ended` posted — see below) | Frontmost app stuck mid-pinch/-rotate |
+/// | `mechanicalDialGestureOpen`, `ring1/2GestureOpen` | `.zoom`/`.rotate` ring slot engaged (dial click or ring contact) | 0.4s `mechanicalDialGestureIdleTimer` after the last click (dial) or ring contact lift (capacitive); explicit `closeRingGestureEnvelopes()` on ring-mode-cycle/select-slot bindings and the modifier-held zoom fallback; **`deinit` closes silently** (timer invalidated, no `.ended` posted — see below) | Frontmost app stuck mid-pinch/-rotate |
 ///
 /// On disconnect: `releaseHeldStateForToolChange` releases held buttons but
 /// invalidates no timers, so a `pendingMouseUp`, `button*UpDebounceTimer`, or
@@ -151,23 +151,22 @@ final class SharedPanScrollState {
 /// short, and safe to fire against a departed device, or the disconnect path
 /// needs to invalidate it explicitly.
 ///
-/// `dialCoaster`'s open-gesture case above follows this reasoning exactly for
-/// a device unplugged mid-spin: the coaster's timer is still armed, still
-/// fires on HIDThread, and its own decay-to-zero closes the envelope
-/// (`.ended` posted) the same as if the device were still connected — no
-/// special-casing needed. **`deinit` is the one path that does NOT follow
-/// this pattern and closes silently instead** (`dialCoaster.cancel()`, no
-/// `.ended`): by the time `deinit` runs the object is being destroyed, so
-/// there is no thread-safe way to hop onto HIDThread and post an event from
-/// there, unlike every timer-fire handler above which runs while the object
-/// is still alive. This mirrors why `panMomentumTail.cancel()` and
-/// `touchMomentumTail.cancel()` are also the silent variant in `deinit`, not
-/// `stop()`. A stale open gesture at `deinit` time is not a live leak in
-/// practice — `deinit` only runs once nothing else references the injector,
-/// which for a connected device means the app is quitting (every gesture
-/// ends when the OS reclaims the process) or the device was already
-/// long-idle (the coaster decayed to zero and posted `.ended` on its own
-/// well before `deinit` could run).
+/// `mechanicalDialGestureIdleTimer` above follows this reasoning exactly for
+/// a device unplugged mid-spin: the timer is still armed, still fires on
+/// HIDThread, and closes the envelope (`.ended` posted) the same as if the
+/// device were still connected — no special-casing needed. **`deinit` is
+/// the one path that does NOT follow this pattern and closes silently
+/// instead** (invalidating the timer with no `.ended` posted): by the time
+/// `deinit` runs the object is being destroyed, so there is no thread-safe
+/// way to hop onto HIDThread and post an event from there, unlike every
+/// timer-fire handler above which runs while the object is still alive.
+/// This mirrors why `panMomentumTail.cancel()` and `touchMomentumTail.cancel()`
+/// are also the silent variant in `deinit`, not `stop()`. A stale open
+/// gesture at `deinit` time is not a live leak in practice — `deinit` only
+/// runs once nothing else references the injector, which for a connected
+/// device means the app is quitting (every gesture ends when the OS
+/// reclaims the process) or the device was already long-idle (the idle
+/// timer closed the envelope on its own well before `deinit` could run).
 final class InputInjector: @unchecked Sendable {
 
     // MARK: - Device identity
@@ -373,6 +372,7 @@ final class InputInjector: @unchecked Sendable {
         panMomentumTail.cancel()
         touchMomentumTail.cancel()
         dialCoaster.cancel()
+        mechanicalDialGestureIdleTimer.map { CFRunLoopTimerInvalidate($0) }
         button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
@@ -579,8 +579,8 @@ final class InputInjector: @unchecked Sendable {
     }
 
     /// Which analog gesture a `.zoom`/`.rotate` ring-slot action drives.
-    /// Mechanism-neutral — shared by both the mechanical-dial path
-    /// (`dialCoaster`/`postDialGesture`, below) and the capacitive-ring path
+    /// Mechanism-neutral — shared by the mechanical-dial idle-timer envelope
+    /// (`mechanicalDialGestureOpen`, below) and the capacitive-ring path
     /// (`injectAux`'s `touchRingActive` envelope, +AuxInput.swift). Naming
     /// this after "dial" specifically would misdescribe the ring case; see
     /// `WacomDeviceSpec.hasMechanicalDial`'s doc comment for why the two
@@ -589,28 +589,45 @@ final class InputInjector: @unchecked Sendable {
     enum RingGestureKind { case zoom, rotate }
 
     /// Inertial emitter for mechanical-dial hardware (Xencelabs dial;
-    /// PTK-470/670/870's gen-3 dials — see `hasMechanicalDial`). For scroll,
-    /// this is the *only* thing that posts for its input — see
+    /// PTK-470/670/870's gen-3 dials — see `hasMechanicalDial`). Scroll
+    /// only: this is the *only* thing that posts for that input — see
     /// `DialScrollCoaster` for why the dial needs that shape. `.zoom`/
-    /// `.rotate` ring-slot actions also drive it, via `impulse(gesture:
-    /// true)`, with `phase` non-nil for those and always `nil` for scroll.
-    lazy var dialCoaster = DialScrollCoaster { [weak self] delta, phase in
-        guard let phase else {
-            self?.postDialScroll(dy: delta)
-            return
-        }
-        guard let kind = self?.dialGestureKind else { return }
-        self?.postDialGesture(delta: delta, phase: phase, kind: kind)
+    /// `.rotate` ring-slot actions do NOT use this — they dispatch linearly
+    /// per raw tick instead (see `dispatchRingDelta`), because a dial click
+    /// is already a final, discrete ±1 step and running it through this
+    /// coaster's inertial buildup produced visibly nonlinear zoom/rotation
+    /// per click on hardware (confirmed on the Xencelabs puck, 2026-09).
+    lazy var dialCoaster = DialScrollCoaster { [weak self] dy in
+        self?.postDialScroll(dy: dy)
     }
 
-    /// Which gesture the coaster is currently driving — set at the moment a
-    /// `.zoom`/`.rotate` slot first calls `dialCoaster.impulse(gesture:
-    /// true)`, read back by the closure above. Same "captured at engage"
-    /// pattern as `panScrollUsePhases`. The coaster itself stays unit-
-    /// agnostic (a signed `Double` per tick); this is what tells the post
-    /// closure whether that value means a magnification delta or a rotation
-    /// delta. Meaningless while `dialCoaster`'s phase is `nil` (scroll).
-    var dialGestureKind: RingGestureKind = .zoom
+    /// True while a `.zoom`/`.rotate` gesture envelope is open on
+    /// mechanical-dial hardware. Unlike the capacitive ring (whose envelope
+    /// is bracketed by `touchRingActive`'s finger-presence edge) a bare
+    /// rotary encoder has no such signal — it only ever reports "a click
+    /// happened" — so this is opened on the first tick after being closed
+    /// and closed by `mechanicalDialGestureIdleTimer` once ticks actually
+    /// stop arriving. See `closeMechanicalDialGesture`.
+    var mechanicalDialGestureOpen = false
+    /// Which gesture is open — set when `mechanicalDialGestureOpen` goes
+    /// true, read back by the idle timer and every release path when
+    /// closing. The slot may have changed away from `.zoom`/`.rotate` by
+    /// the time the envelope closes, so this can't be re-derived from the
+    /// current slot at close time.
+    var mechanicalDialGestureKind: RingGestureKind = .zoom
+    /// One-shot idle-close timer for the mechanical-dial gesture envelope —
+    /// same pattern as `watchdogTimer` (`rearmWatchdog()`): rearmed on every
+    /// tick, invalidated and recreated rather than rescheduled in place.
+    /// Fires `closeMechanicalDialGesture()` after `mechanicalDialGestureIdleTimeout`
+    /// of no further ticks.
+    var mechanicalDialGestureIdleTimer: CFRunLoopTimer?
+    /// How long to wait after the last dial click before treating a
+    /// `.zoom`/`.rotate` gesture as finished. Must comfortably exceed the
+    /// inter-click gap of a slow, deliberate turn — too short and a
+    /// deliberate turn stutters into several began/changed/ended gestures
+    /// instead of one continuous one. Too long only costs a nominally-open
+    /// gesture with no `.changed` flowing during idle, which is harmless.
+    static let mechanicalDialGestureIdleTimeout: TimeInterval = 0.4
 
     /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
     /// `true` (Momentum, default): the stream carries the phased began/changed/

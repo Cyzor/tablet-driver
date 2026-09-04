@@ -190,11 +190,15 @@ final class MomentumTail {
 /// because the complaint is the missing forward motion, not the small backward
 /// motion.
 ///
-/// Also drives mechanical-dial `.zoom`/`.rotate` ring-slot actions (see
-/// `ControlSlot.Action`) — the same impulse-driven physics, just posting a
-/// magnitude through `GesturePhase` brackets instead of a bare scroll delta.
-/// Scroll passes `phase: nil` throughout and the call site ignores it; scroll
-/// has no gesture envelope and none is invented for it here.
+/// `.zoom`/`.rotate` ring-slot actions do NOT go through this coaster, on
+/// either mechanism — a dial click is already a discrete, final ±1 tick
+/// (confirmed for the Xencelabs dial: see `XencelabsDecoder`'s "Dial clicks
+/// arrive as discrete events, not a counter"), and running it through this
+/// class's inertial buildup compounded into visibly nonlinear zoom/rotation
+/// per click on hardware. They dispatch linearly instead — see
+/// `dispatchRingDelta`'s `.zoom`/`.rotate` branch and
+/// `closeMechanicalDialGesture` for the mechanical-dial envelope, which an
+/// idle timer owns instead of this coaster's decay.
 ///
 /// So here the ticker is the *sole* emitter and clicks never post anything
 /// themselves: each click only adds a signed impulse to a velocity that
@@ -210,30 +214,8 @@ final class MomentumTail {
 /// HIDThread-confined on the same terms as `MomentumTail`.
 final class DialScrollCoaster {
 
-    /// Bracket for a gesture-shaped payload (`.zoom`/`.rotate`). `nil` for
-    /// scroll, which has no envelope — the call site ignores the phase
-    /// argument entirely in that case. Deliberately not `MomentumPhase`
-    /// (that type's `.none`/`.begin`/`.continue`/`.end` is the momentum-tail
-    /// vocabulary used *after* a released gesture decays; this coaster
-    /// drives a *live*, continuously-fed gesture instead, so it needs
-    /// `.began`/`.changed`/`.ended` — the same phases touch's
-    /// `postTouchMagnify`/`postTouchRotate` already take).
-    enum GesturePhase {
-        case began, changed, ended
-    }
-
-    /// Posts one increment. For scroll, `phase` is always `nil` and the
-    /// magnitude is a scroll delta in points. For `.zoom`/`.rotate`,
-    /// `phase` is non-nil and the magnitude is the raw per-tick delta the
-    /// caller turns into a magnification/rotation value — this type has no
-    /// opinion on units beyond "a signed `Double` that decays like the
-    /// scroll case." Must capture its owner weakly.
-    private let post: (_ delta: Double, _ phase: GesturePhase?) -> Void
-
-    /// Non-nil while a `.zoom`/`.rotate` envelope is open — `nil` for the
-    /// scroll case throughout, so `phase` is never synthesized where none
-    /// was asked for.
-    private var openGesture: Bool = false
+    /// Posts one scroll increment, in points. Must capture its owner weakly.
+    private let post: (_ dy: Double) -> Void
 
     private var timer: CFRunLoopTimer?
     /// Signed, points/second. Positive follows the same convention as the
@@ -283,20 +265,14 @@ final class DialScrollCoaster {
     /// arrive faster than friction can bleed them off grows without bound.
     static let maxVelocity = 4000.0
 
-    init(post: @escaping (_ delta: Double, _ phase: GesturePhase?) -> Void) {
+    init(post: @escaping (_ dy: Double) -> Void) {
         self.post = post
     }
 
     /// Feeds one dial click in, as signed lines of travel (already scaled by
     /// the user's speed setting). Never posts directly — it only changes the
     /// velocity the ticker is emitting from.
-    ///
-    /// `gesture: true` marks this coaster as driving a `.zoom`/`.rotate`
-    /// envelope rather than scroll — `.began` is posted from the first tick
-    /// that actually emits a nonzero delta, not from this call, so a launch
-    /// window that cancels out to zero (opposing clicks within
-    /// `launchWindow`) never opens an envelope with nothing in it.
-    func impulse(lines: Double, gesture: Bool = false) {
+    func impulse(lines: Double) {
         // Opposing clicks are free to carry velocity straight through zero and
         // out the other side. A variant that braked to a standstill first —
         // one click to cancel the spin, a second to reverse it — was tried on
@@ -305,7 +281,6 @@ final class DialScrollCoaster {
         // responsiveness under rapid CW-CCW-CW twisting, which is the motion
         // people actually make. The overshoot is the better trade.
         velocity = min(Self.maxVelocity, max(-Self.maxVelocity, velocity + lines * Self.kick))
-        if gesture { pendingGesture = true }
         guard timer == nil else { return }
         accum = 0
         launching = true
@@ -313,41 +288,13 @@ final class DialScrollCoaster {
         scheduleTick(after: Self.launchWindow)
     }
 
-    /// Silent cancel — no `.ended` posted. Matches `MomentumTail.cancel()`'s
-    /// contract: used when a new gesture is about to engage and its own
-    /// fresh phase will supersede whatever this one was doing, so an
-    /// `.ended` here would be redundant at best and, for `NSEventTypeGesture`
-    /// consumers, could bracket a stray zero-length gesture between the old
-    /// `.ended` and the new `.began`. Real envelope closure goes through
-    /// `closeGesture()` instead.
     func cancel() {
         timer.map { CFRunLoopTimerInvalidate($0) }
         timer = nil
         velocity = 0
         accum = 0
         launching = false
-        openGesture = false
-        pendingGesture = false
     }
-
-    /// Like `cancel()`, but posts `.ended` first if a `.zoom`/`.rotate`
-    /// envelope is actually open. Safe to call unconditionally — a no-op
-    /// when no envelope was ever opened (scroll, or a gesture spin that
-    /// canceled out inside its own launch window). This is the method every
-    /// external release path (deinit, ring-mode cycle, live slot edit) calls;
-    /// none of them should call `cancel()` directly once a gesture might be
-    /// in flight, or a real open envelope leaks into whatever app was
-    /// frontmost — the exact failure shape `project_injector_latch_audit`
-    /// exists to prevent.
-    func closeGesture() {
-        if openGesture { post(0, .ended) }
-        cancel()
-    }
-
-    /// True once `impulse(gesture: true)` has been called but the resulting
-    /// tick hasn't fired yet (see `impulse`'s doc comment on why `.began`
-    /// waits for real motion, not the call that requested it).
-    private var pendingGesture = false
 
     private func scheduleTick(after interval: TimeInterval = DialScrollCoaster.tickInterval) {
         let t = CFRunLoopTimerCreateWithHandler(
@@ -370,11 +317,7 @@ final class DialScrollCoaster {
         if launching {
             launching = false
             lastTickTime = now
-            guard velocity != 0 else {
-                accum = 0
-                pendingGesture = false
-                return
-            }
+            guard velocity != 0 else { accum = 0; return }
             scheduleTick()
             return
         }
@@ -382,14 +325,7 @@ final class DialScrollCoaster {
         lastTickTime = now
 
         let speed = abs(velocity)
-        guard speed > 0 else {
-            accum = 0
-            if openGesture {
-                openGesture = false
-                post(0, .ended)
-            }
-            return
-        }
+        guard speed > 0 else { accum = 0; return }
         let direction = velocity < 0 ? -1.0 : 1.0
         // Trapezoidal integration, as in MomentumTail: travel uses the average
         // of the speed at both ends of the tick so it doesn't depend on cadence.
@@ -399,33 +335,9 @@ final class DialScrollCoaster {
 
         let whole = accum.rounded(.towardZero)
         accum -= whole
-        if whole != 0 {
-            // First real emission for a gesture-marked spin: open the
-            // envelope now, not at impulse() time — see impulse()'s doc
-            // comment on why a canceled-out launch window must never open
-            // one with nothing in it. Matches touch's own magnify/rotate
-            // convention (TouchStateTracker's GestureDelta): .began/.ended
-            // always carry magnitude 0, so .began posts separately here and
-            // this tick's real motion follows immediately as .changed —
-            // nothing is lost, it's split across two posts instead of one.
-            if pendingGesture {
-                pendingGesture = false
-                openGesture = true
-                post(0, .began)
-                post(whole, .changed)
-            } else {
-                post(whole, openGesture ? .changed : nil)
-            }
-        }
+        if whole != 0 { post(whole) }
 
-        guard newSpeed > 0 else {
-            accum = 0
-            if openGesture {
-                openGesture = false
-                post(0, .ended)
-            }
-            return
-        }
+        guard newSpeed > 0 else { accum = 0; return }
         scheduleTick()
     }
 }
