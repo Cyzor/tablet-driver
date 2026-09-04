@@ -86,6 +86,31 @@ extension InputInjector {
         let activeSlot: ControlSlot? = snap.touchRingSlots.indices.contains(snap.touchRingActiveSlotIndex)
             ? snap.touchRingSlots[snap.touchRingActiveSlotIndex] : nil
 
+        // Capacitive `.zoom`/`.rotate` envelope: opens on the false→true
+        // contact edge (before this report's delta dispatch, so the very
+        // first delta lands as `.changed` after a real `.began`), closes on
+        // true→false (posting `.ended`). No-op for hardware where
+        // `hasMechanicalDial` is true — that path's envelope lives in
+        // `dialCoaster` instead (see `dispatchRingDelta`). Keyed on
+        // `touchRingActive` alone; see `ring1GestureOpen`'s doc comment for
+        // why `lastRingButtonDown` must not be used here.
+        if !hasMechanicalDial, let slot = activeSlot, slot.action == .zoom || slot.action == .rotate {
+            let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
+            if buttons.touchRingActive, !ring1GestureOpen {
+                ring1GestureOpen = true
+                ring1GestureKind = kind
+                postRingGesture(delta: 0, phase: .began, kind: kind)
+            } else if !buttons.touchRingActive, ring1GestureOpen {
+                ring1GestureOpen = false
+                postRingGesture(delta: 0, phase: .ended, kind: ring1GestureKind)
+            }
+        } else if ring1GestureOpen {
+            // Slot changed away from .zoom/.rotate (or dial mechanism) while
+            // open — close explicitly rather than leaving it dangling.
+            ring1GestureOpen = false
+            postRingGesture(delta: 0, phase: .ended, kind: ring1GestureKind)
+        }
+
         let ringPos = buttons.touchRingPosition
         if buttons.touchRingActive, lastRingPos != 0x7F {
             var delta = Int(ringPos) - Int(lastRingPos)
@@ -104,6 +129,21 @@ extension InputInjector {
         lastRingPos = buttons.touchRingActive ? ringPos : 0x7F
 
         // ── Touch ring 2 (DTK-2400 right bezel) — shares touchRingSlots ──
+        if !hasMechanicalDial, let slot = activeSlot, slot.action == .zoom || slot.action == .rotate {
+            let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
+            if buttons.touchRing2Active, !ring2GestureOpen {
+                ring2GestureOpen = true
+                ring2GestureKind = kind
+                postRingGesture(delta: 0, phase: .began, kind: kind)
+            } else if !buttons.touchRing2Active, ring2GestureOpen {
+                ring2GestureOpen = false
+                postRingGesture(delta: 0, phase: .ended, kind: ring2GestureKind)
+            }
+        } else if ring2GestureOpen {
+            ring2GestureOpen = false
+            postRingGesture(delta: 0, phase: .ended, kind: ring2GestureKind)
+        }
+
         let ring2Pos = buttons.touchRing2Position
         if buttons.touchRing2Active, lastRing2Pos != 0x7F {
             var delta = Int(ring2Pos) - Int(lastRing2Pos)
@@ -147,6 +187,35 @@ extension InputInjector {
     }
 
     // MARK: - Relative wheel (IntuosV3 PTK-x70 side scroll wheels)
+
+    /// Closes any open `.zoom`/`.rotate` gesture envelope on either ring,
+    /// regardless of which mechanism (mechanical dial or capacitive ring)
+    /// this device uses — safe to call unconditionally, a no-op when nothing
+    /// is open. Called from the ring-mode-cycle and ring-select-slot binding
+    /// paths (+CGEvents.swift) before the active slot changes out from under
+    /// a live gesture; see the `ended`-path enumeration in
+    /// `Notes/Scratch/ring-dial-analog-zoom-rotate-design.md`.
+    ///
+    /// Deliberately NOT hooked to live in-place slot edits in the settings
+    /// UI (a different case from the mode-cycle binding above): on
+    /// mechanical-dial hardware the coaster's own decay-to-zero closes the
+    /// envelope within `DialScrollCoaster.friction`'s bounded window
+    /// regardless (well under a second from any realistic velocity) — a live
+    /// edit produces at most a fraction of a second of stale `.changed`
+    /// events, not a leaked-open gesture, so no separate hook earns its
+    /// complexity. The capacitive case is already covered per-report by
+    /// `injectAux`'s own `else if ring{1,2}GestureOpen` fallback above.
+    func closeRingGestureEnvelopes() {
+        dialCoaster.closeGesture()
+        if ring1GestureOpen {
+            ring1GestureOpen = false
+            postRingGesture(delta: 0, phase: .ended, kind: ring1GestureKind)
+        }
+        if ring2GestureOpen {
+            ring2GestureOpen = false
+            postRingGesture(delta: 0, phase: .ended, kind: ring2GestureKind)
+        }
+    }
 
     /// Called on HIDThread for each non-zero wheel step from a device with
     /// physical rotary encoders (e.g. PTK-470/670/870).  Routes through

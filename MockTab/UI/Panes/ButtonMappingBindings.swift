@@ -168,7 +168,7 @@ extension ButtonMappingView {
                 let oldSlots = self.settings.touchRingSlots
                 guard oldSlots.indices.contains(0) else { return }
                 var newSlots = oldSlots
-                newSlots[0].action = newAction
+                newSlots[0].setAction(newAction)
                 self.settings.touchRingSlots = newSlots
                 self.settings.recordToggle(String(localized: "Ring Slot 1 Action", comment: "Undo action name: touch ring slot action mode in the Buttons pane"), from: oldSlots, to: newSlots) {
                     self.settings.touchRingSlots = $0
@@ -186,7 +186,7 @@ extension ButtonMappingView {
                 let oldSlots = self.settings.touchRingSlots
                 guard oldSlots.indices.contains(1) else { return }
                 var newSlots = oldSlots
-                newSlots[1].action = newAction
+                newSlots[1].setAction(newAction)
                 self.settings.touchRingSlots = newSlots
                 self.settings.recordToggle(String(localized: "Ring Slot 2 Action", comment: "Undo action name: touch ring slot action mode in the Buttons pane"), from: oldSlots, to: newSlots) {
                     self.settings.touchRingSlots = $0
@@ -204,7 +204,7 @@ extension ButtonMappingView {
                 let oldSlots = self.settings.touchRingSlots
                 guard oldSlots.indices.contains(2) else { return }
                 var newSlots = oldSlots
-                newSlots[2].action = newAction
+                newSlots[2].setAction(newAction)
                 self.settings.touchRingSlots = newSlots
                 self.settings.recordToggle(String(localized: "Ring Slot 3 Action", comment: "Undo action name: touch ring slot action mode in the Buttons pane"), from: oldSlots, to: newSlots) {
                     self.settings.touchRingSlots = $0
@@ -222,7 +222,7 @@ extension ButtonMappingView {
                 let oldSlots = self.settings.touchRingSlots
                 guard oldSlots.indices.contains(3) else { return }
                 var newSlots = oldSlots
-                newSlots[3].action = newAction
+                newSlots[3].setAction(newAction)
                 self.settings.touchRingSlots = newSlots
                 self.settings.recordToggle(String(localized: "Ring Slot 4 Action", comment: "Undo action name: touch ring slot action mode in the Buttons pane"), from: oldSlots, to: newSlots) {
                     self.settings.touchRingSlots = $0

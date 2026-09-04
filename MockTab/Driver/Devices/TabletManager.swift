@@ -438,7 +438,11 @@ final class TabletManager: ObservableObject {
             // the companion's, folded into the tablet's Buttons pane
             // instead — see ButtonMappingView's Quick Keys section), so
             // this must not be forced on for every Xencelabs PID.
-            hasTouchRing: isAuxOnly, hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
+            // The Quick Keys dial is a bare mechanical encoder, same
+            // mechanism as PTK-470/670/870's gen-3 dials — no finger-presence
+            // sensing, rotation only. See hasMechanicalDial's doc comment.
+            hasTouchRing: isAuxOnly, hasMechanicalDial: isAuxOnly,
+            hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
             isPenDisplay: profile.isPenDisplay,
             seizeUSB: false,
             // Tablet-mode handshake; without it the device stays in

@@ -818,6 +818,12 @@ extension InputInjector {
             }
         case .ringCycle:
             guard down else { break }
+            // Close any open .zoom/.rotate envelope before the mode changes
+            // out from under it — synchronous, on HIDThread, before the
+            // async index update below. Mechanical-dial hardware: the
+            // coaster; capacitive rings: the direct envelope flags. Correct
+            // for either mechanism regardless of which one this device uses.
+            closeRingGestureEnvelopes()
             if let s = settings {
                 Task { @MainActor in
                     // Slots set to Skip are left out of the rotation —
@@ -837,6 +843,7 @@ extension InputInjector {
             }
         case .ringSelectSlot:
             guard down else { break }
+            closeRingGestureEnvelopes()
             let target = min(Int(binding.keyCode), max(0, snapshot.touchRingSlots.count - 1))
             if let s = settings {
                 Task { @MainActor in s.touchRingActiveSlotIndex = target }
@@ -927,12 +934,13 @@ extension InputInjector {
         rawDelta: Int, slot: ControlSlot, accum: inout Double,
         at location: CGPoint, snapshot: InjectionSnapshot, settings: TabletSettings?
     ) {
-        // Xencelabs dial, scrolling: hand the click to the inertial emitter
-        // instead of posting for it. Everything else about the slot still
-        // applies — speed scaling and the natural-scrolling convention below
-        // are the same numbers, they just seed velocity rather than a
-        // one-shot event. Key-press and off/skip slots are untouched, and so
-        // is every other device's ring or strip.
+        // Mechanical-dial hardware (Xencelabs dial; PTK-470/670/870 gen-3 —
+        // see `hasMechanicalDial`), scrolling: hand the click to the
+        // inertial emitter instead of posting for it. Everything else about
+        // the slot still applies — speed scaling and the natural-scrolling
+        // convention below are the same numbers, they just seed velocity
+        // rather than a one-shot event. Key-press and off/skip slots are
+        // untouched, and so is every other device's ring or strip.
         // Modifier-held dial scrolling is not scrolling: apps read ⌥/⌘+wheel as
         // zoom, and zoom is a stepped operation, one notch per detent. A 60 Hz
         // continuous stream hands those apps dozens of zoom steps per second —
@@ -941,8 +949,27 @@ extension InputInjector {
         // the behaviour that was already known good for zoom.
         let zoomModifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
         let modifierHeld = !moveSafeEventFlags.intersection(zoomModifiers).isEmpty
-        if modifierHeld { dialCoaster.cancel() }
-        if deviceVendorID == 0x28BD, !modifierHeld, case .scroll = slot.action {
+        // closeGesture(), not cancel(): a .zoom/.rotate spin may have an open
+        // envelope here (a plain cancel() would leak it — the app never sees
+        // .ended). No-op for scroll, which never opens one.
+        if modifierHeld { dialCoaster.closeGesture() }
+        if hasMechanicalDial, !modifierHeld, slot.action == .zoom || slot.action == .rotate {
+            // .zoom/.rotate on mechanical-dial hardware: bypass the
+            // integer-line accumulator below entirely — quantizing to whole
+            // "lines" is exactly the steppiness this feature exists to
+            // remove. Feed the coaster a small fractional delta instead; its
+            // .began/.changed/.ended envelope is synthesized from decay to
+            // zero (see DialScrollCoaster), unlike scroll's fire-and-forget
+            // impulses. `delta` here is already through `ringDeltaIsInverted`
+            // at the call site (+AuxInput.swift), so polarity is correct for
+            // free — do not re-derive it from a separate raw value.
+            dialGestureKind = slot.action == .zoom ? .zoom : .rotate
+            let lines = Double(rawDelta) * slot.speed
+            dialCoaster.impulse(
+                lines: Self.naturalScrollingEnabled ? lines : -lines, gesture: true)
+            return
+        }
+        if hasMechanicalDial, !modifierHeld, case .scroll = slot.action {
             // The dial's Speed slider was given a 20x ceiling (44e22ad) purely
             // so one click's line count could cross the chunk threshold that
             // works around AppKit's per-event clamp. Pixel-unit output has no
@@ -952,6 +979,18 @@ extension InputInjector {
             // catches values saved while the taller one was live.
             let lines = Double(rawDelta) * min(slot.speed, 3.0)
             dialCoaster.impulse(lines: Self.naturalScrollingEnabled ? lines : -lines)
+            return
+        }
+        if !hasMechanicalDial, slot.action == .zoom || slot.action == .rotate {
+            // Capacitive ring: no coaster, no accumulator. The envelope
+            // (.began/.ended) is owned by injectAux's touchRingActive edge;
+            // this call only ever posts .changed, once per report, scaled
+            // directly from the ring's own continuous signal rather than a
+            // decay-driven approximation of one.
+            let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
+            let scale = kind == .zoom ? Self.dialGestureZoomScale : Self.dialGestureRotateScale
+            let delta = Double(rawDelta) * slot.speed * scale
+            postRingGesture(delta: delta, phase: .changed, kind: kind)
             return
         }
         accum += Double(rawDelta) * slot.speed
@@ -1001,6 +1040,12 @@ extension InputInjector {
             }
         case .off, .skip:
             break
+        case .zoom, .rotate:
+            // Unreachable: both branches above return before this switch is
+            // ever reached for a .zoom/.rotate slot. Kept exhaustive rather
+            // than `default:` so a future Action case is caught by the
+            // compiler here too.
+            break
         }
     }
 
@@ -1048,6 +1093,92 @@ extension InputInjector {
         // seconds afterwards, by which time a held modifier may be long gone.
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)
+    }
+
+    /// Per-tick magnification-fraction scale, applied to `dialCoaster`'s raw
+    /// point delta before it reaches `postTouchMagnify`. `magnify.value` in
+    /// touch's own pinch path is a relative-growth fraction (e.g. 0.02 =
+    /// "2% bigger this frame"), not points — this constant is the conversion
+    /// factor. Untested starting point pending a hardware pass, same
+    /// footing as `DialScrollCoaster.kick`/`MomentumTail.deceleration` when
+    /// they were first written: order 0.01–0.05 per detent at 1x speed was
+    /// the design's own estimate, and dividing a `kick`-seeded per-tick
+    /// delta (order 1-12 points, see `DialScrollCoaster.kick`'s doc comment)
+    /// by 300 lands in roughly that range for a slow, deliberate turn.
+    /// Confirmed "about right" on the PTH-860 (2026-09) at the current
+    /// value — unlike `dialGestureRotateScale`, this has no equivalent
+    /// physical 1:1 anchor to derive from (zoom has no natural "one
+    /// revolution = X%" mapping the way rotate has "one revolution = 360°"),
+    /// so it stays an empirically-tuned constant, not a derived one.
+    static let dialGestureZoomScale = 1.0 / 300.0
+
+    /// Rotation scale — radians per raw ring/dial tick, at 1x speed.
+    ///
+    /// Calibrated, not a guess, for the **capacitive ring path**: the ring
+    /// reports 72 fixed steps per physical revolution (see
+    /// `InputInjector+AuxInput.swift`'s "72 steps (0-71, ~5° each)" comment),
+    /// so `π/36` radians/step (5°/step) makes one full physical revolution
+    /// of the ring equal exactly one full 360° canvas rotation at 1x speed —
+    /// the anchor a user reaches for turning a ring, confirmed by hardware
+    /// feedback (PTH-860) that the previous value (`π/900`, ≈14.4°/rev at
+    /// 1x) needed ~25x speed to reach 1:1, an unreasonably tall slider range
+    /// for what should be the natural default.
+    ///
+    /// **This physical anchor does NOT carry over to the mechanical-dial
+    /// path** (Xencelabs dial, PTK-x70): that path applies this same
+    /// constant to `dialCoaster`'s emitted point deltas — already reshaped
+    /// by `impulse`'s `kick` and `tick`'s `friction`/velocity-cap physics —
+    /// not to a raw per-revolution tick count, and a mechanical dial has no
+    /// fixed steps-per-revolution to anchor against in the first place. Its
+    /// rotate feel is therefore whatever this constant produces through that
+    /// nonlinear coaster response, not a defined 1:1 relationship — expect
+    /// it to need its own independent hardware pass, and do not "fix" the
+    /// dial's feel by changing this constant on the assumption its meaning
+    /// is the same as the ring's.
+    static let dialGestureRotateScale = Double.pi / 36.0
+
+    /// Routes `dialCoaster`'s gesture-phase output to the same
+    /// `NSEventTypeGesture` synthesis touch's pinch/rotate already uses —
+    /// see `postTouchMagnify`/`postTouchRotate` for the technique and its
+    /// provenance. `delta` is `dialCoaster`'s raw per-tick point value;
+    /// `.began`/`.ended` always carry `0` from the coaster (matching
+    /// `TouchStateTracker`'s own `GestureDelta` convention for those
+    /// phases), so only `.changed` needs the scale applied — `.began`/
+    /// `.ended` pass a magnitude of 0 through regardless of `delta`'s value.
+    ///
+    /// Mechanical-dial path only — a thin wrapper around `postRingGesture`
+    /// that exists because the coaster's phase vocabulary
+    /// (`DialScrollCoaster.GesturePhase`) is distinct from
+    /// `TouchStateTracker.ScrollPhase`. The capacitive-ring path
+    /// (`injectAux`) calls `postRingGesture` directly with its own already-
+    /// scaled per-report delta — it has no coaster and no separate phase
+    /// enum to translate.
+    func postDialGesture(
+        delta: Double, phase: DialScrollCoaster.GesturePhase, kind: RingGestureKind
+    ) {
+        let touchPhase: TouchStateTracker.ScrollPhase
+        switch phase {
+        case .began: touchPhase = .began
+        case .changed: touchPhase = .changed
+        case .ended: touchPhase = .ended
+        }
+        let magnitude = phase == .changed ? delta : 0
+        postRingGesture(delta: magnitude, phase: touchPhase, kind: kind)
+    }
+
+    /// Mechanism-neutral gesture post: both the mechanical-dial path (via
+    /// `postDialGesture`) and the capacitive-ring path (`injectAux`, direct)
+    /// funnel through here. `delta` is expected pre-scaled by the caller for
+    /// the capacitive case (see `dispatchRingDelta`'s `.zoom`/`.rotate`
+    /// branch); for the dial case it's already `dialGestureZoomScale`/
+    /// `dialGestureRotateScale`-adjusted by `postDialGesture`. `.began`/
+    /// `.ended` should always be called with `delta: 0` — this function
+    /// applies no phase-based zeroing itself, callers own that convention.
+    func postRingGesture(delta: Double, phase: TouchStateTracker.ScrollPhase, kind: RingGestureKind) {
+        switch kind {
+        case .zoom: postTouchMagnify(magnification: delta, phase: phase)
+        case .rotate: postTouchRotate(rotation: delta, phase: phase)
+        }
     }
 
     // MARK: - Scroll Drag (pan)

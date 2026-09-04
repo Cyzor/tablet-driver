@@ -119,6 +119,7 @@ final class SharedPanScrollState {
 /// | `lastProximity` | pen in range | proximity exit; 1Hz watchdog forces exit after `stuckProximityTimeout` | Touch gated off as "pen busy" |
 /// | `lastAuxButtons`, `lastRingButtonDown` | express key / ring center down | matching up edge in `injectAux`; 0.4s `watchdogTimer` for modifier flags | Express-key binding stuck held |
 /// | `panMomentumTail`, `touchMomentumTail`, `dialCoaster` | flick release with velocity | decay to zero, new gesture start, `cancel()` in deinit | Scrolling continues after release |
+/// | `dialCoaster`'s open gesture, `ring1/2GestureOpen` | `.zoom`/`.rotate` ring slot engaged (dial spin or ring contact) | decay to zero (`.ended` posted, dial only) or ring contact lift (capacitive); explicit `closeRingGestureEnvelopes()` on ring-mode-cycle/select-slot bindings and the modifier-held zoom fallback; **`deinit` closes silently** (`dialCoaster.cancel()`, no `.ended` posted — see below) | Frontmost app stuck mid-pinch/-rotate |
 ///
 /// On disconnect: `releaseHeldStateForToolChange` releases held buttons but
 /// invalidates no timers, so a `pendingMouseUp`, `button*UpDebounceTimer`, or
@@ -149,6 +150,24 @@ final class SharedPanScrollState {
 /// A new timer here inherits none of that automatically. It must be one-shot,
 /// short, and safe to fire against a departed device, or the disconnect path
 /// needs to invalidate it explicitly.
+///
+/// `dialCoaster`'s open-gesture case above follows this reasoning exactly for
+/// a device unplugged mid-spin: the coaster's timer is still armed, still
+/// fires on HIDThread, and its own decay-to-zero closes the envelope
+/// (`.ended` posted) the same as if the device were still connected — no
+/// special-casing needed. **`deinit` is the one path that does NOT follow
+/// this pattern and closes silently instead** (`dialCoaster.cancel()`, no
+/// `.ended`): by the time `deinit` runs the object is being destroyed, so
+/// there is no thread-safe way to hop onto HIDThread and post an event from
+/// there, unlike every timer-fire handler above which runs while the object
+/// is still alive. This mirrors why `panMomentumTail.cancel()` and
+/// `touchMomentumTail.cancel()` are also the silent variant in `deinit`, not
+/// `stop()`. A stale open gesture at `deinit` time is not a live leak in
+/// practice — `deinit` only runs once nothing else references the injector,
+/// which for a connected device means the app is quitting (every gesture
+/// ends when the OS reclaims the process) or the device was already
+/// long-idle (the coaster decayed to zero and posted `.ended` on its own
+/// well before `deinit` could run).
 final class InputInjector: @unchecked Sendable {
 
     // MARK: - Device identity
@@ -172,6 +191,21 @@ final class InputInjector: @unchecked Sendable {
     /// polarity convention ever appears, promote this to a registry field next
     /// to the other per-device hardware facts.
     let ringDeltaIsInverted: Bool
+
+    /// True if this device's ring/dial control is a bare mechanical rotary
+    /// encoder rather than a capacitive touch ring — see
+    /// `WacomDeviceSpec.hasMechanicalDial`'s doc comment for the mechanism
+    /// distinction and why it doesn't track vendor. Resolved once at init,
+    /// same pattern as `ringDeltaIsInverted`: `WacomDeviceRegistry` covers
+    /// Wacom hardware (PTK-670/870 gen-3 dials); Xencelabs isn't in that
+    /// registry, so this reaches `VendorDeviceRegistry` directly for that
+    /// case rather than depending on `TabletManager.vendorDeviceSpec`
+    /// (which synthesizes a `WacomDeviceSpec` for the UI/connect path) —
+    /// keeps this a `TabletKit`-internal lookup, not a reach into `Devices`.
+    /// Only the aux-only Quick Keys puck/dongle has a dial; the Xencelabs
+    /// pen tablets/display have neither express keys nor a dial of their own.
+    let hasMechanicalDial: Bool
+
     var activeToolSettings: ToolSettings? = nil {
         didSet { reconcileSyntheticFlags() }
     }
@@ -290,6 +324,18 @@ final class InputInjector: @unchecked Sendable {
         self.deviceProductID = productID
         self.ringDeltaIsInverted =
             WacomDeviceRegistry.spec(for: productID)?.parser == .intuosV1
+        if let spec = WacomDeviceRegistry.spec(for: productID) {
+            self.hasMechanicalDial = spec.hasMechanicalDial
+        } else if vendorID == 0x28BD,
+            let profile = VendorDeviceRegistry.drivableProfile(
+                forVendorID: vendorID, productID: productID)
+        {
+            // Mirrors TabletManager.vendorDeviceSpec's isAuxOnly check: only
+            // the aux-only Quick Keys puck/dongle has a dial.
+            self.hasMechanicalDial = profile.maxX == nil
+        } else {
+            self.hasMechanicalDial = false
+        }
         Self.liveInjectorsLock.withLock { $0.table.add(self) }
         recomputeVirtualScreenBounds()
         displayObserver = NotificationCenter.default.addObserver(
@@ -532,12 +578,39 @@ final class InputInjector: @unchecked Sendable {
         self?.postTouchScrollMomentum(dx: dx, dy: dy, phase: phase)
     }
 
-    /// Inertial emitter for the Xencelabs dial. Unlike the two tails above this
-    /// one is the *only* thing that posts scroll for its input — see
-    /// `DialScrollCoaster` for why the dial needs that shape.
-    lazy var dialCoaster = DialScrollCoaster { [weak self] dy in
-        self?.postDialScroll(dy: dy)
+    /// Which analog gesture a `.zoom`/`.rotate` ring-slot action drives.
+    /// Mechanism-neutral — shared by both the mechanical-dial path
+    /// (`dialCoaster`/`postDialGesture`, below) and the capacitive-ring path
+    /// (`injectAux`'s `touchRingActive` envelope, +AuxInput.swift). Naming
+    /// this after "dial" specifically would misdescribe the ring case; see
+    /// `WacomDeviceSpec.hasMechanicalDial`'s doc comment for why the two
+    /// mechanisms need separate envelope logic but the same gesture-kind
+    /// vocabulary.
+    enum RingGestureKind { case zoom, rotate }
+
+    /// Inertial emitter for mechanical-dial hardware (Xencelabs dial;
+    /// PTK-470/670/870's gen-3 dials — see `hasMechanicalDial`). For scroll,
+    /// this is the *only* thing that posts for its input — see
+    /// `DialScrollCoaster` for why the dial needs that shape. `.zoom`/
+    /// `.rotate` ring-slot actions also drive it, via `impulse(gesture:
+    /// true)`, with `phase` non-nil for those and always `nil` for scroll.
+    lazy var dialCoaster = DialScrollCoaster { [weak self] delta, phase in
+        guard let phase else {
+            self?.postDialScroll(dy: delta)
+            return
+        }
+        guard let kind = self?.dialGestureKind else { return }
+        self?.postDialGesture(delta: delta, phase: phase, kind: kind)
     }
+
+    /// Which gesture the coaster is currently driving — set at the moment a
+    /// `.zoom`/`.rotate` slot first calls `dialCoaster.impulse(gesture:
+    /// true)`, read back by the closure above. Same "captured at engage"
+    /// pattern as `panScrollUsePhases`. The coaster itself stays unit-
+    /// agnostic (a signed `Double` per tick); this is what tells the post
+    /// closure whether that value means a magnification delta or a rotation
+    /// delta. Meaningless while `dialCoaster`'s phase is `nil` (scroll).
+    var dialGestureKind: RingGestureKind = .zoom
 
     /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
     /// `true` (Momentum, default): the stream carries the phased began/changed/
@@ -584,6 +657,21 @@ final class InputInjector: @unchecked Sendable {
     /// Carry sub-integer remainders across pulses so speed < 1.0 fires evenly.
     var ringAccum: Double = 0
     var ring2Accum: Double = 0
+    /// True while a `.zoom`/`.rotate` gesture envelope is open on a
+    /// capacitive ring — set on `touchRingActive`'s false→true edge, cleared
+    /// (posting `.ended`) on the true→false edge. See `injectAux`. Keyed on
+    /// `touchRingActive` only, never `lastRingButtonDown` — proximity exit
+    /// clears the latter but not the former, so a proximity blip mid-gesture
+    /// must not read as a finger-lift.
+    var ring1GestureOpen = false
+    var ring2GestureOpen = false
+    /// Which gesture is open on each ring — set when `ring1/2GestureOpen`
+    /// goes true, read back when closing. Needed because the slot that
+    /// opened the envelope may no longer be `.zoom`/`.rotate` (or may have
+    /// changed which of the two) by the time it closes — re-deriving "which
+    /// kind" from the current slot at close time would read the wrong one.
+    var ring1GestureKind: RingGestureKind = .zoom
+    var ring2GestureKind: RingGestureKind = .zoom
     var strip1Accum: Double = 0
     var strip2Accum: Double = 0
     /// Fractional-delta accumulators for IntuosV3 relative scroll wheels (index 0 and 1).

@@ -591,7 +591,10 @@ extension InputInjector {
     /// SensibleSideButtons reverse-engineering work. Reimplemented
     /// independently here, not copied — MMF ships under a source-available,
     /// non-GPL license.
-    private func postTouchMagnify(magnification: Double, phase: TouchStateTracker.ScrollPhase) {
+    /// Not `private`: mechanical-dial `.zoom` ring-slot actions
+    /// (`postDialGesture`, +CGEvents.swift) call this too — same event
+    /// technique, different envelope source.
+    func postTouchMagnify(magnification: Double, phase: TouchStateTracker.ScrollPhase) {
         guard let e = CGEvent(source: nil) else { return }
         e.type = Self.nsEventTypeGesture
         e.location = currentCursorPosition()
@@ -631,7 +634,10 @@ extension InputInjector {
     /// parameter's unit actually is. Direction was independently confirmed
     /// wrong and fixed at the source (see `TouchStateTracker`'s `.rotate`
     /// case doc comment); magnitude scaling has not had the same scrutiny.
-    private func postTouchRotate(rotation: Double, phase: TouchStateTracker.ScrollPhase) {
+    /// Not `private`: mechanical-dial `.rotate` ring-slot actions
+    /// (`postDialGesture`, +CGEvents.swift) call this too — same event
+    /// technique, different envelope source.
+    func postTouchRotate(rotation: Double, phase: TouchStateTracker.ScrollPhase) {
         guard let e = CGEvent(source: nil) else { return }
         e.type = Self.nsEventTypeGesture
         e.location = currentCursorPosition()

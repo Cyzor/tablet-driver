@@ -223,7 +223,7 @@ struct QuickKeysSectionView: View {
                 let oldSlots = settings.touchRingSlots
                 guard oldSlots.indices.contains(index) else { return }
                 var updated = oldSlots
-                updated[index].action = newValue
+                updated[index].setAction(newValue)
                 settings.touchRingSlots = updated
                 settings.recordToggle(String(localized: "Dial Slot \(index + 1) Action", comment: "Undo action name: Quick Keys dial slot binding in the Buttons pane"), from: oldSlots, to: updated) {
                     settings.touchRingSlots = $0

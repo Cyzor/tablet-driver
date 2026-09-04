@@ -245,23 +245,78 @@ private struct TouchRingModeListCore: View, Equatable {
         switch slot.action {
         case .off, .skip:
             return slot.action.displayLabel
-        case .scroll:
-            return "\(slot.action.displayLabel) · \(speedLabel(slot.speed))"
+        case .scroll, .zoom, .rotate:
+            return "\(slot.action.displayLabel) · \(speedLabel(slot.speed, for: slot.action))"
         case .keyPress:
             let cw = slot.cwBinding.displayLabel
             let ccw = slot.ccwBinding.displayLabel
             return String(
-                localized: "Keys \(cw) / \(ccw) · \(speedLabel(slot.speed))",
+                localized: "Keys \(cw) / \(ccw) · \(speedLabel(slot.speed, for: slot.action))",
                 comment: "Ring mode summary: clockwise / counter-clockwise key bindings, then speed")
         }
     }
 
-    private func speedLabel(_ speed: Double) -> String {
-        speed < 0.01
-            ? String(
-                localized: "Off",
-                comment: "Ring speed at minimum — rotation disabled")
-            : String(format: "%.2g×", speed)
+    private func speedLabel(_ speed: Double, for action: ControlSlot.Action) -> String {
+        switch action {
+        case .zoom, .rotate:
+            return bucketedSpeedLabel(speed, ceiling: speedRange(for: action))
+        case .scroll, .keyPress, .off, .skip:
+            return speed < 0.01
+                ? String(
+                    localized: "Off",
+                    comment: "Ring speed at minimum — rotation disabled")
+                : String(format: "%.2g×", speed)
+        }
+    }
+
+    /// Qualitative Off/Low/Medium/High/Max label, mirroring
+    /// `PenFeelView.smoothingLabel`'s convention — no numeric value shown,
+    /// matching how macOS itself labels its Trackpad tracking-speed slider
+    /// ("Slow" ↔ "Fast", no number). Used for `.zoom`/`.rotate`, whose
+    /// speed is a fraction of a derived or empirical ceiling rather than an
+    /// open-ended multiplier, so a bucketed label reads more honestly than
+    /// a fake-precise "0.73×".
+    private func bucketedSpeedLabel(_ speed: Double, ceiling: Double) -> String {
+        let fraction = ceiling > 0 ? speed / ceiling : 0
+        switch fraction {
+        case ..<0.01:
+            return String(localized: "Off", comment: "Ring speed bucket: disabled")
+        case ..<0.15:
+            return String(localized: "Low", comment: "Ring speed bucket: slow")
+        case ..<0.4:
+            return String(localized: "Medium", comment: "Ring speed bucket: medium")
+        case ..<0.65:
+            return String(localized: "High", comment: "Ring speed bucket: fast")
+        default:
+            return String(localized: "Max", comment: "Ring speed bucket: fastest")
+        }
+    }
+
+    /// Per-action speed-slider ceiling. `maxSpeed` itself is unchanged and
+    /// still governs `.scroll`/`.keyPress`/`.off`/`.skip`; `.zoom` and
+    /// `.rotate` each get their own ceiling, for different reasons — see
+    /// `dialGestureZoomScale`/`dialGestureRotateScale` (InputInjector+
+    /// CGEvents.swift) for the underlying constants this range multiplies.
+    ///
+    /// `.zoom`: hardware feedback (PTH-860, 2026-09) found `maxSpeed`'s 3x
+    /// too low for a comfortable feel — `dialGestureZoomScale` has no
+    /// physical 1:1 anchor to derive a ceiling from, so 8x is an empirical
+    /// choice matching what felt right, with headroom above it.
+    ///
+    /// `.rotate`: `dialGestureRotateScale` is calibrated so 1x already means
+    /// one ring revolution = one full 360° canvas rotation (see that
+    /// constant's doc comment) — unlike zoom's empirical headroom, this
+    /// ceiling is *derived*, not chosen: 1x is both the natural default and
+    /// the physical maximum a user would ever want (spinning the ring
+    /// faster doesn't rotate the canvas "more," it just tracks the same
+    /// turn-for-turn mapping at a different rate), so the range is fixed at
+    /// exactly 1.0. `maxSpeed` is ignored here even if raised elsewhere.
+    private func speedRange(for action: ControlSlot.Action) -> Double {
+        switch action {
+        case .zoom: return max(maxSpeed, 8.0)
+        case .rotate: return 1.0
+        case .scroll, .keyPress, .off, .skip: return maxSpeed
+        }
     }
 
     // MARK: - Detail editor
@@ -271,6 +326,7 @@ private struct TouchRingModeListCore: View, Equatable {
     /// without the containment they floated among the neighboring rows.
     private func detailEditor(_ idx: Int) -> some View {
         let slot = slots[idx]
+        let speedRowDisabled = slot.action == .off || slot.action == .skip
         return VStack(alignment: .leading, spacing: 10) {
             labeledRow(String(localized: "Action", comment: "Ring mode editor row label")) {
                 Picker("", selection: actionBinding(idx)) {
@@ -283,20 +339,26 @@ private struct TouchRingModeListCore: View, Equatable {
             }
 
             // Greyed (not hidden) while the mode is off/skip — the value is
-            // kept and comes back when the mode does.
+            // kept and comes back when the mode does. In testing, this row's
+            // visible dimming was hard to see (the Text label's explicit
+            // `.secondary` foreground style may be muting `.disabled()`'s
+            // usual effect) — left as-is pending the broader slider rework;
+            // not chasing it further here.
             labeledRow(String(localized: "Speed", comment: "Ring mode editor row label")) {
                 // Snaps in the binding rather than via `step:` so it renders
                 // without tick marks — one slider style everywhere.
-                Slider(value: snappedSpeedBinding(idx), in: 0...maxSpeed) { EmptyView() }
+                Slider(value: snappedSpeedBinding(idx), in: 0...speedRange(for: slot.action)) { EmptyView() }
                     .labelsHidden()
                     .frame(maxWidth: 200)
-                    .help("Adjust how fast the ring scrolls or repeats key presses.")
-                Text(speedLabel(slot.speed))
+                    .help("Adjust how fast the ring scrolls, zooms, rotates, or repeats key presses.")
+                Text(speedLabel(slot.speed, for: slot.action))
                     .foregroundStyle(.secondary)
-                    .scaledFrame(width: 40, alignment: .leading)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .scaledFrame(width: 64, alignment: .leading)
                     .monospacedDigit()
             }
-            .disabled(slot.action == .off || slot.action == .skip)
+            .disabled(speedRowDisabled)
 
             if slot.action == .keyPress {
                 // Switching the action to Key adds these rows mid-editor, so

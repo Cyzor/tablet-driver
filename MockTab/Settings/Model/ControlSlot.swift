@@ -94,6 +94,20 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         try UnknownFieldsCodec.encodeUnknown(unknownFields, to: encoder)
     }
 
+    /// Sets `action`, resetting `speed` to that action's default if it
+    /// defines one (see `Action.defaultSpeedOnSwitch`) and the action is
+    /// actually changing. The single mutation point for every "change this
+    /// slot's action" call site — direct `slot.action = newValue` bypasses
+    /// this and risks carrying an out-of-range speed across action changes
+    /// with different ranges (e.g. Zoom's 0...8 into Rotate's 0...1).
+    mutating func setAction(_ newAction: Action) {
+        guard newAction != action else { return }
+        action = newAction
+        if let defaultSpeed = newAction.defaultSpeedOnSwitch {
+            speed = defaultSpeed
+        }
+    }
+
     static func == (lhs: ControlSlot, rhs: ControlSlot) -> Bool {
         lhs.id == rhs.id && lhs.label == rhs.label && lhs.action == rhs.action
             && lhs.cwBinding == rhs.cwBinding && lhs.ccwBinding == rhs.ccwBinding
@@ -135,8 +149,19 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         ControlSlot(label: String(localized: "Off",    comment: "Default ring slot label"), action: .off),
     ]
 
+    /// Declaration order is the Action picker's display order (via
+    /// `allCases`) — Scroll, Zoom, Rotate, Key, Off, Skip. Raw-value coding
+    /// means reordering these cases doesn't affect persisted data.
     enum Action: String, Codable, CaseIterable {
         case scroll
+        /// Analog pinch-zoom, synthesized the same way a real trackpad pinch
+        /// is (`InputInjector.postTouchMagnify`) — smooth continuous zoom,
+        /// not the stepped ⌥/⌘+wheel fallback `.scroll` uses under a
+        /// modifier. See `Notes/Scratch/ring-dial-analog-zoom-rotate-design.md`.
+        case zoom
+        /// Analog rotate, synthesized like a real trackpad two-finger twist
+        /// (`InputInjector.postTouchRotate`). Same design doc as `.zoom`.
+        case rotate
         case keyPress
         case off
         /// Left out of the mode rotation entirely — the mode button passes
@@ -153,6 +178,26 @@ struct ControlSlot: Codable, Equatable, Identifiable {
                 return String(
                     localized: "Skip",
                     comment: "Ring/strip action: slot left out of the mode cycle")
+            case .zoom: return String(localized: "Zoom", comment: "Ring/strip action: analog pinch-zoom")
+            case .rotate: return String(localized: "Rotate", comment: "Ring/strip action: analog rotate")
+            }
+        }
+
+        /// Speed to land on when a slot is freshly switched *to* this
+        /// action, for actions whose speed range isn't the shared
+        /// `.scroll`/`.keyPress` multiplier — without this, switching a
+        /// slot from Zoom (range 0...8) to Rotate (range 0...1) would carry
+        /// over an out-of-range `speed`, silently running rotate far past
+        /// its 1:1 ceiling. `nil` means "keep whatever speed was already
+        /// set" (the `.scroll`/`.keyPress` multiplier has no natural
+        /// ceiling to overflow). Both values land in the "Medium" bucket of
+        /// `TouchRingModeList.bucketedSpeedLabel` (fraction 0.25) and are
+        /// exact multiples of the UI's 0.25 snap step.
+        var defaultSpeedOnSwitch: Double? {
+            switch self {
+            case .zoom: return 2.0
+            case .rotate: return 0.25
+            case .scroll, .keyPress, .off, .skip: return nil
             }
         }
     }
