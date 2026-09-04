@@ -479,6 +479,66 @@ final class TabletManager: ObservableObject {
             activeHeightMM: profile.activeHeightMM)
     }
 
+    /// Everything `deviceConnected` needs to know about one `IOHIDDevice`
+    /// before it touches any mutable state — pure property reads plus
+    /// canonicalization, no side effects. Split out so the two steps read as
+    /// what they are: figure out what this interface is, then decide what to
+    /// do about it.
+    private struct DeviceIdentityProbe {
+        let productID: Int
+        let usagePage: Int
+        let usage: Int
+        let maxRptSize: Int
+        let transport: String
+        let productString: String
+        let isBLE: Bool
+        let usbSerial: String?
+        /// The serial string as reported, before the BT-untrusted nil-out
+        /// that produces `usbSerial` — kept only so the connect-time log line
+        /// can show what the device actually said, not what identity trusts.
+        let rawSerialProbe: String?
+        let locationID: Int
+        let instanceKey: DeviceInstanceKey
+    }
+
+    /// Reads the HID properties `deviceConnected` needs and folds transport
+    /// variants (BT/dongle PIDs) onto the canonical PID this device's
+    /// context, settings namespace, and window key off. See the inline
+    /// comments at the `deviceConnected` call site for the serial/locationID
+    /// trust caveats this bakes in.
+    private static func probeIdentity(
+        _ device: IOHIDDevice, rawProductID: Int, vendorID: Int
+    ) -> DeviceIdentityProbe {
+        let productID = vendorID == 0x056A
+            ? WacomDeviceRegistry.canonicalProductID(for: rawProductID)
+            : VendorDeviceRegistry.canonicalProductID(for: rawProductID)
+        let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
+        let usage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
+        let maxRptSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
+        let transport =
+            IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
+        let productString =
+            IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? ""
+        let isBLE = transport.lowercased().contains("bluetooth")
+        // kIOHIDSerialNumberKey is only trusted for instance identity on
+        // non-Bluetooth transports — see the doc comment at the
+        // `deviceConnected` call site for why BT serial is untrusted here.
+        let rawSerialProbe =
+            IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
+        let usbSerial = isBLE ? nil : rawSerialProbe
+        let locationID = hidIntProperty(device, kIOHIDLocationIDKey)
+        // Instance identity: token is serial-only for now — the locationID
+        // fallback stays off until confirmed live; see the comment above
+        // `DeviceInstanceKey` construction at the call site.
+        let instanceKey = DeviceInstanceKey(
+            productID: productID, usbSerial: usbSerial, locationID: 0)
+        return DeviceIdentityProbe(
+            productID: productID, usagePage: usagePage, usage: usage,
+            maxRptSize: maxRptSize, transport: transport, productString: productString,
+            isBLE: isBLE, usbSerial: usbSerial, rawSerialProbe: rawSerialProbe,
+            locationID: locationID, instanceKey: instanceKey)
+    }
+
     private func deviceConnected(_ device: IOHIDDevice) {
         // Connect-phase work (handshakes, paced writes) stalls report
         // delivery; keep those episodes out of the steady-state latency stats.
@@ -550,18 +610,7 @@ final class TabletManager: ObservableObject {
         // dongle maps to the wired puck. The driver layer keeps the raw PID
         // (via `vendorSpec` above) because relay handling is
         // transport-specific.
-        let productID = vendorID == 0x056A
-            ? WacomDeviceRegistry.canonicalProductID(for: rawProductID)
-            : VendorDeviceRegistry.canonicalProductID(for: rawProductID)
-        Self.lastSeenVendorID[productID] = vendorID
-        let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
-        let usage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
-        let maxRptSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
-        let transport =
-            IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
-        let productString =
-            IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? ""
-        let isBLE = transport.lowercased().contains("bluetooth")
+        //
         // Instance-identity probe: serial and locationID are logged per
         // interface to establish, on real hardware, whether the interfaces of
         // one USB device share a locationID (serial is uniform; locationID is
@@ -578,15 +627,23 @@ final class TabletManager: ObservableObject {
         // interface to PID-only identity, which correctly folds onto
         // whatever context the model already has (USB or a prior BT
         // connect) via the empty-instance fallback path.
-        let rawSerialProbe =
-            IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
-        let usbSerial = isBLE ? nil : rawSerialProbe
-        let locationID = hidIntProperty(device, kIOHIDLocationIDKey)
+        let probe = Self.probeIdentity(device, rawProductID: rawProductID, vendorID: vendorID)
+        let productID = probe.productID
+        let usagePage = probe.usagePage
+        let usage = probe.usage
+        let maxRptSize = probe.maxRptSize
+        let transport = probe.transport
+        let productString = probe.productString
+        let isBLE = probe.isBLE
+        let usbSerial = probe.usbSerial
+        let locationID = probe.locationID
+        let instanceKey = probe.instanceKey
+        Self.lastSeenVendorID[productID] = vendorID
         let pidStr =
             rawProductID == productID
             ? "0x\(String(productID, radix:16))"
             : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
-        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public) product=\"\(productString, privacy: .public)\" serial=\(rawSerialProbe ?? "—", privacy: .public)\(isBLE ? " (BT, untrusted)" : "") locationID=0x\(String(locationID, radix:16), privacy: .public)")
+        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public) product=\"\(productString, privacy: .public)\" serial=\(probe.rawSerialProbe ?? "—", privacy: .public)\(isBLE ? " (BT, untrusted)" : "") locationID=0x\(String(locationID, radix:16), privacy: .public)")
 
         // BLE tablets expose multiple interfaces. Log all of them; skip ghost mouse only.
         if isBLE && usagePage == 0x01 {
@@ -594,12 +651,6 @@ final class TabletManager: ObservableObject {
             return
         }
 
-        // Instance identity: token is serial-only for now — the locationID
-        // fallback stays off until the probe log above confirms whether the
-        // interfaces of one USB device share a locationID. An empty token
-        // degrades to PID-only identity, exactly the old behavior.
-        let instanceKey = DeviceInstanceKey(
-            productID: productID, usbSerial: usbSerial, locationID: 0)
         let context: DeviceContext
         if let existing = deviceContexts[instanceKey] {
             context = existing
@@ -666,7 +717,7 @@ final class TabletManager: ObservableObject {
         context.usbSpeed = Self.connectionInfo(for: device).speed
         // Diagnostic-only candidate for BluetoothLinkMonitor — see that
         // property's doc comment for why this is never used for identity.
-        if isBLE { context.bluetoothAddressCandidate = rawSerialProbe }
+        if isBLE { context.bluetoothAddressCandidate = probe.rawSerialProbe }
 
         // First tablet is the moment injection becomes possible — prompt for
         // Accessibility here rather than at launch so the request has context.
