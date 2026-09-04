@@ -115,31 +115,46 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// it never received them. Call once, right after the winner changes.
     func resyncActiveDriverDisplayState() {
         guard let device = tabletDevice else { return }
-        device.setRingLED(index: settings.touchRingActiveSlotIndex)
-        if settings.displayBrightness >= 0 {
-            device.setDisplayBrightness(settings.displayBrightness)
-        }
-        if settings.displayColorMode >= 0 {
-            device.setColorMode(settings.displayColorMode)
-        }
-        if isCustomColorMode {
-            if settings.displayContrast >= 0 { device.setDisplayContrast(settings.displayContrast) }
-            if settings.displayGamma >= 0 { device.setDisplayGamma(settings.displayGamma) }
-        }
-        if let c = TabletSettings.bezelLEDColor(from: settings.bezelLEDColor) {
-            device.setBezelLEDColor(
-                r: UInt8(Int(c.r) * Int(c.a) / 255),
-                g: UInt8(Int(c.g) * Int(c.a) / 255),
-                b: UInt8(Int(c.b) * Int(c.a) / 255))
-        }
-        if settings.quickKeysOrientation >= 0 {
-            device.setQuickKeysOrientation(steps: settings.quickKeysOrientation)
-        }
-        if settings.quickKeysSleepMinutes >= 0 {
-            device.setQuickKeysSleepMinutes(settings.quickKeysSleepMinutes)
-        }
-        if settings.quickKeysOledBrightness >= 0 {
-            device.setQuickKeysOledBrightness(settings.quickKeysOledBrightness)
+        let activeSlotIndex = settings.touchRingActiveSlotIndex
+        let displayBrightness = settings.displayBrightness
+        let displayColorMode = settings.displayColorMode
+        let customColorMode = isCustomColorMode
+        let displayContrast = settings.displayContrast
+        let displayGamma = settings.displayGamma
+        let bezelColor = TabletSettings.bezelLEDColor(from: settings.bezelLEDColor)
+        let quickKeysOrientation = settings.quickKeysOrientation
+        let quickKeysSleepMinutes = settings.quickKeysSleepMinutes
+        let quickKeysOledBrightness = settings.quickKeysOledBrightness
+        // Every TabletDevice control-surface write is confined to HIDThread —
+        // see the header comment on `onHIDThread`. Values are snapshotted
+        // above on the main actor since `device` isn't Sendable.
+        onHIDThread {
+            device.setRingLED(index: activeSlotIndex)
+            if displayBrightness >= 0 {
+                device.setDisplayBrightness(displayBrightness)
+            }
+            if displayColorMode >= 0 {
+                device.setColorMode(displayColorMode)
+            }
+            if customColorMode {
+                if displayContrast >= 0 { device.setDisplayContrast(displayContrast) }
+                if displayGamma >= 0 { device.setDisplayGamma(displayGamma) }
+            }
+            if let c = bezelColor {
+                device.setBezelLEDColor(
+                    r: UInt8(Int(c.r) * Int(c.a) / 255),
+                    g: UInt8(Int(c.g) * Int(c.a) / 255),
+                    b: UInt8(Int(c.b) * Int(c.a) / 255))
+            }
+            if quickKeysOrientation >= 0 {
+                device.setQuickKeysOrientation(steps: quickKeysOrientation)
+            }
+            if quickKeysSleepMinutes >= 0 {
+                device.setQuickKeysSleepMinutes(quickKeysSleepMinutes)
+            }
+            if quickKeysOledBrightness >= 0 {
+                device.setQuickKeysOledBrightness(quickKeysOledBrightness)
+            }
         }
         pushDeviceDisplayState()
     }
@@ -281,13 +296,30 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// fire every hardware write twice.
     var hasWiredDriverLifecycle = false
 
+    /// Runs `body` on `HIDThread`, the sole thread `TabletDevice` control
+    /// writes are confined to.
+    ///
+    /// `DeviceContext` is `@MainActor`, but every one of these settings sinks
+    /// used to call straight into the driver from the main thread — at the
+    /// same time `registerDevice()`/`flushPendingVendorWrites()` mutate the
+    /// same unsynchronized "last-sent" cache vars from HIDThread on a
+    /// reconnect/relink. A brightness-slider drag landing mid-relink was a
+    /// live, reachable data race, not a theoretical one. Every write here and
+    /// in `pushDeviceDisplayState`/`resyncActiveDriverDisplayState` now goes
+    /// through this same hop, matching the existing `CFRunLoopPerformBlock`
+    /// convention `observeInjectionSnapshot` already uses for the same reason.
+    private func onHIDThread(_ body: @escaping () -> Void) {
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue, body)
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+    }
+
     /// Subscribe to ring slot changes so the physical LED tracks the active mode.
     /// Call this once after `tabletDevice` is assigned.
     func observeRingLED() {
         settings.$touchRingActiveSlotIndex
             .sink { [weak self] index in
-                guard let self else { return }
-                self.tabletDevice?.setRingLED(index: index)
+                guard let self, let device = self.tabletDevice else { return }
+                self.onHIDThread { device.setRingLED(index: index) }
                 self.pushDeviceDisplayState(activeSlotIndex: index)
             }
             .store(in: &cancellables)
@@ -297,8 +329,8 @@ final class DeviceContext: ObservableObject, Identifiable {
         // its own stored value.
         settings.$displayBrightness
             .sink { [weak self] value in
-                guard value >= 0 else { return }
-                self?.tabletDevice?.setDisplayBrightness(value)
+                guard value >= 0, let self, let device = self.tabletDevice else { return }
+                self.onHIDThread { device.setDisplayBrightness(value) }
             }
             .store(in: &cancellables)
         // Panel contrast and gamma ride the same 0xB5 control family and
@@ -309,14 +341,18 @@ final class DeviceContext: ObservableObject, Identifiable {
         // a named preset visibly corrupts its color transform.
         settings.$displayContrast
             .sink { [weak self] value in
-                guard value >= 0, self?.isCustomColorMode == true else { return }
-                self?.tabletDevice?.setDisplayContrast(value)
+                guard value >= 0, let self, self.isCustomColorMode,
+                    let device = self.tabletDevice
+                else { return }
+                self.onHIDThread { device.setDisplayContrast(value) }
             }
             .store(in: &cancellables)
         settings.$displayGamma
             .sink { [weak self] value in
-                guard value >= 0, self?.isCustomColorMode == true else { return }
-                self?.tabletDevice?.setDisplayGamma(value)
+                guard value >= 0, let self, self.isCustomColorMode,
+                    let device = self.tabletDevice
+                else { return }
+                self.onHIDThread { device.setDisplayGamma(value) }
             }
             .store(in: &cancellables)
         // Bezel-button backlight LED (Xencelabs pen displays). Same wire
@@ -326,26 +362,30 @@ final class DeviceContext: ObservableObject, Identifiable {
         // stored color alone.
         settings.$bezelLEDColor
             .sink { [weak self] value in
-                guard let self, let c = TabletSettings.bezelLEDColor(from: value)
+                guard let self, let device = self.tabletDevice,
+                    let c = TabletSettings.bezelLEDColor(from: value)
                 else { return }
-                self.tabletDevice?.setBezelLEDColor(
-                    r: UInt8(Int(c.r) * Int(c.a) / 255),
-                    g: UInt8(Int(c.g) * Int(c.a) / 255),
-                    b: UInt8(Int(c.b) * Int(c.a) / 255))
+                self.onHIDThread {
+                    device.setBezelLEDColor(
+                        r: UInt8(Int(c.r) * Int(c.a) / 255),
+                        g: UInt8(Int(c.g) * Int(c.a) / 255),
+                        b: UInt8(Int(c.b) * Int(c.a) / 255))
+                }
             }
             .store(in: &cancellables)
         settings.$displayColorMode
             .sink { [weak self] value in
-                guard let self, value >= 0 else { return }
-                self.tabletDevice?.setColorMode(value)
+                guard let self, value >= 0, let device = self.tabletDevice else { return }
                 // Entering Custom mode re-applies any contrast/gamma the user
                 // already set, since presets don't accept those writes.
-                guard self.isCustomColorMode else { return }
-                if self.settings.displayContrast >= 0 {
-                    self.tabletDevice?.setDisplayContrast(self.settings.displayContrast)
-                }
-                if self.settings.displayGamma >= 0 {
-                    self.tabletDevice?.setDisplayGamma(self.settings.displayGamma)
+                let customMode = self.isCustomColorMode
+                let contrast = self.settings.displayContrast
+                let gamma = self.settings.displayGamma
+                self.onHIDThread {
+                    device.setColorMode(value)
+                    guard customMode else { return }
+                    if contrast >= 0 { device.setDisplayContrast(contrast) }
+                    if gamma >= 0 { device.setDisplayGamma(gamma) }
                 }
             }
             .store(in: &cancellables)
@@ -354,20 +394,20 @@ final class DeviceContext: ObservableObject, Identifiable {
         // fire in practice until a control writes something else.
         settings.$quickKeysOrientation
             .sink { [weak self] value in
-                guard value >= 0 else { return }
-                self?.tabletDevice?.setQuickKeysOrientation(steps: value)
+                guard value >= 0, let self, let device = self.tabletDevice else { return }
+                self.onHIDThread { device.setQuickKeysOrientation(steps: value) }
             }
             .store(in: &cancellables)
         settings.$quickKeysSleepMinutes
             .sink { [weak self] value in
-                guard value >= 0 else { return }
-                self?.tabletDevice?.setQuickKeysSleepMinutes(value)
+                guard value >= 0, let self, let device = self.tabletDevice else { return }
+                self.onHIDThread { device.setQuickKeysSleepMinutes(value) }
             }
             .store(in: &cancellables)
         settings.$quickKeysOledBrightness
             .sink { [weak self] value in
-                guard value >= 0 else { return }
-                self?.tabletDevice?.setQuickKeysOledBrightness(value)
+                guard value >= 0, let self, let device = self.tabletDevice else { return }
+                self.onHIDThread { device.setQuickKeysOledBrightness(value) }
             }
             .store(in: &cancellables)
     }
@@ -379,20 +419,26 @@ final class DeviceContext: ObservableObject, Identifiable {
     func pushDeviceDisplayState(activeSlotIndex: Int? = nil) {
         guard let device = tabletDevice else { return }
         let index = activeSlotIndex ?? settings.touchRingActiveSlotIndex
-        if settings.touchRingSlots.indices.contains(index) {
-            device.setRingModeLabel(settings.touchRingSlots[index].label)
-        }
+        let ringModeLabel = settings.touchRingSlots.indices.contains(index)
+            ? settings.touchRingSlots[index].label : nil
         // Brightness (the panel's opacity) is premultiplied into the RGB
         // here — the dial LED has no brightness register, the vendor stack
         // scales the color bytes the same way.
-        device.setRingLEDColors(settings.touchRingSlots.map { slot in
+        let ringColors = settings.touchRingSlots.map { slot in
             slot.ledColor.map { c in
                 (r: UInt8(Int(c.r) * Int(c.a) / 255),
                  g: UInt8(Int(c.g) * Int(c.a) / 255),
                  b: UInt8(Int(c.b) * Int(c.a) / 255))
             }
-        })
-        device.setAuxKeyLabels(settings.expressKeyBindings.map { $0.displayLabel })
+        }
+        let keyLabels = settings.expressKeyBindings.map { $0.displayLabel }
+        // See `onHIDThread`'s header comment: every TabletDevice write is
+        // confined to HIDThread, so this hops rather than calling inline.
+        onHIDThread {
+            if let ringModeLabel { device.setRingModeLabel(ringModeLabel) }
+            device.setRingLEDColors(ringColors)
+            device.setAuxKeyLabels(keyLabels)
+        }
     }
 
     /// Keep `injector.injectionSnapshot` in sync with the live TabletSettings/ToolSettings.
