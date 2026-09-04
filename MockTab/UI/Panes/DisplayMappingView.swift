@@ -115,89 +115,99 @@ struct DisplayMappingView: View {
 
     private var brightnessSection: some View {
         Section {
-            HStack {
-                Image(systemName: "sun.max")
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-                Text("Brightness")
-                Slider(
-                    value: settings.recordingBinding(
-                        String(localized: "Display Brightness", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
-                        // Before the user ever touches the slider (-1), park
-                        // the knob at the vendor default without sending.
-                        get: { Double(settings.displayBrightness >= 0 ? settings.displayBrightness : 75) },
-                        set: { settings.displayBrightness = Int($0.rounded()) }),
-                    in: 0...100)
-                Text(settings.displayBrightness >= 0 ? "\(settings.displayBrightness)%" : "—")
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .scaledFrame(width: 48, alignment: .trailing)
-            }
-            .help("Backlight brightness of the tablet's built-in display. The hardware keeps its own value until you move the slider.")
-
-            HStack {
-                Image(systemName: "paintpalette")
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-                Text("Color Space")
-                Spacer()
-                Picker("Color Space", selection: settings.recordingBinding(
-                    String(localized: "Display Color Space", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
-                    get: { settings.displayColorMode >= 0 ? settings.displayColorMode : 0 },
-                    set: { settings.displayColorMode = $0 })) {
-                    ForEach(colorModeChoices.indices, id: \.self) { i in
-                        Text(colorModeChoices[i].name).tag(i)
-                    }
-                }
-                .labelsHidden()
-                .fixedSize()
-            }
-            .help(colorModeChoices[
-                settings.displayColorMode >= 0 && settings.displayColorMode < colorModeChoices.count
-                    ? settings.displayColorMode : 0
-            ].description)
-
-            // Contrast/gamma are only meaningful in Custom mode — named
-            // presets (Adobe RGB, sRGB, etc.) own these internally, and the
-            // vendor driver doesn't expose them outside Custom either.
-            if isCustomColorModeSelected {
+            // Dimmed on the content only, never the whole Section:
+            // `.disabled()` by itself leaves labels and readouts at full
+            // strength (AppKit only drops the controls' accent tint), so
+            // without this the section reads as available. Putting the
+            // opacity on the Section instead would fade the footer too —
+            // and that footer is what explains *why* this is unavailable,
+            // so it has to stay the most legible thing here.
+            Group {
                 HStack {
-                    Image(systemName: "circle.lefthalf.filled")
+                    Image(systemName: "sun.max")
                         .foregroundStyle(.secondary)
                         .accessibilityHidden(true)
-                    Text("Contrast")
+                    Text("Brightness")
                     Slider(
                         value: settings.recordingBinding(
-                            String(localized: "Display Contrast", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
-                            get: { Double(settings.displayContrast >= 0 ? settings.displayContrast : 50) },
-                            set: { settings.displayContrast = Int($0.rounded()) }),
+                            String(localized: "Display Brightness", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
+                            // Before the user ever touches the slider (-1), park
+                            // the knob at the vendor default without sending.
+                            get: { Double(settings.displayBrightness >= 0 ? settings.displayBrightness : 75) },
+                            set: { settings.displayBrightness = Int($0.rounded()) }),
                         in: 0...100)
-                    Text(settings.displayContrast >= 0 ? "\(settings.displayContrast)%" : "—")
+                    Text(settings.displayBrightness >= 0 ? "\(settings.displayBrightness)%" : "—")
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                         .scaledFrame(width: 48, alignment: .trailing)
                 }
-                .help("Contrast of the tablet's built-in display. The hardware keeps its own value until you change it.")
+                .help("Backlight brightness of the tablet's built-in display. The hardware keeps its own value until you move the slider.")
 
                 HStack {
-                    Image(systemName: "circle.dotted")
+                    Image(systemName: "paintpalette")
                         .foregroundStyle(.secondary)
                         .accessibilityHidden(true)
-                    Text("Gamma")
+                    Text("Color Space")
                     Spacer()
-                    Picker("Gamma", selection: settings.recordingBinding(
-                        String(localized: "Display Gamma", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
-                        get: { settings.displayGamma >= 0 ? settings.displayGamma : 22 },
-                        set: { settings.displayGamma = $0 })) {
-                        ForEach(gammaChoices, id: \.self) { value in
-                            Text(gammaLabel(value)).tag(value)
+                    Picker("Color Space", selection: settings.recordingBinding(
+                        String(localized: "Display Color Space", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
+                        get: { settings.displayColorMode >= 0 ? settings.displayColorMode : 0 },
+                        set: { settings.displayColorMode = $0 })) {
+                        ForEach(colorModeChoices.indices, id: \.self) { i in
+                            Text(colorModeChoices[i].name).tag(i)
                         }
                     }
                     .labelsHidden()
                     .fixedSize()
                 }
-                .help("Display gamma. The hardware keeps its own value until you change it.")
+                .help(colorModeChoices[
+                    settings.displayColorMode >= 0 && settings.displayColorMode < colorModeChoices.count
+                        ? settings.displayColorMode : 0
+                ].description)
+
+                // Contrast/gamma are only meaningful in Custom mode — named
+                // presets (Adobe RGB, sRGB, etc.) own these internally, and the
+                // vendor driver doesn't expose them outside Custom either.
+                if isCustomColorModeSelected {
+                    HStack {
+                        Image(systemName: "circle.lefthalf.filled")
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                        Text("Contrast")
+                        Slider(
+                            value: settings.recordingBinding(
+                                String(localized: "Display Contrast", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
+                                get: { Double(settings.displayContrast >= 0 ? settings.displayContrast : 50) },
+                                set: { settings.displayContrast = Int($0.rounded()) }),
+                            in: 0...100)
+                        Text(settings.displayContrast >= 0 ? "\(settings.displayContrast)%" : "—")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .scaledFrame(width: 48, alignment: .trailing)
+                    }
+                    .help("Contrast of the tablet's built-in display. The hardware keeps its own value until you change it.")
+
+                    HStack {
+                        Image(systemName: "circle.dotted")
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
+                        Text("Gamma")
+                        Spacer()
+                        Picker("Gamma", selection: settings.recordingBinding(
+                            String(localized: "Display Gamma", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
+                            get: { settings.displayGamma >= 0 ? settings.displayGamma : 22 },
+                            set: { settings.displayGamma = $0 })) {
+                            ForEach(gammaChoices, id: \.self) { value in
+                                Text(gammaLabel(value)).tag(value)
+                            }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                    .help("Display gamma. The hardware keeps its own value until you change it.")
+                }
             }
+            .opacity(brightnessDeviceConnected ? 1 : 0.5)
         } header: {
             Text("Built-in Display").appFont(.headline)
         } footer: {

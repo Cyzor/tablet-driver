@@ -605,7 +605,12 @@ private struct PresetListView: View {
             Label("Delete", systemImage: "trash")
         }
         .disabled(preset.name == "Default")
-        .help("Permanently delete this profile (cannot be undone)")
+        // `onDelete` is `deletePresetRecordingUndo`, which snapshots the
+        // profile's stored values, its list position, and any app bindings
+        // that referenced it — so this genuinely undoes and redoes. The
+        // tooltip said "cannot be undone" through 2026-09, which was simply
+        // wrong and discouraged a reversible action.
+        .help("Delete this profile (undoable).")
     }
 
     /// Focuses the rename text field and selects its full contents so the user

@@ -141,72 +141,80 @@ struct QuickKeysSectionView: View {
     /// in the puck's own window the whole window is the puck.
     private var hardwareSection: some View {
         Section {
-            HStack {
-                Image(systemName: "rotate.right")
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-                Text("Rotation", comment: "Quick Keys rotation row label")
-                Spacer()
-                // Apple's Displays pane spells this exact control
-                // "Rotation: Standard / 90° / 180° / 270°" — borrowed
-                // wholesale. Bare degrees also claim no direction, which is
-                // as much as the protocol notes actually establish.
-                Picker("Rotation", selection: settings.recordingBinding(
-                    String(localized: "Quick Keys Rotation", comment: "Undo action name: Quick Keys hardware setting in the Buttons pane"),
-                    get: { settings.quickKeysOrientation >= 0 ? settings.quickKeysOrientation : 0 },
-                    set: { settings.quickKeysOrientation = $0 })) {
-                    Text("Standard", comment: "Quick Keys rotation: unrotated").tag(0)
-                    Text("90°", comment: "Quick Keys rotation").tag(1)
-                    Text("180°", comment: "Quick Keys rotation").tag(2)
-                    Text("270°", comment: "Quick Keys rotation").tag(3)
+            // Dimmed on the content only, not the whole Section: the
+            // header's `nameLabel` carries the connection dot that explains
+            // *why* these are unavailable, so it has to stay full strength.
+            // See the `.opacity` note in `DisplayMappingView.brightnessSection`
+            // for why `.disabled()` alone doesn't dim a Form section at all.
+            Group {
+                HStack {
+                    Image(systemName: "rotate.right")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text("Rotation", comment: "Quick Keys rotation row label")
+                    Spacer()
+                    // Apple's Displays pane spells this exact control
+                    // "Rotation: Standard / 90° / 180° / 270°" — borrowed
+                    // wholesale. Bare degrees also claim no direction, which is
+                    // as much as the protocol notes actually establish.
+                    Picker("Rotation", selection: settings.recordingBinding(
+                        String(localized: "Quick Keys Rotation", comment: "Undo action name: Quick Keys hardware setting in the Buttons pane"),
+                        get: { settings.quickKeysOrientation >= 0 ? settings.quickKeysOrientation : 0 },
+                        set: { settings.quickKeysOrientation = $0 })) {
+                        Text("Standard", comment: "Quick Keys rotation: unrotated").tag(0)
+                        Text("90°", comment: "Quick Keys rotation").tag(1)
+                        Text("180°", comment: "Quick Keys rotation").tag(2)
+                        Text("270°", comment: "Quick Keys rotation").tag(3)
+                    }
+                    .labelsHidden()
+                    .fixedSize()
                 }
-                .labelsHidden()
-                .fixedSize()
-            }
-            .help("Which way up the Quick Keys reads, for holding it rotated or left-handed.")
+                .help("Which way up the Quick Keys reads, for holding it rotated or left-handed.")
 
-            HStack {
-                Image(systemName: "sun.max")
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-                Text("OLED Brightness", comment: "Quick Keys OLED brightness row label")
-                Spacer()
-                Picker("OLED Brightness", selection: settings.recordingBinding(
-                    String(localized: "Quick Keys OLED Brightness", comment: "Undo action name: Quick Keys hardware setting in the Buttons pane"),
-                    get: { settings.quickKeysOledBrightness >= 0 ? settings.quickKeysOledBrightness : 3 },
-                    set: { settings.quickKeysOledBrightness = $0 })) {
-                    Text("Off", comment: "Quick Keys screen brightness level").tag(0)
-                    Text("Dim", comment: "Quick Keys screen brightness level").tag(1)
-                    Text("Medium", comment: "Quick Keys screen brightness level").tag(2)
-                    Text("Bright", comment: "Quick Keys screen brightness level").tag(3)
+                HStack {
+                    Image(systemName: "sun.max")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text("OLED Brightness", comment: "Quick Keys OLED brightness row label")
+                    Spacer()
+                    Picker("OLED Brightness", selection: settings.recordingBinding(
+                        String(localized: "Quick Keys OLED Brightness", comment: "Undo action name: Quick Keys hardware setting in the Buttons pane"),
+                        get: { settings.quickKeysOledBrightness >= 0 ? settings.quickKeysOledBrightness : 3 },
+                        set: { settings.quickKeysOledBrightness = $0 })) {
+                        Text("Off", comment: "Quick Keys screen brightness level").tag(0)
+                        Text("Dim", comment: "Quick Keys screen brightness level").tag(1)
+                        Text("Medium", comment: "Quick Keys screen brightness level").tag(2)
+                        Text("Bright", comment: "Quick Keys screen brightness level").tag(3)
+                    }
+                    .labelsHidden()
+                    .fixedSize()
                 }
-                .labelsHidden()
-                .fixedSize()
-            }
-            .help("Brightness of the Quick Keys OLED. Off blanks it — the keys and dial keep working.")
+                .help("Brightness of the Quick Keys OLED. Off blanks it — the keys and dial keep working.")
 
-            HStack {
-                Image(systemName: "moon.zzz")
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-                Text("Sleep Timer", comment: "Quick Keys auto-sleep timer row label")
-                Spacer()
-                // Tags are literal minutes, matching the wire value
-                // sleepTimerPayload sends (0 = never sleep) — no index
-                // mapping in between to get wrong.
-                Picker("Sleep After", selection: settings.recordingBinding(
-                    String(localized: "Quick Keys Sleep Timer", comment: "Undo action name: Quick Keys hardware setting in the Buttons pane"),                    get: { settings.quickKeysSleepMinutes >= 0 ? settings.quickKeysSleepMinutes : 60 },
-                    set: { settings.quickKeysSleepMinutes = $0 })) {
-                    Text("30 minutes", comment: "Quick Keys sleep timer choice").tag(30)
-                    Text("60 minutes", comment: "Quick Keys sleep timer choice").tag(60)
-                    Text("90 minutes", comment: "Quick Keys sleep timer choice").tag(90)
-                    Text("120 minutes", comment: "Quick Keys sleep timer choice").tag(120)
-                    Text("Never", comment: "Quick Keys sleep timer choice: no auto-sleep").tag(0)
+                HStack {
+                    Image(systemName: "moon.zzz")
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text("Sleep Timer", comment: "Quick Keys auto-sleep timer row label")
+                    Spacer()
+                    // Tags are literal minutes, matching the wire value
+                    // sleepTimerPayload sends (0 = never sleep) — no index
+                    // mapping in between to get wrong.
+                    Picker("Sleep After", selection: settings.recordingBinding(
+                        String(localized: "Quick Keys Sleep Timer", comment: "Undo action name: Quick Keys hardware setting in the Buttons pane"),                    get: { settings.quickKeysSleepMinutes >= 0 ? settings.quickKeysSleepMinutes : 60 },
+                        set: { settings.quickKeysSleepMinutes = $0 })) {
+                        Text("30 minutes", comment: "Quick Keys sleep timer choice").tag(30)
+                        Text("60 minutes", comment: "Quick Keys sleep timer choice").tag(60)
+                        Text("90 minutes", comment: "Quick Keys sleep timer choice").tag(90)
+                        Text("120 minutes", comment: "Quick Keys sleep timer choice").tag(120)
+                        Text("Never", comment: "Quick Keys sleep timer choice: no auto-sleep").tag(0)
+                    }
+                    .labelsHidden()
+                    .fixedSize()
                 }
-                .labelsHidden()
-                .fixedSize()
+                .help("How long the Quick Keys waits before sleeping. Press any key to wake it.")
             }
-            .help("How long the Quick Keys waits before sleeping. Press any key to wake it.")
+            .opacity(isDeviceConnected ? 1 : 0.5)
         } header: {
             PaneSectionHeader("Hardware") { nameLabel }
         }
