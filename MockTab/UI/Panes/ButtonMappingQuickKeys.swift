@@ -236,19 +236,32 @@ struct QuickKeysSectionView: View {
         Binding(
             get: {
                 guard settings.touchRingSlots.indices.contains(index) else { return 1.0 }
-                // The dial's slider briefly went to 20x, as a way to push a
-                // single click past the per-event clamp the inertial scroll
-                // model has since removed the need for. Anything a user saved
-                // above the normal range is inert now (the injector clamps it
-                // the same way), so show it pinned at the top rather than
-                // letting the slider render off its own scale.
-                return min(settings.touchRingSlots[index].speed, 3.0)
+                let slot = settings.touchRingSlots[index]
+                // The dial's slider briefly went to 20x for .scroll, as a
+                // way to push a single click past the per-event clamp the
+                // inertial scroll model has since removed the need for.
+                // Anything a user saved above the normal range is inert now
+                // (the injector clamps it the same way), so show it pinned
+                // at the top rather than letting the slider render off its
+                // own scale. `.zoom`/`.rotate` have their own, much taller
+                // fixed ceilings (see `ControlSlot.Action.fixedSpeedCeiling`)
+                // and must not be pulled down to this 3.0 — that bug (fixed
+                // 2026-09) let the slider's thumb and its own speed label
+                // disagree, since the label read the true unclamped stored
+                // value while only the displayed/effective value here was
+                // capped.
+                let ceiling = slot.action.fixedSpeedCeiling ?? 3.0
+                return min(slot.speed, ceiling)
             },
             set: { newValue in
                 let oldSlots = settings.touchRingSlots
                 guard oldSlots.indices.contains(index) else { return }
                 var updated = oldSlots
-                updated[index].speed = newValue
+                // Clamp on write too, not just on read — the slider's own
+                // range already prevents this in practice, but a stored
+                // value should never be able to exceed its action's actual
+                // ceiling regardless of how it got written.
+                updated[index].speed = ControlSlot.clampedSpeed(newValue, for: updated[index].action)
                 settings.touchRingSlots = updated
                 settings.recordToggle(String(localized: "Dial Slot \(index + 1) Speed", comment: "Undo action name: Quick Keys dial slot binding in the Buttons pane"), from: oldSlots, to: updated) {
                     settings.touchRingSlots = $0

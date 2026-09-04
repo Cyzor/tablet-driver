@@ -243,7 +243,7 @@ extension ButtonMappingView {
                 let oldSlots = self.settings.touchRingSlots
                 guard oldSlots.indices.contains(0) else { return }
                 var newSlots = oldSlots
-                newSlots[0].speed = newSpeed
+                newSlots[0].speed = ControlSlot.clampedSpeed(newSpeed, for: newSlots[0].action)
                 self.settings.touchRingSlots = newSlots
                 self.settings.recordToggle(String(localized: "Ring Slot 1 Speed", comment: "Undo action name: touch ring slot rotation speed in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
@@ -259,7 +259,7 @@ extension ButtonMappingView {
                 let oldSlots = self.settings.touchRingSlots
                 guard oldSlots.indices.contains(1) else { return }
                 var newSlots = oldSlots
-                newSlots[1].speed = newSpeed
+                newSlots[1].speed = ControlSlot.clampedSpeed(newSpeed, for: newSlots[1].action)
                 self.settings.touchRingSlots = newSlots
                 self.settings.recordToggle(String(localized: "Ring Slot 2 Speed", comment: "Undo action name: touch ring slot rotation speed in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
@@ -275,7 +275,7 @@ extension ButtonMappingView {
                 let oldSlots = self.settings.touchRingSlots
                 guard oldSlots.indices.contains(2) else { return }
                 var newSlots = oldSlots
-                newSlots[2].speed = newSpeed
+                newSlots[2].speed = ControlSlot.clampedSpeed(newSpeed, for: newSlots[2].action)
                 self.settings.touchRingSlots = newSlots
                 self.settings.recordToggle(String(localized: "Ring Slot 3 Speed", comment: "Undo action name: touch ring slot rotation speed in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }
@@ -291,7 +291,7 @@ extension ButtonMappingView {
                 let oldSlots = self.settings.touchRingSlots
                 guard oldSlots.indices.contains(3) else { return }
                 var newSlots = oldSlots
-                newSlots[3].speed = newSpeed
+                newSlots[3].speed = ControlSlot.clampedSpeed(newSpeed, for: newSlots[3].action)
                 self.settings.touchRingSlots = newSlots
                 self.settings.recordToggle(String(localized: "Ring Slot 4 Speed", comment: "Undo action name: touch ring slot rotation speed in the Buttons pane"), from: oldSlots, to: newSlots) { self.settings.touchRingSlots = $0 }
             }

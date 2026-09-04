@@ -259,7 +259,10 @@ private struct TouchRingModeListCore: View, Equatable {
     private func speedLabel(_ speed: Double, for action: ControlSlot.Action) -> String {
         switch action {
         case .zoom, .rotate:
-            return bucketedSpeedLabel(speed, ceiling: speedRange(for: action))
+            return bucketedSpeedLabel(
+                speed,
+                ceiling: speedRange(for: action),
+                intervals: action.speedNotchIntervals ?? 4)
         case .scroll, .keyPress, .off, .skip:
             return speed < 0.01
                 ? String(
@@ -274,49 +277,44 @@ private struct TouchRingModeListCore: View, Equatable {
     /// matching how macOS itself labels its Trackpad tracking-speed slider
     /// ("Slow" ↔ "Fast", no number). Used for `.zoom`/`.rotate`, whose
     /// speed is a fraction of a derived or empirical ceiling rather than an
-    /// open-ended multiplier, so a bucketed label reads more honestly than
-    /// a fake-precise "0.73×".
-    private func bucketedSpeedLabel(_ speed: Double, ceiling: Double) -> String {
-        let fraction = ceiling > 0 ? speed / ceiling : 0
-        switch fraction {
-        case ..<0.01:
-            return String(localized: "Off", comment: "Ring speed bucket: disabled")
-        case ..<0.15:
-            return String(localized: "Low", comment: "Ring speed bucket: slow")
-        case ..<0.4:
-            return String(localized: "Medium", comment: "Ring speed bucket: medium")
-        case ..<0.65:
-            return String(localized: "High", comment: "Ring speed bucket: fast")
-        default:
-            return String(localized: "Max", comment: "Ring speed bucket: fastest")
-        }
+    /// open-ended multiplier, so a named level reads more honestly than a
+    /// fake-precise "0.73×".
+    ///
+    /// One label per slider notch, looked up by index — deliberately *not*
+    /// fraction bands. The bands this replaced were mis-copied from
+    /// `PenFeelView` with every boundary shifted down one slot, which on
+    /// rotate's five stops made "Low" unreachable, gave "Max" two stops,
+    /// and put "Medium" on the first notch above Off. Indexing off the same
+    /// `speedNotchIntervals` the slider is built from means the labels
+    /// cannot fall out of step with the notches again.
+    ///
+    /// Rounds to the nearest notch so a stored value that predates the
+    /// notching still reads as its closest level — `.rounded()` is
+    /// away-from-zero, so an exact midpoint rounds up (a stored 3.0 zoom,
+    /// the value the old clamp bug pinned everyone to, reads "Medium").
+    private func bucketedSpeedLabel(
+        _ speed: Double, ceiling: Double, intervals: Int
+    ) -> String {
+        let names = [
+            String(localized: "Off", comment: "Ring speed level: disabled"),
+            String(localized: "Low", comment: "Ring speed level: slow"),
+            String(localized: "Medium", comment: "Ring speed level: medium"),
+            String(localized: "High", comment: "Ring speed level: fast"),
+            String(localized: "Max", comment: "Ring speed level: fastest"),
+        ]
+        guard ceiling > 0, intervals > 0 else { return names[0] }
+        let step = ceiling / Double(intervals)
+        let idx = min(max(Int((speed / step).rounded()), 0), names.count - 1)
+        return names[idx]
     }
 
-    /// Per-action speed-slider ceiling. `maxSpeed` itself is unchanged and
-    /// still governs `.scroll`/`.keyPress`/`.off`/`.skip`; `.zoom` and
-    /// `.rotate` each get their own ceiling, for different reasons — see
-    /// `dialGestureZoomScale`/`dialGestureRotateScale` (InputInjector+
-    /// CGEvents.swift) for the underlying constants this range multiplies.
-    ///
-    /// `.zoom`: hardware feedback (PTH-860, 2026-09) found `maxSpeed`'s 3x
-    /// too low for a comfortable feel — `dialGestureZoomScale` has no
-    /// physical 1:1 anchor to derive a ceiling from, so 8x is an empirical
-    /// choice matching what felt right, with headroom above it.
-    ///
-    /// `.rotate`: `dialGestureRotateScale` is calibrated so 1x already means
-    /// one ring revolution = one full 360° canvas rotation (see that
-    /// constant's doc comment) — unlike zoom's empirical headroom, this
-    /// ceiling is *derived*, not chosen: 1x is both the natural default and
-    /// the physical maximum a user would ever want (spinning the ring
-    /// faster doesn't rotate the canvas "more," it just tracks the same
-    /// turn-for-turn mapping at a different rate), so the range is fixed at
-    /// exactly 1.0. `maxSpeed` is ignored here even if raised elsewhere.
+    /// Per-action speed-slider ceiling. Defers to `Action.fixedSpeedCeiling`
+    /// for `.zoom`/`.rotate` (see that property's doc comment for why each
+    /// value is what it is, and for the bug this single-source-of-truth
+    /// setup replaced); `maxSpeed` still governs everything else
+    /// (`.scroll`/`.keyPress`/`.off`/`.skip`), unchanged.
     private func speedRange(for action: ControlSlot.Action) -> Double {
-        switch action {
-        case .zoom: return max(maxSpeed, 8.0)
-        case .rotate: return 1.0
-        case .scroll, .keyPress, .off, .skip: return maxSpeed
-        }
+        action.fixedSpeedCeiling ?? maxSpeed
     }
 
     // MARK: - Detail editor
@@ -339,26 +337,45 @@ private struct TouchRingModeListCore: View, Equatable {
             }
 
             // Greyed (not hidden) while the mode is off/skip — the value is
-            // kept and comes back when the mode does. In testing, this row's
-            // visible dimming was hard to see (the Text label's explicit
-            // `.secondary` foreground style may be muting `.disabled()`'s
-            // usual effect) — left as-is pending the broader slider rework;
-            // not chasing it further here.
-            labeledRow(String(localized: "Speed", comment: "Ring mode editor row label")) {
-                // Snaps in the binding rather than via `step:` so it renders
-                // without tick marks — one slider style everywhere.
-                Slider(value: snappedSpeedBinding(idx), in: 0...speedRange(for: slot.action)) { EmptyView() }
+            // kept and comes back when the mode does.
+            //
+            // `.disabled()` alone doesn't visibly dim this row: AppKit dims
+            // disabled *controls* natively (which is why the slider's accent
+            // does grey out), but `Text` carrying an explicit
+            // `.foregroundStyle(.secondary)` — the row label and the speed
+            // readout both do — renders that style at full strength either
+            // way. Hence the explicit opacity, matching how TouchView pairs
+            // `.disabled()` with `.opacity(… ? 1 : 0.5)` on every row whose
+            // content is styled text rather than a bare control.
+            labeledRow(
+                String(localized: "Speed", comment: "Ring mode editor row label"),
+                fillsWidth: true
+            ) {
+                // One slider shape for every action: `step:` both snaps the
+                // value and draws tick marks, so the stops a user lands on
+                // are the stops they can see. Replaced a binding-level
+                // quantize that snapped invisibly — same resolution, no
+                // affordance. `.zoom`/`.rotate` read out named levels and
+                // `.scroll`/`.keyPress` a multiplier (see
+                // `Action.speedNotchIntervals`), but that's the readout
+                // differing, not the control.
+                Slider(
+                    value: speedBinding(idx),
+                    in: 0...speedRange(for: slot.action),
+                    step: slot.action.speedNotchStep ?? 0.25
+                ) { EmptyView() }
                     .labelsHidden()
-                    .frame(maxWidth: 200)
+                    .frame(maxWidth: .infinity)
                     .help("Adjust how fast the ring scrolls, zooms, rotates, or repeats key presses.")
                 Text(speedLabel(slot.speed, for: slot.action))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .fixedSize()
-                    .scaledFrame(width: 64, alignment: .leading)
+                    .scaledFrame(width: 78, alignment: .leading)
                     .monospacedDigit()
             }
             .disabled(speedRowDisabled)
+            .opacity(speedRowDisabled ? 0.5 : 1)
 
             if slot.action == .keyPress {
                 // Switching the action to Key adds these rows mid-editor, so
@@ -408,22 +425,22 @@ private struct TouchRingModeListCore: View, Equatable {
         .transition(.opacity)
     }
 
-    private var snappedSpeedBinding: (Int) -> Binding<Double> {
-        { idx in
-            let raw = speedBinding(idx)
-            return Binding(
-                get: { raw.wrappedValue },
-                set: { raw.wrappedValue = ($0 * 4).rounded() / 4 })
-        }
-    }
-
     /// One editor row: a trailing-aligned label column wide enough for the
     /// longest localized text label (so every input field starts on the same
     /// vertical line), then the control. Rows whose function a familiar
     /// SF Symbol conveys pass `symbol` and show it in the label column
     /// instead; the text stays as tooltip and accessibility label.
+    ///
+    /// `fillsWidth` drops the trailing spacer so the content can claim the
+    /// rest of the row — for the Speed slider, which otherwise sits in a
+    /// fixed 200pt well with dead space beside it. It's opt-in because the
+    /// other rows' controls (the Action picker, the key recorders, the LED
+    /// editor) are intrinsically sized and should stay left-packed; and
+    /// because a flexible spacer competing with a `maxWidth: .infinity`
+    /// control for the same leftover is an ambiguous layout.
     private func labeledRow(
-        _ label: String, symbol: String? = nil, @ViewBuilder content: () -> some View
+        _ label: String, symbol: String? = nil, fillsWidth: Bool = false,
+        @ViewBuilder content: () -> some View
     ) -> some View {
         HStack(spacing: 0) {
             Group {
@@ -440,7 +457,9 @@ private struct TouchRingModeListCore: View, Equatable {
             .scaledFrame(minWidth: 110, alignment: .trailing)
             .padding(.trailing, 8)
             HStack(spacing: 8) { content() }
-            Spacer(minLength: 0)
+            if !fillsWidth {
+                Spacer(minLength: 0)
+            }
         }
     }
 
