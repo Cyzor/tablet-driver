@@ -2051,7 +2051,26 @@
       }
     },
     "Adjust how fast the ring scrolls, zooms, rotates, or repeats key presses." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legt fest, wie schnell der Ring scrollt, zoomt, dreht oder Tastendrücke wiederholt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajusta la velocidad a la que el anillo desplaza, amplía, gira o repite pulsaciones de teclas."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リングがスクロール、ズーム、回転、キー入力の繰り返しを行う速さを調整します。"
+          }
+        }
+      }
     },
     "Alice's Adventures in Wonderland, Lewis Carroll" : {
       "comment" : "The title of Lewis Carroll's classic novel.",
@@ -4969,7 +4988,26 @@
       }
     },
     "Delete this profile (undoable)." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Profil löschen (widerrufbar)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar este perfil (se puede deshacer)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このプロファイルを削除します（取り消し可能）。"
+          }
+        }
+      }
     },
     "Detect Tablet" : {
       "comment" : "Dock menu: detect and focus active tablet\nMenu item: detect and focus active tablet\nMenu item: find and focus the active tablet",
@@ -9029,10 +9067,50 @@
       }
     },
     "Jitter (pt/sample): %@" : {
-      "comment" : "Diagnostic: histogram of hover-jitter sample magnitudes, cumulative for this tool's proximity session"
+      "comment" : "Diagnostic: histogram of hover-jitter sample magnitudes, cumulative for this tool's proximity session",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jitter (pt/Sample): %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibración (pt/muestra): %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ジッター (pt/サンプル): %@"
+          }
+        }
+      }
     },
     "Jitter (pt/sample): no hover samples yet" : {
-      "comment" : "Diagnostic: jitter histogram is empty"
+      "comment" : "Diagnostic: jitter histogram is empty",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jitter (pt/Sample): noch keine Schwebe-Messwerte"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibración (pt/muestra): aún no hay muestras de proximidad"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ジッター (pt/サンプル): ホバーのサンプルがまだありません"
+          }
+        }
+      }
     },
     "Jitter level   : %@ pt/sample%@" : {
       "comment" : "Diagnostic: input jitter measurement",
@@ -14337,7 +14415,27 @@
       }
     },
     "Report gaps    : %@" : {
-      "comment" : "Diagnostic: histogram of inter-report arrival gaps, in milliseconds, for spotting bursty/coalesced delivery"
+      "comment" : "Diagnostic: histogram of inter-report arrival gaps, in milliseconds, for spotting bursty/coalesced delivery",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reportlücken   : %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Huecos informes: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "レポート間隔   : %@"
+          }
+        }
+      }
     },
     "Requires the pen to move this far before a tap becomes a drag." : {
       "localizations" : {
