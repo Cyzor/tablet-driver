@@ -775,13 +775,15 @@ final class SettingsWindowController: NSWindowController {
             defaultSize: NSSize(width: width, height: height),
             forTabLabeled: label)
 
-        var lazyRef: LazyHostingViewController?
+        weak var lazyRef: LazyHostingViewController?
         let lazy = LazyHostingViewController {
             let aligned = content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             let hosting = NSHostingController(rootView: aligned.withAppearance())
             // Read back through the tab rather than capturing `title`: a rename
             // before this tab is first shown updates the tab, not the constant.
+            // Weak because the tab owns this closure for its whole life; a strong
+            // capture here would keep every tab (and unbuilt pane) alive forever.
             hosting.title = lazyRef?.title ?? title
             hosting.preferredContentSize = NSSize(width: width, height: 0)
             if #available(macOS 13.0, *) {

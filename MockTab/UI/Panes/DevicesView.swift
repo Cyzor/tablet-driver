@@ -95,19 +95,15 @@ struct DevicesView: View {
             toolsSection
             allToolsSection
         }
-        // Suspended while a rename is in progress: this shape sits over the
-        // whole pane, field included, so left live during an edit it beats
-        // the field to every click — the field never gets first responder
-        // (no caret, nothing to select) and the click also commits the
-        // rename it was meant to be placed inside. See `rowTapHandling` for
-        // the same issue at the row level; this is the pane-level version of
-        // it, so the outer click-away-commits behavior doesn't reach in and
-        // steal clicks meant for the field itself.
-        .rowTapHandling(active: editingTabletID == nil && editingToolID == nil) {
-            $0.onTapGesture {
-                commitTabletRename()
-                commitToolRename()
-            }
+        // Finder-style: a single click outside the field confirms any rename
+        // in progress (an empty name reverts to the old one). Deliberately not
+        // masked while editing — that is the only time it has work to do. The
+        // row-level gestures are what stole the field's clicks; this one, as
+        // in the Profiles pane, coexists with a live field.
+        .contentShape(Rectangle())
+        .onTapGesture {
+            commitTabletRename()
+            commitToolRename()
         }
         .onAppear { syncTools() }
         .onChange(of: tabletManager.connectedProductIDs) { _ in
@@ -275,19 +271,18 @@ struct DevicesView: View {
                 .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.clear)
                 .padding(.horizontal, -8)
         )
-        // Row-wide click handling, suspended while this row is being renamed.
+        // Row-wide click handling, masked off while this row is being renamed.
         //
         // The gestures below sit on the whole row, text field included. Left
         // live during an edit they take the clicks the field needs: the field
         // never becomes first responder (so no insertion point and nothing for
         // select-all to act on), and the selection tap runs
         // `commitTabletRename`, ending the edit on the very click meant to
-        // place the cursor. `rowTapHandling` drops the hit-test shape and the
-        // gestures together — a shape with no gestures would still swallow the
-        // click.
-        .rowTapHandling(active: editingTabletID != tablet.id) {
-            $0
-                .onTapGesture(count: 2) { beginTabletEdit(tablet) }
+        // place the cursor. See `rowTapHandling` for why this is a mask and
+        // not a conditional modifier chain.
+        .rowTapHandling(active: editingTabletID != tablet.id) { row, mask in
+            row
+                .gesture(TapGesture(count: 2).onEnded { beginTabletEdit(tablet) }, including: mask)
                 // Selection runs as a simultaneous gesture, not a plain single
                 // `.onTapGesture`. Alongside the count:2 rename tap, a plain
                 // single tap makes SwiftUI stall the action by the double-click
@@ -315,7 +310,7 @@ struct DevicesView: View {
                         guard selectedTabletID != tablet.id else { return }
                         selectedTabletID = tablet.id
                         registry.loadTools(forDevice: tablet.id)
-                    }
+                    }, including: mask
                 )
                 // Hidden screenshot aid: Option+Shift-click any row to swap all
                 // identifiers for decoys (and back). A modifier-qualified tap
@@ -323,7 +318,8 @@ struct DevicesView: View {
                 // double-tap (rename) disambiguation the way a plain single tap
                 // is.
                 .simultaneousGesture(
-                    TapGesture().modifiers([.option, .shift]).onEnded { decoyingIDs.toggle() }
+                    TapGesture().modifiers([.option, .shift]).onEnded { decoyingIDs.toggle() },
+                    including: mask
                 )
         }
         .contextMenu {
@@ -372,9 +368,14 @@ struct DevicesView: View {
         commitTabletRename()
         commitToolRename()
         editingTabletID = nil
-        editingToolID = tool.id
-        editingToolInAllSection = inAllSection
-        editingName = tool.nickname
+        // Deferred a turn for the same reason as beginTabletEdit: landing the
+        // field in the same turn as the gesture's own state changes loses the
+        // focus/select-all trigger in `.onAppear`.
+        DispatchQueue.main.async { [self] in
+            editingToolID = tool.id
+            editingToolInAllSection = inAllSection
+            editingName = tool.nickname
+        }
     }
 
     // MARK: - Tools
@@ -504,9 +505,11 @@ struct DevicesView: View {
         }
         .padding(.vertical, 2)
         .listRowBackground(isInProximity ? Color.accentColor.opacity(0.08) : nil)
-        // Suspended while editing — see the tablet row for why.
-        .rowTapHandling(active: !isEditing) {
-            $0.onTapGesture(count: 2) { beginToolEdit(tool, inAllSection: inAllSection) }
+        // Masked off while editing — see the tablet row for why.
+        .rowTapHandling(active: !isEditing) { row, mask in
+            row.gesture(
+                TapGesture(count: 2).onEnded { beginToolEdit(tool, inAllSection: inAllSection) },
+                including: mask)
         }
         .contextMenu {
             Button("Rename…") { beginToolEdit(tool, inAllSection: inAllSection) }

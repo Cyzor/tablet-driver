@@ -286,25 +286,25 @@ extension View {
 }
 
 extension View {
-    /// Applies a row's click handling only when `active`, hit-test shape and
-    /// gestures together.
+    /// Installs a row's hit-test shape and gestures once, and masks the gestures
+    /// off while `active` is false.
     ///
-    /// For rows that turn into a rename field in place. A row-wide
-    /// `contentShape` covers the field too, so leaving it installed during an
-    /// edit steals the clicks that would give the field its insertion point —
-    /// and any row gesture that commits the rename then fires on that same
-    /// click. Gating the gestures alone is not enough: the shape keeps
-    /// swallowing clicks even with nothing attached to them.
-    @ViewBuilder
+    /// For rows that turn into a rename field in place. Row-wide gestures left
+    /// live during an edit take the clicks the field needs — it never becomes
+    /// first responder, and a selection tap commits the rename on the very
+    /// click meant to place the cursor. Masking to `.subviews` lets the field's
+    /// own handling through while the row's stays off.
+    ///
+    /// Masked rather than conditionally attached so the row keeps one view
+    /// identity: an `if` between two modifier chains rebuilds the whole row
+    /// subtree every time editing starts or stops, resetting any state in it.
+    /// The shape stays installed throughout; it is the gestures, not the
+    /// shape, that a subview loses clicks to.
     func rowTapHandling<Modified: View>(
         active: Bool,
-        @ViewBuilder _ gestures: (AnyView) -> Modified
-    ) -> some View {
-        if active {
-            gestures(AnyView(self.contentShape(Rectangle())))
-        } else {
-            self
-        }
+        _ gestures: (AnyView, GestureMask) -> Modified
+    ) -> Modified {
+        gestures(AnyView(self.contentShape(Rectangle())), active ? .all : .subviews)
     }
 }
 
@@ -317,17 +317,36 @@ extension View {
 /// land after it, and no longer reliably does. So poll a few turns and stop at
 /// the first one where a text-editing responder is actually present.
 ///
-/// Addresses the field editor by class rather than by `NSApp.keyWindow`: the
-/// window need not be key yet on the turn focus lands, and the earlier version
-/// silently did nothing in that case.
+/// "Present" has to mean *the new field's*. When one rename is already open
+/// and another begins, the outgoing field's editor is still first responder on
+/// the first poll; accepting any editor selected the old field's text and
+/// stopped. A window shares one field editor between all its fields, so the
+/// editor object can't tell them apart — its delegate, the `NSTextField` being
+/// edited, can. Capture that at the start and wait for it to change.
+///
+/// Only the key window is consulted: with one settings window per device open,
+/// a main-window fallback could select-all in some other window's text view.
+/// If the window is not key yet on this turn, the next poll catches it.
 @MainActor
-func selectAllInFocusedRenameField(attemptsRemaining: Int = 12) {
-    guard let responder = NSApp.keyWindow?.firstResponder ?? NSApp.mainWindow?.firstResponder,
-        responder is NSText || responder is NSTextView
-    else {
+func selectAllInFocusedRenameField() {
+    selectAllInRenameField(attemptsRemaining: 12, previousField: currentlyEditedField())
+}
+
+@MainActor
+private func currentlyEditedField() -> AnyObject? {
+    (NSApp.keyWindow?.firstResponder as? NSTextView)?.delegate
+}
+
+@MainActor
+private func selectAllInRenameField(attemptsRemaining: Int, previousField: AnyObject?) {
+    let responder = NSApp.keyWindow?.firstResponder
+    let isEditor = responder is NSText || responder is NSTextView
+    let field = (responder as? NSTextView)?.delegate
+    let moved = previousField == nil || field !== previousField
+    guard isEditor, moved, let responder else {
         guard attemptsRemaining > 0 else { return }
         DispatchQueue.main.async {
-            selectAllInFocusedRenameField(attemptsRemaining: attemptsRemaining - 1)
+            selectAllInRenameField(attemptsRemaining: attemptsRemaining - 1, previousField: previousField)
         }
         return
     }

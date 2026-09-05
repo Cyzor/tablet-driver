@@ -51,7 +51,17 @@ struct ProfilesView: View {
                     editingName: $editingName,
                     onActivate: { settings.activate($0) },
                     onDelete: { settings.deletePresetRecordingUndo($0) },
-                    onRenameBegin: { editingPreset = $0; editingName = $0.name },
+                    // Deferred a turn, as in the Devices pane: landing the field
+                    // in the same turn as the gesture's own state changes loses
+                    // the focus/select-all trigger in `.onAppear`.
+                    onRenameBegin: { preset in
+                        // Finder-style: starting one rename confirms another.
+                        if editingPreset != nil { commitRename() }
+                        DispatchQueue.main.async {
+                            editingPreset = preset
+                            editingName = preset.name
+                        }
+                    },
                     onRenameCommit: commitRename,
                     onRenameCancel: { editingPreset = nil; editingName = "" }
                 )
@@ -145,7 +155,10 @@ struct ProfilesView: View {
                         .frame(maxWidth: 200)
                         .focused($createFieldFocused)
                         .onSubmit { commitCreate() }
-                        .onAppear { createFieldFocused = true }
+                        // Deferred a turn: requesting focus in the same turn
+                        // the field is inserted has been landing before the
+                        // field can take it, leaving it visible but unfocused.
+                        .onAppear { DispatchQueue.main.async { createFieldFocused = true } }
 
                     Button("Create") { commitCreate() }
                         .buttonStyle(.borderedProminent)
@@ -590,6 +603,12 @@ private struct PresetListView: View {
             RoundedRectangle(cornerRadius: 6)
                 .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
         )
+        // Double-click renames, matching the Devices pane rows. Masked off
+        // while editing so the row gesture can't take the field's clicks —
+        // see `rowTapHandling`.
+        .rowTapHandling(active: !isEditing) { row, mask in
+            row.gesture(TapGesture(count: 2).onEnded { onRenameBegin(preset) }, including: mask)
+        }
         .contextMenu { menuEntries(preset) }
     }
 
