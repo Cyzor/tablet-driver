@@ -453,8 +453,6 @@ final class TabletManager: ObservableObject {
             maxPressure: profile.maxPressure ?? 8191,
             buttonCount: profile.auxButtonCount ?? 0,
             bezelButtonCount: profile.bezelButtonCount ?? 0,
-            // Tilt confirmed live in report 2 (signed bytes at
-            // offsets 8–9); degree scale still unverified.
             // hasTouchRing reuses the entire Wacom touch-ring UI/LED
             // architecture for the Quick Keys dial (4 modes on both,
             // ringSlotCount defaults to 4) — see XencelabsDecoder's
@@ -469,6 +467,9 @@ final class TabletManager: ObservableObject {
             // sensing, rotation only. See hasMechanicalDial's doc comment.
             hasTouchRing: isAuxOnly, hasMechanicalDial: isAuxOnly,
             hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
+            // Degree scale still unverified — see
+            // XencelabsDecoder.tiltScaleDegrees's doc comment.
+            tiltMaxDegrees: isAuxOnly ? nil : XencelabsDecoder.tiltScaleDegrees,
             isPenDisplay: profile.isPenDisplay,
             seizeUSB: false,
             // Tablet-mode handshake; without it the device stays in
