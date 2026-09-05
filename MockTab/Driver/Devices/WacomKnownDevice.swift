@@ -33,7 +33,8 @@ final class WacomKnownDevice: TabletDevice {
             isPenDisplay: spec.isPenDisplay,
             ringSlotCount: spec.ringSlotCount,
             hasFingerTouch: spec.hasFingerTouch,
-            maxTouchContacts: spec.maxTouchContacts)
+            maxTouchContacts: spec.maxTouchContacts,
+            tiltMaxDegrees: spec.tiltMaxDegrees)
     }
 
     let device: IOHIDDevice
