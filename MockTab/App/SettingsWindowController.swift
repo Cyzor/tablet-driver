@@ -601,6 +601,13 @@ final class SettingsWindowController: NSWindowController {
         // focus grab being avoided here. Load the window if needed, then
         // raise it within this app's own layer.
         _ = window
+        // A window merged into a tab group is raised by selecting its tab;
+        // `makeKeyAndOrderFront` alone leaves the group on whichever tab was
+        // showing. Selection is an in-app operation, so it is as focus-safe
+        // as the raise below.
+        if let window, let group = window.tabGroup, group.selectedWindow !== window {
+            group.selectedWindow = window
+        }
         // `makeKeyAndOrderFront`, not `orderFront`: raising a window without
         // making it key leaves whichever window *was* key still taking input,
         // so the tablet you just plugged in ends up on top while your typing
