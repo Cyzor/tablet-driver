@@ -617,10 +617,7 @@ private struct PresetListView: View {
     /// can immediately type a replacement. Called from the field's `.onAppear`.
     private func focusAndSelectAll() {
         editFieldFocused = true
-        DispatchQueue.main.async {
-            NSApp.keyWindow?.firstResponder?
-                .tryToPerform(#selector(NSText.selectAll(_:)), with: nil)
-        }
+        selectAllInFocusedRenameField()
     }
 
     @ViewBuilder

@@ -284,3 +284,52 @@ extension View {
                     .padding(.vertical, -1))
     }
 }
+
+extension View {
+    /// Applies a row's click handling only when `active`, hit-test shape and
+    /// gestures together.
+    ///
+    /// For rows that turn into a rename field in place. A row-wide
+    /// `contentShape` covers the field too, so leaving it installed during an
+    /// edit steals the clicks that would give the field its insertion point —
+    /// and any row gesture that commits the rename then fires on that same
+    /// click. Gating the gestures alone is not enough: the shape keeps
+    /// swallowing clicks even with nothing attached to them.
+    @ViewBuilder
+    func rowTapHandling<Modified: View>(
+        active: Bool,
+        @ViewBuilder _ gestures: (AnyView) -> Modified
+    ) -> some View {
+        if active {
+            gestures(AnyView(self.contentShape(Rectangle())))
+        } else {
+            self
+        }
+    }
+}
+
+/// Selects the whole contents of the rename field that just took focus, so
+/// typing replaces the old name instead of appending to it.
+///
+/// Setting `@FocusState` only *requests* focus; SwiftUI installs the field
+/// editor as first responder on a later runloop turn, and how many turns that
+/// takes is not contractual — a single `DispatchQueue.main.async` hop used to
+/// land after it, and no longer reliably does. So poll a few turns and stop at
+/// the first one where a text-editing responder is actually present.
+///
+/// Addresses the field editor by class rather than by `NSApp.keyWindow`: the
+/// window need not be key yet on the turn focus lands, and the earlier version
+/// silently did nothing in that case.
+@MainActor
+func selectAllInFocusedRenameField(attemptsRemaining: Int = 12) {
+    guard let responder = NSApp.keyWindow?.firstResponder ?? NSApp.mainWindow?.firstResponder,
+        responder is NSText || responder is NSTextView
+    else {
+        guard attemptsRemaining > 0 else { return }
+        DispatchQueue.main.async {
+            selectAllInFocusedRenameField(attemptsRemaining: attemptsRemaining - 1)
+        }
+        return
+    }
+    responder.tryToPerform(#selector(NSText.selectAll(_:)), with: nil)
+}

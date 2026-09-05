@@ -95,12 +95,19 @@ struct DevicesView: View {
             toolsSection
             allToolsSection
         }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            // Finder-style: a single click outside the field confirms any
-            // rename in progress (an empty name reverts to the old one).
-            commitTabletRename()
-            commitToolRename()
+        // Suspended while a rename is in progress: this shape sits over the
+        // whole pane, field included, so left live during an edit it beats
+        // the field to every click — the field never gets first responder
+        // (no caret, nothing to select) and the click also commits the
+        // rename it was meant to be placed inside. See `rowTapHandling` for
+        // the same issue at the row level; this is the pane-level version of
+        // it, so the outer click-away-commits behavior doesn't reach in and
+        // steal clicks meant for the field itself.
+        .rowTapHandling(active: editingTabletID == nil && editingToolID == nil) {
+            $0.onTapGesture {
+                commitTabletRename()
+                commitToolRename()
+            }
         }
         .onAppear { syncTools() }
         .onChange(of: tabletManager.connectedProductIDs) { _ in
@@ -268,33 +275,57 @@ struct DevicesView: View {
                 .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.clear)
                 .padding(.horizontal, -8)
         )
-        .contentShape(Rectangle())
-        .onTapGesture(count: 2) { beginTabletEdit(tablet) }
-        // Selection runs as a simultaneous gesture, not a plain single
-        // `.onTapGesture`. Alongside the count:2 rename tap, a plain single
-        // tap makes SwiftUI stall the action by the double-click interval to
-        // rule out a second click — a visible "why did that take a beat" lag
-        // on every row switch. A simultaneous tap fires on release without
-        // waiting, so activation feels instant; double-click still renames
-        // (first tap selects, second enters edit — the Finder behavior).
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                // A modified click drives the decoy toggle (the gesture
-                // below); swallow it here so it doesn't also reselect the row.
-                if NSEvent.modifierFlags.contains([.option, .shift]) { return }
-                commitTabletRename()
-                commitToolRename()
-                selectedTabletID = tablet.id
-                registry.loadTools(forDevice: tablet.id)
-            }
-        )
-        // Hidden screenshot aid: Option+Shift-click any row to swap all
-        // identifiers for decoys (and back). A modifier-qualified tap fires
-        // on release, so it isn't held back by the row's double-tap (rename)
-        // disambiguation the way a plain single tap is.
-        .simultaneousGesture(
-            TapGesture().modifiers([.option, .shift]).onEnded { decoyingIDs.toggle() }
-        )
+        // Row-wide click handling, suspended while this row is being renamed.
+        //
+        // The gestures below sit on the whole row, text field included. Left
+        // live during an edit they take the clicks the field needs: the field
+        // never becomes first responder (so no insertion point and nothing for
+        // select-all to act on), and the selection tap runs
+        // `commitTabletRename`, ending the edit on the very click meant to
+        // place the cursor. `rowTapHandling` drops the hit-test shape and the
+        // gestures together — a shape with no gestures would still swallow the
+        // click.
+        .rowTapHandling(active: editingTabletID != tablet.id) {
+            $0
+                .onTapGesture(count: 2) { beginTabletEdit(tablet) }
+                // Selection runs as a simultaneous gesture, not a plain single
+                // `.onTapGesture`. Alongside the count:2 rename tap, a plain
+                // single tap makes SwiftUI stall the action by the double-click
+                // interval to rule out a second click — a visible "why did that
+                // take a beat" lag on every row switch. A simultaneous tap fires
+                // on release without waiting, so activation feels instant;
+                // double-click still renames (first tap selects, second enters
+                // edit — the Finder behavior).
+                .simultaneousGesture(
+                    TapGesture().onEnded {
+                        // A modified click drives the decoy toggle (the gesture
+                        // below); swallow it here so it doesn't also reselect
+                        // the row.
+                        if NSEvent.modifierFlags.contains([.option, .shift]) { return }
+                        commitTabletRename()
+                        commitToolRename()
+                        // Skip the reload when this row is already selected:
+                        // `loadTools` publishes unconditionally, so on an
+                        // already-selected row both taps of a double-click
+                        // would each trigger a body re-render — the second
+                        // one landing right as the rename field requests
+                        // focus, restarting its identity and losing the
+                        // focus/select-all race. A fresh selection still
+                        // needs the reload to pick up that tablet's tools.
+                        guard selectedTabletID != tablet.id else { return }
+                        selectedTabletID = tablet.id
+                        registry.loadTools(forDevice: tablet.id)
+                    }
+                )
+                // Hidden screenshot aid: Option+Shift-click any row to swap all
+                // identifiers for decoys (and back). A modifier-qualified tap
+                // fires on release, so it isn't held back by the row's
+                // double-tap (rename) disambiguation the way a plain single tap
+                // is.
+                .simultaneousGesture(
+                    TapGesture().modifiers([.option, .shift]).onEnded { decoyingIDs.toggle() }
+                )
+        }
         .contextMenu {
             Button("Rename…") { beginTabletEdit(tablet) }
             Divider()
@@ -322,8 +353,19 @@ struct DevicesView: View {
         commitToolRename()
         commitTabletRename()
         editingToolID = nil
-        editingTabletID = tablet.id
-        editingName = tablet.nickname
+        // Deferred a turn: a double-click on a row not already selected also
+        // sets `selectedTabletID` in this same gesture sequence (see the
+        // tap-gesture comment on the row), which flips `isSelected` and
+        // changes the row's background fill — a real content change needing
+        // its own render. Setting `editingTabletID` in that same turn races
+        // that render: the field can be torn down and rebuilt as part of it,
+        // right as it would otherwise take focus, losing the focus/select-all
+        // trigger in `.onAppear`. Landing on the next turn lets the selection
+        // render settle first.
+        DispatchQueue.main.async { [self] in
+            editingTabletID = tablet.id
+            editingName = tablet.nickname
+        }
     }
 
     private func beginToolEdit(_ tool: DeviceRegistry.KnownTool, inAllSection: Bool) {
@@ -462,8 +504,10 @@ struct DevicesView: View {
         }
         .padding(.vertical, 2)
         .listRowBackground(isInProximity ? Color.accentColor.opacity(0.08) : nil)
-        .contentShape(Rectangle())
-        .onTapGesture(count: 2) { beginToolEdit(tool, inAllSection: inAllSection) }
+        // Suspended while editing — see the tablet row for why.
+        .rowTapHandling(active: !isEditing) {
+            $0.onTapGesture(count: 2) { beginToolEdit(tool, inAllSection: inAllSection) }
+        }
         .contextMenu {
             Button("Rename…") { beginToolEdit(tool, inAllSection: inAllSection) }
             Divider()
@@ -750,9 +794,6 @@ struct DevicesView: View {
     /// can immediately type a replacement. Called from the field's `.onAppear`.
     private func focusAndSelectAll() {
         editFieldFocused = true
-        DispatchQueue.main.async {
-            NSApp.keyWindow?.firstResponder?
-                .tryToPerform(#selector(NSText.selectAll(_:)), with: nil)
-        }
+        selectAllInFocusedRenameField()
     }
 }

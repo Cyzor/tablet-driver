@@ -157,6 +157,32 @@ final class ResizableTabViewController: NSTabViewController {
         }
     }
 
+    /// Rebuilds the cached per-tab titles after a device rename, then reapplies
+    /// the visible one to the window.
+    ///
+    /// Walks `deviceTabLabels` rather than tab indices: a device that hides
+    /// some tabs (the aux-only Quick Keys puck) shifts every index after the
+    /// gap, so position is not a reliable stand-in for identity here.
+    func retitleDeviceTabs(deviceLabel: String) {
+        for item in tabViewItems {
+            let label = item.label
+            guard deviceTabLabels.contains(label) else { continue }
+            let title = "\(label) — \(deviceLabel)"
+            item.viewController?.title = title
+            (item.viewController as? LazyHostingViewController)?.retitleHosted(title)
+        }
+        updateWindowTitle(for: tabViewItems[safe: selectedTabViewItemIndex])
+    }
+
+    /// Base labels of the tabs whose titles carry the device name. Populated by
+    /// `addTab` as it builds them, so it reflects the tabs this window actually
+    /// has rather than the full catalog.
+    private var deviceTabLabels: Set<String> = []
+
+    func markDeviceTab(label: String) {
+        deviceTabLabels.insert(label)
+    }
+
     private func updateWindowTitle(for item: NSTabViewItem?) {
         guard let window = view.window else { return }
         // hosting.title was set to "Label — DeviceName" for all tabs in addTab.
@@ -260,6 +286,15 @@ private final class LazyHostingViewController: NSViewController {
         inner = built
     }
 
+    /// Retitles this tab after a device rename. Covers both states: an
+    /// already-built inner controller is retitled directly, and one still
+    /// unbuilt picks the new title up from `self.title` when
+    /// `viewWillAppear` builds it.
+    func retitleHosted(_ title: String) {
+        self.title = title
+        inner?.title = title
+    }
+
     /// Releases the built hosting controller (and with it the SwiftUI view
     /// tree and its layer backing) when the window closes, so the pane's
     /// object graph doesn't ride along with anything that briefly outlives
@@ -281,7 +316,9 @@ private final class LazyHostingViewController: NSViewController {
 final class SettingsWindowController: NSWindowController {
 
     let settings: TabletSettings
-    let deviceLabel: String
+    /// Not `let`: a rename in the Devices pane has to reach every open window's
+    /// title, and tab titles are built from this. See `observeDeviceLabel()`.
+    private(set) var deviceLabel: String
     /// Physical-unit identity this window is bound to; nil for the generic
     /// (no-device) window. Window matching, restore, and the size cache all
     /// key on this.
@@ -310,6 +347,9 @@ final class SettingsWindowController: NSWindowController {
     private var contextsCancellable: AnyCancellable?
     private var connectedCancellable: AnyCancellable?
     private var isBoundDeviceConnected = true
+
+    /// Nickname changes from the Devices pane. See `observeDeviceLabel()`.
+    private var deviceLabelCancellable: AnyCancellable?
 
     enum Tab: Int {
         case tabletArea = 0
@@ -528,6 +568,7 @@ final class SettingsWindowController: NSWindowController {
         }
 
         observeConnectionState()
+        observeDeviceLabel()
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -671,6 +712,31 @@ final class SettingsWindowController: NSWindowController {
             .sink { [weak self] connected in self?.applyConnectionState(connected) }
     }
 
+    /// Keeps the window and tab titles in step with the device's nickname, so
+    /// renaming in the Devices pane shows up everywhere without a relaunch.
+    ///
+    /// Titles are built once per tab in `addTab` and cached on the hosting
+    /// controllers, so a rename can't reach them by itself — the label has to
+    /// be pushed back in. Watches `knownTablets` (which `renameTablet` mutates)
+    /// rather than the registry's `objectWillChange`, to stay off the churn
+    /// from tool-list reloads.
+    private func observeDeviceLabel() {
+        guard instanceKey != nil else { return }
+        deviceLabelCancellable = DeviceRegistry.shared.$knownTablets
+            .map { [weak self] tablets in
+                SettingsWindowManager.displayLabel(forKey: self?.instanceKey, in: tablets)
+            }
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] label in self?.applyDeviceLabel(label) }
+    }
+
+    private func applyDeviceLabel(_ label: String) {
+        guard label != deviceLabel else { return }
+        deviceLabel = label
+        tabVC.retitleDeviceTabs(deviceLabel: label)
+    }
+
     /// Set unconditionally rather than diffed: connect/disconnect is a rare
     /// event and assigning a subtitle is idempotent, so a guard would only add
     /// a way to get the two out of sync.
@@ -690,6 +756,7 @@ final class SettingsWindowController: NSWindowController {
         observerTokens.removeAll()
         contextsCancellable = nil
         connectedCancellable = nil
+        deviceLabelCancellable = nil
     }
 
     private var nextTabIndex = 0
@@ -708,17 +775,21 @@ final class SettingsWindowController: NSWindowController {
             defaultSize: NSSize(width: width, height: height),
             forTabLabeled: label)
 
+        var lazyRef: LazyHostingViewController?
         let lazy = LazyHostingViewController {
             let aligned = content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             let hosting = NSHostingController(rootView: aligned.withAppearance())
-            hosting.title = title
+            // Read back through the tab rather than capturing `title`: a rename
+            // before this tab is first shown updates the tab, not the constant.
+            hosting.title = lazyRef?.title ?? title
             hosting.preferredContentSize = NSSize(width: width, height: 0)
             if #available(macOS 13.0, *) {
                 hosting.sizingOptions = []
             }
             return hosting
         }
+        lazyRef = lazy
         lazy.title = title
         lazy.preferredContentSize = NSSize(width: width, height: 0)
 
@@ -726,6 +797,7 @@ final class SettingsWindowController: NSWindowController {
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
         tabVC.addTabViewItem(item)
+        if isDeviceTab { tabVC.markDeviceTab(label: label) }
 
         nextTabIndex += 1
     }

@@ -40,6 +40,10 @@ final class SettingsWindowManager: ObservableObject {
     private var lastConnectedIDs: Set<Int> = []
     private var deviceObserver: AnyCancellable?
     private var firstContactObserver: AnyCancellable?
+    /// Nickname changes: descriptor labels come from the registry, but
+    /// `publishWindowDescriptors` only runs when `windows` itself changes, so a
+    /// rename would otherwise leave the Window and dock menus stale.
+    private var renameObserver: AnyCancellable?
     private var isTerminating = false
     private var skipWindowSave = false
 
@@ -168,6 +172,10 @@ final class SettingsWindowManager: ObservableObject {
                 }
                 self.openWindow(forInstanceKey: key)
             }
+
+        renameObserver = DeviceRegistry.shared.$knownTablets
+            .receive(on: RunLoop.main)
+            .sink { [weak self] tablets in self?.publishWindowDescriptors(tablets: tablets) }
 
         restoreWindows()
 
@@ -402,17 +410,30 @@ final class SettingsWindowManager: ObservableObject {
 
     // MARK: - Window list (for menu bar / dock menus)
 
-    struct WindowDescriptor: Identifiable {
+    struct WindowDescriptor: Identifiable, Equatable {
         let id: String  // instance-key string, or "generic" for the generic window
         let label: String
     }
 
-    private func publishWindowDescriptors() {
-        windowDescriptors = windows.map { wc in
+    /// Diffed before assigning: this now also runs on every `knownTablets`
+    /// change, most of which (tool reloads, connection bookkeeping) leave the
+    /// labels untouched, and an unconditional write would republish to the
+    /// menus each time.
+    ///
+    /// `tablets` defaults to the live registry for callers outside the
+    /// rename path (e.g. `windows`'s own `didSet`); the rename observer
+    /// passes the array `$knownTablets` just handed it instead, since
+    /// re-reading the singleton mid-publish would see the pre-rename value
+    /// — see `SettingsWindowManager.row(forKey:in:)`.
+    private func publishWindowDescriptors(tablets: [DeviceRegistry.KnownTablet]? = nil) {
+        let tablets = tablets ?? DeviceRegistry.shared.knownTablets
+        let fresh = windows.map { wc in
             WindowDescriptor(
                 id: wc.instanceKey?.stringValue ?? "generic",
-                label: displayLabel(forKey: wc.instanceKey))
+                label: Self.displayLabel(forKey: wc.instanceKey, in: tablets))
         }
+        guard fresh != windowDescriptors else { return }
+        windowDescriptors = fresh
     }
 
     /// Brings an already-open window for `productID` forward, without
@@ -442,17 +463,43 @@ final class SettingsWindowManager: ObservableObject {
 
     // MARK: - Labels
 
-    private func row(forKey key: DeviceInstanceKey) -> DeviceRegistry.KnownTablet? {
+    private static func row(forKey key: DeviceInstanceKey) -> DeviceRegistry.KnownTablet? {
         let registry = DeviceRegistry.shared
-        let normalized = registry.normalizedKey(key)
-        return registry.knownTablets.first(
-            where: { registry.normalizedKey($0.instanceKey) == normalized })
-            ?? registry.knownTablets.first(where: { $0.productID == key.productID })
+        return row(forKey: key, in: registry.knownTablets)
     }
 
-    func displayLabel(forKey key: DeviceInstanceKey?) -> String {
+    /// Looks a tablet up in a caller-supplied list rather than
+    /// `DeviceRegistry.shared.knownTablets`. `@Published`'s projected
+    /// publisher fires on `willSet` — before the stored array is actually
+    /// updated — so a subscriber that turns around and re-reads the live
+    /// property sees the *previous* value: a rename would show up one
+    /// rename behind. Callers driven by `$knownTablets` should pass the
+    /// value the publisher handed them instead of letting this re-read
+    /// the singleton.
+    private static func row(forKey key: DeviceInstanceKey, in tablets: [DeviceRegistry.KnownTablet]) -> DeviceRegistry.KnownTablet? {
+        let registry = DeviceRegistry.shared
+        let normalized = registry.normalizedKey(key)
+        return tablets.first(
+            where: { registry.normalizedKey($0.instanceKey) == normalized })
+            ?? tablets.first(where: { $0.productID == key.productID })
+    }
+
+    /// Static because `SettingsWindowController.init` needs it: that init runs
+    /// during `restoreWindows()`, i.e. inside this class's own initializer, so
+    /// reaching `SettingsWindowManager.shared` from there re-enters the
+    /// singleton while it is still being constructed and deadlocks at launch.
+    /// Depends only on `DeviceRegistry`/`TabletManager`, never on instance
+    /// state, so it costs nothing to hoist out.
+    static func displayLabel(forKey key: DeviceInstanceKey?) -> String {
+        displayLabel(forKey: key, in: DeviceRegistry.shared.knownTablets)
+    }
+
+    /// See `row(forKey:in:)` — pass the array a `$knownTablets` subscriber
+    /// was handed so a rename shows up immediately instead of one change
+    /// behind.
+    static func displayLabel(forKey key: DeviceInstanceKey?, in tablets: [DeviceRegistry.KnownTablet]) -> String {
         guard let key else { return "MockTab" }
-        if let tablet = row(forKey: key) {
+        if let tablet = Self.row(forKey: key, in: tablets) {
             if tablet.nickname != tablet.modelName { return tablet.nickname }
             return tablet.modelName
         }
@@ -460,7 +507,7 @@ final class SettingsWindowManager: ObservableObject {
     }
 
     func menuLabel(forKey key: DeviceInstanceKey) -> String {
-        if let tablet = row(forKey: key) {
+        if let tablet = Self.row(forKey: key) {
             if tablet.nickname != tablet.modelName {
                 return "\(tablet.nickname) — \(tablet.modelName)"
             }
@@ -594,7 +641,7 @@ final class SettingsWindowManager: ObservableObject {
                     sameDevice($0.instanceKey, key)
                 })
             if let existing {
-                return (existing.settings, displayLabel(forKey: key))
+                return (existing.settings, Self.displayLabel(forKey: key))
             }
             // Use the last-known vendor for this product (persisted from a
             // prior live connect) so the stub doesn't default to Wacom for
@@ -605,7 +652,7 @@ final class SettingsWindowManager: ObservableObject {
             let vendorID = DeviceRegistry.shared.vendorID(forProductID: key.productID) ?? 0x056A
             let stub = DeviceContext(instanceKey: key, vendorID: vendorID)
             tm.registerRestoredContext(stub)
-            return (stub.settings, displayLabel(forKey: key))
+            return (stub.settings, Self.displayLabel(forKey: key))
         }
         return (settings, "MockTab")
     }
