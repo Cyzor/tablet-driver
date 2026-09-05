@@ -722,6 +722,9 @@ final class CaptureEngine: ObservableObject {
             distinctCount: seen.count,
             values: kept.map(Int.init),
             truncated: truncated ? true : nil,
+            // Only where the list is lossy; a complete list needs no backstop.
+            valueMask: truncated ? seen.valueMaskHex : nil,
+            signedMagnitudeMax: truncated ? seen.signedMagnitudeMax : nil,
             bitsToggled: toggled == 0 ? nil : Int(toggled),
             bitsSet: toggled == 0 ? nil : Int(seen.bitsEverSet)
         )

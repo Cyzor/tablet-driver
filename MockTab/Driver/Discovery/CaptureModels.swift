@@ -609,6 +609,14 @@ struct DiscoveryByteStat: Codable {
     let values: [Int]
     /// True when `values` omits some observed values.
     var truncated: Bool?
+    /// Every observed value as a 256-bit mask, low byte first, hex encoded.
+    /// Authoritative when `truncated` is set — see
+    /// `DiscoveryByteValueSet.valueMaskHex` for why the list alone misleads.
+    var valueMask: String?
+    /// Largest magnitude when this byte is read as signed. Compare a candidate
+    /// tilt divisor against this, not against `max`, which reads 255 for any
+    /// field that simply goes negative.
+    var signedMagnitudeMax: Int?
     /// Bit positions that took both 0 and 1 across the session.
     ///
     /// On a device whose descriptor is opaque — every classic Wacom pad and

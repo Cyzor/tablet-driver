@@ -222,6 +222,64 @@ private func testCTH690ConstantReport() {
 /// `prefix(20)`, so a pressure byte sweeping 0…255 was reported as having
 /// taken the values 0…19 — the exact number a triager reads the capture for,
 /// silently replaced by its opposite.
+/// A signed byte spanning -12…+11 truncates to `0…11` plus `244…255`, which
+/// reads as a plateau at ±12 — the misreading that produced a wrong Xencelabs
+/// tilt divisor. The mask and signed magnitude must both contradict it.
+private func testSignedSpanIsNotMistakenForAPlateau() {
+    let acc = DiscoveryAccumulator()
+    acc.start()
+    for v in -12...11 {
+        feed(acc, 0x02, [0x02, 0x00, UInt8(bitPattern: Int8(v))])
+    }
+    guard let s = stats(acc, 0x02) else {
+        expect(false, "signed report recorded")
+        return
+    }
+    let tilt = s.byteValues[2]
+    // The trap: unsigned extremes say nothing useful about a signed field.
+    expectEqual(tilt.min, 0, "unsigned floor is 0")
+    expectEqual(tilt.max, 255, "unsigned ceiling is 255")
+    expectEqual(tilt.count, 24, "24 distinct values seen")
+    // The escape: true magnitude, no interpretation required.
+    expectEqual(tilt.signedMagnitudeMax ?? -1, 12, "signed magnitude is 12")
+
+    // And a genuinely wider sweep must report a larger magnitude, so the
+    // number tracks the field rather than the truncation boundary.
+    let wide = DiscoveryAccumulator()
+    wide.start()
+    for v in -60...44 {
+        feed(wide, 0x02, [0x02, 0x00, UInt8(bitPattern: Int8(v))])
+    }
+    guard let w = stats(wide, 0x02) else {
+        expect(false, "wide report recorded")
+        return
+    }
+    expectEqual(w.byteValues[2].signedMagnitudeMax ?? -1, 60, "wide sweep reports 60, not 12")
+}
+
+/// The mask must carry every value the truncated list drops.
+private func testValueMaskRoundTrips() {
+    let acc = DiscoveryAccumulator()
+    acc.start()
+    let sent: [UInt8] = [0, 1, 7, 44, 128, 196, 255]
+    for v in sent { feed(acc, 0x03, [0x03, v]) }
+    guard let s = stats(acc, 0x03) else {
+        expect(false, "mask report recorded")
+        return
+    }
+    let hex = s.byteValues[1].valueMaskHex
+    expectEqual(hex.count, 64, "mask is 64 hex chars")
+    var decoded: [UInt8] = []
+    for (i, ch) in hex.enumerated() {
+        let nibble = UInt8(String(ch), radix: 16)!
+        // Low byte first, and within each byte the low bit is the low value.
+        for b in 0..<4 where nibble & (1 << b) != 0 {
+            decoded.append(UInt8(i * 4 + b))
+        }
+    }
+    expectEqual(decoded, sent, "mask decodes to exactly the values fed")
+}
+
 private func testPressureCeilingSurvives() {
     let acc = DiscoveryAccumulator()
     acc.start()
@@ -549,6 +607,8 @@ enum DiscoveryAccumulatorTestRunner {
         testGating()
         testCTH690ConstantReport()
         testPressureCeilingSurvives()
+        testSignedSpanIsNotMistakenForAPlateau()
+        testValueMaskRoundTrips()
         testVariableLength()
         testStreamsStaySeparate()
         testToolCodes()

@@ -53,6 +53,39 @@ struct ByteValueSet: Sendable, Equatable {
         return nil
     }
 
+    /// Every observed value as a 256-bit mask, low byte first, hex encoded.
+    ///
+    /// The complete distribution in 64 characters — shorter than the truncated
+    /// `values` list it backstops, and immune to the misreading that list
+    /// invites. When a byte is signed, the truncated list shows the lowest and
+    /// highest *unsigned* values, so a field spanning -12…+11 appears as
+    /// `0…11` and `244…255`; sorted together that reads as a plateau at ±12
+    /// even though `distinctCount` says 121 values were seen. A Xencelabs tilt
+    /// divisor was set from exactly that misreading. Decode this instead when
+    /// the shape of a distribution matters.
+    /// Encoded so that value `v` is bit `v % 4` of hex character `v / 4`,
+    /// counting from the string's start — a plain little-endian bitmap. Built
+    /// from the values rather than from the words, because a word's hex
+    /// rendering puts each nibble's low bit on the wrong side.
+    var valueMaskHex: String {
+        var nibbles = [UInt8](repeating: 0, count: 64)
+        for v in values {
+            nibbles[Int(v) / 4] |= UInt8(1 << (Int(v) % 4))
+        }
+        return nibbles.map { String($0, radix: 16) }.joined()
+    }
+
+    /// Largest magnitude when the byte is read as a signed value.
+    ///
+    /// A signed field's ceiling is invisible in `min`/`max`, which report 0 and
+    /// 255 for any field that merely goes negative. This is the number to
+    /// compare against a candidate divisor.
+    var signedMagnitudeMax: Int? {
+        let signed = values.map { $0 > 127 ? Int($0) - 256 : Int($0) }
+        guard let hi = signed.map({ abs($0) }).max() else { return nil }
+        return hi
+    }
+
     /// Observed values for the capture file, ascending, at most `cap` of them.
     ///
     /// When more than `cap` values were seen, keeps the lowest and highest
