@@ -479,6 +479,91 @@ final class TabletManager: ObservableObject {
             activeHeightMM: profile.activeHeightMM)
     }
 
+    /// Outcome of `vendorGate`: whether `deviceConnected` should continue
+    /// routing this interface, and with what synthesized spec (if any) — or
+    /// bail out immediately because this is a recognized-but-undrivable
+    /// vendor device, or a non-pen interface from an unrecognized vendor.
+    private enum VendorGateDecision {
+        /// Continue routing. `spec` is non-nil only for drivable non-Wacom
+        /// vendors (the Xencelabs allowlist); nil for Wacom and for the
+        /// generic-pen-digitizer fallback (DeviceRouter attaches
+        /// GenericHIDDigitizer in that case).
+        case proceed(spec: WacomDeviceSpec?)
+        /// `deviceConnected` should return immediately — no further state
+        /// touched.
+        case bail
+    }
+
+    /// Decides whether this interface is Wacom, a drivable non-Wacom vendor
+    /// (Xencelabs), a standards-compliant pen digitizer from an unrecognized
+    /// vendor (falls through to the universal floor), or something to name,
+    /// log, and ignore. Reads only `device`'s HID properties plus the
+    /// already-extracted `vendorID`/`rawProductID` — no captured state, no
+    /// mutation. Does its own logging: the three decision branches and their
+    /// log lines are tightly coupled (product/vendor names, candidate
+    /// counts), so splitting the log out would mean threading most of that
+    /// data back through `VendorGateDecision` just to keep this "pure" —
+    /// not worth it for a private, single-call-site helper.
+    private static func vendorGate(
+        _ device: IOHIDDevice, vendorID: Int, rawProductID: Int
+    ) -> VendorGateDecision {
+        // Non-Wacom path. Devices on the drivable allowlist (currently the two
+        // Xencelabs Pen Tablets) get a spec synthesized from their vendor
+        // profile and continue through the normal routing below; everything
+        // else is recognition-only — name it, log it, and bail out before any
+        // Wacom-specific state touches it.
+        guard vendorID != 0x056A else { return .proceed(spec: nil) }
+        if let profile = VendorDeviceRegistry.drivableProfile(
+            forVendorID: vendorID, productID: rawProductID)
+        {
+            logger.info("TabletManager: drivable \(profile.vendor, privacy: .public) device — \(profile.productName, privacy: .public) (PID=0x\(String(rawProductID, radix: 16), privacy: .public)) — attaching experimental decoder")
+            return .proceed(spec: Self.vendorDeviceSpec(forVendorID: vendorID, productID: rawProductID))
+        }
+        // Not on the drivable allowlist. If this interface is a
+        // standards-compliant pen digitizer (top-level usage Pen), let it
+        // fall through to normal routing with no spec — DeviceRouter
+        // attaches the vendor-agnostic GenericHIDDigitizer (universal
+        // floor: pen motion + tap + absolute). Otherwise it's a non-pen
+        // interface or a vendor we only recognise: name it and bail.
+        let primaryUsagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
+        let primaryUsage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
+        // Xencelabs' whole family declares a standards-compliant
+        // report-7 digitizer collection on every interface (dongle,
+        // puck) but never actually sends data on it — confirmed live,
+        // see XencelabsDecoder's header comment. Attaching the generic
+        // floor there produces a phantom tablet-area window sized off
+        // that decorative descriptor (which mirrors the real display's
+        // logical bounds, hence looking plausible) for hardware that
+        // isn't a digitizer at all.
+        //
+        // 0xFEED/0xBEEF is Karabiner-Elements' VirtualHIDDevice (its
+        // well-known synthetic keyboard/pointer identity) — not real
+        // drawing hardware. It also exposes a digitizer usage page,
+        // and it's not just cosmetic here: attaching the generic
+        // floor to it lets its synthetic events assert proximity,
+        // which steals `activeContext` (and with it CGEvent posting)
+        // away from a real connected tablet whenever Karabiner is
+        // running, so real pen motion silently stops reaching the
+        // screen.
+        let isPenDigitizer =
+            primaryUsagePage == 0x0D && primaryUsage == 0x02
+            && vendorID != 0x28BD && vendorID != 0xFEED
+        let profiles = VendorDeviceRegistry.profiles(
+            forVendorID: vendorID, productID: rawProductID)
+        let name = profiles.first?.productName ?? "(unknown product)"
+        let vendorName = profiles.first?.vendor
+            ?? "non-Wacom vendor 0x\(String(vendorID, radix: 16))"
+        if isPenDigitizer {
+            logger.info("TabletManager: \(vendorName, privacy: .public) \(name, privacy: .public) (PID=0x\(String(rawProductID, radix: 16), privacy: .public)) — generic pen digitizer, attaching universal floor")
+            // spec stays nil; fall through to routing below.
+            return .proceed(spec: nil)
+        } else {
+            let candidateCount = profiles.count
+            logger.info("TabletManager: recognised \(vendorName, privacy: .public) device — \(name, privacy: .public) (VID=0x\(String(vendorID, radix: 16), privacy: .public) PID=0x\(String(rawProductID, radix: 16), privacy: .public), \(candidateCount, privacy: .public) profile candidates) — no decoder support yet")
+            return .bail
+        }
+    }
+
     /// Everything `deviceConnected` needs to know about one `IOHIDDevice`
     /// before it touches any mutable state — pure property reads plus
     /// canonicalization, no side effects. Split out so the two steps read as
@@ -547,61 +632,13 @@ final class TabletManager: ObservableObject {
         let rawProductID = hidIntProperty(device, kIOHIDProductIDKey)
         Self.lastSeenVendorID[rawProductID] = vendorID
 
-        // Non-Wacom path. Devices on the drivable allowlist (currently the two
-        // Xencelabs Pen Tablets) get a spec synthesized from their vendor
-        // profile and continue through the normal routing below; everything
-        // else is recognition-only — name it, log it, and bail out before any
-        // Wacom-specific state touches it.
-        let vendorSpec = Self.vendorDeviceSpec(forVendorID: vendorID, productID: rawProductID)
-        if vendorID != 0x056A {
-            if let profile = VendorDeviceRegistry.drivableProfile(
-                forVendorID: vendorID, productID: rawProductID)
-            {
-                logger.info("TabletManager: drivable \(profile.vendor, privacy: .public) device — \(profile.productName, privacy: .public) (PID=0x\(String(rawProductID, radix: 16), privacy: .public)) — attaching experimental decoder")
-            } else {
-                // Not on the drivable allowlist. If this interface is a
-                // standards-compliant pen digitizer (top-level usage Pen), let it
-                // fall through to normal routing with no spec — DeviceRouter
-                // attaches the vendor-agnostic GenericHIDDigitizer (universal
-                // floor: pen motion + tap + absolute). Otherwise it's a non-pen
-                // interface or a vendor we only recognise: name it and bail.
-                let primaryUsagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
-                let primaryUsage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
-                // Xencelabs' whole family declares a standards-compliant
-                // report-7 digitizer collection on every interface (dongle,
-                // puck) but never actually sends data on it — confirmed live,
-                // see XencelabsDecoder's header comment. Attaching the generic
-                // floor there produces a phantom tablet-area window sized off
-                // that decorative descriptor (which mirrors the real display's
-                // logical bounds, hence looking plausible) for hardware that
-                // isn't a digitizer at all.
-                //
-                // 0xFEED/0xBEEF is Karabiner-Elements' VirtualHIDDevice (its
-                // well-known synthetic keyboard/pointer identity) — not real
-                // drawing hardware. It also exposes a digitizer usage page,
-                // and it's not just cosmetic here: attaching the generic
-                // floor to it lets its synthetic events assert proximity,
-                // which steals `activeContext` (and with it CGEvent posting)
-                // away from a real connected tablet whenever Karabiner is
-                // running, so real pen motion silently stops reaching the
-                // screen.
-                let isPenDigitizer =
-                    primaryUsagePage == 0x0D && primaryUsage == 0x02
-                    && vendorID != 0x28BD && vendorID != 0xFEED
-                let profiles = VendorDeviceRegistry.profiles(
-                    forVendorID: vendorID, productID: rawProductID)
-                let name = profiles.first?.productName ?? "(unknown product)"
-                let vendorName = profiles.first?.vendor
-                    ?? "non-Wacom vendor 0x\(String(vendorID, radix: 16))"
-                if isPenDigitizer {
-                    logger.info("TabletManager: \(vendorName, privacy: .public) \(name, privacy: .public) (PID=0x\(String(rawProductID, radix: 16), privacy: .public)) — generic pen digitizer, attaching universal floor")
-                    // vendorSpec stays nil; fall through to routing below.
-                } else {
-                    let candidateCount = profiles.count
-                    logger.info("TabletManager: recognised \(vendorName, privacy: .public) device — \(name, privacy: .public) (VID=0x\(String(vendorID, radix: 16), privacy: .public) PID=0x\(String(rawProductID, radix: 16), privacy: .public), \(candidateCount, privacy: .public) profile candidates) — no decoder support yet")
-                    return
-                }
-            }
+        let vendorGateDecision = Self.vendorGate(device, vendorID: vendorID, rawProductID: rawProductID)
+        let vendorSpec: WacomDeviceSpec?
+        switch vendorGateDecision {
+        case .bail:
+            return
+        case .proceed(let spec):
+            vendorSpec = spec
         }
 
         // Fold transport variants into one device identity — the context,
