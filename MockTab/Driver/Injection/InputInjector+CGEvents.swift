@@ -303,7 +303,15 @@ extension InputInjector {
         let tool = snapshot.activeTool
 
         var tiltX = point.tiltX
-        var tiltY = point.tiltY
+        // macOS expects tilt Y opposite to the hardware convention, so applications
+        // read an un-negated value as pointing the wrong way. OpenTabletDriver
+        // negates here for the same reason, citing Chromium's macOS input builder;
+        // Photoshop's brush outline agrees, pointing the wrong way on north/south
+        // without this for every brand. Applied at the boundary, not per decoder:
+        // the mismatch is with the platform, not with any one device — hardware
+        // signs are consistent (verified 2026-09-05 against the native Xencelabs
+        // driver, tools/tilt_event_probe.swift).
+        var tiltY = -point.tiltY
         let rotation = point.rotation
 
         if tool.useRotationAsTilt && point.rotation != 0.0 {
@@ -319,6 +327,8 @@ extension InputInjector {
             let radians = degrees * 2.0 * .pi / 180.0
             let magnitude = tool.rotationTiltMagnitude
 
+            // Overwrites the negation above deliberately: this synthetic vector
+            // is already tuned against Photoshop, so it needs no correction.
             tiltX = magnitude * cos(radians)
             tiltY = magnitude * sin(radians)
         }
