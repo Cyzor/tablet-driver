@@ -303,14 +303,14 @@ extension InputInjector {
         let tool = snapshot.activeTool
 
         var tiltX = point.tiltX
-        // macOS expects tilt Y opposite to the hardware convention, so applications
-        // read an un-negated value as pointing the wrong way. OpenTabletDriver
-        // negates here for the same reason, citing Chromium's macOS input builder;
-        // Photoshop's brush outline agrees, pointing the wrong way on north/south
-        // without this for every brand. Applied at the boundary, not per decoder:
-        // the mismatch is with the platform, not with any one device — hardware
-        // signs are consistent (verified 2026-09-05 against the native Xencelabs
-        // driver, tools/tilt_event_probe.swift).
+        // TabletPoint uses the HID tilt convention (+Y = leans toward the user).
+        // NSEvent.tilt.y is the opposite: Apple leaves the sign undocumented, but
+        // Chromium's macOS event builder negates tilt.y to reach the Pointer
+        // Events sign and says so, and OpenTabletDriver negates on macOS too.
+        // Applied once here, not per decoder: the mismatch is with the platform,
+        // not any device. Verified at the application 2026-09-05 — Rebelle's flat
+        // brush leans the right way for Xencelabs and Wacom pens and matches the
+        // vendor drivers; without this every brand pointed backward on Y.
         var tiltY = -point.tiltY
         let rotation = point.rotation
 
