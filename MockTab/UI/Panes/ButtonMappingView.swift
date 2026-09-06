@@ -475,6 +475,14 @@ struct ButtonMappingView: View {
     /// Rotation Direction" — naming the current direction with an arrow glyph
     /// rather than describing what each mode does, which stays short and stays
     /// true whatever the four slots are set to.
+    ///
+    /// Wording branches on `hasTouchStrips`: a linear strip has no rotational
+    /// sense, so "Clockwise"/"Counter-clockwise" (correct for a ring or dial)
+    /// would be nonsensical there. A device with strips only gets
+    /// direction-neutral "Forward"/"Reversed" wording instead. This toggle is
+    /// never shown for a device with both a ring/dial and strips at once
+    /// today (see the call sites' `if !hasTouchStrips` guards), so branching
+    /// on `hasTouchStrips` alone is sufficient — revisit if that changes.
     @ViewBuilder
     private var reverseRingDirectionToggle: some View {
         DescribedToggle(
@@ -484,16 +492,29 @@ struct ButtonMappingView: View {
                 get: { settings.reverseRingDirection },
                 set: { settings.reverseRingDirection = $0 })
         ) {
-            Text("Current: ")
-                + Text(
-                    Image(
-                        systemName: settings.reverseRingDirection
-                            ? "arrow.counterclockwise"
-                            : "arrow.clockwise"))
-                + Text(
-                    settings.reverseRingDirection
-                        ? " Counter-clockwise."
-                        : " Clockwise.")
+            if hasTouchStrips {
+                Text("Current: ")
+                    + Text(
+                        Image(
+                            systemName: settings.reverseRingDirection
+                                ? "arrow.up"
+                                : "arrow.down"))
+                    + Text(
+                        settings.reverseRingDirection
+                            ? " Reversed."
+                            : " Forward.")
+            } else {
+                Text("Current: ")
+                    + Text(
+                        Image(
+                            systemName: settings.reverseRingDirection
+                                ? "arrow.counterclockwise"
+                                : "arrow.clockwise"))
+                    + Text(
+                        settings.reverseRingDirection
+                            ? " Counter-clockwise."
+                            : " Clockwise.")
+            }
         }
         .help("Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation.")
     }
