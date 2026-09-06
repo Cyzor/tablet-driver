@@ -61,44 +61,29 @@ private struct ChipKeyboardProxy: NSViewRepresentable {
 /// Displays a horizontal, scrollable row of app chips — "Global" plus one chip per
 /// app that has a registered override for this tab.
 ///
-/// Layout:
-/// The ScrollView spans the full bar width so the scrollbar track runs edge to edge.
-/// Chip content is inset by `chipHorizontalPadding` on the leading side and by
-/// `addMenuSlotWidth` on the trailing side, reserving clearance for the addMenu panel.
-///
-/// The addMenu panel is a `.topTrailing` overlay on the ScrollView, constrained to
-/// `chipAreaHeight` — the height of the chip row only, derived from `chipIconSize` and
-/// the bar's padding constants. This ensures the panel sits flush with the chips and
-/// never overlaps the scrollbar track that may appear below in legacy-scrollbar mode.
-/// Within the panel the button fills its full height (minus a 2 pt inset each side) so
-/// it reads as a sibling of the chips, anchored permanently at the trailing edge.
-///
-/// Tap vs Drag (tablet-optimized):
-/// - Quick tap → instantly selects the override (primary action).
-/// - Long-press (~0.45 s) then drag → shows ghost preview and allows reordering.
-/// `maximumDistance` is widened from the 10 pt default to absorb stylus jitter.
-///
-/// Overflow indication:
-/// Gradient-fade overlays signal clipped content when overlay scrollbars are active.
-/// Suppressed when "Always show scrollbars" is set — the track is the indicator there.
-///
-/// Drag-over feedback:
-/// The hovered drop-target chip springs open a gap to its left before the drop lands.
-///
-/// Chip appearance:
-/// Unselected chips use the system `.quaternary` hierarchical fill, which tracks
-/// light/dark, vibrancy, and Increase Contrast automatically. Selected chips use a
-/// tinted-accent treatment (translucent accent fill, accent-colored label) rather
-/// than a full opaque accent fill — a Global chip is visible almost continuously,
-/// so it should read as "current" without demanding attention. Selected chips also
-/// respect whether the containing control is in the key window, so inactive windows
-/// get a further-softened selection treatment.
-///
-/// Icon-size plumbing:
-/// All chip icon geometry derives from `chipIconSize`. Bumping it scales chip height
-/// and `chipAreaHeight` together, keeping the addMenu panel correctly sized.
-///
-/// Right-click provides Rename / Reveal in Finder / Remove.
+/// - Layout: the ScrollView spans the full bar width so the scrollbar track runs
+///   edge to edge. Chip content is inset by `chipHorizontalPadding` on the leading
+///   side and `addMenuSlotWidth` on the trailing side, for the addMenu panel. That
+///   panel overlays `.topTrailing`, constrained to `chipAreaHeight` (the chip row's
+///   own height, derived from `chipIconSize`) so it sits flush with the chips and
+///   never overlaps a legacy scrollbar track below; its button fills the panel's
+///   height (minus a 2 pt inset) to read as a sibling of the chips.
+/// - Tap vs. drag (tablet-optimized): a quick tap selects the override; a
+///   long-press (~0.45 s) then drag shows a ghost preview and allows reordering.
+///   `maximumDistance` is widened from the 10 pt default to absorb stylus jitter.
+/// - Overflow: gradient-fade overlays signal clipped content in overlay-scrollbar
+///   mode, suppressed when "Always show scrollbars" is on (the track already
+///   signals it there).
+/// - Drag-over: the hovered drop-target chip opens a gap to its left before the
+///   drop lands.
+/// - Chip appearance: unselected chips use the system `.quaternary` hierarchical
+///   fill (tracks light/dark, vibrancy, Increase Contrast automatically). Selected
+///   chips use a translucent accent tint rather than a full fill — Global is
+///   visible almost continuously and shouldn't demand attention — and soften
+///   further when the window isn't key.
+/// - Icon size: all chip geometry derives from `chipIconSize`; changing it scales
+///   chip height and `chipAreaHeight` together, keeping the addMenu panel sized.
+/// - Right-click provides Rename / Reveal in Finder / Remove.
 struct AppOverrideBar: View {
 
     // MARK: - Domain key sets

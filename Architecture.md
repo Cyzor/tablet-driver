@@ -27,9 +27,25 @@ DeviceContext + InputInjector
 CGEvent  ──►  CGEventPost(.cghidEventTap)  ──►  WindowServer
 ```
 
-Two threads carry live work. HIDThread owns the IOHIDManager run loop and every `handleReport` callback, running at the highest priority class macOS offers for app work so a busy main thread can never delay a pen sample (`HIDThread.swift` declares the singleton). Everything else — AppKit, SwiftUI, settings storage, most CGEvent posts — stays on the main thread. When HIDThread needs to hand work over, it has two options: `CFRunLoopPerformBlock(HIDThread.shared.runLoop, …)` for state writes the hot path will read back, or `Task { @MainActor in … }` for UI work.
+Two threads carry live work:
 
-What keeps these two sides from stepping on each other is the snapshot pattern. `TabletSettings` lives on the main thread and uses SwiftUI's `@Published` storage so views update automatically; when a setting changes, `makeInjectionSnapshot()` builds an immutable `InjectionSnapshot` and `DeviceContext` pushes it onto HIDThread. From there, `InputInjector` just reads its working copy — no cross-thread synchronization needed on the 133 Hz hot path.
+- **HIDThread** owns the IOHIDManager run loop and every `handleReport`
+  callback, at the highest priority class macOS offers for app work, so a
+  busy main thread can never delay a pen sample (`HIDThread.swift` declares
+  the singleton).
+- **Main thread** runs everything else — AppKit, SwiftUI, settings storage,
+  most CGEvent posts.
+
+HIDThread hands work to the main thread with `Task { @MainActor in … }`, and
+receives work back via `CFRunLoopPerformBlock(HIDThread.shared.runLoop, …)`
+for state writes the hot path will read.
+
+A snapshot pattern keeps the two sides from stepping on each other:
+`TabletSettings` lives on the main thread with SwiftUI's `@Published`
+storage; when a setting changes, `makeInjectionSnapshot()` builds an
+immutable `InjectionSnapshot`, and `DeviceContext` pushes it onto HIDThread.
+`InputInjector` then just reads its working copy — no cross-thread
+synchronization needed on the 133 Hz hot path.
 
 ## Layout
 
@@ -109,7 +125,11 @@ Adding a new family means writing a new decoder under `Sources/TabletKit/Decoder
 
 ### Injection
 
-`InputInjector` converts a `TabletPoint` into the CGEvent sequence apps expect: a proximity event, then a `.tabletPointer` event (which Krita, GIMP, and other Qt/GTK apps consume directly), then a mouse event carrying pressure via `.mouseEventPressure` and `.mouseEventSubtype = .tabletPoint`. Two self-contained transforms live outside the class entirely — position smoothing (`CursorSmoother`, in TabletKit) and display selection/orientation/calibration (`Driver/Mapping/DisplayMapper.swift`, in this repo). The class itself spans five files. `InputInjector.swift` holds every stored property (Swift extensions can't) plus the concerns that read broadly across that state:
+`InputInjector` converts a `TabletPoint` into the CGEvent sequence apps expect: a proximity event, then a `.tabletPointer` event (which Krita, GIMP, and other Qt/GTK apps consume directly), then a mouse event carrying pressure via `.mouseEventPressure` and `.mouseEventSubtype = .tabletPoint`.
+
+Two self-contained transforms live outside the class entirely: position smoothing (`CursorSmoother`, in TabletKit) and display selection/orientation/calibration (`Driver/Mapping/DisplayMapper.swift`, in this repo).
+
+The class itself spans five files. `InputInjector.swift` holds every stored property (Swift extensions can't) plus the concerns that read broadly across that state:
 
 - click-count resolution for double- and triple-clicks
 - a brief mouse-up delay so fast pen lifts don't cut strokes short
@@ -131,7 +151,19 @@ Standalone aux-only peripherals (currently the Xencelabs Quick Keys puck) are *c
 
 ### Device identity
 
-Identity has two axes. The **model** axis is the USB product ID: decoders, `DigitizerSpec` lookups, capability tables, and companion relationships all key on it, matching how Wacom's own tables and libwacom work. The **instance** axis is `DeviceInstanceKey` (`MockTab/Driver/Devices/DeviceInstanceKey.swift`): the canonical PID plus an instance token (USB serial, with a locationID fallback held in reserve), so two physical units of the same model stay distinct. Contexts (`TabletManager.deviceContexts`), registry rows, settings windows, menu entries, and the panes all key on the instance; `TabletManager.contexts` remains as a PID-keyed compatibility view for model-level callers.
+Identity has two axes:
+
+- **Model** — the USB product ID. Decoders, `DigitizerSpec` lookups,
+  capability tables, and companion relationships all key on it, matching
+  how Wacom's own tables and libwacom work.
+- **Instance** — `DeviceInstanceKey`
+  (`MockTab/Driver/Devices/DeviceInstanceKey.swift`): the canonical PID plus
+  an instance token (USB serial, with a locationID fallback held in
+  reserve), so two physical units of the same model stay distinct.
+
+Contexts (`TabletManager.deviceContexts`), registry rows, settings windows,
+menu entries, and the panes all key on the instance; `TabletManager.contexts`
+remains as a PID-keyed compatibility view for model-level callers.
 
 Settings storage follows the *claim-the-legacy-prefix* rule (`DeviceRegistry.settingsPrefix(for:)`): the first unit ever seen for a model permanently claims the historical `device-0x{PID}.` UserDefaults prefix — existing installs keep every setting without migration — and any additional unit of the same model gets a fresh `device-0x{PID}#{instance}.` namespace. A key with no instance token resolves to the legacy prefix, which is exactly the old PID-only behavior.
 
