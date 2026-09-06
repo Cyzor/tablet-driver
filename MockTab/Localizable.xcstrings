@@ -187,6 +187,52 @@
         }
       }
     },
+    " Forward." : {
+      "comment" : "Linear-direction label appended after an SF Symbol glyph — keep the leading space",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " Vorwärts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " Hacia adelante."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " 正方向。"
+          }
+        }
+      }
+    },
+    " Reversed." : {
+      "comment" : "Linear-direction label appended after an SF Symbol glyph — keep the leading space",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " Umgekehrt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " Invertido."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : " 逆方向。"
+          }
+        }
+      }
+    },
     " Relative, like a mouse." : {
       "comment" : "Movement mode label appended after an SF Symbol glyph — keep the leading space",
       "localizations" : {
