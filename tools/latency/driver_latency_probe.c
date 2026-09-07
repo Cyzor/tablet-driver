@@ -110,11 +110,21 @@ static CGEventRef tap_cb(CGEventTapProxy proxy, CGEventType type,
 {
     if (g_have_pending_report &&
         (type == kCGEventMouseMoved || type == kCGEventLeftMouseDragged)) {
-        uint64_t event_ts_ns = CGEventGetTimestamp(event); /* already nanoseconds */
-        uint64_t report_ts_ns = (uint64_t)(mach_to_ms(g_last_report_ts) * 1e6);
-        double delta_ms = (double)(event_ts_ns > report_ts_ns
-                                        ? event_ts_ns - report_ts_ns
-                                        : 0) / 1e6;
+        /* CGEventGetTimestamp DOES return real nanoseconds (confirmed via a
+         * 2026-09-07 debug probe reading both raw values side by side:
+         * CGEventGetTimestamp's value was exactly mach_absolute_time() * 125/3,
+         * i.e. it had already had the timebase conversion applied). The raw
+         * HID report timestamp from
+         * IOHIDDeviceRegisterInputReportWithTimeStampCallback is the one
+         * still in raw mach ticks and needs mach_to_ms(). An earlier version
+         * of this fix ran CGEventGetTimestamp's value through mach_to_ms() a
+         * second time, shrinking it ~41.67x (this Mac's timebase, 125/3) and
+         * producing a bogus ~198-day "latency". Do not apply mach_to_ms to
+         * CGEventGetTimestamp's return value — only divide by 1e6 for ns->ms.
+         */
+        double event_ts_ms = (double)CGEventGetTimestamp(event) / 1e6;
+        double report_ts_ms = mach_to_ms(g_last_report_ts);
+        double delta_ms = event_ts_ms > report_ts_ms ? event_ts_ms - report_ts_ms : 0;
         printf("report->pointer-event latency: %.2f ms\n", delta_ms);
         fflush(stdout);
         g_have_pending_report = 0;
