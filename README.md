@@ -70,9 +70,13 @@ swift test
 
 ## Screenshots
 
-<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/tablet-area-dark.png" alt="Tablet area settings" width="480">
-<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/pen-feel-dark.png" alt="Pressure curve editor" width="480">
-<img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/buttons-dark.png" alt="Button mapping" width="480">
+| Tablet area | Pen feel |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/tablet-area-dark.png" alt="Tablet area settings" width="400"> | <img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/pen-feel-dark.png" alt="Pressure curve editor" width="400"> |
+| **Button mapping** | **Display mapping** |
+| <img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/buttons-dark.png" alt="Button mapping" width="400"> | <img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/displays-dark.png" alt="Display mapping" width="400"> |
+| **Touch** | **Scratchpad** |
+| <img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/touch-dark.png" alt="Touch settings" width="400"> | <img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/ui/scratchpad-dark.png" alt="Scratchpad" width="400"> |
 
 ***
 
@@ -83,8 +87,8 @@ swift test
 - Button mapping for barrel buttons, express keys, and touch rings.
 - Per-app overrides that activate automatically.
 - Display mapping to any connected display.
-- Wireless support through Bluetooth and USB dongle protocols.
-- Capacitive touch with two-finger scroll, pinch to zoom, rotate, tap-to-click, and adjustable touch area on supported models.
+- Wireless support for Bluetooth and USB dongles.
+- Capacitive touch with two-finger scroll, pinch-to-zoom, two-finger rotate, tap-to-click, and adjustable touch area on supported models.
 - Live scratchpad for input testing.
 - Profile import and export.
 - Menu bar mode with no Dock icon.
