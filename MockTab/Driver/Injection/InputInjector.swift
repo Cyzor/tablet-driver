@@ -450,6 +450,11 @@ final class InputInjector: @unchecked Sendable {
     /// speed). State and math live in PressureSmoother.swift.
     var pressureSmoother = PressureSmoother()
 
+    /// Timestamp of the previous pen frame, for the smoothers' real-dt math.
+    /// Separate from `lastPanScrollFrameTime`, which only advances during an
+    /// active scroll-drag. 0 = unknown; that frame's dt is a fresh start.
+    var lastSmoothingFrameTime: CFAbsoluteTime = 0
+
     // MARK: - Delta gate
     //
     // Skip posting to the Window Server when position and pressure haven't changed

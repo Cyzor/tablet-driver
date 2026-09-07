@@ -65,6 +65,11 @@ extension InputInjector {
             ? (usbMouseLeftHeld ? false : point.penButton1)
             : rawPressure > InputInjector.tipPressureThreshold
 
+        // ── Smoothing dt (real elapsed time since the previous pen frame) ──────
+        let smoothingNow = CFAbsoluteTimeGetCurrent()
+        let smoothingDt = lastSmoothingFrameTime > 0 ? smoothingNow - lastSmoothingFrameTime : 0
+        lastSmoothingFrameTime = smoothingNow
+
         // ── Pressure smoothing (contact only) ──────────────────────────────────
         // Damps sensor noise near the low-pressure/activation-threshold band
         // (visible as splotchy line-width variation on slow, light strokes).
@@ -74,7 +79,7 @@ extension InputInjector {
         let pressure: Double
         if tipDown {
             pressure = pressureSmoother.applySmoothing(
-                rawPressure: rawPressure, strokeStarting: !lastTipDown)
+                rawPressure: rawPressure, strokeStarting: !lastTipDown, dt: smoothingDt)
         } else {
             pressure = rawPressure
             pressureSmoother.reset()
@@ -193,7 +198,7 @@ extension InputInjector {
 
         // ── Position smoothing (every report) ─────────────────────────────────
         let screenPoint = smoother.applySmoothing(
-            rawPoint: rawPoint, enteringProximity: enteringProximity)
+            rawPoint: rawPoint, enteringProximity: enteringProximity, dt: smoothingDt)
 
         // ── Scroll Drag: convert this frame's motion to a scroll delta ──────
         // Runs before the movement/delta-gate path below, which consults
