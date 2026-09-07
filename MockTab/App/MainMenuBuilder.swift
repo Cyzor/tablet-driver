@@ -126,8 +126,7 @@ enum MainMenuBuilder {
         let helpItem = NSMenuItem(
             title: String(localized: "MockTab Help", comment: "Help menu: open help window"),
             action: #selector(AppMenuController.showHelpFromMainMenu),
-            keyEquivalent: "?")
-        helpItem.keyEquivalentModifierMask = .command
+            keyEquivalent: "")
         helpItem.target = AppMenuController.shared
         menu.addItem(helpItem)
 
