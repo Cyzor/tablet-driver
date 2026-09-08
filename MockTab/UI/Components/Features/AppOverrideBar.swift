@@ -958,7 +958,7 @@ struct AppOverrideBar: View {
                 } label: {
                     Label("Remove", systemImage: "trash")
                 }
-            } else if isSelected, let onResetToDefaults {
+            } else if let onResetToDefaults {
                 Button {
                     onResetToDefaults()
                 } label: {

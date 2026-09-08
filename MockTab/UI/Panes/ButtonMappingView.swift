@@ -221,6 +221,28 @@ struct ButtonMappingView: View {
         settings.undoManager?.beginUndoGrouping()
         applyButtonToolReset(toolDefaults, undoTo: toolOld)
         applyButtonSettingsReset(settingsDefaults, undoTo: settingsOld)
+
+        // A connected companion puck/dongle (Quick Keys) keeps its own,
+        // separate TabletSettings instance — see quickKeysSection's doc
+        // comment. Without this, "Reset Pane to Defaults" only touched the
+        // tablet's own bindings and silently left the companion's express
+        // keys/dial exactly as the user had them, even though its rows are
+        // folded into this same pane.
+        if let companionSettings = companionContext?.settings {
+            let companionSettingsOld: ButtonSettingsState = (
+                companionSettings.expressKeyBindings, companionSettings.touchRingButtonBinding,
+                companionSettings.touchRingSlots, companionSettings.touchRingActiveSlotIndex,
+                companionSettings.reverseRingDirection
+            )
+            let companionVendorID = companionContext?.vendorID ?? vendorID
+            let companionSettingsDefaults: ButtonSettingsState = (
+                TabletSettings.defaultExpressKeyBindings(vendorID: companionVendorID),
+                ButtonBinding(kind: .ringCycle), ControlSlot.defaults, 0, false
+            )
+            applyButtonSettingsReset(
+                companionSettingsDefaults, undoTo: companionSettingsOld, on: companionSettings)
+        }
+
         settings.undoManager?.endUndoGrouping()
     }
 
@@ -238,14 +260,20 @@ struct ButtonMappingView: View {
     }
 
     /// Self-recursive so "Reset to Defaults" also redoes the settings-owned half.
-    private func applyButtonSettingsReset(_ new: ButtonSettingsState, undoTo old: ButtonSettingsState) {
-        settings.expressKeyBindings = new.expressKeys
-        settings.touchRingButtonBinding = new.touchRingButton
-        settings.touchRingSlots = new.touchRingSlots
-        settings.touchRingActiveSlotIndex = new.touchRingActiveSlot
-        settings.reverseRingDirection = new.reverseRingDirection
+    /// `on` defaults to the pane's own tablet settings; the companion
+    /// puck/dongle reset (see `resetToDefaults`) passes its own instance so
+    /// undo/redo replays against the correct device's storage.
+    private func applyButtonSettingsReset(
+        _ new: ButtonSettingsState, undoTo old: ButtonSettingsState, on target: TabletSettings? = nil
+    ) {
+        let target = target ?? settings
+        target.expressKeyBindings = new.expressKeys
+        target.touchRingButtonBinding = new.touchRingButton
+        target.touchRingSlots = new.touchRingSlots
+        target.touchRingActiveSlotIndex = new.touchRingActiveSlot
+        target.reverseRingDirection = new.reverseRingDirection
         settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
-            self.applyButtonSettingsReset(old, undoTo: new)
+            self.applyButtonSettingsReset(old, undoTo: new, on: target)
         }
     }
 
