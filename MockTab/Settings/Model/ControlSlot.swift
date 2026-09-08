@@ -110,13 +110,20 @@ struct ControlSlot: Codable, Equatable, Identifiable {
 
     /// Sets `action`, resetting `speed` to that action's default if it
     /// defines one (see `Action.defaultSpeedOnSwitch`) and the action is
-    /// actually changing. The single mutation point for every "change this
-    /// slot's action" call site — direct `slot.action = newValue` bypasses
-    /// this and risks carrying an out-of-range speed across action changes
-    /// with different ranges (e.g. Zoom's 0...8 into Rotate's 0...1).
+    /// actually changing. Also re-derives `label` from the new action —
+    /// there is no rename UI for a slot's label, so it must otherwise
+    /// forever show whatever action created the slot (e.g. a slot
+    /// factory-defaulted to "Scroll" would keep displaying and pushing
+    /// "Scroll" to the puck's OLED even after being reassigned to Zoom).
+    /// The single mutation point for every "change this slot's action"
+    /// call site — direct `slot.action = newValue` bypasses this and
+    /// risks carrying an out-of-range speed across action changes with
+    /// different ranges (e.g. Zoom's 0...8 into Rotate's 0...1), or a
+    /// stale label.
     mutating func setAction(_ newAction: Action) {
         guard newAction != action else { return }
         action = newAction
+        label = newAction.displayLabel
         if let defaultSpeed = newAction.defaultSpeedOnSwitch {
             speed = defaultSpeed
         }

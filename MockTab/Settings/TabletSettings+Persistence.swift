@@ -204,11 +204,15 @@ extension TabletSettings {
             return
         }
         guard let data = try? JSONEncoder().encode(pressureCurve) else { return }
-        if var override = activeAppOverride {
+        // Uses effectiveOverride, not activeAppOverride, to match loadPressureCurve's
+        // read layer — see persist()'s doc comment for why (hardware-originated writes
+        // while another app is frontmost must land in that app's override).
+        if var override = effectiveOverride {
             ud.set(data, forKey: appOverrideKeyPrefix(override) + "pressureCurve")
             guard !override.overriddenKeys.contains("pressureCurve") else { return }
             override.overriddenKeys.insert("pressureCurve")
-            activeAppOverride = override
+            if activeAppOverride?.bundleID == override.bundleID { activeAppOverride = override }
+            if driverOverride?.bundleID == override.bundleID { driverOverride = override }
             if let idx = appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
                 appOverrides[idx] = override
             }
@@ -269,11 +273,15 @@ extension TabletSettings {
             return
         }
         guard let data = try? JSONEncoder().encode(touchRingSlots) else { return }
-        if var override = activeAppOverride {
+        // Uses effectiveOverride, not activeAppOverride, to match loadTouchRingSlots's
+        // read layer — see persist()'s doc comment for why (hardware-originated writes
+        // while another app is frontmost must land in that app's override).
+        if var override = effectiveOverride {
             ud.set(data, forKey: appOverrideKeyPrefix(override) + "touchRingSlotsJSON")
             guard !override.overriddenKeys.contains("touchRingSlotsJSON") else { return }
             override.overriddenKeys.insert("touchRingSlotsJSON")
-            activeAppOverride = override
+            if activeAppOverride?.bundleID == override.bundleID { activeAppOverride = override }
+            if driverOverride?.bundleID == override.bundleID { driverOverride = override }
             if let idx = appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
                 appOverrides[idx] = override
             }
