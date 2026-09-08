@@ -35,7 +35,7 @@ Unlike the Intuos Pro 2 (PTH-660) which uses a massive 361-byte report, the cons
 
 This was Wacom’s first true Bluetooth tablet, and its protocol is an outlier. It does not use the modern batching techniques of the 2018 Intuos or the Intuos Pro 2. 
 
-* **Format Structure:** It largely mirrors the Intuos4 USB packet structure but adjusts the frame length (typically 10-12 bytes) and uses Bluetooth-specific Report IDs for out-of-proximity notifications and tool swapping.
+* **Format Structure:** Aggregated outer reports `0x03` (22 bytes, 2 pen packets + power byte) and `0x04` (32 bytes, 3 pen packets + power byte); each embedded 10-byte packet decodes exactly like USB (see §3.1.4).
 * **Why Parsers Break:** The Intuos4 was highly dependent on out-of-band "tool ID" packets. Wacom sends a specific packet when the pen enters the tablet's proximity containing the RFID of the tool (e.g., Art Pen vs. standard Grip Pen). If your Bluetooth parser drops this initial tool-identification packet over the wireless stream, the subsequent standard movement packets lack context, and the parser won't know whether to extract rotation data or standard pressure data.
 
 ### Summary Rule for Pre-2020 Wireless
@@ -230,49 +230,31 @@ If the pairing is broken from the host side (host deletes the device record), th
 
 #### 3.1.4 Bluetooth Packet Wrapper
 
-All data packets over the BT HID Interrupt channel are the same 10-byte Intuos4 pen packets (§4A of prior report) with a **1-byte BT status prefix**:[^2]
+**Corrected 2026-09-07** — the earlier 1-byte-status-prefix framing and the
+Report ID `0x08` GET_REPORT battery query below were wrong. The current
+kernel decoder (`wacom_intuos_bt_irq`, `wacom_wac.c`) unwraps **aggregated
+outer reports**, each carrying 2–3 embedded 10-byte Intuos4 packets plus a
+trailing power byte:
 
-
-| Byte | Field | Encoding | Notes |
-| :-- | :-- | :-- | :-- |
-| 0 | BT status | Enum (see table) | Connection and battery state |
-| 1–10 | Pen / pad data | Intuos4 format | Same as §4A–§4C from prior report; all byte indices shift +1 |
-
-**BT status byte decode:**
-
-
-| Value | Meaning | Driver Action |
+| Outer report | Min length | Contents |
 | :-- | :-- | :-- |
-| `0x02` | Link active, normal data | Parse bytes 1–10 as pen/pad packet |
-| `0x03` | Link active, stylus in proximity | Same as `0x02`; proximity already in byte 2 |
-| `0x05` | Battery low warning | Post `POWER_SUPPLY_STATUS_DISCHARGING` alert; continue parsing |
-| `0x06` | Charging via USB | Post `POWER_SUPPLY_STATUS_CHARGING`; BT link still active |
+| `0x03` | 22 bytes | `[0]`=0x03, `[1..10]` packet 1, `[11..20]` packet 2, `[21]` power |
+| `0x04` | 32 bytes | `[0]`=0x04, `[1..10]`/`[11..20]`/`[21..30]` packets 1–3, `[31]` power |
 
-[^2]
+Minimum lengths are load-bearing — they were pinned by the kernel's
+out-of-bounds-read fix (GHSA-4mjh-m2x6-5qg4). Each embedded packet passes
+through the ordinary Intuos decoder (`wacom_intuos_irq`) unchanged.
 
 #### 3.1.5 Battery Report (PTK-540WL)
 
-Battery level is available via a dedicated BT HID feature report on the HID Control channel:[^2]
+Battery rides the trailing power byte of every `0x03`/`0x04` outer report
+(offset 21 or 31 respectively) — there is no separate polled battery report:
 
-
-| Field | Value |
+| Bits | Field |
 | :-- | :-- |
-| Report ID | `0x08` |
-| Direction | Device → Host |
-| Length | 2 bytes total |
-| Byte 0 | `0x08` (Report ID) |
-| Byte 1 | Battery level, 0–100 (unsigned; unit = percent) |
-
-Request with `GET_REPORT` on the HID Control channel (same logical operation as USB GET_REPORT, but over L2CAP HID_CONTROL channel PSM `0x0011`):
-
-```python
-# BlueZ / Python equivalent
-control_socket.send(bytes([0x43, 0x08]))
-# 0x43 = HID GET_REPORT (0x40) | Feature (0x03)
-# 0x08 = Report ID
-response = control_socket.recv(4)
-battery_pct = response[^2]  # byte at offset 2 in response
-```
+| 2:0 | Battery index into `batcap_i4[] = {1, 15, 30, 45, 60, 70, 85, 100}` (percent) |
+| 3 | Charging |
+| 4 | External power connected |
 
 
 #### 3.1.6 Disconnection / Unpairing
@@ -588,7 +570,7 @@ Parse incoming `didUpdateValueFor` data using the Report ID byte as the dispatch
 | Model | Transport | Host API (macOS) | Mode Switch Required? | Battery Report | Reconnect Init |
 | :-- | :-- | :-- | :-- | :-- | :-- |
 | CTE-630BT | BT SPP (RFCOMM) | `IOBluetoothRFCOMMChannel` | Yes — RFCOMM bytes `{0x02,0x02}` | None | Re-send mode switch on each new RFCOMM session |
-| PTK-540WL | BT Classic HID | `IOBluetoothDevice` L2CAP | Yes — `{0x53,0x02,0x02}` on Control PSM | Report ID `0x08`, GET_REPORT | Re-send after every L2CAP reconnect |
+| PTK-540WL | BT Classic HID | `IOBluetoothDevice` L2CAP | Yes — `{0x53,0x02,0x02}` on Control PSM | Power byte trailing every `0x03`/`0x04` report (§3.1.5) | Re-send after every L2CAP reconnect |
 | ACK-40401 (any) | USB HID (RF dongle) | `IOUSBHostInterface` | Yes — same as wired | Report ID `0x08`, GET_REPORT | Re-init on USB re-enumeration |
 | PTH-451/651/851 | BT 4.2 LE / GATT | `CoreBluetooth` | No — GATT reports always active | GATT `0x2A19`, Notify | Subscribe CCCDs after each new connection |
 

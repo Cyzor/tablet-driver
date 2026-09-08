@@ -452,7 +452,12 @@ Intuos4 upgrades pressure to **12-bit (0–2047)** and changes the report ID sch
 | PTK-640 (Intuos4 M) | 44704 | 27940 | 2047 |
 | PTK-840 (Intuos4 L) | 63496 | 39370 | 2047 |
 | PTK-1240 (Intuos4 XL) | 97536 | 60960 | 2047 |
-| PTK-540WL (Intuos4 WL) | 44704 | 27940 | 2047 |
+| PTK-540WL (Intuos4 WL) | 40640 | 25400 | 2047 |
+
+PTK-540WL maxima corrected 2026-09-07 to kernel `wacom_features_0xBC`
+(40640×25400, 203×127 mm) — matches the driver registry and OTD's
+`PTK-540WL.json`; the earlier 44704×27940 was the PTK-640 row copied
+down.[^9]
 
 
 ***
@@ -628,15 +633,28 @@ The 4D Mouse reports `ABS_RZ` in tenths-of-degrees (range −900 to +899). The a
 
 ## Appendix B — Bluetooth Protocol Notes (PTK-540WL, future BT tablets)
 
-The Intuos4 Wireless (PTK-540WL) connects as a Bluetooth HID device. The HID report format is **identical** to the USB version, but wrapped in a BT HID report with a prepended 1-byte connection status byte.[^9]
+**Rewritten 2026-09-07** — the earlier text here (single 11-byte packet with a
+1-byte status prefix; battery via Report ID `0x08` GET_REPORT) was wrong.
+Current kernel decoder (`wacom_intuos_bt_irq`, `wacom_wac.c`) and the
+out-of-bounds-read fix (GHSA-4mjh-m2x6-5qg4) document aggregated outer
+reports instead:
 
-
-| Byte | Field | Notes |
+| Outer report | Min length | Contents |
 | :-- | :-- | :-- |
-| 0 | BT status | `0x02` = connected, `0x05` = battery low |
-| 1–10 | Pen packet | Same as §4A above (shift all byte indices by +1) |
+| `0x03` | 22 bytes | `[0]`=0x03, `[1..10]` pen packet 1, `[11..20]` pen packet 2, `[21]` power |
+| `0x04` | 32 bytes | `[0]`=0x04, `[1..10]`/`[11..20]`/`[21..30]` pen packets 1–3, `[31]` power |
 
-Re-initialization on BT reconnect must resend the mode switch via a BT HID SET_REPORT (Control channel) instead of a USB control transfer. Battery level is reported via a separate BT HID battery service report (Report ID `0x08`, byte 1 = 0–100 percent).
+Each embedded 10-byte packet goes through the ordinary Intuos decoder
+unchanged (`wacom_intuos_irq`). The power byte: bits 2:0 index
+`batcap_i4[] = {1,15,30,45,60,70,85,100}`, bit 3 = charging, bit 4 =
+external power connected (see `Wacom-Bluetooth-Battery-Reference.md` §2).
+
+The PTK-540WL pairs **directly over Bluetooth Classic (2.1+EDR, HID
+profile)** — it does not use the ACK-40401 proprietary RF dongle. libwacom's
+match is `usb:056a:00bc;bluetooth:056a:00bd`.
+
+Re-initialization on BT reconnect must resend the mode switch via a BT HID
+SET_REPORT (Control channel) instead of a USB control transfer.
 
 ***
 
