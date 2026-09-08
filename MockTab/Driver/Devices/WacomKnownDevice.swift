@@ -85,6 +85,12 @@ final class WacomKnownDevice: TabletDevice {
     /// applies to — see the coordinate provenance comments on each
     /// `touchMaxX`/`touchMaxY` this feeds in `WacomDeviceRegistry`.
     private var touchDecoders: [UInt8: PrecisionTouchDecoder] = [:]
+    /// Hand-written fixed-layout touch decoders (`Wacom24HDTDecoder`/
+    /// `Wacom27QHDTDecoder`), keyed by report ID, for the five product IDs
+    /// with no standard HID Digitizer descriptor to derive a
+    /// `PrecisionTouchDecoder` from. See `deriveFixedTouchDecoder` below —
+    /// NOT hardware-verified for any device it currently applies to.
+    private var fixedTouchDecoders: [UInt8: any TabletReportDecoder] = [:]
     /// Called when the hardware serial is successfully queried from a WACOM_REPORT_USB
     /// (Report ID 0x03) feature report on USB/dongle connections. Serial is 0 if the
     /// query fails or the device does not support the feature report.
@@ -331,6 +337,7 @@ final class WacomKnownDevice: TabletDevice {
         reportBuffer = [UInt8](repeating: 0, count: Swift.max(maxSize, 192))
 
         deriveTouchDecoders(from: device)
+        deriveFixedTouchDecoder(from: device)
     }
 
     // MARK: - Open / Close
@@ -442,6 +449,49 @@ final class WacomKnownDevice: TabletDevice {
         }
     }
 
+    // NOT HARDWARE-VERIFIED — none of the five product IDs below have been
+    // captured or tested against real hardware. Byte layouts are ported from
+    // the Linux kernel (`wacom_24hdt_irq()`, both its `WACOM_24HDT` and
+    // `WACOM_27QHDT` branches) and checked only against synthetic test
+    // fixtures in TabletKit. See
+    // `Notes/Scratch/wacom-24hdt-touch-design-2026-09-08.md` for the full
+    // design rationale, the advisor reviews that approved shipping this
+    // unverified, and why it stays gated at `.experimental` in the registry
+    // rather than a stronger confidence tier. Do not raise confidence, add a
+    // sixth PID, or assume this is correct on a specific unit without a real
+    // capture confirming it first.
+    //
+    // Unlike `deriveTouchDecoders` above (which reads whatever descriptor an
+    // interface declares, generically), these two decoders are hand-written
+    // for fixed vendor byte layouts keyed to specific product IDs — there is
+    // no descriptor to derive them from. `Wacom27QHDTDecoder`'s contacts
+    // carry no width/height (unlike `Wacom24HDTDecoder`'s), so any future
+    // touch consumer must handle absent contact geometry, not assume it is
+    // always present.
+    private static let fixedTouchDecoderPIDs: [Int: (reportID: UInt8, decoder: any TabletReportDecoder)] = [
+        0x0335: (0x01, Wacom24HDTDecoder()),  // Cintiq 13HD Touch (DTH-1300)
+        0x00F6: (0x01, Wacom24HDTDecoder()),  // Cintiq 24HD Touch (DTH-2400)
+        0x005E: (0x01, Wacom24HDTDecoder()),  // Cintiq 22HD Touch
+        0x005D: (0x01, Wacom24HDTDecoder()),  // Cintiq 22 / DTH2242 Touch
+        0x032C: (0x05, Wacom27QHDTDecoder()), // Cintiq 27QHD Touch (DTH-2700)
+    ]
+
+    /// Registers a hand-written fixed-layout touch decoder for `device` if
+    /// its own product ID is one of the five above — separate from
+    /// `deriveTouchDecoders`'s generic descriptor-reading path, since these
+    /// decoders have no descriptor to derive from. Checked before
+    /// `deriveTouchDecoders` runs its own report-ID reservation logic;
+    /// `touchDecoders`'s existing report ID space (0x21, 0x0C, etc.) never
+    /// overlaps these five products' 0x01/0x05, so there is no collision to
+    /// guard against today.
+    private func deriveFixedTouchDecoder(from device: IOHIDDevice) {
+        let pid = hidIntProperty(device, kIOHIDProductIDKey)
+        guard let entry = Self.fixedTouchDecoderPIDs[pid],
+            fixedTouchDecoders[entry.reportID] == nil
+        else { return }
+        fixedTouchDecoders[entry.reportID] = entry.decoder
+    }
+
     /// True if `candidate`'s HID descriptor declares any Feature report at all.
     ///
     /// `.intuosV1` multi-interface devices with `seizeUSB: false` (PTH-850 and
@@ -469,6 +519,7 @@ final class WacomKnownDevice: TabletDevice {
     func registerDevice(_ device: IOHIDDevice) {
         registeredInterfaces.append(device)
         deriveTouchDecoders(from: device)
+        deriveFixedTouchDecoder(from: device)
         if acceptsReports(from: device) {
             IOHIDDeviceRegisterInputReportWithTimeStampCallback(
                 device, &reportBuffer, reportBuffer.count,
@@ -918,7 +969,16 @@ final class WacomKnownDevice: TabletDevice {
         }
 
         let results: [DecodeResult]
-        if length > 0, let touchDecoder = touchDecoders[report[0]] {
+        if length > 0, var fixedTouchDecoder = fixedTouchDecoders[report[0]] {
+            // Checked before `touchDecoders` below: the two dictionaries'
+            // report-ID spaces don't overlap for any product this applies
+            // to today, but a fixed, hand-specified layout should win over a
+            // generically-derived one if that were ever to change.
+            results = fixedTouchDecoder.decode(
+                report: report, length: length, spec: spec, state: &state,
+                deviceFamily: deviceSpec.family)
+            fixedTouchDecoders[report[0]] = fixedTouchDecoder
+        } else if length > 0, let touchDecoder = touchDecoders[report[0]] {
             let bytes = Array(UnsafeBufferPointer(start: report, count: length))
             results = touchDecoder.decode(report: bytes).map { [.touch($0.contacts)] } ?? []
         } else {
