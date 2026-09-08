@@ -1334,7 +1334,7 @@ final class TabletManager: ObservableObject {
         // change; see `releaseHeldStateForToolChange`.
         let injector = context.injector
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
-            injector.releaseHeldStateForToolChange()
+            injector.releaseHeldStateForDisconnect()
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
         context.hasWiredDriverLifecycle = false
@@ -1404,7 +1404,16 @@ final class TabletManager: ObservableObject {
     }
 
     private func refreshConnectedIDs(mostRecent: Int?) {
-        connectedProductIDs = hidDeviceMap.values.map { $0.productID }.sorted()
+        // hidDeviceMap has one entry per IOHIDDevice interface, and a
+        // multi-interface tablet's siblings all point at the same
+        // DeviceContext (see registerDevice/the `.driver` case above) — dedupe
+        // by context identity, not just productID, so two genuinely separate
+        // units of the same model still both count.
+        var seen = Set<ObjectIdentifier>()
+        connectedProductIDs = hidDeviceMap.values
+            .filter { seen.insert(ObjectIdentifier($0)).inserted }
+            .map { $0.productID }
+            .sorted()
         updateActivityAssertion()
         if let pid = mostRecent, connectedProductIDs.contains(pid) {
             connectedProductID = pid

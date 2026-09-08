@@ -632,6 +632,16 @@ extension InputInjector {
         releaseBindingHeldButton(at: loc, snapshot: snap)
     }
 
+    /// Called when the device itself disconnects. Unlike a tool change, the
+    /// pen unambiguously left proximity, so this runs the full
+    /// `commitProximityExit` rather than just the button release — otherwise
+    /// `lastProximity` stays latched true until the leak watchdog's timeout
+    /// catches it.
+    func releaseHeldStateForDisconnect() {
+        guard let snap = injectionSnapshot else { return }
+        commitProximityExit(snap: snap)
+    }
+
     func commitProximityExit(snap: InjectionSnapshot) {
         activeToolIsEraser = false
         lastEraserMode = false
