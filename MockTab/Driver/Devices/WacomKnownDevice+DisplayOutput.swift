@@ -20,8 +20,15 @@ extension WacomKnownDevice {
     // MARK: - LED control
 
     /// Update the ring LED to reflect the active slot index.
-    /// IntuosV2 (USB) and CintiqV1 families only — other families are no-ops.
-    func setRingLED(index: Int) {
+    ///
+    /// `force` bypasses the Xencelabs branch's own dedup (see
+    /// `lastRingLEDIndex`/`lastRingLEDOrientation` below) for call sites that
+    /// know device-side state was actually lost — a fresh re-enumeration or
+    /// the LED-companion interface just attaching — and need a guaranteed
+    /// resend even if the requested index/orientation match what was last
+    /// sent. Other parser branches (IntuosV2, CintiqV1, IntuosV1) have no
+    /// dedup of their own and ignore this flag.
+    func setRingLED(index: Int, force: Bool = false) {
         pendingLEDIndex = index
         let name = deviceSpec.name
         switch deviceSpec.parser {
@@ -165,12 +172,36 @@ extension WacomKnownDevice {
             // XencelabsDriver: every 0xB4/0xB1 write it sends over the dongle
             // carries the identity, none carry an all-zero address.
             let address = xencelabsDongleIdentity ?? []
-            // Reassert upright screen orientation, as the vendor stack does
-            // during its own reconnect init. Sending anything else here
-            // visibly rotates the OLED text (confirmed on hardware).
+            // Reassert screen orientation, as the vendor stack does during
+            // its own reconnect init — omitting this write entirely visibly
+            // rotates the OLED text back to upright (confirmed on hardware).
+            // `setRingLED` fires on every dial mode-cycle click, not just on
+            // relink (it's `observeRingLED`'s `$touchRingActiveSlotIndex`
+            // sink), so this must reassert whatever orientation the user last
+            // set rather than hardcoding upright — a hardcoded 0 here reset
+            // the OLED's rotation on every single mode-cycle press
+            // (confirmed against a live capture 2026-09-08: one dial-button
+            // click produced this exact 0xB1 orientation-upright write with
+            // no orientation change requested). `-1` (never set) still means
+            // upright, matching the device's own power-on default.
+            let orientationSteps = lastQuickKeysOrientation >= 0 ? lastQuickKeysOrientation : 0
+            // Skip the writes below when nothing has changed since the last
+            // time this branch actually sent them. `resyncXencelabsOutputsAfterRelink`
+            // calls `setRingLED` up to three times per connect cycle
+            // (immediate + two post-wake retries) to cover a puck that
+            // accepted the relink while still booting — before this dedup,
+            // every one of those calls unconditionally redrew the dial LED
+            // and reasserted orientation, which is what looked like the puck
+            // resetting/flashing on its own even on a clean connect where
+            // nothing was actually lost (reported 2026-09-09). `force`
+            // bypasses this for callers that know state was genuinely lost.
+            guard force || index != lastRingLEDIndex || orientationSteps != lastRingLEDOrientation
+            else { return }
+            lastRingLEDIndex = index
+            lastRingLEDOrientation = orientationSteps
             sendXencelabsOutput(
-                XencelabsOutputProtocol.orientationPayload(rotationSteps: 0, address: address),
-                tag: "screen orientation upright")
+                XencelabsOutputProtocol.orientationPayload(rotationSteps: orientationSteps, address: address),
+                tag: "screen orientation \(orientationSteps)")
             let colors = XencelabsOutputProtocol.defaultSlotColors
             let custom = dialSlotColors.indices.contains(index) ? dialSlotColors[index] : nil
             let c = custom ?? colors[((index % colors.count) + colors.count) % colors.count]

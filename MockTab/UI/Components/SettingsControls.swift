@@ -238,6 +238,50 @@ struct SettingSliderRow: View {
     }
 }
 
+// MARK: - LiveSlider
+
+/// A slider that tracks the drag locally and only writes to `value` when the
+/// drag ends, instead of on every intermediate tick.
+///
+/// For sliders wired to a hardware write (LED brightness, panel brightness) —
+/// each tick would otherwise fire a blocking vendor HID write on `HIDThread`,
+/// the same thread that pumps pen input reports, stalling the pen mid-drag.
+/// The knob still moves smoothly since it tracks local `@State`; only the
+/// expensive side effect is deferred to release.
+struct LiveSlider: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    var step: Double?
+
+    @State private var liveValue: Double?
+
+    init(value: Binding<Double>, in range: ClosedRange<Double>, step: Double? = nil) {
+        self._value = value
+        self.range = range
+        self.step = step
+    }
+
+    var body: some View {
+        let tracked = Binding(
+            get: { liveValue ?? value },
+            set: { liveValue = $0 })
+        Group {
+            if let step {
+                Slider(value: tracked, in: range, step: step, onEditingChanged: commitIfDone)
+            } else {
+                Slider(value: tracked, in: range, onEditingChanged: commitIfDone)
+            }
+        }
+        .labelsHidden()
+    }
+
+    private func commitIfDone(_ editing: Bool) {
+        guard !editing, let liveValue else { return }
+        self.liveValue = nil
+        value = liveValue
+    }
+}
+
 // MARK: - BatteryIndicator
 
 /// Percent → SF Symbol / tint mapping shared by the device status bar and

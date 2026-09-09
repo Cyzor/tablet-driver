@@ -61,6 +61,14 @@ final class WacomKnownDevice: TabletDevice {
     /// itself; every other touch-capable entry is served by `touchDecoders`
     /// below.
     private let onTouch: (([TouchContact]) -> Void)?
+    /// True while this raw PID is the currently-winning transport for its
+    /// canonical device, per `VendorDeviceRegistry.transportPriority` /
+    /// `DeviceContext.tabletDevice`. Only meaningful (and only checked) for
+    /// the Xencelabs dongle-relay PIDs (0x5203, 0x520D) — see
+    /// `xencelabsRelayProductIDs` and the relink block in `handleReport`.
+    /// `nil` (the non-Xencelabs default) means "always active," matching
+    /// every other family's existing unrestricted behavior.
+    private let isActiveTransport: ((Int) -> Bool)?
 
     /// Descriptor-derived touch decoders, keyed by report ID.
     ///
@@ -261,6 +269,34 @@ final class WacomKnownDevice: TabletDevice {
     /// True once the OLED/dial-LED state has been resent after confirming
     /// the relink actually took (see the `.aux` case in `handleReport`).
     private var xencelabsPostRelinkResynced = false
+    /// Bumped every time a fresh relink cycle starts (initial connect, or a
+    /// restart-triggered re-arm). The two post-wake retries each capture the
+    /// generation active when they were scheduled and check it before firing
+    /// — otherwise a restart mid-flight (re-arming `xencelabsPostRelinkResynced`
+    /// and scheduling its own pair of retries) left the *stale* cycle's
+    /// retries still armed too, since they only checked that flag being true
+    /// again, not that they were still the current cycle. All four retries
+    /// then fired independently, each doing a full relink + display resync —
+    /// each one visibly redraws the OLED, which looked like the puck cycling
+    /// through modes on its own (reported 2026-09-09, root-caused from a
+    /// console capture showing two overlapping relink cycles' retries both
+    /// firing after a mid-connect puck restart).
+    private var xencelabsRelinkGeneration = 0
+    /// Uptime of the most recent proof-of-life from the puck itself — a
+    /// decoded `.aux` (button/dial) or `.battery` (poll reply) result, both
+    /// of which only ever arrive over a link the puck actually received and
+    /// answered on. `resyncXencelabsOutputsAfterRelink` always sends a
+    /// battery-poll GET as one of its first writes, so a `.battery` reply
+    /// after it is direct confirmation that specific resync landed — nil
+    /// until the first one arrives.
+    ///
+    /// Used to skip the post-wake retries below when they'd be redundant: a
+    /// puck already confirmed alive after the immediate resync doesn't need
+    /// the +6.5s/+10s follow-ups, which otherwise fired unconditionally and
+    /// visibly redrew the OLED even on an already-operational puck (reported
+    /// 2026-09-09 — the puck was clearly working, interactive via the dial,
+    /// well before either retry fired).
+    private var xencelabsPuckConfirmedAliveAt: UInt64?
     /// The puck's 6-byte identity read off the relink report, kept so the
     /// resync's label-reset write can address the same puck.
     var xencelabsDongleIdentity: [UInt8]?
@@ -294,7 +330,8 @@ final class WacomKnownDevice: TabletDevice {
         onHardwareSerial: ((UInt32) -> Void)? = nil,
         onWheel: ((Int, Int) -> Void)? = nil,
         onTouch: (([TouchContact]) -> Void)? = nil,
-        onPairedPID: ((Int) -> Void)? = nil
+        onPairedPID: ((Int) -> Void)? = nil,
+        isActiveTransport: ((Int) -> Bool)? = nil
     ) {
         self.isWireless = isWireless
         self.device = device
@@ -309,6 +346,7 @@ final class WacomKnownDevice: TabletDevice {
         self.onWheel = onWheel
         self.onTouch = onTouch
         self.onPairedPID = onPairedPID
+        self.isActiveTransport = isActiveTransport
 
         self.spec = Self.makeDigitizerSpec(from: deviceSpec)
 
@@ -587,9 +625,12 @@ final class WacomKnownDevice: TabletDevice {
             executeInitSteps(on: device)
             // The fresh firmware state lost any OLED text and dial color the
             // superseded handle received. Re-apply the LED now; dropping the
-            // text cache lets the next display push actually resend.
+            // text cache lets the next display push actually resend. force:
+            // true for the same reason — setRingLED's own dedup cache
+            // doesn't know this specific write is a re-application after a
+            // handle swap, not a redundant repeat.
             xencelabsSentText.removeAll()
-            setRingLED(index: pendingLEDIndex)
+            setRingLED(index: pendingLEDIndex, force: true)
         }
     }
 
@@ -649,6 +690,18 @@ final class WacomKnownDevice: TabletDevice {
     var intuos4SentKeyLabels: [String] = []
     /// Last Quick Keys OLED orientation sent, to suppress redundant writes.
     var lastQuickKeysOrientation: Int = -1
+    /// Ring-LED slot index and orientation last actually written to the
+    /// Xencelabs dial (see `setRingLED`'s `.xencelabs` branch), to suppress
+    /// redundant dial-color/orientation/sensitivity writes when nothing
+    /// changed. `nil` until the first write. Distinct from
+    /// `lastQuickKeysOrientation`, which tracks the *requested* orientation
+    /// (settings-driven) — this tracks what was last *sent on the wire* by
+    /// this specific call path, since `resyncXencelabsOutputsAfterRelink`
+    /// used to call `setRingLED` three times per connect unconditionally,
+    /// each one visibly redrawing the OLED even when nothing had changed
+    /// since the previous call (reported 2026-09-09).
+    var lastRingLEDIndex: Int?
+    var lastRingLEDOrientation: Int = -1
     /// Last Quick Keys sleep timer sent, to suppress redundant writes.
     var lastQuickKeysSleepMinutes: Int = -1
     /// Last Quick Keys OLED brightness sent, to suppress redundant writes.
@@ -899,6 +952,7 @@ final class WacomKnownDevice: TabletDevice {
             logger.info("\(name, privacy: .public): dongle status frame after relink (tag=0x\(String(report[1], radix: 16), privacy: .public)) — puck restarted, re-arming relink")
             xencelabsDongleRelinked = false
             xencelabsPostRelinkResynced = false
+            xencelabsRelinkGeneration += 1
         }
 
         // Xencelabs wireless dongle relink: send the tablet-mode init once
@@ -946,7 +1000,24 @@ final class WacomKnownDevice: TabletDevice {
                 // one-shot per dongle connection via xencelabsPostRelinkResynced.
                 if ret == kIOReturnSuccess, !xencelabsPostRelinkResynced {
                     xencelabsPostRelinkResynced = true
-                    resyncXencelabsOutputsAfterRelink()
+                    let generation = xencelabsRelinkGeneration
+                    let resyncSentAt = DispatchTime.now().uptimeNanoseconds
+                    // The relink handshake and battery polling above always
+                    // run, regardless of which transport currently wins —
+                    // keeping the dongle's RF link confirmed and ready means
+                    // it can take over instantly if the wired puck unplugs.
+                    // Only the *display* resync below is transport-gated:
+                    // when the wired puck (0x5202, higher transportPriority)
+                    // is simultaneously connected and already the winning
+                    // transport, its own driver already keeps the OLED in
+                    // sync — the dongle resyncing the same physical display
+                    // too just redraws it redundantly (reported 2026-09-09,
+                    // both transports connected at once).
+                    if isActiveTransport?(deviceSpec.productID) ?? true {
+                        resyncXencelabsOutputsAfterRelink()
+                    } else {
+                        logger.info("\(name, privacy: .public): display resync skipped — wired puck is the active transport")
+                    }
                     // A power-cycled puck accepts the relink while its firmware
                     // is still waking (measured ~5.25 s to logo + "Please
                     // connect" text), so the immediate handshake and resync
@@ -957,13 +1028,47 @@ final class WacomKnownDevice: TabletDevice {
                     // passes (all writes addressed and idempotent; at
                     // dongle-connect time, when the puck is already awake,
                     // the repeats are harmless).
+                    //
+                    // Gated on `generation` (captured above), not just
+                    // `xencelabsPostRelinkResynced` being true: a puck restart
+                    // detected mid-flight re-arms that flag and schedules its
+                    // own pair of retries without cancelling these — without
+                    // the generation check, both cycles' retries fired
+                    // independently, each doing a full resync (visibly
+                    // redrawing the OLED) and looking like the puck cycling
+                    // through modes on its own.
+                    //
+                    // Also skipped once `xencelabsPuckConfirmedAliveAt` shows
+                    // proof-of-life (a decoded aux/battery reply) newer than
+                    // `resyncSentAt` — a puck that already answered the
+                    // immediate resync is provably not stuck mid-boot, so the
+                    // "might still be waking" premise these retries exist for
+                    // no longer holds. Without this, the retries fired
+                    // unconditionally on their fixed schedule even against an
+                    // already-operational puck the user was actively using,
+                    // redrawing the OLED for no reason (reported 2026-09-09).
                     for delay in [6.5, 10.0] {
                         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                             guard let self, self.xencelabsPostRelinkResynced,
-                                let identity = self.xencelabsDongleIdentity else { return }
+                                self.xencelabsRelinkGeneration == generation,
+                                let identity = self.xencelabsDongleIdentity
+                            else { return }
+                            if let aliveAt = self.xencelabsPuckConfirmedAliveAt, aliveAt > resyncSentAt {
+                                logger.info("\(self.deviceSpec.name, privacy: .public): post-wake relink retry (+\(delay, privacy: .public)s) skipped — puck already confirmed alive")
+                                return
+                            }
                             let ret = self.sendXencelabsRelink(identity: identity)
                             logger.info("\(self.deviceSpec.name, privacy: .public): post-wake relink retry (+\(delay, privacy: .public)s), result=0x\(String(ret, radix: 16), privacy: .public)")
-                            self.resyncXencelabsOutputsAfterRelink()
+                            guard self.isActiveTransport?(self.deviceSpec.productID) ?? true else {
+                                logger.info("\(self.deviceSpec.name, privacy: .public): post-wake relink retry (+\(delay, privacy: .public)s) display resync skipped — wired puck is the active transport")
+                                return
+                            }
+                            // force: true — this retry exists precisely because
+                            // the immediate resync's writes may not have reached
+                            // a still-booting puck; setRingLED's dedup only
+                            // reflects what this host attempted to send, not
+                            // what arrived, so it must not suppress the resend.
+                            self.resyncXencelabsOutputsAfterRelink(force: true)
                         }
                     }
                 }
@@ -1018,6 +1123,9 @@ final class WacomKnownDevice: TabletDevice {
                 guard !isWireless || wirelessReady else { break }
                 onToolEnter?(identity)
             case .aux(var buttons):
+                if deviceSpec.parser == .xencelabs {
+                    xencelabsPuckConfirmedAliveAt = DispatchTime.now().uptimeNanoseconds
+                }
                 // Diagnostic from the Xencelabs stuck-Command investigation
                 // (2026-07-05): which physical device/PID produced this aux
                 // frame and the raw bytes that decoded to it, so a phantom
@@ -1086,6 +1194,9 @@ final class WacomKnownDevice: TabletDevice {
                     break
                 }
             case .battery(let pct, let chg):
+                if deviceSpec.parser == .xencelabs {
+                    xencelabsPuckConfirmedAliveAt = DispatchTime.now().uptimeNanoseconds
+                }
                 onBattery?(pct, chg)
             case .mouseButton(let mask):
                 onMouseButton?(mask)
