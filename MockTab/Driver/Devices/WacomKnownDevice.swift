@@ -330,6 +330,7 @@ final class WacomKnownDevice: TabletDevice {
         case .xencelabs: self.decoder = XencelabsDecoder()  // Xencelabs Pen Tablet (experimental)
         case .intuosV1:  self.decoder = IntuosV1Decoder()   // Intuos 1–5, PTK-xxx, PTH-851
         case .pl:        self.decoder = WacomPLDecoder()    // PL-400–PL-800 (PL-800 cross-referenced, rest experimental)
+        case .expressKeyRemote: self.decoder = ExpressKeyRemoteDecoder()  // EKR-100 (cross-referenced against Linux kernel source)
         }
 
         // Use at least 192 bytes so both IntuosV1 (10-byte pen, 64-byte BLE)
