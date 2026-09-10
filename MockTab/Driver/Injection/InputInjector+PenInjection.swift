@@ -594,11 +594,10 @@ extension InputInjector {
     /// proximity (see the Scroll Drag note in `commitProximityExit`), and
     /// releasing it there would break "hold the button, lift the pen, carry on".
     ///
-    /// A *tool change* is different: the previous tool is off the tablet, so a
-    /// button it was holding cannot still be down. That is the one transition
-    /// where forcing the release is unambiguously correct, and it is the one
-    /// that stranded a middle click when App Exposé took the screen on the down
-    /// and swallowed the up (2026-08-27, PTH-850 + KC-100 puck).
+    /// Two transitions are unambiguous and call this explicitly: a **tool
+    /// change** (the previous tool is off the tablet — this is what stranded a
+    /// middle click when App Exposé swallowed the up, 2026-08-27, PTH-850 +
+    /// KC-100 puck) and a **disconnect** (no release edge will ever arrive).
     func releaseBindingHeldButton(at location: CGPoint, snapshot: InjectionSnapshot) {
         guard let held = hoverDragButton else { return }
         switch held {
@@ -618,7 +617,7 @@ extension InputInjector {
             }
         }
         hoverDragButton = nil
-        injectLog.notice("released a binding-held pointer button on tool change")
+        injectLog.notice("released a binding-held pointer button")
     }
 
     /// Called when the active tool changes. The previous tool is off the tablet,
@@ -637,8 +636,14 @@ extension InputInjector {
     /// `commitProximityExit` rather than just the button release — otherwise
     /// `lastProximity` stays latched true until the leak watchdog's timeout
     /// catches it.
+    ///
+    /// `releaseBindingHeldButton` must run *first*: `commitProximityExit`
+    /// clears `hoverDragButton` without posting the up, which is right for a
+    /// proximity blip (the release edge is still coming) but not for a
+    /// disconnect, where it never will.
     func releaseHeldStateForDisconnect() {
         guard let snap = injectionSnapshot else { return }
+        releaseBindingHeldButton(at: currentCursorPosition(), snapshot: snap)
         commitProximityExit(snap: snap)
     }
 
