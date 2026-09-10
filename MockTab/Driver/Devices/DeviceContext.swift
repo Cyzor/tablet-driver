@@ -536,6 +536,21 @@ final class DeviceContext: ObservableObject, Identifiable {
             .store(in: &snapshotCancellables)
     }
 
+    /// Drops the `observeRingLED()` / `observeInjectionSnapshot()` subscriptions
+    /// so a reconnect can reinstall them without doubling up: `.store(in:)`
+    /// appends, and the old sinks hold `[weak self]` on this context, which
+    /// outlives disconnect so settings survive unplugging. Left in place, every
+    /// settings change fires its hardware write once per reconnect seen — on the
+    /// Xencelabs path those writes carry a 3 ms `usleep()` on HIDThread.
+    ///
+    /// Full-disconnect path only. A second transport joining an already-wired
+    /// context must not tear these down.
+    func teardownDriverLifecycleObservers() {
+        cancellables.removeAll()
+        snapshotCancellables.removeAll()
+        activeToolObserver = nil
+    }
+
     init(
         instanceKey: DeviceInstanceKey, rawProductID: Int? = nil,
         vendorID: Int = 0x056A, usbSerial: String? = nil, locationID: Int = 0

@@ -1347,6 +1347,9 @@ final class TabletManager: ObservableObject {
             injector.releaseHeldStateForDisconnect()
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
+        // Drop the sinks with the flag that gates installing them: reconnect
+        // re-runs the observers and `.store(in:)` appends.
+        context.teardownDriverLifecycleObservers()
         context.hasWiredDriverLifecycle = false
         context.isConnected = false
         context.transport = "—"
