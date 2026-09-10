@@ -186,9 +186,9 @@ The decoder test suite lives in `TabletKit/Tests/TabletKitTests/` and runs via `
 ## Threading rules (the short version)
 
 - **Anything in TabletKit** (every conformer of `TabletReportDecoder`, the registries, the value types) lacks I/O, clocks, and globals. The host owns `DecoderState`.
-- **Anything reachable from `handleReport`** runs on HIDThread. It must not touch main-thread state directly — hand the work over with `Task { @MainActor in … }` or `CFRunLoopPerformBlock` first.
+- **Anything reachable from `handleReport`** runs on HIDThread. It must not touch main-thread state directly — hand that work over with `Task { @MainActor in … }`. Decoding and injection stay inline on HIDThread (see the `CGEventPost` rule below), and the hop is gated so an ordinary in-proximity report allocates no `Task`.
 - **Anything marked `@MainActor`** runs on the main thread. It updates HIDThread state by packaging a snapshot and posting it onto `HIDThread.shared.runLoop`.
-- **`IOHIDDeviceSetReport` / `GetReport`** are not thread-safe; they run on the main thread. Devices defer LED writes and feature reports to the main thread via `DispatchQueue.main.async`.
+- **`IOHIDDeviceSetReport` / `GetReport`** are not thread-safe, so every `TabletDevice` control write (LEDs, OLED, brightness, feature reports) is confined to HIDThread via `DeviceContext.onHIDThread(_:)` — `@MainActor` settings sinks hop rather than calling the driver inline. Writing from main raced `registerDevice()`/`flushPendingVendorWrites()` over the same unsynchronized "last-sent" cache.
 - **`CGEventPost`** is safe to call from HIDThread, and `InputInjector` does, to avoid a hop to the main thread on the hot path.
 
 ## Where to start

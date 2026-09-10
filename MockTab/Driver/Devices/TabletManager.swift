@@ -45,10 +45,15 @@ final class LiveTouchPublisher: ObservableObject {
 /// driver).  Only the *active* context posts CGEvents — activation happens
 /// automatically when a pen enters proximity on a given tablet.
 ///
-/// @MainActor because all mutable state and CGEvent posts require the main thread.
-/// IOHIDManager is scheduled on HIDThread (a dedicated background run loop) so
-/// HID report callbacks arrive immediately regardless of SwiftUI frame work on main.
-/// Device-lifecycle and inject() calls hop back to @MainActor via Task.
+/// `@MainActor` for this class's own observable state. Injection is **not**
+/// main-thread work: IOHIDManager runs on HIDThread, and the active injector's
+/// `inject()` is called inline there, reading only `injectionSnapshot`. Main
+/// owns device lifecycle and UI, reached via a gated `Task { @MainActor }` so
+/// ordinary in-proximity reports allocate none.
+///
+/// Exception: the context-switch branch calls `inject()` from `@MainActor`
+/// (outgoing proximity-exit, incoming report). That is the one seam where
+/// injector state is touched off HIDThread — don't add more.
 @MainActor
 final class TabletManager: ObservableObject {
 
