@@ -727,6 +727,13 @@ struct InfoView: View {
             lines += [String(localized: "Report gaps    : \(parts.joined(separator: "  "))", comment: "Diagnostic: histogram of inter-report arrival gaps, in milliseconds, for spotting bursty/coalesced delivery")]
         }
 
+        // Memory counterpart to the latency lines above.
+        if let footprint = FootprintProbe.read() {
+            let current = FootprintProbe.megabytes(footprint.current)
+            let peak = FootprintProbe.megabytes(footprint.peak)
+            lines += [String(localized: "Memory         : \(current) MB now, \(peak) MB peak", comment: "Diagnostic: process memory footprint, current and lifetime peak, in megabytes")]
+        }
+
         if let fallback = fallbackDevice {
             lines += [""]
             lines += ["─── HID Report Descriptor (fallback driver) ───"]

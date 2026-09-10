@@ -256,6 +256,35 @@
         }
       }
     },
+    "Memory         : %@ MB now, %@ MB peak" : {
+      "comment" : "Diagnostic: process memory footprint, current and lifetime peak, in megabytes",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speicher       : %1$@ MB jetzt, %2$@ MB Spitze"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memory         : %1$@ MB now, %2$@ MB peak"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memoria        : %1$@ MB ahora, %2$@ MB máximo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メモリ         : 現在 %1$@ MB、ピーク %2$@ MB"
+          }
+        }
+      }
+    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -7513,7 +7542,6 @@
       }
     },
     "Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation." : {
-
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7536,7 +7564,6 @@
       }
     },
     "Flips the direction of the dial, whatever its mode is set to. Turn on if the dial runs opposite to your expectation." : {
-
       "localizations" : {
         "de" : {
           "stringUnit" : {
