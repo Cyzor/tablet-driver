@@ -207,12 +207,23 @@ extension WacomKnownDevice {
             // XencelabsDriver: every 0xB4/0xB1 write it sends over the dongle
             // carries the identity, none carry an all-zero address.
             let address = xencelabsDongleIdentity ?? []
-            // Reassert upright screen orientation, as the vendor stack does
-            // during its own reconnect init. Sending anything else here
-            // visibly rotates the OLED text (confirmed on hardware).
+            // Reassert screen orientation, as the vendor stack does during
+            // its own reconnect init — omitting this write entirely lets the
+            // OLED text drift back to upright (confirmed on hardware).
+            //
+            // Reasserts whatever the user last set, not a hardcoded upright:
+            // this runs on every dial mode-cycle click, not just on relink
+            // (it's `observeRingLED`'s `$touchRingActiveSlotIndex` sink), so
+            // a hardcoded 0 here silently discarded the Buttons pane's
+            // Rotation setting on every single click — confirmed against a
+            // live capture 2026-09-08, where one dial-button press produced
+            // an unrequested orientation-upright write. `-1` (never set)
+            // still means upright, matching the device's power-on default.
+            let orientationSteps = lastQuickKeysOrientation >= 0 ? lastQuickKeysOrientation : 0
             sendXencelabsOutput(
-                XencelabsOutputProtocol.orientationPayload(rotationSteps: 0, address: address),
-                tag: "screen orientation upright")
+                XencelabsOutputProtocol.orientationPayload(
+                    rotationSteps: orientationSteps, address: address),
+                tag: "screen orientation \(orientationSteps)")
             let colors = XencelabsOutputProtocol.defaultSlotColors
             let custom = dialSlotColors.indices.contains(index) ? dialSlotColors[index] : nil
             let c = custom ?? colors[((index % colors.count) + colors.count) % colors.count]
