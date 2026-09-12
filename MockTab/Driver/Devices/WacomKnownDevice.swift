@@ -281,6 +281,43 @@ final class WacomKnownDevice: TabletDevice {
     private static let xencelabsRelayProductIDs: Set<Int> = [0x5203, 0x520D]
     private static let xencelabsIdentityLength = 6
 
+    /// `.intuosV1` devices whose wired LED report packs the ring slot and both
+    /// luminances into one byte, rather than the older Intuos4 layout of a
+    /// slot-shifted-left byte plus a separate hlv byte. See the two wired
+    /// branches in `setRingLED`.
+    ///
+    /// These are exactly the models the kernel's `wacom_led_control()` handles
+    /// under `type >= INTUOS5S && type <= INTUOSPL` — Intuos5 S/M/L, their
+    /// non-touch PTK twins, and Intuos Pro 1st gen S/M/L. Generation confirmed
+    /// per-PID against libwacom 2026-09-10 rather than inferred from the model
+    /// name: PTK-450/650 read as Intuos4-era model numbers but libwacom names
+    /// them "Wacom Intuos5 S/M", so a name-based split would have put them on
+    /// the wrong side.
+    ///
+    /// Kept as an explicit PID set because `WacomDeviceSpec.family` derives
+    /// this family by sniffing the name string, which mis-sorts several of
+    /// these rows (see the `.intuosV1` case in that property).
+    static let intuos5PackedLEDProductIDs: Set<Int> = [
+        0x0026,  // Intuos5 touch S (PTH-450)
+        0x0027,  // Intuos5 touch M (PTH-650)
+        0x0028,  // Intuos5 touch L (PTH-850)
+        0x0029,  // Intuos5 S (PTK-450)
+        0x002A,  // Intuos5 M (PTK-650)
+        0x0314,  // Intuos Pro S (PTH-451)
+        0x0315,  // Intuos Pro M (PTH-651, variant)
+        0x0316,  // Intuos Pro M (PTH-651)
+        0x0317,  // Intuos Pro L (PTH-851)
+    ]
+
+    /// Ring and crop-mark luminance for `intuos5PackedLEDProductIDs`, in that
+    /// report's 2-bit encoding: 0=Low, 1=Medium, 2=High, 3=Off.
+    ///
+    /// Both match the kernel, which initialises this family at llv=32 (mapping
+    /// to ring luminance Low) and hardcodes crop luminance to 0, exposing no
+    /// control for either.
+    static let intuos5RingLuminance: UInt8 = 0
+    static let intuos5CropLuminance: UInt8 = 0
+
     init(
         device: IOHIDDevice,
         deviceSpec: WacomDeviceSpec,

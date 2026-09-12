@@ -117,19 +117,55 @@ extension WacomKnownDevice {
                 //   buf[0] = 0x03
                 //   buf[4] = (cropLum << 4) | (ringLum << 2) | ringSlot
                 //     bits[1:0] = ring LED slot (0–3)
-                //     bits[3:2] = ring luminance (0=low … 3=off)
-                //     bits[5:4] = crop-mark luminance (same encoding, usually 0)
+                //     bits[3:2] = ring luminance (0=Low, 1=Medium, 2=High, 3=Off)
+                //     bits[5:4] = crop-mark luminance (same encoding)
+                // Same packing the wired Intuos5 branch below uses — shares its
+                // luminance constants so both transports light the ring alike.
                 let slot = UInt8(index & 0x03)
-                let ringLum: UInt8 = 1  // medium
                 var buf = [UInt8](repeating: 0, count: 13)
                 buf[0] = 0x03  // WAC_CMD_WL_LED_CONTROL
-                buf[4] = (ringLum << 2) | slot
+                buf[4] = (Self.intuos5CropLuminance << 4) | (Self.intuos5RingLuminance << 2) | slot
                 hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf,
                              tag: "\(name) IntuosV1 WL LED slot=\(index)", severity: .bestEffort, log: logger)
+            } else if Self.intuos5PackedLEDProductIDs.contains(deviceSpec.productID) {
+                // Intuos5 / Intuos Pro (1st gen), wired: WAC_CMD_LED_CONTROL
+                // (0x20), 9 bytes, but a *packed* buf[1] — not the byte layout
+                // the older Intuos4 branch below uses. Ported from the kernel's
+                // `wacom_led_control()`, which takes this path for every type in
+                // INTUOS5S…INTUOSPL (wacom_sys.c):
+                //   buf[1] = (cropLum << 4) | (ringLum << 2) | ringSlot
+                //     bits[1:0] = ring LED slot (0–3)
+                //     bits[3:2] = ring luminance   (0=Low, 1=Medium, 2=High, 3=Off)
+                //     bits[5:4] = crop-mark luminance (same encoding)
+                //   buf[2..8] = 0x00  (this family sends no separate hlv byte)
+                // Same packing the wireless branch above already used — these two
+                // differ only in report ID and which byte carries it.
+                //
+                // Corrected 2026-09-10. The previous code sent the Intuos4 layout
+                // to this family: slot shifted into bits[7:5] and a 5-bit llv in
+                // bits[4:0]. Decoded by the firmware's actual field map that put
+                // the slot bits where nothing reads them (ring LED never moved off
+                // slot 0) and left the low bits landing in ring/crop luminance —
+                // so cycling modes toggled the *crop marks* (the illuminated
+                // brackets framing the active area) between Medium and Off, which
+                // is the symptom that exposed this. Reported on a PTH-850.
+                //
+                // Luminance defaults follow the kernel: it initialises llv=32 for
+                // this family, and `(((llv & 0x60) >> 5) - 1) & 0x03` maps that to
+                // ring luminance Low; crop luminance is hardcoded 0 (Low) there and
+                // never exposed as a control.
+                let slot = UInt8(index & 0x03)
+                var buf = [UInt8](repeating: 0, count: 9)
+                buf[0] = 0x20  // WAC_CMD_LED_CONTROL
+                buf[1] = (Self.intuos5CropLuminance << 4) | (Self.intuos5RingLuminance << 2) | slot
+                hidSetReport(intuosV1CapableDevice ?? device, reportID: CFIndex(buf[0]), bytes: &buf,
+                             tag: "\(name) Intuos5 LED slot=\(index)",
+                             severity: intuosV1CapableDevice == nil ? .bestEffort : .required, log: logger)
             } else {
-                // USB LED control via WAC_CMD_LED_CONTROL (0x20), 9-byte feature report.
-                // Format confirmed by USB capture against official Wacom driver (6.3.46-2)
-                // on PTH-850 (Intuos5 L, PID 0x0028):
+                // Intuos4 and earlier, wired: WAC_CMD_LED_CONTROL (0x20), 9-byte
+                // feature report. The kernel reaches this layout through
+                // `wacom_led_control()`'s generic `else`, which every type below
+                // INTUOS5S takes:
                 //   buf[0] = 0x20
                 //   buf[1] = (llv & 0x1f) | ((ringSelect & 0x07) << 5)
                 //     bits[4:0] = llv luminance (0–31)
@@ -139,8 +175,8 @@ extension WacomKnownDevice {
                 // Official driver observed values: llv=0x14 (20), hlv=0x01 — used as defaults.
                 // Sent to whichever registered interface actually declares Feature
                 // reports (see `hasAnyFeatureReport`) — on a multi-interface unit
-                // like PTH-850, `device` itself may be the touch/vendor interface,
-                // which doesn't. Before that interface is known, `resyncActiveDriverDisplayState()`
+                // `device` itself may be the touch/vendor interface, which doesn't.
+                // Before that interface is known, `resyncActiveDriverDisplayState()`
                 // can call this on connect and race ahead of it (confirmed live
                 // 2026-08-25: the touch interface won primary, this fired against
                 // it and failed, then `registerDevice()`'s retry corrected it 23ms
