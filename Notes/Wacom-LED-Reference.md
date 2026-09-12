@@ -634,3 +634,22 @@ buf[11..] = 0x00   ← device's GetReport response fills buf[11..18] with serial
 ```
 
 Sent on BT connect (3× at init) and on every ring mode button press.
+
+### IntuosV2 wired USB — report IDs ruled out (PTH-660/860, 2026-04-21)
+
+Salvaged from the abandoned `led-control` branch before deleting it. These
+were probed by brute-forcing candidate report IDs against a live tablet while
+chasing an unresponsive-LED report; the branch's code was throwaway
+scaffolding, but the negative results are worth keeping so nobody re-runs it.
+
+- **`0x3B`** — *not* declared in the HID descriptor. Firmware silently ignores
+  writes to it. Used only as a "does anything happen" baseline.
+- **`0xCC` (204)** — *is* declared (usagePage `0xFF0D`, usage `0x10CC`). Tried
+  with the Linux `HID_GENERIC` shape, 5 bytes:
+  `buf[0]=0xCC, buf[1]=brightness (0xFF), buf[2]=slot`. Did not drive the ring.
+- **Report 35** (usage `0x0055`, 1 byte) — declared on interface 2, the
+  secondary. Purpose still unknown; a bare `ledBits` payload had no effect.
+
+The working path for this family remains reports `0x31` + `0x32` on USB and
+`0x82` on Bluetooth, both already implemented and hardware-confirmed — see the
+`.intuosV2` branches in `setRingLED`.
