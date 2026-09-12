@@ -220,7 +220,14 @@ final class SettingsWindowManager: ObservableObject {
     }
 
     func showTab(_ tab: SettingsWindowController.Tab) {
-        frontmostSettingsWindow().showTab(tab)
+        // Menu validation only gates this when a window is already key; with
+        // none key (or the resolved window's device lacks the tab, e.g.
+        // Touch), fronting the window is still correct — just skip a tab
+        // switch `hasTab` can't satisfy instead of silently no-oping deeper
+        // in SettingsWindowController.showTab.
+        let window = frontmostSettingsWindow()
+        guard window.hasTab(tab) else { return }
+        window.showTab(tab)
     }
 
     // MARK: - Multi-window
