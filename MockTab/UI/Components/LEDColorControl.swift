@@ -174,9 +174,15 @@ struct LEDColorControl: View, Equatable {
                     .foregroundStyle(.secondary)
                     .imageScale(.small)
                     .accessibilityHidden(true)
-                LiveSlider(value: brightnessBinding, in: 0...1)
-                    .controlSize(.small)
-                    .frame(maxWidth: .infinity)
+                Slider(value: brightnessBinding, in: 0...1) {
+                    // An explicit empty label — the label-less initializer
+                    // still reserves leading space for one on macOS, which
+                    // squeezed the track into half the row.
+                    EmptyView()
+                }
+                .labelsHidden()
+                .controlSize(.small)
+                .frame(maxWidth: .infinity)
                     .help("Brightness of the light.")
                     .accessibilityLabel("LED brightness")
                 Image(systemName: "sun.max")

@@ -1166,21 +1166,11 @@ final class TabletManager: ObservableObject {
             }
         }
 
-        // Called from HIDThread (the relink block in WacomKnownDevice's
-        // handleReport), never from main — reads DeviceContext's lock-backed
-        // mirror rather than its @MainActor `activeDriverRawProductID`,
-        // which would be a cross-actor violation from this call site.
-        let isActiveTransport: (Int) -> Bool = { [weak context] rawPID in
-            guard let context else { return true }
-            return context.activeDriverRawProductIDUnsafe() == rawPID
-        }
-
         let callbacks = DeviceRouter.Callbacks(
             onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
             onMouseButton: onMouseButton, onBattery: onBattery,
             onHardwareSerial: onHardwareSerial, onWheel: onWheel,
-            onTouch: onTouch, onPairedPID: onPairedPID,
-            isActiveTransport: isActiveTransport)
+            onTouch: onTouch, onPairedPID: onPairedPID)
 
         switch DeviceRouter.route(
             device: device, productID: productID, usagePage: usagePage,

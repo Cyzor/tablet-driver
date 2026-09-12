@@ -128,7 +128,7 @@ struct DisplayMappingView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityHidden(true)
                     Text("Brightness")
-                    LiveSlider(
+                    Slider(
                         value: settings.recordingBinding(
                             String(localized: "Display Brightness", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
                             // Before the user ever touches the slider (-1), park
@@ -174,7 +174,7 @@ struct DisplayMappingView: View {
                             .foregroundStyle(.secondary)
                             .accessibilityHidden(true)
                         Text("Contrast")
-                        LiveSlider(
+                        Slider(
                             value: settings.recordingBinding(
                                 String(localized: "Display Contrast", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
                                 get: { Double(settings.displayContrast >= 0 ? settings.displayContrast : 50) },

@@ -6,7 +6,6 @@ import Combine
 import Foundation
 import IOKit.hid
 import TabletKit
-import os
 
 /// Per-device bundle of settings, input injector, and tablet driver.
 ///
@@ -56,32 +55,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// wired PID (0x5202) and its wireless dongle (0x5203) is the motivating
     /// case — so this is a set of candidate drivers, not a single slot.
     /// `tabletDevice` below is the computed winner among them.
-    private var driverSlots: [Int: any TabletDevice] = [:] {
-        didSet {
-            let winner = Self.computeActiveRawProductID(driverSlots)
-            activeRawProductIDLock.withLock { $0 = winner }
-        }
-    }
-
-    /// Thread-safe mirror of "which raw PID currently wins `driverSlots`",
-    /// readable from `HIDThread` without touching this `@MainActor` type.
-    /// A driver's relink logic (currently just Xencelabs — see
-    /// `WacomKnownDevice`'s `isActiveTransport` callback) needs to know
-    /// whether *it* is the winning transport before doing a visible display
-    /// write, so a losing transport that's still relaying traffic (the
-    /// dongle, while the wired puck is also connected) can skip a resync its
-    /// own driver knows the winning transport's driver already covers
-    /// (reported 2026-09-09 — both transports connected at once, dongle
-    /// kept redrawing the shared OLED even though the wired puck already
-    /// had it in sync).
-    private let activeRawProductIDLock = OSAllocatedUnfairLock<Int?>(initialState: nil)
-
-    private static func computeActiveRawProductID(_ slots: [Int: any TabletDevice]) -> Int? {
-        slots.max { lhs, rhs in
-            VendorDeviceRegistry.transportPriority(forRawProductID: lhs.key)
-                < VendorDeviceRegistry.transportPriority(forRawProductID: rhs.key)
-        }?.key
-    }
+    private var driverSlots: [Int: any TabletDevice] = [:]
 
     /// The winning driver among `driverSlots`, ranked by
     /// `VendorDeviceRegistry.transportPriority`. Kept as the property name
@@ -109,13 +83,10 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// The raw PID of the slot `tabletDevice` currently resolves to, or nil
     /// if no transport is live.
     var activeDriverRawProductID: Int? {
-        Self.computeActiveRawProductID(driverSlots)
-    }
-
-    /// Thread-safe read of `activeDriverRawProductID`, safe to call from
-    /// `HIDThread` (unlike every other property here, which is `@MainActor`).
-    nonisolated func activeDriverRawProductIDUnsafe() -> Int? {
-        activeRawProductIDLock.withLock { $0 }
+        driverSlots.max { lhs, rhs in
+            VendorDeviceRegistry.transportPriority(forRawProductID: lhs.key)
+                < VendorDeviceRegistry.transportPriority(forRawProductID: rhs.key)
+        }?.key
     }
 
     var hasAnyDriverSlot: Bool { !driverSlots.isEmpty }

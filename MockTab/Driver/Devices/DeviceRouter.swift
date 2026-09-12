@@ -40,20 +40,6 @@ enum DeviceRouter {
         /// Called once when a wireless dongle (ACK-40401) identifies the
         /// paired tablet's PID from the 0x80 status report.
         let onPairedPID: (Int) -> Void
-        /// True while this driver's raw PID is the transport
-        /// `DeviceContext.tabletDevice` currently resolves to, for canonical
-        /// identities reachable over more than one live transport at once
-        /// (Xencelabs Quick Keys wired 0x5202 + dongle 0x5203, both relaying
-        /// to the same physical puck/OLED). `VendorDeviceRegistry.transportPriority`
-        /// already arbitrates which transport wins for cursor/injection
-        /// purposes; this exposes that same arbitration to a driver that
-        /// wants to skip a write only the *winning* transport should make —
-        /// currently just the Xencelabs relink/display-resync path, which
-        /// otherwise kept resyncing (and visibly redrawing the OLED) from
-        /// the losing transport even while the winning one already had the
-        /// puck fully synced (reported 2026-09-09, USB+dongle connected
-        /// simultaneously).
-        let isActiveTransport: (Int) -> Bool
     }
 
     /// The decision made for a single HID interface.
@@ -176,8 +162,7 @@ enum DeviceRouter {
                 onBattery: callbacks.onBattery,
                 onHardwareSerial: callbacks.onHardwareSerial,
                 onWheel: callbacks.onWheel,
-                onTouch: callbacks.onTouch,
-                isActiveTransport: callbacks.isActiveTransport)
+                onTouch: callbacks.onTouch)
             return .driver(drv, seized: shouldSeize)
         }
 

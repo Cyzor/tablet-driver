@@ -101,13 +101,10 @@ extension WacomKnownDevice {
     }
 
     /// Set the Quick Keys OLED text orientation, in 90° steps (0 = upright,
-    /// 1–3 = 90°/180°/270°). Bound to the Buttons pane's Rotation picker
-    /// (`ButtonMappingQuickKeys.swift`). Same wire command `setRingLED`'s
-    /// `.xencelabs` branch also sends on every dial mode-cycle click and
-    /// relink, reading `lastQuickKeysOrientation` rather than hardcoding
-    /// upright — before that fix, cycling the dial's mode silently snapped
-    /// a rotated OLED back upright, discarding whatever this picker had set
-    /// (confirmed against a live capture 2026-09-08).
+    /// 1–3 = 90°/180°/270°). Same wire command already used to reassert
+    /// upright orientation on relink (`resyncXencelabsOutputsAfterRelink`);
+    /// this is an independent, settings-driven entry point pre-wired ahead
+    /// of a UI control — no caller sets a value other than the sentinel yet.
     func setQuickKeysOrientation(steps: Int) {
         guard deviceSpec.parser == .xencelabs else { return }
         let clamped = ((steps % 4) + 4) % 4
@@ -246,23 +243,10 @@ extension WacomKnownDevice {
     }
 
     /// Resend the ring LED and OLED labels once a dongle relink is confirmed
-    /// live. The OLED label setters dedup against `xencelabsSentText`, so
-    /// that cache is cleared first to force the resend of whatever was last
-    /// requested — labels are cheap and clearing that cache doesn't cause
-    /// any visible flicker on its own.
-    ///
-    /// `setRingLED` (dial color/orientation/sensitivity) is different: those
-    /// writes visibly redraw the OLED, so this is called up to three times
-    /// per connect cycle (immediate + two post-wake retries, from
-    /// `handleReport`'s relink block) specifically because it's unknown
-    /// whether an earlier write reached a still-booting puck — pass `force:
-    /// true` for the two scheduled retries so they always resend regardless
-    /// of `setRingLED`'s own dedup state, since that state only reflects
-    /// what *this host* attempted to send, not what the device actually
-    /// received. Leave the immediate call un-forced so a clean connect (no
-    /// restart, no lost write) draws the OLED once instead of three times
-    /// (reported 2026-09-09).
-    func resyncXencelabsOutputsAfterRelink(force: Bool = false) {
+    /// live. `setRingLED` has no dedup, so it's safe to call as-is; the OLED
+    /// label setters dedup against `xencelabsSentText`, so that cache is
+    /// cleared first to force the resend of whatever was last requested.
+    func resyncXencelabsOutputsAfterRelink() {
         // What captures showed as a "reset labels" write here (0xB1 0x01)
         // is really the screen orientation command set to upright —
         // `setRingLED` below reasserts it, so no separate write is needed.
@@ -282,7 +266,7 @@ extension WacomKnownDevice {
         let modeLabel = xencelabsSentText["mode"]
         let keysJoined = xencelabsSentText["keys"]
         xencelabsSentText.removeAll()
-        setRingLED(index: ledIndex, force: force)
+        setRingLED(index: ledIndex)
         if let modeLabel { setRingModeLabel(modeLabel) }
         if let keysJoined { setAuxKeyLabels(keysJoined.components(separatedBy: "\u{1F}")) }
     }
