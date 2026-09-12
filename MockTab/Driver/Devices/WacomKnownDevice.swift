@@ -1045,6 +1045,14 @@ final class WacomKnownDevice: TabletDevice {
             }
         }
 
+        // IntuosV3Decoder has no wire tool-identity field (see its header),
+        // so it never emits .toolEnter. Movink 13 ships with one pen model
+        // (Pro Pen 3E, libwacom-confirmed); synthesize that identity on
+        // first proximity so the UI shows a real name instead of nothing.
+        let wasInProximity = state.prevInProximity
+        let synthesizeMovinkToolEnter =
+            (deviceSpec.productID == 0x03F0 || deviceSpec.productID == 0x03F2) && !wasInProximity
+
         let results: [DecodeResult]
         if length > 0, var fixedTouchDecoder = fixedTouchDecoders[report[0]] {
             // Checked before `touchDecoders` below: the two dictionaries'
@@ -1059,9 +1067,20 @@ final class WacomKnownDevice: TabletDevice {
             let bytes = Array(UnsafeBufferPointer(start: report, count: length))
             results = touchDecoder.decode(report: bytes).map { [.touch($0.contacts)] } ?? []
         } else {
-            results = decoder.decode(
+            var decoded = decoder.decode(
                 report: report, length: length, spec: spec, state: &state,
                 deviceFamily: deviceSpec.family)
+            if synthesizeMovinkToolEnter, state.prevInProximity,
+                case .pen(let point)? = decoded.first(where: {
+                    if case .pen = $0 { return true } else { return false }
+                })
+            {
+                let code: UInt16 = point.eraser ? 0x020A : 0x0202
+                decoded.insert(
+                    .toolEnter(ToolIdentity(serial: 0, toolCode: code, isEraser: point.eraser, isMouse: false)),
+                    at: 0)
+            }
+            results = decoded
         }
         // Pen and touch samples are collected, in decode order, rather than
         // dispatched inline — a report that decoded to more than one
