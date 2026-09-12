@@ -31,6 +31,12 @@ extension WacomKnownDevice {
     func setRingLED(index: Int, force: Bool = false) {
         pendingLEDIndex = index
         let name = deviceSpec.name
+        // `hidSetReport` only logs on failure, so a silent log can't tell a
+        // write that succeeded from one that never happened. Record the
+        // request itself: mode changes are user-paced, so this can't spam.
+        logger.info(
+            "\(name, privacy: .public): ring LED → slot \(index) (\(self.isBluetooth ? "BT" : "USB", privacy: .public))"
+        )
         switch deviceSpec.parser {
         case .intuosV2 where !isBluetooth:
             // USB ring LED: reports 0x31 (brightness) + 0x32 (slot selection), both sent
