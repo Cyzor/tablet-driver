@@ -493,7 +493,11 @@ struct ButtonMappingView: View {
                 localized: "Touch Ring",
                 comment: "Section header / row label for touch ring"),
             isActive: lb.touchRingActive, showsDiagram: true,
-            onCenterTap: { centerRecordToken += 1 })
+            onCenterTap: { centerRecordToken += 1 },
+            centerBinding: settings.recordingBinding(
+                String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
+                get: { settings.touchRingButtonBinding },
+                set: { settings.touchRingButtonBinding = $0 }))
     }
 
     /// Direction preference for every ring/dial/strip on the device — one
@@ -747,7 +751,8 @@ struct ButtonMappingView: View {
     @ViewBuilder
     private func touchRingSlotsSection(
         _ label: String, isActive: Bool, showsDiagram: Bool = false,
-        onCenterTap: (() -> Void)? = nil
+        onCenterTap: (() -> Void)? = nil,
+        centerBinding: Binding<ButtonBinding>? = nil
     ) -> some View {
         // Label row — shows "Touch Ring", "Left", or "Right" with live-active indicator.
         HStack(spacing: 6) {
@@ -770,7 +775,8 @@ struct ButtonMappingView: View {
             speedBinding: slotSpeedBinding(at:),
             cwBinding: { self.slotBinding(for: $0, direction: .cw) },
             ccwBinding: { self.slotBinding(for: $0, direction: .ccw) },
-            onCenterTap: onCenterTap
+            onCenterTap: onCenterTap,
+            centerBinding: centerBinding
         )
     }
 

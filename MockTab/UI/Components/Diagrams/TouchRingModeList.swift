@@ -22,6 +22,67 @@ enum RingDiagramRegion: Equatable {
     case center
 }
 
+/// Wraps a menu item's action as a plain closure, since `NSMenuItem` needs
+/// an `@objc` target/selector rather than accepting one directly.
+private final class RingMenuAction: NSObject {
+    let perform: () -> Void
+    init(_ perform: @escaping () -> Void) { self.perform = perform }
+}
+
+/// Stateless `@objc` relay for the diagram's right-click menu items: each
+/// item carries its own action as a `RingMenuAction` in `representedObject`,
+/// so one shared target can dispatch every item across every menu instance.
+private final class RingMenuTarget: NSObject {
+    static let shared = RingMenuTarget()
+
+    @objc func selectAction(_ sender: NSMenuItem) {
+        (sender.representedObject as? RingMenuAction)?.perform()
+    }
+}
+
+/// Serves a right-click menu for the diagram without stealing any other
+/// mouse event: `hitTest` returns nil for everything but a right mouse-down,
+/// so left-click/drag falls through untouched to the SwiftUI gesture layer
+/// beneath it. Builds and pops the `NSMenu` itself, synchronously, inside
+/// `rightMouseDown` — SwiftUI's `.contextMenu` reads its content closure
+/// against `@State` at menu-open time, which raced the state write from the
+/// same click and showed the *previous* selection's menu; going straight to
+/// AppKit avoids that state round-trip entirely, and it's still one-shot
+/// (no continuous tracking), so it carries none of the hover-driven
+/// invalidation cost the equatable-core split above exists to avoid.
+private struct RightClickMenuHost: NSViewRepresentable {
+    let menuBuilder: (CGPoint) -> NSMenu?
+
+    func makeNSView(context: Context) -> NSView {
+        let view = CatcherView()
+        view.menuBuilder = menuBuilder
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? CatcherView)?.menuBuilder = menuBuilder
+    }
+
+    final class CatcherView: NSView {
+        var menuBuilder: ((CGPoint) -> NSMenu?)?
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            guard let event = NSApp.currentEvent, event.type == .rightMouseDown else { return nil }
+            return super.hitTest(point)
+        }
+
+        override func rightMouseDown(with event: NSEvent) {
+            let point = convert(event.locationInWindow, from: nil)
+            // AppKit's y-axis grows upward; the SwiftUI-side hit-testing
+            // (`region(at:in:)`) expects the same top-left origin GeometryReader
+            // reports, so flip once here rather than teach that math two origins.
+            let flipped = CGPoint(x: point.x, y: bounds.height - point.y)
+            guard let menu = menuBuilder?(flipped) else { return }
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+        }
+    }
+}
+
 /// Zero-size backing view that scrolls its position into view once, when it
 /// first lands in a window. Placed behind each mode's expanded editor: the
 /// editor opens below the fold whenever its summary row sits near the bottom
@@ -85,6 +146,12 @@ struct TouchRingModeListView: View {
     /// to start recording in the center-click binding field, so the diagram
     /// is direct-manipulation for every part of the physical control.
     var onCenterTap: (() -> Void)? = nil
+    /// The center button's own binding, for its right-click menu. Unlike a
+    /// wedge, the center isn't a `ControlSlot.Action` — it's a plain
+    /// `ButtonBinding` like any express key — so its menu offers only Cycle
+    /// and None rather than the wedge's Scroll/Zoom/Rotate/Key/Off/Skip
+    /// list: the center is the ring's mode switch, not another mode itself.
+    var centerBinding: Binding<ButtonBinding>? = nil
 
     /// Mode currently expanded for editing; nil = all collapsed (pure
     /// overview). Session-scoped view state, deliberately not persisted.
@@ -119,7 +186,8 @@ struct TouchRingModeListView: View {
             ccwBinding: ccwBinding,
             maxSpeed: maxSpeed,
             ledEditor: ledEditor,
-            onCenterTap: onCenterTap
+            onCenterTap: onCenterTap,
+            centerBinding: centerBinding
         )
         .equatable()
     }
@@ -151,6 +219,7 @@ private struct TouchRingModeListCore: View, Equatable {
     let maxSpeed: Double
     let ledEditor: ((Int) -> LEDColorControl)?
     let onCenterTap: (() -> Void)?
+    let centerBinding: Binding<ButtonBinding>?
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.slots == rhs.slots
@@ -165,6 +234,7 @@ private struct TouchRingModeListCore: View, Equatable {
             && lhs.maxSpeed == rhs.maxSpeed
             && (lhs.ledEditor == nil) == (rhs.ledEditor == nil)
             && (lhs.onCenterTap == nil) == (rhs.onCenterTap == nil)
+            && (lhs.centerBinding == nil) == (rhs.centerBinding == nil)
     }
 
     var body: some View {
@@ -502,6 +572,11 @@ private struct TouchRingModeListCore: View, Equatable {
                                 case .center: onCenterTap?()
                                 }
                             })
+                        .overlay {
+                            RightClickMenuHost { point in
+                                wedgeContextMenu(for: region(at: point, in: geo.size))
+                            }
+                        }
                 }
             }
             // Sighted-only affordance: wedge/center clicks duplicate the
@@ -517,6 +592,56 @@ private struct TouchRingModeListCore: View, Equatable {
         }
         .frame(width: 120)
         .padding(.top, 2)
+    }
+
+    /// Right-click menu for a diagram region, built and popped by
+    /// `RightClickMenuHost` — see that type for why this is a plain `NSMenu`
+    /// rather than SwiftUI's `.contextMenu`.
+    ///
+    /// A wedge gets the same actions as the Action picker in `detailEditor`,
+    /// so a single click can retarget a mode without first expanding its
+    /// row. The center button isn't a mode — it has no `ControlSlot.Action`,
+    /// only a `ButtonBinding` like any express key — so its menu is
+    /// deliberately narrower: Cycle and None, the two choices that fit its
+    /// role as the ring's mode switch rather than another mode slot.
+    private func wedgeContextMenu(for region: RingDiagramRegion?) -> NSMenu? {
+        switch region {
+        case .wedge(let idx):
+            guard slots.indices.contains(idx) else { return nil }
+            let menu = NSMenu()
+            for action in ControlSlot.Action.allCases {
+                let item = NSMenuItem(
+                    title: action.displayLabel,
+                    action: #selector(RingMenuTarget.selectAction(_:)), keyEquivalent: "")
+                item.state = slots[idx].action == action ? .on : .off
+                item.target = RingMenuTarget.shared
+                item.representedObject = RingMenuAction { [actionBinding, setSelected] in
+                    actionBinding(idx).wrappedValue = action
+                    setSelected(idx)
+                }
+                menu.addItem(item)
+            }
+            return menu
+
+        case .center:
+            guard let centerBinding else { return nil }
+            let menu = NSMenu()
+            for binding in [ButtonBinding(kind: .ringCycle), ButtonBinding.none] {
+                let item = NSMenuItem(
+                    title: binding.displayLabel,
+                    action: #selector(RingMenuTarget.selectAction(_:)), keyEquivalent: "")
+                item.state = centerBinding.wrappedValue == binding ? .on : .off
+                item.target = RingMenuTarget.shared
+                item.representedObject = RingMenuAction {
+                    centerBinding.wrappedValue = binding
+                }
+                menu.addItem(item)
+            }
+            return menu
+
+        case nil:
+            return nil
+        }
     }
 
     private var activeCaption: String {

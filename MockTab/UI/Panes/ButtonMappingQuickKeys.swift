@@ -117,7 +117,11 @@ struct QuickKeysSectionView: View {
                 cwBinding: { slotBinding(at: $0, direction: .cw) },
                 ccwBinding: { slotBinding(at: $0, direction: .ccw) },
                 ledEditor: slotLEDWell(at:),
-                onCenterTap: { dialRecordToken += 1 }
+                onCenterTap: { dialRecordToken += 1 },
+                centerBinding: settings.recordingBinding(
+                    String(localized: "Quick Keys Dial Button", comment: "Undo action name: Quick Keys binding in the Buttons pane"),
+                    get: { settings.touchRingButtonBinding },
+                    set: { settings.touchRingButtonBinding = $0 })
             )
             // Same control and caption shape as the tablet's own ring section.
             // Writes the companion's own settings, so the puck's dial direction
