@@ -300,6 +300,20 @@ struct DiscoveryTouchPipeline: Codable {
     /// pen rather than genuine use. Nonzero confirms the mechanism actually
     /// engaged during a capture.
     var framesStaleBusyRecovered: Int = 0
+    /// Momentum tails (`panMomentumTail`/`touchMomentumTail`) terminated by
+    /// one of the non-gesture-restart release paths (tool change, disconnect,
+    /// proximity exit, app switch, sleep, quit), broken down by which path —
+    /// added for macOS 27's stuck-gesture auto-cancel timer, which can now
+    /// force-cancel a tail an app never received a terminal event for.
+    /// Nonzero counts here are expected in ordinary use (app-switching mid-
+    /// coast is common); this exists to confirm the `.stop()` call sites are
+    /// actually being reached, not to flag a problem by itself.
+    var momentumTailsStoppedOnToolChange: Int = 0
+    var momentumTailsStoppedOnDisconnect: Int = 0
+    var momentumTailsStoppedOnProximityExit: Int = 0
+    var momentumTailsStoppedOnAppSwitch: Int = 0
+    var momentumTailsStoppedOnSleep: Int = 0
+    var momentumTailsStoppedOnTerminate: Int = 0
 
     mutating func noteTouchPenBusy() {
         framesPenBusy += 1

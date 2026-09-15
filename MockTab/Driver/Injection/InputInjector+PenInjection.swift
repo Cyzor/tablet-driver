@@ -629,6 +629,16 @@ extension InputInjector {
         let loc = currentCursorPosition()
         releaseHeldPointerButtons(at: loc, snapshot: snap)
         releaseBindingHeldButton(at: loc, snapshot: snap)
+        // macOS 27 auto-cancels a gesture recognizer left non-terminal a few
+        // seconds after input stops (AppKit's new stuck-gesture timer) — a
+        // tail merely `cancel()`-ed here would idle harmlessly pre-27 but can
+        // now be force-cancelled mid-stream by the receiving app. The active
+        // tool is unambiguously gone, so post the terminal event.
+        if panMomentumTail.isRunning || touchMomentumTail.isRunning {
+            TouchPipelineProbe.note { $0.momentumTailsStoppedOnToolChange += 1 }
+        }
+        panMomentumTail.stop()
+        touchMomentumTail.stop()
     }
 
     /// Called when the device itself disconnects. Unlike a tool change, the
@@ -645,6 +655,14 @@ extension InputInjector {
         guard let snap = injectionSnapshot else { return }
         releaseBindingHeldButton(at: currentCursorPosition(), snapshot: snap)
         commitProximityExit(snap: snap)
+        // See releaseHeldStateForToolChange: the device is gone, so any
+        // in-flight momentum tail must be terminated explicitly rather than
+        // left for macOS 27's stuck-gesture timer to force-cancel.
+        if panMomentumTail.isRunning || touchMomentumTail.isRunning {
+            TouchPipelineProbe.note { $0.momentumTailsStoppedOnDisconnect += 1 }
+        }
+        panMomentumTail.stop()
+        touchMomentumTail.stop()
     }
 
     func commitProximityExit(snap: InjectionSnapshot) {
@@ -697,6 +715,17 @@ extension InputInjector {
         lastRingButtonDown = false
         hasPostedPoint = false
         displayMapper.clearRelativeAnchor()
+        // See releaseHeldStateForToolChange: the pen has left proximity, so
+        // a momentum tail it was driving (Pan View's, or a two-finger touch
+        // coast) must be given a terminal event rather than left for macOS
+        // 27's stuck-gesture timer to force-cancel. Scroll Drag itself
+        // survives proximity blips (suspend() above) — this is unrelated,
+        // narrower cleanup of the decay tail only.
+        if panMomentumTail.isRunning || touchMomentumTail.isRunning {
+            TouchPipelineProbe.note { $0.momentumTailsStoppedOnProximityExit += 1 }
+        }
+        panMomentumTail.stop()
+        touchMomentumTail.stop()
         lastPostedPressure = -1.0
         smoother.resetOnProximityExit()
         pressureSmoother.reset()

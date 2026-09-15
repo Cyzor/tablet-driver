@@ -216,6 +216,16 @@ extension InputInjector {
         // groundTruthSyntheticFlags / modifierRefCounts are HIDThread-owned.
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
             self?.releaseAllSyntheticModifiers()
+            // The app that was receiving a momentum tail is no longer
+            // frontmost. Pre-27 an abandoned tail just idled harmlessly in
+            // it; macOS 27's stuck-gesture auto-cancel timer can now
+            // force-cancel a non-terminal one instead, so post the terminal
+            // event explicitly rather than leaving the switch to do it.
+            if let self, self.panMomentumTail.isRunning || self.touchMomentumTail.isRunning {
+                TouchPipelineProbe.note { $0.momentumTailsStoppedOnAppSwitch += 1 }
+            }
+            self?.panMomentumTail.stop()
+            self?.touchMomentumTail.stop()
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
     }

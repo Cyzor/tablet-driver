@@ -118,7 +118,7 @@ final class SharedPanScrollState {
 /// | `leakWatchdogTimer` (1Hz) | `init`, runs continuously | deinit only — by design, it must outlive quiescence | Backstop absent for the rows above |
 /// | `lastProximity` | pen in range | proximity exit; 1Hz watchdog forces exit after `stuckProximityTimeout` | Touch gated off as "pen busy" |
 /// | `lastAuxButtons`, `lastRingButtonDown` | express key / ring center down | matching up edge in `injectAux`; 0.4s `watchdogTimer` for modifier flags | Express-key binding stuck held |
-/// | `panMomentumTail`, `touchMomentumTail`, `dialCoaster` | flick release with velocity | decay to zero, new gesture start, `cancel()` in deinit | Scrolling continues after release |
+/// | `panMomentumTail`, `touchMomentumTail`, `dialCoaster` | flick release with velocity | decay to zero, new gesture start (`cancel()` — the new gesture's own `.began` phase is itself a valid terminal signal), tool change / disconnect / proximity exit / app switch / sleep / quit (all `stop()` — posts a terminal event; added for macOS 27's stuck-gesture auto-cancel timer, which can now force-cancel a tail an app never received a terminal event for), `cancel()` in deinit | Scrolling continues after release pre-27; force-cancelled mid-stream by the receiving app on 27+ if left non-terminal |
 /// | `mechanicalDialGestureOpen`, `ring1/2GestureOpen` | `.zoom`/`.rotate` ring slot engaged (dial click or ring contact) | 0.4s `mechanicalDialGestureIdleTimer` after the last click (dial) or ring contact lift (capacitive); explicit `closeRingGestureEnvelopes()` on ring-mode-cycle/select-slot bindings and the modifier-held zoom fallback; **`deinit` closes silently** (timer invalidated, no `.ended` posted — see below) | Frontmost app stuck mid-pinch/-rotate |
 ///
 /// On disconnect: `releaseHeldStateForToolChange` releases held buttons but
@@ -355,10 +355,49 @@ final class InputInjector: @unchecked Sendable {
             withTimeInterval: 1.0, repeats: true
         ) { [weak self] _ in self?.checkLeakWatchdog() }
         installFlagsChangedTap()
+
+        // macOS 27's new stuck-gesture auto-cancel timer (AppKit) can force-
+        // cancel a momentum tail left non-terminal a few seconds after input
+        // stops — pre-27 an abandoned tail just idled harmlessly in the
+        // receiving app. A tail can't survive sleep to resume, so give it a
+        // terminal event before the machine goes down rather than leaving it
+        // for the timer. Quit is handled the same way while this plumbing is
+        // already being added — deinit's own reasoning (see the class doc
+        // comment) still holds for the case neither of these catches.
+        willSleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.willSleepNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+                if self.panMomentumTail.isRunning || self.touchMomentumTail.isRunning {
+                    TouchPipelineProbe.note { $0.momentumTailsStoppedOnSleep += 1 }
+                }
+                self.panMomentumTail.stop()
+                self.touchMomentumTail.stop()
+            }
+            CFRunLoopWakeUp(HIDThread.shared.runLoop)
+        }
+        willTerminateObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+                if self.panMomentumTail.isRunning || self.touchMomentumTail.isRunning {
+                    TouchPipelineProbe.note { $0.momentumTailsStoppedOnTerminate += 1 }
+                }
+                self.panMomentumTail.stop()
+                self.touchMomentumTail.stop()
+            }
+            CFRunLoopWakeUp(HIDThread.shared.runLoop)
+        }
     }
 
     deinit {
         if let obs = displayObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = willSleepObserver { NSWorkspace.shared.notificationCenter.removeObserver(obs) }
+        if let obs = willTerminateObserver { NotificationCenter.default.removeObserver(obs) }
         leakWatchdogTimer?.invalidate()
         if let src = flagsChangedTapSource {
             CFRunLoopRemoveSource(HIDThread.shared.runLoop, src, .commonModes)
@@ -1007,6 +1046,10 @@ final class InputInjector: @unchecked Sendable {
     var cachedTouchHeightMM: Double = 1
     var cachedTouchSpecPID: Int = -1
     private var displayObserver: NSObjectProtocol?
+    /// See the `willSleepObserver`/`willTerminateObserver` registration in
+    /// `init` for why these exist — momentum-tail termination on sleep/quit.
+    private var willSleepObserver: NSObjectProtocol?
+    private var willTerminateObserver: NSObjectProtocol?
 
     // MARK: - Adobe shim replay
 
