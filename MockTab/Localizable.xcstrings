@@ -5377,6 +5377,9 @@
         }
       }
     },
+    "Dial Mode" : {
+
+    },
     "Dial Slot %lld Action" : {
       "comment" : "Undo action name: Quick Keys dial slot binding in the Buttons pane",
       "localizations" : {
@@ -5471,6 +5474,12 @@
     },
     "Dial Toggle" : {
       "comment" : "Row label for the ExpressKey that cycles a mechanical dial's modes\nUndo action name: dial toggle key binding in the Buttons pane"
+    },
+    "Dial: Cycle" : {
+      "comment" : "Button action: cycle a mechanical dial's mode"
+    },
+    "Dial: Mode %u" : {
+      "comment" : "Button action: jump to a mechanical dial's mode slot"
     },
     "Dim" : {
       "comment" : "Quick Keys screen brightness level",

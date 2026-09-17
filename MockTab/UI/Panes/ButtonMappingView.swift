@@ -321,6 +321,7 @@ struct ButtonMappingView: View {
                     String(localized: "Tip", comment: "Pen tip button row label in Buttons tab"),
                     isActive: lb.tipDown,
                     binding: tipBinding,
+                    isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[0])
             }
 
@@ -330,6 +331,7 @@ struct ButtonMappingView: View {
                     String(localized: "Eraser", comment: "Eraser button row label in Buttons tab"),
                     isActive: lb.eraserDown,
                     binding: eraserBinding,
+                    isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[1])
             }
 
@@ -343,6 +345,7 @@ struct ButtonMappingView: View {
                             : String(localized: "Side button 1", comment: "Pen button row label: first side button")),
                     isActive: lb.button1Down,
                     binding: pen1Binding,
+                    isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[2])
             }
             // Button 2
@@ -353,6 +356,7 @@ struct ButtonMappingView: View {
                         : String(localized: "Side button 2", comment: "Pen button row label: second side button"),
                     isActive: lb.button2Down,
                     binding: pen2Binding,
+                    isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[3])
             }
             // Button 3
@@ -363,6 +367,7 @@ struct ButtonMappingView: View {
                         : String(localized: "Side button 3", comment: "Pen button row label: third side button"),
                     isActive: lb.button3Down,
                     binding: pen3Binding,
+                    isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[4])
             }
             // Button 4
@@ -372,7 +377,8 @@ struct ButtonMappingView: View {
                         ? String(localized: "Button 4", comment: "Pen button row label: mouse button 4")
                         : String(localized: "Side button 4", comment: "Pen button row label: fourth side button"),
                     isActive: lb.button4Down,
-                    binding: pen4Binding)
+                    binding: pen4Binding,
+                    isMechanicalDialHardware: hasMechanicalDial)
             }
             // Button 5
             if btnCount >= 5 {
@@ -381,7 +387,8 @@ struct ButtonMappingView: View {
                         ? String(localized: "Button 5", comment: "Pen button row label: mouse button 5")
                         : String(localized: "Side button 5", comment: "Pen button row label: fifth side button"),
                     isActive: lb.button5Down,
-                    binding: pen5Binding)
+                    binding: pen5Binding,
+                    isMechanicalDialHardware: hasMechanicalDial)
             }
 
             // Wheel row — airbrush fingerwheel or scroll wheel
@@ -390,7 +397,7 @@ struct ButtonMappingView: View {
                     toolSpec?.toolType == .airbrush
                     ? String(localized: "Fingerwheel", comment: "Airbrush fingerwheel row label")
                     : String(localized: "Scroll Wheel", comment: "Mouse scroll wheel row label")
-                buttonRow(wheelLabel, isActive: false, binding: wheelBinding)
+                buttonRow(wheelLabel, isActive: false, binding: wheelBinding, isMechanicalDialHardware: hasMechanicalDial)
             }
 
             // Diagram row: no label column; transparent so the section
@@ -529,6 +536,7 @@ struct ButtonMappingView: View {
                     get: { settings.touchRingButtonBinding },
                     set: { settings.touchRingButtonBinding = $0 }),
                 ringSlotCount: spec?.ringSlotCount ?? 4,
+                isMechanicalDialHardware: true,
                 recordRequestToken: centerRecordToken)
         } else {
             buttonRow(
@@ -568,7 +576,9 @@ struct ButtonMappingView: View {
                 String(localized: "Dial 2 Toggle", comment: "Undo action name: second dial toggle key binding in the Buttons pane"),
                 get: { settings.touchRingButtonBinding2 },
                 set: { settings.touchRingButtonBinding2 = $0 }),
-            ringSlotCount: spec?.ringSlotCount ?? 4)
+            ringSlotCount: spec?.ringSlotCount ?? 4,
+            offersSecondDial: true,
+            isMechanicalDialHardware: true)
     }
 
     /// Direction preference for every ring/dial/strip on the device — one
@@ -814,7 +824,8 @@ struct ButtonMappingView: View {
             // Only PTK-670/870-class hardware has a second, independent dial
             // that needs its own toggle-key actions offered — see
             // `hasMechanicalDial`'s doc comment.
-            offersSecondDial: hasDualRings && hasMechanicalDial
+            offersSecondDial: hasDualRings && hasMechanicalDial,
+            isMechanicalDialHardware: hasMechanicalDial
         )
     }
 

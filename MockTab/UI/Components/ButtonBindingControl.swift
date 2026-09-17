@@ -14,13 +14,22 @@ struct ButtonBindingControl: View, Equatable {
     @Binding var binding: ButtonBinding
     var compact: Bool = false
     var ringSlotCount: Int = 4
-    /// Whether to offer "Dial 2: Cycle"/"Dial 2: Mode N" actions in the Touch
-    /// Ring Mode submenu, alongside the existing (dial-1) actions. Only
-    /// meaningful on hardware with two independent mechanical dials
-    /// (PTK-670/870) — every other caller leaves this false, including this
-    /// same control when used for express keys, pen buttons, or bezel
-    /// buttons on any device.
+    /// Whether to offer "Dial 2: Cycle"/"Dial 2: Mode N" actions in the mode
+    /// submenu, alongside the existing (dial-1) actions. Only meaningful on
+    /// hardware with two independent mechanical dials (PTK-670/870) and only
+    /// where assigning "cycle dial 2" makes sense — express keys, not pen
+    /// buttons or bezel buttons. Distinct from `isMechanicalDialHardware`:
+    /// this row could be on dial hardware (so the submenu should still say
+    /// "Dial Mode") without itself being a sensible place to offer the
+    /// second dial's own actions.
     var offersSecondDial: Bool = false
+    /// Whether this row lives on hardware whose ring/dial mechanism is a
+    /// mechanical rotate-only dial rather than a capacitive touch ring —
+    /// drives the submenu's label ("Dial Mode" vs. "Touch Ring Mode") and
+    /// its non-second-dial entries' wording ("Dial: Cycle" vs.
+    /// "Ring: Cycle"), independent of whether this specific row also offers
+    /// second-dial actions. See `ButtonMappingView.hasMechanicalDial`.
+    var isMechanicalDialHardware: Bool = false
     /// Incremented by an external control (the ring diagram's center button)
     /// to begin recording in this field, exactly as if it had been clicked.
     var recordRequestToken: Int = 0
@@ -38,6 +47,7 @@ struct ButtonBindingControl: View, Equatable {
             && lhs.compact == rhs.compact
             && lhs.ringSlotCount == rhs.ringSlotCount
             && lhs.offersSecondDial == rhs.offersSecondDial
+            && lhs.isMechanicalDialHardware == rhs.isMechanicalDialHardware
             && lhs.recordRequestToken == rhs.recordRequestToken
     }
 
@@ -119,15 +129,17 @@ struct ButtonBindingControl: View, Equatable {
                 .help("Switch tablet mapping between displays")
             Button("Toggle Relative Mode") { binding = ButtonBinding(kind: .relativeModeToggle) }
                 .help("Switch between absolute (stylus) and relative (mouse) cursor movement")
-            Menu(offersSecondDial ? "Dial Mode" : "Touch Ring Mode") {
+            Menu(isMechanicalDialHardware ? "Dial Mode" : "Touch Ring Mode") {
                 Button("Cycle") { binding = ButtonBinding(kind: .ringCycle) }
-                    .help("Cycle through ring modes")
+                    .help(isMechanicalDialHardware ? "Cycle through dial modes" : "Cycle through ring modes")
                 Divider()
                 ForEach(0..<ringSlotCount, id: \.self) { i in
                     Button("Jump to Mode \(i + 1)") {
                         binding = ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i))
                     }
-                    .help("Switch ring directly to mode \(i + 1)")
+                    .help(isMechanicalDialHardware
+                        ? "Switch the dial directly to mode \(i + 1)"
+                        : "Switch ring directly to mode \(i + 1)")
                 }
                 if offersSecondDial {
                     Divider()
@@ -185,13 +197,12 @@ struct ButtonBindingControl: View, Equatable {
                 localized: "Record Shortcut",
                 comment: "Placeholder in shortcut recorder field when empty")
         }
-        // On mechanical-dial hardware (offersSecondDial implies
-        // hasMechanicalDial — see ButtonMappingView), "Ring: Cycle"/
-        // "Ring: Mode N" read oddly next to a section already labeled
-        // "Dial." binding.displayLabel stays device-unaware (shared by
-        // presets/undo text/every other caller), so the rename lives here,
-        // display-only, rather than in the model.
-        if offersSecondDial {
+        // On mechanical-dial hardware, "Ring: Cycle"/"Ring: Mode N" read
+        // oddly next to a section already labeled "Dial."
+        // binding.displayLabel stays device-unaware (shared by presets/undo
+        // text/every other caller), so the rename lives here, display-only,
+        // rather than in the model.
+        if isMechanicalDialHardware {
             switch binding.kind {
             case .ringCycle:
                 return String(localized: "Dial: Cycle", comment: "Button action: cycle a mechanical dial's mode")

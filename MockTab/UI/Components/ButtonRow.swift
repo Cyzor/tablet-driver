@@ -14,6 +14,7 @@ func buttonRow(
     binding: Binding<ButtonBinding>,
     ringSlotCount: Int = 4,
     offersSecondDial: Bool = false,
+    isMechanicalDialHardware: Bool = false,
     recordRequestToken: Int = 0
 ) -> some View {
     HStack(spacing: 0) {
@@ -25,6 +26,7 @@ func buttonRow(
         ButtonBindingControl(
             binding: binding, ringSlotCount: ringSlotCount,
             offersSecondDial: offersSecondDial,
+            isMechanicalDialHardware: isMechanicalDialHardware,
             recordRequestToken: recordRequestToken)
             .equatable()
         Spacer(minLength: 0)
