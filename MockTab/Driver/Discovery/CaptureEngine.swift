@@ -340,7 +340,7 @@ final class CaptureEngine: ObservableObject {
     /// to a save panel when that write fails (most often because the app has
     /// not been granted Desktop access).
     func exportDiscoveryJSON(result: DiscoveryResult) -> URL? {
-        let filename = "mocktab_discovery_\(result.deviceInfo.productID)_\(Self.fileStamp()).json"
+        let filename = "mocktab-info-\(result.deviceInfo.productID)-\(Self.fileStamp()).json"
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -407,14 +407,14 @@ final class CaptureEngine: ObservableObject {
     ///
     /// Pinned to `en_US_POSIX` so the stamp is Gregorian ASCII regardless of
     /// the user's region. Without this, a submitted capture came back named
-    /// `mocktab_discovery_0x0000_14050418_150909.json` — Persian calendar year
+    /// `mocktab-info-0x0000-14050418-150909.json` — Persian calendar year
     /// 1405 — which sorts and reads as nonsense next to every other file.
     private static func fileStamp(_ date: Date = Date()) -> String {
         let fmt = DateFormatter()
         fmt.locale = Locale(identifier: "en_US_POSIX")
         fmt.calendar = Calendar(identifier: .gregorian)
         fmt.timeZone = .current
-        fmt.dateFormat = "yyyyMMdd_HHmmss"
+        fmt.dateFormat = "yyyyMMdd-HHmmss"
         return fmt.string(from: date)
     }
 
