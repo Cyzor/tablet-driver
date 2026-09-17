@@ -282,6 +282,15 @@ extension WacomKnownDevice {
         timer.schedule(deadline: .now() + 60, repeating: 60)
         timer.setEventHandler { [weak self] in
             guard let self, let identity = self.xencelabsDongleIdentity else { return }
+            // Stage 1 staleness watchdog (log-only): silence past 2 poll
+            // intervals may mean the link dropped without an explicit
+            // `.wireless(.lost)`. No recovery action yet.
+            if let lastReportAt = self.xencelabsLastReportAt {
+                let idleNanos = DispatchTime.now().uptimeNanoseconds - lastReportAt
+                if idleNanos > 120 * NSEC_PER_SEC {
+                    logger.warning("\(self.deviceSpec.name, privacy: .public): no Xencelabs reports for \(idleNanos / NSEC_PER_SEC, privacy: .public)s — possible silent dongle link loss")
+                }
+            }
             self.sendXencelabsOutput([0x02, 0xB4, 0x10, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "battery poll")
         }
         timer.resume()

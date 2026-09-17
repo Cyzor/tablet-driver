@@ -101,6 +101,14 @@ final class WacomKnownDevice: TabletDevice {
     private var reportBuffer: [UInt8]
     var isBluetooth = false
 
+    /// Last accepted pen point, for the wireless outlier check below. Reset
+    /// on proximity re-entry so a new stroke isn't compared to a stale point.
+    private var wirelessLastAcceptedPoint: TabletPoint?
+    /// Stage 1 (log-only) outlier detection for ACK-40401 cursor chatter: a
+    /// corrupted byte over RF tends to jump one axis while the other stays
+    /// put, unlike a real fast stroke, which moves both together.
+    private static let wirelessOutlierFraction = 0.2
+
     // ── Bluetooth batch pacing ──────────────────────────────────────────────
     // See BatchFramePacer.swift and dispatchBatch(_:reportTimestampNs:) below.
     // HIDThread-confined, like everything else `handleReport` touches.
@@ -282,6 +290,10 @@ final class WacomKnownDevice: TabletDevice {
     /// 2026-09-09 — retries fired on their fixed schedule against a puck the
     /// user was actively using, redrawing the OLED for no reason).
     private var xencelabsPuckConfirmedAliveAt: UInt64?
+    /// Timestamp of the most recent parsed report of any kind (unlike
+    /// `xencelabsPuckConfirmedAliveAt`, which means only "the puck answered").
+    /// Used to log a possible silent link drop; no recovery action yet.
+    var xencelabsLastReportAt: UInt64?
     /// The puck's 6-byte identity read off the relink report, kept so the
     /// resync's label-reset write can address the same puck.
     var xencelabsDongleIdentity: [UInt8]?
@@ -940,8 +952,16 @@ final class WacomKnownDevice: TabletDevice {
                 let pairedSpec = WacomDeviceRegistry.spec(for: pairedTabletPID),
                 pairedSpec.maxX > 0 && pairedSpec.maxY > 0
             {
-                // Update our spec with the paired tablet's actual dimensions
-                spec = Self.makeDigitizerSpec(from: pairedSpec)
+                // Update our spec with the paired tablet's actual dimensions.
+                // Never let a registry row missing touch data (e.g. PTH-650,
+                // never decoded) downgrade hasFingerTouch from the dongle's
+                // own true — it'd silently kill touch mid-session.
+                var updatedSpec = Self.makeDigitizerSpec(from: pairedSpec)
+                if spec.hasFingerTouch, !updatedSpec.hasFingerTouch {
+                    updatedSpec.hasFingerTouch = true
+                    updatedSpec.maxTouchContacts = spec.maxTouchContacts
+                }
+                spec = updatedSpec
                 pairedPID = pairedTabletPID
                 onPairedPID?(pairedTabletPID)
                 logger.info("\(name, privacy: .public): paired tablet 0x\(String(pairedTabletPID, radix: 16, uppercase: true), privacy: .public) — maxX=\(pairedSpec.maxX, privacy: .public) maxY=\(pairedSpec.maxY, privacy: .public) maxPressure=\(pairedSpec.maxPressure, privacy: .public)")
@@ -1103,6 +1123,9 @@ final class WacomKnownDevice: TabletDevice {
             }
             results = decoded
         }
+        if deviceSpec.parser == .xencelabs, !results.isEmpty {
+            xencelabsLastReportAt = DispatchTime.now().uptimeNanoseconds
+        }
         // Pen and touch samples are collected, in decode order, rather than
         // dispatched inline — a report that decoded to more than one
         // combined (a Bluetooth batch: pen frames packed at [1..98], touch
@@ -1128,6 +1151,20 @@ final class WacomKnownDevice: TabletDevice {
             case .pen(let point):
                 // Wireless dongle: suppress pen events until RF link is confirmed active.
                 guard !isWireless || wirelessReady else { break }
+                if !wasInProximity { wirelessLastAcceptedPoint = nil }
+                if isWireless, let last = wirelessLastAcceptedPoint,
+                    point.maxX > 0, point.maxY > 0
+                {
+                    let dx = abs(point.x - last.x), dy = abs(point.y - last.y)
+                    let thresholdX = Double(point.maxX) * Self.wirelessOutlierFraction
+                    let thresholdY = Double(point.maxY) * Self.wirelessOutlierFraction
+                    let xOutlier = Double(dx) > thresholdX && dy < point.maxY / 20
+                    let yOutlier = Double(dy) > thresholdY && dx < point.maxX / 20
+                    if xOutlier || yOutlier {
+                        logger.warning("\(name, privacy: .public): candidate wireless coordinate outlier — last=(\(last.x, privacy: .public),\(last.y, privacy: .public)) new=(\(point.x, privacy: .public),\(point.y, privacy: .public)) maxX=\(point.maxX, privacy: .public) maxY=\(point.maxY, privacy: .public)")
+                    }
+                }
+                wirelessLastAcceptedPoint = point
                 batchFrames.append(.pen(point))
             case .toolEnter(let identity):
                 guard !isWireless || wirelessReady else { break }
