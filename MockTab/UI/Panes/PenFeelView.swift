@@ -38,16 +38,16 @@ struct PenFeelView: View {
                     "Damps pressure noise near the low end of the sensor's range — most noticeable as uneven line width on slow, light strokes. Firm pressure is left alone.")
             }
 
-            Section("Stabilization") {
+            Section("Steadiness") {
                 SettingSliderRow(
                     "Strength",
                     value: smoothingBinding,
                     in: 0...1,
                     valueText: smoothingLabel,
-                    caption: "Reduces cursor jitter. Higher values add lag."
+                    caption: "Higher values add lag and reduce precision during fast motion."
                 )
                 .help(
-                    "Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but add input lag.")
+                    "Reduces cursor wobble and makes clicks and taps steadier. Higher values smooth more aggressively but add input lag and reduce precision during fast motion.")
             }
 
             Section("Double-Click Distance") {
@@ -301,7 +301,7 @@ struct PenFeelView: View {
 
     private var smoothingBinding: Binding<Double> {
         settings.recordingBinding(
-            String(localized: "Stabilization"), toolOwned: true,
+            String(localized: "Steadiness"), toolOwned: true,
             get: { tool.smoothingStrength },
             set: { tool.smoothingStrength = $0 })
     }
@@ -380,12 +380,12 @@ struct PenFeelView: View {
 
     private var smoothingLabel: String {
         switch tool.smoothingStrength {
-        case 0..<0.15: return String(localized: "Off", comment: "Stabilization strength — disabled")
-        case 0.15..<0.4: return String(localized: "Low", comment: "Stabilization strength label")
-        case 0.4..<0.65: return String(localized: "Medium", comment: "Stabilization strength label")
-        case 0.65..<0.85: return String(localized: "High", comment: "Stabilization strength label")
+        case 0..<0.15: return String(localized: "Off", comment: "Steadiness strength — disabled")
+        case 0.15..<0.4: return String(localized: "Low", comment: "Steadiness strength label")
+        case 0.4..<0.65: return String(localized: "Medium", comment: "Steadiness strength label")
+        case 0.65..<0.85: return String(localized: "High", comment: "Steadiness strength label")
         default:
-            return String(localized: "Max", comment: "Stabilization strength label — maximum value")
+            return String(localized: "Max", comment: "Steadiness strength label — maximum value")
         }
     }
 

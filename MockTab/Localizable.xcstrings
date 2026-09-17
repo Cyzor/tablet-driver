@@ -8232,7 +8232,7 @@
       }
     },
     "High" : {
-      "comment" : "Double-click distance label\nPressure smoothing strength label\nRing speed level: fast\nStabilization strength label",
+      "comment" : "Double-click distance label\nPressure smoothing strength label\nRing speed level: fast\nSteadiness strength label",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8259,6 +8259,9 @@
           }
         }
       }
+    },
+    "Higher values add lag and reduce precision during fast motion." : {
+
     },
     "Hold Command modifier (⌘)" : {
       "comment" : "A button that assigns the \"Hold Command modifier (⌘)\" action.",
@@ -9918,7 +9921,7 @@
       }
     },
     "Low" : {
-      "comment" : "Double-click distance label\nPressure smoothing strength label\nRing speed level: slow\nStabilization strength label",
+      "comment" : "Double-click distance label\nPressure smoothing strength label\nRing speed level: slow\nSteadiness strength label",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10112,7 +10115,7 @@
       }
     },
     "Max" : {
-      "comment" : "Double-click distance label — maximum value\nPressure smoothing strength label — maximum value\nRing speed level: fastest\nStabilization strength label — maximum value",
+      "comment" : "Double-click distance label — maximum value\nPressure smoothing strength label — maximum value\nRing speed level: fastest\nSteadiness strength label — maximum value",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10141,7 +10144,7 @@
       }
     },
     "Medium" : {
-      "comment" : "Double-click distance label\nPressure smoothing strength label\nQuick Keys screen brightness level\nRing speed level: medium\nStabilization strength label\nText Size submenu: second-smallest",
+      "comment" : "Double-click distance label\nPressure smoothing strength label\nQuick Keys screen brightness level\nRing speed level: medium\nSteadiness strength label\nText Size submenu: second-smallest",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11700,7 +11703,7 @@
       }
     },
     "Off" : {
-      "comment" : "Click threshold — disabled, previous behavior\nConnection status when device is disconnected\nDefault ring slot label\nDouble-click distance — disabled\nFeature disabled — drag threshold slider at minimum value\nFeature disabled — tip-up assist slider at minimum value\nPressure smoothing strength — disabled\nQuick Keys screen brightness level\nRing speed at minimum — rotation disabled\nRing speed level: disabled\nRing/strip action: disabled\nStabilization strength — disabled\nTouch ring mode: disabled",
+      "comment" : "Click threshold — disabled, previous behavior\nConnection status when device is disconnected\nDefault ring slot label\nDouble-click distance — disabled\nFeature disabled — drag threshold slider at minimum value\nFeature disabled — tip-up assist slider at minimum value\nPressure smoothing strength — disabled\nQuick Keys screen brightness level\nRing speed at minimum — rotation disabled\nRing speed level: disabled\nRing/strip action: disabled\nSteadiness strength — disabled\nTouch ring mode: disabled",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13827,6 +13830,7 @@
     },
     "Reduces cursor jitter. Higher values add lag." : {
       "comment" : "Help text under stabilization slider",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13854,8 +13858,12 @@
         }
       }
     },
+    "Reduces cursor wobble and makes clicks and taps steadier. Higher values smooth more aggressively but add input lag and reduce precision during fast motion." : {
+
+    },
     "Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but add input lag." : {
       "comment" : "Help: smoothing strength",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17105,6 +17113,7 @@
     },
     "Stabilization" : {
       "comment" : "Section header in Pen Feel tab",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17241,6 +17250,9 @@
           }
         }
       }
+    },
+    "Steadiness" : {
+
     },
     "Stop and Discard" : {
       "comment" : "Destructive button that ends the in-progress data collection session and discards its data",

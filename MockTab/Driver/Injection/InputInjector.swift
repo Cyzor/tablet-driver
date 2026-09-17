@@ -107,12 +107,13 @@ final class SharedPanScrollState {
 /// | State | Armed by | Released by | Leaks if stuck |
 /// |---|---|---|---|
 /// | `groundTruthSyntheticFlags` | aux/barrel binding posting a modifier | `releaseAllSyntheticModifiers` via proximity exit, 0.4s idle `watchdogTimer`, 1Hz `leakWatchdogTimer`, app switch (`releaseOnAppSwitch`) | Modifier stuck down system-wide |
-/// | `lastTipDown` | curved pressure ≥ `tipPressureThreshold` | tip-up in `inject`, proximity exit (incl. the 1Hz watchdog's forced exit — the only release on an unplug with the tip down) | Stroke never ends; button reads held |
+/// | `lastTipDown` | curved pressure ≥ `tipPressureThreshold`, subject to `tipUpDebounceTimer` on release | tip-up in `inject` (debounce-confirmed), proximity exit (incl. the 1Hz watchdog's forced exit — the only release on an unplug with the tip down) | Stroke never ends; button reads held |
 /// | `hoverDragButton` | barrel-button click binding down | binding up edge, proximity exit, `releaseBindingHeldButton` on tool change/disconnect | Movement posts drags instead of hover |
 /// | `lastMiddleDown`, `lastUSBMouseMask` / `usbMouseLeftHeld` | puck/KC-100 mouse button down | `releaseHeldPointerButtons` — proximity exit and tool change/disconnect | Mouse button stuck down |
 /// | `pendingMouseUp` (timer) | tip-up while still moving, tip-up assist enabled | tip re-down (`cancelPendingMouseUp`), proximity exit, deinit | mouseUp never posted — stroke stays open |
 /// | `panScroll` (PanScrollTracker) | `.scrollDrag` binding engaged | binding release edge; deliberately **survives** proximity blips (`suspend()`), `cancelPanScrollSafetyNet` + `panScrollSafetyNetTimer` backstop | Pen motion scrolls instead of moving cursor |
 /// | `button1/2/3UpDebounceTimer` | Xencelabs barrel-button up edge | reassert within window, timer fire, proximity exit (invalidates + commits), deinit | Release never committed — button reads held |
+/// | `tipUpDebounceTimer` | tip-switch up edge, any device, when `smoothingStrength > 0` | reassert within window, timer fire (commits release, feeds `tipUpAssistDelay`), `commitProximityExit`, 1Hz watchdog's forced exit (via `commitProximityExit`), deinit | Release never committed — `lastTipDown` (and drag/stroke-start state derived from it) reads stuck down |
 /// | `proximityExitDebounceTimer` | Xencelabs range loss | pen returning in range, timer fire → `commitProximityExit`, deinit | Exit cleanup never runs |
 /// | `watchdogTimer` | rearmed on every inject/injectAux/injectMouseButtons | fires after 0.4s idle → releases synthetic flags; deinit | (Safety net; see leak watchdog) |
 /// | `leakWatchdogTimer` (1Hz) | `init`, runs continuously | deinit only — by design, it must outlive quiescence | Backstop absent for the rows above |
@@ -416,6 +417,7 @@ final class InputInjector: @unchecked Sendable {
         button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+        tipUpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
     }
 
     // MARK: - State
@@ -824,6 +826,17 @@ final class InputInjector: @unchecked Sendable {
         let ms = UserDefaults.standard.integer(forKey: "MockTabXencelabsButtonDebounceMS")
         return ms > 0 ? Double(ms) / 1000.0 : 0.05
     }()
+
+    /// Tip-switch chatter debounce, modeled on the Xencelabs barrel-button
+    /// debounce above but generic — mechanical switch bounce on tip release
+    /// isn't vendor-specific, so this applies to any device (gated only on
+    /// `tool.smoothingStrength > 0`, the "Steadiness" setting). Same shape:
+    /// press is always immediate, only the up edge is deferred, and a
+    /// reassert within the window cancels the pending release. Window scales
+    /// linearly with `smoothingStrength` (0 → 0ms, 1 → `buttonUpDebounceInterval`'s
+    /// 50ms default) — reusing that empirically-tuned ceiling rather than a
+    /// theoretical report-period number with no hardware backing.
+    var tipUpDebounceTimer: CFRunLoopTimer?
 
     /// Longer up-debounce used *only* for right-click / eraser bindings, so a
     /// contextual menu opened with the barrel button stays engaged when the

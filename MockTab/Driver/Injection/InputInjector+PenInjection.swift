@@ -60,7 +60,7 @@ extension InputInjector {
         // For KC-100 over USB, the left button arrives via the separate 0x01 mouse interface
         // and injectMouseButtons() has already fired leftMouseDown/Up.  Keep tipDown false
         // so inject() doesn't re-fire the click; usbMouseLeftHeld drives drag vs hover below.
-        let tipDown =
+        let rawTipDown =
             activeToolIsMouse
             ? (usbMouseLeftHeld ? false : point.penButton1)
             : rawPressure > InputInjector.tipPressureThreshold
@@ -77,7 +77,7 @@ extension InputInjector {
         // unaffected; only the transmitted line-width value is smoothed, and
         // a stroke's first sample always adopts the raw value verbatim.
         let pressure: Double
-        if tipDown {
+        if rawTipDown {
             pressure = pressureSmoother.applySmoothing(
                 rawPressure: rawPressure, strokeStarting: !lastTipDown, dt: smoothingDt)
         } else {
@@ -170,16 +170,16 @@ extension InputInjector {
         // on transition, so a session that started below the hold-off gets
         // confirmed once it's persisted long enough.
         if point.inProximity, !touchPenConfirmedBusy,
-            tipDown || CFAbsoluteTimeGetCurrent() - proximityConfirmStartTime >= Self.touchBusyHoldOff
+            rawTipDown || CFAbsoluteTimeGetCurrent() - proximityConfirmStartTime >= Self.touchBusyHoldOff
         {
             touchPenConfirmedBusy = true
             touchPenBusyConfirmedAt = CFAbsoluteTimeGetCurrent()
-            touchPenBusyHadTipSinceConfirmed = tipDown
+            touchPenBusyHadTipSinceConfirmed = rawTipDown
         }
         // See `staleBusyTimeout`'s declaration — any real tip contact during
         // an already-confirmed busy episode marks it as genuine pen use, not
         // idle ambiguous proximity, regardless of how it started.
-        if touchPenConfirmedBusy, tipDown {
+        if touchPenConfirmedBusy, rawTipDown {
             touchPenBusyHadTipSinceConfirmed = true
         }
 
@@ -222,11 +222,16 @@ extension InputInjector {
         shimLastPressure = pressure
 
         // ── Jitter tracking (hover only, every report) ─────────────────────────
-        if !tipDown {
+        if !rawTipDown {
             smoother.observeHoverRaw(rawPoint)
         } else {
             smoother.endHover()
         }
+
+        // Chatter debounce sits upstream: a release is held briefly before
+        // `lastTipDown` is allowed to flip, so tipUpAssistDelay below only
+        // ever sees a debounce-confirmed release. No-op at Steadiness 0.
+        let tipDown = resolveDebouncedTipDown(rawTipDown: rawTipDown, tool: tool)
 
         // ── Tip press transitions (always immediate) ───────────────────────────
         if tipDown != lastTipDown {
@@ -264,52 +269,7 @@ extension InputInjector {
                     // ever fired, so no mouseUp either. The pen lift is just
                     // the end of a grab.
                 } else {
-                let btn = activeButton
-                let count = activeClickCount
-                let pt = point
-
-                if activeAppProfile == .generic
-                    && snap.tipUpAssistDelay > 0
-                    && smoother.recentVelocity > Self.tipUpAssistVelocityThreshold {
-                    // Defer the mouseUp briefly so fast strokes aren't cut short.
-                    // The deferred mouseUp captures `snap` so it has all the values it
-                    // needs; the live snapshot may have rolled over by the time it fires.
-                    let capturedSnap = snap
-                    // One-shot timer on HIDThread's run loop: the delay stays
-                    // honest under main-thread congestion, and the handler runs
-                    // on the same thread that owns all per-report state — no hop,
-                    // no cancellation race (invalidation on this thread guarantees
-                    // the handler never fires afterwards).
-                    let timer = CFRunLoopTimerCreateWithHandler(
-                        kCFAllocatorDefault,
-                        CFAbsoluteTimeGetCurrent() + snap.tipUpAssistDelay / 1000.0,
-                        0,  // interval — one-shot
-                        0, 0
-                    ) { [weak self] _ in
-                        guard let self, self.pendingMouseUp != nil else { return }
-                        self.pendingMouseUp = nil
-                        // Fire at lastPostedPoint, not at the tip-lift position.
-                        // By the time this fires (~80ms after physical tip-lift),
-                        // mouseMoved events have advanced lastPostedPoint to wherever
-                        // the pen currently is.  Firing at the original lift-off would
-                        // warp the cursor back, then snap forward on the next inject(),
-                        // creating a visible cursor zap and spurious drag.  For drawing
-                        // strokes the pen travels only a few pixels in 80ms, so
-                        // stroke-end fidelity is effectively unchanged.
-                        self.postMouseUp(
-                            button: btn, at: self.lastPostedPoint, clickCount: count,
-                            point: pt, snapshot: capturedSnap)
-                    }
-                    pendingMouseUp = timer
-                    if let timer {
-                        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
-                    }
-                } else {
-                    postMouseUp(
-                        button: activeButton, at: screenPoint,
-                        clickCount: activeClickCount, point: point,
-                        snapshot: snap)
-                }
+                    releaseTip(at: screenPoint, pressure: pressure, point: point, snap: snap)
                 }
             }
             lastPostedPoint = screenPoint
@@ -668,6 +628,9 @@ extension InputInjector {
     func commitProximityExit(snap: InjectionSnapshot) {
         activeToolIsEraser = false
         lastEraserMode = false
+        // Superseded by the force-release below — the timer must not also fire.
+        tipUpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+        tipUpDebounceTimer = nil
         let exitPoint = smoother.smoothedPoint
         if lastTipDown {
             postMouseUp(
@@ -823,6 +786,112 @@ extension InputInjector {
     func cancelPanScrollSafetyNet() {
         panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
         panScrollSafetyNetTimer = nil
+    }
+
+    /// Steadiness (0-1) scaled to `buttonUpDebounceInterval`'s 50ms ceiling.
+    private func tipUpDebounceInterval(for tool: InjectionSnapshot.Tool) -> TimeInterval {
+        tool.smoothingStrength * buttonUpDebounceInterval
+    }
+
+    /// Mirrors `handleXencelabsBarrelButton`'s wasDown/pendingTimer shape,
+    /// tip state in place of button state: press is immediate, release is
+    /// held until the window elapses with no reassertion.
+    private func resolveDebouncedTipDown(rawTipDown: Bool, tool: InjectionSnapshot.Tool) -> Bool {
+        if rawTipDown {
+            if let t = tipUpDebounceTimer {
+                CFRunLoopTimerInvalidate(t)
+                tipUpDebounceTimer = nil
+            }
+            return true
+        }
+        let window = tipUpDebounceInterval(for: tool)
+        guard lastTipDown, window > 0 else {
+            tipUpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+            tipUpDebounceTimer = nil
+            return false
+        }
+        guard tipUpDebounceTimer == nil else {
+            return true
+        }
+        let timer = CFRunLoopTimerCreateWithHandler(
+            kCFAllocatorDefault,
+            CFAbsoluteTimeGetCurrent() + window,
+            0, 0, 0
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.tipUpDebounceTimer = nil
+            guard self.lastTipDown, let snap = self.injectionSnapshot else { return }
+            self.commitDebouncedTipUp(snap: snap)
+        }
+        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+        tipUpDebounceTimer = timer
+        return true
+    }
+
+    /// Shared tip-up commit (immediate `postMouseUp`, or a `tipUpAssistDelay`
+    /// defer for a fast stroke). Callers post their own proximity-gated
+    /// pointer event first, if needed — this only handles the click.
+    private func releaseTip(
+        at screenPoint: CGPoint, pressure: Double, point: TabletPoint, snap: InjectionSnapshot
+    ) {
+        let btn = activeButton
+        let count = activeClickCount
+
+        if activeAppProfile == .generic
+            && snap.tipUpAssistDelay > 0
+            && smoother.recentVelocity > Self.tipUpAssistVelocityThreshold {
+            // Defer the mouseUp briefly so fast strokes aren't cut short.
+            // The deferred mouseUp captures `snap` so it has all the values it
+            // needs; the live snapshot may have rolled over by the time it fires.
+            let capturedSnap = snap
+            // One-shot timer on HIDThread's run loop: the delay stays
+            // honest under main-thread congestion, and the handler runs
+            // on the same thread that owns all per-report state — no hop,
+            // no cancellation race (invalidation on this thread guarantees
+            // the handler never fires afterwards).
+            let timer = CFRunLoopTimerCreateWithHandler(
+                kCFAllocatorDefault,
+                CFAbsoluteTimeGetCurrent() + snap.tipUpAssistDelay / 1000.0,
+                0,  // interval — one-shot
+                0, 0
+            ) { [weak self] _ in
+                guard let self, self.pendingMouseUp != nil else { return }
+                self.pendingMouseUp = nil
+                // Fire at lastPostedPoint, not at the tip-lift position — see
+                // the timer's own reasoning at its other call site.
+                self.postMouseUp(
+                    button: btn, at: self.lastPostedPoint, clickCount: count,
+                    point: point, snapshot: capturedSnap)
+            }
+            pendingMouseUp = timer
+            if let timer {
+                CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+            }
+        } else {
+            postMouseUp(
+                button: btn, at: screenPoint, clickCount: count, point: point, snapshot: snap)
+        }
+        lastPostedPoint = screenPoint
+        lastPostedPressure = pressure
+        hasPostedPoint = true
+    }
+
+    /// Timer-fired commit of a debounce-confirmed release, replayed against
+    /// the last-known point/pressure since no report is driving this call.
+    private func commitDebouncedTipUp(snap: InjectionSnapshot) {
+        lastTipDown = false
+        guard let pt = shimLastPoint else { return }
+        if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
+            postTabletPointerEvent(
+                at: lastPostedPoint, pressure: lastPostedPressure, point: pt,
+                pose: resolveEffectivePose(point: pt, snapshot: snap), snapshot: snap)
+        }
+        if panScroll.isActive {
+            // Symmetric to the swallowed mouseDown on the way down — see inject()'s
+            // own panScroll.isActive branch in the tip-transition block.
+            return
+        }
+        releaseTip(at: lastPostedPoint, pressure: lastPostedPressure, point: pt, snap: snap)
     }
 
     /// Which barrel button a debounced-release timer handler is resolving —
