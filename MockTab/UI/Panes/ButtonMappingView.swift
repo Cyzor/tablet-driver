@@ -470,7 +470,7 @@ struct ButtonMappingView: View {
                     if hasMechanicalDial { dialToggleBlock2(lb: lb) }
                     touchRingSlotsSection(
                         ringSectionLabel,
-                        isActive: lb.touchRing2Active, showsDiagram: true,
+                        isActive: lb.touchRing2Active, showsDiagram: !hasMechanicalDial,
                         ring: .secondary)
                     if !hasTouchStrips { reverseRingDirectionToggle }
                 }
@@ -537,7 +537,7 @@ struct ButtonMappingView: View {
             hasMechanicalDial
                 ? String(localized: "Dial", comment: "Section header / row label for a mechanical rotate-only dial")
                 : String(localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-            isActive: lb.touchRingActive, showsDiagram: true,
+            isActive: lb.touchRingActive, showsDiagram: !hasMechanicalDial,
             onCenterTap: hasMechanicalDial ? nil : { centerRecordToken += 1 },
             centerBinding: hasMechanicalDial ? nil : settings.recordingBinding(
                 String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
