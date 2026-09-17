@@ -428,6 +428,17 @@ final class WacomKnownDevice: TabletDevice {
             sendWacomInputModeInit(device, tag: deviceSpec.name)
         }
 
+        // Intuos Pro gen 3 (PTK-470/670/870) BLE: unlike IntuosV2's Bluetooth
+        // Classic link (where the GATT digitizer is already always-on and
+        // writing InputMode would suppress pen data), this generation's BLE
+        // connection defaults to a minimal report (0x06) and only emits its
+        // real pen/pad reports (0x1A/0x1B) after the same DATAMODE feature
+        // report ([0x02, 0x02]) used on USB — confirmed 2026-09-16 on a real
+        // PTK-870 via the diagnostics "switch into data mode" control.
+        if isBluetooth && deviceSpec.parser == .intuosV3 {
+            executeInitSteps()
+        }
+
         // Execute the device's init sequence (USB/dongle only — not needed for BLE).
         // For wireless dongles this fires on open to start the RF search; it may be
         // silently discarded until the link is up, so it is re-run when 0x80/0x02
@@ -762,9 +773,11 @@ final class WacomKnownDevice: TabletDevice {
 
     /// Re-runs the device's init sequence on demand — see the `TabletDevice`
     /// protocol doc. Same guard as `open()`: BLE's GATT digitizer is always
-    /// active, and writing InputMode over it suppresses pen data.
+    /// active, and writing InputMode over it suppresses pen data — except
+    /// Intuos Pro gen 3 BLE, which needs the same DATAMODE re-send `open()`
+    /// performs (see the comment there).
     func reawaken() {
-        guard !isBluetooth else { return }
+        guard !isBluetooth || deviceSpec.parser == .intuosV3 else { return }
         executeInitSteps()
     }
 

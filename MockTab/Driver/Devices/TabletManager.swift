@@ -687,9 +687,12 @@ final class TabletManager: ObservableObject {
             : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
         logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public) product=\"\(productString, privacy: .public)\" serial=\(probe.rawSerialProbe ?? "—", privacy: .public)\(isBLE ? " (BT, untrusted)" : "") locationID=0x\(String(locationID, radix:16), privacy: .public)")
 
-        // BLE tablets expose multiple interfaces. Log all of them; skip ghost mouse only.
-        if isBLE && usagePage == 0x01 {
-            logger.debug("TabletManager: BLE usagePage=0x01 interface — maxRptSize=\(maxRptSize, privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) — skipping ghost mouse")
+        // BLE tablets expose multiple interfaces. Log all of them; skip the ghost
+        // HID-mouse collection only — usagePage 0x01 also carries other legitimate
+        // top-level collections (e.g. usage 0x80 System Control on PTK-870 gen 3),
+        // which must not be dropped alongside the real mouse ghost interface.
+        if isBLE && usagePage == 0x01 && usage == 0x02 {
+            logger.debug("TabletManager: BLE usagePage=0x01 usage=0x02 interface — maxRptSize=\(maxRptSize, privacy: .public) — skipping ghost mouse")
             return
         }
 
