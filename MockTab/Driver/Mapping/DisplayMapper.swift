@@ -23,6 +23,44 @@ private let displayMapperLog = Logger(subsystem: "com.cyzor.mocktab", category: 
 /// requirement `InputInjector` had before this was a separate type.
 struct DisplayMapper {
 
+    /// Insets an active-area crop rect (in raw device units) so its visual
+    /// aspect ratio matches the display's, avoiding stretching. Shared by
+    /// `mapToScreen` (runtime injection), `CalibrationSession.normalizeRawPoint`
+    /// (calibration-sample normalization), and the Active Area editor's
+    /// preview overlay — previously three near-identical copies of this
+    /// formula existed; consolidated 2026-09-17.
+    ///
+    /// `surfaceAspect` should already reflect orientation (swapped if the
+    /// device is in a portrait orientation) and any vendor-profile physical
+    /// mm aspect; pass `effMaxX / effMaxY` for isotropic hardware with no mm
+    /// data. `areaX/Y/W/H` are the pre-crop active-area rect in raw units
+    /// (already scaled by the user's active-area fractions); `effMaxX/Y` are
+    /// the oriented axis ranges the crop rect lives within.
+    static func proportionalCrop(
+        areaX: Double, areaY: Double, areaW: Double, areaH: Double,
+        effMaxX: Double, effMaxY: Double,
+        surfaceAspect: Double, displayAspect: Double
+    ) -> (areaX: Double, areaY: Double, areaW: Double, areaH: Double) {
+        var areaX = areaX, areaY = areaY, areaW = areaW, areaH = areaH
+        // Crop as a *ratio of aspects*, never by cross-multiplying one axis's
+        // raw units against the other's: nothing guarantees the two axes
+        // share a units-per-mm scale, and if they don't, `areaH *
+        // displayAspect` is not an X-axis length. For isotropic hardware
+        // these expressions reduce exactly to the old areaH*displayAspect /
+        // areaW/displayAspect forms.
+        let tabletAspect = surfaceAspect * (areaW / effMaxX) / (areaH / effMaxY)
+        if tabletAspect > displayAspect {
+            let effectiveW = areaW * (displayAspect / tabletAspect)
+            areaX += (areaW - effectiveW) / 2
+            areaW = effectiveW
+        } else if tabletAspect < displayAspect {
+            let effectiveH = areaH * (tabletAspect / displayAspect)
+            areaY += (areaH - effectiveH) / 2
+            areaH = effectiveH
+        }
+        return (areaX, areaY, areaW, areaH)
+    }
+
     // MARK: - Display bounds cache
 
     private var cachedDisplayBounds: CGRect = .zero
@@ -329,23 +367,11 @@ struct DisplayMapper {
             } else {
                 surfaceAspect = effMaxX / effMaxY
             }
-            let tabletAspect = surfaceAspect * (areaW / effMaxX) / (areaH / effMaxY)
             let displayAspect = Double(displayBounds.width) / Double(displayBounds.height)
-            // Crop as a *ratio of aspects*, never by cross-multiplying one
-            // axis's raw units against the other's: nothing guarantees the
-            // two axes share a units-per-mm scale, and if they don't,
-            // `areaH * displayAspect` is not an X-axis length. For
-            // isotropic hardware these expressions reduce exactly to the
-            // old areaH*displayAspect / areaW/displayAspect forms.
-            if tabletAspect > displayAspect {
-                let effectiveW = areaW * (displayAspect / tabletAspect)
-                areaX += (areaW - effectiveW) / 2
-                areaW = effectiveW
-            } else if tabletAspect < displayAspect {
-                let effectiveH = areaH * (tabletAspect / displayAspect)
-                areaY += (areaH - effectiveH) / 2
-                areaH = effectiveH
-            }
+            (areaX, areaY, areaW, areaH) = Self.proportionalCrop(
+                areaX: areaX, areaY: areaY, areaW: areaW, areaH: areaH,
+                effMaxX: effMaxX, effMaxY: effMaxY,
+                surfaceAspect: surfaceAspect, displayAspect: displayAspect)
         }
 
         let relX = (ox - areaX) / areaW

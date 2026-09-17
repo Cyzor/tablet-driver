@@ -149,6 +149,22 @@ struct TabletAreaView: View {
                         }
                     ) { areaRect, cs in
                         Canvas { ctx, _ in
+                            // areaRect is the crop box's LIVE canvas-pixel
+                            // rect (tracks a drag in progress), not the
+                            // last-committed settings value — converting it
+                            // back to a fraction here (rather than reading
+                            // activeAreaBinding) is what makes the
+                            // letterbox preview track the drag instead of
+                            // only updating on drag-end.
+                            let liveFraction = NormalizedRect(
+                                x: areaRect.minX / cs.width, y: areaRect.minY / cs.height,
+                                w: areaRect.width / cs.width, h: areaRect.height / cs.height)
+                            if let crop = proportionalCropRect(insetting: liveFraction) {
+                                let cropRect = CGRect(
+                                    x: crop.x * cs.width, y: crop.y * cs.height,
+                                    width: crop.w * cs.width, height: crop.h * cs.height)
+                                letterboxOverlay(ctx: ctx, activeAreaRect: areaRect, liveRect: cropRect)
+                            }
                             tabletBadge(ctx: ctx, areaRect: areaRect)
                         }
                         .frame(width: cs.width, height: cs.height)
@@ -422,6 +438,51 @@ struct TabletAreaView: View {
         return CalibrationKey.uuidString(for: CGMainDisplayID())
     }
 
+    /// Aspect ratio of the current target display, or `nil` for "All
+    /// Displays" (no single aspect ratio applies) or if resolution fails.
+    /// Mirrors `resolveCurrentDisplayUUID`'s display-lookup pattern.
+    private var targetDisplayAspectRatio: Double? {
+        let idx = settings.targetDisplayIndex
+        guard idx != TabletSettings.displayModeAll else { return nil }
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return nil }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return nil }
+        let displayID = (idx > 0 && idx <= ids.count) ? ids[idx - 1] : CGMainDisplayID()
+        let bounds = CGDisplayBounds(displayID)
+        guard bounds.height > 0 else { return nil }
+        return Double(bounds.width) / Double(bounds.height)
+    }
+
+    /// Insets `rect` (the active area, in the same [0,1] fraction space as
+    /// `activeAreaBinding`) by `proportionalMapping`'s aspect-ratio
+    /// letterbox — i.e. the region that actually receives pen input once
+    /// the letterbox is applied. `nil` when proportional mapping is off or
+    /// the display aspect ratio can't be resolved (no letterbox drawn —
+    /// the full active area is live).
+    ///
+    /// Takes `rect` as a parameter, rather than reading
+    /// `activeAreaBinding.wrappedValue` directly, so the caller can pass
+    /// `NormalizedAreaEditor`'s live drag-in-progress rect and have the
+    /// letterbox preview track the crop box while it's being dragged,
+    /// instead of only updating once the drag commits.
+    private func proportionalCropRect(insetting rect: NormalizedRect) -> NormalizedRect? {
+        guard settings.proportionalMapping, let displayAspect = targetDisplayAspectRatio else {
+            return nil
+        }
+        // Work in the same oriented, unit-free space DisplayMapper/
+        // CalibrationSession use: effMaxX/effMaxY of 1.0 each, since the
+        // rect here is already fractional (0-1) rather than raw device
+        // units — the crop math is unit-free by design (see
+        // DisplayMapper.proportionalCrop's doc comment).
+        let surfaceAspect = orientedAspectRatio
+        let (x, y, w, h) = DisplayMapper.proportionalCrop(
+            areaX: rect.x, areaY: rect.y, areaW: rect.w, areaH: rect.h,
+            effMaxX: 1.0, effMaxY: 1.0,
+            surfaceAspect: surfaceAspect, displayAspect: displayAspect)
+        return NormalizedRect(x: x, y: y, w: w, h: h)
+    }
+
     @State private var calibrationWindow: CalibrationOverlayWindow?
 
     /// Launch the calibration overlay on the target display.
@@ -597,6 +658,22 @@ struct TabletAreaView: View {
                            anchor: .center)
             }
         }
+    }
+
+    // MARK: - Proportional-mapping letterbox preview
+
+    /// Dims the strip(s) of the active area that `proportionalMapping`
+    /// excludes from live pen input — the region between `activeAreaRect`
+    /// (the user's configured crop) and `liveRect` (that crop further inset
+    /// to match the target display's aspect ratio, per
+    /// `DisplayMapper.proportionalCrop`). Mirrors the exterior-dimming
+    /// technique `NormalizedAreaEditor.cropOverlay` already uses for the
+    /// area outside the active-area rect (even-odd fill), one layer deeper.
+    private func letterboxOverlay(ctx: GraphicsContext, activeAreaRect: CGRect, liveRect: CGRect) {
+        guard liveRect != activeAreaRect else { return }
+        var region = Path(activeAreaRect)
+        region.addRect(liveRect)
+        ctx.fill(region, with: .color(.black.opacity(0.25)), style: FillStyle(eoFill: true))
     }
 
 }

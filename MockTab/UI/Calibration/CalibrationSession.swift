@@ -197,17 +197,11 @@ final class CalibrationSession: ObservableObject {
             {
                 surfaceAspect = orientation.swapsAxes ? h / w : w / h
             }
-            let tabletAspect = surfaceAspect * (areaW / effMaxX) / (areaH / effMaxY)
             let displayAspect = Double(displayBounds.width) / Double(displayBounds.height)
-            if tabletAspect > displayAspect {
-                let effectiveW = areaW * (displayAspect / tabletAspect)
-                areaX += (areaW - effectiveW) / 2
-                areaW = effectiveW
-            } else if tabletAspect < displayAspect {
-                let effectiveH = areaH * (tabletAspect / displayAspect)
-                areaY += (areaH - effectiveH) / 2
-                areaH = effectiveH
-            }
+            (areaX, areaY, areaW, areaH) = DisplayMapper.proportionalCrop(
+                areaX: areaX, areaY: areaY, areaW: areaW, areaH: areaH,
+                effMaxX: effMaxX, effMaxY: effMaxY,
+                surfaceAspect: surfaceAspect, displayAspect: displayAspect)
         }
 
         let relX = (ox - areaX) / areaW
