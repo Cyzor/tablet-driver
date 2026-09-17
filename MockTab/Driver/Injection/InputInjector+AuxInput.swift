@@ -79,6 +79,16 @@ extension InputInjector {
                              at: cursorPos, snapshot: snap, settings: settings, isAux: true)
         }
 
+        // ── Second dial's own toggle key (PTK-670/870's right cluster
+        // center) — same edge-tracking pattern as the touch ring center
+        // button above, targeting the independent touchRingButtonBinding2. ──
+        let ring2ButtonDown = buttons.touchRing2ButtonDown
+        if ring2ButtonDown != lastRing2ButtonDown {
+            lastRing2ButtonDown = ring2ButtonDown
+            fireButtonAction(snap.touchRingButtonBinding2, down: ring2ButtonDown,
+                             at: cursorPos, snapshot: snap, settings: settings, isAux: true)
+        }
+
         // ── Touch ring ─────────────────────────────────────────────────────────
         // Position 0x7F means no contact.  Compute a wrap-aware delta when a
         // finger is actively moving (both current and previous positions valid).
@@ -261,13 +271,25 @@ extension InputInjector {
         guard let snap = injectionSnapshot else { return }
         let cursorPos = currentCursorPosition()
         // Xencelabs Quick Keys has a single dial reusing the Wacom touch-ring
-        // mode-cycling model (4 selectable modes via a mode-cycle key), unlike
-        // IntuosV3 PTK-x70's two independent physical wheels (each hardware
-        // index is a distinct wheel, not a mode). So for the dial, resolve
-        // through the live active-slot index rather than the fixed hardware
-        // index — otherwise "Ring: Cycle" / "Jump to Mode N" have no effect
-        // on the dial even though the UI exposes them.
-        let slotIndex = deviceVendorID == 0x28BD ? snap.touchRingActiveSlotIndex : index
+        // mode-cycling model (4 selectable modes via a mode-cycle key).
+        // IntuosV3 PTK-x70 hardware has up to two independent physical
+        // dials — each hardware wheel `index` is a distinct dial, each with
+        // its own live active-slot index (`touchRingActiveSlotIndex` for
+        // index 0, `touchRingActiveSlotIndex2` for index 1), not a fixed
+        // slot pinned to the hardware index. Previously index was used
+        // directly as the slot index, which meant `.ringCycle`/
+        // `.ringSelectSlot` bindings had no effect at all on this hardware —
+        // dial 1 always played `touchRingSlots[0]` and dial 2 always played
+        // `touchRingSlots[1]`, regardless of the selected mode. Fixed
+        // 2026-09-16 on a real PTK-870 report.
+        let slotIndex: Int
+        if deviceVendorID == 0x28BD {
+            slotIndex = snap.touchRingActiveSlotIndex
+        } else if index == 0 {
+            slotIndex = snap.touchRingActiveSlotIndex
+        } else {
+            slotIndex = snap.touchRingActiveSlotIndex2
+        }
         let slot: ControlSlot? = snap.touchRingSlots.indices.contains(slotIndex)
             ? snap.touchRingSlots[slotIndex] : nil
         if let slot {

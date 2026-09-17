@@ -14,7 +14,10 @@ struct ButtonBinding: Codable, Equatable {
     enum Kind: String, Codable {
         case none, leftClick, rightClick, middleClick, middleClickWithTip, eraser, keyCombo,
             displayToggle, doubleClick, spacebar, ringCycle, ringSelectSlot, scrollDrag,
-            relativeModeToggle
+            relativeModeToggle,
+            // Second ring/dial's own mode-cycle actions (PTK-670/870's two
+            // independent mechanical dials) — see touchRingActiveSlotIndex2.
+            ringCycle2, ringSelectSlot2
     }
 
     var kind: Kind = .none
@@ -169,6 +172,13 @@ struct ButtonBinding: Codable, Equatable {
         case .ringSelectSlot:
             return String(
                 localized: "Ring: Mode \(keyCode + 1)", comment: "Button action: jump to ring slot")
+        case .ringCycle2:
+            return String(
+                localized: "Dial 2: Cycle", comment: "Button action: cycle the second dial's mode")
+        case .ringSelectSlot2:
+            return String(
+                localized: "Dial 2: Mode \(keyCode + 1)",
+                comment: "Button action: jump to the second dial's mode slot")
         case .scrollDrag:
             return String(
                 localized: "Pan View",
@@ -219,11 +229,18 @@ struct ButtonBinding: Codable, Equatable {
         case "Toggle Display": return ButtonBinding(kind: .displayToggle)
         case "Toggle Relative Mode": return ButtonBinding(kind: .relativeModeToggle)
         case "Ring: Cycle": return ButtonBinding(kind: .ringCycle)
+        case "Dial 2: Cycle": return ButtonBinding(kind: .ringCycle2)
         default:
             if label.hasPrefix("Ring: Mode ") {
                 let numStr = label.dropFirst("Ring: Mode ".count)
                 if let num = Int(numStr), num > 0 {
                     return ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(num - 1))
+                }
+            }
+            if label.hasPrefix("Dial 2: Mode ") {
+                let numStr = label.dropFirst("Dial 2: Mode ".count)
+                if let num = Int(numStr), num > 0 {
+                    return ButtonBinding(kind: .ringSelectSlot2, keyCode: UInt16(num - 1))
                 }
             }
             return parseKeyComboLabel(label) ?? .none

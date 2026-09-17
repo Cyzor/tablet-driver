@@ -14,6 +14,13 @@ struct ButtonBindingControl: View, Equatable {
     @Binding var binding: ButtonBinding
     var compact: Bool = false
     var ringSlotCount: Int = 4
+    /// Whether to offer "Dial 2: Cycle"/"Dial 2: Mode N" actions in the Touch
+    /// Ring Mode submenu, alongside the existing (dial-1) actions. Only
+    /// meaningful on hardware with two independent mechanical dials
+    /// (PTK-670/870) — every other caller leaves this false, including this
+    /// same control when used for express keys, pen buttons, or bezel
+    /// buttons on any device.
+    var offersSecondDial: Bool = false
     /// Incremented by an external control (the ring diagram's center button)
     /// to begin recording in this field, exactly as if it had been clicked.
     var recordRequestToken: Int = 0
@@ -30,6 +37,7 @@ struct ButtonBindingControl: View, Equatable {
         lhs.binding == rhs.binding
             && lhs.compact == rhs.compact
             && lhs.ringSlotCount == rhs.ringSlotCount
+            && lhs.offersSecondDial == rhs.offersSecondDial
             && lhs.recordRequestToken == rhs.recordRequestToken
     }
 
@@ -120,6 +128,18 @@ struct ButtonBindingControl: View, Equatable {
                         binding = ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i))
                     }
                     .help("Switch ring directly to mode \(i + 1)")
+                }
+                if offersSecondDial {
+                    Divider()
+                    Button("Cycle (Second Dial)") { binding = ButtonBinding(kind: .ringCycle2) }
+                        .help("Cycle through the second dial's modes")
+                    Divider()
+                    ForEach(0..<ringSlotCount, id: \.self) { i in
+                        Button("Jump Second Dial to Mode \(i + 1)") {
+                            binding = ButtonBinding(kind: .ringSelectSlot2, keyCode: UInt16(i))
+                        }
+                        .help("Switch the second dial directly to mode \(i + 1)")
+                    }
                 }
             }
             Divider()

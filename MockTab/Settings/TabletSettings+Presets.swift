@@ -50,10 +50,12 @@ extension TabletSettings {
         ud.set(expressKeyRaw, forKey: prefix + "expressKeyBindings")
         ud.set(bezelButtonRaw, forKey: prefix + "bezelButtonBindings")
         ud.set(touchRingButtonRaw, forKey: prefix + "touchRingButtonBinding")
+        ud.set(touchRingButtonRaw2, forKey: prefix + "touchRingButtonBinding2")
         if let data = try? JSONEncoder().encode(touchRingSlots) {
             ud.set(data, forKey: prefix + "touchRingSlotsJSON")
         }
         ud.set(touchRingActiveSlotIndex, forKey: prefix + "touchRingActiveSlotIndex")
+        ud.set(touchRingActiveSlotIndex2, forKey: prefix + "touchRingActiveSlotIndex2")
         if let data = try? JSONEncoder().encode(pressureCurve) {
             ud.set(data, forKey: prefix + "pressureCurve")
         }
@@ -63,8 +65,9 @@ extension TabletSettings {
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
             "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
             "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
-            "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
-            "touchRingActiveSlotIndex", "pressureCurve", "calibrationJSON",
+            "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding",
+            "touchRingButtonBinding2", "touchRingSlotsJSON",
+            "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2", "pressureCurve", "calibrationJSON",
         ]
 
         profiles.append(profile)
@@ -198,8 +201,9 @@ extension TabletSettings {
         "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
         "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
         "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
-        "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding", "touchRingSlotsJSON",
-        "touchRingActiveSlotIndex", "pressureCurve", "calibrationJSON",
+        "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding",
+        "touchRingButtonBinding2", "touchRingSlotsJSON",
+        "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2", "pressureCurve", "calibrationJSON",
     ]
 
     func deletePreset(_ profile: Profile) {
@@ -337,8 +341,10 @@ extension TabletSettings {
         var expressKeyRaw: String
         var bezelButtonRaw: String
         var touchRingButtonRaw: String
+        var touchRingButtonRaw2: String
         var touchRingSlots: [ControlSlot]
         var touchRingActiveSlotIndex: Int
+        var touchRingActiveSlotIndex2: Int
         var autoSwitchEnabled: Bool
     }
 
@@ -364,8 +370,10 @@ extension TabletSettings {
             expressKeyRaw: expressKeyRaw,
             bezelButtonRaw: bezelButtonRaw,
             touchRingButtonRaw: touchRingButtonRaw,
+            touchRingButtonRaw2: touchRingButtonRaw2,
             touchRingSlots: touchRingSlots,
             touchRingActiveSlotIndex: touchRingActiveSlotIndex,
+            touchRingActiveSlotIndex2: touchRingActiveSlotIndex2,
             autoSwitchEnabled: autoSwitchEnabled)
     }
 
@@ -402,8 +410,10 @@ extension TabletSettings {
         expressKeyRaw = snap.expressKeyRaw
         bezelButtonRaw = snap.bezelButtonRaw
         touchRingButtonRaw = snap.touchRingButtonRaw
+        touchRingButtonRaw2 = snap.touchRingButtonRaw2
         touchRingSlots = snap.touchRingSlots
         touchRingActiveSlotIndex = snap.touchRingActiveSlotIndex
+        touchRingActiveSlotIndex2 = snap.touchRingActiveSlotIndex2
         autoSwitchEnabled = snap.autoSwitchEnabled
     }
 
@@ -457,8 +467,13 @@ extension TabletSettings {
         if TouchRingMode(rawValue: profile.touchRingMode) != nil {
             touchRingSlots = ControlSlot.defaults
             touchRingActiveSlotIndex = 0
+            touchRingActiveSlotIndex2 = 0
         }
         touchRingButtonBinding = profile.touchRingButtonBinding
+        // TabletSnapshot (the portable export format) has no dial-2 field —
+        // matches its existing dial-1-only fidelity — so reset to default
+        // rather than leave a stale value from before the import.
+        touchRingButtonBinding2 = ButtonBinding(kind: .ringCycle2)
     }
 
     /// Applies pen-display defaults for the first connection of a Cintiq-class device.

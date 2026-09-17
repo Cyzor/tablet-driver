@@ -66,6 +66,14 @@ struct ButtonMappingView: View {
     private var hasTouchRing: Bool { spec?.hasTouchRing == true }
     private var hasDualRings: Bool { spec?.hasDualRings == true }
     private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
+    /// True for PTK-470/670/870 (Intuos Pro gen 3): mechanical rotate-only
+    /// dials rather than a capacitive touch ring. Drives the "Dial" vs.
+    /// "Touch Ring" section label and hides the nonexistent center-click row
+    /// — confirmed on real hardware 2026-09-16 that these dials have no
+    /// press action at all; the mode-cycle function Wacom's own driver
+    /// exposes lives on an ExpressKey ("Dial toggle"), not a ring center
+    /// button. See `WacomDeviceSpec.hasMechanicalDial`'s doc comment.
+    private var hasMechanicalDial: Bool { spec?.hasMechanicalDial == true }
 
     /// Whether to draw the split left/right *pad* layout (three toggle buttons
     /// plus five express keys per side, sixteen fixed slots). That shape is a
@@ -128,10 +136,11 @@ struct ButtonMappingView: View {
     }
 
     /// Number of express-key rows to display in the single-sided section.
-    /// Driven by the active device spec so PTK-670/870 (8 keys, plus a
-    /// separate dial center-press on each ring — not counted here) and DTU
-    /// (4 keys) get the right row count instead of a hard-coded 8. Clamped
-    /// to the storage limit of `expressKeyBindings` (16) for safety.
+    /// Driven by the active device spec so PTK-670/870 (8 keys — the dials
+    /// themselves have no press action at all; their mode-cycle toggle is
+    /// itself an ExpressKey function, not a separate control counted here)
+    /// and DTU (4 keys) get the right row count instead of a hard-coded 8.
+    /// Clamped to the storage limit of `expressKeyBindings` (16) for safety.
     private var expressKeyCount: Int {
         let count = spec?.buttonCount ?? 8
         return min(max(count, 0), 16)
@@ -198,16 +207,16 @@ struct ButtonMappingView: View {
         tip: ButtonBinding, eraser: ButtonBinding, pen1: ButtonBinding, pen2: ButtonBinding
     )
     private typealias ButtonSettingsState = (
-        expressKeys: [ButtonBinding], touchRingButton: ButtonBinding,
-        touchRingSlots: [ControlSlot], touchRingActiveSlot: Int,
+        expressKeys: [ButtonBinding], touchRingButton: ButtonBinding, touchRingButton2: ButtonBinding,
+        touchRingSlots: [ControlSlot], touchRingActiveSlot: Int, touchRingActiveSlot2: Int,
         reverseRingDirection: Bool
     )
 
     private func resetToDefaults() {
         let toolOld: ButtonToolState = (tool.tipBinding, tool.eraserBinding, tool.penButton1Binding, tool.penButton2Binding)
         let settingsOld: ButtonSettingsState = (
-            settings.expressKeyBindings, settings.touchRingButtonBinding,
-            settings.touchRingSlots, settings.touchRingActiveSlotIndex,
+            settings.expressKeyBindings, settings.touchRingButtonBinding, settings.touchRingButtonBinding2,
+            settings.touchRingSlots, settings.touchRingActiveSlotIndex, settings.touchRingActiveSlotIndex2,
             settings.reverseRingDirection
         )
         let isMouse = activeToolSpec?.toolType == .mouse
@@ -215,7 +224,8 @@ struct ButtonMappingView: View {
         let vendorID = tabletManager.context(forKey: instanceKey)?.vendorID ?? 0x056A
         let settingsDefaults: ButtonSettingsState = (
             TabletSettings.defaultExpressKeyBindings(vendorID: vendorID),
-            ButtonBinding(kind: .ringCycle), ControlSlot.defaults, 0, false
+            ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2),
+            ControlSlot.defaults, 0, 0, false
         )
 
         settings.undoManager?.beginUndoGrouping()
@@ -231,13 +241,16 @@ struct ButtonMappingView: View {
         if let companionSettings = companionContext?.settings {
             let companionSettingsOld: ButtonSettingsState = (
                 companionSettings.expressKeyBindings, companionSettings.touchRingButtonBinding,
+                companionSettings.touchRingButtonBinding2,
                 companionSettings.touchRingSlots, companionSettings.touchRingActiveSlotIndex,
+                companionSettings.touchRingActiveSlotIndex2,
                 companionSettings.reverseRingDirection
             )
             let companionVendorID = companionContext?.vendorID ?? vendorID
             let companionSettingsDefaults: ButtonSettingsState = (
                 TabletSettings.defaultExpressKeyBindings(vendorID: companionVendorID),
-                ButtonBinding(kind: .ringCycle), ControlSlot.defaults, 0, false
+                ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2),
+                ControlSlot.defaults, 0, 0, false
             )
             applyButtonSettingsReset(
                 companionSettingsDefaults, undoTo: companionSettingsOld, on: companionSettings)
@@ -269,8 +282,10 @@ struct ButtonMappingView: View {
         let target = target ?? settings
         target.expressKeyBindings = new.expressKeys
         target.touchRingButtonBinding = new.touchRingButton
+        target.touchRingButtonBinding2 = new.touchRingButton2
         target.touchRingSlots = new.touchRingSlots
         target.touchRingActiveSlotIndex = new.touchRingActiveSlot
+        target.touchRingActiveSlotIndex2 = new.touchRingActiveSlot2
         target.reverseRingDirection = new.reverseRingDirection
         settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applyButtonSettingsReset(old, undoTo: new, on: target)
@@ -441,19 +456,26 @@ struct ButtonMappingView: View {
         // WacomKnownDevice.swift's ring2 TODO.
         // The direction toggle is device-wide, so it belongs to whichever of
         // these sections comes last rather than repeating in each.
+        //
+        // Mechanical-dial devices (PTK-470/670/870) get "Dial" instead of
+        // "Touch Ring" in every label here — confirmed hardware, not a
+        // capacitive ring — see `hasMechanicalDial`'s doc comment.
+        let ringSectionLabel = hasMechanicalDial
+            ? String(localized: "Dial", comment: "Section header / row label for a mechanical rotate-only dial")
+            : String(localized: "Touch Ring", comment: "Section header / row label for touch ring")
         if hasTouchRing {
             if hasDualRings {
-                Section("Touch Ring — Left") { touchRingBlock(lb: lb) }
-                Section("Touch Ring — Right") {
+                Section("\(ringSectionLabel) — Left") { touchRingBlock(lb: lb) }
+                Section("\(ringSectionLabel) — Right") {
+                    if hasMechanicalDial { dialToggleBlock2(lb: lb) }
                     touchRingSlotsSection(
-                        String(
-                            localized: "Touch Ring",
-                            comment: "Section header / row label for touch ring"),
-                        isActive: lb.touchRing2Active, showsDiagram: true)
+                        ringSectionLabel,
+                        isActive: lb.touchRing2Active, showsDiagram: true,
+                        ring: .secondary)
                     if !hasTouchStrips { reverseRingDirectionToggle }
                 }
             } else {
-                Section("Touch Ring") {
+                Section(ringSectionLabel) {
                     touchRingBlock(lb: lb)
                     if !hasTouchStrips { reverseRingDirectionToggle }
                 }
@@ -477,27 +499,68 @@ struct ButtonMappingView: View {
 
     /// Center-click row plus the ring's mode list — the body of the primary
     /// ring's section, shared by the single-ring and dual-ring headers above.
+    ///
+    /// Mechanical-dial hardware (PTK-470/670/870) has no center-click action
+    /// at all — confirmed on real hardware 2026-09-16 — so the Center row and
+    /// the diagram's clickable center are both omitted for it. That
+    /// hardware's real mode-cycle trigger is an ExpressKey ("Dial toggle"),
+    /// not a ring/dial button; see `IntuosV3Decoder.decodeAuxReport`'s doc
+    /// comment for the unwired `touchRing2ButtonDown` bit this would need.
     @ViewBuilder
     private func touchRingBlock(lb: LiveButtonState) -> some View {
-        buttonRow(
-            String(localized: "Center", comment: "Touch ring center button row label"),
-            isActive: lb.touchRingButtonDown,
-            binding: settings.recordingBinding(
-                String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
-                get: { settings.touchRingButtonBinding },
-                set: { settings.touchRingButtonBinding = $0 }),
-            ringSlotCount: spec?.ringSlotCount ?? 4,
-            recordRequestToken: centerRecordToken)
+        if hasMechanicalDial {
+            // Real hardware control: the center ExpressKey of this dial's
+            // own 5-key cluster (not a ring/dial press — those don't exist
+            // on this hardware). Defaults to cycling this dial's modes,
+            // matching Wacom's own stock "Dial toggle" assignment.
+            buttonRow(
+                String(localized: "Dial Toggle", comment: "Row label for the ExpressKey that cycles a mechanical dial's modes"),
+                isActive: lb.touchRingButtonDown,
+                binding: settings.recordingBinding(
+                    String(localized: "Dial Toggle", comment: "Undo action name: dial toggle key binding in the Buttons pane"),
+                    get: { settings.touchRingButtonBinding },
+                    set: { settings.touchRingButtonBinding = $0 }),
+                ringSlotCount: spec?.ringSlotCount ?? 4,
+                recordRequestToken: centerRecordToken)
+        } else {
+            buttonRow(
+                String(localized: "Center", comment: "Touch ring center button row label"),
+                isActive: lb.touchRingButtonDown,
+                binding: settings.recordingBinding(
+                    String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
+                    get: { settings.touchRingButtonBinding },
+                    set: { settings.touchRingButtonBinding = $0 }),
+                ringSlotCount: spec?.ringSlotCount ?? 4,
+                recordRequestToken: centerRecordToken)
+        }
         touchRingSlotsSection(
-            String(
-                localized: "Touch Ring",
-                comment: "Section header / row label for touch ring"),
+            hasMechanicalDial
+                ? String(localized: "Dial", comment: "Section header / row label for a mechanical rotate-only dial")
+                : String(localized: "Touch Ring", comment: "Section header / row label for touch ring"),
             isActive: lb.touchRingActive, showsDiagram: true,
-            onCenterTap: { centerRecordToken += 1 },
-            centerBinding: settings.recordingBinding(
+            onCenterTap: hasMechanicalDial ? nil : { centerRecordToken += 1 },
+            centerBinding: hasMechanicalDial ? nil : settings.recordingBinding(
                 String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
                 get: { settings.touchRingButtonBinding },
                 set: { settings.touchRingButtonBinding = $0 }))
+    }
+
+    /// Second dial's own "Dial Toggle" row (PTK-670/870's right cluster
+    /// center key) — the counterpart to `touchRingBlock`'s row, but for
+    /// `touchRingButtonBinding2`. Only ever shown alongside
+    /// `touchRingSlotsSection(ring: .secondary)` for `hasMechanicalDial`
+    /// devices; capacitive dual-ring hardware (Cintiq 24HD) has no
+    /// equivalent second toggle key and never calls this.
+    @ViewBuilder
+    private func dialToggleBlock2(lb: LiveButtonState) -> some View {
+        buttonRow(
+            String(localized: "Dial Toggle", comment: "Row label for the ExpressKey that cycles a mechanical dial's modes"),
+            isActive: lb.touchRing2ButtonDown,
+            binding: settings.recordingBinding(
+                String(localized: "Dial 2 Toggle", comment: "Undo action name: second dial toggle key binding in the Buttons pane"),
+                get: { settings.touchRingButtonBinding2 },
+                set: { settings.touchRingButtonBinding2 = $0 }),
+            ringSlotCount: spec?.ringSlotCount ?? 4)
     }
 
     /// Direction preference for every ring/dial/strip on the device — one
@@ -739,7 +802,11 @@ struct ButtonMappingView: View {
                     settings.expressKeyBindings = updated
                 }
             ),
-            ringSlotCount: spec?.ringSlotCount ?? 4
+            ringSlotCount: spec?.ringSlotCount ?? 4,
+            // Only PTK-670/870-class hardware has a second, independent dial
+            // that needs its own toggle-key actions offered — see
+            // `hasMechanicalDial`'s doc comment.
+            offersSecondDial: hasDualRings && hasMechanicalDial
         )
     }
 
@@ -748,9 +815,21 @@ struct ButtonMappingView: View {
     /// The mode block for a ring or strip: label row, then the summary-list/
     /// detail-editor component (which carries the clickable ring diagram when
     /// `showsDiagram` is set — rings only, strips have no round schematic).
+    ///
+    /// `ring` selects which dial's live active-slot index this block reads —
+    /// `.primary` for the single ring, the left dial, or a strip; `.secondary`
+    /// for PTK-670/870's independent right dial. The underlying slot
+    /// *definitions* (`settings.touchRingSlots` — what each of the 3-4 modes
+    /// does) are still shared between both dials; only which slot is
+    /// currently active differs. Splitting slot definitions themselves per
+    /// dial is deferred, unstarted work — see
+    /// `project_ptk870_dial_ui_mislabeling_fix.md`.
+    private enum RingIdentity { case primary, secondary }
+
     @ViewBuilder
     private func touchRingSlotsSection(
         _ label: String, isActive: Bool, showsDiagram: Bool = false,
+        ring: RingIdentity = .primary,
         onCenterTap: (() -> Void)? = nil,
         centerBinding: Binding<ButtonBinding>? = nil
     ) -> some View {
@@ -763,13 +842,18 @@ struct ButtonMappingView: View {
 
         // Show only as many slots as the spec declares (default 4); model always stores 4.
         let ringSlotCount = spec?.ringSlotCount ?? 4
+        let activeIndex = ring == .primary
+            ? settings.touchRingActiveSlotIndex : settings.touchRingActiveSlotIndex2
         TouchRingModeListView(
             slots: settings.touchRingSlots,
             shownSlotCount: min(settings.touchRingSlots.count, ringSlotCount),
             ringSlotCount: ringSlotCount,
             isRingActive: isActive,
-            activeSlotIndex: settings.touchRingActiveSlotIndex,
-            centerDown: liveButtons.touchRingButtonDown,
+            activeSlotIndex: activeIndex,
+            // No physical center action on mechanical-dial hardware (see
+            // `hasMechanicalDial`), so the diagram's center dot never lights
+            // regardless of whatever `touchRingButtonDown` happens to read.
+            centerDown: hasMechanicalDial ? false : liveButtons.touchRingButtonDown,
             showsDiagram: showsDiagram,
             actionBinding: slotBinding(at:),
             speedBinding: slotSpeedBinding(at:),

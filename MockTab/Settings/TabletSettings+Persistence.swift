@@ -47,8 +47,10 @@ extension TabletSettings {
         expressKeyRaw = loadString("expressKeyBindings", default: "")
         bezelButtonRaw = loadString("bezelButtonBindings", default: "")
         touchRingButtonRaw = loadString("touchRingButtonBinding", default: "")
+        touchRingButtonRaw2 = loadString("touchRingButtonBinding2", default: "")
         loadTouchRingSlots()
         touchRingActiveSlotIndex = loadInt("touchRingActiveSlotIndex", default: 0)
+        touchRingActiveSlotIndex2 = loadInt("touchRingActiveSlotIndex2", default: 0)
         reverseRingDirection = loadBool("reverseRingDirection", default: false)
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
         invertRotation = loadBool("invertRotation", default: false)
@@ -361,8 +363,10 @@ extension TabletSettings {
         expressKeyRaw = ""
         bezelButtonRaw = ""
         touchRingButtonRaw = ""
+        touchRingButtonRaw2 = ""
         touchRingSlots = ControlSlot.defaults
         touchRingActiveSlotIndex = 0
+        touchRingActiveSlotIndex2 = 0
     }
 
     // MARK: - First-run defaults

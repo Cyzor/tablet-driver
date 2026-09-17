@@ -283,6 +283,7 @@ final class InputInjector: @unchecked Sendable {
         liveInjectorsLock.withLock { live in
             for injector in live.table.allObjects {
                 if injector.lastAuxButtons.contains(true) || injector.lastRingButtonDown
+                    || injector.lastRing2ButtonDown
                     || injector.lastRingPos != 0x7F || injector.lastRing2Pos != 0x7F
                     || injector.lastStrip1Pos != 0xFF || injector.lastStrip2Pos != 0xFF
                 { return true }
@@ -707,6 +708,9 @@ final class InputInjector: @unchecked Sendable {
 
     var lastAuxButtons = [Bool](repeating: false, count: 19)
     var lastRingButtonDown = false
+    /// Same as `lastRingButtonDown`, for the second dial's own toggle key
+    /// (PTK-670/870's right cluster center). Unused on every other device.
+    var lastRing2ButtonDown = false
     /// Last observed touch ring position (0–71). 0x7F = no contact.
     var lastRingPos: UInt8 = 0x7F
     /// Last observed right touch ring position (DTK-2400). 0x7F = no contact.
@@ -893,7 +897,7 @@ final class InputInjector: @unchecked Sendable {
     var tabletIsQuiescent: Bool {
         !lastTipDown && !lastButton1Down && !lastButton2Down && !lastButton3Down
             && !lastMiddleDown
-            && !lastRingButtonDown
+            && !lastRingButtonDown && !lastRing2ButtonDown
             && lastRingPos == 0x7F && lastRing2Pos == 0x7F
             && lastStrip1Pos == 0xFF && lastStrip2Pos == 0xFF
             && lastUSBMouseMask == 0

@@ -549,6 +549,15 @@ final class TabletSettings: ObservableObject {
     @Published var touchRingActiveSlotIndex: Int = 0 {
         didSet { persist("touchRingActiveSlotIndex", touchRingActiveSlotIndex) }
     }
+    /// Active mode slot for the second, independent dial (PTK-670/870's right
+    /// dial). Unused on every other device — those only ever read/write
+    /// `touchRingActiveSlotIndex`. Kept as its own stored property rather
+    /// than an array/dictionary because exactly two dials exist on any
+    /// current or foreseeable hardware, matching the codebase's established
+    /// `touchRingActive`/`touchRing2Active`-style pairing convention.
+    @Published var touchRingActiveSlotIndex2: Int = 0 {
+        didSet { persist("touchRingActiveSlotIndex2", touchRingActiveSlotIndex2) }
+    }
     /// When true, the sign of every ring/dial/strip delta is flipped before the
     /// slot's action sees it, so clockwise does what counter-clockwise did.
     /// Applies to all four actions (scroll, zoom, rotate, key press) and to
@@ -582,6 +591,13 @@ final class TabletSettings: ObservableObject {
     @Published var touchRingButtonRaw: String = "" {
         didSet { persist("touchRingButtonBinding", touchRingButtonRaw) }
     }
+    /// Second dial's own toggle-key binding (PTK-670/870's right cluster
+    /// center key). Unused on every other device. Defaults to `.ringCycle2`
+    /// so the second dial cycles modes out of the box, same as the first
+    /// dial's `touchRingButtonBinding` defaulting to `.ringCycle`.
+    @Published var touchRingButtonRaw2: String = "" {
+        didSet { persist("touchRingButtonBinding2", touchRingButtonRaw2) }
+    }
 
     var penButton1Binding: ButtonBinding {
         get { ButtonBinding.decode(pen1Raw) ?? .rightClick }
@@ -596,6 +612,11 @@ final class TabletSettings: ObservableObject {
     var touchRingButtonBinding: ButtonBinding {
         get { ButtonBinding.decode(touchRingButtonRaw) ?? ButtonBinding(kind: .ringCycle) }
         set { touchRingButtonRaw = newValue.encoded }
+    }
+
+    var touchRingButtonBinding2: ButtonBinding {
+        get { ButtonBinding.decode(touchRingButtonRaw2) ?? ButtonBinding(kind: .ringCycle2) }
+        set { touchRingButtonRaw2 = newValue.encoded }
     }
 
     var expressKeyBindings: [ButtonBinding] {

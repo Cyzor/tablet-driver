@@ -53,8 +53,14 @@ struct InjectionSnapshot: Sendable, Equatable {
     var expressKeyBindings: [ButtonBinding]
     var bezelButtonBindings: [ButtonBinding]
     var touchRingButtonBinding: ButtonBinding
+    /// Second dial's own toggle-key binding (PTK-670/870's right cluster
+    /// center key). Unused on every other device.
+    var touchRingButtonBinding2: ButtonBinding
     var touchRingSlots: [ControlSlot]
     var touchRingActiveSlotIndex: Int
+    /// Active mode slot for the second, independent dial (PTK-670/870's right
+    /// dial). Unused on every other device.
+    var touchRingActiveSlotIndex2: Int
     var reverseRingDirection: Bool
 
     // MARK: - Capacitive finger touch
@@ -151,8 +157,10 @@ extension TabletSettings {
             expressKeyBindings: expressKeyBindings,
             bezelButtonBindings: bezelButtonBindings,
             touchRingButtonBinding: touchRingButtonBinding,
+            touchRingButtonBinding2: touchRingButtonBinding2,
             touchRingSlots: touchRingSlots,
             touchRingActiveSlotIndex: touchRingActiveSlotIndex,
+            touchRingActiveSlotIndex2: touchRingActiveSlotIndex2,
             reverseRingDirection: reverseRingDirection,
             touchEnabled: touchEnabled,
             touchSensitivity: touchSensitivity,

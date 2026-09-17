@@ -13,6 +13,7 @@ func buttonRow(
     _ label: String, isActive: Bool,
     binding: Binding<ButtonBinding>,
     ringSlotCount: Int = 4,
+    offersSecondDial: Bool = false,
     recordRequestToken: Int = 0
 ) -> some View {
     HStack(spacing: 0) {
@@ -23,6 +24,7 @@ func buttonRow(
             .scaledFrame(minWidth: 100, alignment: .trailing)
         ButtonBindingControl(
             binding: binding, ringSlotCount: ringSlotCount,
+            offersSecondDial: offersSecondDial,
             recordRequestToken: recordRequestToken)
             .equatable()
         Spacer(minLength: 0)

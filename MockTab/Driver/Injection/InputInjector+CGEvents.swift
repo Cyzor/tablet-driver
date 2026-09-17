@@ -871,6 +871,31 @@ extension InputInjector {
             if let s = settings {
                 Task { @MainActor in s.touchRingActiveSlotIndex = target }
             }
+        case .ringCycle2:
+            guard down else { break }
+            // Second, independent dial (PTK-670/870's right dial) — same
+            // cycle logic as .ringCycle, targeting touchRingActiveSlotIndex2.
+            closeRingGestureEnvelopes()
+            if let s = settings {
+                Task { @MainActor in
+                    let count = max(1, s.touchRingSlots.count)
+                    var next = s.touchRingActiveSlotIndex2
+                    for _ in 0..<count {
+                        next = (next + 1) % count
+                        if s.touchRingSlots.indices.contains(next),
+                            s.touchRingSlots[next].action != .skip
+                        { break }
+                    }
+                    s.touchRingActiveSlotIndex2 = next
+                }
+            }
+        case .ringSelectSlot2:
+            guard down else { break }
+            closeRingGestureEnvelopes()
+            let target = min(Int(binding.keyCode), max(0, snapshot.touchRingSlots.count - 1))
+            if let s = settings {
+                Task { @MainActor in s.touchRingActiveSlotIndex2 = target }
+            }
         case .doubleClick:
             guard down else { break }
             for clickState in [1, 2] {

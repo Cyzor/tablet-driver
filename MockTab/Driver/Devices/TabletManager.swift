@@ -941,6 +941,7 @@ final class TabletManager: ObservableObject {
                 touchRingActive: context.liveButtons.touchRingActive,
                 touchRingButtonDown: context.liveButtons.touchRingButtonDown,
                 touchRing2Active: context.liveButtons.touchRing2Active,
+                touchRing2ButtonDown: context.liveButtons.touchRing2ButtonDown,
                 touchStrip1Active: context.liveButtons.touchStrip1Active,
                 touchStrip2Active: context.liveButtons.touchStrip2Active
             )
@@ -981,6 +982,9 @@ final class TabletManager: ObservableObject {
             }
             if aux.touchRingButtonDown != context.liveButtons.touchRingButtonDown {
                 context.liveButtons.touchRingButtonDown = aux.touchRingButtonDown
+            }
+            if aux.touchRing2ButtonDown != context.liveButtons.touchRing2ButtonDown {
+                context.liveButtons.touchRing2ButtonDown = aux.touchRing2ButtonDown
             }
             if aux.touchStrip1Active != context.liveButtons.touchStrip1Active {
                 context.liveButtons.touchStrip1Active = aux.touchStrip1Active
