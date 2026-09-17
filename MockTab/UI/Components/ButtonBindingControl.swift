@@ -119,7 +119,7 @@ struct ButtonBindingControl: View, Equatable {
                 .help("Switch tablet mapping between displays")
             Button("Toggle Relative Mode") { binding = ButtonBinding(kind: .relativeModeToggle) }
                 .help("Switch between absolute (stylus) and relative (mouse) cursor movement")
-            Menu("Touch Ring Mode") {
+            Menu(offersSecondDial ? "Dial Mode" : "Touch Ring Mode") {
                 Button("Cycle") { binding = ButtonBinding(kind: .ringCycle) }
                     .help("Cycle through ring modes")
                 Divider()
@@ -184,6 +184,23 @@ struct ButtonBindingControl: View, Equatable {
             return String(
                 localized: "Record Shortcut",
                 comment: "Placeholder in shortcut recorder field when empty")
+        }
+        // On mechanical-dial hardware (offersSecondDial implies
+        // hasMechanicalDial — see ButtonMappingView), "Ring: Cycle"/
+        // "Ring: Mode N" read oddly next to a section already labeled
+        // "Dial." binding.displayLabel stays device-unaware (shared by
+        // presets/undo text/every other caller), so the rename lives here,
+        // display-only, rather than in the model.
+        if offersSecondDial {
+            switch binding.kind {
+            case .ringCycle:
+                return String(localized: "Dial: Cycle", comment: "Button action: cycle a mechanical dial's mode")
+            case .ringSelectSlot:
+                return String(
+                    localized: "Dial: Mode \(binding.keyCode + 1)",
+                    comment: "Button action: jump to a mechanical dial's mode slot")
+            default: break
+            }
         }
         return binding.displayLabel
     }

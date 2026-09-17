@@ -465,7 +465,15 @@ struct ButtonMappingView: View {
             : String(localized: "Touch Ring", comment: "Section header / row label for touch ring")
         if hasTouchRing {
             if hasDualRings {
-                Section("\(ringSectionLabel) — Left") { touchRingBlock(lb: lb) }
+                Section("\(ringSectionLabel) — Left") {
+                    touchRingBlock(lb: lb)
+                    // reverseRingDirection is one device-wide setting, not
+                    // per-ring — shown in both Left and Right sections
+                    // (bound to the same value) so neither section visually
+                    // implies it's scoped to just that dial. Previously
+                    // shown only under Right, which read as right-dial-only.
+                    if !hasTouchStrips { reverseRingDirectionToggle }
+                }
                 Section("\(ringSectionLabel) — Right") {
                     if hasMechanicalDial { dialToggleBlock2(lb: lb) }
                     touchRingSlotsSection(
