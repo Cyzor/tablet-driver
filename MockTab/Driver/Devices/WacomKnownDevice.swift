@@ -1045,10 +1045,15 @@ final class WacomKnownDevice: TabletDevice {
             }
         }
 
-        // IntuosV3Decoder has no wire tool-identity field (see its header),
-        // so it never emits .toolEnter. Movink 13 ships with one pen model
-        // (Pro Pen 3E, libwacom-confirmed); synthesize that identity on
-        // first proximity so the UI shows a real name instead of nothing.
+        // IntuosV3Decoder now does emit .toolEnter where its wire format
+        // carries a real serial/tool code (confirmed 2026-09-16 on PTK-870 —
+        // see the decoder's own doc comment), but Movink 13/13.3's own
+        // capture never showed a nonzero code in that field, so it still
+        // needs this synthesized fallback. Only synthesize if the decoder
+        // itself didn't already emit a real one this frame — otherwise a
+        // device where the field does resolve would get two toolEnter
+        // events (a real one, immediately followed by a synthetic one that
+        // stomps the actual identity with a same-model guess).
         let wasInProximity = state.prevInProximity
         let synthesizeMovinkToolEnter =
             (deviceSpec.productID == 0x03F0 || deviceSpec.productID == 0x03F2) && !wasInProximity
@@ -1070,7 +1075,10 @@ final class WacomKnownDevice: TabletDevice {
             var decoded = decoder.decode(
                 report: report, length: length, spec: spec, state: &state,
                 deviceFamily: deviceSpec.family)
-            if synthesizeMovinkToolEnter, state.prevInProximity,
+            let decoderEmittedRealToolEnter = decoded.contains {
+                if case .toolEnter = $0 { return true } else { return false }
+            }
+            if synthesizeMovinkToolEnter, !decoderEmittedRealToolEnter, state.prevInProximity,
                 case .pen(let point)? = decoded.first(where: {
                     if case .pen = $0 { return true } else { return false }
                 })
