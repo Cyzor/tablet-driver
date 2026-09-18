@@ -697,35 +697,38 @@ struct TouchStateTracker {
 
     // MARK: - Process
 
-    /// Project an absolute touch contact (device units) into screen-space
+    /// Project an absolute touch position (device units) into screen-space
     /// using the touch-area crop and the supplied display rect.  Touch uses
     /// its own area mapping — independent from the pen's — and ignores
-    /// orientation and calibration in v1 (added later if real captures show
-    /// they're needed).
+    /// calibration.  Orientation is applied by the caller
+    /// (`InputInjector+Touch.swift`), which rotates the position and the
+    /// crop rect into oriented space via `DisplayMapper.orient`/
+    /// `orientedCropRect` before calling this function — this function
+    /// itself has no orientation awareness and expects already-oriented
+    /// inputs. Takes bare `x`/`y`/`maxX`/`maxY` rather than a `TouchContact`
+    /// since it only ever needs the position, not contact-area/id.
     ///
-    /// Returns `nil` for contacts whose raw position falls outside the crop
-    /// rectangle.  Clamping out-of-bounds contacts to the rect edge would
-    /// make the "deadzone" outside the crop still partially responsive:
-    /// a finger touching outside one axis would pin the cursor to that
-    /// axis's edge while the other axis still tracked normally.
+    /// Returns `nil` for positions falling outside the crop rectangle.
+    /// Clamping out-of-bounds positions to the rect edge would make the
+    /// "deadzone" outside the crop still partially responsive: a finger
+    /// touching outside one axis would pin the cursor to that axis's edge
+    /// while the other axis still tracked normally.
     static func screenPoint(
-        for contact: TouchContact,
-        maxX: Int,
-        maxY: Int,
+        x: Double, y: Double, maxX: Double, maxY: Double,
         areaX: Double, areaY: Double,
         areaWidth: Double, areaHeight: Double,
         displayBounds: CGRect
     ) -> CGPoint? {
-        let mx = Double(Swift.max(maxX, 1))
-        let my = Double(Swift.max(maxY, 1))
+        let mx = Swift.max(maxX, 1)
+        let my = Swift.max(maxY, 1)
         // Clamped, because a coordinate past the ceiling means the registry's
         // ceiling is too low, not that the finger left the surface — and the
         // crop test below would read the difference as "outside the crop" and
         // drop the contact, killing touch along that edge. Clamping keeps
         // crop semantics intact (a partial crop still rejects the region it
         // excludes) while making a low ceiling cost a thin dead band instead.
-        let rx = Swift.min(Swift.max(Double(contact.x) / mx, 0), 1)
-        let ry = Swift.min(Swift.max(Double(contact.y) / my, 0), 1)
+        let rx = Swift.min(Swift.max(x / mx, 0), 1)
+        let ry = Swift.min(Swift.max(y / my, 0), 1)
         let w = Swift.max(areaWidth, 0.001)
         let h = Swift.max(areaHeight, 0.001)
         // Reject contacts outside the crop rect entirely.

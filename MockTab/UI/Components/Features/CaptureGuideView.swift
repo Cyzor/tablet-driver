@@ -306,7 +306,8 @@ struct CaptureGuideView: View {
             areaX: settings.touchAreaX,
             areaY: settings.touchAreaY,
             areaWidth: settings.touchAreaWidth,
-            areaHeight: settings.touchAreaHeight)
+            areaHeight: settings.touchAreaHeight,
+            tabletOrientationRawValue: settings.tabletOrientation.rawValue)
     }
 
     /// Change notifications from this tablet's `DeviceContext`, or a publisher

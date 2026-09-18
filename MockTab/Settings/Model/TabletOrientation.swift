@@ -27,6 +27,28 @@ enum TabletOrientation: Int, CaseIterable {
     /// Whether this orientation swaps the X and Y hardware axes.
     var swapsAxes: Bool { self == .portrait || self == .portraitFlipped }
 
+    /// Adjusts a raw-space aspect ratio (width/height) for this orientation —
+    /// swapped for `portrait`/`portraitFlipped`, unchanged otherwise. Shared
+    /// by `TabletAreaView` and `TouchView`'s crop-editor preview boxes so
+    /// both rotate their displayed shape in step with this setting.
+    func applying(toAspectRatio aspectRatio: Double) -> Double {
+        swapsAxes ? 1.0 / aspectRatio : aspectRatio
+    }
+
+    /// The orientation that undoes this one's rotation. `landscape` and
+    /// `landscapeFlipped` (180°) are each their own inverse; `portrait` and
+    /// `portraitFlipped` (±90°) invert each other. Used to convert a rect
+    /// already in oriented space back to raw storage space (see
+    /// `DisplayMapper.orientedCropRect`).
+    var inverse: TabletOrientation {
+        switch self {
+        case .landscape: return .landscape
+        case .portrait: return .portraitFlipped
+        case .landscapeFlipped: return .landscapeFlipped
+        case .portraitFlipped: return .portrait
+        }
+    }
+
     var label: String {
         switch self {
         case .landscape:

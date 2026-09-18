@@ -250,25 +250,20 @@ struct TouchView: View {
 
     /// Visual, drag-based editor for the touch active area — the shared
     /// `NormalizedAreaEditor` the pen pane uses, configured to match it.
-    ///
-    /// Deliberately *not* matched on one point: `TabletAreaView` swaps the
-    /// aspect ratio for a rotated tablet orientation, and this doesn't,
-    /// because the touch mapping itself ignores orientation (see
-    /// `TouchStateTracker.screenPoint`).  Showing a rotated box here would
-    /// promise a mapping the injector doesn't perform.
     private struct TouchAreaCropView: View {
         @ObservedObject var settings: TabletSettings
         let spec: WacomDeviceSpec?
         let productID: Int?
 
-        /// Same derivation as `TabletAreaView.activeAspectRatio`, and for the
-        /// same reason: raw coordinate density isn't equal on both axes, so a
-        /// maxima ratio isn't a stand-in for the surface's visual shape.  It
-        /// is worst on the two models whose touch space the kernel hardcodes
-        /// to a square 4096×4096 — PTH-850 and PTH-651 — where `touchMaxX /
-        /// touchMaxY` is 1.00 against a physical 1.60, drawing a square box
-        /// for a widescreen tablet (reported on issue #12).  Physical
-        /// millimetres first; the maxima only as a fallback.
+        /// Sourced from the tablet's own physical/pen-digitizer proportions —
+        /// same derivation as `TabletAreaView.activeAspectRatio` — rather than
+        /// touch's own sensor maxima, so this tool's preview box matches the
+        /// Tablet Area pane's shape for the same device. (Touch's actual
+        /// sensor resolution is more square on some models — PTH-850 and
+        /// PTH-651's kernel-reported 4096×4096 touch space against a physical
+        /// 1.60 aspect — but this box aims for cross-pane visual consistency,
+        /// not touch-sensor precision.) Physical millimetres first; the pen
+        /// digitizer's raw maxima only as a fallback.
         private var aspectRatio: Double {
             if let pid = productID,
                 let profile = VendorDeviceRegistry.profile(forProductID: pid),
@@ -279,24 +274,44 @@ struct TouchView: View {
             if let w = spec?.activeWidthMM, w > 0, let h = spec?.activeHeightMM, h > 0 {
                 return w / h
             }
-            let mx = spec?.touchMaxX ?? 0
-            let my = spec?.touchMaxY ?? 0
+            let mx = spec?.maxX ?? 0
+            let my = spec?.maxY ?? 0
             guard mx > 0, my > 0 else { return 16.0 / 10.0 }
             return Double(mx) / Double(my)
         }
 
+        /// Aspect ratio adjusted for the tablet orientation set in the Tablet
+        /// Area pane — same swap `TabletAreaView.orientedAspectRatio` applies,
+        /// so this tool's box rotates in step with the pen active-area box.
+        private var orientedAspectRatio: Double {
+            settings.tabletOrientation.applying(toAspectRatio: aspectRatio)
+        }
+
+        /// Round-trips through oriented space so the box this tool draws/drags
+        /// matches `orientedAspectRatio`'s shape. `touchAreaX/Y/Width/Height`
+        /// are stored raw (see `DisplayMapper.orientedCropRect`'s doc comment),
+        /// so the get rotates raw storage into oriented space for display, and
+        /// the set rotates a drag's oriented-space rect back (via the inverse
+        /// orientation) before writing storage — otherwise the box's displayed
+        /// shape and the region actually enforced at injection disagree for
+        /// any non-landscape orientation.
         private var rectBinding: Binding<NormalizedRect> {
             Binding(
                 get: {
-                    NormalizedRect(
-                        x: settings.touchAreaX, y: settings.touchAreaY,
-                        w: settings.touchAreaWidth, h: settings.touchAreaHeight)
+                    let o = DisplayMapper.orientedCropRect(
+                        areaX: settings.touchAreaX, areaY: settings.touchAreaY,
+                        areaWidth: settings.touchAreaWidth, areaHeight: settings.touchAreaHeight,
+                        orientation: settings.tabletOrientation)
+                    return NormalizedRect(x: o.x, y: o.y, w: o.w, h: o.h)
                 },
                 set: { r in
-                    settings.touchAreaX = r.x
-                    settings.touchAreaY = r.y
-                    settings.touchAreaWidth = r.w
-                    settings.touchAreaHeight = r.h
+                    let raw = DisplayMapper.orientedCropRect(
+                        areaX: r.x, areaY: r.y, areaWidth: r.w, areaHeight: r.h,
+                        orientation: settings.tabletOrientation.inverse)
+                    settings.touchAreaX = raw.x
+                    settings.touchAreaY = raw.y
+                    settings.touchAreaWidth = raw.w
+                    settings.touchAreaHeight = raw.h
                 }
             )
         }
@@ -305,7 +320,7 @@ struct TouchView: View {
             // `onCommit` fires once on drag-end, so a crop drag is undoable
             // here exactly as it is in the pen pane.
             NormalizedAreaEditor(
-                aspectRatio: aspectRatio,
+                aspectRatio: orientedAspectRatio,
                 rect: rectBinding,
                 onCommit: { oldRect in
                     settings.recordTouchAreaDrag(before: TabletSettings.AreaSnapshot(

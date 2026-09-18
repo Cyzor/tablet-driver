@@ -177,6 +177,21 @@ extension InputInjector {
         // Resolve display bounds — touch shares the pen's target display.
         let displayBounds = displayMapper.displayBounds(for: snap)
 
+        // Rotate the touch-area crop and the sensor maxima into oriented
+        // space once per frame — `snap.touchAreaX/Y/Width/Height` are stored
+        // raw (unlike pen's already-oriented activeAreaX/Y/Width/Height), so
+        // the crop rect itself needs the same rotation each contact point
+        // gets below. The maxima swap depends only on frame-constant inputs
+        // (cachedTouchMaxX/Y, orientation), so it's hoisted out of the loop
+        // rather than recomputed via `DisplayMapper.orient` per contact.
+        let orientation = snap.tabletOrientation
+        let orientedArea = DisplayMapper.orientedCropRect(
+            areaX: snap.touchAreaX, areaY: snap.touchAreaY,
+            areaWidth: snap.touchAreaWidth, areaHeight: snap.touchAreaHeight,
+            orientation: orientation)
+        let effMaxX: Double = orientation.swapsAxes ? Double(cachedTouchMaxY) : Double(cachedTouchMaxX)
+        let effMaxY: Double = orientation.swapsAxes ? Double(cachedTouchMaxX) : Double(cachedTouchMaxY)
+
         // Project each contact to screen-space using the touch-area mapping.
         // Contacts whose raw position falls outside the crop rect return nil
         // and are dropped entirely (no clamping to the rect edge — that would
@@ -184,10 +199,14 @@ extension InputInjector {
         var projected: [(id: Int, screen: CGPoint)] = []
         projected.reserveCapacity(filteredContacts.count)
         for c in filteredContacts {
+            let (ox, oy, _, _) = DisplayMapper.orient(
+                x: Double(c.x), y: Double(c.y),
+                maxX: Double(cachedTouchMaxX), maxY: Double(cachedTouchMaxY),
+                orientation: orientation)
             guard let p = TouchStateTracker.screenPoint(
-                for: c, maxX: cachedTouchMaxX, maxY: cachedTouchMaxY,
-                areaX: snap.touchAreaX, areaY: snap.touchAreaY,
-                areaWidth: snap.touchAreaWidth, areaHeight: snap.touchAreaHeight,
+                x: ox, y: oy, maxX: effMaxX, maxY: effMaxY,
+                areaX: orientedArea.x, areaY: orientedArea.y,
+                areaWidth: orientedArea.w, areaHeight: orientedArea.h,
                 displayBounds: displayBounds)
             else { continue }
             projected.append((id: c.id, screen: p))

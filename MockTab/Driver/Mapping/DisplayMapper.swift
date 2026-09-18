@@ -171,6 +171,49 @@ struct DisplayMapper {
         cachedVirtualScreenBounds = union
     }
 
+    // MARK: - Orientation
+
+    /// Rotates a raw device-space point (and its axis maxima) into oriented
+    /// (post-rotation) space. Shared by `mapToScreen`, `resolveRelativePoint`,
+    /// the touch injection path (`InputInjector+Touch.swift`), and
+    /// `CalibrationSession.normalizeRawPoint` — previously duplicated inline
+    /// in all of the above; consolidated 2026-09-18.
+    static func orient(
+        x: Double, y: Double, maxX: Double, maxY: Double, orientation: TabletOrientation
+    ) -> (ox: Double, oy: Double, effMaxX: Double, effMaxY: Double) {
+        switch orientation {
+        case .landscape:
+            return (x, y, maxX, maxY)
+        case .portrait:  // 90° CCW — USB port moves to right
+            return (y, maxX - x, maxY, maxX)
+        case .landscapeFlipped:  // 180° — USB port at top
+            return (maxX - x, maxY - y, maxX, maxY)
+        case .portraitFlipped:  // 90° CW — USB port moves to left
+            return (maxY - y, x, maxY, maxX)
+        }
+    }
+
+    /// Rotates a raw-space crop rect (fractions of the raw axes) into
+    /// oriented-space fractions, by running the rect's two opposite corners
+    /// through `orient` (with maxX=maxY=1, the fraction-space unit square)
+    /// and normalizing the result back into (x, y, w, h) form — `orient`
+    /// stays the single source of truth for the rotation math. Used by the
+    /// touch injection path, whose crop rect (`touchAreaX/Y/Width/Height`)
+    /// is stored in raw space — unlike pen's `activeAreaX/Y/Width/Height`,
+    /// which are already stored oriented.
+    static func orientedCropRect(
+        areaX: Double, areaY: Double, areaWidth: Double, areaHeight: Double,
+        orientation: TabletOrientation
+    ) -> (x: Double, y: Double, w: Double, h: Double) {
+        let (x1, y1, _, _) = orient(
+            x: areaX, y: areaY, maxX: 1, maxY: 1, orientation: orientation)
+        let (x2, y2, _, _) = orient(
+            x: areaX + areaWidth, y: areaY + areaHeight, maxX: 1, maxY: 1, orientation: orientation)
+        return (
+            x: Swift.min(x1, x2), y: Swift.min(y1, y2),
+            w: Swift.abs(x2 - x1), h: Swift.abs(y2 - y1))
+    }
+
     // MARK: - Point mapping
 
     /// In relative mode: computes a delta from the previous normalized tablet position
@@ -204,33 +247,9 @@ struct DisplayMapper {
         let rawY = Double(point.y)
         let rawMaxX = Double(point.maxX)
         let rawMaxY = Double(point.maxY)
-        let ox: Double
-        let oy: Double
-        let effMaxX: Double
-        let effMaxY: Double
         let orientation = snapshot.tabletOrientation
-        switch orientation {
-        case .landscape:
-            ox = rawX
-            oy = rawY
-            effMaxX = rawMaxX
-            effMaxY = rawMaxY
-        case .portrait:
-            ox = rawY
-            oy = rawMaxX - rawX
-            effMaxX = rawMaxY
-            effMaxY = rawMaxX
-        case .landscapeFlipped:
-            ox = rawMaxX - rawX
-            oy = rawMaxY - rawY
-            effMaxX = rawMaxX
-            effMaxY = rawMaxY
-        case .portraitFlipped:
-            ox = rawMaxY - rawY
-            oy = rawX
-            effMaxX = rawMaxY
-            effMaxY = rawMaxX
-        }
+        let (ox, oy, effMaxX, effMaxY) = Self.orient(
+            x: rawX, y: rawY, maxX: rawMaxX, maxY: rawMaxY, orientation: orientation)
         let areaW = Swift.max(snapshot.activeAreaWidth, 0.001) * effMaxX
         let areaH = Swift.max(snapshot.activeAreaHeight, 0.001) * effMaxY
         let norm = CGPoint(
@@ -307,34 +326,9 @@ struct DisplayMapper {
         let rawMaxX = Double(point.maxX)
         let rawMaxY = Double(point.maxY)
 
-        let ox: Double  // oriented x
-        let oy: Double  // oriented y
-        let effMaxX: Double  // range of oriented x axis
-        let effMaxY: Double  // range of oriented y axis
-
         let orientation = snapshot.tabletOrientation
-        switch orientation {
-        case .landscape:
-            ox = rawX
-            oy = rawY
-            effMaxX = rawMaxX
-            effMaxY = rawMaxY
-        case .portrait:  // 90° CW — USB port moves to left
-            ox = rawY
-            oy = rawMaxX - rawX
-            effMaxX = rawMaxY
-            effMaxY = rawMaxX
-        case .landscapeFlipped:  // 180° — USB port at top
-            ox = rawMaxX - rawX
-            oy = rawMaxY - rawY
-            effMaxX = rawMaxX
-            effMaxY = rawMaxY
-        case .portraitFlipped:  // 90° CCW — USB port moves to right
-            ox = rawMaxY - rawY
-            oy = rawX
-            effMaxX = rawMaxY
-            effMaxY = rawMaxX
-        }
+        let (ox, oy, effMaxX, effMaxY) = Self.orient(
+            x: rawX, y: rawY, maxX: rawMaxX, maxY: rawMaxY, orientation: orientation)
 
         var areaX = snapshot.activeAreaX * effMaxX
         var areaY = snapshot.activeAreaY * effMaxY

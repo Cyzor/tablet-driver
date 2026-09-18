@@ -122,7 +122,13 @@ struct DiscoveryResult: Codable {
     /// the contact-state split then separates a real mid-gesture stall from a
     /// finger-off pause between gestures. New field is optional, so v13
     /// readers and files still decode.
-    var captureVersion: Int = 14
+    ///
+    /// v15 adds `DiscoveryTouchSettings.tabletOrientationRawValue` — touch's
+    /// crop rect is recorded raw/un-oriented, and without the orientation
+    /// active at capture time there's no way to relate it to what the Touch
+    /// pane UI displayed. New field is optional, so v14 readers/files still
+    /// decode.
+    var captureVersion: Int = 15
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -220,14 +226,25 @@ struct DiscoveryTouchSettings: Codable {
     /// start. Optional so pre-v11 files still decode.
     var touchOnsetDelayMs: Double?
     let sensitivity: Double
-    /// Touch-area crop as a fraction of the surface (x, y, width, height).
-    /// A crop that excludes where the tester's fingers actually landed drops
-    /// every contact at projection — indistinguishable from dead touch
-    /// without this.
+    /// Touch-area crop as a fraction of the surface (x, y, width, height),
+    /// stored raw (un-oriented) — same space as `TabletSettings.touchAreaX/
+    /// Y/Width/Height`, not the oriented space the Touch pane UI now draws
+    /// this rect in (see `DisplayMapper.orientedCropRect`). A crop that
+    /// excludes where the tester's fingers actually landed drops every
+    /// contact at projection — indistinguishable from dead touch without
+    /// this.
     let areaX: Double
     let areaY: Double
     let areaWidth: Double
     let areaHeight: Double
+    /// The tablet orientation active at capture time. Needed to interpret
+    /// `areaX/Y/Width/Height` the way the Touch pane UI displayed them (or to
+    /// reconstruct the oriented touch-mapping math at all) — without it, a
+    /// capture from a rotated tablet can't be cross-checked against what the
+    /// user saw and dragged. Optional so pre-`captureVersion` 15 files still
+    /// decode; raw `TabletOrientation.rawValue` rather than the enum so an
+    /// unrecognized future case doesn't fail the whole decode.
+    var tabletOrientationRawValue: Int?
 }
 
 /// How far touch contacts got through the injection pipeline.

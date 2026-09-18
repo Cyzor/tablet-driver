@@ -104,9 +104,7 @@ struct TabletAreaView: View {
     /// Aspect ratio adjusted for the user's tablet orientation (90°/270° swap
     /// the canvas axes); passed through to `NormalizedAreaEditor`.
     private var orientedAspectRatio: Double {
-        settings.tabletOrientation.swapsAxes
-            ? 1.0 / activeAspectRatio
-            : activeAspectRatio
+        settings.tabletOrientation.applying(toAspectRatio: activeAspectRatio)
     }
 
     /// Smallest dimension (as a fraction of the surface) the user can shrink

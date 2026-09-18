@@ -158,23 +158,8 @@ final class CalibrationSession: ObservableObject {
         let rawMaxX = Double(point.maxX)
         let rawMaxY = Double(point.maxY)
 
-        let ox: Double, oy: Double
-        let effMaxX: Double, effMaxY: Double
-
-        switch orientation {
-        case .landscape:
-            ox = rawX; oy = rawY
-            effMaxX = rawMaxX; effMaxY = rawMaxY
-        case .portrait:
-            ox = rawY; oy = rawMaxX - rawX
-            effMaxX = rawMaxY; effMaxY = rawMaxX
-        case .landscapeFlipped:
-            ox = rawMaxX - rawX; oy = rawMaxY - rawY
-            effMaxX = rawMaxX; effMaxY = rawMaxY
-        case .portraitFlipped:
-            ox = rawMaxY - rawY; oy = rawX
-            effMaxX = rawMaxY; effMaxY = rawMaxX
-        }
+        let (ox, oy, effMaxX, effMaxY) = DisplayMapper.orient(
+            x: rawX, y: rawY, maxX: rawMaxX, maxY: rawMaxY, orientation: orientation)
 
         var areaX = settings.activeAreaX * effMaxX
         var areaY = settings.activeAreaY * effMaxY
