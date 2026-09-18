@@ -137,8 +137,17 @@ struct ScratchpadView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
+    /// For a wireless-dongle-bound window, the dongle's own PID carries no
+    /// touch data — the paired tablet's does. Falls back to `productID` for
+    /// every direct (non-dongle) connection, and before pairing resolves.
+    private var effectiveProductID: Int? {
+        let context = tabletManager.context(forKey: instanceKey)
+        if let paired = context?.pairedProductID, paired != 0 { return paired }
+        return productID
+    }
+
     private var spec: WacomDeviceSpec? {
-        productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
+        effectiveProductID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
 
     private var pressureRow: some View {

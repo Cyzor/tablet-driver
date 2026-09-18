@@ -928,6 +928,13 @@ private struct LiveInputSectionContent: View {
     let deviceContext: DeviceContext?
     let productID: Int?
 
+    /// For a wireless-dongle-bound window, the dongle's own PID carries no
+    /// capability data — the paired tablet's does.
+    private var effectiveProductID: Int? {
+        if let paired = deviceContext?.pairedProductID, paired != 0 { return paired }
+        return productID
+    }
+
     /// Unused directly — its writes force a body re-evaluation when
     /// livePoint publishes, since that no longer rides tabletManager's
     /// general objectWillChange cascade (see DeviceContext.livePoint).
@@ -942,7 +949,7 @@ private struct LiveInputSectionContent: View {
             liveButtons: deviceContext?.liveButtons ?? LiveButtonState(),
             activeToolID: deviceContext?.activeToolID,
             registry: DeviceRegistry.shared,
-            hasDualRings: WacomDeviceRegistry.spec(for: productID ?? 0)?.hasDualRings == true,
+            hasDualRings: WacomDeviceRegistry.spec(for: effectiveProductID ?? 0)?.hasDualRings == true,
             // Only Wacom's protocol carries a hover height; every other
             // decoder hardcodes 0, so show plain in/out instead of a
             // number that reads as a measured zero.

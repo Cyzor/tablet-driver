@@ -1160,9 +1160,11 @@ final class TabletManager: ObservableObject {
         }
 
         // ── Wireless dongle paired PID ──────────────────────────────────────────
-        // Called once on HIDThread when the 0x80 status report reveals the
-        // paired tablet's PID, so ButtonMappingView can fall back to its spec
-        // (the dongle's own PID isn't in WacomDeviceRegistry).
+        // Called on HIDThread when the 0x80 status report reveals the paired
+        // tablet's PID (once per RF link — re-fires on a genuine re-pairing,
+        // e.g. a different tablet swapped onto the same dongle), so
+        // ButtonMappingView can fall back to its spec (the dongle's own PID
+        // isn't in WacomDeviceRegistry).
         let onPairedPID: (Int) -> Void = { [weak self, weak context] pid in
             Task { @MainActor [weak self, weak context] in
                 context?.pairedProductID = pid
@@ -1170,6 +1172,10 @@ final class TabletManager: ObservableObject {
                 // TabletManager (e.g. ButtonMappingView) don't see this
                 // @Published change on its own — nudge them explicitly.
                 self?.objectWillChange.send()
+                if let key = context?.instanceKey {
+                    DeviceRegistry.shared.updateModelName(
+                        forDonglePairing: key, to: TabletManager.deviceName(forProductID: pid))
+                }
             }
         }
 

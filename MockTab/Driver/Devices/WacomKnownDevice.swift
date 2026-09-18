@@ -37,6 +37,33 @@ final class WacomKnownDevice: TabletDevice {
             tiltMaxDegrees: spec.tiltMaxDegrees)
     }
 
+    /// Overlays a paired tablet's touch capability onto the dongle's own
+    /// `deviceSpec` — everything else (name, parser, initSteps, productID)
+    /// must stay the dongle's, since those drive its own identity/behavior,
+    /// not the paired tablet's. `deriveTouchDecoders` reads this struct, not
+    /// `spec`, so it needs the same touch fields `makeDigitizerSpec` above
+    /// already forwards.
+    private static func applyingTouchCapability(
+        _ pairedSpec: WacomDeviceSpec, to base: WacomDeviceSpec
+    ) -> WacomDeviceSpec {
+        guard pairedSpec.hasFingerTouch else { return base }
+        return WacomDeviceSpec(
+            productID: base.productID, name: base.name, parser: base.parser,
+            maxX: base.maxX, maxY: base.maxY, maxPressure: base.maxPressure,
+            buttonCount: base.buttonCount, bezelButtonCount: base.bezelButtonCount,
+            hasTouchRing: base.hasTouchRing, hasDualRings: base.hasDualRings,
+            hasMechanicalDial: base.hasMechanicalDial, hasKeyOLEDs: base.hasKeyOLEDs,
+            hasTouchStrips: base.hasTouchStrips, ringSlotCount: base.ringSlotCount,
+            hasEraser: base.hasEraser, hasTilt: base.hasTilt,
+            tiltMaxDegrees: base.tiltMaxDegrees,
+            hasFingerTouch: true, maxTouchContacts: pairedSpec.maxTouchContacts,
+            touchMaxX: pairedSpec.touchMaxX, touchMaxY: pairedSpec.touchMaxY,
+            isPenDisplay: base.isPenDisplay, seizeUSB: base.seizeUSB,
+            initSteps: base.initSteps, ledCompanionPID: base.ledCompanionPID,
+            confidence: base.confidence, productStringMatch: base.productStringMatch,
+            activeWidthMM: base.activeWidthMM, activeHeightMM: base.activeHeightMM)
+    }
+
     let device: IOHIDDevice
     var deviceSpec: WacomDeviceSpec
     /// True when this interface must be seized (kIOHIDOptionsTypeSeizeDevice).
@@ -962,6 +989,13 @@ final class WacomKnownDevice: TabletDevice {
                     updatedSpec.maxTouchContacts = spec.maxTouchContacts
                 }
                 spec = updatedSpec
+                // deriveTouchDecoders reads deviceSpec, not spec — without this,
+                // a dongle that paired after its interfaces were registered
+                // never gets touch decoders even though `spec` is now correct.
+                deviceSpec = Self.applyingTouchCapability(pairedSpec, to: deviceSpec)
+                for interface in registeredInterfaces {
+                    deriveTouchDecoders(from: interface)
+                }
                 pairedPID = pairedTabletPID
                 onPairedPID?(pairedTabletPID)
                 logger.info("\(name, privacy: .public): paired tablet 0x\(String(pairedTabletPID, radix: 16, uppercase: true), privacy: .public) — maxX=\(pairedSpec.maxX, privacy: .public) maxY=\(pairedSpec.maxY, privacy: .public) maxPressure=\(pairedSpec.maxPressure, privacy: .public)")

@@ -351,6 +351,11 @@ final class SettingsWindowController: NSWindowController {
     /// Nickname changes from the Devices pane. See `observeDeviceLabel()`.
     private var deviceLabelCancellable: AnyCancellable?
 
+    /// Paired-tablet PID changes for a wireless-dongle-bound window. See
+    /// `observePairedTouchCapability()`.
+    private var pairedProductIDCancellable: AnyCancellable?
+    private var contextsForTouchCancellable: AnyCancellable?
+
     enum Tab: Int {
         case tabletArea = 0
         case penFeel, buttons, touch, display, devices, profiles, scratchpad, info
@@ -569,6 +574,7 @@ final class SettingsWindowController: NSWindowController {
 
         observeConnectionState()
         observeDeviceLabel()
+        observePairedTouchCapability()
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -744,6 +750,70 @@ final class SettingsWindowController: NSWindowController {
         tabVC.retitleDeviceTabs(deviceLabel: label)
     }
 
+    /// Live-adds or removes the Touch tab for a wireless-dongle-bound window
+    /// once the paired tablet's identity resolves — the dongle's own PID has
+    /// no touch data, so `hasTouchTab` at `init` is always false for it; this
+    /// is what lets the tab appear without a relaunch. Symmetric: a later
+    /// re-pairing to a non-touch tablet removes the tab again, same as a
+    /// from-scratch window would never have shown it.
+    ///
+    /// Re-subscribes (rather than `flatMap`ing across contexts) on every
+    /// `deviceContexts` change, same shape as `rebindConnectionObserver` —
+    /// a disconnect/reconnect installs a *new* `DeviceContext`, and a
+    /// merged `flatMap` would keep the old one's publisher alive alongside
+    /// the new one instead of dropping it.
+    private func observePairedTouchCapability() {
+        guard instanceKey != nil else { return }
+        contextsForTouchCancellable = TabletManager.shared.$deviceContexts
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.rebindPairedTouchObserver() }
+        rebindPairedTouchObserver()
+    }
+
+    private func rebindPairedTouchObserver() {
+        guard let context = TabletManager.shared.context(forKey: instanceKey) else {
+            pairedProductIDCancellable = nil
+            return
+        }
+        pairedProductIDCancellable = context.$pairedProductID
+            // 0 = no pairing signal yet (direct connection, or a dongle that
+            // hasn't paired). Only a real paired PID should ever override
+            // whatever `hasTouchTab` decided at init — otherwise a direct
+            // connection's freshly-subscribed 0 reads as "not touch capable"
+            // and tears down a tab that was correctly built at init.
+            .filter { $0 != 0 }
+            .map { WacomDeviceRegistry.spec(for: $0)?.hasFingerTouch == true }
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] hasTouch in self?.applyTouchTabState(hasTouch) }
+    }
+
+    private func applyTouchTabState(_ hasTouch: Bool) {
+        let label = Self.tabLabels[Tab.touch.rawValue]
+        let alreadyPresent = tabVC.tabViewItems.contains { $0.label == label }
+        guard hasTouch != alreadyPresent else { return }
+        if hasTouch {
+            let s = settings
+            let tm = TabletManager.shared
+            let dr = DeviceRegistry.shared
+            let key = instanceKey
+            addTab(
+                label: label, symbol: "hand.point.up.left", height: 480,
+                insertAfter: Self.tabLabels[Tab.buttons.rawValue]
+            ) {
+                TouchView(settings: s, tabletManager: tm, registry: dr, instanceKey: key)
+            }
+        } else if let item = tabVC.tabViewItems.first(where: { $0.label == label }) {
+            (item.viewController as? LazyHostingViewController)?.teardown()
+            tabVC.removeTabViewItem(item)
+        }
+        // Same formula as init's tabCount-based minSize — recomputed off the
+        // live tab count rather than duplicating aux-only/hasTouchTab logic.
+        guard let window else { return }
+        window.minSize = NSSize(width: CGFloat(tabVC.tabViewItems.count) * 70 + 80, height: 500)
+        window.clampToMinSize()
+    }
+
     /// Set unconditionally rather than diffed: connect/disconnect is a rare
     /// event and assigning a subtitle is idempotent, so a guard would only add
     /// a way to get the two out of sync.
@@ -764,6 +834,8 @@ final class SettingsWindowController: NSWindowController {
         contextsCancellable = nil
         connectedCancellable = nil
         deviceLabelCancellable = nil
+        pairedProductIDCancellable = nil
+        contextsForTouchCancellable = nil
     }
 
     private var nextTabIndex = 0
@@ -773,9 +845,14 @@ final class SettingsWindowController: NSWindowController {
         symbol: String,
         height: CGFloat,
         width: CGFloat = 500,
+        insertAfter: String? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
-        let isDeviceTab = Self.deviceSpecificTabIndices.contains(nextTabIndex)
+        // A live-inserted tab (insertAfter != nil, used only for the Touch
+        // tab appearing post-init on dongle pairing) is always a device tab —
+        // deviceSpecificTabIndices only means anything for init-time
+        // ordering, which nextTabIndex no longer reflects at that point.
+        let isDeviceTab = insertAfter != nil || Self.deviceSpecificTabIndices.contains(nextTabIndex)
         let title = isDeviceTab ? "\(label) — \(deviceLabel)" : label
 
         tabVC.register(
@@ -805,10 +882,17 @@ final class SettingsWindowController: NSWindowController {
         let item = NSTabViewItem(viewController: lazy)
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
-        tabVC.addTabViewItem(item)
+        if let insertAfter, let afterIndex = tabVC.tabViewItems.firstIndex(where: { $0.label == insertAfter }) {
+            tabVC.insertTabViewItem(item, at: afterIndex + 1)
+        } else {
+            tabVC.addTabViewItem(item)
+        }
         if isDeviceTab { tabVC.markDeviceTab(label: label) }
 
-        nextTabIndex += 1
+        // Only meaningful for init-time ordering — a live insertion doesn't
+        // participate in the running count deviceSpecificTabIndices compares
+        // against.
+        if insertAfter == nil { nextTabIndex += 1 }
     }
 }
 

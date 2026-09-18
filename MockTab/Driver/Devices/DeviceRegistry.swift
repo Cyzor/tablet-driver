@@ -30,7 +30,12 @@ final class DeviceRegistry: ObservableObject {
         /// legacy settings namespace — see `DeviceRegistry.settingsPrefix`.
         var instance: String?
         var nickname: String  // user-editable; defaults to modelName
-        let modelName: String  // set at first-seen time (e.g. "PTH-860")
+        /// Set at first-seen time (e.g. "PTH-860"). Mutable only for the
+        /// wireless-dongle case: a row first seen as "ACK-40401 Wireless
+        /// Dongle" (its own product ID, all a live probe can know before
+        /// pairing) gets backfilled once the paired tablet's identity
+        /// resolves — see `updateModelName(forDonglePairing:)`.
+        var modelName: String
         var usbSerial: String?  // USB serial number from device firmware; nil if absent
         /// Vendor ID last seen for this product, so window restoration can
         /// reconstruct a stub `DeviceContext` with the right vendor before the
@@ -455,6 +460,22 @@ final class DeviceRegistry: ObservableObject {
     func renameTablet(id: String, to name: String) {
         guard let idx = knownTablets.firstIndex(where: { $0.id == id }) else { return }
         knownTablets[idx].nickname = name
+        saveTablets()
+    }
+
+    /// Backfills a wireless-dongle row's `modelName` (and `nickname`, unless
+    /// the user already set a custom one) once its paired tablet resolves —
+    /// see `KnownTablet.modelName`'s doc comment. `dongleKey` identifies the
+    /// row by the dongle's own product ID, which never changes across a
+    /// re-pairing; only the display name does.
+    func updateModelName(forDonglePairing dongleKey: DeviceInstanceKey, to modelName: String) {
+        guard let idx = knownTablets.firstIndex(where: { normalizedKey($0.instanceKey) == normalizedKey(dongleKey) }),
+            knownTablets[idx].modelName != modelName
+        else { return }
+        if knownTablets[idx].nickname == knownTablets[idx].modelName {
+            knownTablets[idx].nickname = modelName
+        }
+        knownTablets[idx].modelName = modelName
         saveTablets()
     }
 

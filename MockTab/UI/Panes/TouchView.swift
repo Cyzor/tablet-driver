@@ -33,8 +33,17 @@ struct TouchView: View {
     /// Model axis of the bound unit — spec/catalog lookups key on this.
     private var productID: Int? { instanceKey?.productID }
 
+    /// For a wireless-dongle-bound window, the dongle's own PID carries no
+    /// touch data — the paired tablet's does. Falls back to `productID` for
+    /// every direct (non-dongle) connection, and before pairing resolves.
+    private var effectiveProductID: Int? {
+        let context = tabletManager.context(forKey: instanceKey)
+        if let paired = context?.pairedProductID, paired != 0 { return paired }
+        return productID
+    }
+
     private var spec: WacomDeviceSpec? {
-        productID.flatMap { WacomDeviceRegistry.spec(for: $0) }
+        effectiveProductID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
 
     private var hasFingerTouch: Bool { spec?.hasFingerTouch == true }
