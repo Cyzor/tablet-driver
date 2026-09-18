@@ -31,9 +31,6 @@ extension InputInjector {
     ///                               gesture(s) with phase, independently —
     ///                               both may post in the same frame
     ///       - `.tapClick`         → left-click at the current cursor position
-    ///
-    /// No shipping decoder produces touch frames yet; this is hot-path
-    /// plumbing for when a per-family touch decoder lands.
     func injectTouch(contacts: [TouchContact], settings: TabletSettings?) {
         rearmWatchdog()
         guard let snap = injectionSnapshot else {
@@ -50,15 +47,24 @@ extension InputInjector {
         // frame — at 100 Hz with a palm on the tablet, that alone was a
         // measurable CPU contributor.  (Before the arbitration gate because
         // palm classification needs the maximums.)
-        if cachedTouchSpecPID != deviceProductID {
-            let spec = WacomDeviceRegistry.spec(for: deviceProductID)
+        //
+        // A wireless-dongle-bound device's own PID has no touch-area data in
+        // the registry (touchMaxX/Y default to 0) — the paired tablet's does.
+        // Without preferring snap.pairedProductID here, cachedTouchMaxX/Y
+        // silently fell back to `Swift.max(1, 0) == 1`, so every real touch
+        // coordinate scaled against a denominator of 1 instead of the real
+        // sensor range — collapsing all input toward one corner of the
+        // active area.
+        let effectiveTouchPID = snap.pairedProductID != 0 ? snap.pairedProductID : deviceProductID
+        if cachedTouchSpecPID != effectiveTouchPID {
+            let spec = WacomDeviceRegistry.spec(for: effectiveTouchPID)
             cachedTouchMaxX = Swift.max(1, spec?.touchMaxX ?? 1)
             cachedTouchMaxY = Swift.max(1, spec?.touchMaxY ?? 1)
             // Falls back to the raw maximums (no correction) when the spec
             // has no physical size — see `cachedTouchWidthMM`'s doc comment.
             cachedTouchWidthMM = spec?.activeWidthMM ?? Double(cachedTouchMaxX)
             cachedTouchHeightMM = spec?.activeHeightMM ?? Double(cachedTouchMaxY)
-            cachedTouchSpecPID = deviceProductID
+            cachedTouchSpecPID = effectiveTouchPID
         }
 
         // Pen arbitration: pen takes priority.  Drop frames and reset tracker

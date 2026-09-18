@@ -69,6 +69,12 @@ struct InjectionSnapshot: Sendable, Equatable {
 
     // MARK: - Capacitive finger touch
 
+    /// For a wireless-dongle-bound device, the paired tablet's PID (0 if
+    /// unpaired or not a dongle) — the dongle's own PID has no touch-area
+    /// data in the registry, so touch coordinate scaling must key off this
+    /// instead of `InputInjector.deviceProductID` once it's nonzero. See
+    /// `DeviceContext.pairedProductID`.
+    var pairedProductID: Int
     var touchEnabled: Bool
     var touchSensitivity: Double
     /// Seconds a touch sequence emits nothing after landing (from
@@ -138,7 +144,10 @@ extension TabletSettings {
     ///
     /// Cheap to call: ~30 scalars + small array copies. No I/O, no JSON parsing
     /// (calibration entries are read from the already-decoded property cache).
-    func makeInjectionSnapshot() -> InjectionSnapshot {
+    ///
+    /// `pairedProductID` comes from the owning `DeviceContext`, not
+    /// `TabletSettings` itself — see `InjectionSnapshot.pairedProductID`.
+    func makeInjectionSnapshot(pairedProductID: Int = 0) -> InjectionSnapshot {
         InjectionSnapshot(
             tabletOrientation: tabletOrientation,
             activeAreaX: activeAreaX,
@@ -170,6 +179,7 @@ extension TabletSettings {
             touchRingActiveSlotIndex: touchRingActiveSlotIndex,
             touchRingActiveSlotIndex2: touchRingActiveSlotIndex2,
             reverseRingDirection: reverseRingDirection,
+            pairedProductID: pairedProductID,
             touchEnabled: touchEnabled,
             touchSensitivity: touchSensitivity,
             touchOnsetDelay: touchOnsetDelayMs / 1000.0,

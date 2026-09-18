@@ -459,7 +459,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         // Both the main-side property and the HIDThread-visible read path are written
         // here; on the inject path, HIDThread reads what was last written via
         // CFRunLoopPerformBlock.
-        let initial = settings.makeInjectionSnapshot()
+        let initial = settings.makeInjectionSnapshot(pairedProductID: pairedProductID)
         injector.injectionSnapshot = initial
         let injectorRef = injector
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
@@ -470,7 +470,7 @@ final class DeviceContext: ObservableObject, Identifiable {
 
         let rebuild: () -> Void = { [weak self] in
             guard let self else { return }
-            let snap = self.settings.makeInjectionSnapshot()
+            let snap = self.settings.makeInjectionSnapshot(pairedProductID: self.pairedProductID)
             let injectorRef = self.injector
             CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
                 injectorRef.injectionSnapshot = snap
@@ -487,6 +487,16 @@ final class DeviceContext: ObservableObject, Identifiable {
         }
 
         settings.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { _ in rebuild() }
+            .store(in: &snapshotCancellables)
+
+        // Wireless-dongle pairing resolving is the one snapshot-relevant fact
+        // that lives on DeviceContext, not TabletSettings — settings'
+        // objectWillChange above never fires for it, so it needs its own
+        // trigger or the snapshot stays at pairedProductID 0 indefinitely.
+        $pairedProductID
+            .dropFirst()
             .receive(on: RunLoop.main)
             .sink { _ in rebuild() }
             .store(in: &snapshotCancellables)
