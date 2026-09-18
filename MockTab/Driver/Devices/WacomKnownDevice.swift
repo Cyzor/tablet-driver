@@ -559,31 +559,35 @@ final class WacomKnownDevice: TabletDevice {
         }
     }
 
-    // NOT HARDWARE-VERIFIED — none of the five product IDs below have been
+    // NOT HARDWARE-VERIFIED — none of the four product IDs below have been
     // captured or tested against real hardware. Byte layouts are ported from
-    // the Linux kernel (`wacom_24hdt_irq()`, both its `WACOM_24HDT` and
-    // `WACOM_27QHDT` branches) and checked only against synthetic test
-    // fixtures in TabletKit. See
+    // the Linux kernel (`wacom_24hdt_irq()`, `WACOM_24HDT` branch) and
+    // checked only against synthetic test fixtures in TabletKit. See
     // `Notes/Scratch/wacom-24hdt-touch-design-2026-09-08.md` for the full
     // design rationale, the advisor reviews that approved shipping this
     // unverified, and why it stays gated at `.experimental` in the registry
-    // rather than a stronger confidence tier. Do not raise confidence, add a
-    // sixth PID, or assume this is correct on a specific unit without a real
-    // capture confirming it first.
+    // rather than a stronger confidence tier. Do not raise confidence, add
+    // another PID, or assume this is correct on a specific unit without a
+    // real capture confirming it first.
     //
     // Unlike `deriveTouchDecoders` above (which reads whatever descriptor an
-    // interface declares, generically), these two decoders are hand-written
-    // for fixed vendor byte layouts keyed to specific product IDs — there is
-    // no descriptor to derive them from. `Wacom27QHDTDecoder`'s contacts
-    // carry no width/height (unlike `Wacom24HDTDecoder`'s), so any future
-    // touch consumer must handle absent contact geometry, not assume it is
-    // always present.
+    // interface declares, generically), these decoders are hand-written for
+    // fixed vendor byte layouts keyed to specific product IDs — there is no
+    // descriptor to derive them from.
+    //
+    // 0x032C (Cintiq 27QHD Touch, DTH-2700) previously had an entry here
+    // routing it to `Wacom27QHDTDecoder` (report 0x05) — removed 2026-09-17
+    // after a capture showed the device actually emits report 0x88 on a
+    // standard HID Digitizer Touch Screen collection, which that decoder
+    // never matched and so silently discarded every real frame. That shape
+    // is exactly what `deriveTouchDecoders`'s generic path already handles;
+    // `Wacom27QHDTDecoder` is kept for any other WACOM_27QHDT device that
+    // might genuinely emit report 0x05, just not this one.
     private static let fixedTouchDecoderPIDs: [Int: (reportID: UInt8, decoder: any TabletReportDecoder)] = [
         0x0335: (0x01, Wacom24HDTDecoder()),  // Cintiq 13HD Touch (DTH-1300)
         0x00F6: (0x01, Wacom24HDTDecoder()),  // Cintiq 24HD Touch (DTH-2400)
         0x005E: (0x01, Wacom24HDTDecoder()),  // Cintiq 22HD Touch
         0x005D: (0x01, Wacom24HDTDecoder()),  // Cintiq 22 / DTH2242 Touch
-        0x032C: (0x05, Wacom27QHDTDecoder()), // Cintiq 27QHD Touch (DTH-2700)
     ]
 
     /// Registers a hand-written fixed-layout touch decoder for `device` if
