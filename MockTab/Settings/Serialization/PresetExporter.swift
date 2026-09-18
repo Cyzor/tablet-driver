@@ -81,6 +81,16 @@ final class PresetExporter {
             "orientationKey": s.tabletOrientation.rawValue
         ] as [String: Any]
         d["display"] = exportDisplay(s.targetDisplayIndex, toggleIDs: s.toggleDisplayIDSet)
+        // Where on the target display the tablet area is mapped (tablet-driver#15).
+        // Always written, even at the default full-display (0,0,1,1): PresetImporter
+        // must default these to full-display anyway for files from older exports, so
+        // there's no compatibility reason to omit them — this keeps the shape uniform.
+        d["displayRegion"] = [
+            "x": roundFrac(s.displayRegionX),
+            "y": roundFrac(s.displayRegionY),
+            "width": roundFrac(s.displayRegionWidth),
+            "height": roundFrac(s.displayRegionHeight)
+        ] as [String: Any]
         d["pressureCurve"] = exportCurve(s.pressureCurve)
         d["smoothing"] = s.smoothingStrength
         d["doubleClickDistance"] = s.doubleClickDistance

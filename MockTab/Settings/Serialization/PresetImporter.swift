@@ -126,6 +126,16 @@ struct PresetImporter {
             }
         }
         if let v = s["display"] { values["targetDisplayIndex"] = decodeDisplay(v) }
+        // Absent in files exported before tablet-driver#15 — leaving these
+        // unset here means TabletSettings.reloadAll()'s defaults (0,0,1,1,
+        // i.e. full display) apply, which matches every build's behavior
+        // before this feature existed.
+        if let region = s["displayRegion"] as? [String: Any] {
+            if let v = region["x"] as? Double, v.isFinite, v >= 0, v <= 1 { values["displayRegionX"] = v }
+            if let v = region["y"] as? Double, v.isFinite, v >= 0, v <= 1 { values["displayRegionY"] = v }
+            if let v = region["width"] as? Double, v.isFinite, v > 0, v <= 1 { values["displayRegionWidth"] = v }
+            if let v = region["height"] as? Double, v.isFinite, v > 0, v <= 1 { values["displayRegionHeight"] = v }
+        }
         if let v = s["smoothing"] as? Double, v.isFinite, v >= 0, v <= 1 { values["smoothingStrength"] = v }
         if let v = s["doubleClickDistance"] as? Double, v.isFinite, v > 0, v <= 200 { values["doubleClickDistance"] = v }
         if let v = s["invertRotation"] as? Bool { values["invertRotation"] = v }
@@ -187,6 +197,7 @@ struct PresetImporter {
             let rawValue = s[key] as Any
             switch key {
             case "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
+                 "displayRegionX", "displayRegionY", "displayRegionWidth", "displayRegionHeight",
                  "smoothingStrength", "doubleClickDistance":
                 if let v = rawValue as? Double, v.isFinite { values[key] = v }
 
