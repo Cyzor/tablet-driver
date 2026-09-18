@@ -43,16 +43,22 @@ extension InputInjector {
                 // sitting wherever the last real move put it; reuse that.
                 rawPoint = currentCursorPosition()
             }
-        } else {
-            guard let absPoint = displayMapper.mapToScreen(
-                point, snapshot: snap, deviceProductID: deviceProductID)
-            else {
-                // Pen outside active area — deadzone, no events
-                displayMapper.clearRelativeAnchor()
-                return
-            }
+        } else if let absPoint = displayMapper.mapToScreen(
+            point, snapshot: snap, deviceProductID: deviceProductID)
+        {
+            // `mapToScreen` clamps a pen tip beyond the mapped active area
+            // to the boundary rather than rejecting it — the cursor is
+            // already sitting at the edge of where it can appear onscreen,
+            // exactly like a mouse cursor pinned at a monitor's edge while
+            // the mouse keeps moving past it, so no separate out-of-area
+            // handling is needed here. `nil` is only a defensive
+            // possibility (e.g. a zero-size active area), not a real
+            // "pen out of range" signal.
             rawPoint = Self.pinNearScreenEdges(
                 absPoint, in: displayMapper.displayBounds(for: snap))
+        } else {
+            displayMapper.clearRelativeAnchor()
+            return
         }
         let rawPressure = InputInjector.curvedPressure(
             point.normalizedPressure, lut: tool.pressureLUT)

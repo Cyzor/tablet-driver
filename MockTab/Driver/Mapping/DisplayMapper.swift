@@ -374,11 +374,20 @@ struct DisplayMapper {
                 surfaceAspect: surfaceAspect, displayAspect: displayAspect)
         }
 
-        let relX = (ox - areaX) / areaW
-        let relY = (oy - areaY) / areaH
-
-        // Outside active area — deadzone
-        guard relX >= 0, relX <= 1, relY >= 0, relY <= 1 else { return nil }
+        // Clamped, not rejected: once the pen tip is beyond the mapped
+        // active area, the cursor is already sitting at the edge of where
+        // it can appear onscreen — exactly like a physical mouse cursor
+        // pinned at a monitor's edge while the mouse keeps moving past it.
+        // Overshoot past the boundary simply doesn't matter once clamped,
+        // however far or erratic it gets, so there's no need to detect or
+        // filter it upstream (see the PTK-870 BLE bezel/express-key-band
+        // investigation this replaced, in
+        // `project_ptk870_ble_new_report_protocol` memory). Matches the
+        // existing touch-at-screen-edges precedent
+        // (`InputInjector.pinNearScreenEdges`, +Touch.swift) that made
+        // touch-triggered Dock reveal reliable the same way.
+        let relX = Swift.min(Swift.max((ox - areaX) / areaW, 0), 1)
+        let relY = Swift.min(Swift.max((oy - areaY) / areaH, 0), 1)
 
         // Apply multi-point calibration transform in normalized space (if available).
         var calX = relX, calY = relY
