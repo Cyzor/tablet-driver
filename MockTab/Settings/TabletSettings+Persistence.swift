@@ -31,6 +31,10 @@ extension TabletSettings {
         tabletOrientation =
             TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape
         targetDisplayIndex = loadInt("targetDisplayIndex", default: 0)
+        displayRegionX      = Swift.max(0.0,  Swift.min(loadDouble("displayRegionX",      default: 0.0), 1.0))
+        displayRegionY      = Swift.max(0.0,  Swift.min(loadDouble("displayRegionY",      default: 0.0), 1.0))
+        displayRegionWidth  = Swift.max(0.01, Swift.min(loadDouble("displayRegionWidth",  default: 1.0), 1.0))
+        displayRegionHeight = Swift.max(0.01, Swift.min(loadDouble("displayRegionHeight", default: 1.0), 1.0))
         displayBrightness = loadInt("displayBrightness", default: -1)
         displayContrast = loadInt("displayContrast", default: -1)
         displayGamma = loadInt("displayGamma", default: -1)
@@ -354,6 +358,10 @@ extension TabletSettings {
         calibrationJSON = ""
         tabletOrientation = .landscape
         targetDisplayIndex = 0
+        displayRegionX = 0
+        displayRegionY = 0
+        displayRegionWidth = 1
+        displayRegionHeight = 1
         toggleDisplayIDs = ""
         pressureCurve = .linear
         smoothingStrength = 0.0

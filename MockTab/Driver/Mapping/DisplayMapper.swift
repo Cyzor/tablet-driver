@@ -65,6 +65,10 @@ struct DisplayMapper {
 
     private var cachedDisplayBounds: CGRect = .zero
     private var cachedDisplayIndex: Int = Int.min
+    /// Tracked alongside `cachedDisplayIndex` so a display-region-only change
+    /// (index unchanged) still invalidates the cache — index alone doesn't
+    /// capture that.
+    private var cachedDisplayRegion: (x: Double, y: Double, w: Double, h: Double) = (0, 0, 1, 1)
     private var cachedDisplayUUID: String = ""
     private var cachedCalibration: CalibrationEntry?
     private var cachedCalibrationOrientation: Int = -1
@@ -420,11 +424,16 @@ struct DisplayMapper {
     /// target display.
     mutating func displayBounds(for snapshot: InjectionSnapshot) -> CGRect {
         let idx = snapshot.targetDisplayIndex
-        if cachedDisplayIndex != idx {
+        let region = (
+            snapshot.displayRegionX, snapshot.displayRegionY,
+            snapshot.displayRegionWidth, snapshot.displayRegionHeight
+        )
+        if cachedDisplayIndex != idx || cachedDisplayRegion != region {
             let (bounds, displayID) = resolveDisplayBoundsAndID(snapshot: snapshot)
             cachedDisplayBounds = bounds
             cachedDisplayUUID = CalibrationKey.uuidString(for: displayID)
             cachedDisplayIndex = idx
+            cachedDisplayRegion = region
             // Invalidate calibration cache when display changes.
             cachedCalibrationOrientation = -1
         }
@@ -461,11 +470,32 @@ struct DisplayMapper {
             let toggleID = rotation[currentToggleIndex % rotation.count]
             return (CGDisplayBounds(toggleID), toggleID)
         }
+        // Any other value resolves to exactly one specific display — either an
+        // explicit 1-indexed pick, or the mainID fallback for idx==0 ("Primary
+        // display", a first-class, commonly-used UI selection — not a
+        // vestigial sentinel) and for any out-of-range index. The sub-region
+        // narrowing applies uniformly across this whole branch, since all of
+        // it resolves to a single display's bounds.
+        let targetID: CGDirectDisplayID
         if idx > 0, idx <= ids.count {
-            let targetID = ids[idx - 1]
-            return (CGDisplayBounds(targetID), targetID)
+            targetID = ids[idx - 1]
+        } else {
+            targetID = mainID
         }
-        return (CGDisplayBounds(mainID), mainID)
+        return (Self.applyDisplayRegion(CGDisplayBounds(targetID), snapshot: snapshot), targetID)
+    }
+
+    /// Narrows a whole-display rect to the user-configured target sub-region
+    /// (fractions of the display's bounds; default 0,0,1,1 = unchanged). Only
+    /// called for a single specific display — "All Displays" and "Toggle"
+    /// modes ignore the region fields, since a sub-rect of a multi-display
+    /// union or a rotating toggle target has no well-defined meaning.
+    static func applyDisplayRegion(_ bounds: CGRect, snapshot: InjectionSnapshot) -> CGRect {
+        CGRect(
+            x: bounds.minX + snapshot.displayRegionX * bounds.width,
+            y: bounds.minY + snapshot.displayRegionY * bounds.height,
+            width: snapshot.displayRegionWidth * bounds.width,
+            height: snapshot.displayRegionHeight * bounds.height)
     }
 
     /// Returns the ordered list of display IDs in the toggle rotation,

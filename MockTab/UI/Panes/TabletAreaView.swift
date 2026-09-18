@@ -502,11 +502,23 @@ struct TabletAreaView: View {
         let displayUUID = CalibrationKey.uuidString(for: displayID)
         guard !displayUUID.isEmpty else { return }
 
+        // Narrow to the configured display region so the calibration targets
+        // — and the transform fit against them — agree with where
+        // mapToScreen actually maps the pen at runtime. Without this, once a
+        // sub-region is set, calibration would present crosshairs across the
+        // whole screen and fit against the wrong bounds/aspect ratio. Applies
+        // whenever a single specific display is targeted — idx==0 ("Primary
+        // display") included, same scope as DisplayMapper.resolveDisplayBoundsAndID;
+        // only "All Displays" is excluded above and "Toggle" resolves to one
+        // specific display too, so it's covered here as well.
+        let calibrationBounds = DisplayMapper.applyDisplayRegion(
+            CGDisplayBounds(displayID), snapshot: settings.makeInjectionSnapshot())
+
         let session = CalibrationSession(
             settings: settings,
             tabletManager: tabletManager,
             displayUUID: displayUUID,
-            displayBounds: CGDisplayBounds(displayID),
+            displayBounds: calibrationBounds,
             orientation: settings.tabletOrientation)
 
         let window = CalibrationOverlayWindow(session: session)

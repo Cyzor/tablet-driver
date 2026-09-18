@@ -231,6 +231,24 @@ final class TabletSettings: ObservableObject {
         didSet { persist("targetDisplayIndex", targetDisplayIndex) }
     }
 
+    // MARK: - Display region (fractions of the target display's bounds, 0.0..1.0)
+
+    /// Where on the target display the tablet's active area is mapped. Defaults to
+    /// (0, 0, 1, 1) — the whole display, matching every build before this existed.
+    /// Lets the full tablet surface map onto part of a display (e.g. the left portion
+    /// of an ultrawide) instead of losing tablet surface to `proportionalMapping`'s
+    /// crop when the tablet and display aspect ratios don't match. Only applied when
+    /// `targetDisplayIndex` selects a single specific display — ignored for the "All
+    /// Displays" and "Toggle" modes (see `DisplayMapper.resolveDisplayBoundsAndID`).
+    @Published var displayRegionX: Double = 0.0 { didSet { persist("displayRegionX", displayRegionX) } }
+    @Published var displayRegionY: Double = 0.0 { didSet { persist("displayRegionY", displayRegionY) } }
+    @Published var displayRegionWidth: Double = 1.0 {
+        didSet { persist("displayRegionWidth", displayRegionWidth) }
+    }
+    @Published var displayRegionHeight: Double = 1.0 {
+        didSet { persist("displayRegionHeight", displayRegionHeight) }
+    }
+
     /// Panel backlight brightness (0–100) for pen displays with on-device
     /// control (Xencelabs). -1 = never set here; nothing is sent to the
     /// hardware so the panel keeps its own stored value. Persisted straight
@@ -961,6 +979,23 @@ final class TabletSettings: ObservableObject {
             self.touchAreaWidth = snap.w
             self.touchAreaHeight = snap.h
             self.recordTouchAreaDrag(before: after)  // re-registers as redo
+        }
+    }
+
+    /// `recordAreaDrag` for the Display Mapping pane's target-region rect.
+    /// Same contract: one undo entry per completed gesture, registered from
+    /// the editor's drag-end callback.
+    func recordDisplayRegionDrag(before snap: AreaSnapshot) {
+        record(String(localized: "Display Region")) { [weak self] in
+            guard let self else { return }
+            let after = AreaSnapshot(
+                x: self.displayRegionX, y: self.displayRegionY,
+                w: self.displayRegionWidth, h: self.displayRegionHeight)
+            self.displayRegionX = snap.x
+            self.displayRegionY = snap.y
+            self.displayRegionWidth = snap.w
+            self.displayRegionHeight = snap.h
+            self.recordDisplayRegionDrag(before: after)  // re-registers as redo
         }
     }
 

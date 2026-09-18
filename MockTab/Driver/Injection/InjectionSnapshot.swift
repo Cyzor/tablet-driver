@@ -29,6 +29,10 @@ struct InjectionSnapshot: Sendable, Equatable {
 
     var targetDisplayIndex: Int
     var toggleDisplayIDs: Set<CGDirectDisplayID>
+    var displayRegionX: Double
+    var displayRegionY: Double
+    var displayRegionWidth: Double
+    var displayRegionHeight: Double
     var calibrationEntries: [CalibrationEntry]
     var parallaxOffsetX: Double
     var parallaxOffsetY: Double
@@ -144,6 +148,10 @@ extension TabletSettings {
             proportionalMapping: proportionalMapping,
             targetDisplayIndex: targetDisplayIndex,
             toggleDisplayIDs: toggleDisplayIDSet,
+            displayRegionX: displayRegionX,
+            displayRegionY: displayRegionY,
+            displayRegionWidth: displayRegionWidth,
+            displayRegionHeight: displayRegionHeight,
             calibrationEntries: calibrationEntries,
             parallaxOffsetX: parallaxOffsetX,
             parallaxOffsetY: parallaxOffsetY,
