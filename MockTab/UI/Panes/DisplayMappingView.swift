@@ -47,19 +47,27 @@ struct DisplayMappingView: View {
             if hasBrightnessControl {
                 brightnessSection
             }
+            displayRegionSection
         }
         .onAppear { displays = DisplayInfo.all() }
     }
 
     // MARK: - Reset to Defaults
 
-    /// Restores the two `AppOverrideBar.areaKeys` fields this pane owns —
-    /// `targetDisplayIndex` and `toggleDisplayIDSet` — to their shipped
-    /// defaults (primary display, no toggle set). The other `areaKeys`
-    /// fields (active area, parallax, orientation) belong to `TabletAreaView`
-    /// and aren't touched here.
+    /// Restores the `AppOverrideBar.areaKeys` fields this pane owns —
+    /// `targetDisplayIndex`, `toggleDisplayIDSet`, and the four
+    /// `displayRegion*` fields — to their shipped defaults (primary display,
+    /// no toggle set, full-display region). The other `areaKeys` fields
+    /// (active area, parallax, orientation) belong to `TabletAreaView` and
+    /// aren't touched here.
     private func resetToDefaults() {
         applyDisplayReset(index: 0, ids: [], undoIndex: settings.targetDisplayIndex, undoIDs: settings.toggleDisplayIDSet)
+        let snap = TabletSettings.AreaSnapshot(
+            x: settings.displayRegionX, y: settings.displayRegionY,
+            w: settings.displayRegionWidth, h: settings.displayRegionHeight)
+        settings.displayRegionX = 0; settings.displayRegionY = 0
+        settings.displayRegionWidth = 1; settings.displayRegionHeight = 1
+        settings.recordDisplayRegionDrag(before: snap)
     }
 
     /// Self-recursive so "Reset to Defaults" also redoes: each invocation
@@ -275,10 +283,142 @@ struct DisplayMappingView: View {
         }
     }
 
+    // MARK: - Display region (map the tablet onto part of the display)
+
+    /// The single display the mapping currently targets, or nil when the
+    /// target is "All Displays" or "Toggle" — in which case the whole
+    /// section is hidden rather than shown disabled, since there's no one
+    /// display thumbnail to draw the picker over.
+    private var targetedDisplay: DisplayInfo? {
+        let idx = settings.targetDisplayIndex
+        guard idx != modeAll, idx != modeToggle else { return nil }
+        let resolvedIndex = idx > 0 ? idx : 1  // idx == 0 → "Primary display" → first in `displays`
+        return displays.first { $0.listIndex == resolvedIndex } ?? displays.first
+    }
+
+    /// Single rect binding over the four `displayRegion*` settings, the form
+    /// the shared crop editor consumes — same pattern as `TabletAreaView`'s
+    /// `activeAreaBinding`.
+    private var displayRegionBinding: Binding<NormalizedRect> {
+        Binding(
+            get: {
+                NormalizedRect(
+                    x: settings.displayRegionX, y: settings.displayRegionY,
+                    w: settings.displayRegionWidth, h: settings.displayRegionHeight)
+            },
+            set: { r in
+                settings.displayRegionX = r.x
+                settings.displayRegionY = r.y
+                settings.displayRegionWidth = r.w
+                settings.displayRegionHeight = r.h
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var displayRegionSection: some View {
+        if let display = targetedDisplay {
+            Section {
+                NormalizedAreaEditor(
+                    aspectRatio: display.bounds.width / max(display.bounds.height, 1),
+                    rect: displayRegionBinding,
+                    onCommit: { oldRect in
+                        settings.recordDisplayRegionDrag(before: TabletSettings.AreaSnapshot(
+                            x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
+                    },
+                    background: {
+                        if let wallpaper = display.wallpaper {
+                            GeometryReader { bgGeo in
+                                // .aspectRatio(contentMode: .fill) alone
+                                // leaves clipped() with no explicit target
+                                // rect to clip to — a wallpaper whose aspect
+                                // ratio doesn't exactly match the display's
+                                // could leave a hairline sliver unfilled at
+                                // one edge (visible as a faint stray outline
+                                // around the thumbnail). Framing to the
+                                // container's own measured size first gives
+                                // clipped() a concrete rect, so the image
+                                // always fills it exactly.
+                                Image(nsImage: wallpaper)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: bgGeo.size.width, height: bgGeo.size.height)
+                                    .clipped()
+                            }
+                        }
+                    },
+                    overlay: { _, cs in
+                        DisplayNameBadge(name: display.name, resolution: display.resolution, canvasSize: cs)
+                    }
+                )
+                .frame(height: 130)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
+
+                HStack {
+                    Spacer()
+                    Button("Use Whole Screen") {
+                        let snap = TabletSettings.AreaSnapshot(
+                            x: settings.displayRegionX, y: settings.displayRegionY,
+                            w: settings.displayRegionWidth, h: settings.displayRegionHeight)
+                        settings.displayRegionX = 0; settings.displayRegionY = 0
+                        settings.displayRegionWidth = 1; settings.displayRegionHeight = 1
+                        settings.recordDisplayRegionDrag(before: snap)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Map the tablet to the entire selected display (undoable).")
+                }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+            } header: {
+                Text("Screen Area")
+            } footer: {
+                Text("Drag to choose the part of the screen your tablet covers.")
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+    }
+
     private var canvasSection: some View {
         Section("Preview") {
             displayCanvas
                 .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+        }
+    }
+
+    /// A display's name/resolution badge, styled to match the one `displayCanvas`
+    /// draws (name bold, resolution beneath, dark rounded backing) — used
+    /// wherever a display thumbnail needs the same identifying label outside
+    /// the `Canvas`-based multi-display layout (e.g. the single-display
+    /// screen-area editor).
+    private struct DisplayNameBadge: View {
+        let name: String
+        let resolution: String
+        /// The full canvas the badge should center within — `NormalizedAreaEditor`'s
+        /// overlay draws inside a top-leading-aligned ZStack, so without an
+        /// explicit position the badge renders at its natural size pinned to
+        /// the top-left corner instead of centered like the `displayCanvas`
+        /// badges it matches.
+        let canvasSize: CGSize
+
+        var body: some View {
+            VStack(spacing: 2) {
+                Text(name)
+                    .appFont(.badgeTitle)
+                    .bold()
+                Text(resolution)
+                    .appFont(.badgeSubtitle)
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(Color.black.opacity(0.42))
+            )
+            .position(x: canvasSize.width / 2, y: canvasSize.height / 2)
         }
     }
 

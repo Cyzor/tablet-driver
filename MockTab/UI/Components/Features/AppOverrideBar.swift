@@ -454,6 +454,7 @@ struct AppOverrideBar: View {
         "proportionalMapping", "parallaxOffsetX", "parallaxOffsetY",
         "tabletOrientation",
         "targetDisplayIndex", "toggleDisplayIDs",
+        "displayRegionX", "displayRegionY", "displayRegionWidth", "displayRegionHeight",
     ]
 
     static let orientationKeys: Set<String> = [

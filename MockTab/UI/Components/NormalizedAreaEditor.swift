@@ -22,7 +22,7 @@ struct NormalizedRect: Equatable {
 /// Used by `TabletAreaView` (pen active area) and `TouchView`'s touch-area
 /// editor.  Generic `Overlay` lets the pen view draw a device-name badge
 /// inside the active rect without forcing the touch view to opt in.
-struct NormalizedAreaEditor<Overlay: View>: View {
+struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     let aspectRatio: Double
     @Binding var rect: NormalizedRect
     /// Smallest dimension (width or height) the user can drag the rect to,
@@ -31,8 +31,15 @@ struct NormalizedAreaEditor<Overlay: View>: View {
     /// Called once on drag-end with the rect's value *before* the drag
     /// started.  Use it to record a single coalesced undo entry.
     var onCommit: ((NormalizedRect) -> Void)? = nil
-    /// Decorations drawn above the fill, below the handles.  Receives the
-    /// area rect (in canvas-local coordinates) and the full canvas size.
+    /// Drawn first, behind the crop chrome (dim exterior, fill, border,
+    /// handles) — e.g. a display's wallpaper thumbnail. Sized to the full
+    /// canvas. Defaults to nothing, matching every pane before this existed.
+    @ViewBuilder var background: () -> Background
+    /// Decorations drawn above the fill and border, below the handles.
+    /// Receives the area rect (in canvas-local coordinates) and the full
+    /// canvas size. Since this draws above the border, content that fills
+    /// the *entire* canvas here (rather than just the area rect) will paint
+    /// over the border — use `background` instead for anything full-canvas.
     @ViewBuilder var overlay: (CGRect, CGSize) -> Overlay
 
     @State private var dragOrigin = NormalizedRect(x: 0, y: 0, w: 0, h: 0)
@@ -59,6 +66,9 @@ struct NormalizedAreaEditor<Overlay: View>: View {
         GeometryReader { geo in
             let cs = canvasSize(in: geo.size)
             ZStack(alignment: .topLeading) {
+                background()
+                    .frame(width: cs.width, height: cs.height)
+                    .allowsHitTesting(false)
                 Rectangle()
                     .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
                     .frame(width: cs.width, height: cs.height)
@@ -349,8 +359,8 @@ struct NormalizedAreaEditor<Overlay: View>: View {
     }
 }
 
-// Convenience initialiser for the no-overlay case (e.g. TouchView).
-extension NormalizedAreaEditor where Overlay == EmptyView {
+// Convenience initialiser for the no-background, no-overlay case (e.g. TouchView).
+extension NormalizedAreaEditor where Background == EmptyView, Overlay == EmptyView {
     init(
         aspectRatio: Double,
         rect: Binding<NormalizedRect>,
@@ -361,6 +371,45 @@ extension NormalizedAreaEditor where Overlay == EmptyView {
         self._rect = rect
         self.minDimension = minDimension
         self.onCommit = onCommit
+        self.background = { EmptyView() }
+        self.overlay = { _, _ in EmptyView() }
+    }
+}
+
+// Convenience initialiser for the no-background case with a live overlay
+// (e.g. the pen pane's letterbox preview + device-name badge).
+extension NormalizedAreaEditor where Background == EmptyView {
+    init(
+        aspectRatio: Double,
+        rect: Binding<NormalizedRect>,
+        minDimension: Double = 0.05,
+        onCommit: ((NormalizedRect) -> Void)? = nil,
+        @ViewBuilder overlay: @escaping (CGRect, CGSize) -> Overlay
+    ) {
+        self.aspectRatio = aspectRatio
+        self._rect = rect
+        self.minDimension = minDimension
+        self.onCommit = onCommit
+        self.background = { EmptyView() }
+        self.overlay = overlay
+    }
+}
+
+// Convenience initialiser for the background-only case with no overlay
+// (e.g. the Displays pane's wallpaper-backed screen-area editor).
+extension NormalizedAreaEditor where Overlay == EmptyView {
+    init(
+        aspectRatio: Double,
+        rect: Binding<NormalizedRect>,
+        minDimension: Double = 0.05,
+        onCommit: ((NormalizedRect) -> Void)? = nil,
+        @ViewBuilder background: @escaping () -> Background
+    ) {
+        self.aspectRatio = aspectRatio
+        self._rect = rect
+        self.minDimension = minDimension
+        self.onCommit = onCommit
+        self.background = background
         self.overlay = { _, _ in EmptyView() }
     }
 }

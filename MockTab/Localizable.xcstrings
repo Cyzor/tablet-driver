@@ -5921,6 +5921,9 @@
         }
       }
     },
+    "Display Region" : {
+
+    },
     "Display Rotation Detected" : {
       "comment" : "Warning title for rotated display",
       "localizations" : {
@@ -6281,6 +6284,9 @@
           }
         }
       }
+    },
+    "Drag to choose the part of the screen your tablet covers." : {
+
     },
     "Draw" : {
       "comment" : "Undo name for ink stroke",
@@ -10083,6 +10089,9 @@
           }
         }
       }
+    },
+    "Map the tablet to the entire selected display (undoable)." : {
+
     },
     "Map the tablet to your main display." : {
       "comment" : "A radio button label that instructs the user to map the tablet to their main display.",
@@ -16077,6 +16086,9 @@
         }
       }
     },
+    "Screen Area" : {
+
+    },
     "Scroll" : {
       "comment" : "Default ring slot label\nRing/strip action: scroll\nTouch ring mode: scroll wheel output",
       "localizations" : {
@@ -19411,6 +19423,9 @@
           }
         }
       }
+    },
+    "Use Whole Screen" : {
+
     },
     "Use your finger to move and click." : {
       "comment" : "Help text for the \"Enable finger touch\" toggle in the TouchView.",
