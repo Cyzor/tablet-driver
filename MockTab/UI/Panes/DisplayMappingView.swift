@@ -347,8 +347,8 @@ struct DisplayMappingView: View {
                             }
                         }
                     },
-                    overlay: { _, cs in
-                        DisplayNameBadge(name: display.name, resolution: display.resolution, canvasSize: cs)
+                    overlay: { areaRect, _ in
+                        DisplayNameBadge(name: display.name, resolution: display.resolution, areaRect: areaRect)
                     }
                 )
                 .frame(height: 130)
@@ -393,32 +393,35 @@ struct DisplayMappingView: View {
     /// wherever a display thumbnail needs the same identifying label outside
     /// the `Canvas`-based multi-display layout (e.g. the single-display
     /// screen-area editor).
+    ///
+    /// Centers on the live crop rect, not the full canvas — matching
+    /// `TabletAreaView.tabletBadge`, whose badge tracks the crop box as it's
+    /// dragged. Clips to `areaRect` and hides once the box is too narrow to
+    /// hold the badge, same threshold as `tabletBadge`.
     private struct DisplayNameBadge: View {
         let name: String
         let resolution: String
-        /// The full canvas the badge should center within — `NormalizedAreaEditor`'s
-        /// overlay draws inside a top-leading-aligned ZStack, so without an
-        /// explicit position the badge renders at its natural size pinned to
-        /// the top-left corner instead of centered like the `displayCanvas`
-        /// badges it matches.
-        let canvasSize: CGSize
+        let areaRect: CGRect
 
         var body: some View {
-            VStack(spacing: 2) {
-                Text(name)
-                    .appFont(.badgeTitle)
-                    .bold()
-                Text(resolution)
-                    .appFont(.badgeSubtitle)
+            if areaRect.width >= 140 {
+                VStack(spacing: 2) {
+                    Text(name)
+                        .appFont(.badgeTitle)
+                        .bold()
+                    Text(resolution)
+                        .appFont(.badgeSubtitle)
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(Color.black.opacity(0.42))
+                )
+                .frame(maxWidth: areaRect.width - 4)
+                .position(x: areaRect.midX, y: areaRect.midY)
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-            .background(
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(Color.black.opacity(0.42))
-            )
-            .position(x: canvasSize.width / 2, y: canvasSize.height / 2)
         }
     }
 
