@@ -4,6 +4,7 @@
 
 import AppKit
 import CoreGraphics
+import CoreImage
 import ImageIO
 import SwiftUI
 import TabletKit
@@ -911,6 +912,8 @@ struct DisplayInfo {
         }
     }
 
+    private static let ciContext = CIContext()
+
     private static func loadThumbnail(from url: URL, maxEdge: CGFloat) -> NSImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         let opts: [CFString: Any] = [
@@ -920,6 +923,22 @@ struct DisplayInfo {
         ]
         guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, opts as CFDictionary)
         else { return nil }
-        return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+        let toned = tonedDown(cg) ?? cg
+        return NSImage(cgImage: toned, size: NSSize(width: cg.width, height: cg.height))
+    }
+
+    /// Desaturates and flattens contrast so the thumbnail reads as a muted
+    /// backdrop rather than competing with the crop chrome drawn over it —
+    /// most setups resolve to Apple's default wallpaper here (see
+    /// `wallpaper`'s doc comment), which is busy and heavily saturated at
+    /// full strength. `nil` on any filter failure; caller falls back to the
+    /// untouched thumbnail.
+    private static func tonedDown(_ cg: CGImage) -> CGImage? {
+        guard let filter = CIFilter(name: "CIColorControls") else { return nil }
+        filter.setValue(CIImage(cgImage: cg), forKey: kCIInputImageKey)
+        filter.setValue(0.35, forKey: kCIInputSaturationKey)
+        filter.setValue(0.85, forKey: kCIInputContrastKey)
+        guard let output = filter.outputImage else { return nil }
+        return ciContext.createCGImage(output, from: output.extent)
     }
 }
