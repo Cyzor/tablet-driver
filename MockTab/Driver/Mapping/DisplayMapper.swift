@@ -214,6 +214,24 @@ struct DisplayMapper {
             w: Swift.abs(x2 - x1), h: Swift.abs(y2 - y1))
     }
 
+    /// Largest centered sub-rect of `bounds` matching `aspect` (w/h).
+    /// `aspect <= 0` returns `bounds` unchanged.
+    static func aspectFitRect(_ bounds: CGRect, aspect: Double) -> CGRect {
+        guard aspect > 0, bounds.width > 0, bounds.height > 0 else { return bounds }
+        let boundsAspect = bounds.width / bounds.height
+        var w = bounds.width
+        var h = bounds.height
+        if boundsAspect > aspect {
+            w = bounds.height * CGFloat(aspect)
+        } else {
+            h = bounds.width / CGFloat(aspect)
+        }
+        return CGRect(
+            x: bounds.minX + (bounds.width - w) / 2,
+            y: bounds.minY + (bounds.height - h) / 2,
+            width: w, height: h)
+    }
+
     // MARK: - Point mapping
 
     /// In relative mode: computes a delta from the previous normalized tablet position

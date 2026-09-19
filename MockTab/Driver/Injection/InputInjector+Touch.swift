@@ -174,8 +174,12 @@ extension InputInjector {
                 "touch palm filter: rejected=id:major/minor[\(rejected, privacy: .public)], accepted=id:major/minor[\(accepted, privacy: .public)]")
         }
 
-        // Resolve display bounds — touch shares the pen's target display.
-        let displayBounds = displayMapper.displayBounds(for: snap)
+        // Resolve display bounds — touch shares the pen's target display,
+        // fit to the touch surface's physical aspect so shapes traced on the
+        // pad aren't stretched by the display's own ratio.
+        let displayBounds = DisplayMapper.aspectFitRect(
+            displayMapper.displayBounds(for: snap),
+            aspect: cachedTouchWidthMM / cachedTouchHeightMM)
 
         // Rotate the touch-area crop and the sensor maxima into oriented
         // space once per frame — `snap.touchAreaX/Y/Width/Height` are stored
