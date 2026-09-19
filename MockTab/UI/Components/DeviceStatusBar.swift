@@ -93,8 +93,7 @@ struct ToolNameLabel: View {
 
     private var displayName: String {
         guard let toolID = context?.activeToolID else {
-            return registry.knownTools.first?.nickname
-                ?? String(localized: "No tool in proximity", comment: "Tool name label when no pen is in range")
+            return String(localized: "No tool in proximity", comment: "Tool name label when no pen is in range")
         }
         if let t = registry.knownTools.first(where: { $0.id == toolID }) { return t.nickname }
         return toolID
@@ -232,8 +231,7 @@ struct DeviceStatusBar: View {
             if let t = registry.knownTools.first(where: { $0.id == toolID }) { return t.nickname }
             return toolID
         }
-        return registry.knownTools.first?.nickname
-            ?? String(localized: "No tool", comment: "Tool name in status bar when no pen is active")
+        return String(localized: "No tool", comment: "Tool name in status bar when no pen is active")
     }
 
     private var activeAppName: String? {
