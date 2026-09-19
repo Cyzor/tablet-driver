@@ -107,6 +107,7 @@ final class SharedPanScrollState {
 /// | State | Armed by | Released by | Leaks if stuck |
 /// |---|---|---|---|
 /// | `groundTruthSyntheticFlags` | aux/barrel binding posting a modifier | `releaseAllSyntheticModifiers` via proximity exit, 0.4s idle `watchdogTimer`, 1Hz `leakWatchdogTimer`, app switch (`releaseOnAppSwitch`) | Modifier stuck down system-wide |
+/// | `heldKeyComboRefCounts` | aux/barrel binding posting a plain (non-modifier) `.keyCombo` key | `releaseAllHeldKeyComboKeys` via the same four paths as `groundTruthSyntheticFlags` above | Letter/number key stuck down system-wide until the app quits |
 /// | `lastTipDown` | curved pressure ≥ `tipPressureThreshold`, subject to `tipUpDebounceTimer` on release | tip-up in `inject` (debounce-confirmed), proximity exit (incl. the 1Hz watchdog's forced exit — the only release on an unplug with the tip down) | Stroke never ends; button reads held |
 /// | `hoverDragButton` | barrel-button click binding down | binding up edge, proximity exit, `releaseBindingHeldButton` on tool change/disconnect | Movement posts drags instead of hover |
 /// | `lastMiddleDown`, `lastUSBMouseMask` / `usbMouseLeftHeld` | puck/KC-100 mouse button down | `releaseHeldPointerButtons` — proximity exit and tool change/disconnect | Mouse button stuck down |
@@ -923,14 +924,16 @@ final class InputInjector: @unchecked Sendable {
         lastInjectCallAt = Date()
         if let t = watchdogTimer { CFRunLoopTimerInvalidate(t) }
         watchdogTimer = nil
-        guard !groundTruthSyntheticFlags.isEmpty else { return }
+        guard !groundTruthSyntheticFlags.isEmpty || !heldKeyComboRefCounts.isEmpty else { return }
         let timer = CFRunLoopTimerCreateWithHandler(
             kCFAllocatorDefault,
             CFAbsoluteTimeGetCurrent() + watchdogInterval,
             0,  // interval — one-shot
             0, 0
         ) { [weak self] _ in
-            guard let self, !self.groundTruthSyntheticFlags.isEmpty else { return }
+            guard let self,
+                !self.groundTruthSyntheticFlags.isEmpty || !self.heldKeyComboRefCounts.isEmpty
+            else { return }
             // Wacom pads stream reports continuously while a key is held (~133 Hz),
             // so reaching this timeout there unambiguously means the stream stopped
             // (proximity loss, disconnect). Xencelabs's QuickKeys puck instead sends
@@ -941,6 +944,7 @@ final class InputInjector: @unchecked Sendable {
             // stuck-but-"held" leak is caught later by the 1 Hz leak watchdog.
             guard self.tabletIsQuiescent else { return }
             self.releaseAllSyntheticModifiers()
+            self.releaseAllHeldKeyComboKeys()
         }
         watchdogTimer = timer
         if let timer { CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes) }
@@ -997,14 +1001,27 @@ final class InputInjector: @unchecked Sendable {
                 self.commitProximityExit(snap: snap)
             }
 
-            guard !self.groundTruthSyntheticFlags.isEmpty else { return }
-            let heldInterval = Date().timeIntervalSince(self.lastSyntheticFlagChangeAt)
-            // As with the idle watchdog above, a device that only reports on state
-            // change (Xencelabs QuickKeys) can sit idle for a long legitimate hold —
-            // trust the last known button state, not just elapsed time.
-            if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
-                modLog.notice("leak-watchdog: releasing stuck synthetic flags 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
-                self.releaseAllSyntheticModifiers()
+            if !self.groundTruthSyntheticFlags.isEmpty {
+                let heldInterval = Date().timeIntervalSince(self.lastSyntheticFlagChangeAt)
+                // As with the idle watchdog above, a device that only reports on state
+                // change (Xencelabs QuickKeys) can sit idle for a long legitimate hold —
+                // trust the last known button state, not just elapsed time.
+                if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
+                    modLog.notice("leak-watchdog: releasing stuck synthetic flags 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
+                    self.releaseAllSyntheticModifiers()
+                }
+            }
+
+            // Same leak check for a stuck plain key from a `.keyCombo` binding
+            // (see `heldKeyComboRefCounts`) — the exact class of bug this
+            // watchdog exists to catch, just for a letter/number key instead
+            // of a modifier bit.
+            if !self.heldKeyComboRefCounts.isEmpty {
+                let heldInterval = Date().timeIntervalSince(self.lastKeyComboChangeAt)
+                if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
+                    modLog.notice("leak-watchdog: releasing stuck keyCombo keys \(Array(self.heldKeyComboRefCounts.keys), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
+                    self.releaseAllHeldKeyComboKeys()
+                }
             }
 
             // Same leak check for the shared aux-modifier store, but the "is anything
@@ -1358,6 +1375,16 @@ final class InputInjector: @unchecked Sendable {
         CGEventFlags.maskAlternate.rawValue: 0,
         CGEventFlags.maskControl.rawValue: 0,
     ]
+
+    /// Ref-counted virtual keycodes currently held down by a plain (non-modifier-only)
+    /// `.keyCombo` binding — e.g. a barrel button mapped to the "d" key. Unlike
+    /// `groundTruthSyntheticFlags`, nothing tracked this before, so a lost up-transition
+    /// (dropped BT report, disconnect mid-press) left the key stuck system-wide until
+    /// the app quit. Mirrors the modifier ref-count pattern so the same watchdog/
+    /// app-switch/proximity-exit release paths can catch it too.
+    var heldKeyComboRefCounts: [CGKeyCode: Int] = [:]
+    /// Timestamp of the last `heldKeyComboRefCounts` mutation, for the leak watchdog.
+    var lastKeyComboChangeAt: Date = .distantPast
 
     /// Left-hand canonical keycodes for each managed modifier bit.
     /// Electron and AppKit text input only update their internal modifier state when

@@ -206,6 +206,24 @@ extension InputInjector {
         }
     }
 
+    /// Releases any plain (non-modifier) keys still held by a `.keyCombo` binding —
+    /// see `heldKeyComboRefCounts`. Posts a `keyUp` for each and clears the ref counts.
+    /// Safe to call when nothing is held (no-op).
+    func releaseAllHeldKeyComboKeys() {
+        guard !heldKeyComboRefCounts.isEmpty else { return }
+        let toRelease = heldKeyComboRefCounts.keys
+        modLog.info("releaseAllHeldKeyComboKeys: clearing keycodes \(Array(toRelease), privacy: .public)")
+        heldKeyComboRefCounts.removeAll()
+        lastKeyComboChangeAt = Date()
+
+        for key in toRelease {
+            guard let e = CGEvent(keyboardEventSource: sessionSource, virtualKey: key, keyDown: false)
+            else { continue }
+            e.flags = currentEventFlags
+            e.post(tap: .cghidEventTap)
+        }
+    }
+
     /// Called when the frontmost application changes. Releases any synthetic modifier
     /// keys so the new app receives a clean keyboard state.
     ///
@@ -216,6 +234,7 @@ extension InputInjector {
         // groundTruthSyntheticFlags / modifierRefCounts are HIDThread-owned.
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
             self?.releaseAllSyntheticModifiers()
+            self?.releaseAllHeldKeyComboKeys()
             // The app that was receiving a momentum tail is no longer
             // frontmost. Pre-27 an abandoned tail just idled harmlessly in
             // it; macOS 27's stuck-gesture auto-cancel timer can now
@@ -803,6 +822,21 @@ extension InputInjector {
                     modLog.debug("keyCombo \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) groundTruth: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public)")
                 }
             }
+
+            // Track the plain key itself so a lost up-transition can still be
+            // caught by the same watchdogs that protect modifier bits — see
+            // `heldKeyComboRefCounts`.
+            if !isModifierOnly {
+                let key = CGKeyCode(binding.keyCode)
+                let count = heldKeyComboRefCounts[key] ?? 0
+                if down {
+                    heldKeyComboRefCounts[key] = count + 1
+                } else {
+                    heldKeyComboRefCounts[key] = Swift.max(0, count - 1)
+                    if heldKeyComboRefCounts[key] == 0 { heldKeyComboRefCounts.removeValue(forKey: key) }
+                }
+                lastKeyComboChangeAt = Date()
+            }
             // State is committed — post the flagsChanged bracket(s) with the
             // post-commit flags: on DOWN they assert the modifiers ahead of the
             // keyDown; on UP they carry the released state after the keyUp that
@@ -966,9 +1000,11 @@ extension InputInjector {
         }
 
         // Safety valve: if nothing is physically held on the tablet but we still
-        // believe a synthetic modifier is pressed, it is by definition a leak.
-        if tabletIsQuiescent && !groundTruthSyntheticFlags.isEmpty {
-            releaseAllSyntheticModifiers()
+        // believe a synthetic modifier (or plain keyCombo key) is pressed, it is
+        // by definition a leak.
+        if tabletIsQuiescent {
+            if !groundTruthSyntheticFlags.isEmpty { releaseAllSyntheticModifiers() }
+            if !heldKeyComboRefCounts.isEmpty { releaseAllHeldKeyComboKeys() }
         }
         rearmWatchdog()
     }

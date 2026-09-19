@@ -651,6 +651,7 @@ extension InputInjector {
         // Per-transport fixes (Defect A/B) prevent accumulation; this ensures
         // proximity exit is always a clean slate regardless.
         releaseAllSyntheticModifiers()
+        releaseAllHeldKeyComboKeys()
 
         // Do NOT post proximity-exit flagsChanged events for physical modifiers.
         // flagsChanged events posted via cghidEventTap update the system keyboard
