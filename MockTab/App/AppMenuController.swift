@@ -635,11 +635,16 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
                 let connected = tm.connectedProductIDs.contains(tablet.productID)
                 let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
                 let label = SettingsWindowManager.shared.menuLabel(forKey: tablet.instanceKey) + suffix
+                // The dongle has no window of its own (`openWindow`) — grey it
+                // out rather than let the click silently no-op, unless it's
+                // actively relaying a tablet reachable no other way.
+                let isDongleDisabled = tm.isDongleAwaitingHandoff(productID: tablet.productID)
                 let item = NSMenuItem(
                     title: label,
-                    action: #selector(openDeviceWindow(_:)),
+                    action: isDongleDisabled ? nil : #selector(openDeviceWindow(_:)),
                     keyEquivalent: "")
                 item.target = self
+                item.isEnabled = !isDongleDisabled
                 // Composite instance identity doesn't fit NSMenuItem.tag
                 // (an Int) — carry it via representedObject instead.
                 item.representedObject = tablet.instanceKey.stringValue

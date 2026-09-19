@@ -240,7 +240,7 @@ final class SettingsWindowManager: ObservableObject {
     // MARK: - Multi-window
 
     @discardableResult
-    func openWindow(forInstanceKey key: DeviceInstanceKey) -> SettingsWindowController {
+    func openWindow(forInstanceKey key: DeviceInstanceKey) -> SettingsWindowController? {
         // A companion peripheral (Xencelabs Quick Keys puck/dongle) never
         // gets a window of its own while its owning tablet is connected —
         // redirect to the owner instead. Covers every caller (menus, status
@@ -251,6 +251,18 @@ final class SettingsWindowManager: ObservableObject {
             connectedProductIDs: TabletManager.shared.connectedProductIDs)
         {
             return openWindow(forInstanceKey: resolveKey(forProductID: ownerPID))
+        }
+        // The dongle, unlike the puck, has no standalone UI — it never gets
+        // a window: redirect to its paired tablet if reachable, else refuse.
+        // Not covered by `connectedCompanionOwner` above since pairing is
+        // runtime-discovered, not a static PID map.
+        if TabletManager.shared.isDongleAwaitingHandoff(productID: key.productID) {
+            if let pairedPID = TabletManager.shared.contexts[key.productID]?.pairedProductID,
+                pairedPID != 0
+            {
+                return openWindow(forInstanceKey: resolveKey(forProductID: pairedPID))
+            }
+            return nil
         }
         if let existing = window(for: key) {
             NSApp.activate(ignoringOtherApps: true)
@@ -267,7 +279,7 @@ final class SettingsWindowManager: ObservableObject {
     /// Model-PID entry point for callers with no instance in hand
     /// ("Detect Tablet", device-picker callbacks).
     @discardableResult
-    func openWindow(forProductID productID: Int) -> SettingsWindowController {
+    func openWindow(forProductID productID: Int) -> SettingsWindowController? {
         openWindow(forInstanceKey: resolveKey(forProductID: productID))
     }
 
@@ -281,6 +293,9 @@ final class SettingsWindowManager: ObservableObject {
     }
 
     func replaceWindow(_ old: SettingsWindowController, withDeviceID pid: Int) {
+        // The dongle is a relay, never a window subject — see `openWindow`.
+        guard !TabletManager.shared.isDongleRawProductID(pid) else { return }
+
         let frame = old.window?.frame
         let tabIndex = old.selectedTabIndex
         let wasDefault = defaultWindow === old
@@ -373,6 +388,7 @@ final class SettingsWindowManager: ObservableObject {
                 if restoredKeys.contains(normalized) { continue }
                 if VendorDeviceRegistry.isConnectedCompanion(
                     productID: key.productID, connectedProductIDs: savedProductIDs)
+                    || TabletManager.shared.isDongleRawProductID(key.productID)
                 {
                     continue
                 }
@@ -537,15 +553,19 @@ final class SettingsWindowManager: ObservableObject {
         let connected = tm.connectedProductIDs
         // Never hand out a claimed companion (puck/dongle whose owning
         // tablet is connected) — its UI lives in the owner's window.
-        return tm.activeContext?.instanceKey
+        return tm.activeContext.flatMap {
+            tm.isDongleAwaitingHandoff(productID: $0.productID) ? nil : $0.instanceKey
+        }
             ?? tm.deviceContexts.values.first(where: {
                 $0.isConnected
                     && !VendorDeviceRegistry.isConnectedCompanion(
                         productID: $0.productID, connectedProductIDs: connected)
                     && !tm.isDongleAwaitingHandoff(productID: $0.productID)
             })?.instanceKey
-            ?? connected.first.map { resolveKey(forProductID: $0) }
-            ?? DeviceRegistry.shared.knownTablets.first?.instanceKey
+            ?? connected.first(where: { !tm.isDongleRawProductID($0) })
+                .map { resolveKey(forProductID: $0) }
+            ?? DeviceRegistry.shared.knownTablets
+                .first(where: { !tm.isDongleRawProductID($0.productID) })?.instanceKey
     }
 
     /// Whether the key settings window offers the given tab, or nil when no

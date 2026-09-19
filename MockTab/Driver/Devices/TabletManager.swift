@@ -107,6 +107,14 @@ final class TabletManager: ObservableObject {
     /// has no static canonical PID mapping.
     private static let ack40401ProductID = 0x0084
 
+    /// True when `productID` is the dongle's raw identity, regardless of
+    /// pairing state — for callers with no live context to consult yet
+    /// (e.g. restoring a saved window at launch). The dongle never gets a
+    /// window of its own, full stop.
+    func isDongleRawProductID(_ productID: Int) -> Bool {
+        productID == Self.ack40401ProductID
+    }
+
     /// True when `productID` is the dongle and USB already covers whatever
     /// it's relaying — no pairing yet, or the paired tablet is also
     /// connected directly. Live equivalent of `isConnectedCompanion`, since
@@ -1291,7 +1299,11 @@ final class TabletManager: ObservableObject {
                 }
             }
 
-            if activeContext == nil { activeContext = context }
+            // A bare/still-pairing dongle must never become the active
+            // context — `activeDeviceKey()` reads it before any dongle filter.
+            if activeContext == nil && !isDongleAwaitingHandoff(productID: productID) {
+                activeContext = context
+            }
 
             DeviceRegistry.shared.recordTablet(
                 instanceKey: context.instanceKey, usbSerial: usbSerial,
@@ -1388,7 +1400,9 @@ final class TabletManager: ObservableObject {
         logger.info("TabletManager: \(Self.deviceName(forProductID: context.productID), privacy: .public) disconnected")
         refreshConnectedIDs(mostRecent: nil)
         if activeContext === context {
-            activeContext = hidDeviceMap.values.first
+            activeContext = hidDeviceMap.values.first(where: {
+                !isDongleAwaitingHandoff(productID: $0.productID)
+            })
             updateDockBadge()
         }
     }
@@ -1458,6 +1472,23 @@ final class TabletManager: ObservableObject {
         } else {
             connectedProductID = connectedProductIDs.last ?? 0
         }
+        revertStaleDongleNameIfBare()
+    }
+
+    /// Reverts the dongle's registry row back to its own name once it's
+    /// genuinely unpaired — `updateModelName(forDonglePairing:)` renames it
+    /// to the paired tablet's model, but nothing previously undid that once
+    /// the tablet was gone. Only triggers on `pairedProductID == 0` (never
+    /// paired this link), not merely "paired tablet also reachable via USB":
+    /// that's a live pairing and must be left alone, since re-pairing is an
+    /// RF event that won't re-fire just because USB later disconnects again.
+    private func revertStaleDongleNameIfBare() {
+        guard let dongleContext = contexts[Self.ack40401ProductID],
+            dongleContext.pairedProductID == 0
+        else { return }
+        DeviceRegistry.shared.updateModelName(
+            forDonglePairing: dongleContext.instanceKey,
+            to: TabletManager.deviceName(forProductID: Self.ack40401ProductID))
     }
 
     // MARK: - Latency-critical activity assertion
