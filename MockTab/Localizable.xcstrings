@@ -4021,6 +4021,17 @@
         }
       }
     },
+    "Confines the tablet to part of the screen. The rest becomes unreachable." : {
+      "comment" : "Footer under the Displays pane's Screen Area crop editor.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildschirmbereich begrenzen. Der Rest bleibt zu."
+          }
+        }
+      }
+    },
     "Conflicting driver: %@" : {
       "comment" : "Conflict detection: named process is running",
       "localizations" : {
@@ -16087,7 +16098,27 @@
       }
     },
     "Screen Area" : {
-
+      "comment" : "Section header above the Displays pane's Screen Area crop editor.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildschirmbereich"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Área de pantalla"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面エリア"
+          }
+        }
+      }
     },
     "Scroll" : {
       "comment" : "Default ring slot label\nRing/strip action: scroll\nTouch ring mode: scroll wheel output",
@@ -19425,7 +19456,27 @@
       }
     },
     "Use Whole Screen" : {
-
+      "comment" : "Button below the Displays pane's Screen Area crop editor: resets the crop to the full display.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ganzen Bildschirm verwenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar pantalla completa"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面全体を使う"
+          }
+        }
+      }
     },
     "Use your finger to move and click." : {
       "comment" : "Help text for the \"Enable finger touch\" toggle in the TouchView.",

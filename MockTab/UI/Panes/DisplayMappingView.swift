@@ -375,7 +375,7 @@ struct DisplayMappingView: View {
             } header: {
                 Text("Screen Area")
             } footer: {
-                Text("Drag to choose the part of the screen your tablet covers.")
+                Text("Confines the tablet to part of the screen. The rest becomes unreachable.")
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
