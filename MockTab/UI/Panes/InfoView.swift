@@ -19,10 +19,9 @@ struct InfoView: View {
     private var productID: Int? { instanceKey?.productID }
 
     @State private var accessibilityGranted = AXIsProcessTrusted()
-    /// Granted state for Input Monitoring, which gates *reading* the tablet at
-    /// all. Denial already surfaces as "HID Manager: failed to open", but that
-    /// names the mechanism rather than the cause and offers no way out; this
-    /// row states the cause and carries the fix.
+    /// Gates *reading* the tablet at all; denial also surfaces as "HID
+    /// Manager: failed to open" elsewhere, but this row names the actual
+    /// cause and carries the fix.
     @State private var inputMonitoringGranted =
         IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
     @State private var launchAtLogin = false
@@ -31,31 +30,22 @@ struct InfoView: View {
     @State private var diagnosticSnapshotAt = Date()
     @State private var conflicts: [ConflictFinding] = []
     @State private var showCaptureGuide = false
-    /// Local event monitor refreshing the diagnostic snapshot on mouse-up,
-    /// active only while the panel is expanded and torn down otherwise —
-    /// see the `.onChange(of: diagnosticsExpanded)` below.
+    /// Refreshes the diagnostic snapshot on mouse-up; active only while the
+    /// panel is expanded — see `.onChange(of: diagnosticsExpanded)` below.
     @State private var mouseUpMonitor: Any?
     /// True between a mouse/pen-down that started inside the diagnostics
-    /// text and its matching mouse-up — i.e. a selection drag is (or was
-    /// just) in progress. Guards refreshes *during* the drag itself.
+    /// text and its matching mouse-up. Guards refreshes during the drag.
     @State private var selectionGestureActive = false
-    /// Where `selectionGestureActive` became true, in window coordinates —
-    /// compared against the mouse-up location to tell a real drag-selection
-    /// from a bare click (which places a cursor but selects nothing worth
-    /// protecting).
+    /// Where `selectionGestureActive` began, for telling a real
+    /// drag-selection from a bare click on mouse-up.
     @State private var selectionGestureStart: CGPoint = .zero
-    /// True once a real drag-selection inside the diagnostics text has
-    /// completed, and stays true *after* the gesture ends — unlike
-    /// `selectionGestureActive`, which only covers the drag itself. Without
-    /// this, a proximity exit (or any other automatic trigger) arriving
-    /// after the user has let go of the mouse but is still looking at their
-    /// selection would refresh right out from under it. Cleared only by an
-    /// actual refresh (`refreshDiagnosticSnapshot()`), since that's the one
-    /// thing that genuinely invalidates whatever was selected.
+    /// True once a real drag-selection has completed, and stays true after
+    /// the gesture ends (unlike `selectionGestureActive`) so a later
+    /// automatic refresh trigger doesn't wipe out a selection the user is
+    /// still looking at. Cleared only by an actual refresh.
     @State private var textHasSelection = false
-    /// Owned per-window rather than a shared singleton: two tablet windows
-    /// each collecting data must not see each other's Cancel/Done, event
-    /// counts, or recorded reports.
+    /// Per-window, not a shared singleton — two tablet windows collecting
+    /// data must not see each other's state.
     @StateObject private var captureEngine = CaptureEngine()
 
     var body: some View {
@@ -238,15 +228,10 @@ struct InfoView: View {
                     : String(localized: "Idle", comment: "Driver status value — device is idle"),
                 ok: isConnected ? true : nil)
 
-            // Both permission rows are labeled with the exact names System
-            // Settings uses, so the user is looking for the same words we do.
-            //
-            // Granted rows keep a button rather than going bare: revoking is
-            // something only the user can do, in a pane that is hard to find
-            // on purpose, so the one thing we *can* offer is the trip there.
-            // "Open System Settings" is Apple's own wording for this (see
-            // SystemPolicy.framework) and promises navigation, not a revoke
-            // we're unable to perform.
+            // Labeled with System Settings' own names. Granted rows keep a
+            // button rather than going bare: revoking is the user's to do,
+            // so the one thing we can offer is the trip there —
+            // "Open System Settings" is Apple's own wording (SystemPolicy.framework).
             row(
                 String(localized: "Input Monitoring", comment: "Row label in Info tab status table — Input Monitoring permission"),
                 value: inputMonitoringGranted
@@ -299,10 +284,7 @@ struct InfoView: View {
                     ? String(localized: "Enabled", comment: "Launch at Login status value")
                     : String(localized: "Disabled", comment: "Launch at Login status value"),
                 ok: launchAtLogin ? true : nil,
-                // A disabled preference isn't a fault — label the action for
-                // what it does instead of the repair-framed "Fix". Unlike the
-                // permissions above, this one we set ourselves in one click,
-                // so we owe the user a one-click way back out.
+                // Not a fault — label the action for what it does, not "Fix".
                 action: launchAtLogin ? disableLaunchAtLogin : enableLaunchAtLogin,
                 actionLabel: launchAtLogin
                     ? String(localized: "Disable", comment: "Button that turns off Launch at Login from the Info tab")
@@ -318,8 +300,7 @@ struct InfoView: View {
                     : String(localized: "\(conflicts.count) detected", comment: "Conflicts status value when conflicts are found, showing count"),
                 ok: conflicts.isEmpty ? true : false,
                 action: conflicts.isEmpty ? nil : showConflictAlert,
-                // Ellipsis: this opens an alert listing the conflicts rather
-                // than repairing anything, so it needs the "more to come" cue.
+                // Ellipsis: opens an alert rather than fixing anything directly.
                 actionLabel: String(localized: "Fix…", comment: "Button on the Conflicts row that opens an alert describing the detected conflicts"),
                 actionHelp: String(localized: "Show details about detected conflicts with other tablet drivers and how to resolve them.", comment: "Tooltip on Fix button for Conflicts row")
             )
@@ -328,19 +309,13 @@ struct InfoView: View {
 
     /// One status row, optionally carrying a trailing action button.
     ///
-    /// The button is offered whenever the row's state is *actionable*, which is
-    /// not the same as faulty: a granted permission is healthy but still worth
-    /// a route to System Settings, since a user who granted something they
-    /// didn't mean to has no other way back. Rows with nothing to do in either
-    /// state — Device, Speed, Status, Profile — pass no action at all, which
-    /// is what makes the button's presence meaningful.
+    /// "Actionable" isn't the same as "faulty" — a granted permission still
+    /// gets a route to System Settings. Rows with nothing to do pass no
+    /// action, which is what makes the button's presence meaningful.
     ///
-    /// Label an action with a trailing ellipsis only when clicking it needs
-    /// something further from the user before the action completes — a prompt,
-    /// an alert, a sheet, a switch to flip elsewhere. "Enable" and "Disable"
-    /// act at once and take none; "Grant…" and "Fix…" do and take one. Opening
-    /// a window is itself the completed action, so "Open System Settings" takes
-    /// none either (matching Apple's own label for it).
+    /// Trailing ellipsis only when the action needs more from the user
+    /// before completing (a prompt, alert, sheet). "Enable"/"Disable" act at
+    /// once; "Grant…"/"Fix…" don't.
     @ViewBuilder
     private func row(
         _ label: String, value: String,
@@ -357,9 +332,8 @@ struct InfoView: View {
                 .scaledFrame(minWidth: 150, alignment: .trailing)
                 .gridColumnAlignment(.trailing)
 
-            // Sized to its content, not stretched: the flexible space now sits
-            // after the button column, so values and their buttons stay next
-            // to each other instead of being pushed to opposite edges.
+            // Sized to content — flexible space sits after the button
+            // column so values and buttons stay together.
             HStack(spacing: 8) {
                 if let sym = leadingSymbol {
                     Image(systemName: sym)
@@ -372,27 +346,19 @@ struct InfoView: View {
             }
             .gridColumnAlignment(.leading)
 
-            // Buttons live in their own grid column so they share one left
-            // edge down the table, instead of each starting wherever its
-            // row's value text happened to end. Rows without an action still
-            // occupy the cell, which is what keeps the column from collapsing
-            // — see `DevicesView`'s always-present rename button for the same
-            // "the trailing edge never moves" rule.
+            // Own grid column so buttons share one left edge down the table;
+            // rows without an action still occupy the cell to keep the
+            // column from collapsing (mirrors DevicesView's rename button).
             HStack(spacing: 0) {
-                // `actionLabel` is required alongside an action rather than
-                // defaulted: a generic fallback would silently pick the wrong
-                // ellipsis convention for whatever the new action does.
+                // actionLabel required alongside action — no generic fallback,
+                // since that could silently pick the wrong ellipsis convention.
                 if let action, let actionLabel {
                     Button(actionLabel, action: action)
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .help(actionHelp ?? "")
-                        // Left-aligned at a shared edge, but sized to their
-                        // own labels: forcing equal widths would stretch
-                        // "Enable" to the width of "Open System Settings"
-                        // (much worse in German), spending horizontal space
-                        // the table doesn't have to fix a raggedness the
-                        // shared left edge already hides.
+                        // Sized to its own label — equal widths would stretch
+                        // "Enable" to "Open System Settings"'s width.
                         .fixedSize()
                 }
                 Spacer(minLength: 0)
@@ -443,9 +409,8 @@ struct InfoView: View {
     private var diagnosticSection: some View {
         DisclosureRow(label: String(localized: "Diagnostic Detail", comment: "Collapsible section header for detailed diagnostic information"), isExpanded: $diagnosticsExpanded) {
             VStack(alignment: .trailing, spacing: 6) {
-                // No separate "Updated HH:mm:ss" label here — it always
-                // duplicated the "Generated :" line already inside the
-                // snapshot text below, just in a different spot.
+                // No separate "Updated HH:mm:ss" label — duplicates the
+                // "Generated :" line already inside the snapshot text.
                 Button {
                     refreshDiagnosticSnapshot()
                 } label: {
@@ -481,45 +446,28 @@ struct InfoView: View {
             deviceContext?.livePointPublisher.eraseToAnyPublisher()
                 ?? Empty().eraseToAnyPublisher()
         ) { point in
-            // Refresh on proximity exit (point going nil) only — fires once
-            // per pen lift, not per report. Guarded against both an
-            // in-progress drag (ending a stylus-driven selection *is* a pen
-            // lift, and if it also registers as a full proximity exit, this
-            // must not refresh out from under it) and an already-completed
-            // selection the user is still looking at — a pen lift is
-            // unrelated to the tablet's own timing, so it can arrive at any
-            // point after the drag finished, not just during it. Safe from
-            // the jitter-reset issue regardless, now that jitter is a
-            // cumulative histogram rather than the instantaneous value
-            // `resetOnProximityExit()` zeroes here.
+            // Proximity exit only (point going nil) — fires once per pen
+            // lift, not per report. Guarded against an in-progress
+            // selection drag and an already-completed one the user is
+            // still looking at, since a pen lift can arrive at any point
+            // after either.
             guard diagnosticsExpanded, point == nil, !selectionGestureActive, !textHasSelection else { return }
             refreshDiagnosticSnapshot()
         }
     }
 
     /// Refreshes the diagnostic snapshot on left-mouse-up anywhere in the
-    /// app: mouse release is a natural pause point, not a continuous stream,
-    /// so unlike the old live-updating property it doesn't fight an
-    /// in-progress selection on every redraw. Local monitors run before
-    /// normal event dispatch, so this fires even for a mouse-up inside the
-    /// diagnostics text itself — which is exactly the case that must be
-    /// excluded: that specific mouse-up is what *finishes* a text selection
-    /// there, and refreshing under it would wipe the selection right back
-    /// out.
+    /// app — a natural pause point that doesn't fight an in-progress
+    /// selection on every redraw. Must exclude the mouse-up that *finishes*
+    /// a selection inside the diagnostics text, or the refresh would wipe
+    /// it back out immediately.
     ///
-    /// Excluded by tracking where the gesture *started*, not where it ends.
-    /// Hit-testing only the mouse-up location (tried first) missed drags
-    /// that begin inside the text but end just outside its exact bounds —
-    /// in the padding/background/border chrome that visually looks like
-    /// part of the box but isn't the `NSTextView` itself — which is a very
-    /// ordinary way to finish a selection (dragging past the last line, or
-    /// slightly past an edge). Matching mouse-down and mouse-up as a pair
-    /// and remembering only the down-location's hit test handles that:
-    /// a selection gesture is defined by where it began.
-    /// A drag shorter than this, in points, is treated as a bare click
-    /// (places a cursor, selects nothing) rather than a real selection —
-    /// so it doesn't latch `textHasSelection` and block future auto-refresh
-    /// for no reason.
+    /// Excluded by tracking where the gesture *started*, not where it ends
+    /// — hit-testing only the mouse-up location missed drags that begin
+    /// inside the text but end just outside its bounds (a very ordinary way
+    /// to finish a selection).
+    /// A drag shorter than this, in points, is a bare click (selects
+    /// nothing) rather than a real selection.
     private static let selectionDragThreshold: CGFloat = 3
 
     private func startMouseUpMonitor() {
@@ -538,20 +486,13 @@ struct InfoView: View {
                     // A real drag inside the text: new selection made.
                     textHasSelection = true
                 } else if !wasRealDrag {
-                    // A bare click anywhere — inside the text (collapses any
-                    // existing selection to a cursor) or elsewhere (the
-                    // ordinary "I'm done with that" gesture) — is a
-                    // deselection signal. Without this, once a real
-                    // selection had ever been made, nothing would resume
-                    // auto-refreshing even after the user visibly let go of
-                    // it, since textHasSelection only ever got set, never
-                    // cleared.
+                    // A bare click anywhere is a deselection signal —
+                    // without this, once set, textHasSelection would never
+                    // clear and auto-refresh would stay blocked forever.
                     textHasSelection = false
                 }
-                // The remaining case — a real drag that *didn't* start in
-                // the text (e.g. resizing something elsewhere) — leaves
-                // textHasSelection untouched, so an existing protected
-                // selection stays protected regardless of unrelated drags.
+                // Remaining case — a real drag that didn't start in the
+                // text — leaves textHasSelection untouched.
 
                 if selectionGestureActive {
                     selectionGestureActive = false
@@ -567,9 +508,8 @@ struct InfoView: View {
 
     /// `hitTest(_:)` wants the point in the coordinate system of the
     /// *superview* of the view it's called on, not the view's own — calling
-    /// it directly on `contentView` with window coordinates (an earlier
-    /// version of this did) is off by the title bar's height, so the check
-    /// silently never matched anything.
+    /// it directly on `contentView` with window coordinates is off by the
+    /// title bar's height.
     private static func isInsideDiagnosticText(_ event: NSEvent) -> Bool {
         let hit =
             event.window?.contentView?.superview?.hitTest(event.locationInWindow)
@@ -578,16 +518,10 @@ struct InfoView: View {
         return isInsideTextView(hit)
     }
 
-    /// Walks up from the hit-tested view looking for a text-view ancestor —
-    /// the hit view itself is often a clip/container view nested a level or
-    /// two above the actual text view. Checks both formal `NSText`
-    /// conformance and the class name: SwiftUI's `.textSelection(.enabled)`
-    /// on a plain `Text` is backed by a private view that behaves like a
-    /// text view (click-drag selects, first-responder-adjacent) but isn't
-    /// guaranteed to formally declare `NSText` conformance, so relying on
-    /// `is NSText` alone already missed once. The class-name check is
-    /// deliberately loose to catch that private type without needing its
-    /// exact name.
+    /// Walks up from the hit-tested view for a text-view ancestor. Checks
+    /// both formal `NSText` conformance and class name — SwiftUI's
+    /// `.textSelection(.enabled)` is backed by a private view that behaves
+    /// like a text view but isn't guaranteed to declare `NSText`.
     private static func isInsideTextView(_ view: NSView) -> Bool {
         var v: NSView? = view
         while let current = v {
@@ -620,14 +554,9 @@ struct InfoView: View {
     }
 
     /// Builds a snapshot of diagnostic text as of the moment it's called.
-    /// Deliberately *not* a live-reading computed property: earlier it read
-    /// `Date()` and app state inline, so any incidental re-render of
-    /// `InfoView` (mouse hover elsewhere, window activation, a pen report
-    /// arriving) produced different text — which meant the `Text` view's
-    /// content changed under an in-progress selection, discarding it before
-    /// the user could copy anything. Called explicitly by `refresh()` and
-    /// cached in `diagnosticSnapshot`, so the displayed text only changes
-    /// when the user asks for it.
+    /// Deliberately not a live-reading computed property — an earlier
+    /// version re-rendered on any incidental InfoView redraw, discarding an
+    /// in-progress text selection. Called explicitly and cached.
     private func buildDiagnosticText() -> String {
         var lines: [String] = []
 
@@ -689,11 +618,9 @@ struct InfoView: View {
             let jitterHist = ctx.injector.jitterHistogram
             let jitterTotal = jitterHist.reduce(0, +)
             if jitterTotal > 0 {
-                // Cumulative since this tool came into proximity — not reset
-                // by tip-down/proximity-exit like the instantaneous jitter
-                // level, so a snapshot taken between hover sessions still
-                // shows whether meaningful jitter has occurred recently
-                // instead of always reading zero.
+                // Cumulative since this tool came into proximity, unlike
+                // the instantaneous jitter level — so a snapshot between
+                // hover sessions still shows recent jitter, not zero.
                 var bounds = CursorSmoother.jitterHistogramBucketsPtPerSample.map { "<\($0)" }
                 bounds.append(">\(CursorSmoother.jitterHistogramBucketsPtPerSample.last!)")
                 let parts = zip(bounds, jitterHist).map { "\($0):\($1)" }
@@ -757,15 +684,13 @@ struct InfoView: View {
         refreshDiagnosticSnapshot()
     }
 
-    /// Both permission checks, split out so a grant made in System Settings can
-    /// be picked up on app reactivation without rebuilding the whole snapshot.
+    /// Split out so a grant made in System Settings is picked up on app
+    /// reactivation without rebuilding the whole snapshot.
     ///
-    /// Re-opens the HID manager as a side effect when Input Monitoring is
-    /// present: a grant that arrives after launch leaves the manager closed
-    /// from its failed open, so without this the row would read Granted while
-    /// the tablet stayed dead. Doing it here rather than only in the Grant
-    /// button also covers the likelier path — granting in System Settings and
-    /// switching back, which lands on the reactivation refresh.
+    /// Re-opens the HID manager when Input Monitoring is now granted — a
+    /// grant that arrives after launch leaves the manager closed from its
+    /// failed open, so without this the row would read Granted while the
+    /// tablet stayed dead.
     private func refreshPermissions() {
         accessibilityGranted = AXIsProcessTrusted()
         inputMonitoringGranted =
@@ -776,10 +701,7 @@ struct InfoView: View {
     }
 
     /// Single choke point for updating `diagnosticSnapshot`, so every
-    /// trigger (manual button, expand, mouse-up, proximity exit) also
-    /// stamps `diagnosticSnapshotAt` for the "Updated Xs ago" label —
-    /// otherwise it's impossible to tell staleness from "nothing changed"
-    /// from "the refresh mechanism is broken."
+    /// trigger also stamps `diagnosticSnapshotAt`.
     private func refreshDiagnosticSnapshot() {
         diagnosticSnapshot = buildDiagnosticText()
         diagnosticSnapshotAt = Date()
@@ -787,30 +709,19 @@ struct InfoView: View {
     }
 
     /// Ask for Accessibility: the system alert when it can still appear,
-    /// System Settings when it can't.
-    ///
-    /// The alert only shows on an app's *first* ask and is silent forever
-    /// after, so calling both unconditionally would stack a redundant Settings
-    /// window behind the alert on a fresh install — the alert already carries
-    /// its own "Open System Settings" button. `promptForAccessibilityIfNeeded`
-    /// reports whether it actually asked, which is the signal for whether we
-    /// still owe the user a route.
+    /// System Settings when it can't (the alert only shows on an app's
+    /// first ask, silent forever after — its own button already covers the
+    /// Settings route, so calling both would stack redundant windows).
     private func requestAccessibility() {
         if tabletManager.promptForAccessibilityIfNeeded() { return }
         openSettingsPane(Self.accessibilityAnchor)
     }
 
-    /// Ask for Input Monitoring.
-    ///
-    /// Unlike Accessibility this genuinely prompts in place, so the pane is a
-    /// fallback rather than the main route: it opens only when the request
-    /// comes back denied, which covers both a fresh refusal and an app that
-    /// was denied earlier (where the prompt no longer appears and the call
-    /// returns false immediately).
-    ///
-    /// `IOHIDRequestAccess` blocks until the user answers, so its return value
-    /// is the answer — checking on a later runloop pass instead would race the
-    /// dialog and drop Settings on top of the prompt still awaiting a click.
+    /// Ask for Input Monitoring — unlike Accessibility this genuinely
+    /// prompts in place, so Settings is a fallback for a denied request
+    /// (covers both a fresh refusal and a prior denial, where the prompt no
+    /// longer appears). `IOHIDRequestAccess` blocks until answered, so its
+    /// return value is authoritative.
     private func requestInputMonitoring() {
         let granted = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
         refreshPermissions()
@@ -890,12 +801,9 @@ struct InfoView: View {
     }
 
     /// Turn off launch-at-login, falling back to Login Items if the system
-    /// refuses. Worth having as a real action rather than a link: we register
-    /// this from a single click in this same table, so it's the one item here
-    /// a user can enable without meaning to — and until now the Enable button
-    /// simply vanished afterwards, leaving System Settings as the only way
-    /// back. `unregister()` throws in the same shapes `register()` does, so
-    /// the fallback mirrors it.
+    /// refuses. Worth a real action, not just a link — we register this
+    /// from one click in the same table, so it's the one item here a user
+    /// can enable by accident and needs an easy way back from.
     private func disableLaunchAtLogin() {
         do {
             try SMAppService.mainApp.unregister()
@@ -914,16 +822,11 @@ struct InfoView: View {
 
 // MARK: - LiveInputSectionContent
 //
-// Owns the livePointTick polling dependency itself, rather than InfoView
-// hosting it. `livePoint` publishes on every HID report, so anything that
-// reads livePointTick in its body re-renders at report rate — previously
-// that was all of InfoView.body, including the diagnostics text below,
-// which meant selecting that text with a stylus regenerated the very
-// livePoint reports that blew away the in-progress selection on every
-// redraw (a mouse-driven selection isn't itself a livePoint source, so it
-// didn't hit this). Scoping the tick to just this subtree keeps the
-// diagnostics section — and everything else in InfoView — stable while
-// the pen moves.
+// Owns the livePointTick polling dependency itself rather than InfoView
+// hosting it. `livePoint` publishes on every HID report; scoping the tick
+// to just this subtree keeps the rest of InfoView (including the
+// diagnostics text, whose in-progress selection a stylus report would
+// otherwise blow away on every redraw) stable while the pen moves.
 private struct LiveInputSectionContent: View {
     let deviceContext: DeviceContext?
     let productID: Int?
@@ -977,9 +880,13 @@ private struct LiveInputView: View {
 
     // MARK: - Rotation gauge
 
-    /// Accumulated rotation for monotonic sweep. If new angle is >180 less than
-    /// the previous, we've wrapped 0/360 and should add 360 to keep motion forward.
+    /// Total signed rotation since the gauge last reset, not clamped to
+    /// 0-360 — each new raw angle adds the shortest signed delta from the
+    /// previous one, so a wrap (358° -> 2°) contributes +4° instead of
+    /// snapping the hand back ~356° (confirmed against a ~9-revolution
+    /// capture, ptk-870-usb-funky-art-pen-rotation.txt).
     @State private var accumAngle: Double = 0
+    @State private var lastRawAngle: Double?
 
     /// Clock-face rotation gauge: thin line pivots from center like a clock hand.
     /// Negates the accumulated angle so clockwise physical twist = clockwise sweep.
@@ -993,15 +900,21 @@ private struct LiveInputView: View {
         }
         .frame(width: 36, height: 36)
         .onChange(of: degrees) { newDeg in
-            if let d = newDeg {
-                if accumAngle > 0 && (d - accumAngle) < -180 {
-                    accumAngle = d + 360
-                } else {
-                    accumAngle = d
-                }
-            } else {
+            guard let d = newDeg else {
                 accumAngle = 0
+                lastRawAngle = nil
+                return
             }
+            guard let prev = lastRawAngle else {
+                accumAngle = d
+                lastRawAngle = d
+                return
+            }
+            var delta = (d - prev).truncatingRemainder(dividingBy: 360)
+            if delta > 180 { delta -= 360 }
+            if delta < -180 { delta += 360 }
+            accumAngle += delta
+            lastRawAngle = d
         }
     }
 
