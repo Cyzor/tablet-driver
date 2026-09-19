@@ -45,6 +45,10 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     @State private var dragOrigin = NormalizedRect(x: 0, y: 0, w: 0, h: 0)
     @State private var draftRect: NormalizedRect?
     @State private var dragAnchor: CGPoint?
+    /// Latched once per corner drag (Shift held) from the first frame with
+    /// meaningful travel, so which axis stays cursor-exact doesn't
+    /// flip-flop frame to frame — see `applyKeepProportions`.
+    @State private var cornerDominantAxisIsWidth: Bool?
 
     /// Drives the focus ring for keyboard users; also enables `.onKeyPress`
     /// nudging on macOS 14+ via the conditional modifier below.
@@ -289,11 +293,19 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                     dragOrigin = rect
                     draftRect = rect
                     dragAnchor = v.startLocation
+                    cornerDominantAxisIsWidth = nil
                 }
                 guard let anchor = dragAnchor else { return }
                 let dx = (v.location.x - anchor.x) / cs.width
                 let dy = (v.location.y - anchor.y) / cs.height
-                applyDrag(edge: edge, dx: dx, dy: dy)
+                if cornerDominantAxisIsWidth == nil, dx * dx + dy * dy > 0.0001 * 0.0001 {
+                    cornerDominantAxisIsWidth = abs(dx) >= abs(dy)
+                }
+                let flags = NSEvent.modifierFlags
+                applyDrag(
+                    edge: edge, dx: dx, dy: dy,
+                    fromCenter: flags.contains(.option),
+                    keepProportions: flags.contains(.shift))
             }
             .onEnded { _ in
                 if dragAnchor != nil, let draft = draftRect {
@@ -302,18 +314,35 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                 }
                 dragAnchor = nil
                 draftRect = nil
+                cornerDominantAxisIsWidth = nil
             }
     }
 
-    private func applyDrag(edge: CropEdge, dx: Double, dy: Double) {
+    private func applyDrag(
+        edge: CropEdge, dx rawDx: Double, dy rawDy: Double,
+        fromCenter: Bool = false, keepProportions: Bool = false
+    ) {
         guard var draft = draftRect else { return }
         let o = dragOrigin
         let minD = minDimension
 
+        guard edge != .body else {
+            draft.x = Swift.min(Swift.max(o.x + rawDx, 0), 1 - o.w)
+            draft.y = Swift.min(Swift.max(o.y + rawDy, 0), 1 - o.h)
+            draftRect = draft
+            return
+        }
+
+        // Option mirrors growth to the opposite side, so the grabbed handle
+        // stays glued to the cursor only if the driving edge moves *twice*
+        // the cursor's delta (half goes to this side, half to the mirror).
+        var dx = rawDx, dy = rawDy
+        if fromCenter {
+            dx *= 2
+            dy *= 2
+        }
+
         switch edge {
-        case .body:
-            draft.x = Swift.min(Swift.max(o.x + dx, 0), 1 - o.w)
-            draft.y = Swift.min(Swift.max(o.y + dy, 0), 1 - o.h)
         case .left:
             let newX = Swift.min(Swift.max(o.x + dx, 0), o.x + o.w - minD)
             draft.x = newX
@@ -345,9 +374,93 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
         case .bottomRight:
             draft.w = Swift.min(Swift.max(o.w + dx, minD), 1 - o.x)
             draft.h = Swift.min(Swift.max(o.h + dy, minD), 1 - o.y)
+        case .body:
+            break
+        }
+
+        if keepProportions, o.h > 0 {
+            draft = applyKeepProportions(edge: edge, draft: draft, origin: o, minDimension: minD)
+        }
+        if fromCenter {
+            draft = anchorToCenter(edge: edge, draft: draft, origin: o)
         }
 
         draftRect = draft
+    }
+
+    /// Rescales the non-driving axis so the rect's aspect ratio matches the
+    /// drag's starting aspect ratio — matches Photoshop/Sketch's Shift-drag
+    /// convention. The driving axis (the one the dragged handle controls
+    /// directly) is left alone; a corner drag drives both, so its larger
+    /// fractional change wins. Re-anchors the edges Shift didn't drive so
+    /// the grabbed handle stays under the cursor.
+    private func applyKeepProportions(
+        edge: CropEdge, draft: NormalizedRect, origin o: NormalizedRect, minDimension minD: Double
+    ) -> NormalizedRect {
+        var draft = draft
+        let targetAspect = o.w / o.h
+
+        // `fixedRight`/`fixedBottom`: true when that opposite edge must stay
+        // pinned at its origin position (i.e. the near edge is what's being
+        // dragged), so a width/height rescale needs to shift x/y to compensate.
+        // Corners rescale whichever axis moved proportionally *less*, so the
+        // axis the cursor is actively pushing harder on stays exact and only
+        // the lagging axis snaps to match it.
+        switch edge {
+        case .left:
+            draft.h = Swift.max(draft.w / targetAspect, minD)
+            draft.y = o.y + o.h - draft.h
+        case .right:
+            draft.h = Swift.max(draft.w / targetAspect, minD)
+        case .top:
+            draft.w = Swift.max(draft.h * targetAspect, minD)
+            draft.x = o.x + o.w - draft.w
+        case .bottom:
+            draft.w = Swift.max(draft.h * targetAspect, minD)
+        case .topLeft, .topRight, .bottomLeft, .bottomRight:
+            // Corner drags: pick the dominant axis once, from raw cursor
+            // travel at drag start, and hold that choice for the whole
+            // gesture — re-evaluating every frame flip-flops which axis is
+            // "exact" and reads as the grabbed corner outrunning the cursor.
+            if cornerDominantAxisIsWidth ?? true {
+                draft.h = Swift.max(draft.w / targetAspect, minD)
+                if edge == .topLeft || edge == .topRight {
+                    draft.y = o.y + o.h - draft.h
+                }
+            } else {
+                draft.w = Swift.max(draft.h * targetAspect, minD)
+                if edge == .topLeft || edge == .bottomLeft {
+                    draft.x = o.x + o.w - draft.w
+                }
+            }
+        case .body:
+            break
+        }
+
+        draft.w = Swift.min(draft.w, 1 - draft.x)
+        draft.h = Swift.min(draft.h, 1 - draft.y)
+        return draft
+    }
+
+    /// Re-centers the rect on the drag's original center after a mirrored
+    /// resize — the width/height computed by the doubled delta already
+    /// reflect both sides growing together; this just re-derives x/y from
+    /// that center instead of the single-sided edge math above, and clamps
+    /// so the mirrored rect can't run off either edge of the canvas.
+    private func anchorToCenter(
+        edge: CropEdge, draft: NormalizedRect, origin o: NormalizedRect
+    ) -> NormalizedRect {
+        var draft = draft
+        let centerX = o.x + o.w / 2
+        let centerY = o.y + o.h / 2
+        let maxW = Swift.min(centerX, 1 - centerX) * 2
+        let maxH = Swift.min(centerY, 1 - centerY) * 2
+
+        draft.w = Swift.min(draft.w, maxW)
+        draft.h = Swift.min(draft.h, maxH)
+        draft.x = centerX - draft.w / 2
+        draft.y = centerY - draft.h / 2
+        return draft
     }
 
     private func edgeCursor(_ edge: CropEdge) -> NSCursor {
