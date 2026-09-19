@@ -105,11 +105,14 @@ final class SettingsWindowManager: ObservableObject {
                 // claimed companion — devices enumerate one at a time, so a
                 // puck/dongle that arrived before its owning tablet got a
                 // window while momentarily unowned. The loop below then
-                // opens (or keeps) the owner's window in its place.
+                // opens (or keeps) the owner's window in its place. The
+                // ACK-40401 dongle gets the same treatment once its paired
+                // tablet is reachable directly over USB.
                 for wc in self.windows {
                     if let pid = wc.productID,
                         VendorDeviceRegistry.isConnectedCompanion(
                             productID: pid, connectedProductIDs: ids)
+                        || TabletManager.shared.isDongleAwaitingHandoff(productID: pid)
                     {
                         wc.window?.close()
                     }
@@ -124,6 +127,7 @@ final class SettingsWindowManager: ObservableObject {
                        !self.windows.contains(where: { $0.productID == id })
                            && !VendorDeviceRegistry.isConnectedCompanion(
                                productID: id, connectedProductIDs: ids)
+                           && !TabletManager.shared.isDongleAwaitingHandoff(productID: id)
                    }) {
                     self.replaceWindow(dw, withDeviceID: pid)
                 }
@@ -144,6 +148,7 @@ final class SettingsWindowManager: ObservableObject {
                 for pid in arrived
                 where !VendorDeviceRegistry.isConnectedCompanion(
                     productID: pid, connectedProductIDs: ids)
+                    && !TabletManager.shared.isDongleAwaitingHandoff(productID: pid)
                 {
                     self.frontExistingWindow(forProductID: pid)
                 }
@@ -163,10 +168,12 @@ final class SettingsWindowManager: ObservableObject {
                 guard let self else { return }
                 // Companions fold into their owner's window rather than
                 // getting one of their own — a Quick Keys puck arriving with
-                // its tablet must not open a second window.
+                // its tablet must not open a second window; same for a
+                // dongle already covered by USB.
                 if VendorDeviceRegistry.isConnectedCompanion(
                     productID: key.productID,
                     connectedProductIDs: TabletManager.shared.connectedProductIDs)
+                    || TabletManager.shared.isDongleAwaitingHandoff(productID: key.productID)
                 {
                     return
                 }
@@ -535,6 +542,7 @@ final class SettingsWindowManager: ObservableObject {
                 $0.isConnected
                     && !VendorDeviceRegistry.isConnectedCompanion(
                         productID: $0.productID, connectedProductIDs: connected)
+                    && !tm.isDongleAwaitingHandoff(productID: $0.productID)
             })?.instanceKey
             ?? connected.first.map { resolveKey(forProductID: $0) }
             ?? DeviceRegistry.shared.knownTablets.first?.instanceKey

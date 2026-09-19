@@ -102,6 +102,23 @@ final class TabletManager: ObservableObject {
         }
     }
 
+    /// The ACK-40401 wireless dongle's own raw PID. Its paired tablet is
+    /// discovered only at runtime (report 0x80), so unlike BT/USB pairs it
+    /// has no static canonical PID mapping.
+    private static let ack40401ProductID = 0x0084
+
+    /// True when `productID` is the dongle and USB already covers whatever
+    /// it's relaying — no pairing yet, or the paired tablet is also
+    /// connected directly. Live equivalent of `isConnectedCompanion`, since
+    /// pairing isn't known statically.
+    func isDongleAwaitingHandoff(productID: Int) -> Bool {
+        guard productID == Self.ack40401ProductID else { return false }
+        guard let dongleContext = contexts[productID] else { return false }
+        let pairedPID = dongleContext.pairedProductID
+        guard pairedPID != 0 else { return true }
+        return connectedProductIDs.contains(pairedPID)
+    }
+
     /// Context for a registry row. A row with an instance token matches the
     /// exact instance; the legacy row (nil/empty token) matches the unit
     /// holding the model's claimed namespace, via the compatibility view.
