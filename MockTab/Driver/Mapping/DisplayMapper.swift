@@ -69,6 +69,11 @@ struct DisplayMapper {
     /// (index unchanged) still invalidates the cache — index alone doesn't
     /// capture that.
     private var cachedDisplayRegion: (x: Double, y: Double, w: Double, h: Double) = (0, 0, 1, 1)
+    /// Tracked alongside `cachedDisplayIndex` because Toggle/Span mode keeps
+    /// `targetDisplayIndex` constant regardless of which displays are
+    /// selected — without this, editing the selection while already in
+    /// Toggle/Span wouldn't invalidate the cache.
+    private var cachedToggleDisplayIDs: Set<CGDirectDisplayID> = []
     private var cachedDisplayUUID: String = ""
     private var cachedCalibration: CalibrationEntry?
     private var cachedCalibrationOrientation: Int = -1
@@ -440,12 +445,14 @@ struct DisplayMapper {
             snapshot.displayRegionX, snapshot.displayRegionY,
             snapshot.displayRegionWidth, snapshot.displayRegionHeight
         )
-        if cachedDisplayIndex != idx || cachedDisplayRegion != region {
+        let toggleIDs = snapshot.toggleDisplayIDs
+        if cachedDisplayIndex != idx || cachedDisplayRegion != region || cachedToggleDisplayIDs != toggleIDs {
             let (bounds, displayID) = resolveDisplayBoundsAndID(snapshot: snapshot)
             cachedDisplayBounds = bounds
             cachedDisplayUUID = CalibrationKey.uuidString(for: displayID)
             cachedDisplayIndex = idx
             cachedDisplayRegion = region
+            cachedToggleDisplayIDs = toggleIDs
             // Invalidate calibration cache when display changes.
             cachedCalibrationOrientation = -1
         }

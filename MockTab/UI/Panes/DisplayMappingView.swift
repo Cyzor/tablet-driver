@@ -466,7 +466,7 @@ struct DisplayMappingView: View {
 
     private var toggleSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Included displays")
+            Text("Active Displays")
                 .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
                 .help("Click a thumbnail to toggle that display in or out of the rotation. ⌘-click to add individual displays; ⇧-click to select a range.")
@@ -646,26 +646,79 @@ struct DisplayMappingView: View {
         }
     }
 
-    /// Cmd+click on a canvas rectangle: builds the toggle rotation additively.
-    /// Starting from an "all" (empty) set, the first click begins an explicit
-    /// set with just that display; subsequent clicks add or remove entries.
+    /// The set to build a new selection from when the click starts outside
+    /// Toggle/Span mode: just the single display currently targeted (Primary
+    /// resolves to the first display), not every display. Falls back to "all"
+    /// only when already in Toggle/Span (where an empty `toggleDisplayIDSet`
+    /// already means "all" and should keep meaning that).
+    private func seedIDsForNewSelection() -> Set<CGDirectDisplayID> {
+        let idx = settings.targetDisplayIndex
+        if idx == modeToggle || idx == modeSpan {
+            let ids = settings.toggleDisplayIDSet
+            return ids.isEmpty ? Set(displays.map(\.id)) : ids
+        }
+        if let display = targetedDisplay {
+            return [display.id]
+        }
+        // modeAll or no resolvable target: start from everything.
+        return Set(displays.map(\.id))
+    }
+
+    /// Cmd+click on a canvas rectangle: builds the toggle/span selection
+    /// additively. Starting from whatever's currently targeted (a single
+    /// display, or the existing Toggle/Span set), the click adds or removes
+    /// just the clicked display. Stays in the current mode when it's already
+    /// Toggle or Span; otherwise defaults to Toggle.
     private func canvasCmdClick(at index: Int) {
         guard displays.indices.contains(index) else { return }
         let info = displays[index]
         let oldIDs = settings.toggleDisplayIDSet
         let oldDisplayIndex = settings.targetDisplayIndex
-        var ids = oldIDs
-        if ids.isEmpty {
-            // Start fresh: select only the clicked display
-            ids = [info.id]
-        } else if ids.contains(info.id) {
+        let targetMode = (oldDisplayIndex == modeToggle || oldDisplayIndex == modeSpan) ? oldDisplayIndex : modeToggle
+        var ids = seedIDsForNewSelection()
+        if ids.contains(info.id) {
             ids.remove(info.id)
-            if ids.isEmpty { ids = [] }  // back to "all"
+            if ids.isEmpty { return }  // never exclude the last display
         } else {
             ids.insert(info.id)
         }
         let newIDs = (ids == Set(displays.map(\.id))) ? [] : ids
-        applyToggleDisplaySet(ids: newIDs, index: modeToggle, undoIDs: oldIDs, undoIndex: oldDisplayIndex)
+        applyToggleDisplaySet(ids: newIDs, index: targetMode, undoIDs: oldIDs, undoIndex: oldDisplayIndex)
+    }
+
+    /// Shift+click range-select on a canvas rectangle, mirroring the
+    /// thumbnails' range behavior: selects every display between
+    /// `rangeStart` and `index`. Stays in the current mode when it's already
+    /// Toggle or Span; otherwise defaults to Toggle. The range is added to
+    /// whatever's currently targeted (a single display, or the existing
+    /// Toggle/Span set) rather than starting from every display. Outside
+    /// Toggle/Span, the very first Shift+click needs no priming click first —
+    /// it anchors the range at the currently-targeted display (e.g. Primary),
+    /// matching Finder's "Shift+click extends from the current selection".
+    private func canvasRangeClick(at index: Int) {
+        guard displays.indices.contains(index) else { return }
+        let oldDisplayIndex = settings.targetDisplayIndex
+        if rangeStart < 0 {
+            if oldDisplayIndex != modeToggle, oldDisplayIndex != modeSpan, let anchor = targetedDisplay,
+                let anchorIndex = displays.firstIndex(where: { $0.id == anchor.id })
+            {
+                rangeStart = anchorIndex
+            } else {
+                rangeStart = index
+                return
+            }
+        }
+        let targetMode = (oldDisplayIndex == modeToggle || oldDisplayIndex == modeSpan) ? oldDisplayIndex : modeToggle
+        let start = min(rangeStart, index)
+        let end = max(rangeStart, index)
+        let oldIDs = settings.toggleDisplayIDSet
+        var ids = seedIDsForNewSelection()
+        for i in start...end {
+            ids.insert(displays[i].id)
+        }
+        let newIDs = (ids == Set(displays.map(\.id))) ? [] : ids
+        applyToggleDisplaySet(ids: newIDs, index: targetMode, undoIDs: oldIDs, undoIndex: oldDisplayIndex)
+        rangeStart = -1
     }
 
     /// Self-recursive so this also redoes — see `applyDisplayReset`.
@@ -787,11 +840,12 @@ struct DisplayMappingView: View {
                 let flags = NSApplication.shared.currentEvent?.modifierFlags ?? []
 
                 if flags.contains(.shift), displays.count > 1 {
-                    // Shift+click any display → All mode
-                    let old = settings.targetDisplayIndex
-                    guard old != modeAll else { return }
-                    settings.targetDisplayIndex = modeAll
-                    settings.recordToggle(String(localized: "Display Mapping"), from: old, to: modeAll) { self.settings.targetDisplayIndex = $0 }
+                    // Shift+click extends the current selection (Primary/a
+                    // single display, or the existing Toggle/Span set) by a
+                    // range — same as Finder, regardless of starting mode.
+                    if let i = rects.firstIndex(where: { $0.contains(location) }) {
+                        canvasRangeClick(at: i)
+                    }
 
                 } else if flags.contains(.command), displays.count > 1 {
                     // Cmd+click → build toggle rotation and activate Toggle mode
@@ -813,7 +867,14 @@ struct DisplayMappingView: View {
             }
         }
         .frame(height: 180)
-        .help("Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays.")
+        .help(canvasHelpText)
+    }
+
+    private var canvasHelpText: String {
+        if settings.targetDisplayIndex == modeToggle || settings.targetDisplayIndex == modeSpan {
+            return String(localized: "⌘+click to add or remove a display from the selection. ⇧+click to select a range.", comment: "Help text for the display canvas while in Toggle or Span mode")
+        }
+        return String(localized: "Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays.", comment: "Help text for the display canvas in single-display modes")
     }
 
     // MARK: - Coordinate helpers
