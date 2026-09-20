@@ -221,6 +221,15 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// 0 when no tool is in proximity.
     @Published var activeToolCode: UInt16 = 0
 
+    /// Wacom tool code for the most recent tool seen on this device, even
+    /// after it leaves proximity. Unlike `activeToolCode`, this is never
+    /// zeroed back out — it exists so the Buttons pane can keep showing the
+    /// right button layout (e.g. Pro Pen 3's 3rd button) across a brief
+    /// proximity gap instead of falling back to a generic default the moment
+    /// the pen lifts off, which is what both MockTab and Wacom's own driver
+    /// did before this field existed.
+    @Published var lastKnownToolCode: UInt16 = 0
+
     /// The ToolSettings for the pen currently in proximity.
     /// Points to the device-default ToolSettings until the first tool-enter fires.
     @Published var activeTool: ToolSettings

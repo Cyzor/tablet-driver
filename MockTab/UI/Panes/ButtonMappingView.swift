@@ -60,7 +60,11 @@ struct ButtonMappingView: View {
 
     private var activeToolSpec: WacomToolSpec? {
         guard let ctx = tabletManager.context(forKey: instanceKey) else { return nil }
-        return WacomToolCatalog.spec(forToolCode: ctx.activeToolCode)
+        // Use the last-known tool, not just the currently-in-proximity one:
+        // otherwise the button layout reverts to a generic default every
+        // time the pen briefly lifts off, since activeToolCode goes back to
+        // 0 on proximity exit.
+        return WacomToolCatalog.spec(forToolCode: ctx.lastKnownToolCode)
     }
 
     private var hasTouchRing: Bool { spec?.hasTouchRing == true }
@@ -301,16 +305,13 @@ struct ButtonMappingView: View {
         // For mice, show all 5 HID-path button slots regardless of spec.buttonCount
         // (spec.buttonCount describes only the digitizer path, not the full HID mouse report)
         //
-        // toolSpec is nil whenever no pen has reported in yet (before first
-        // proximity, or between proximity events — TabletManager zeroes
-        // activeToolCode on every proximity exit). The fallback used to be a
-        // flat 2, which meant the Xencelabs 3-button pen's pane reverted to a
-        // 2-button view any time the pen lifted off — hiding the 3rd slot even
-        // though it's a real assignable button on that hardware. Both
-        // Xencelabs pens share one spec (buttonCount: 3, see WacomToolSpec's
-        // Xencelabs section) since the wire protocol can't tell them apart,
-        // so defaulting to 3 here is correct for either pen; a genuine
-        // 2-button pen just leaves the 3rd slot unused.
+        // toolSpec is nil only before any pen has ever reported in on this
+        // device (activeToolSpec reads lastKnownToolCode, which survives
+        // proximity exits). Xencelabs pens share one spec regardless
+        // (buttonCount: 3, see WacomToolSpec's Xencelabs section) since the
+        // wire protocol can't tell them apart, so defaulting to 3 here is
+        // correct for either pen; a genuine 2-button pen just leaves the 3rd
+        // slot unused.
         let btnCount = isMouse ? 5 : (toolSpec?.buttonCount ?? (spec?.parser == .xencelabs ? 3 : 2))
         let hasWheel = toolSpec?.hasWheel == true
 

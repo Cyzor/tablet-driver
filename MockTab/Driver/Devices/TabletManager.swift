@@ -821,6 +821,7 @@ final class TabletManager: ObservableObject {
             context.activeToolSerial = identity.serial
             context.activeToolIsMouse = identity.isMouse
             context.activeToolCode = identity.toolCode
+            context.lastKnownToolCode = identity.toolCode
             // Propagate tool code to calibration session so tool changes are tracked.
             CaptureEngine.updateToolCode(identity.toolCode, device: device)
             let toolID = DeviceRegistry.shared.recordTool(
