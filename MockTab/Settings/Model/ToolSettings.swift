@@ -104,8 +104,10 @@ final class ToolSettings: ObservableObject {
     /// those: the phase-free stream pans everywhere but without inertia.
     /// Per-tool so the tradeoff can be made only for the apps that need it.
     /// Same on/off meaning as `TabletSettings.twoFingerScrollMomentum` for
-    /// touch — momentum on by default everywhere, off trades it for reach.
-    @Published var panScrollMomentum: Bool = true {
+    /// touch. Defaults to false — macOS 27's momentum handling for injected
+    /// phase envelopes is broken widely enough that reach should win by
+    /// default; existing users' persisted `true` is unaffected.
+    @Published var panScrollMomentum: Bool = false {
         didSet { persist("panScrollMomentum", panScrollMomentum) }
     }
 
@@ -276,7 +278,7 @@ final class ToolSettings: ObservableObject {
         pressureSmoothingStrength = loadDouble("pressureSmoothingStrength", default: 0.0)
         pressureThreshold = loadDouble("pressureThreshold", default: 0.0)
         panScrollSpeed = loadDouble("panScrollSpeed", default: 1.0)
-        panScrollMomentum = loadBool("panScrollMomentum", default: true)
+        panScrollMomentum = loadBool("panScrollMomentum", default: false)
         useRotationAsTilt = loadBool("useRotationAsTilt", default: false)
         rotationTiltOffsetDegrees = loadDouble("rotationTiltOffsetDegrees", default: 0.0)
         rotationTiltMagnitude = loadDouble("rotationTiltMagnitude", default: 0.8)

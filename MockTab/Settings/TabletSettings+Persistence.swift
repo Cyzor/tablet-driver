@@ -76,7 +76,7 @@ extension TabletSettings {
         // per-device load chain.
         twoFingerScroll = loadBool("twoFingerScroll", default: true)
         reverseScrollDirection = loadBool("naturalScrolling", default: false)
-        twoFingerScrollMomentum = loadBool("twoFingerScrollMomentum", default: true)
+        twoFingerScrollMomentum = loadBool("twoFingerScrollMomentum", default: false)
         pinchZoomEnabled = loadBool("pinchZoomEnabled", default: false)
         smartZoomEnabled = loadBool("smartZoomEnabled", default: false)
         rotateEnabled = loadBool("rotateEnabled", default: false)
