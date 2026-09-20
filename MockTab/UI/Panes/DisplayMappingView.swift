@@ -44,8 +44,8 @@ struct DisplayMappingView: View {
             instanceKey: instanceKey, overrideKeys: AppOverrideBar.areaKeys,
             onResetToDefaults: resetToDefaults
         ) {
-            displayMappingSection
             canvasSection
+            displayMappingSection
             if hasBrightnessControl {
                 brightnessSection
             }
@@ -279,9 +279,7 @@ struct DisplayMappingView: View {
                 }
             }
         } header: {
-            PaneSectionHeader("Display Mapping") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
-            }
+            Text("Display Mapping")
         } footer: {
             Text("The active tablet area maps to the selected display.")
                 .multilineTextAlignment(.center)
@@ -388,9 +386,13 @@ struct DisplayMappingView: View {
     }
 
     private var canvasSection: some View {
-        Section("Preview") {
+        Section {
             displayCanvas
                 .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+        } header: {
+            PaneSectionHeader("Preview") {
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
+            }
         }
     }
 
