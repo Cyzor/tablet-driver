@@ -336,6 +336,12 @@ final class TabletManager: ObservableObject {
         // and we don't support it" beats "your tablet is invisible to us."
         let matching: [[String: Any]] = [
             [kIOHIDVendorIDKey: 0x056A as NSNumber],  // Wacom
+            // Wacom Technology Corp. — a second Wacom VID used by the
+            // consumer "Wacom One" CTC line (CTC-4110WL/6110WL). Confirmed
+            // via Linux's device-ID table and libwacom, not just OTD (see
+            // WacomDeviceRegistry's CTC section) — routed the same as
+            // 0x056A in vendorGate below.
+            [kIOHIDVendorIDKey: 0x0531 as NSNumber],  // Wacom Technology Corp.
             [kIOHIDVendorIDKey: 0x256C as NSNumber],  // Huion (recognition only)
             [kIOHIDVendorIDKey: 0x28BD as NSNumber],  // Xencelabs / XP-Pen (recognition only)
             [kIOHIDVendorIDKey: 0x5543 as NSNumber],  // UC-Logic OEMs (recognition only)
@@ -542,7 +548,7 @@ final class TabletManager: ObservableObject {
         // profile and continue through the normal routing below; everything
         // else is recognition-only — name it, log it, and bail out before any
         // Wacom-specific state touches it.
-        guard vendorID != 0x056A else { return .proceed(spec: nil) }
+        guard vendorID != 0x056A, vendorID != 0x0531 else { return .proceed(spec: nil) }
         if let profile = VendorDeviceRegistry.drivableProfile(
             forVendorID: vendorID, productID: rawProductID)
         {
