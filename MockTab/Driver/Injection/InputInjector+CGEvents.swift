@@ -858,6 +858,9 @@ extension InputInjector {
             }
         case .displayToggle:
             guard down else { break }
+            // Span mode maps to every selected display simultaneously — there's
+            // nothing to cycle, so a bound toggle button is inert here.
+            guard snapshot.targetDisplayIndex != TabletSettings.displayModeSpan else { break }
             // Aux-only accessories (Xencelabs Quick Keys) move no pointer of
             // their own, so cycling this injector's mapping would do nothing
             // visible — TabletManager wires a forwarder that steers the

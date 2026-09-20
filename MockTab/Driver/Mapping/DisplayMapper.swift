@@ -474,7 +474,13 @@ struct DisplayMapper {
         let idx = snapshot.targetDisplayIndex
         if idx == TabletSettings.displayModeAll {
             // Union bounding rect spanning every active display — no single display ID.
-            return (ids.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }, 0)
+            return (Self.unionBounds(of: ids), 0)
+        }
+        if idx == TabletSettings.displayModeSpan {
+            // Union bounding rect over the selected subset — no single display ID.
+            let included = toggleRotation(snapshot: snapshot, allIDs: ids)
+            guard !included.isEmpty else { return (Self.unionBounds(of: ids), 0) }
+            return (Self.unionBounds(of: included), 0)
         }
         if idx == TabletSettings.displayModeToggle {
             let rotation = toggleRotation(snapshot: snapshot, allIDs: ids)
@@ -497,11 +503,17 @@ struct DisplayMapper {
         return (Self.applyDisplayRegion(CGDisplayBounds(targetID), snapshot: snapshot), targetID)
     }
 
+    /// Union bounding rect over the given display IDs. Empty input returns `.null`.
+    private static func unionBounds(of ids: [CGDirectDisplayID]) -> CGRect {
+        ids.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }
+    }
+
     /// Narrows a whole-display rect to the user-configured target sub-region
     /// (fractions of the display's bounds; default 0,0,1,1 = unchanged). Only
-    /// called for a single specific display — "All Displays" and "Toggle"
-    /// modes ignore the region fields, since a sub-rect of a multi-display
-    /// union or a rotating toggle target has no well-defined meaning.
+    /// called for a single specific display — "All Displays", "Toggle", and
+    /// "Span" modes ignore the region fields, since a sub-rect of a
+    /// multi-display union or a rotating toggle target has no well-defined
+    /// meaning.
     static func applyDisplayRegion(_ bounds: CGRect, snapshot: InjectionSnapshot) -> CGRect {
         CGRect(
             x: bounds.minX + snapshot.displayRegionX * bounds.width,
@@ -510,8 +522,10 @@ struct DisplayMapper {
             height: snapshot.displayRegionHeight * bounds.height)
     }
 
-    /// Returns the ordered list of display IDs in the toggle rotation,
-    /// filtered by the IDs stored in settings (empty = all included).
+    /// Returns the ordered list of display IDs selected in settings, filtered
+    /// from `allIDs` (empty = all included). Used both as the toggle
+    /// rotation order (Toggle mode) and the inclusion set to union (Span
+    /// mode) — both modes share the same stored `toggleDisplayIDs`.
     private func toggleRotation(
         snapshot: InjectionSnapshot,
         allIDs: [CGDirectDisplayID]

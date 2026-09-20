@@ -24,6 +24,7 @@ struct DisplayMappingView: View {
 
     private let modeAll = TabletSettings.displayModeAll  // -1
     private let modeToggle = TabletSettings.displayModeToggle  // -2
+    private let modeSpan = TabletSettings.displayModeSpan  // -3
 
     /// Whether any connected display is rotated via macOS rotation feature.
     private var hasRotatedDisplay: Bool {
@@ -266,12 +267,16 @@ struct DisplayMappingView: View {
             }
             radioRow("Toggle between displays", tag: modeToggle, disabled: displays.count <= 1)
                 .help("Use a button press to cycle the tablet's active mapping between selected displays.")
+            radioRow("Span selected displays", tag: modeSpan, disabled: displays.count <= 1)
+                .help("Map the tablet across only the selected displays as one continuous surface.")
             radioRow("All — span across all displays", tag: modeAll, disabled: displays.count <= 1)
                 .help("Map the tablet across all displays as one continuous surface.")
 
-            if settings.targetDisplayIndex == modeToggle {
+            if settings.targetDisplayIndex == modeToggle || settings.targetDisplayIndex == modeSpan {
                 toggleSection
-                displayToggleHintRow
+                if settings.targetDisplayIndex == modeToggle {
+                    displayToggleHintRow
+                }
             }
         } header: {
             PaneSectionHeader("Display Mapping") {
@@ -287,12 +292,12 @@ struct DisplayMappingView: View {
     // MARK: - Display region (map the tablet onto part of the display)
 
     /// The single display the mapping currently targets, or nil when the
-    /// target is "All Displays" or "Toggle" — in which case the whole
-    /// section is hidden rather than shown disabled, since there's no one
-    /// display thumbnail to draw the picker over.
+    /// target is "All Displays", "Toggle", or "Span" — in which case the
+    /// whole section is hidden rather than shown disabled, since there's no
+    /// one display thumbnail to draw the picker over.
     private var targetedDisplay: DisplayInfo? {
         let idx = settings.targetDisplayIndex
-        guard idx != modeAll, idx != modeToggle else { return nil }
+        guard idx != modeAll, idx != modeToggle, idx != modeSpan else { return nil }
         let resolvedIndex = idx > 0 ? idx : 1  // idx == 0 → "Primary display" → first in `displays`
         return displays.first { $0.listIndex == resolvedIndex } ?? displays.first
     }
@@ -685,7 +690,7 @@ struct DisplayMappingView: View {
             let toggleIDSet = settings.toggleDisplayIDSet
             let selectedStates: [Bool] = displays.map { info in
                 if idx == modeAll { return true }
-                if idx == modeToggle { return toggleIDSet.isEmpty || toggleIDSet.contains(info.id) }
+                if idx == modeToggle || idx == modeSpan { return toggleIDSet.isEmpty || toggleIDSet.contains(info.id) }
                 return idx == info.listIndex
             }
 

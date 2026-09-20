@@ -96,6 +96,28 @@ private func testStoredSettingsRoundTripsDisplayRegion() {
     }
 }
 
+/// New "span" string token decodes to the Span sentinel.
+private func testDecodeDisplaySpanToken() {
+    let idx = PresetImporter.decodeDisplay("span")
+    expect(idx == TabletSettings.displayModeSpan, "\"span\" must decode to displayModeSpan")
+}
+
+/// New dict form (mode + explicit displays list) decodes to the Span sentinel.
+private func testDecodeDisplaySpanDict() {
+    let idx = PresetImporter.decodeDisplay(["mode": "span", "displays": ["1", "2"]])
+    expect(idx == TabletSettings.displayModeSpan, "{mode: span} must decode to displayModeSpan")
+}
+
+/// Backward compatibility: old presets only ever emit "toggle" (string or
+/// dict form) — neither must ever decode to Span, since no old file
+/// contains the new "span" token.
+private func testDecodeDisplayToggleUnaffectedBySpanAddition() {
+    expect(PresetImporter.decodeDisplay("toggle") == TabletSettings.displayModeToggle,
+           "\"toggle\" must still decode to displayModeToggle")
+    expect(PresetImporter.decodeDisplay(["mode": "toggle", "displays": ["1", "2"]]) == TabletSettings.displayModeToggle,
+           "{mode: toggle} must still decode to displayModeToggle, never Span")
+}
+
 @main
 enum PresetDisplayRegionTestRunner {
     static func main() {
@@ -103,6 +125,9 @@ enum PresetDisplayRegionTestRunner {
         testDeviceSettingsDecodesDisplayRegion()
         testDeviceSettingsRejectsInvalidDisplayRegion()
         testStoredSettingsRoundTripsDisplayRegion()
+        testDecodeDisplaySpanToken()
+        testDecodeDisplaySpanDict()
+        testDecodeDisplayToggleUnaffectedBySpanAddition()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

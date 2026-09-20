@@ -14,7 +14,7 @@
 // dependency graph tools/tests/display-region-tests/TabletSettingsStub.swift
 // hit and stubbed around for InjectionSnapshot) and returns `ImportPlan`
 // (small, dependency-free — compiled here from the real ImportPlan.swift,
-// no stub needed). `decodeDisplay` also reads TabletSettings' two sentinel
+// no stub needed). `decodeDisplay` also reads TabletSettings' three sentinel
 // constants.
 //
 // A normal `xcodebuild` of the app target compiles the real DeviceRegistry
@@ -24,6 +24,7 @@
 enum TabletSettings {
     static let displayModeAll = -1
     static let displayModeToggle = -2
+    static let displayModeSpan = -3
 }
 
 /// Stand-in — `parse`'s signature needs the type to exist, and its body reads

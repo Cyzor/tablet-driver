@@ -246,7 +246,7 @@ struct TabletAreaView: View {
                                 startCalibration()
                             }
                             .buttonStyle(.bordered)
-                            .disabled(!activeDeviceIsConnected || settings.targetDisplayIndex == TabletSettings.displayModeAll)
+                            .disabled(!activeDeviceIsConnected || settings.targetDisplayIndex == TabletSettings.displayModeAll || settings.targetDisplayIndex == TabletSettings.displayModeSpan)
                             .help("Open the calibration overlay to tap crosshair targets on your pen display.")
                             if activeCalibration != nil {
                                 Button("Reset") {
@@ -420,10 +420,10 @@ struct TabletAreaView: View {
     }
 
     /// Resolve the persistent UUID string for the current target display.
-    /// Returns "" for the "All Displays" mode or when resolution fails.
+    /// Returns "" for the "All Displays"/"Span" modes or when resolution fails.
     private func resolveCurrentDisplayUUID() -> String {
         let idx = settings.targetDisplayIndex
-        if idx == TabletSettings.displayModeAll { return "" }
+        if idx == TabletSettings.displayModeAll || idx == TabletSettings.displayModeSpan { return "" }
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
             return CalibrationKey.uuidString(for: CGMainDisplayID())
@@ -437,11 +437,11 @@ struct TabletAreaView: View {
     }
 
     /// Aspect ratio of the current target display, or `nil` for "All
-    /// Displays" (no single aspect ratio applies) or if resolution fails.
+    /// Displays"/"Span" (no single aspect ratio applies) or if resolution fails.
     /// Mirrors `resolveCurrentDisplayUUID`'s display-lookup pattern.
     private var targetDisplayAspectRatio: Double? {
         let idx = settings.targetDisplayIndex
-        guard idx != TabletSettings.displayModeAll else { return nil }
+        guard idx != TabletSettings.displayModeAll, idx != TabletSettings.displayModeSpan else { return nil }
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return nil }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
@@ -486,7 +486,7 @@ struct TabletAreaView: View {
     /// Launch the calibration overlay on the target display.
     private func startCalibration() {
         let idx = settings.targetDisplayIndex
-        guard idx != TabletSettings.displayModeAll else { return }
+        guard idx != TabletSettings.displayModeAll, idx != TabletSettings.displayModeSpan else { return }
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))

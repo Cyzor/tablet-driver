@@ -275,6 +275,9 @@ final class PresetExporter {
         case TabletSettings.displayModeToggle:
             guard !toggleIDs.isEmpty else { return "toggle" }
             return ["mode": "toggle", "displays": toggleIDs.sorted().map { String($0) }] as [String: Any]
+        case TabletSettings.displayModeSpan:
+            guard !toggleIDs.isEmpty else { return "span" }
+            return ["mode": "span", "displays": toggleIDs.sorted().map { String($0) }] as [String: Any]
         default: return "display-\(idx)"
         }
     }
@@ -284,6 +287,7 @@ final class PresetExporter {
         case 0: return "primary"
         case TabletSettings.displayModeAll: return "all"
         case TabletSettings.displayModeToggle: return "toggle"
+        case TabletSettings.displayModeSpan: return "span"
         default: return "display-\(idx)"
         }
     }

@@ -434,6 +434,8 @@ extension TabletSettings {
             tabletAreaHeight: activeAreaHeight,
             proportionalMapping: proportionalMapping,
             targetDisplayIndex: targetDisplayIndex,
+            toggleDisplayIDs: toggleDisplayIDSet.isEmpty
+                ? nil : toggleDisplayIDSet.sorted().map { String($0) },
             pressureCurve: activeTool.pressureCurve,
             smoothingStrength: activeTool.smoothingStrength,
             penButton1: activeTool.penButton1Binding,
@@ -458,6 +460,7 @@ extension TabletSettings {
         activeAreaHeight = profile.tabletAreaHeight
         proportionalMapping = profile.proportionalMapping
         targetDisplayIndex = profile.targetDisplayIndex
+        toggleDisplayIDs = (profile.toggleDisplayIDs ?? []).joined(separator: ",")
         activeTool.pressureCurve = profile.pressureCurve
         activeTool.smoothingStrength = profile.smoothingStrength
         activeTool.penButton1Binding = profile.penButton1

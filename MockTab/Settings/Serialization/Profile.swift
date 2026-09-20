@@ -37,8 +37,15 @@ struct TabletSnapshot: Codable, Equatable {
     /// When true, the active area is letterboxed to match the target display's
     /// aspect ratio so the pen maps without distortion.
     var proportionalMapping: Bool
-    /// Target display index: 0 = primary, 1–N = specific display.
+    /// Target display index: 0 = primary, 1–N = specific display, or one of
+    /// `TabletSettings.displayModeAll/.displayModeToggle/.displayModeSpan`.
     var targetDisplayIndex: Int
+    /// Display IDs included in Toggle/Span mode's rotation or span (empty or
+    /// nil = all connected displays). Optional, like `toolSettingsPerSerial`
+    /// below, so profiles saved before this field existed still decode —
+    /// synthesized `Decodable` only treats `Optional` properties as absent-safe,
+    /// not properties with a non-nil default value.
+    var toggleDisplayIDs: [String]? = nil
 
     // MARK: - Pressure and smoothing
 

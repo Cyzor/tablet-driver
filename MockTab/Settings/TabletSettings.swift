@@ -224,9 +224,12 @@ final class TabletSettings: ObservableObject {
     nonisolated static let displayModeAll = -1
     /// Sentinel value for targetDisplayIndex: tablet cycles through selected displays.
     nonisolated static let displayModeToggle = -2
+    /// Sentinel value for targetDisplayIndex: tablet spans the union of selected displays.
+    nonisolated static let displayModeSpan = -3
 
     /// 0 = primary display, 1..N = specific display (1-indexed CGGetActiveDisplayList order).
-    /// -1 = all displays (span union rect), -2 = toggle rotation.
+    /// -1 = all displays (span union rect), -2 = toggle rotation, -3 = span selected displays
+    /// (union rect over `toggleDisplayIDs`).
     @Published var targetDisplayIndex: Int = 0 {
         didSet { persist("targetDisplayIndex", targetDisplayIndex) }
     }

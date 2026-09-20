@@ -5,8 +5,9 @@
 // TabletSettingsStub.swift — stand-ins for types DisplayMapper.swift reads
 // off TabletSettings/InjectionSnapshot, kept minimal on purpose.
 //
-// DisplayMapper.swift itself only reads two static sentinel constants off
-// TabletSettings (displayModeAll/displayModeToggle) — stubbed directly below.
+// DisplayMapper.swift itself only reads three static sentinel constants off
+// TabletSettings (displayModeAll/displayModeToggle/displayModeSpan) — stubbed
+// directly below.
 //
 // InjectionSnapshot is trickier: the real InjectionSnapshot.swift pairs the
 // plain struct definition with a `@MainActor extension TabletSettings {
@@ -33,6 +34,7 @@ import CoreGraphics
 enum TabletSettings {
     static let displayModeAll = -1
     static let displayModeToggle = -2
+    static let displayModeSpan = -3
 }
 
 struct InjectionSnapshot {

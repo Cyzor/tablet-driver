@@ -275,13 +275,15 @@ struct PresetImporter {
             case "primary": return 0
             case "all": return TabletSettings.displayModeAll
             case "toggle": return TabletSettings.displayModeToggle
+            case "span": return TabletSettings.displayModeSpan
             default:
                 if s.hasPrefix("display-"), let n = Int(s.dropFirst(8)) { return n }
                 return 0
             }
         }
-        if let d = value as? [String: Any], (d["mode"] as? String) == "toggle" {
-            return TabletSettings.displayModeToggle
+        if let d = value as? [String: Any], let mode = d["mode"] as? String {
+            if mode == "toggle" { return TabletSettings.displayModeToggle }
+            if mode == "span" { return TabletSettings.displayModeSpan }
         }
         return 0
     }
