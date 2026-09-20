@@ -353,12 +353,17 @@ final class WacomFallbackDevice: TabletDevice {
     // MARK: - Report dispatch
 
     private func handleReport(reportID: UInt32, report: UnsafePointer<UInt8>, length: CFIndex) {
-        HIDCapture.shared.record(tag: tag, report: report, length: length)
         // Device-data collection. No-ops when no session is running, and never
         // hops off this thread or copies the report — see CaptureEngine.
         CaptureEngine.recordRaw(device: device, reportID: reportID, pointer: report, length: length)
         guard length >= 2 else { return }
         let id = report[0]
+        // Raw-only capture for report IDs this class doesn't decode through
+        // `penDecoders` — that branch below records its own line, annotated
+        // with the decoded point, so it must not also be captured here.
+        if length == 0 || penDecoders[id] == nil {
+            HIDCapture.shared.record(tag: tag, report: report, length: length)
+        }
 
         // ── BLE HOGP pen report (Report ID 0x01, ≥11 bytes) ────────────
         // Fires for any Intuos Pro connected via BLE, regardless of family.
@@ -444,6 +449,7 @@ final class WacomFallbackDevice: TabletDevice {
         // layout, and should not go through a guess when it does not need one.
         if let decoder = penDecoders[id] {
             if let point = decoder.decode(report: Array(UnsafeBufferPointer(start: report, count: length))) {
+                HIDCapture.shared.record(tag: tag, report: report, length: length, decoded: [.pen(point)])
                 onTablet(point)
             }
             return

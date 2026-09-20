@@ -957,7 +957,6 @@ final class WacomKnownDevice: TabletDevice {
         InputInjector.currentReportTimestampNs = reportTimestampNs
         defer { InputInjector.currentReportTimestampNs = 0 }
         let name = deviceSpec.name
-        HIDCapture.shared.record(tag: name, report: report, length: length)
         // Device-data collection. No-ops when no session is running, and never
         // hops off this thread or copies the report — see CaptureEngine.
         //
@@ -1118,16 +1117,41 @@ final class WacomKnownDevice: TabletDevice {
 
         // IntuosV3Decoder now does emit .toolEnter where its wire format
         // carries a real serial/tool code (confirmed 2026-09-16 on PTK-870 —
-        // see the decoder's own doc comment), but Movink 13/13.3's own
-        // capture never showed a nonzero code in that field, so it still
-        // needs this synthesized fallback. Only synthesize if the decoder
-        // itself didn't already emit a real one this frame — otherwise a
-        // device where the field does resolve would get two toolEnter
-        // events (a real one, immediately followed by a synthetic one that
-        // stomps the actual identity with a same-model guess).
+        // see the decoder's own doc comment), via a one-shot announcement
+        // frame sent on proximity-enter. Movink 13/13.3's own capture never
+        // showed a nonzero code in that field at all, and separately, ANY
+        // .intuosV3 BLE device misses the announcement whenever the pen is
+        // already in proximity when the BLE session/capture starts (nothing
+        // re-sends it later) — confirmed 2026-09-19 on a PTK-870 Art Pen
+        // capture that started mid-proximity: thousands of valid pen frames,
+        // zero 0x01 announcement frames, so the pen never registered in
+        // DeviceRegistry and no pane showed it as present despite position
+        // and rotation both decoding correctly. Only synthesize if the
+        // decoder itself didn't already emit a real one this frame —
+        // otherwise a device where the field does resolve would get two
+        // toolEnter events (a real one, immediately followed by a synthetic
+        // one that stomps the actual identity with a same-model guess).
+        //
+        // BLE-only. USB's decodeExtendedPenReport re-reads the real
+        // serial/toolCode from every single extended report (not a one-shot
+        // announcement), so it always has accurate identity available, but
+        // only RE-EMITS .toolEnter when that identity CHANGES from
+        // state.lastToolCode — correctly staying silent across a same-pen
+        // proximity cycle. This fallback's synthetic insert never touches
+        // state.lastToolCode (it only appends to WacomKnownDevice's own
+        // decoded array), so on USB it would win the very next re-entry with
+        // no way for the decoder to ever re-correct it afterward — a wrong
+        // identity that sticks for the rest of the session, confirmed
+        // 2026-09-19 by a live report of the Art Pen reverting to a generic
+        // "Stylus" on both transports after a proximity cycle, worse and
+        // permanent on USB specifically. BLE's own one-shot announcement can
+        // still arrive later in the same session and correctly overwrite a
+        // synthetic guess (its change-detection compares against
+        // state.lastSerial, which the synthetic path also never touches),
+        // so BLE keeps a chance to self-correct that USB does not.
         let wasInProximity = state.prevInProximity
-        let synthesizeMovinkToolEnter =
-            (deviceSpec.productID == 0x03F0 || deviceSpec.productID == 0x03F2) && !wasInProximity
+        let synthesizeIntuosV3ToolEnter =
+            deviceSpec.parser == .intuosV3 && isBluetooth && !wasInProximity
 
         let results: [DecodeResult]
         if length > 0, var fixedTouchDecoder = fixedTouchDecoders[report[0]] {
@@ -1149,18 +1173,40 @@ final class WacomKnownDevice: TabletDevice {
             let decoderEmittedRealToolEnter = decoded.contains {
                 if case .toolEnter = $0 { return true } else { return false }
             }
-            if synthesizeMovinkToolEnter, !decoderEmittedRealToolEnter, state.prevInProximity,
+            if synthesizeIntuosV3ToolEnter, !decoderEmittedRealToolEnter, state.prevInProximity,
                 case .pen(let point)? = decoded.first(where: {
                     if case .pen = $0 { return true } else { return false }
                 })
             {
-                let code: UInt16 = point.eraser ? 0x020A : 0x0202
+                // No reliable way to guess the specific model here — an
+                // earlier version tried keying off whether rotation sat
+                // near the ~179.8 deg "no sensor" neutral value, but that
+                // value is an ordinary, reachable reading for a real
+                // rotating pen too (an Art Pen resting at that orientation
+                // by chance reads identically to a non-rotating pen), and
+                // it fabricated wrong, sticky identities (an Art Pen
+                // misregistered and stuck as "Pro Pen 3E" — Movink's bundled
+                // pen code, not even a PTK-870 pen) that persisted until the
+                // next proximity cycle. A generic/unmapped code degrades
+                // safely (WacomToolCatalog falls back to a descriptive
+                // generic name, not a wrong specific one) and self-corrects
+                // the moment a real announcement frame arrives, same as the
+                // Movink case this fallback originally existed for.
+                let code: UInt16 = point.eraser ? 0x0008 : 0x0000
                 decoded.insert(
                     .toolEnter(ToolIdentity(serial: 0, toolCode: code, isEraser: point.eraser, isMouse: false)),
                     at: 0)
             }
             results = decoded
         }
+        // Suffix the capture tag by interface when more than one is
+        // registered — otherwise two interfaces' independent report streams
+        // land under one tag and read as duplicates. Matches
+        // `CaptureEngine`'s `captureInterface` keying above.
+        let captureTag =
+            registeredInterfaces.count > 1
+            ? "\(name) [\(ObjectIdentifier(captureInterface).hashValue & 0xFFFF)]" : name
+        HIDCapture.shared.record(tag: captureTag, report: report, length: length, decoded: results)
         if deviceSpec.parser == .xencelabs, !results.isEmpty {
             xencelabsLastReportAt = DispatchTime.now().uptimeNanoseconds
         }

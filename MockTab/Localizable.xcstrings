@@ -1012,6 +1012,9 @@
         }
       }
     },
+    "%lld reports" : {
+      "comment" : "Live report count while raw capture is running"
+    },
     "%lld setting" : {
       "comment" : "Count of overridden settings in a profile",
       "extractionState" : "manual",
@@ -3888,6 +3891,9 @@
           }
         }
       }
+    },
+    "Collect tablet details for support. May take a few minutes. Hold ⌥ for raw capture." : {
+      "comment" : "Description below the Collect Device Data button"
     },
     "Collection Complete" : {
       "comment" : "Data collection completion status",
@@ -6930,6 +6936,9 @@
         }
       }
     },
+    "Every report, raw bytes plus decoded values, categorized by report ID and condensed to steady-state ranges. For checking a known decoder against real hardware." : {
+      "comment" : "Help text for the Record Raw Data button"
+    },
     "Excluded" : {
       "comment" : "Accessibility state for an import entry the user has chosen to skip",
       "localizations" : {
@@ -7713,6 +7722,7 @@
     },
     "Gather tablet details for support.  May take a few minutes." : {
       "comment" : "Description below the Collect Device Data button",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13683,6 +13693,12 @@
         }
       }
     },
+    "Record everything the tablet sends. Creates large files for detailed analysis." : {
+      "comment" : "Description below the Record Raw Data button"
+    },
+    "Record Raw Data…" : {
+      "comment" : "Button label: start raw HID capture with decoded annotations (Option-revealed)"
+    },
     "Record Shortcut" : {
       "comment" : "Placeholder in shortcut recorder field when empty",
       "localizations" : {
@@ -16525,7 +16541,7 @@
       }
     },
     "Show in Finder" : {
-      "comment" : "Button label: open data collection file in Finder",
+      "comment" : "Button label: open data collection file in Finder\nButton: reveal the saved raw capture file",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17322,6 +17338,9 @@
           }
         }
       }
+    },
+    "Stop Capture" : {
+      "comment" : "Button label: stop raw HID capture"
     },
     "Stop Collecting?" : {
       "comment" : "Data collection confirmation alert title",

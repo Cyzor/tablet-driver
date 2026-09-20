@@ -30,6 +30,19 @@ struct InfoView: View {
     @State private var diagnosticSnapshotAt = Date()
     @State private var conflicts: [ConflictFinding] = []
     @State private var showCaptureGuide = false
+    @State private var rawCaptureRunning = false
+    @State private var rawCaptureReportCount = 0
+    @State private var rawCaptureSavedURL: URL?
+    /// Polls `HIDCapture.shared.reportCount` while running — no publisher on
+    /// the capture buffer, and a per-report UI update would be wasteful.
+    @State private var rawCaptureCountTimer: Timer?
+    /// Reveals the raw+decoded capture tool in place of "Collect Device
+    /// Data…" while Option is held — same convention as `AppOverrideBar`'s
+    /// Reset/Remove All swap. Live-tracked for the label; the action itself
+    /// re-reads `NSEvent.modifierFlags` at click time in case Option was
+    /// released since the last render.
+    @State private var optionKeyDown = false
+    @State private var optionKeyMonitor: Any?
     /// Refreshes the diagnostic snapshot on mouse-up; active only while the
     /// panel is expanded — see `.onChange(of: diagnosticsExpanded)` below.
     @State private var mouseUpMonitor: Any?
@@ -82,7 +95,55 @@ struct InfoView: View {
                     .appFont(.headline)
             }
         }
-        .onAppear { refresh() }
+        .onAppear {
+            refresh()
+            // HIDCapture.shared keeps recording/flushing across tab
+            // switches; only this view's poll timer stops on disappear —
+            // resume it here, or catch up on an auto-stop that happened
+            // while this view wasn't around to notice.
+            if rawCaptureRunning {
+                if !HIDCapture.shared.isCapturing {
+                    finishRawCaptureTeardown()
+                } else if rawCaptureCountTimer == nil {
+                    startRawCapturePollTimer()
+                }
+            }
+            optionKeyDown = NSEvent.modifierFlags.contains(.option)
+            if optionKeyMonitor == nil {
+                optionKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
+                    optionKeyDown = event.modifierFlags.contains(.option)
+                    return event
+                }
+            }
+        }
+        .onDisappear {
+            rawCaptureCountTimer?.invalidate()
+            rawCaptureCountTimer = nil
+            if let optionKeyMonitor { NSEvent.removeMonitor(optionKeyMonitor) }
+            optionKeyMonitor = nil
+            optionKeyDown = false
+        }
+        // Escape/Cmd-. end a raw capture session, same as clicking Stop.
+        // `.onExitCommand` alone doesn't reliably fire here — SettingsPane's
+        // List/Form claims the key view loop for row navigation — so these
+        // route through AppKit's command dispatch instead via
+        // `.keyboardShortcut`, which works regardless of first responder.
+        // Only present in the hierarchy while a capture is running, so
+        // neither shortcut is claimed the rest of the time.
+        .background {
+            if rawCaptureRunning {
+                Button("", action: stopRawCapture)
+                    .keyboardShortcut(.cancelAction)
+                    .buttonStyle(.plain)
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+                Button("", action: stopRawCapture)
+                    .keyboardShortcut(".", modifiers: .command)
+                    .buttonStyle(.plain)
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+            }
+        }
         .onReceive(
             NotificationCenter.default.publisher(
                 for: NSApplication.didBecomeActiveNotification)
@@ -386,22 +447,107 @@ struct InfoView: View {
 
     // MARK: - HID capture section
 
+    /// One button, two tools — hold Option for the advanced one. Default is
+    /// "Collect Device Data…" (`CaptureGuideView`/`DiscoveryAccumulator`), a
+    /// statistical summary for first-contact triage. Option swaps in
+    /// `HIDCapture`'s raw+decoded recorder for checking a known decoder
+    /// against real hardware.
     private var captureSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                Button(String(localized: "Collect Device Data…", comment: "Button label: start device data collection")) {
-                    showCaptureGuide = true
+                if rawCaptureRunning {
+                    // Controls stay put regardless of Option once running —
+                    // only *starting* a capture is Option-gated.
+                    Button(String(localized: "Stop Capture", comment: "Button label: stop raw HID capture")) {
+                        stopRawCapture()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 6, height: 6)
+                        Text(String(localized: "\(rawCaptureReportCount) reports", comment: "Live report count while raw capture is running"))
+                            .appFont(.settingsLabel)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                } else if optionKeyDown {
+                    Button(String(localized: "Record Raw Data…", comment: "Button label: start raw HID capture with decoded annotations (Option-revealed)")) {
+                        startRawCapture()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help(String(localized: "Every report, raw bytes plus decoded values, categorized by report ID and condensed to steady-state ranges. For checking a known decoder against real hardware.", comment: "Help text for the Record Raw Data button"))
+                } else {
+                    Button(String(localized: "Collect Device Data…", comment: "Button label: start device data collection")) {
+                        showCaptureGuide = true
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help(String(localized: "Records what your tablet sends to the Mac and saves it as a small JSON file you can share.", comment: "Help text for the Collect Device Data button"))
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .help(String(localized: "Records what your tablet sends to the Mac and saves it as a small JSON file you can share.", comment: "Help text for the Collect Device Data button"))
                 Spacer()
+                if let url = rawCaptureSavedURL {
+                    Button {
+                        NSWorkspace.shared.activateFileViewerSelecting([url])
+                    } label: {
+                        Label(String(localized: "Show in Finder", comment: "Button: reveal the saved raw capture file"), systemImage: "folder")
+                    }
+                    .buttonStyle(.plain)
+                    .appFont(.settingsLabel)
+                    .foregroundStyle(.secondary)
+                }
             }
 
-            Text(String(localized: "Gather tablet details for support.  May take a few minutes.", comment: "Description below the Collect Device Data button"))
-                .appFont(.settingsLabel)
-                .foregroundStyle(.tertiary)
+            Text(
+                optionKeyDown || rawCaptureRunning
+                    ? String(localized: "Record everything the tablet sends. Creates large files for detailed analysis.", comment: "Description below the Record Raw Data button")
+                    : String(localized: "Collect tablet details for support. May take a few minutes. Hold ⌥ for raw capture.", comment: "Description below the Collect Device Data button")
+            )
+            .appFont(.settingsLabel)
+            .foregroundStyle(.tertiary)
         }
+    }
+
+    private func startRawCapture() {
+        // Re-read at click time — Option may have been released since the
+        // last render (see AppOverrideBar for the same guard).
+        guard NSEvent.modifierFlags.contains(.option) else { return }
+        HIDCapture.shared.start()
+        rawCaptureReportCount = 0
+        rawCaptureSavedURL = nil
+        rawCaptureRunning = true
+        startRawCapturePollTimer()
+    }
+
+    private func startRawCapturePollTimer() {
+        rawCaptureCountTimer?.invalidate()
+        rawCaptureCountTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            rawCaptureReportCount = HIDCapture.shared.reportCount
+            // Flushing/auto-stop are owned by HIDCapture's own background
+            // timer, not this poll — this only needs to notice when
+            // isCapturing flips false on its own (the ceiling fired) and
+            // finish the UI-side teardown.
+            if rawCaptureRunning, !HIDCapture.shared.isCapturing {
+                finishRawCaptureTeardown()
+            }
+        }
+    }
+
+    private func stopRawCapture() {
+        HIDCapture.shared.stop()
+        finishRawCaptureTeardown()
+    }
+
+    /// Shared by manual Stop, Escape/Cmd-., and a detected auto-stop —
+    /// flushes what's left, updates the UI, stops polling.
+    private func finishRawCaptureTeardown() {
+        rawCaptureCountTimer?.invalidate()
+        rawCaptureCountTimer = nil
+        rawCaptureReportCount = HIDCapture.shared.reportCount
+        rawCaptureRunning = false
+        rawCaptureSavedURL = HIDCapture.shared.finish()
     }
 
     // MARK: - Diagnostic section
