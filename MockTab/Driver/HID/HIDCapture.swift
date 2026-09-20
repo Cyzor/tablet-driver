@@ -402,7 +402,7 @@ final class HIDCapture {
     /// inside thousands of absorbed reports — `absorb` therefore rejects
     /// (via `isOutlier`) any sample whose per-axis delta is a large outlier
     /// relative to what this run has seen so far.
-    private struct RunAccumulator {
+    fileprivate struct RunAccumulator {
         var startElapsed: TimeInterval
         var reportID: UInt8
         var tag: String
