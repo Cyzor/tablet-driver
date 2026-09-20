@@ -1013,7 +1013,57 @@
       }
     },
     "%lld reports" : {
-      "comment" : "Live report count while raw capture is running"
+      "comment" : "Live report count while raw capture is running",
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Report"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Reports"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld reporte"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld reportes"
+                }
+              }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld件のレポート"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld setting" : {
       "comment" : "Count of overridden settings in a profile",
@@ -3893,7 +3943,27 @@
       }
     },
     "Collect tablet details for support. May take a few minutes. Hold ⌥ for raw capture." : {
-      "comment" : "Description below the Collect Device Data button"
+      "comment" : "Description below the Collect Device Data button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tablet-Details für den Support sammeln. Kann ein paar Minuten dauern. Für Rohdaten ⌥ gedrückt halten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recopila los datos de la tableta para soporte. Puede tardar unos minutos. Mantén ⌥ para captura sin procesar."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サポート用にタブレットの詳細情報を収集します。数分かかる場合があります。生データの記録には⌥を押したままにしてください。"
+          }
+        }
+      }
     },
     "Collection Complete" : {
       "comment" : "Data collection completion status",
@@ -6937,7 +7007,27 @@
       }
     },
     "Every report, raw bytes plus decoded values, categorized by report ID and condensed to steady-state ranges. For checking a known decoder against real hardware." : {
-      "comment" : "Help text for the Record Raw Data button"
+      "comment" : "Help text for the Record Raw Data button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeder Bericht mit Rohbytes und decodierten Werten, nach Berichts-ID sortiert und zu Wertebereichen zusammengefasst. Zum Prüfen eines bekannten Decoders an echter Hardware."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cada informe con bytes sin procesar y valores decodificados, agrupados por ID de informe y condensados en rangos. Para comprobar un decodificador conocido con hardware real."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのレポートを、生バイトとデコード済みの値と共に、レポートIDごとに分類し、値の範囲にまとめて記録します。既知のデコーダーを実機で検証する用途です。"
+          }
+        }
+      }
     },
     "Excluded" : {
       "comment" : "Accessibility state for an import entry the user has chosen to skip",
@@ -13694,10 +13784,50 @@
       }
     },
     "Record everything the tablet sends. Creates large files for detailed analysis." : {
-      "comment" : "Description below the Record Raw Data button"
+      "comment" : "Description below the Record Raw Data button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeichnet alles auf, was das Tablet sendet. Erzeugt große Dateien für detaillierte Analysen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registra todo lo que envía la tableta. Genera archivos grandes para un análisis detallado."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレットが送信するすべてのデータを記録します。詳細な分析用に大きなファイルが作成されます。"
+          }
+        }
+      }
     },
     "Record Raw Data…" : {
-      "comment" : "Button label: start raw HID capture with decoded annotations (Option-revealed)"
+      "comment" : "Button label: start raw HID capture with decoded annotations (Option-revealed)",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rohdaten aufzeichnen…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grabar datos sin procesar…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生データを記録…"
+          }
+        }
+      }
     },
     "Record Shortcut" : {
       "comment" : "Placeholder in shortcut recorder field when empty",
@@ -17340,7 +17470,27 @@
       }
     },
     "Stop Capture" : {
-      "comment" : "Button label: stop raw HID capture"
+      "comment" : "Button label: stop raw HID capture",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufzeichnung stoppen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detener captura"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "記録を停止"
+          }
+        }
+      }
     },
     "Stop Collecting?" : {
       "comment" : "Data collection confirmation alert title",
