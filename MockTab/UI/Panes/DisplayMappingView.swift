@@ -18,6 +18,10 @@ struct DisplayMappingView: View {
     private var productID: Int? { instanceKey?.productID }
     @State private var displays: [DisplayInfo] = []
     @State private var rangeStart: Int = -1
+    /// True while this tab is on-screen. Gates the live refresh below so a
+    /// display change doesn't redo the wallpaper-thumbnail decode while
+    /// another tab is showing (other tabs stay alive off-screen, same as `InfoView`).
+    @State private var isShowing = false
     @State private var screenAreaWindow: ScreenAreaOverlayWindow?
 
     @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
@@ -52,7 +56,16 @@ struct DisplayMappingView: View {
             }
             displayRegionSection
         }
-        .onAppear { displays = DisplayInfo.all() }
+        .onAppear {
+            displays = DisplayInfo.all()
+            isShowing = true
+        }
+        .onDisappear { isShowing = false }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)) { _ in
+            // Same notification InputInjector.swift uses for monitor add/remove/
+            // resolution/rearrangement. No reliable notification for wallpaper-only changes.
+            if isShowing { displays = DisplayInfo.all() }
+        }
     }
 
     // MARK: - Reset to Defaults
@@ -442,15 +455,29 @@ struct DisplayMappingView: View {
         let name: String
         let resolution: String
         let areaRect: CGRect
+        @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
+        private var textScale: CGFloat { AppearancePrefs.scale(forIndex: textSizeIndex) }
+
+        /// Only one display here (no index available), so the fallback tier
+        /// is the first word, never an index digit.
+        private var showsFullName: Bool {
+            let font = NSFont.systemFont(ofSize: AppFontRole.badgeTitle.baseSize * textScale, weight: .bold)
+            let info = DisplayInfo(id: 0, listIndex: 0, bounds: .zero, name: name, resolution: resolution, wallpaper: nil)
+            return info.labelTier(fitting: areaRect.width - 16, font: font) == .full
+        }
 
         var body: some View {
             if areaRect.width >= 140 {
+                let fullName = showsFullName
                 VStack(spacing: 2) {
-                    Text(name)
+                    Text(fullName ? name : (name.split(separator: " ").first.map(String.init) ?? name))
                         .appFont(.badgeTitle)
                         .bold()
-                    Text(resolution)
-                        .appFont(.badgeSubtitle)
+                        .lineLimit(1)
+                    if fullName {
+                        Text(resolution)
+                            .appFont(.badgeSubtitle)
+                    }
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 6)
@@ -461,6 +488,7 @@ struct DisplayMappingView: View {
                 )
                 .frame(maxWidth: areaRect.width - 4)
                 .position(x: areaRect.midX, y: areaRect.midY)
+                .help(fullName ? "" : name)
             }
         }
     }
@@ -559,6 +587,16 @@ struct DisplayMappingView: View {
 
     private func toggleThumbnail(at index: Int, info: DisplayInfo) -> some View {
         let included = isIncluded(info)
+        let badgeFont = NSFont.systemFont(ofSize: AppFontRole.badgeTitle.baseSize * textScale, weight: .bold)
+        // 76pt chip minus horizontal padding/insets around the badge text.
+        let tier = info.labelTier(fitting: 76 - 12, font: badgeFont)
+        let chipLabel: String = {
+            switch tier {
+            case .full: return info.name
+            case .firstWord: return info.firstWord
+            case .index: return "\(index + 1)"
+            }
+        }()
 
         return ZStack {
             // Wallpaper or flat fill
@@ -587,7 +625,7 @@ struct DisplayMappingView: View {
             // Display name badge
             VStack(spacing: 0) {
                 Spacer()
-                Text(info.name)
+                Text(chipLabel)
                     .appFont(.badgeTitle)
                     .bold()
                     .lineLimit(1)
@@ -608,6 +646,7 @@ struct DisplayMappingView: View {
                     lineWidth: included ? 1.5 : 1
                 )
         )
+        .help(tier == .full ? "" : info.name)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(included ? [.isButton, .isSelected] : .isButton)
         .accessibilityLabel(Text(String(
@@ -830,41 +869,71 @@ struct DisplayMappingView: View {
                             selected ? Color.accentColor : Color.secondary.opacity(0.45)
                         ), style: StrokeStyle(lineWidth: selected ? 2 : 1))
 
-                    let nameResolved = ctx.resolve(
-                        Text(info.name).font(Font.appFont(.badgeTitle, scale: textScale)).bold().foregroundColor(.white))
-                    let resResolved = ctx.resolve(
-                        Text(info.resolution).font(Font.appFont(.badgeSubtitle, scale: textScale)).foregroundColor(.white))
-                    let measure = CGSize(width: rect.width - 8, height: 40)
-                    let nameSize = nameResolved.measure(in: measure)
-                    let resSize = resResolved.measure(in: measure)
-
                     let hPad: CGFloat = 6
                     let vPad: CGFloat = 4
-                    let nameY = rect.midY - 8
-                    let resY = rect.midY + 8
-                    let badgeW = min(
-                        max(nameSize.width, resSize.width) + hPad * 2,
-                        rect.width - 4)
-                    let badge = CGRect(
-                        x: rect.midX - badgeW / 2,
-                        y: nameY - nameSize.height / 2 - vPad,
-                        width: badgeW,
-                        height: (resY + resSize.height / 2 + vPad)
-                            - (nameY - nameSize.height / 2 - vPad))
+                    let maxTextW = rect.width - 8
+                    let badgeFont = NSFont.systemFont(
+                        ofSize: AppFontRole.badgeTitle.baseSize * textScale, weight: .bold)
+                    let tier = info.labelTier(fitting: maxTextW - hPad * 2, font: badgeFont)
+                    let titleString = tier == .index ? "\(info.listIndex)" : (tier == .firstWord ? info.firstWord : info.name)
 
-                    ctx.drawLayer { layer in
-                        layer.clip(to: Path(rect.insetBy(dx: 2, dy: 2)))
-                        layer.fill(
-                            Path(
-                                roundedRect: badge, cornerRadius: 3,
-                                style: .continuous),
-                            with: .color(.black.opacity(0.42)))
-                        layer.draw(
-                            nameResolved,
-                            at: CGPoint(x: rect.midX, y: nameY), anchor: .center)
-                        layer.draw(
-                            resResolved,
-                            at: CGPoint(x: rect.midX, y: resY), anchor: .center)
+                    let nameResolved = ctx.resolve(
+                        Text(titleString).font(Font.appFont(.badgeTitle, scale: textScale)).bold().foregroundColor(.white))
+                    let measure = CGSize(width: maxTextW, height: 40)
+                    let nameSize = nameResolved.measure(in: measure)
+
+                    if tier == .full {
+                        let resResolved = ctx.resolve(
+                            Text(info.resolution).font(Font.appFont(.badgeSubtitle, scale: textScale)).foregroundColor(.white))
+                        let resSize = resResolved.measure(in: measure)
+
+                        let nameY = rect.midY - 8
+                        let resY = rect.midY + 8
+                        let badgeW = min(
+                            max(nameSize.width, resSize.width) + hPad * 2,
+                            rect.width - 4)
+                        let badge = CGRect(
+                            x: rect.midX - badgeW / 2,
+                            y: nameY - nameSize.height / 2 - vPad,
+                            width: badgeW,
+                            height: (resY + resSize.height / 2 + vPad)
+                                - (nameY - nameSize.height / 2 - vPad))
+
+                        ctx.drawLayer { layer in
+                            layer.clip(to: Path(rect.insetBy(dx: 2, dy: 2)))
+                            layer.fill(
+                                Path(
+                                    roundedRect: badge, cornerRadius: 3,
+                                    style: .continuous),
+                                with: .color(.black.opacity(0.42)))
+                            layer.draw(
+                                nameResolved,
+                                at: CGPoint(x: rect.midX, y: nameY), anchor: .center)
+                            layer.draw(
+                                resResolved,
+                                at: CGPoint(x: rect.midX, y: resY), anchor: .center)
+                        }
+                    } else {
+                        // Too narrow for both lines — show one centered
+                        // line (first word, or a bare index as a last resort).
+                        let badgeW = min(nameSize.width + hPad * 2, rect.width - 4)
+                        let badge = CGRect(
+                            x: rect.midX - badgeW / 2,
+                            y: rect.midY - nameSize.height / 2 - vPad,
+                            width: badgeW,
+                            height: nameSize.height + vPad * 2)
+
+                        ctx.drawLayer { layer in
+                            layer.clip(to: Path(rect.insetBy(dx: 2, dy: 2)))
+                            layer.fill(
+                                Path(
+                                    roundedRect: badge, cornerRadius: 3,
+                                    style: .continuous),
+                                with: .color(.black.opacity(0.42)))
+                            layer.draw(
+                                nameResolved,
+                                at: CGPoint(x: rect.midX, y: rect.midY), anchor: .center)
+                        }
                     }
                 }
             }
@@ -973,6 +1042,23 @@ struct DisplayInfo {
 
     var pickerLabel: String { "\(name) (\(resolution))" }
 
+    /// Fallback label when `name` doesn't fit a crowded thumbnail (e.g. "Pen" from "Pen Display24").
+    var firstWord: String {
+        name.split(separator: " ").first.map(String.init) ?? name
+    }
+
+    /// Widest label — full name, first word, or bare index — that fits `maxWidth`.
+    enum LabelTier { case full, firstWord, index }
+
+    func labelTier(fitting maxWidth: CGFloat, font: NSFont) -> LabelTier {
+        func width(_ s: String) -> CGFloat {
+            (s as NSString).size(withAttributes: [.font: font]).width
+        }
+        if width(name) <= maxWidth { return .full }
+        if width(firstWord) <= maxWidth { return .firstWord }
+        return .index
+    }
+
     /// Returns all active displays sorted by screen position (left→right, top→bottom),
     /// matching the arrangement shown in System Settings > Displays.
     static func all() -> [DisplayInfo] {
@@ -996,7 +1082,7 @@ struct DisplayInfo {
             let h = Int(CGDisplayPixelsHigh(id))
             let wallpaper: NSImage? = screenMap[id].flatMap { screen in
                 NSWorkspace.shared.desktopImageURL(for: screen)
-                    .flatMap { Self.loadThumbnail(from: $0, maxEdge: 640) }
+                    .flatMap { Self.cachedThumbnail(from: $0, maxEdge: 640) }
             }
             return DisplayInfo(
                 id: id, listIndex: index + 1,
@@ -1013,6 +1099,17 @@ struct DisplayInfo {
     }
 
     private static let ciContext = CIContext()
+
+    /// Keyed by desktop-image URL so re-running `all()` skips decoding
+    /// thumbnails for displays whose wallpaper hasn't changed.
+    private static var thumbnailCache: [URL: NSImage] = [:]
+
+    private static func cachedThumbnail(from url: URL, maxEdge: CGFloat) -> NSImage? {
+        if let cached = thumbnailCache[url] { return cached }
+        guard let thumbnail = loadThumbnail(from: url, maxEdge: maxEdge) else { return nil }
+        thumbnailCache[url] = thumbnail
+        return thumbnail
+    }
 
     private static func loadThumbnail(from url: URL, maxEdge: CGFloat) -> NSImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }

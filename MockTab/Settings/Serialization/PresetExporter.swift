@@ -214,10 +214,9 @@ final class PresetExporter {
             return (exportDisplayIndex(ud.integer(forKey: prefix + key)), nil)
 
         case "toggleDisplayIDs":
+            // Persisted as UUID strings ("vendor-model-serial"), not numeric IDs.
             guard let raw = ud.string(forKey: prefix + key), !raw.isEmpty else { return nil }
-            let ids = raw.split(separator: ",")
-                .compactMap { UInt32($0.trimmingCharacters(in: .whitespaces)) }
-                .map { String($0) }
+            let ids = raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             return (ids, nil)
 
         case "tabletOrientation":

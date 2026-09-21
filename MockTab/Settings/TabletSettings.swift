@@ -360,23 +360,56 @@ final class TabletSettings: ObservableObject {
         }
     }
 
-    /// CGDirectDisplayID values (comma-separated) included in the toggle rotation.
-    /// Empty string means all connected displays are included.
+    /// Stable per-display UUIDs (comma-separated, `CalibrationKey.uuidString(for:)`
+    /// format) included in the toggle rotation. Empty string means all connected
+    /// displays are included.
+    ///
+    /// UUIDs, not raw `CGDirectDisplayID`, since macOS can reassign IDs across
+    /// reboots/reconfiguration — same fix as `CalibrationKey` (`CalibrationData.swift`).
     @Published var toggleDisplayIDs: String = "" {
         didSet { persist("toggleDisplayIDs", toggleDisplayIDs) }
     }
 
-    /// Typed get/set for the toggle display ID set.
+    /// Typed get/set, translating between the persisted UUIDs and the live
+    /// `CGDirectDisplayID`s every caller (`InjectionSnapshot`, `DisplayMapper`,
+    /// the Displays pane) works with.
     var toggleDisplayIDSet: Set<CGDirectDisplayID> {
         get {
-            Set(
-                toggleDisplayIDs.split(separator: ",")
-                    .compactMap { CGDirectDisplayID($0.trimmingCharacters(in: .whitespaces)) })
+            let tokens = toggleDisplayIDs.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard !tokens.isEmpty else { return [] }
+            // Legacy installs stored bare integers (no dash); drop those rather
+            // than misreading them as UUIDs — next selection re-persists correctly.
+            let uuids = Set(tokens.filter { $0.contains("-") })
+            guard !uuids.isEmpty else { return [] }
+            return Self.liveDisplayIDs(matchingUUIDs: uuids)
         }
         set {
-            let s = newValue.sorted().map { String($0) }.joined(separator: ",")
-            toggleDisplayIDs = s
+            let uuids = newValue.compactMap { id -> String? in
+                let uuid = CalibrationKey.uuidString(for: id)
+                return Self.isReliableDisplayUUID(uuid) ? uuid : nil
+            }
+            toggleDisplayIDs = uuids.sorted().joined(separator: ",")
         }
+    }
+
+    /// "0-0-0" (all-zero vendor/model/serial, seen on some no-EDID adapters)
+    /// isn't unique per display — treat it as unreliable like the empty string.
+    private static func isReliableDisplayUUID(_ uuid: String) -> Bool {
+        !uuid.isEmpty && uuid != "0-0-0"
+    }
+
+    /// Resolves stored stable display UUIDs back to the current session's live
+    /// `CGDirectDisplayID`s. Mirrors `TabletAreaView.resolveCurrentDisplayUUID()`'s
+    /// forward direction (live ID → UUID), just filtering the other way.
+    private static func liveDisplayIDs(matchingUUIDs uuids: Set<String>) -> Set<CGDirectDisplayID> {
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return [] }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return [] }
+        return Set(ids.filter { id in
+            let uuid = CalibrationKey.uuidString(for: id)
+            return isReliableDisplayUUID(uuid) && uuids.contains(uuid)
+        })
     }
 
     // MARK: - Pressure curve
