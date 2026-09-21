@@ -158,9 +158,9 @@ extension WacomKnownDevice {
                 var buf = [UInt8](repeating: 0, count: 9)
                 buf[0] = 0x20  // WAC_CMD_LED_CONTROL
                 buf[1] = (Self.intuos5CropLuminance << 4) | (Self.intuos5RingLuminance << 2) | slot
-                hidSetReport(intuosV1CapableDevice ?? device, reportID: CFIndex(buf[0]), bytes: &buf,
+                hidSetReport(capableInterfaceDevice ?? device, reportID: CFIndex(buf[0]), bytes: &buf,
                              tag: "\(name) Intuos5 LED slot=\(index)",
-                             severity: intuosV1CapableDevice == nil ? .bestEffort : .required, log: logger)
+                             severity: capableInterfaceDevice == nil ? .bestEffort : .required, log: logger)
             } else {
                 // Intuos4 and earlier, wired: WAC_CMD_LED_CONTROL (0x20), 9-byte
                 // feature report. The kernel reaches this layout through
@@ -189,9 +189,9 @@ extension WacomKnownDevice {
                 buf[0] = 0x20  // WAC_CMD_LED_CONTROL
                 buf[1] = (llv & 0x1f) | (UInt8(index & 0x07) << 5)
                 buf[2] = hlv & 0x1f
-                hidSetReport(intuosV1CapableDevice ?? device, reportID: CFIndex(buf[0]), bytes: &buf,
+                hidSetReport(capableInterfaceDevice ?? device, reportID: CFIndex(buf[0]), bytes: &buf,
                              tag: "\(name) IntuosV1 LED slot=\(index)",
-                             severity: intuosV1CapableDevice == nil ? .bestEffort : .required, log: logger)
+                             severity: capableInterfaceDevice == nil ? .bestEffort : .required, log: logger)
             }
 
         case .xencelabs:

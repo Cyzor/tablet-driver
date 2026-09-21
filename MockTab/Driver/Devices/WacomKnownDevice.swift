@@ -208,7 +208,7 @@ final class WacomKnownDevice: TabletDevice {
     /// instead of `device` — `device` is just "whichever interface won the
     /// enumeration race," which for this family isn't guaranteed to be the
     /// one that can accept feature writes.
-    var intuosV1CapableDevice: IOHIDDevice?
+    var capableInterfaceDevice: IOHIDDevice?
 
     /// Vendor writes issued before the vendor-tunnel interface existed.
     ///
@@ -489,15 +489,16 @@ final class WacomKnownDevice: TabletDevice {
         // silently discarded until the link is up, so it is re-run when 0x80/0x02
         // confirms link-up (see the wireless-ready handler below).
         if !isBluetooth {
-            // `.intuosV1` multi-interface devices (PTH-850, ACK-40401) have no
-            // DeviceRouter deferral guaranteeing `device` is the feature-capable
-            // interface — see `hasAnyFeatureReport`. Only send here if it
-            // actually is; otherwise wait for the capable sibling to arrive via
-            // registerDevice() rather than firing a write this interface will
-            // just NAK.
-            if deviceSpec.parser == .intuosV1 {
+            // `.intuosV1` (PTH-850, ACK-40401) and `.intuosV3` with
+            // `seizeUSB: false` (CTC-4110WL/6110WL) have no DeviceRouter
+            // deferral guaranteeing `device` is feature-capable — see
+            // `hasAnyFeatureReport`. The CTC-4110WL's vendor bulk interface
+            // has no feature reports at all; if it wins the race, the
+            // DataMode write silently lands nowhere. Wait for a capable
+            // sibling via registerDevice() rather than firing a doomed write.
+            if deviceSpec.parser == .intuosV1 || deviceSpec.parser == .intuosV3 {
                 if hasAnyFeatureReport(device) {
-                    intuosV1CapableDevice = device
+                    capableInterfaceDevice = device
                     executeInitSteps()
                 } else {
                     logger.info("\(name, privacy: .public): primary interface declares no feature reports — deferring init to a sibling interface via registerDevice()")
@@ -681,16 +682,18 @@ final class WacomKnownDevice: TabletDevice {
             }
         }
 
-        // `.intuosV1` multi-interface devices (PTH-850, ACK-40401): the primary
-        // interface picked in `open()` may not have been the feature-capable
-        // one (see `hasAnyFeatureReport`). If it wasn't, and this newly
-        // registered sibling is, send the init sequence and any pending LED
-        // slot here instead — the first (and only) time a capable interface
-        // is found. If `open()` already found one, this is a no-op.
-        if deviceSpec.parser == .intuosV1 && !interfaceIsBluetooth && intuosV1CapableDevice == nil
+        // `.intuosV1` (PTH-850, ACK-40401) and `.intuosV3` (CTC-4110WL/6110WL)
+        // multi-interface devices: the primary interface picked in `open()`
+        // may not have been the feature-capable one (see
+        // `hasAnyFeatureReport`). If it wasn't, and this newly registered
+        // sibling is, send the init sequence and any pending LED slot here
+        // instead — the first (and only) time a capable interface is found.
+        // If `open()` already found one, this is a no-op.
+        if (deviceSpec.parser == .intuosV1 || deviceSpec.parser == .intuosV3)
+            && !interfaceIsBluetooth && capableInterfaceDevice == nil
             && hasAnyFeatureReport(device)
         {
-            intuosV1CapableDevice = device
+            capableInterfaceDevice = device
             executeInitSteps(on: device)
             setRingLED(index: pendingLEDIndex)
         }
@@ -734,7 +737,7 @@ final class WacomKnownDevice: TabletDevice {
             IOHIDDeviceClose(sec, IOOptionBits(kIOHIDOptionsTypeNone))
             secondaryDevice = nil
         }
-        intuosV1CapableDevice = nil
+        capableInterfaceDevice = nil
         pendingVendorWrites.removeAll()
         pendingVendorWritesDropped = false
         // Balance the callback-context retain. Deferred to HIDThread so it runs
@@ -842,8 +845,17 @@ final class WacomKnownDevice: TabletDevice {
         switch steps[index] {
         case .featureReport(var bytes):
             let reportID = CFIndex(bytes[0])
-            hidSetReport(device, reportID: reportID, bytes: &bytes,
-                         tag: "\(deviceSpec.name) initStep[\(index)]", log: logger)
+            let name = deviceSpec.name
+            let ret = hidSetReport(device, reportID: reportID, bytes: &bytes,
+                         tag: "\(name) initStep[\(index)]", log: logger)
+            // hidSetReport only logs failures — success doesn't mean the
+            // firmware honored it (cf. Xencelabs LED writes). Log success
+            // too so a capture can tell "write succeeded" from "device left
+            // reduced mode" instead of assuming one implies the other.
+            if ret == kIOReturnSuccess {
+                let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
+                logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] feature report succeeded on interface usagePage=0x\(String(usagePage, radix: 16), privacy: .public)")
+            }
             executeInitSteps(from: index + 1, on: target)
         case .outputReport(var bytes):
             // Vendor tablet-mode init over the HID output pipe (Xencelabs:
