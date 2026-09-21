@@ -136,6 +136,12 @@ final class WacomKnownDevice: TabletDevice {
     /// put, unlike a real fast stroke, which moves both together.
     private static let wirelessOutlierFraction = 0.2
 
+    /// Frames to wait after a PTK-870/Movink BLE proximity-enter before
+    /// synthesizing a generic tool identity, giving the one-shot real
+    /// announcement frame a chance to win honestly. See the fallback's own
+    /// comment in decodeBLEReport's caller below for the full rationale.
+    private static let toolAnnounceGraceFrames = 4
+
     // ── Bluetooth batch pacing ──────────────────────────────────────────────
     // See BatchFramePacer.swift and dispatchBatch(_:reportTimestampNs:) below.
     // HIDThread-confined, like everything else `handleReport` touches.
@@ -1115,43 +1121,28 @@ final class WacomKnownDevice: TabletDevice {
             }
         }
 
-        // IntuosV3Decoder now does emit .toolEnter where its wire format
-        // carries a real serial/tool code (confirmed 2026-09-16 on PTK-870 —
-        // see the decoder's own doc comment), via a one-shot announcement
-        // frame sent on proximity-enter. Movink 13/13.3's own capture never
-        // showed a nonzero code in that field at all, and separately, ANY
-        // .intuosV3 BLE device misses the announcement whenever the pen is
-        // already in proximity when the BLE session/capture starts (nothing
-        // re-sends it later) — confirmed 2026-09-19 on a PTK-870 Art Pen
-        // capture that started mid-proximity: thousands of valid pen frames,
-        // zero 0x01 announcement frames, so the pen never registered in
-        // DeviceRegistry and no pane showed it as present despite position
-        // and rotation both decoding correctly. Only synthesize if the
-        // decoder itself didn't already emit a real one this frame —
-        // otherwise a device where the field does resolve would get two
-        // toolEnter events (a real one, immediately followed by a synthetic
-        // one that stomps the actual identity with a same-model guess).
-        //
-        // BLE-only. USB's decodeExtendedPenReport re-reads the real
-        // serial/toolCode from every single extended report (not a one-shot
-        // announcement), so it always has accurate identity available, but
-        // only RE-EMITS .toolEnter when that identity CHANGES from
-        // state.lastToolCode — correctly staying silent across a same-pen
-        // proximity cycle. This fallback's synthetic insert never touches
-        // state.lastToolCode (it only appends to WacomKnownDevice's own
-        // decoded array), so on USB it would win the very next re-entry with
-        // no way for the decoder to ever re-correct it afterward — a wrong
-        // identity that sticks for the rest of the session, confirmed
-        // 2026-09-19 by a live report of the Art Pen reverting to a generic
-        // "Stylus" on both transports after a proximity cycle, worse and
-        // permanent on USB specifically. BLE's own one-shot announcement can
-        // still arrive later in the same session and correctly overwrite a
-        // synthetic guess (its change-detection compares against
-        // state.lastSerial, which the synthetic path also never touches),
-        // so BLE keeps a chance to self-correct that USB does not.
+        // IntuosV3's BLE announcement frame is one-shot per proximity-enter
+        // and sometimes never arrives at all — see the decoder's own doc
+        // comment. When missed, synthesize a placeholder .toolEnter so the
+        // pen still registers (BLE only: USB re-reads real identity every
+        // report, so a synthetic insert there would never get corrected —
+        // see [[project_ptk870_tool_identity_and_transport_bugs]]).
+        // Delayed by a grace window, not fired on the first frame after
+        // re-entry: the real announcement usually arrives within a few
+        // frames, and firing early routinely beat it, which is worse than a
+        // wrong label — "stylus"/"eraser" alias the shared device-default
+        // settings bucket (`toolSettings(forID:)`), so a binding edit made
+        // while misidentified as generic can bleed across different pens.
         let wasInProximity = state.prevInProximity
+        if wasInProximity {
+            state.framesSinceProximityEnter =
+                min(state.framesSinceProximityEnter + 1, Self.toolAnnounceGraceFrames + 1)
+        } else {
+            state.framesSinceProximityEnter = 0
+        }
         let synthesizeIntuosV3ToolEnter =
-            deviceSpec.parser == .intuosV3 && isBluetooth && !wasInProximity
+            deviceSpec.parser == .intuosV3 && isBluetooth
+            && state.framesSinceProximityEnter == Self.toolAnnounceGraceFrames
 
         let results: [DecodeResult]
         if length > 0, var fixedTouchDecoder = fixedTouchDecoders[report[0]] {
@@ -1178,20 +1169,10 @@ final class WacomKnownDevice: TabletDevice {
                     if case .pen = $0 { return true } else { return false }
                 })
             {
-                // No reliable way to guess the specific model here — an
-                // earlier version tried keying off whether rotation sat
-                // near the ~179.8 deg "no sensor" neutral value, but that
-                // value is an ordinary, reachable reading for a real
-                // rotating pen too (an Art Pen resting at that orientation
-                // by chance reads identically to a non-rotating pen), and
-                // it fabricated wrong, sticky identities (an Art Pen
-                // misregistered and stuck as "Pro Pen 3E" — Movink's bundled
-                // pen code, not even a PTK-870 pen) that persisted until the
-                // next proximity cycle. A generic/unmapped code degrades
-                // safely (WacomToolCatalog falls back to a descriptive
-                // generic name, not a wrong specific one) and self-corrects
-                // the moment a real announcement frame arrives, same as the
-                // Movink case this fallback originally existed for.
+                // Generic/unmapped, not a guessed model — a wrong specific
+                // guess (e.g. keying off rotation) fabricates a sticky wrong
+                // identity; this degrades to a descriptive generic name
+                // instead and self-corrects once a real announcement lands.
                 let code: UInt16 = point.eraser ? 0x0008 : 0x0000
                 decoded.insert(
                     .toolEnter(ToolIdentity(serial: 0, toolCode: code, isEraser: point.eraser, isMouse: false)),
