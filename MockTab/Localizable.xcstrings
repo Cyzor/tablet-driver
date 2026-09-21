@@ -435,6 +435,29 @@
         }
       }
     },
+    "(changing)" : {
+      "comment" : "Appended to the raw-capture ticker when the flags byte differs from the previous poll",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(ändert sich)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(cambiando)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（変化中）"
+          }
+        }
+      }
+    },
     "(Charging)" : {
       "comment" : "Suffix when device is charging, e.g. '85%  (Charging)'",
       "localizations" : {
@@ -3948,8 +3971,55 @@
         }
       }
     },
+    "Collect Full Diagnostics…" : {
+      "comment" : "Button label: start guided data collection plus a silent raw capture together (Option-revealed)",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vollständige Diagnose erfassen…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recopilar diagnóstico completo…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完全な診断データを収集…"
+          }
+        }
+      }
+    },
+    "Collect tablet details for support, plus a full raw+decoded capture in the background. Creates larger files for detailed analysis." : {
+      "comment" : "Description below the Collect Full Diagnostics button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sammelt Tablet-Details für den Support und zusätzlich im Hintergrund eine vollständige Roh- und Decodier-Aufzeichnung. Erzeugt größere Dateien für die detaillierte Analyse."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recopila los datos de la tableta para soporte y, además, una captura completa sin procesar y decodificada en segundo plano. Genera archivos más grandes para un análisis detallado."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サポート用のタブレット詳細情報に加え、バックグラウンドで完全な生データとデコード済みデータの記録も行います。詳細な分析のためファイルサイズは大きくなります。"
+          }
+        }
+      }
+    },
     "Collect tablet details for support. May take a few minutes. Hold ⌥ for raw capture." : {
       "comment" : "Description below the Collect Device Data button",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3967,6 +4037,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "サポート用にタブレットの詳細情報を収集します。数分かかる場合があります。生データの記録には⌥を押したままにしてください。"
+          }
+        }
+      }
+    },
+    "Collect tablet details for support. May take a few minutes. Hold ⌥ to also record a full raw capture." : {
+      "comment" : "Description below the Collect Device Data button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tablet-Details für den Support sammeln. Kann ein paar Minuten dauern. ⌥ gedrückt halten, um zusätzlich eine vollständige Rohdatenaufzeichnung zu erstellen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recopila los datos de la tableta para soporte. Puede tardar unos minutos. Mantén ⌥ para grabar además una captura completa sin procesar."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サポート用にタブレットの詳細情報を収集します。数分かかる場合があります。⌥を押したままにすると、完全な生データの記録も同時に行います。"
           }
         }
       }
@@ -7037,6 +7130,7 @@
     },
     "Every report, raw bytes plus decoded values, categorized by report ID and condensed to steady-state ranges. For checking a known decoder against real hardware." : {
       "comment" : "Help text for the Record Raw Data button",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9668,6 +9762,29 @@
         }
       }
     },
+    "Last report 0x%02X byte2: 0x%02X%@" : {
+      "comment" : "Live raw-capture ticker: report ID and flags byte, with a trailing '(changing)' marker appended in code when the value differs from the previous poll",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letzter Report 0x%02X Byte2: 0x%02X%@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Último informe 0x%02X byte2: 0x%02X%@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直近のレポート 0x%02X byte2: 0x%02X%@"
+          }
+        }
+      }
+    },
     "Launch at Login" : {
       "comment" : "Menu toggle: start app automatically on login\nRow label in Info tab status table",
       "localizations" : {
@@ -11376,6 +11493,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "プロファイルはまだありません。以下で作成してください。"
+          }
+        }
+      }
+    },
+    "No proximity recognized yet" : {
+      "comment" : "Warning shown during raw capture when the decoder has never seen the pen as in-range",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Nähe erkannt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no se detecta proximidad"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "まだ近接を検出していません"
           }
         }
       }
@@ -13867,6 +14007,7 @@
     },
     "Record Raw Data…" : {
       "comment" : "Button label: start raw HID capture with decoded annotations (Option-revealed)",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13936,6 +14077,29 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "対応を追加できるよう、タブレットが送信する内容を記録します。"
+          }
+        }
+      }
+    },
+    "Records the guided statistical summary and a full raw+decoded capture at the same time — two files from one session." : {
+      "comment" : "Help text for the Collect Full Diagnostics button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erstellt die geführte statistische Zusammenfassung und gleichzeitig eine vollständige Roh- und Decodier-Aufzeichnung — zwei Dateien aus einer Sitzung."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Genera el resumen estadístico guiado y, al mismo tiempo, una captura completa sin procesar y decodificada — dos archivos en una sola sesión."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ガイド付きの統計サマリーと、完全な生データ・デコード済みデータの記録を同時に作成します。1回のセッションで2つのファイルが得られます。"
           }
         }
       }
@@ -18221,6 +18385,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "そのタブレットはすでに接続されていません。"
+          }
+        }
+      }
+    },
+    "No HID devices are visible to macOS at all right now." : {
+      "comment" : "Capture error shown when no tablet is known and no HID device of any kind is found on the system",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS sieht derzeit überhaupt keine HID-Geräte."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS no detecta ningún dispositivo HID en este momento."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在、macOSにはHIDデバイスが一つも見えていません。"
           }
         }
       }

@@ -128,6 +128,20 @@ final class CaptureEngine: ObservableObject {
     /// Polls the accumulator so the UI can show a live event count without the
     /// recording path touching `@Published` state per report.
     private var pollTimer: Timer?
+    /// Periodically overwrites `flushFileURL` with the session's current
+    /// state, so a crash or forgotten sheet doesn't lose the whole collection
+    /// — same rationale as `HIDCapture`'s background flush. Safe to run
+    /// live: every accumulator's `snapshot()` is a non-destructive read.
+    private var flushTimer: Timer?
+    /// Fixed at `startDiscovery`, unlike the final export's filename (stamped
+    /// fresh) — periodic flushes overwrite one file in place. Cleared by
+    /// `stopTimers()`; `lastFlushFileURL` below survives that so the final
+    /// export can still find and delete the now-redundant interim copy.
+    private var flushFileURL: URL?
+    /// Outlives `flushFileURL` across `stopTimers()` so `exportDiscoveryJSON`
+    /// can clean up the interim flush file after a successful final export.
+    private var lastFlushFileURL: URL?
+    private static let flushInterval: TimeInterval = 15
 
     // MARK: - Callbacks
 
@@ -194,6 +208,35 @@ final class CaptureEngine: ObservableObject {
         discoveryTimer = scheduledTimer(interval: duration, repeats: false) { [weak self] in
             self?.finishDiscovery()
         }
+        flushFileURL = Self.flushFileURL(productID: devices[0].1.productIDHex, at: discoveryStartTime)
+        lastFlushFileURL = flushFileURL
+        flushTimer = scheduledTimer(interval: Self.flushInterval, repeats: true) { [weak self] in
+            self?.flushToDisk()
+        }
+    }
+
+    /// Overwrites this session's flush file with the current (non-final)
+    /// state. Bluetooth RSSI is omitted — its monitor's summary is
+    /// destructive/single-use (`BluetoothLinkMonitor.stopAndSummarize`) and
+    /// must be saved for the real final export.
+    private func flushToDisk() {
+        guard isRunning, !sessions.isEmpty, let url = flushFileURL else { return }
+        let result = buildDiscoveryResult(sessions: sessions, bluetoothLink: nil)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(result) else { return }
+        try? data.write(to: url)
+    }
+
+    /// Pinned to the session's start time so every flush overwrites the same
+    /// path, including the file left behind if the auto-stop ceiling ends
+    /// the session before the user clicks Done.
+    private static func flushFileURL(productID: String, at date: Date) -> URL? {
+        let filename = "mocktab-info-\(productID)-\(Self.fileStamp(date)).json"
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Desktop")
+            .appendingPathComponent(filename)
     }
 
     /// Whether `device` is one of the interfaces this session is recording.
@@ -231,6 +274,12 @@ final class CaptureEngine: ObservableObject {
     /// Cancel collection and discard everything gathered.
     func cancelDiscovery() {
         guard isRunning else { return }
+        // A cancelled capture shouldn't leave the crash-safety copy behind
+        // with no corresponding final export.
+        if let flushURL = lastFlushFileURL {
+            try? FileManager.default.removeItem(at: flushURL)
+            lastFlushFileURL = nil
+        }
         stopTimers()
         for session in sessions { session.accumulator.stop() }
         deregisterAccumulators()
@@ -361,6 +410,7 @@ final class CaptureEngine: ObservableObject {
             .appendingPathComponent(filename)
         do {
             try data.write(to: desktop)
+            removeStaleFlushFile(finalURL: desktop)
             return desktop
         } catch {
             logger.error(
@@ -375,6 +425,7 @@ final class CaptureEngine: ObservableObject {
         }
         do {
             try data.write(to: chosen)
+            removeStaleFlushFile(finalURL: chosen)
             return chosen
         } catch {
             lastError = String(
@@ -382,6 +433,15 @@ final class CaptureEngine: ObservableObject {
                 comment: "Capture error shown when writing the capture file failed")
             return nil
         }
+    }
+
+    /// Removes the interim flush file once a final export lands — otherwise
+    /// the user is left with two similarly-named files. Best-effort; a
+    /// failed delete isn't worth surfacing over a successful export.
+    private func removeStaleFlushFile(finalURL: URL) {
+        guard let flushURL = lastFlushFileURL, flushURL != finalURL else { return }
+        lastFlushFileURL = nil
+        try? FileManager.default.removeItem(at: flushURL)
     }
 
     /// Ask the user where to put the capture file. Only reached when the
@@ -764,5 +824,8 @@ final class CaptureEngine: ObservableObject {
         pollTimer = nil
         discoveryTimer?.invalidate()
         discoveryTimer = nil
+        flushTimer?.invalidate()
+        flushTimer = nil
+        flushFileURL = nil
     }
 }

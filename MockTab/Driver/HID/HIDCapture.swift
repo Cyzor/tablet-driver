@@ -109,6 +109,15 @@ final class HIDCapture {
         var firstDecoded: String?
     }
 
+    /// Cheap live snapshot of the most recent report, for a UI ticker to show
+    /// something reacting the instant the pen touches down — distinct from
+    /// `Sample`, which the condenser owns and mutates.
+    struct LiveSample {
+        var reportID: UInt8
+        var lastByte2: UInt8?
+        var inProximity: Bool?
+    }
+
     // MARK: - State (guarded by `state`'s lock)
 
     private struct State {
@@ -124,6 +133,7 @@ final class HIDCapture {
         /// Carries run continuity across flush boundaries.
         var condenser = Condenser()
         var headerWritten = false
+        var lastSample: LiveSample?
     }
     private let state = OSAllocatedUnfairLock<State>(initialState: State())
 
@@ -139,6 +149,9 @@ final class HIDCapture {
     var elapsedSinceStart: TimeInterval {
         state.withLock { $0.isCapturing ? Date().timeIntervalSince($0.startTime) : 0 }
     }
+    /// Most recent report's key bytes, for a live UI ticker. `nil` before the
+    /// first report arrives.
+    var lastSample: LiveSample? { state.withLock { $0.lastSample } }
 
     // MARK: - Control
 
@@ -155,6 +168,7 @@ final class HIDCapture {
             $0.lastFlushAt = Date()
             $0.condenser = Condenser()
             $0.headerWritten = false
+            $0.lastSample = nil
             $0.isCapturing = true
         }
         Self.writeHeader(to: url, startTime: state.withLock { $0.startTime })
@@ -293,6 +307,10 @@ final class HIDCapture {
 
         let decodedSummary = decoded.flatMap(Self.summarize)
         let signature = Self.signature(for: decoded)
+        // Byte 2 is the tip/barrel/eraser/in-range flags byte on every Wacom
+        // vendor pen report family seen so far — cheap enough to grab
+        // unconditionally, even when there's no decoder.
+        let byte2: UInt8? = length > 2 ? report[2] : nil
 
         state.withLock {
             // Re-check: capture may have stopped while formatting.
@@ -302,6 +320,8 @@ final class HIDCapture {
                     elapsed: elapsed, tag: tag, reportID: id0, length: length, hex: hex,
                     decoded: decoded, signature: signature))
             $0.reportCount += 1
+            $0.lastSample = LiveSample(
+                reportID: id0, lastByte2: byte2, inProximity: signature.inProximity)
             var summary = $0.summaries[id0] ?? ReportIDSummary()
             summary.count += 1
             summary.minLength = min(summary.minLength, length)

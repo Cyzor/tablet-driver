@@ -276,10 +276,30 @@ struct CaptureGuideView: View {
     private func captureInterfaces() -> [IOHIDDevice] {
         let context = tabletManager.contexts[productID]
         let listed = (context?.captureInterfaces ?? []).compactMap(\.device)
-        guard !listed.isEmpty else { return [context?.hidDevice].compactMap { $0 } }
-        guard let primary = context?.hidDevice, listed.contains(where: { $0 === primary })
-        else { return listed }
-        return [primary] + listed.filter { $0 !== primary }
+        if !listed.isEmpty {
+            guard let primary = context?.hidDevice, listed.contains(where: { $0 === primary })
+            else { return listed }
+            return [primary] + listed.filter { $0 !== primary }
+        }
+        if let hidDevice = context?.hidDevice { return [hidDevice] }
+        // No known device at all — rather than error out, profile every HID
+        // device on the bus instead. TabletManager's own `IOHIDManager` only
+        // matches vendors we already know, so it can't answer "is the tablet
+        // even visible to the OS." If nothing shows up here either, that's
+        // itself the diagnosis (unpowered hub, cable fault, wrong port).
+        return Self.allConnectedHIDDevices()
+    }
+
+    /// One-shot, unfiltered enumeration of every HID device IOKit currently
+    /// sees — independent of `TabletManager`'s vendor-matched manager, which
+    /// would omit exactly the unrecognized hardware this exists to surface.
+    private static func allConnectedHIDDevices() -> [IOHIDDevice] {
+        guard let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
+            as IOHIDManager?
+        else { return [] }
+        IOHIDManagerSetDeviceMatching(manager, nil)
+        guard let deviceSet = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else { return [] }
+        return Array(deviceSet)
     }
 
     /// This tablet's touch configuration, for the capture file.
@@ -650,9 +670,19 @@ struct CaptureGuideView: View {
         // a report came from and whether that interface declared it.
         let interfaces = captureInterfaces()
         guard !interfaces.isEmpty else {
-            startupError = String(
-                localized: "That tablet isn't connected anymore.",
-                comment: "Capture error shown when the target device disappeared before collection started")
+            // captureInterfaces() already falls back to every HID device on
+            // the bus when nothing is known — reaching here with productID
+            // != 0 means the previously-known device disappeared; with
+            // productID == 0 it means IOKit reports no HID devices at all,
+            // which is itself useful evidence.
+            startupError =
+                productID != 0
+                ? String(
+                    localized: "That tablet isn't connected anymore.",
+                    comment: "Capture error shown when the target device disappeared before collection started")
+                : String(
+                    localized: "No HID devices are visible to macOS at all right now.",
+                    comment: "Capture error shown when no tablet is known and no HID device of any kind is found on the system")
             return
         }
         let targets = interfaces.compactMap { device in

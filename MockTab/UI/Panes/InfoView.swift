@@ -30,8 +30,15 @@ struct InfoView: View {
     @State private var diagnosticSnapshotAt = Date()
     @State private var conflicts: [ConflictFinding] = []
     @State private var showCaptureGuide = false
+    /// Set when the guide sheet was opened with Option held — pairs a silent
+    /// `HIDCapture` recording with the guided collection so one click nets
+    /// both files. Not shown in the sheet's own UI.
+    @State private var captureGuideAlsoRecordsRaw = false
     @State private var rawCaptureRunning = false
     @State private var rawCaptureReportCount = 0
+    @State private var rawCaptureLastSample: HIDCapture.LiveSample?
+    /// Byte-2 value one poll ago, purely to render "(changing)".
+    @State private var rawCapturePreviousByte2: UInt8?
     @State private var rawCaptureSavedURL: URL?
     /// Polls `HIDCapture.shared.reportCount` while running — no publisher on
     /// the capture buffer, and a per-report UI update would be wasteful.
@@ -153,7 +160,15 @@ struct InfoView: View {
                 engine: captureEngine,
                 tabletManager: tabletManager,
                 productID: productID ?? 0,
-                onDismiss: { showCaptureGuide = false }
+                onDismiss: {
+                    showCaptureGuide = false
+                    if captureGuideAlsoRecordsRaw {
+                        captureGuideAlsoRecordsRaw = false
+                        // Same teardown as a manual Stop, so state stays
+                        // consistent either way.
+                        stopRawCapture()
+                    }
+                }
             )
         }
     }
@@ -447,17 +462,18 @@ struct InfoView: View {
 
     // MARK: - HID capture section
 
-    /// One button, two tools — hold Option for the advanced one. Default is
-    /// "Collect Device Data…" (`CaptureGuideView`/`DiscoveryAccumulator`), a
-    /// statistical summary for first-contact triage. Option swaps in
-    /// `HIDCapture`'s raw+decoded recorder for checking a known decoder
-    /// against real hardware.
+    /// One button. Default is "Collect Device Data…"
+    /// (`CaptureGuideView`/`DiscoveryAccumulator`), a statistical summary for
+    /// first-contact triage. Holding Option additionally arms a silent
+    /// `HIDCapture` recording for the same session — a second file appears
+    /// alongside the guide's JSON when the user clicks Done.
     private var captureSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                if rawCaptureRunning {
-                    // Controls stay put regardless of Option once running —
-                    // only *starting* a capture is Option-gated.
+                if rawCaptureRunning && !showCaptureGuide {
+                    // The guide sheet's modal covers this section while
+                    // open, even though the paired capture keeps running
+                    // underneath.
                     Button(String(localized: "Stop Capture", comment: "Button label: stop raw HID capture")) {
                         stopRawCapture()
                     }
@@ -472,20 +488,27 @@ struct InfoView: View {
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
-                } else if optionKeyDown {
-                    Button(String(localized: "Record Raw Data…", comment: "Button label: start raw HID capture with decoded annotations (Option-revealed)")) {
-                        startRawCapture()
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help(String(localized: "Every report, raw bytes plus decoded values, categorized by report ID and condensed to steady-state ranges. For checking a known decoder against real hardware.", comment: "Help text for the Record Raw Data button"))
                 } else {
-                    Button(String(localized: "Collect Device Data…", comment: "Button label: start device data collection")) {
+                    Button(
+                        optionKeyDown
+                            ? String(localized: "Collect Full Diagnostics…", comment: "Button label: start guided data collection plus a silent raw capture together (Option-revealed)")
+                            : String(localized: "Collect Device Data…", comment: "Button label: start device data collection")
+                    ) {
+                        // Re-read at click time — Option may have been
+                        // released since the last render (see
+                        // startRawCapture for the same guard).
+                        if NSEvent.modifierFlags.contains(.option) {
+                            captureGuideAlsoRecordsRaw = true
+                            startRawCapture()
+                        }
                         showCaptureGuide = true
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help(String(localized: "Records what your tablet sends to the Mac and saves it as a small JSON file you can share.", comment: "Help text for the Collect Device Data button"))
+                    .help(
+                        optionKeyDown
+                            ? String(localized: "Records the guided statistical summary and a full raw+decoded capture at the same time — two files from one session.", comment: "Help text for the Collect Full Diagnostics button")
+                            : String(localized: "Records what your tablet sends to the Mac and saves it as a small JSON file you can share.", comment: "Help text for the Collect Device Data button"))
                 }
                 Spacer()
                 if let url = rawCaptureSavedURL {
@@ -500,22 +523,64 @@ struct InfoView: View {
                 }
             }
 
+            if rawCaptureRunning {
+                rawCaptureLiveTicker
+            }
+
             Text(
-                optionKeyDown || rawCaptureRunning
-                    ? String(localized: "Record everything the tablet sends. Creates large files for detailed analysis.", comment: "Description below the Record Raw Data button")
-                    : String(localized: "Collect tablet details for support. May take a few minutes. Hold ⌥ for raw capture.", comment: "Description below the Collect Device Data button")
+                optionKeyDown
+                    ? String(localized: "Collect tablet details for support, plus a full raw+decoded capture in the background. Creates larger files for detailed analysis.", comment: "Description below the Collect Full Diagnostics button")
+                    : rawCaptureRunning
+                        ? String(localized: "Record everything the tablet sends. Creates large files for detailed analysis.", comment: "Description below the Record Raw Data button")
+                        : String(localized: "Collect tablet details for support. May take a few minutes. Hold ⌥ to also record a full raw capture.", comment: "Description below the Collect Device Data button")
             )
             .appFont(.settingsLabel)
             .foregroundStyle(.tertiary)
         }
     }
 
+    /// Shows the most recent report's ID and flags byte updating live, plus a
+    /// nudge if proximity has never been recognized yet — gives the user
+    /// something visibly reacting the instant they touch the pen down.
+    @ViewBuilder
+    private var rawCaptureLiveTicker: some View {
+        if let sample = rawCaptureLastSample {
+            VStack(alignment: .leading, spacing: 2) {
+                if let byte2 = sample.lastByte2 {
+                    let changing = byte2 != rawCapturePreviousByte2
+                    Text(
+                        String(
+                            format: String(
+                                localized: "Last report 0x%02X byte2: 0x%02X%@",
+                                comment: "Live raw-capture ticker: report ID and flags byte, with a trailing '(changing)' marker appended in code when the value differs from the previous poll"),
+                            sample.reportID, byte2,
+                            changing
+                                ? " " + String(localized: "(changing)", comment: "Appended to the raw-capture ticker when the flags byte differs from the previous poll")
+                                : "")
+                    )
+                    .appFont(.settingsLabel)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                }
+                if sample.inProximity != true {
+                    Label(
+                        String(localized: "No proximity recognized yet", comment: "Warning shown during raw capture when the decoder has never seen the pen as in-range"),
+                        systemImage: "exclamationmark.triangle")
+                    .appFont(.settingsLabel)
+                    .foregroundStyle(.orange)
+                }
+            }
+        }
+    }
+
+    /// Starts `HIDCapture` and arms the UI-side polling for the live ticker
+    /// and report count. Used both standalone and as the companion capture
+    /// `captureGuideAlsoRecordsRaw` arms alongside the guide sheet.
     private func startRawCapture() {
-        // Re-read at click time — Option may have been released since the
-        // last render (see AppOverrideBar for the same guard).
-        guard NSEvent.modifierFlags.contains(.option) else { return }
         HIDCapture.shared.start()
         rawCaptureReportCount = 0
+        rawCaptureLastSample = nil
+        rawCapturePreviousByte2 = nil
         rawCaptureSavedURL = nil
         rawCaptureRunning = true
         startRawCapturePollTimer()
@@ -525,6 +590,8 @@ struct InfoView: View {
         rawCaptureCountTimer?.invalidate()
         rawCaptureCountTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
             rawCaptureReportCount = HIDCapture.shared.reportCount
+            rawCapturePreviousByte2 = rawCaptureLastSample?.lastByte2
+            rawCaptureLastSample = HIDCapture.shared.lastSample
             // Flushing/auto-stop are owned by HIDCapture's own background
             // timer, not this poll — this only needs to notice when
             // isCapturing flips false on its own (the ceiling fired) and
