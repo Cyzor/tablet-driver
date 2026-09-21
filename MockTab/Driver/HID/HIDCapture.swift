@@ -418,6 +418,16 @@ final class HIDCapture {
         var tiltYRange: ClosedRange<Double>?
         var hoverRange: ClosedRange<Int>?
 
+        // Explicit init: the compiler-synthesized memberwise init would
+        // inherit `private` from the properties below, making it
+        // inaccessible to `Condenser` even though the type itself is
+        // `fileprivate`.
+        fileprivate init(startElapsed: TimeInterval, reportID: UInt8, tag: String) {
+            self.startElapsed = startElapsed
+            self.reportID = reportID
+            self.tag = tag
+        }
+
         private var lastX: Int?
         private var lastY: Int?
         private var lastTiltX: Double?
