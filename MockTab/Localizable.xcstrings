@@ -6357,7 +6357,27 @@
       }
     },
     "Drag the region directly over your desktop, like the macOS screenshot tool." : {
-
+      "comment" : "Help text for the \"Select on Screen…\" button in the Displays pane's Screen Area section.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Region direkt auf dem Bildschirm ziehen, wie beim Screenshot-Tool von macOS."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra la región directamente sobre la pantalla, como en la herramienta de captura de macOS."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS のスクリーンショットツールのように、画面上で直接ドラッグして範囲を選択。"
+          }
+        }
+      }
     },
     "Drag Threshold" : {
       "localizations" : {
@@ -16468,7 +16488,27 @@
       }
     },
     "Select on Screen…" : {
-
+      "comment" : "Button in the Displays pane's Screen Area section: opens the full-screen crop picker.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf dem Bildschirm auswählen…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seleccionar en pantalla…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面上で選択…"
+          }
+        }
+      }
     },
     "Send" : {
       "comment" : "Button that writes the device mode init feature report",

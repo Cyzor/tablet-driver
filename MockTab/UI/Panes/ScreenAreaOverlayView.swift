@@ -70,7 +70,7 @@ struct ScreenAreaOverlayView: View {
         let xPx = Int(areaRect.minX.rounded())
         let yPx = Int(areaRect.minY.rounded())
 
-        return Text(verbatim: "\(widthPx)\u{00D7}\(heightPx) at \(xPx), \(yPx)")
+        return Text(verbatim: "\(widthPx)\u{00D7}\(heightPx) @ \(xPx), \(yPx)")
             .font(.system(size: 28, weight: .semibold, design: .monospaced))
             .foregroundStyle(.white)
             .padding(.horizontal, 20)
