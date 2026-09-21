@@ -52,7 +52,7 @@ struct ScreenAreaOverlayView: View {
                 // window, so it has no reliable way to query live Dock
                 // height/position/auto-hide state to dodge around it.
                 confirmBar
-                    .position(x: geo.size.width / 2, y: 60)
+                    .position(x: geo.size.width / 2, y: 100)
             }
         }
         .onExitCommand { onCancel() }

@@ -16,6 +16,7 @@ import SwiftUI
 final class ScreenAreaOverlayWindow: NSWindow {
 
     private var onFinish: ((NormalizedRect?) -> Void)?
+    private var resignActiveObserver: NSObjectProtocol?
 
     init(displayBounds: CGRect, initialRect: NormalizedRect, onFinish: @escaping (NormalizedRect?) -> Void) {
         self.onFinish = onFinish
@@ -45,6 +46,16 @@ final class ScreenAreaOverlayWindow: NSWindow {
 
     func begin() {
         makeKeyAndOrderFront(nil)
+        // Matches the macOS screenshot tool: switching away (Cmd-Tab,
+        // clicking another app) cancels the picker instead of leaving a
+        // borderless, always-on-top overlay stranded above whatever the
+        // user switched to.
+        resignActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.finish(with: nil)
+        }
     }
 
     /// Any edge sitting flush against the display's true bounds gets pulled
@@ -76,6 +87,10 @@ final class ScreenAreaOverlayWindow: NSWindow {
     private func finish(with rect: NormalizedRect?) {
         guard let callback = onFinish else { return }
         onFinish = nil
+        if let resignActiveObserver {
+            NotificationCenter.default.removeObserver(resignActiveObserver)
+            self.resignActiveObserver = nil
+        }
         orderOut(nil)
         close()
         callback(rect)

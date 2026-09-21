@@ -217,22 +217,38 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
         let areaRect = CGRect(x: x, y: y, width: w, height: h)
 
         return ZStack(alignment: .topLeading) {
-            // Dimmed exterior — even-odd fill darkens everything outside.
-            Canvas { ctx, size in
-                var outer = Path(CGRect(origin: .zero, size: size))
-                outer.addRect(areaRect)
-                ctx.fill(outer, with: .color(.black.opacity(dimOpacity)),
-                         style: FillStyle(eoFill: true))
-            }
-            .frame(width: cs.width, height: cs.height)
-            .allowsHitTesting(false)
+            // Dimmed exterior — four solid bands tiling the space around the
+            // crop rect. Not a `Canvas` even-odd fill: that redraws through
+            // Core Graphics every drag frame at full display resolution,
+            // which measured as a large sustained CPU cost during drag
+            // (zero GPU involved). Plain `Rectangle`s are cheap layer
+            // geometry updates instead.
+            Rectangle()
+                .fill(Color.black.opacity(dimOpacity))
+                .frame(width: cs.width, height: y)
+                .allowsHitTesting(false)
+            Rectangle()
+                .fill(Color.black.opacity(dimOpacity))
+                .frame(width: cs.width, height: max(cs.height - (y + h), 0))
+                .offset(y: y + h)
+                .allowsHitTesting(false)
+            Rectangle()
+                .fill(Color.black.opacity(dimOpacity))
+                .frame(width: x, height: h)
+                .offset(y: y)
+                .allowsHitTesting(false)
+            Rectangle()
+                .fill(Color.black.opacity(dimOpacity))
+                .frame(width: max(cs.width - (x + w), 0), height: h)
+                .offset(x: x + w, y: y)
+                .allowsHitTesting(false)
 
             Rectangle()
                 .fill(Color.accentColor.opacity(style == .fullScreen ? 0.01 : 0.12))
                 .frame(width: w, height: h)
                 .offset(x: x, y: y)
                 .gesture(cropGesture(.body, cs: cs))
-                .cursor(.openHand)
+                .cursor(.openHand, active: dragAnchor == nil)
 
             Group {
                 if style == .fullScreen {
@@ -313,7 +329,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             .frame(width: max(frame.0, 0), height: max(frame.1, 0))
             .offset(x: offset.0, y: offset.1)
             .gesture(cropGesture(edge, cs: cs))
-            .cursor(edgeCursor(edge))
+            .cursor(edgeCursor(edge), active: dragAnchor == nil)
     }
 
     /// Visible midpoint handle, positioned in the same canvas-absolute
@@ -350,7 +366,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             .frame(width: s, height: s)
             .offset(x: pos.0 - s / 2, y: pos.1 - s / 2)
             .gesture(cropGesture(corner, cs: cs))
-            .cursor(.crosshair)
+            .cursor(.crosshair, active: dragAnchor == nil)
     }
 
     /// A single handle dot — solid accent fill for the embedded editors,
@@ -622,8 +638,12 @@ extension NormalizedAreaEditor where Overlay == EmptyView {
 // MARK: - Cursor modifier
 
 private extension View {
-    func cursor(_ cursor: NSCursor) -> some View {
+    /// `active: false` skips the hover-driven push/pop — used during an
+    /// active drag, where moving handle frames under a stationary cursor
+    /// would otherwise toggle `onHover` repeatedly.
+    func cursor(_ cursor: NSCursor, active: Bool = true) -> some View {
         self.onHover { inside in
+            guard active else { return }
             if inside { cursor.push() } else { NSCursor.pop() }
         }
     }
