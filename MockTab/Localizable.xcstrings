@@ -6356,6 +6356,9 @@
         }
       }
     },
+    "Drag the region directly over your desktop, like the macOS screenshot tool." : {
+
+    },
     "Drag Threshold" : {
       "localizations" : {
         "de" : {
@@ -16463,6 +16466,9 @@
           }
         }
       }
+    },
+    "Select on Screen…" : {
+
     },
     "Send" : {
       "comment" : "Button that writes the device mode init feature report",

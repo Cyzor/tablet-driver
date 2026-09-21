@@ -18,6 +18,7 @@ struct DisplayMappingView: View {
     private var productID: Int? { instanceKey?.productID }
     @State private var displays: [DisplayInfo] = []
     @State private var rangeStart: Int = -1
+    @State private var screenAreaWindow: ScreenAreaOverlayWindow?
 
     @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
     private var textScale: CGFloat { AppearancePrefs.scale(forIndex: textSizeIndex) }
@@ -361,6 +362,13 @@ struct DisplayMappingView: View {
 
                 HStack {
                     Spacer()
+                    Button("Select on Screen…") {
+                        beginScreenAreaPicker(for: display)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Drag the region directly over your desktop, like the macOS screenshot tool.")
+
                     Button("Use Whole Screen") {
                         let snap = TabletSettings.AreaSnapshot(
                             x: settings.displayRegionX, y: settings.displayRegionY,
@@ -383,6 +391,30 @@ struct DisplayMappingView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
+    }
+
+    /// Launch the full-screen crop picker over `display`'s own bounds,
+    /// seeded with the current region — always the display's full bounds,
+    /// not narrowed by any existing sub-region, so a previously shrunk
+    /// region can be expanded back out.
+    private func beginScreenAreaPicker(for display: DisplayInfo) {
+        let before = TabletSettings.AreaSnapshot(
+            x: settings.displayRegionX, y: settings.displayRegionY,
+            w: settings.displayRegionWidth, h: settings.displayRegionHeight)
+        let window = ScreenAreaOverlayWindow(
+            displayBounds: display.bounds,
+            initialRect: displayRegionBinding.wrappedValue,
+            onFinish: { result in
+                screenAreaWindow = nil
+                guard let result else { return }
+                settings.displayRegionX = result.x
+                settings.displayRegionY = result.y
+                settings.displayRegionWidth = result.w
+                settings.displayRegionHeight = result.h
+                settings.recordDisplayRegionDrag(before: before)
+            })
+        screenAreaWindow = window
+        window.begin()
     }
 
     private var canvasSection: some View {

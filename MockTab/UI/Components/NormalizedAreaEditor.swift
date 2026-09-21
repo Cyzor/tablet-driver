@@ -22,12 +22,30 @@ struct NormalizedRect: Equatable {
 /// Used by `TabletAreaView` (pen active area) and `TouchView`'s touch-area
 /// editor.  Generic `Overlay` lets the pen view draw a device-name badge
 /// inside the active rect without forcing the touch view to opt in.
+/// Visual treatment of the crop chrome — the embedded settings-pane editors
+/// sit inside a small thumbnail and want a self-contained frame with a solid
+/// accent border and fill; a full-screen overlay sits directly over the real
+/// desktop and wants the macOS screenshot-tool look instead: no canvas-edge
+/// border/inset (the canvas already *is* the full screen), a dashed border,
+/// near-invisible fill, and a heavier exterior dim.
+enum AreaEditorStyle {
+    case embedded
+    case fullScreen
+}
+
 struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     let aspectRatio: Double
     @Binding var rect: NormalizedRect
     /// Smallest dimension (width or height) the user can drag the rect to,
     /// expressed as a fraction of the canvas.  Default 5%.
     var minDimension: Double = 0.05
+    var style: AreaEditorStyle = .embedded
+    /// Opacity of the exterior dimming mask. The embedded settings-pane
+    /// editors sit over a wallpaper thumbnail and want a light touch; a
+    /// full-screen overlay sitting over the real desktop wants a much
+    /// stronger dim so the crop rect reads clearly (Apple's screenshot tool
+    /// convention).
+    var dimOpacity: Double = 0.10
     /// Called once on drag-end with the rect's value *before* the drag
     /// started.  Use it to record a single coalesced undo entry.
     var onCommit: ((NormalizedRect) -> Void)? = nil
@@ -73,9 +91,11 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                 background()
                     .frame(width: cs.width, height: cs.height)
                     .allowsHitTesting(false)
-                Rectangle()
-                    .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
-                    .frame(width: cs.width, height: cs.height)
+                if style == .embedded {
+                    Rectangle()
+                        .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
+                        .frame(width: cs.width, height: cs.height)
+                }
                 cropOverlay(canvasSize: cs)
             }
             .frame(width: cs.width, height: cs.height)
@@ -175,8 +195,12 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     }
 
     private func canvasSize(in available: CGSize) -> CGSize {
-        let maxW = available.width - 8
-        let maxH = available.height - 8
+        // The embedded editors reserve 8pt so the 1px canvas-edge border
+        // above doesn't clip; a full-screen overlay has no such border and
+        // must let the crop rect reach the true screen edge.
+        let inset: CGFloat = style == .embedded ? 8 : 0
+        let maxW = available.width - inset
+        let maxH = available.height - inset
         if maxW / aspectRatio <= maxH {
             return CGSize(width: maxW, height: maxW / aspectRatio)
         } else {
@@ -197,26 +221,37 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             Canvas { ctx, size in
                 var outer = Path(CGRect(origin: .zero, size: size))
                 outer.addRect(areaRect)
-                ctx.fill(outer, with: .color(.black.opacity(0.10)),
+                ctx.fill(outer, with: .color(.black.opacity(dimOpacity)),
                          style: FillStyle(eoFill: true))
             }
             .frame(width: cs.width, height: cs.height)
             .allowsHitTesting(false)
 
             Rectangle()
-                .fill(Color.accentColor.opacity(0.12))
+                .fill(Color.accentColor.opacity(style == .fullScreen ? 0.01 : 0.12))
                 .frame(width: w, height: h)
                 .offset(x: x, y: y)
                 .gesture(cropGesture(.body, cs: cs))
                 .cursor(.openHand)
 
-            Rectangle()
-                .strokeBorder(
-                    Color.accentColor,
-                    lineWidth: isFocused ? Self.focusedStrokeWidth : Self.strokeWidth)
-                .frame(width: w, height: h)
-                .offset(x: x, y: y)
-                .allowsHitTesting(false)
+            Group {
+                if style == .fullScreen {
+                    Rectangle()
+                        .strokeBorder(
+                            Color.white,
+                            style: StrokeStyle(
+                                lineWidth: isFocused ? Self.focusedStrokeWidth : Self.strokeWidth,
+                                dash: [6, 4]))
+                } else {
+                    Rectangle()
+                        .strokeBorder(
+                            Color.accentColor,
+                            lineWidth: isFocused ? Self.focusedStrokeWidth : Self.strokeWidth)
+                }
+            }
+            .frame(width: w, height: h)
+            .offset(x: x, y: y)
+            .allowsHitTesting(false)
 
             overlay(areaRect, cs)
                 .allowsHitTesting(false)
@@ -225,6 +260,19 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             edgeHandle(.bottom, rect: areaRect, cs: cs)
             edgeHandle(.left,   rect: areaRect, cs: cs)
             edgeHandle(.right,  rect: areaRect, cs: cs)
+
+            // Visible dots, drawn as siblings directly in this ZStack's
+            // canvas-absolute coordinate space — same as `cornerHandle`
+            // below — rather than nested inside `edgeHandle`'s own
+            // drag-strip frame, so both handle kinds straddle the dashed
+            // border from the exact same `areaRect` math with no risk of
+            // the strip's local offset throwing the dot's position off.
+            if style == .fullScreen {
+                edgeHandleDot(.top,    rect: areaRect)
+                edgeHandleDot(.bottom, rect: areaRect)
+                edgeHandleDot(.left,   rect: areaRect)
+                edgeHandleDot(.right,  rect: areaRect)
+            }
 
             cornerHandle(.topLeft,     rect: areaRect, cs: cs)
             cornerHandle(.topRight,    rect: areaRect, cs: cs)
@@ -235,6 +283,9 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
 
     // MARK: - Handles
 
+    /// Invisible hit-testing strip for dragging an edge — draws nothing
+    /// itself; the visible dot for `.fullScreen` style is `edgeHandleDot`,
+    /// a sibling drawn directly in `cropOverlay`'s coordinate space.
     private func edgeHandle(_ edge: CropEdge, rect r: CGRect, cs: CGSize) -> some View {
         let t = Self.edgeThickness
         let hs = Self.handleSize
@@ -258,11 +309,30 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
         }
 
         return Color.clear
-            .frame(width: max(frame.0, 0), height: max(frame.1, 0))
             .contentShape(Rectangle())
+            .frame(width: max(frame.0, 0), height: max(frame.1, 0))
             .offset(x: offset.0, y: offset.1)
             .gesture(cropGesture(edge, cs: cs))
             .cursor(edgeCursor(edge))
+    }
+
+    /// Visible midpoint handle, positioned in the same canvas-absolute
+    /// coordinate space `cornerHandle` uses — straddles the dashed border
+    /// exactly like the corner dots.
+    private func edgeHandleDot(_ edge: CropEdge, rect r: CGRect) -> some View {
+        let s = Self.handleSize
+        let pos: CGPoint
+        switch edge {
+        case .top:    pos = CGPoint(x: r.midX, y: r.minY)
+        case .bottom: pos = CGPoint(x: r.midX, y: r.maxY)
+        case .left:   pos = CGPoint(x: r.minX, y: r.midY)
+        case .right:  pos = CGPoint(x: r.maxX, y: r.midY)
+        default:      pos = .zero
+        }
+        return handleDot()
+            .frame(width: s, height: s)
+            .offset(x: pos.x - s / 2, y: pos.y - s / 2)
+            .allowsHitTesting(false)
     }
 
     private func cornerHandle(_ corner: CropEdge, rect r: CGRect, cs: CGSize) -> some View {
@@ -276,12 +346,25 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
         default:           pos = (0, 0)
         }
 
-        return Circle()
-            .fill(Color.accentColor)
+        return handleDot()
             .frame(width: s, height: s)
             .offset(x: pos.0 - s / 2, y: pos.1 - s / 2)
             .gesture(cropGesture(corner, cs: cs))
             .cursor(.crosshair)
+    }
+
+    /// A single handle dot — solid accent fill for the embedded editors,
+    /// blue-on-white (macOS screenshot tool's own handle colors) full screen.
+    @ViewBuilder
+    private func handleDot() -> some View {
+        if style == .fullScreen {
+            Circle()
+                .fill(Color.accentColor)
+                .overlay(Circle().strokeBorder(Color.white, lineWidth: 1.5))
+        } else {
+            Circle()
+                .fill(Color.accentColor)
+        }
     }
 
     // MARK: - Drag
@@ -478,11 +561,15 @@ extension NormalizedAreaEditor where Background == EmptyView, Overlay == EmptyVi
         aspectRatio: Double,
         rect: Binding<NormalizedRect>,
         minDimension: Double = 0.05,
+        style: AreaEditorStyle = .embedded,
+        dimOpacity: Double = 0.10,
         onCommit: ((NormalizedRect) -> Void)? = nil
     ) {
         self.aspectRatio = aspectRatio
         self._rect = rect
         self.minDimension = minDimension
+        self.style = style
+        self.dimOpacity = dimOpacity
         self.onCommit = onCommit
         self.background = { EmptyView() }
         self.overlay = { _, _ in EmptyView() }
@@ -490,18 +577,23 @@ extension NormalizedAreaEditor where Background == EmptyView, Overlay == EmptyVi
 }
 
 // Convenience initialiser for the no-background case with a live overlay
-// (e.g. the pen pane's letterbox preview + device-name badge).
+// (e.g. the pen pane's letterbox preview + device-name badge, or the
+// full-screen screen-area overlay's dimension HUD).
 extension NormalizedAreaEditor where Background == EmptyView {
     init(
         aspectRatio: Double,
         rect: Binding<NormalizedRect>,
         minDimension: Double = 0.05,
+        style: AreaEditorStyle = .embedded,
+        dimOpacity: Double = 0.10,
         onCommit: ((NormalizedRect) -> Void)? = nil,
         @ViewBuilder overlay: @escaping (CGRect, CGSize) -> Overlay
     ) {
         self.aspectRatio = aspectRatio
         self._rect = rect
         self.minDimension = minDimension
+        self.style = style
+        self.dimOpacity = dimOpacity
         self.onCommit = onCommit
         self.background = { EmptyView() }
         self.overlay = overlay

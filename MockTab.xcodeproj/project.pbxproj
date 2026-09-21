@@ -32,6 +32,8 @@
 		AA000013 /* PenFeelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* PenFeelView.swift */; };
 		AA000014 /* ButtonMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ButtonMappingView.swift */; };
 		AA000015 /* DisplayMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* DisplayMappingView.swift */; };
+		AA0000A3 /* ScreenAreaOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000A3 /* ScreenAreaOverlayWindow.swift */; };
+		AA0000B0 /* ScreenAreaOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000B0 /* ScreenAreaOverlayView.swift */; };
 		AA000016 /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* ScratchpadView.swift */; };
 		AA000017 /* SettingsWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* SettingsWindowManager.swift */; };
 		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* Assets.xcassets */; };
@@ -141,6 +143,8 @@
 		AB000013 /* PenFeelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenFeelView.swift; sourceTree = "<group>"; };
 		AB000014 /* ButtonMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingView.swift; sourceTree = "<group>"; };
 		AB000015 /* DisplayMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMappingView.swift; sourceTree = "<group>"; };
+		AB0000A3 /* ScreenAreaOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenAreaOverlayWindow.swift; sourceTree = "<group>"; };
+		AB0000B0 /* ScreenAreaOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenAreaOverlayView.swift; sourceTree = "<group>"; };
 		AB000016 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
 		AB000017 /* SettingsWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowManager.swift; sourceTree = "<group>"; };
 		AB000020 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -421,6 +425,8 @@
 				AB000079 /* ButtonMappingQuickKeys.swift */,
 				AB000080 /* ButtonMappingBindings.swift */,
 				AB000015 /* DisplayMappingView.swift */,
+				AB0000A3 /* ScreenAreaOverlayWindow.swift */,
+				AB0000B0 /* ScreenAreaOverlayView.swift */,
 				AB000016 /* ScratchpadView.swift */,
 				AB000033 /* InfoView.swift */,
 				AB000034 /* ProfilesView.swift */,
@@ -680,6 +686,8 @@
 				AA000013 /* PenFeelView.swift in Sources */,
 				AA000014 /* ButtonMappingView.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,
+				AA0000A3 /* ScreenAreaOverlayWindow.swift in Sources */,
+				AA0000B0 /* ScreenAreaOverlayView.swift in Sources */,
 				AA000016 /* ScratchpadView.swift in Sources */,
 				AA000033 /* InfoView.swift in Sources */,
 				AA0000A0 /* ConflictDetection.swift in Sources */,
