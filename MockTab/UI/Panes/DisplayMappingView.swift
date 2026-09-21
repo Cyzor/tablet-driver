@@ -807,9 +807,8 @@ struct DisplayMappingView: View {
         GeometryReader { geo in
             let scale = layoutScale(in: geo.size)
             let offset = layoutOffset(in: geo.size, scale: scale)
-            let maxCGY = displays.map(\.bounds.maxY).max() ?? 0
             let rects: [CGRect] = displays.map {
-                swiftUIRect(for: $0, maxCGY: maxCGY, scale: scale, offset: offset)
+                swiftUIRect(for: $0, scale: scale, offset: offset)
             }
             // Pre-compute per-display selection state for use in Canvas closure.
             let idx = settings.targetDisplayIndex
@@ -982,14 +981,15 @@ struct DisplayMappingView: View {
 
     private func swiftUIRect(
         for info: DisplayInfo,
-        maxCGY: CGFloat,
         scale: CGFloat,
         offset: CGPoint
     ) -> CGRect {
-        let flippedY = maxCGY - info.bounds.maxY
+        // CGDisplayBounds is already top-down (Y increases downward), same as
+        // SwiftUI — no flip needed. Flipping it here inverted the vertical
+        // stacking order of displays relative to each other.
         return CGRect(
             x: info.bounds.minX * scale + offset.x,
-            y: flippedY * scale + offset.y,
+            y: info.bounds.minY * scale + offset.y,
             width: info.bounds.width * scale,
             height: info.bounds.height * scale
         )
@@ -1012,7 +1012,7 @@ struct DisplayMappingView: View {
         let scaledH = (maxY - minY) * scale
         return CGPoint(
             x: (size.width - scaledW) / 2 - minX * scale,
-            y: (size.height - scaledH) / 2
+            y: (size.height - scaledH) / 2 - minY * scale
         )
     }
 }
