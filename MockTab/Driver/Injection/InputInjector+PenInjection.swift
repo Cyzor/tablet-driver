@@ -440,6 +440,11 @@ extension InputInjector {
                 fireButtonAction(btn2, down: point.penButton2, at: screenPoint,
                                  snapshot: snap, settings: settings)
             }
+            if point.penButton3 != lastButton3Down {
+                lastButton3Down = point.penButton3
+                fireButtonAction(btn3, down: point.penButton3, at: screenPoint,
+                                 snapshot: snap, settings: settings)
+            }
         }
 
         // ── Middle button (mouse tool only, always immediate) ──────────────────
