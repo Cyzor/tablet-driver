@@ -871,6 +871,14 @@ final class WacomKnownDevice: TabletDevice {
         executeInitSteps()
     }
 
+    /// See the `TabletDevice` protocol doc. `spec` is a plain `var`, already
+    /// reassigned at runtime elsewhere (the wireless-dongle paired-PID
+    /// update in `handleReport`) — this follows the same pattern, just for
+    /// one field instead of the whole struct.
+    func setDebugButton2Source(_ source: DigitizerSpec.DebugBitSource?) {
+        spec.debugButton2Source = source
+    }
+
     /// Execute the device's init sequence (`deviceSpec.initSteps`) from `index` onward.
     ///
     /// Runs synchronously until a `.delay` step is encountered; at that point the
@@ -1032,9 +1040,23 @@ final class WacomKnownDevice: TabletDevice {
             contactDown: lastReportHadContact[ObjectIdentifier(captureInterface)])
         // USB idle-report recovery — see `firstUSBIdleReportAt`'s doc comment.
         // Report 0x06 with no length requirement beyond a report ID is the
-        // pre-DATAMODE idle frame; any other report ID means real data is
-        // flowing and clears the stuck-timer.
-        if deviceSpec.parser == .intuosV3, !isBluetooth {
+        // pre-DATAMODE idle frame on PTK-470/670/870/Movink 13 (this watchdog's
+        // original target); any other report ID means real data is flowing
+        // and clears the stuck-timer.
+        //
+        // CTC-4110WL/CTC-6110WL (Wacom One S/M, PIDs 0x0100/0x0102/0x0104)
+        // excluded 2026-09-22: confirmed via real captures + the device's own
+        // HID descriptor that 0x06 is THIS family's genuine standard-HID pen
+        // report (`IntuosV3Decoder.decodeStandardDigitizerReport`), not an
+        // idle placeholder — treating it as stuck would fire a spurious
+        // DATAMODE re-send every time the user's pen sits out of proximity
+        // for longer than `usbIdleRecoveryTimeout`, during perfectly normal
+        // use. Gated on product ID rather than parser, since `.intuosV3` is
+        // shared across devices where 0x06 means opposite things.
+        let usbIdleWatchdogExemptPIDs: Set<Int> = [0x0100, 0x0102, 0x0104]
+        if deviceSpec.parser == .intuosV3, !isBluetooth,
+            !usbIdleWatchdogExemptPIDs.contains(deviceSpec.productID)
+        {
             if length > 0, report[0] == 0x06 {
                 let now = Date()
                 let idleSince = firstUSBIdleReportAt ?? now
