@@ -489,14 +489,17 @@ final class WacomKnownDevice: TabletDevice {
         // silently discarded until the link is up, so it is re-run when 0x80/0x02
         // confirms link-up (see the wireless-ready handler below).
         if !isBluetooth {
-            // `.intuosV1` (PTH-850, ACK-40401) and `.intuosV3` with
-            // `seizeUSB: false` (CTC-4110WL/6110WL) have no DeviceRouter
-            // deferral guaranteeing `device` is feature-capable — see
-            // `hasAnyFeatureReport`. The CTC-4110WL's vendor bulk interface
-            // has no feature reports at all; if it wins the race, the
-            // DataMode write silently lands nowhere. Wait for a capable
-            // sibling via registerDevice() rather than firing a doomed write.
-            if deviceSpec.parser == .intuosV1 || deviceSpec.parser == .intuosV3 {
+            // `.intuosV1` (PTH-850, ACK-40401), `.intuosV3` with `seizeUSB:
+            // false` (CTC-4110WL/6110WL), and `.bamboo` (CTL-460 confirmed
+            // multi-interface via its own hardware trace) have no
+            // DeviceRouter deferral guaranteeing `device` is feature-capable
+            // — see `hasAnyFeatureReport`. If the non-capable interface wins
+            // the enumeration race, the DataMode write silently lands
+            // nowhere. Wait for a capable sibling via registerDevice()
+            // rather than firing a doomed write.
+            if deviceSpec.parser == .intuosV1 || deviceSpec.parser == .intuosV3
+                || deviceSpec.parser == .bamboo
+            {
                 if hasAnyFeatureReport(device) {
                     capableInterfaceDevice = device
                     executeInitSteps()
@@ -682,14 +685,15 @@ final class WacomKnownDevice: TabletDevice {
             }
         }
 
-        // `.intuosV1` (PTH-850, ACK-40401) and `.intuosV3` (CTC-4110WL/6110WL)
-        // multi-interface devices: the primary interface picked in `open()`
-        // may not have been the feature-capable one (see
-        // `hasAnyFeatureReport`). If it wasn't, and this newly registered
-        // sibling is, send the init sequence and any pending LED slot here
-        // instead — the first (and only) time a capable interface is found.
-        // If `open()` already found one, this is a no-op.
-        if (deviceSpec.parser == .intuosV1 || deviceSpec.parser == .intuosV3)
+        // `.intuosV1` (PTH-850, ACK-40401), `.intuosV3` (CTC-4110WL/6110WL),
+        // and `.bamboo` (CTL-460) multi-interface devices: the primary
+        // interface picked in `open()` may not have been the feature-capable
+        // one (see `hasAnyFeatureReport`). If it wasn't, and this newly
+        // registered sibling is, send the init sequence and any pending LED
+        // slot here instead — the first (and only) time a capable interface
+        // is found. If `open()` already found one, this is a no-op.
+        if (deviceSpec.parser == .intuosV1 || deviceSpec.parser == .intuosV3
+            || deviceSpec.parser == .bamboo)
             && !interfaceIsBluetooth && capableInterfaceDevice == nil
             && hasAnyFeatureReport(device)
         {
