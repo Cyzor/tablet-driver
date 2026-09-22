@@ -142,6 +142,40 @@ final class WacomKnownDevice: TabletDevice {
     /// comment in decodeBLEReport's caller below for the full rationale.
     private static let toolAnnounceGraceFrames = 4
 
+    /// Last genuine (non-synthesized) BLE `.toolEnter`. `.distantPast` until
+    /// the first one arrives. Drives the drought recovery below.
+    private var lastRealToolAnnouncementAt = Date.distantPast
+
+    /// How long a BLE session can go with no real announcement before it's
+    /// treated as stuck rather than just unlucky — hardware-observed: it can
+    /// stop arriving entirely for 30+ seconds after enough proximity
+    /// cycling. Comfortably above any healthy gap, short enough to recover
+    /// within about one more re-entry. See
+    /// [[project_ptk870_bt_tool_identity_lost_on_pen_swap]].
+    private static let toolAnnouncementDroughtTimeout: TimeInterval = 8.0
+
+    /// Debounce for the drought-recovery `reawaken()` call, so a session
+    /// that's still stuck doesn't get it re-sent every synthesis frame.
+    private static let toolAnnouncementRecoveryCooldown: TimeInterval = 8.0
+    private var lastAnnouncementRecoveryAttemptAt = Date.distantPast
+
+    /// Last real (non-synthesized) `.toolEnter` identity, kept across
+    /// proximity exits — unlike `DecoderState.lastToolCode`/`lastSerial`,
+    /// which the decoder zeroes on every exit for its own change-detection.
+    /// Used as the missed-announcement fallback instead of a generic name:
+    /// most sessions use one pen, so a miss usually means the same pen
+    /// returned. See [[project_ptk870_bt_tool_identity_lost_on_pen_swap]].
+    private var lastRealToolIdentity: ToolIdentity?
+
+    /// USB counterpart to the BLE drought recovery above — PTK-870 can come
+    /// up over USB still parked in the pre-DATAMODE idle report (`0x06`)
+    /// after a preceding BT session, even though `open()` already sends the
+    /// DATAMODE feature report on connect. Same "detect no real data,
+    /// re-send DATAMODE" shape.
+    private var firstUSBIdleReportAt: Date?
+    private static let usbIdleRecoveryTimeout: TimeInterval = 5.0
+    private var lastUSBIdleRecoveryAttemptAt = Date.distantPast
+
     // ── Bluetooth batch pacing ──────────────────────────────────────────────
     // See BatchFramePacer.swift and dispatchBatch(_:reportTimestampNs:) below.
     // HIDThread-confined, like everything else `handleReport` touches.
@@ -996,6 +1030,29 @@ final class WacomKnownDevice: TabletDevice {
         CaptureEngine.recordRaw(
             device: captureInterface, reportID: reportID, pointer: report, length: length,
             contactDown: lastReportHadContact[ObjectIdentifier(captureInterface)])
+        // USB idle-report recovery — see `firstUSBIdleReportAt`'s doc comment.
+        // Report 0x06 with no length requirement beyond a report ID is the
+        // pre-DATAMODE idle frame; any other report ID means real data is
+        // flowing and clears the stuck-timer.
+        if deviceSpec.parser == .intuosV3, !isBluetooth {
+            if length > 0, report[0] == 0x06 {
+                let now = Date()
+                let idleSince = firstUSBIdleReportAt ?? now
+                if firstUSBIdleReportAt == nil { firstUSBIdleReportAt = now }
+                if now.timeIntervalSince(idleSince) > Self.usbIdleRecoveryTimeout,
+                    now.timeIntervalSince(lastUSBIdleRecoveryAttemptAt) > Self.usbIdleRecoveryTimeout
+                {
+                    lastUSBIdleRecoveryAttemptAt = now
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        logger.info("\(name, privacy: .public): USB stuck on idle report 0x06 for over \(Self.usbIdleRecoveryTimeout, privacy: .public)s — re-sending DATAMODE to recover")
+                        self.reawaken()
+                    }
+                }
+            } else if length > 0, report[0] == 0x1E || report[0] == 0x1B {
+                firstUSBIdleReportAt = nil
+            }
+        }
         // For wireless dongles, extract paired tablet PID from 0x80 status report and
         // use its spec for accurate coordinate ranges (instead of fallback guesses).
         if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {
@@ -1177,22 +1234,75 @@ final class WacomKnownDevice: TabletDevice {
             var decoded = decoder.decode(
                 report: report, length: length, spec: spec, state: &state,
                 deviceFamily: deviceSpec.family)
-            let decoderEmittedRealToolEnter = decoded.contains {
-                if case .toolEnter = $0 { return true } else { return false }
+            let realToolEnter: ToolIdentity? = decoded.compactMap {
+                if case .toolEnter(let identity) = $0 { return identity } else { return nil }
+            }.first
+            if let realToolEnter {
+                lastRealToolAnnouncementAt = Date()
+                lastRealToolIdentity = realToolEnter
             }
-            if synthesizeIntuosV3ToolEnter, !decoderEmittedRealToolEnter, state.prevInProximity,
-                case .pen(let point)? = decoded.first(where: {
-                    if case .pen = $0 { return true } else { return false }
-                })
-            {
-                // Generic/unmapped, not a guessed model — a wrong specific
-                // guess (e.g. keying off rotation) fabricates a sticky wrong
-                // identity; this degrades to a descriptive generic name
-                // instead and self-corrects once a real announcement lands.
-                let code: UInt16 = point.eraser ? 0x0008 : 0x0000
+            let decoderEmittedRealToolEnter = realToolEnter != nil
+            let decodedPoint: TabletPoint? = decoded.compactMap {
+                if case .pen(let point) = $0 { return point } else { return nil }
+            }.first
+            // Rotation-as-ground-truth: barrel rotation decodes on every
+            // BLE/USB frame regardless of tool identity, and a non-rotating
+            // pen sits at a fixed ~180° neutral. If the current identity
+            // isn't Art Pen but the barrel is genuinely twisted, correct it
+            // — no announcement needed. One-directional (neutral doesn't
+            // prove non-Art-Pen; a still Art Pen also reads neutral), and
+            // takes priority over the generic-synthesis fallback below since
+            // both read the same point and must not double-insert.
+            let rotationImpliesArtPen =
+                deviceSpec.parser == .intuosV3 && isBluetooth
+                && state.currentToolCode != 0x0804 && state.currentToolCode != 0x1108
+                && (decodedPoint?.inProximity ?? false)
+                && abs((decodedPoint?.rotation ?? 180.0) - 180.0) > 2.0
+            if rotationImpliesArtPen {
+                // currentToolCode only — never lastToolCode/lastSerial.
+                // Those are decodeBLEReport's own change-detection latch;
+                // writing into them here made a later real Art Pen
+                // announcement compare equal and get silently swallowed,
+                // sticking the tool at "No tool" until relaunch/reconnect.
+                state.currentToolCode = 0x0804
                 decoded.insert(
-                    .toolEnter(ToolIdentity(serial: 0, toolCode: code, isEraser: point.eraser, isMouse: false)),
+                    .toolEnter(ToolIdentity(serial: 0, toolCode: 0x0804, isEraser: false, isMouse: false)),
                     at: 0)
+            } else if synthesizeIntuosV3ToolEnter, !decoderEmittedRealToolEnter, state.prevInProximity,
+                let point = decodedPoint
+            {
+                // Fall back to the last confirmed identity rather than a
+                // generic placeholder (eraser end must still match) — most
+                // sessions use one pen, so a missed announcement usually
+                // means it came back, not that a different one arrived. See
+                // [[project_ptk870_bt_tool_identity_lost_on_pen_swap]].
+                let code: UInt16 = point.eraser ? 0x0008 : 0x0000
+                let fallbackIdentity: ToolIdentity
+                if let cached = lastRealToolIdentity, cached.isEraser == point.eraser {
+                    fallbackIdentity = cached
+                } else {
+                    fallbackIdentity = ToolIdentity(
+                        serial: 0, toolCode: code, isEraser: point.eraser, isMouse: false)
+                }
+                decoded.insert(.toolEnter(fallbackIdentity), at: 0)
+                // Drought recovery: the real announcement can stop arriving
+                // entirely after enough proximity cycling. Re-send DATAMODE
+                // (the same write open() uses) once this long since the last
+                // real one, debounced separately so a still-stuck session
+                // doesn't get it repeated every frame.
+                let now = Date()
+                if now.timeIntervalSince(lastRealToolAnnouncementAt) > Self.toolAnnouncementDroughtTimeout,
+                    now.timeIntervalSince(lastAnnouncementRecoveryAttemptAt)
+                        > Self.toolAnnouncementRecoveryCooldown
+                {
+                    lastAnnouncementRecoveryAttemptAt = now
+                    let name = deviceSpec.name
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        logger.info("\(name, privacy: .public): no real BLE tool announcement in over \(Self.toolAnnouncementDroughtTimeout, privacy: .public)s — re-sending DATAMODE to recover")
+                        self.reawaken()
+                    }
+                }
             }
             results = decoded
         }
