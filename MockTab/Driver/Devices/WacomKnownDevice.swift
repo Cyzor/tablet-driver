@@ -546,11 +546,15 @@ final class WacomKnownDevice: TabletDevice {
             if deviceSpec.parser == .intuosV1 || deviceSpec.parser == .intuosV3
                 || deviceSpec.parser == .bamboo
             {
-                if hasAnyFeatureReport(device) {
+                // Must declare the *specific* feature reports initSteps writes,
+                // not merely some feature report — see
+                // `declaresInitFeatureReports` for the PTK-870 case where the
+                // weaker test picked an interface that rejected every write.
+                if declaresInitFeatureReports(device) {
                     capableInterfaceDevice = device
                     executeInitSteps()
                 } else {
-                    logger.info("\(name, privacy: .public): primary interface declares no feature reports — deferring init to a sibling interface via registerDevice()")
+                    logger.info("\(name, privacy: .public): primary interface does not declare the init feature reports — deferring init to a sibling interface via registerDevice()")
                 }
             } else {
                 executeInitSteps()
@@ -677,11 +681,42 @@ final class WacomKnownDevice: TabletDevice {
     /// `initStep[0] failed: 0xe0005000` / `IntuosV1 LED slot=0 failed:
     /// 0xe0005000` on a session where a raw HID capture showed zero touch
     /// containers ever arriving — the sensor was simply never armed).
+    /// Superseded for init-target selection by `declaresInitFeatureReports`,
+    /// which narrows this to the report IDs actually written — this one
+    /// answering "true" on the PTK-870's vendor interface is what sent
+    /// DATAMODE to an endpoint that rejected it.
     private func hasAnyFeatureReport(_ candidate: IOHIDDevice) -> Bool {
         guard let hex = hidReportDescriptorHex(candidate),
             let layout = try? HIDReportDescriptorParser.parse(hex: hex)
         else { return false }
         return layout.reports.contains { $0.direction == .feature }
+    }
+
+    /// True if `candidate` declares every Feature report ID this device's
+    /// `initSteps` actually write.
+    ///
+    /// Stronger than `hasAnyFeatureReport`, and the PTK-870 is why. Its vendor
+    /// interface (usagePage 0xFFD1) enumerates first and does declare feature
+    /// reports, so the any-feature test accepted it and sent DATAMODE there,
+    /// where report 0x02 does not exist: `initStep[0] failed: 0xE0005000` on
+    /// open and every retry, the tablet stuck on its reduced 0x06 report, and
+    /// the pen arriving as a generic device (no tool identity, barrel button 2
+    /// dead, no rotation). The pen interface (usagePage 0x01) is the one
+    /// declaring feature:0x02.
+    ///
+    /// Devices whose `initSteps` write no feature reports are unaffected: an
+    /// empty requirement set matches any interface.
+    private func declaresInitFeatureReports(_ candidate: IOHIDDevice) -> Bool {
+        let required: Set<UInt8> = Set(
+            deviceSpec.initSteps.compactMap {
+                if case .featureReport(let bytes) = $0 { return bytes.first } else { return nil }
+            })
+        guard !required.isEmpty else { return true }
+        guard let hex = hidReportDescriptorHex(candidate),
+            let layout = try? HIDReportDescriptorParser.parse(hex: hex)
+        else { return false }
+        let declared = Set(layout.reports.filter { $0.direction == .feature }.map(\.reportID))
+        return required.isSubset(of: declared)
     }
 
     /// Used for multi-interface devices (e.g. ACK-40401 wireless dongle) that
@@ -741,7 +776,7 @@ final class WacomKnownDevice: TabletDevice {
         if (deviceSpec.parser == .intuosV1 || deviceSpec.parser == .intuosV3
             || deviceSpec.parser == .bamboo)
             && !interfaceIsBluetooth && capableInterfaceDevice == nil
-            && hasAnyFeatureReport(device)
+            && declaresInitFeatureReports(device)
         {
             capableInterfaceDevice = device
             executeInitSteps(on: device)
@@ -897,7 +932,15 @@ final class WacomKnownDevice: TabletDevice {
     /// remaining steps are scheduled on the main queue and this call returns.
     /// Callers must be on the main thread — `IOHIDDeviceSetReport` is not thread-safe.
     private func executeInitSteps(from index: Int = 0, on target: IOHIDDevice? = nil) {
-        let device = target ?? self.device
+        // Prefer the interface that declares the init feature reports.
+        //
+        // `capableInterfaceDevice` was assigned and then never read, so every
+        // caller omitting `target` — open(), reawaken(), the wireless link-up
+        // retry, USB idle recovery — wrote to `self.device`: on a PTK-870 the
+        // vendor interface that won the enumeration race, which cannot accept
+        // DATAMODE. Falling back to `self.device` leaves single-interface
+        // devices unchanged.
+        let device = target ?? capableInterfaceDevice ?? self.device
         let steps = deviceSpec.initSteps
         guard index < steps.count else { return }
         switch steps[index] {
@@ -906,6 +949,16 @@ final class WacomKnownDevice: TabletDevice {
             let name = deviceSpec.name
             let ret = hidSetReport(device, reportID: reportID, bytes: &bytes,
                          tag: "\(name) initStep[\(index)]", log: logger)
+            // Recorded whether or not a capture is running: this happens at
+            // open, usually long before one starts, and a device left in
+            // reduced mode otherwise yields a capture that looks healthy with
+            // no trace of why. Carries the usage page because the failure this
+            // catches is about which endpoint got the write, not the bytes.
+            CaptureEngine.recordAutoInitReport(
+                reportID: Int(reportID),
+                value: Int(bytes.count > 1 ? bytes[1] : 0),
+                ioReturn: ret,
+                usagePage: hidIntProperty(device, kIOHIDPrimaryUsagePageKey))
             // hidSetReport only logs failures — success doesn't mean the
             // firmware honored it (cf. Xencelabs LED writes). Log success
             // too so a capture can tell "write succeeded" from "device left
