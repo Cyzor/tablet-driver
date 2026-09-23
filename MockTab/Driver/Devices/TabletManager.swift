@@ -787,7 +787,11 @@ final class TabletManager: ObservableObject {
                 .store(in: &context.cancellables)
         }
 
-        // Set initial connection state for this device.
+        // Set initial connection state for this device. Cleared here rather
+        // than only on success — a fresh connection attempt deserves a clean
+        // slate, and if `.driver`'s open() below fails, onOpenFailed sets
+        // this again within the same call.
+        context.connectionErrorMessage = nil
         context.isConnected = true
         context.transport = transport
         context.usbSpeed = Self.connectionInfo(for: device).speed
@@ -1065,6 +1069,24 @@ final class TabletManager: ObservableObject {
             }
         }
 
+        // ── Open-failure closure ──────────────────────────────────────────────
+        // Called when IOHIDDeviceOpen fails — most often another process
+        // (typically the vendor's own driver) already holds this interface
+        // exclusively. Without this, the device silently never decodes
+        // anything and the only trace is an os_log line nobody's watching.
+        // Called on the calling thread (open() runs on main); hop anyway to
+        // match every other closure here and keep this file's convention
+        // uniform regardless of which thread a future call site uses.
+        let onOpenFailed: (IOReturn) -> Void = { [weak context] ret in
+            Task { @MainActor [weak context] in
+                guard let context else { return }
+                let hex = String(format: "0x%08x", ret)
+                context.connectionErrorMessage = String(
+                    localized: "Couldn't open this device (\(hex)) — another tablet driver may already be using it.",
+                    comment: "Shown when IOHIDDeviceOpen fails, with the IOReturn code substituted")
+            }
+        }
+
         // ── Create the device driver ─────────────────────────────────────────
         // Multi-interface devices (e.g. ACK-40401 dongle) enumerate separate
         // IOHIDDevices for each interface (digitizer, wireless status, touch,
@@ -1215,7 +1237,8 @@ final class TabletManager: ObservableObject {
             onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
             onMouseButton: onMouseButton, onBattery: onBattery,
             onHardwareSerial: onHardwareSerial, onWheel: onWheel,
-            onTouch: onTouch, onPairedPID: onPairedPID)
+            onTouch: onTouch, onPairedPID: onPairedPID,
+            onOpenFailed: onOpenFailed)
 
         switch DeviceRouter.route(
             device: device, productID: productID, usagePage: usagePage,

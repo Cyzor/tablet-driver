@@ -4544,6 +4544,9 @@
         }
       }
     },
+    "Couldn't open this device (%@) — another tablet driver may already be using it." : {
+      "comment" : "Shown when IOHIDDeviceOpen fails, with the IOReturn code substituted"
+    },
     "Couldn't prepare the file: %@" : {
       "comment" : "Capture error shown when the collected data could not be encoded",
       "localizations" : {
@@ -11406,6 +11409,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "デバイス未接続"
+          }
+        }
+      }
+    },
+    "No HID devices are visible to macOS at all right now." : {
+      "comment" : "Capture error shown when no tablet is known and no HID device of any kind is found on the system",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS sieht derzeit überhaupt keine HID-Geräte."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS no detecta ningún dispositivo HID en este momento."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在、macOSにはHIDデバイスが一つも見えていません。"
           }
         }
       }
@@ -18385,29 +18411,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "そのタブレットはすでに接続されていません。"
-          }
-        }
-      }
-    },
-    "No HID devices are visible to macOS at all right now." : {
-      "comment" : "Capture error shown when no tablet is known and no HID device of any kind is found on the system",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS sieht derzeit überhaupt keine HID-Geräte."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS no detecta ningún dispositivo HID en este momento."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "現在、macOSにはHIDデバイスが一つも見えていません。"
           }
         }
       }

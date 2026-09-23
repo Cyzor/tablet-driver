@@ -126,6 +126,11 @@ final class WacomKnownDevice: TabletDevice {
     /// (Report ID 0x03) feature report on USB/dongle connections. Serial is 0 if the
     /// query fails or the device does not support the feature report.
     private let onHardwareSerial: ((UInt32) -> Void)?
+    /// Called when `IOHIDDeviceOpen` fails — most often another process
+    /// holding this interface (Wacom's driver, or a second MockTab). The
+    /// decode pipeline never starts, so without surfacing this the device is
+    /// silent except for an os_log line no one is watching.
+    private let onOpenFailed: ((IOReturn) -> Void)?
 
     private var decoder: any TabletReportDecoder
     private var state = DecoderState()
@@ -435,7 +440,8 @@ final class WacomKnownDevice: TabletDevice {
         onHardwareSerial: ((UInt32) -> Void)? = nil,
         onWheel: ((Int, Int) -> Void)? = nil,
         onTouch: (([TouchContact]) -> Void)? = nil,
-        onPairedPID: ((Int) -> Void)? = nil
+        onPairedPID: ((Int) -> Void)? = nil,
+        onOpenFailed: ((IOReturn) -> Void)? = nil
     ) {
         self.isWireless = isWireless
         self.device = device
@@ -450,6 +456,7 @@ final class WacomKnownDevice: TabletDevice {
         self.onWheel = onWheel
         self.onTouch = onTouch
         self.onPairedPID = onPairedPID
+        self.onOpenFailed = onOpenFailed
 
         self.spec = Self.makeDigitizerSpec(from: deviceSpec)
 
@@ -500,6 +507,7 @@ final class WacomKnownDevice: TabletDevice {
             let pid = String(deviceSpec.productID, radix: 16, uppercase: true)
             let didSeize = seize
             logger.error("\(name, privacy: .public) (0x\(pid, privacy: .public)): failed to open (seize=\(didSeize, privacy: .public)) — \(ret, privacy: .public). Is another tablet driver running?")
+            onOpenFailed?(ret)
             return
         }
 

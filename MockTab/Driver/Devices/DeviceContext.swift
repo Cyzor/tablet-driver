@@ -239,6 +239,14 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// True when this device is currently connected.
     @Published var isConnected: Bool = false
 
+    /// Set when `IOHIDDeviceOpen` fails — almost always another process
+    /// (typically the vendor's own driver) holding the interface exclusively.
+    /// Distinct from `isConnected == false`: the device enumerated, we were
+    /// refused access. Without this the two look identical to the user —
+    /// no input, no error, nothing in the UI. Cleared on the next
+    /// successful open.
+    @Published var connectionErrorMessage: String? = nil
+
     /// Transport type for this device: "USB", "Bluetooth", "Other", or "—".
     @Published var transport: String = "—"
 

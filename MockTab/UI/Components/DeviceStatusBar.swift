@@ -114,6 +114,10 @@ struct DeviceStatusBar: View {
     var body: some View {
         VStack(spacing: 0) {
             Divider()
+            if let message = context?.connectionErrorMessage {
+                connectionErrorBar(message)
+                Divider()
+            }
             HStack(spacing: 0) {
                 statusItem(symbol: "rectangle",              text: tabletName)
                 Divider().frame(height: 12)
@@ -140,6 +144,26 @@ struct DeviceStatusBar: View {
     }
 
     // MARK: - Sub-views
+
+    /// Shown instead of the usual neutral status row when `IOHIDDeviceOpen`
+    /// failed — see `DeviceContext.connectionErrorMessage`'s doc comment.
+    /// Distinct styling (not just another `statusItem`) because this is the
+    /// one state in this bar that means "the device is not actually working
+    /// right now," not routine connection/battery/tool info.
+    @ViewBuilder
+    private func connectionErrorBar(_ message: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .accessibilityHidden(true)
+            Text(message)
+                .appFont(.settingsLabel)
+                .foregroundStyle(.primary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+    }
 
     @ViewBuilder
     private func statusItem(symbol: String, text: String, tint: Color = .secondary) -> some View {

@@ -40,6 +40,9 @@ enum DeviceRouter {
         /// Called once when a wireless dongle (ACK-40401) identifies the
         /// paired tablet's PID from the 0x80 status report.
         let onPairedPID: (Int) -> Void
+        /// Called when `IOHIDDeviceOpen` fails for this interface — see
+        /// `WacomKnownDevice.onOpenFailed`'s doc comment.
+        let onOpenFailed: (IOReturn) -> Void
     }
 
     /// The decision made for a single HID interface.
@@ -119,7 +122,8 @@ enum DeviceRouter {
                 onHardwareSerial: callbacks.onHardwareSerial,
                 onWheel: callbacks.onWheel,
                 onTouch: callbacks.onTouch,
-                onPairedPID: callbacks.onPairedPID)
+                onPairedPID: callbacks.onPairedPID,
+                onOpenFailed: callbacks.onOpenFailed)
             return .driver(drv, seized: false)
         }
 
@@ -162,7 +166,8 @@ enum DeviceRouter {
                 onBattery: callbacks.onBattery,
                 onHardwareSerial: callbacks.onHardwareSerial,
                 onWheel: callbacks.onWheel,
-                onTouch: callbacks.onTouch)
+                onTouch: callbacks.onTouch,
+                onOpenFailed: callbacks.onOpenFailed)
             return .driver(drv, seized: shouldSeize)
         }
 
