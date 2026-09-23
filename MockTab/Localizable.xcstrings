@@ -575,10 +575,24 @@
       }
     },
     "%@ — Left" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Links"
+          }
+        }
+      }
     },
     "%@ — Right" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Rechts"
+          }
+        }
+      }
     },
     "%@ · %@" : {
       "localizations" : {
