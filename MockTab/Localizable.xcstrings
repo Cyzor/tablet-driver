@@ -2963,7 +2963,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Helligkeit des OLEDs der Quick Keys. Bei „Aus“ bleibt es dunkel – Tasten und Drehregler funktionieren weiter."
+            "value" : "Helligkeit des OLEDs der Quick Keys. Bei „Aus“ bleibt es dunkel – Tasten und Einstellrad funktionieren weiter."
           }
         },
         "es" : {
@@ -5002,10 +5002,48 @@
       }
     },
     "Cycle (Second Dial)" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechseln (zweites Einstellrad)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo (segundo dial)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切り替え（2つ目のダイヤル）"
+          }
+        }
+      }
     },
     "Cycle through dial modes" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad-Modi durchschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar entre modos del dial"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤルモードを切り替える"
+          }
+        }
+      }
     },
     "Cycle through ring modes" : {
       "comment" : "A menu item that cycles through touch ring modes.",
@@ -5026,7 +5064,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cambiar entre modos del aro"
+            "value" : "Cambiar entre modos del anillo"
           }
         },
         "ja" : {
@@ -5038,7 +5076,26 @@
       }
     },
     "Cycle through the second dial's modes" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modi des zweiten Einstellrads durchschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar entre modos del segundo dial"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2つ目のダイヤルのモードを切り替える"
+          }
+        }
+      }
     },
     "Damps pressure noise near the low end of the sensor's range — most noticeable as uneven line width on slow, light strokes. Firm pressure is left alone." : {
       "localizations" : {
@@ -5520,7 +5577,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drehregler"
+            "value" : "Einstellrad"
           }
         },
         "es" : {
@@ -5538,13 +5595,73 @@
       }
     },
     "Dial 2 Toggle" : {
-      "comment" : "Undo action name: second dial toggle key binding in the Buttons pane"
+      "comment" : "Undo action name: second dial toggle key binding in the Buttons pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad 2 umschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar dial 2"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤル2切り替え"
+          }
+        }
+      }
     },
     "Dial 2: Cycle" : {
-      "comment" : "Button action: cycle the second dial's mode"
+      "comment" : "Button action: cycle the second dial's mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad 2: Wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dial 2: ciclo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤル2：切り替え"
+          }
+        }
+      }
     },
     "Dial 2: Mode %u" : {
-      "comment" : "Button action: jump to the second dial's mode slot"
+      "comment" : "Button action: jump to the second dial's mode slot",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad 2: Modus %u"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dial 2: modo %u"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤル2：モード %u"
+          }
+        }
+      }
     },
     "Dial Direction" : {
       "comment" : "Undo action name: Quick Keys dial direction toggle in the Buttons pane",
@@ -5552,7 +5669,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drehregler-Richtung"
+            "value" : "Einstellrad-Richtung"
           }
         },
         "es" : {
@@ -5570,7 +5687,26 @@
       }
     },
     "Dial Mode" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad-Modus"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo del dial"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤルモード"
+          }
+        }
+      }
     },
     "Dial Slot %lld Action" : {
       "comment" : "Undo action name: Quick Keys dial slot binding in the Buttons pane",
@@ -5578,7 +5714,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drehregler-Feld %lld – Aktion"
+            "value" : "Einstellrad-Feld %lld – Aktion"
           }
         },
         "es" : {
@@ -5601,7 +5737,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drehregler-Feld %lld – Gegenuhrzeigersinn"
+            "value" : "Einstellrad-Feld %lld – Gegenuhrzeigersinn"
           }
         },
         "es" : {
@@ -5624,7 +5760,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drehregler-Feld %lld – Uhrzeigersinn"
+            "value" : "Einstellrad-Feld %lld – Uhrzeigersinn"
           }
         },
         "es" : {
@@ -5647,7 +5783,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drehregler-Feld %lld – Geschwindigkeit"
+            "value" : "Einstellrad-Feld %lld – Geschwindigkeit"
           }
         },
         "es" : {
@@ -5665,13 +5801,73 @@
       }
     },
     "Dial Toggle" : {
-      "comment" : "Row label for the ExpressKey that cycles a mechanical dial's modes\nUndo action name: dial toggle key binding in the Buttons pane"
+      "comment" : "Row label for the ExpressKey that cycles a mechanical dial's modes\nUndo action name: dial toggle key binding in the Buttons pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad umschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar dial"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤル切り替え"
+          }
+        }
+      }
     },
     "Dial: Cycle" : {
-      "comment" : "Button action: cycle a mechanical dial's mode"
+      "comment" : "Button action: cycle a mechanical dial's mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad: Wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dial: ciclo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤル：切り替え"
+          }
+        }
+      }
     },
     "Dial: Mode %u" : {
-      "comment" : "Button action: jump to a mechanical dial's mode slot"
+      "comment" : "Button action: jump to a mechanical dial's mode slot",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad: Modus %u"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dial: modo %u"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤル：モード %u"
+          }
+        }
+      }
     },
     "Dim" : {
       "comment" : "Quick Keys screen brightness level",
@@ -7792,7 +7988,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kehrt die Richtung jedes Rings, Drehreglers und Streifens auf diesem Grafiktablett um, unabhängig vom eingestellten Modus. Aktiviere dies, wenn die Hardware entgegen deiner Erwartung läuft."
+            "value" : "Kehrt die Richtung jedes Rings, Einstellrads und Streifens auf diesem Grafiktablett um, unabhängig vom eingestellten Modus. Aktiviere dies, wenn die Hardware entgegen deiner Erwartung läuft."
           }
         },
         "es" : {
@@ -7814,7 +8010,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kehrt die Richtung des Drehreglers um, unabhängig vom eingestellten Modus. Aktiviere dies, wenn der Drehregler entgegen deiner Erwartung läuft."
+            "value" : "Kehrt die Richtung des Einstellrads um, unabhängig vom eingestellten Modus. Aktiviere dies, wenn das Einstellrad entgegen deiner Erwartung läuft."
           }
         },
         "es" : {
@@ -9519,7 +9715,26 @@
       }
     },
     "Jump Second Dial to Mode %lld" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zweites Einstellrad auf Modus %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saltar el segundo dial al modo %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2つ目のダイヤルをモード %lld へ"
+          }
+        }
+      }
     },
     "Jump to Mode %lld" : {
       "comment" : "A button to jump to a specific touch ring mode. The number in the button text is the mode number (1-indexed).",
@@ -13777,7 +13992,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quick Keys-Drehreglertaste"
+            "value" : "Quick Keys-Einstellradtaste"
           }
         },
         "es" : {
@@ -18010,10 +18225,48 @@
       }
     },
     "Switch the dial directly to mode %lld" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad direkt zu Modus %lld wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar el dial directamente al modo %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤルを直接モード %lld に切り替える"
+          }
+        }
+      }
     },
     "Switch the second dial directly to mode %lld" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zweites Einstellrad direkt zu Modus %lld wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar el segundo dial directamente al modo %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2つ目のダイヤルを直接モード %lld に切り替える"
+          }
+        }
+      }
     },
     "Switch to this profile immediately" : {
       "comment" : "Label for a button that switches to a preset profile immediately.",
@@ -19255,7 +19508,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Berührungsring"
+            "value" : "Touch Ring"
           }
         },
         "en" : {
@@ -19284,7 +19537,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Berührungsring — Links"
+            "value" : "Touch Ring — Links"
           }
         },
         "en" : {
@@ -19313,7 +19566,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Berührungsring — Rechts"
+            "value" : "Touch Ring — Rechts"
           }
         },
         "en" : {
@@ -19342,7 +19595,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Berührungsring-Taste"
+            "value" : "Touch Ring-Umschalttaste"
           }
         },
         "es" : {
