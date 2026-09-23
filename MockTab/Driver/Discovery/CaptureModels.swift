@@ -26,6 +26,17 @@ struct CaptureInitReport: Codable, Identifiable {
     let succeeded: Bool
     /// `IOReturn` as hex when the write failed; nil on success.
     var ioReturn: String?
+    /// True for writes the driver made on its own (`initSteps` at open and the
+    /// idle-recovery retries), false for a manual send from the capture UI. An
+    /// automatic failure means the tablet was never armed, so every other
+    /// observation in that file describes a device in reduced reporting mode.
+    /// Optional so older captures decode unchanged.
+    var automatic: Bool?
+    /// Primary usage page of the interface written to, hex. The PTK-870
+    /// failure was about targeting — the vendor (`0xFFD1`) and pen (`0x0001`)
+    /// interfaces both declare feature reports, but only the latter accepts
+    /// DataMode — so a failed write is meaningless without it.
+    var interfaceUsagePage: String?
 
     var id: String { "\(reportID)-\(value)-\(ioReturn ?? "ok")" }
 
