@@ -77,6 +77,49 @@ final class CaptureEngine: ObservableObject {
     private nonisolated static let activeAccumulators =
         OSAllocatedUnfairLock<[ObjectIdentifier: DiscoveryAccumulator]>(initialState: [:])
 
+    /// Automatic `initSteps` writes the driver made, newest last, regardless of
+    /// whether a capture was running at the time.
+    ///
+    /// A standing buffer rather than `activeAccumulators` because the write
+    /// that matters happens at `open()`, long before a user starts a capture.
+    /// A device stuck in reduced reporting mode otherwise yields a capture that
+    /// looks healthy while the fact explaining it — DataMode was rejected — is
+    /// invisible. That is the PTK-870, and likely a CTC-4110WL reporter.
+    private nonisolated static let autoInitReports =
+        OSAllocatedUnfairLock<[CaptureInitReport]>(initialState: [])
+
+    /// How many automatic init attempts to retain. Small: only the latest
+    /// connect and its retries are interesting, and an unbounded list would
+    /// grow for the life of the process on a device stuck retrying — precisely
+    /// the case this exists to record.
+    private nonisolated static let autoInitReportLimit = 32
+
+    /// Record one automatic `initSteps` feature-report write and its result.
+    /// Call for successes too: "succeeded but still misbehaves" and "never
+    /// landed" need different fixes, and recording only failures makes the two
+    /// indistinguishable.
+    nonisolated static func recordAutoInitReport(
+        reportID: Int, value: Int, ioReturn: IOReturn, usagePage: Int
+    ) {
+        let ok = ioReturn == kIOReturnSuccess
+        let attempt = CaptureInitReport(
+            reportID: reportID,
+            value: value,
+            succeeded: ok,
+            ioReturn: ok ? nil : String(format: "0x%08X", ioReturn),
+            automatic: true,
+            interfaceUsagePage: String(format: "0x%04X", usagePage))
+        autoInitReports.withLock { list in
+            list.append(attempt)
+            if list.count > autoInitReportLimit { list.removeFirst(list.count - autoInitReportLimit) }
+        }
+    }
+
+    /// Copy of the automatic init attempts recorded so far, for the exporter.
+    nonisolated static func autoInitReportsSnapshot() -> [CaptureInitReport] {
+        autoInitReports.withLock { $0 }
+    }
+
     /// Record one raw HID input report toward whichever session (if any) is
     /// currently capturing `device`.
     ///
@@ -295,6 +338,49 @@ final class CaptureEngine: ObservableObject {
         let key = ObjectIdentifier(device)
         Self.activeAccumulators.withLock { $0[key] = accumulator }
         if tapped { openPassiveTap(on: device) }
+        dropUnrelatedInterfacesIfTabletFound()
+    }
+
+    /// `sessions` with unrelated hardware removed — but only once a known
+    /// tablet vendor is present. With no tablet in the set every entry is kept:
+    /// that is the unrecognized-device case, where "what else is on the bus" is
+    /// the whole point, so this is keyed on a known vendor arriving rather than
+    /// on sample counts.
+    static func tabletOnly(_ sessions: [InterfaceSession]) -> [InterfaceSession] {
+        let tabletVendors = Set(TabletManager.knownVendorIDs)
+        guard sessions.contains(where: { tabletVendors.contains($0.info.vendorID) })
+        else { return sessions }
+        return sessions.filter { tabletVendors.contains($0.info.vendorID) }
+    }
+
+    /// Once a real tablet turns up, stop recording the unrelated hardware a
+    /// tablet-less session swept up.
+    ///
+    /// `CaptureGuideView.captureInterfaces()` profiles every HID device when no
+    /// known tablet is present — if the tablet is invisible to the OS, that
+    /// absence is the diagnosis. But a session starting empty-handed kept all
+    /// of it after the tablet appeared: one 11-interface capture recorded a
+    /// Bluetooth trackpad and a Mac accelerometer (154 Sensor-page samples),
+    /// and took the accelerometer as its primary device. Capture files get
+    /// attached to public issues, so that is a privacy leak. Keystrokes were
+    /// already excluded at enumeration (`isTextEntryDevice`); this applies the
+    /// same rule to the rest of the desk.
+    private func dropUnrelatedInterfacesIfTabletFound() {
+        let kept = Self.tabletOnly(sessions)
+        guard kept.count != sessions.count else { return }
+        let keptIDs = Set(kept.map { ObjectIdentifier($0.device) })
+        let doomed = sessions.filter { !keptIDs.contains(ObjectIdentifier($0.device)) }
+        sessions = kept
+        let keys = doomed.map { ObjectIdentifier($0.device) }
+        Self.activeAccumulators.withLock { table in
+            for key in keys { table[key] = nil }
+        }
+        for session in doomed where tappedDevices.contains(where: { $0 === session.device }) {
+            IOHIDDeviceClose(session.device, IOOptionBits(kIOHIDOptionsTypeNone))
+        }
+        tappedDevices.removeAll { device in
+            doomed.contains { $0.device === device }
+        }
     }
 
     /// Interfaces this session opened itself, to be closed when it ends.
@@ -468,7 +554,9 @@ final class CaptureEngine: ObservableObject {
                 reportID: reportID,
                 value: value,
                 succeeded: ok,
-                ioReturn: ok ? nil : String(format: "0x%08X", ret)
+                ioReturn: ok ? nil : String(format: "0x%08X", ret),
+                automatic: false,
+                interfaceUsagePage: nil
             )
             await MainActor.run { [weak self] in
                 self?.initReportsSent.append(attempt)
@@ -585,8 +673,15 @@ final class CaptureEngine: ObservableObject {
     /// are unioned across interfaces, since a tool entering proximity is a
     /// property of the tablet rather than of whichever interface reported it.
     private func buildDiscoveryResult(
-        sessions: [InterfaceSession], bluetoothLink: BluetoothLinkMonitor.Summary?
+        sessions allSessions: [InterfaceSession], bluetoothLink: BluetoothLinkMonitor.Summary?
     ) -> DiscoveryResult {
+        // Last line of defense before anything reaches a file the user may
+        // attach to a public issue. `dropUnrelatedInterfacesIfTabletFound`
+        // already prunes as interfaces arrive; repeating the rule at the
+        // export boundary keeps a future entry point from reintroducing the
+        // leak by forgetting to call it.
+        let sessions = Self.tabletOnly(allSessions)
+
         // Which interface fills the top-level block, in order of preference:
         //
         //  1. The one whose descriptor declares pen fields (pressure/tilt/…),
@@ -717,7 +812,13 @@ final class CaptureEngine: ObservableObject {
             reports: interfaces[0].reports,
             hidReportDescriptor: interfaces[0].hidReportDescriptor,
             interfaces: interfaces.count > 1 ? interfaces : nil,
-            initReports: initReportsSent.isEmpty ? nil : initReportsSent,
+            // Automatic writes first, then this session's manual ones: they
+            // happened earlier (at open) and are what explains a device in
+            // reduced mode, so they shouldn't sit below a manual retry.
+            initReports: {
+                let all = Self.autoInitReportsSnapshot() + initReportsSent
+                return all.isEmpty ? nil : all
+            }(),
             observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
             touchSettings: capturedTouchSettings,
             appSettings: capturedAppSettings,
