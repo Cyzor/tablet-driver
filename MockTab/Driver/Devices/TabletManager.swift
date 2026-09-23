@@ -817,6 +817,21 @@ final class TabletManager: ObservableObject {
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         // Called on HIDThread — hop to main before touching @Published properties.
         let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
+            // Set identity synchronously: pen points inject inline on this
+            // same thread, so the main-actor Task below loses the race (next
+            // frame measured 6 ms later). `postProximityEvent` derives
+            // `vendorPointerType` from `activeToolCode`, so losing it reported
+            // the Art Pen as a plain Grip Pen and apps ignored its rotation.
+            //
+            // `previousToolCode` is read before the overwrite; the main-actor
+            // block needs the code this tool replaced.
+            let previousToolCode = context?.injector.activeToolCode
+            if let injector = context?.injector {
+                injector.activeToolCode = identity.toolCode
+                injector.activeToolSerial = identity.serial
+                injector.activeToolIsMouse = identity.isMouse
+                injector.activeToolIsEraser = identity.isEraser
+            }
             Task { @MainActor [weak self, weak context] in
             guard self != nil, let context else { return }
             // A different tool just came into range, so the previous one is off
@@ -824,7 +839,11 @@ final class TabletManager: ObservableObject {
             // HIDThread: the held-button state is confined there, same as
             // `releaseOnAppSwitch`. See `releaseBindingHeldButton` for why a
             // tool change is the right trigger and proximity exit is not.
-            if identity.toolCode != context.injector.activeToolCode {
+            //
+            // Compares the pre-overwrite value: the injector already holds
+            // this tool's code, so reading it here would make every swap look
+            // like "same tool" and strand the outgoing tool's held buttons.
+            if identity.toolCode != previousToolCode {
                 let injector = context.injector
                 CFRunLoopPerformBlock(
                     HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue
@@ -844,7 +863,12 @@ final class TabletManager: ObservableObject {
             let toolSets = context.settings.toolSettings(forID: toolID, isMouse: identity.isMouse)
             context.activeTool = toolSets
             context.settings.activeTool = toolSets
+            // Settings must resolve here — the lookup needs the registry and
+            // settings store, neither reachable from HIDThread. Arriving late
+            // affects only tuning, not tool recognition.
             context.injector.activeToolSettings = toolSets
+            // Re-asserted for paths that reach this Task without running the
+            // synchronous block above; a no-op when they don't.
             context.injector.activeToolIsMouse = identity.isMouse
             context.injector.activeToolIsEraser = identity.isEraser
             context.injector.activeToolSerial = identity.serial
