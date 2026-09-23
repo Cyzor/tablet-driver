@@ -448,6 +448,23 @@ final class HIDCapture {
         var tiltXRange: ClosedRange<Double>?
         var tiltYRange: ClosedRange<Double>?
         var hoverRange: ClosedRange<Int>?
+        /// Art Pen barrel rotation. Every `TabletPoint` carries this field
+        /// (defaulting to 0), so an all-zero range means "no rotation sensor"
+        /// rather than "the sensor read zero"; `render` omits it in that case
+        /// to keep non-Art-Pen captures clean. Before this, a condensed run
+        /// hid the Art Pen's most important axis entirely.
+        var rotationRange: ClosedRange<Double>?
+        /// Frames carrying a live rotation reading, bucketed by hover distance
+        /// in steps of 20. `rotationRange` alone can't separate the two cases
+        /// that matter: a run rendering `hover:20-122 rot:0-358` fits both
+        /// rotation tracking the full height and rotation dying just off the
+        /// surface. Measured where MockTab decodes, which a parallel
+        /// `hid_input_capture` run cannot speak to.
+        var rotationByHoverBucket: [Int: Int] = [:]
+        /// Denominator for the above: in-proximity frames per bucket, with or
+        /// without rotation. Without it a low count reads as "no rotation up
+        /// here" when it may just be "barely hovered up here."
+        var framesByHoverBucket: [Int: Int] = [:]
 
         // Explicit init: the compiler-synthesized memberwise init would
         // inherit `private` from the properties below, making it
@@ -517,6 +534,14 @@ final class HIDCapture {
                 tiltXRange = Self.extend(tiltXRange, with: p.tiltX)
                 tiltYRange = Self.extend(tiltYRange, with: p.tiltY)
                 hoverRange = Self.extend(hoverRange, with: p.hoverDistance)
+                rotationRange = Self.extend(rotationRange, with: p.rotation)
+                if p.inProximity {
+                    let bucket = (p.hoverDistance / 20) * 20
+                    framesByHoverBucket[bucket, default: 0] += 1
+                    if p.rotation != 0 {
+                        rotationByHoverBucket[bucket, default: 0] += 1
+                    }
+                }
                 if let lastX, let lastY {
                     maxSeenDeltaX = max(maxSeenDeltaX, abs(p.x - lastX))
                     maxSeenDeltaY = max(maxSeenDeltaY, abs(p.y - lastY))
@@ -556,6 +581,19 @@ final class HIDCapture {
                 )
             }
             if let r = hoverRange { fields.append("hover:\(r.lowerBound)-\(r.upperBound)") }
+            // Omitted when the whole run read 0: see `rotationRange`.
+            if let r = rotationRange, !(r.lowerBound == 0 && r.upperBound == 0) {
+                fields.append(String(format: "rot:%.1f-%.1f", r.lowerBound, r.upperBound))
+            }
+            // Suppressed for pens without a barrel sensor, same reasoning as
+            // `rotationRange` above.
+            if !rotationByHoverBucket.isEmpty {
+                let buckets = framesByHoverBucket.keys.sorted()
+                let rendered = buckets.map { b in
+                    "\(b)-\(b + 19):\(rotationByHoverBucket[b] ?? 0)/\(framesByHoverBucket[b] ?? 0)"
+                }
+                fields.append("rot@hover[\(rendered.joined(separator: " "))]")
+            }
             let fieldStr = fields.isEmpty ? "(no decoder — raw bytes only)" : fields.joined(separator: " ")
             return
                 "[\(ts)] \(padded) ID=\(hexDigitID) len=\(lenRange)  ×\(count) steady-state  →  \(fieldStr)"
@@ -735,7 +773,9 @@ final class HIDCapture {
             ×<count> steady-state marker to tell which is which. A single
             implausible jump inside an otherwise steady run also breaks it
             and appears as its own verbatim line, so a run's x/y/tilt range
-            never silently hides a discontinuity.
+            never silently hides a discontinuity. A run shows rot: only when
+            that run carried a nonzero barrel rotation, so its absence means
+            the pen reported none — not that the field went unrecorded.
 
             Format  : [mm:ss.ms] <device-tag>            ID=<hex> len=<n>  <hex bytes>  → <decoded>
                       A run line reads len=<range>  ×<count> steady-state  →  <value ranges> instead.

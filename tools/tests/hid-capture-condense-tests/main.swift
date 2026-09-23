@@ -35,20 +35,23 @@ private func expect(
 
 private func penPoint(
     x: Int, y: Int, pressure: Int = 0, inProximity: Bool = true, eraser: Bool = false,
-    penButton1: Bool = false
+    penButton1: Bool = false, rotation: Double = 0, hoverDistance: Int = 0
 ) -> TabletPoint {
-    TabletPoint(
+    var point = TabletPoint(
         x: x, y: y, maxX: 15200, maxY: 9500, pressure: pressure, maxPressure: 4095,
         tiltX: 0, tiltY: 0, penButton1: penButton1, penButton2: false, eraser: eraser,
-        inProximity: inProximity, hoverDistance: 0)
+        inProximity: inProximity, hoverDistance: hoverDistance)
+    point.rotation = rotation
+    return point
 }
 
 private func sample(
     at elapsed: TimeInterval, id: UInt8 = 0x1F, x: Int, y: Int, pressure: Int = 0,
     inProximity: Bool = true, eraser: Bool = false, penButton1: Bool = false,
+    rotation: Double = 0, hoverDistance: Int = 0,
     decoded: [DecodeResult]? = nil
 ) -> HIDCapture.Sample {
-    let results = decoded ?? [.pen(penPoint(x: x, y: y, pressure: pressure, inProximity: inProximity, eraser: eraser, penButton1: penButton1))]
+    let results = decoded ?? [.pen(penPoint(x: x, y: y, pressure: pressure, inProximity: inProximity, eraser: eraser, penButton1: penButton1, rotation: rotation, hoverDistance: hoverDistance))]
     return HIDCapture.Sample(
         elapsed: elapsed, tag: "Test Device", reportID: id, length: 18,
         hex: "1F 01 00 \(x) 00 \(y)", decoded: results,
@@ -384,6 +387,97 @@ do {
     expect(
         !split.old.contains(where: { $0.tag == "StreamA" && $0.elapsed > 44.5 - HIDCapture.graceWindow }),
         "no sample within graceWindow of the buffer's newest should be in 'old'")
+}
+
+// MARK: - Barrel rotation in condensed runs
+
+// A condensed run used to drop rotation entirely, so a capture could show
+// thousands of absorbed frames with no way to tell whether the Art Pen's one
+// distinguishing axis was live. Pins both halves: present when it varies,
+// absent when it never does.
+do {
+    let samples = (0..<8).map {
+        sample(at: 1.0 + Double($0) * 0.01, x: 500 + $0, y: 600, rotation: 90.0 + Double($0))
+    }
+    let lines = condenseAll(samples)
+    let run = lines.first { $0.contains("steady-state") }
+    expect(run != nil, "eight same-signature samples should collapse into one run line")
+    expect(
+        run?.contains("rot:90.0-97.0") == true,
+        "a condensed run must report the rotation range it absorbed, else an Art Pen capture hides its main axis: \(run ?? "<none>")")
+}
+
+do {
+    // Every TabletPoint carries rotation (default 0), so a pen with no barrel
+    // sensor would otherwise add a meaningless "rot:0.0-0.0" to every run.
+    let samples = (0..<8).map {
+        sample(at: 2.0 + Double($0) * 0.01, x: 700 + $0, y: 800)
+    }
+    let lines = condenseAll(samples)
+    let run = lines.first { $0.contains("steady-state") }
+    expect(run != nil, "eight same-signature samples should collapse into one run line")
+    expect(
+        run?.contains("rot:") == false,
+        "an all-zero rotation run must omit the field entirely, so its presence means the sensor was live: \(run ?? "<none>")")
+}
+
+do {
+    // Rotation on only some frames of a run: the range must still surface it
+    // rather than dropping it for reading zero part of the time.
+    let samples = (0..<8).map { i in
+        sample(at: 3.0 + Double(i) * 0.01, x: 900 + i, y: 1000, rotation: i == 4 ? -252.0 : 0)
+    }
+    let lines = condenseAll(samples)
+    let run = lines.first { $0.contains("steady-state") }
+    expect(
+        run?.contains("rot:-252.0-0.0") == true,
+        "a run where only some frames carried rotation must still report it: \(run ?? "<none>")")
+}
+
+// MARK: - Rotation correlated with hover height
+
+// The question `rotationRange` cannot answer: a run rendering
+// `hover:20-122 rot:0-358` fits both rotation tracking the full height and
+// rotation dying just off the surface. These pin the tally separating them.
+do {
+    // Rotation live near the surface, absent high up — the cutoff shape.
+    let low = (0..<4).map { i in
+        sample(at: 4.0 + Double(i) * 0.01, x: 500 + i, y: 600, rotation: 90.0 + Double(i), hoverDistance: 25)
+    }
+    let high = (0..<4).map { i in
+        sample(at: 4.1 + Double(i) * 0.01, x: 510 + i, y: 600, rotation: 0, hoverDistance: 105)
+    }
+    let run = condenseAll(low + high).first { $0.contains("steady-state") }
+    expect(
+        run?.contains("20-39:4/4") == true,
+        "every low-hover frame carried rotation, so its bucket must read 4/4: \(run ?? "<none>")")
+    expect(
+        run?.contains("100-119:0/4") == true,
+        "no high-hover frame carried rotation, so its bucket must read 0/4 — this is the shape that would confirm a height cutoff: \(run ?? "<none>")")
+}
+
+do {
+    // The opposite shape: rotation live at every height. Telling this from
+    // the run above is the entire point of the field.
+    let samples = (0..<6).map { i in
+        sample(at: 5.0 + Double(i) * 0.01, x: 700 + i, y: 800, rotation: 45.0 + Double(i), hoverDistance: 25 + i * 20)
+    }
+    let run = condenseAll(samples).first { $0.contains("steady-state") }
+    expect(
+        run?.contains("20-39:1/1") == true && run?.contains("120-139:1/1") == true,
+        "rotation present at both the lowest and highest bucket must show 1/1 at each, not a cutoff: \(run ?? "<none>")")
+}
+
+do {
+    // A pen with no barrel sensor must not gain a rot@hover block, for the
+    // same reason it gains no rot: range — presence has to mean something.
+    let samples = (0..<6).map { i in
+        sample(at: 6.0 + Double(i) * 0.01, x: 900 + i, y: 1000, hoverDistance: 30 + i)
+    }
+    let run = condenseAll(samples).first { $0.contains("steady-state") }
+    expect(
+        run?.contains("rot@hover") == false,
+        "a run with no rotation at all must omit the bucket tally entirely: \(run ?? "<none>")")
 }
 
 if failures > 0 {
