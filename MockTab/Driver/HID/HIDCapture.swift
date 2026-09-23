@@ -367,6 +367,11 @@ final class HIDCapture {
                 }
             case .battery(let percent, let charging):
                 return "battery=\(percent)% charging=\(charging)"
+            case .remotePairing(let slots):
+                let paired = slots.filter { $0.connected }
+                guard !paired.isEmpty else { return "pairing none" }
+                let listed = paired.map { "\($0.index):\($0.serial)" }
+                return "pairing \(listed.joined(separator: ","))"
             case .toolCompatibility(let msg):
                 return "toolCompatibility=\"\(msg)\""
             case .mouseButton(let mask):
@@ -406,6 +411,12 @@ final class HIDCapture {
                 sig.hasOneShotEvent = true
                 if case .toolEnter(let t) = result { sig.toolEnterSerial = t.serial }
             case .touch, .none:
+                break
+            case .remotePairing:
+                // Steady state, not a one-shot: the receiver repeats an
+                // unchanged pairing table roughly twice a second, so marking
+                // it as an event would defeat condensing and pad the capture
+                // with thousands of identical rows.
                 break
             }
         }

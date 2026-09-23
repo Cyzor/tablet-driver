@@ -66,6 +66,10 @@ final class WacomKnownDevice: TabletDevice {
 
     let device: IOHIDDevice
     var deviceSpec: WacomDeviceSpec
+    /// Last logged pairing-table summary, so the receiver's twice-a-second
+    /// repeat of an unchanged table doesn't write a line every time.
+    private var lastRemotePairingSummary: String?
+
     /// True when this interface must be seized (kIOHIDOptionsTypeSeizeDevice).
     /// Only set by TabletManager when the interface is the standard HID-mouse
     /// interface (usagePage=0x01) AND the device spec requires seizure.
@@ -1476,6 +1480,17 @@ final class WacomKnownDevice: TabletDevice {
                 batchFrames.append(.touch(contacts))
             case .toolCompatibility(let message):
                 logger.info("\(name, privacy: .public): \(message, privacy: .public)")
+            case .remotePairing(let slots):
+                // Diagnostic only — nothing consumes the pairing table. The
+                // receiver repeats it roughly twice a second, so log only when
+                // it actually changes, per this project's no-log-spam rule.
+                let paired = slots.filter { $0.connected }
+                    .map { "\($0.index):\($0.serial)" }
+                    .joined(separator: ",")
+                if paired != lastRemotePairingSummary {
+                    lastRemotePairingSummary = paired
+                    logger.info("\(name, privacy: .public): paired remotes [\(paired.isEmpty ? "none" : paired, privacy: .public)]")
+                }
             }
         }
         // Contact-down state for this interface's *next* report, used only by
