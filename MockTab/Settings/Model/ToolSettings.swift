@@ -4,6 +4,7 @@
 
 import Foundation
 import SwiftUI
+import TabletKit
 
 /// Per-tool pressure curve, smoothing, and pen-button bindings.
 ///
@@ -276,7 +277,8 @@ final class ToolSettings: ObservableObject {
         isLoading = true
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)
         pressureSmoothingStrength = loadDouble("pressureSmoothingStrength", default: 0.0)
-        pressureThreshold = loadDouble("pressureThreshold", default: 0.0)
+        pressureThreshold = loadDouble(
+            "pressureThreshold", default: Self.deviceDefaultPressureThreshold(prefix: prefix))
         panScrollSpeed = loadDouble("panScrollSpeed", default: 1.0)
         panScrollMomentum = loadBool("panScrollMomentum", default: false)
         useRotationAsTilt = loadBool("useRotationAsTilt", default: false)
@@ -315,6 +317,29 @@ final class ToolSettings: ObservableObject {
         } else {
             ud.set(value, forKey: prefix + key)
         }
+    }
+
+    /// Factory `pressureThreshold` for whichever device owns `prefix`, read
+    /// from the registry (see `WacomDeviceSpec.defaultPressureThreshold`).
+    ///
+    /// Takes the PID back out of the storage prefix rather than threading a
+    /// spec through `init`: every prefix is `device-0x{PIDHEX}.` with an
+    /// optional instance suffix, and all four construction sites already have
+    /// only that string. Returns 0 for the pre-device `"device-default."`
+    /// placeholder and for any prefix that doesn't parse, which keeps the
+    /// previous behavior for anything unrecognized.
+    ///
+    /// This is a *default*, not a clamp: it only applies when neither the
+    /// tool, the device fallback, nor an app override has stored a value, so
+    /// a user who has already set this dial — to zero or anything else —
+    /// keeps what they chose.
+    static func deviceDefaultPressureThreshold(prefix: String) -> Double {
+        guard prefix.hasPrefix("device-0x") else { return 0.0 }
+        let afterPrefix = prefix.dropFirst("device-0x".count)
+        // Stop at the first "." (legacy) or "#" (instance-suffixed form).
+        let hex = afterPrefix.prefix { $0 != "." && $0 != "#" }
+        guard let pid = Int(hex, radix: 16) else { return 0.0 }
+        return WacomDeviceRegistry.spec(for: pid)?.defaultPressureThreshold ?? 0.0
     }
 
     private func loadDouble(_ key: String, default d: Double) -> Double {
