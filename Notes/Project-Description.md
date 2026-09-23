@@ -155,6 +155,7 @@ Same device / profile / app-override layering as everything else — a bare
 |-----|------|---------|--------|
 | `touchOnsetDelayMs` | Double, 0–500 | `40` | ms a finger touch emits nothing after landing (`TouchStateTracker.onsetDelay`). Lower for a snappier start; raise if a resting palm nudges the cursor. `0` still leaves a ~2-frame floor. |
 | `touchTapStabilizationPt` | Double, 0–4 | `1.5` | Points a single-finger touch may drift before it starts moving the cursor — absorbs lift-off skitter on a tap and the first point or two of a slow drag from rest, then tracks with no catch-up jump. Past ~2 it feels sticky; `0` disables. Relative touch mode only. |
+| `dropPhysicalModifiersFromMoveEvents` | Bool | `NO` | Omit keyboard modifier bits (⇧⌘⌥⌃) from every pen move/drag event instead of only when the cached keyboard state is stale. Last resort for a machine where held modifiers still stop registering; the staleness gate in `moveSafeEventFlags` should make it unnecessary. Costs constraint-snapping in Illustrator, Keynote, and Pages, which read modifiers from drag events. Global (not per-device); read once at launch, so relaunch to apply. |
 
 ---
 

@@ -320,6 +320,18 @@ final class InputInjector: @unchecked Sendable {
         UserDefaults.standard.bool(forKey: "com.apple.swipescrolldirection")
     }
 
+    /// Escape hatch restoring `34cdf46`: drop physical modifier bits from *every*
+    /// move event, not just stale-cache ones. For a machine the staleness gate
+    /// doesn't fix, so they have something to try without waiting on a build.
+    ///
+    /// Off by default because it costs constraint-snapping in Illustrator,
+    /// Keynote, and Pages. Read once at launch to keep `UserDefaults` off the
+    /// hot path, so it applies on relaunch.
+    ///
+    ///     defaults write com.cyzor.mocktab dropPhysicalModifiersFromMoveEvents -bool YES
+    static let forceDropPhysicalMoveFlags: Bool =
+        UserDefaults.standard.bool(forKey: "dropPhysicalModifiersFromMoveEvents")
+
     @MainActor
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
@@ -905,6 +917,17 @@ final class InputInjector: @unchecked Sendable {
     /// Updated only from events with sourceStateID == hidSystemState; immune to our own
     /// synthetic flagsChanged posts.
     var tapLastPhysicalFlags: UInt64 = 0
+
+    /// When `tapLastPhysicalFlags` was last written, in mach-absolute ns on the
+    /// same clock as `currentReportTimestampNs`. Lets `moveSafeEventFlags` tell a
+    /// cache that reflects this report from one a queued `flagsChanged` already
+    /// invalidated. HIDThread-owned, like the cache it stamps.
+    var tapLastPhysicalFlagsAtNs: UInt64 = 0
+
+    /// Move events that dropped physical bits for a stale cache. Reported in
+    /// diagnostics: non-zero on a machine losing modifiers confirms the window
+    /// is real there; zero rules this mechanism out.
+    var staleModifierCacheDrops: UInt64 = 0
 
     /// True when no physical tablet control is held. If this holds and
     /// `groundTruthSyntheticFlags` is non-empty, the flags are a leak.

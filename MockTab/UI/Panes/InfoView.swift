@@ -841,6 +841,13 @@ struct InfoView: View {
             } else {
                 lines += [String(localized: "Jitter (pt/sample): no hover samples yet", comment: "Diagnostic: jitter histogram is empty")]
             }
+
+            // Non-zero means this machine hits the stale-cache window; zero on a
+            // machine still losing modifiers rules that mechanism out.
+            let drops = ctx.injector.staleModifierCacheDrops
+            if drops > 0 {
+                lines += [String(localized: "Modifier resync: \(drops) move events deferred to the keyboard", comment: "Diagnostic: count of move events that omitted physical modifier bits because the cached keyboard state was older than the report being stamped")]
+            }
         }
 
         let probe = LatencyProbe.shared

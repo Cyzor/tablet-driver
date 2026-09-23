@@ -46,18 +46,24 @@ extension InputInjector {
 
     /// Modifier flags for high-frequency move/drag events (mouseMoved, leftMouseDragged, etc.).
     ///
-    /// Includes physical (keyboard) modifiers so apps like Illustrator and Keynote can
-    /// read ⇧/⌘/⌥/⌃ from drag events for constraint-snapping.  The tap callback is
-    /// scheduled on HIDThread (same as inject()), so tapLastPhysicalFlags is written and
-    /// read on one thread — the cross-thread race that previously caused stuck modifiers
-    /// is eliminated at the source rather than worked around by dropping physical state.
+    /// Carries physical modifiers so Illustrator and Keynote can read ⇧/⌘/⌥/⌃ from
+    /// drag events for constraint-snapping — but only when the cache is current for
+    /// this report.
+    ///
+    /// Scheduling the tap on HIDThread (`8298334`) fixed the *data* race on
+    /// `tapLastPhysicalFlags`, not the *ordering* gap `34cdf46` described: same-thread
+    /// makes delivery order deterministic, not fresh. `physicalCacheIsCurrent` closes
+    /// it by comparing stamps rather than assuming.
     var moveSafeEventFlags: CGEventFlags {
-        let synth = groundTruthSyntheticFlags.rawValue
-            | SharedAuxModifierState.shared.groundTruthFlags.rawValue
-        return CGEventFlags(rawValue:
-            (tapLastPhysicalFlags & ModifierMath.managedMask)
-            | synth
-            | ModifierMath.leftDeviceBits(for: synth))
+        let current = ModifierMath.physicalCacheIsCurrent(
+            reportTimestampNs: Self.currentReportTimestampNs,
+            cacheUpdatedAtNs: tapLastPhysicalFlagsAtNs)
+        if !current { staleModifierCacheDrops &+= 1 }
+        return CGEventFlags(rawValue: ModifierMath.moveEventFlags(
+            tapPhysicalManaged: tapLastPhysicalFlags,
+            syntheticFlags: groundTruthSyntheticFlags.rawValue
+                | SharedAuxModifierState.shared.groundTruthFlags.rawValue,
+            physicalCacheIsCurrent: current && !Self.forceDropPhysicalMoveFlags))
     }
 
     /// The union of modifier flags justified by currently-held pen barrel buttons.
@@ -302,6 +308,12 @@ extension InputInjector {
                 }
                 injector.tapLastPhysicalFlags =
                     event.flags.rawValue & ModifierMath.managedMask
+                // Same clock as currentReportTimestampNs so moveSafeEventFlags can
+                // order the two. Wall clock, not event.timestamp: we need when we
+                // observed the change, and a synthesized event's own stamp may not
+                // sit on this clock.
+                injector.tapLastPhysicalFlagsAtNs =
+                    UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)
                 return Unmanaged.passRetained(event)
             },
             userInfo: selfPtr.toOpaque()
@@ -318,6 +330,10 @@ extension InputInjector {
         flagsChangedTapSource = runLoopSource
         // Warm the cache before enabling so the first tap callback has a valid baseline.
         tapLastPhysicalFlags = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
+        // Seed the stamp too, or the cache reads as never-written and every move
+        // event before the first keypress drops physical bits needlessly.
+        tapLastPhysicalFlagsAtNs =
+            UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)
         CGEvent.tapEnable(tap: tap, enable: true)
     }
 

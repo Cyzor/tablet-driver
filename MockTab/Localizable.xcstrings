@@ -11282,6 +11282,9 @@
         }
       }
     },
+    "Modifier resync: %llu move events deferred to the keyboard" : {
+      "comment" : "Diagnostic: count of move events that omitted physical modifier bits because the cached keyboard state was older than the report being stamped"
+    },
     "Momentum Scrolling" : {
       "localizations" : {
         "de" : {
