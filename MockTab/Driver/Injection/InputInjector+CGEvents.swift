@@ -308,12 +308,20 @@ extension InputInjector {
                 }
                 injector.tapLastPhysicalFlags =
                     event.flags.rawValue & ModifierMath.managedMask
-                // Same clock as currentReportTimestampNs so moveSafeEventFlags can
-                // order the two. Wall clock, not event.timestamp: we need when we
-                // observed the change, and a synthesized event's own stamp may not
-                // sit on this clock.
-                injector.tapLastPhysicalFlagsAtNs =
-                    UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)
+                // The event's own stamp, not our delivery time. Both this and
+                // `currentReportTimestampNs` are then kernel-origin, so comparing
+                // them measures event order rather than our scheduling.
+                //
+                // Wall clock would bias the comparison: it carries the tap's
+                // delivery latency, which the report stamp does not, so a stale
+                // cache could vouch for reports that arrived during a tap stall.
+                // Measured 2026-09-22 (Cyzor/tablet-driver#18): CGEvent.timestamp
+                // is already nanoseconds on this clock — no timebase scaling, unlike
+                // the raw HID timestamp — and ran 0.8–2.8ms ahead of delivery on an
+                // idle machine. The same run showed each event arriving three times,
+                // ~90µs apart; the event stamp makes those duplicates idempotent
+                // where wall clock ratcheted the cache forward on each one.
+                injector.tapLastPhysicalFlagsAtNs = UInt64(event.timestamp)
                 return Unmanaged.passRetained(event)
             },
             userInfo: selfPtr.toOpaque()
@@ -331,7 +339,9 @@ extension InputInjector {
         // Warm the cache before enabling so the first tap callback has a valid baseline.
         tapLastPhysicalFlags = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
         // Seed the stamp too, or the cache reads as never-written and every move
-        // event before the first keypress drops physical bits needlessly.
+        // event before the first keypress drops physical bits needlessly. Wall
+        // clock here, unlike the callback's event stamp: this reading has no event
+        // behind it, and "now" is the honest answer for a state we just read.
         tapLastPhysicalFlagsAtNs =
             UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)
         CGEvent.tapEnable(tap: tap, enable: true)
