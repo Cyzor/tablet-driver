@@ -279,7 +279,7 @@ final class TabletManager: ObservableObject {
         forProductID pid: Int, vendorID: Int? = nil, productString: String? = nil
     ) -> String {
         let vendorID = vendorID ?? lastSeenVendorID[pid] ?? 0x056A
-        if vendorID == 0x056A {
+        if WacomDeviceRegistry.vendorIDs.contains(vendorID) {
             if let spec = WacomDeviceRegistry.spec(for: pid) { return spec.name }
             return WacomDeviceRegistry.deviceName(forProductID: pid)
         }
@@ -473,7 +473,7 @@ final class TabletManager: ObservableObject {
     /// reachable, since these devices aren't in the Wacom-only
     /// `WacomDeviceRegistry` the UI otherwise consults).
     static func vendorDeviceSpec(forVendorID vendorID: Int, productID: Int) -> WacomDeviceSpec? {
-        guard vendorID != 0x056A,
+        guard !WacomDeviceRegistry.vendorIDs.contains(vendorID),
             let profile = VendorDeviceRegistry.drivableProfile(
                 forVendorID: vendorID, productID: productID)
         else { return nil }
@@ -548,7 +548,7 @@ final class TabletManager: ObservableObject {
         // profile and continue through the normal routing below; everything
         // else is recognition-only — name it, log it, and bail out before any
         // Wacom-specific state touches it.
-        guard vendorID != 0x056A, vendorID != 0x0531 else { return .proceed(spec: nil) }
+        guard !WacomDeviceRegistry.vendorIDs.contains(vendorID) else { return .proceed(spec: nil) }
         if let profile = VendorDeviceRegistry.drivableProfile(
             forVendorID: vendorID, productID: rawProductID)
         {
@@ -630,7 +630,7 @@ final class TabletManager: ObservableObject {
     private static func probeIdentity(
         _ device: IOHIDDevice, rawProductID: Int, vendorID: Int
     ) -> DeviceIdentityProbe {
-        let productID = vendorID == 0x056A
+        let productID = WacomDeviceRegistry.vendorIDs.contains(vendorID)
             ? WacomDeviceRegistry.canonicalProductID(for: rawProductID)
             : VendorDeviceRegistry.canonicalProductID(for: rawProductID)
         let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)

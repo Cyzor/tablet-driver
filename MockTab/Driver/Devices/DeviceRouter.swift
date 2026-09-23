@@ -97,14 +97,16 @@ enum DeviceRouter {
         // a Wacom registry entry, so gate these branches by vendor. Drivable
         // non-Wacom devices arrive with an explicit `overrideSpec` instead.
         let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
-        let isWacom = vendorID == 0x056A
+        let isWacom = WacomDeviceRegistry.vendorIDs.contains(vendorID)
 
         // ── ACK-40401 RF wireless dongle ─────────────────────────────────────
         // The dongle presents the same HID descriptor as the paired tablet
         // (PTH-x50/x51 family, IntuosV1 format). We synthesize a spec from the
         // live descriptor — pen events are gated by WacomKnownDevice until the
         // 0x80 wireless status report confirms the RF link.
-        if isWacom && productID == 0x0084 {
+        // Pinned to 0x056A, not `isWacom`: the ACK-40401 is a main-line Wacom
+        // accessory, and nothing on the consumer 0x0531 VID pairs with it.
+        if vendorID == 0x056A && productID == 0x0084 {
             routerLog.info("ACK-40401 wireless dongle connected")
             let (dMaxX, dMaxY, dMaxP, _) = queryHIDDigitizerSpec(device)
             let dongleSpec = WacomDeviceSpec(
