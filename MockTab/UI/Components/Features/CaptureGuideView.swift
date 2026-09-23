@@ -23,6 +23,10 @@ struct CaptureGuideView: View {
     @ObservedObject var tabletManager: TabletManager
     let productID: Int
     let onDismiss: () -> Void
+    /// Stop and flush the paired raw capture, returning its file so it can go
+    /// into the package. Owned by the presenting view, not this sheet — see
+    /// `DiagnosticSession`. Nil when no raw capture is running.
+    var onFinalizeRawCapture: (() -> URL?)? = nil
 
     // MARK: - State
 
@@ -66,6 +70,22 @@ struct CaptureGuideView: View {
     /// The device identity actually written into the capture file, kept so the
     /// issue-submission text describes the same hardware.
     @State private var resolvedInfo: CaptureDeviceInfo? = nil
+    /// Rows satisfied this session. Latching — the row records what was
+    /// captured, so lifting the pen must not un-tick "tap the pen's tip".
+    @State private var satisfied: Set<CaptureChecklistItem> = []
+    /// Traffic arrived that no decoder could read. Surfaced because it's the
+    /// opposite of bad news — on an unsupported device it's the most valuable
+    /// thing in the file, yet leaves every row above blank.
+    @State private var hasUndecodedTraffic = false
+    /// Periodic whole-desk rescan, live only while collecting. A plain Timer
+    /// rather than a `Timer.publish` computed in `body`: that form hands
+    /// `.onReceive` a brand-new publisher on every redraw, restarting the
+    /// countdown each time, so a frequently-redrawn sheet may never tick.
+    @State private var companionScanTimer: Timer? = nil
+    /// Polls the activity probes for the checklist. Separate from the
+    /// companion rescan because it runs ten times as often for a fraction of
+    /// the cost.
+    @State private var checklistTimer: Timer? = nil
 
     // MARK: - Body
 
@@ -93,6 +113,14 @@ struct CaptureGuideView: View {
             Text(String(localized: "Nothing collected so far will be saved.", comment: "Data collection alert message"))
         }
         .onAppear { startCollection() }
+        // Tied to the view rather than to each of the three exit paths
+        // (Done, Cancel, auto-finish) — the sheet always disappears.
+        .onDisappear {
+            companionScanTimer?.invalidate()
+            companionScanTimer = nil
+            checklistTimer?.invalidate()
+            checklistTimer = nil
+        }
         // A tablet's interfaces don't all attach at once — see
         // `CaptureEngine.addInterface`. `DeviceContext` is nested inside
         // `TabletManager.contexts`, so its changes don't reach this view
@@ -167,14 +195,18 @@ struct CaptureGuideView: View {
                         .padding(.bottom, 12)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        instruction("pencil.tip",  String(localized: "Tap the pen’s tip to the tablet, then lift", comment: "Device data collection instruction: pen tip"))
-                        instruction("button.horizontal",      String(localized: "Hold down each button on the pen", comment: "Device data collection instruction: pen buttons"))
-                        instruction("eraser.line.dashed", String(localized: "Touch the pen's eraser end to the tablet", comment: "Device data collection instruction: eraser"))
-                        instruction("rectangle.grid.2x2",    String(localized: "Press each button on the tablet", comment: "Device data collection instruction: tablet buttons"))
-                        instruction("circle.dashed",          String(localized: "Slide a finger around any ring or strip", comment: "Device data collection instruction: touch ring/strip"))
-                        instruction("hand.draw",              String(localized: "Drag one finger across the tablet, then pinch with two", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"))
+                        instruction("pencil.tip",  String(localized: "Tap the pen’s tip to the tablet, then lift", comment: "Device data collection instruction: pen tip"), .penTip)
+                        instruction("button.horizontal",      String(localized: "Hold down each button on the pen", comment: "Device data collection instruction: pen buttons"), .penButtons)
+                        instruction("eraser.line.dashed", String(localized: "Touch the pen's eraser end to the tablet", comment: "Device data collection instruction: eraser"), .eraser)
+                        instruction("rectangle.grid.2x2",    String(localized: "Press each button on the tablet", comment: "Device data collection instruction: tablet buttons"), .tabletButtons)
+                        instruction("circle.dashed",          String(localized: "Slide a finger around any ring or strip", comment: "Device data collection instruction: touch ring/strip"), .ringOrStrip)
+                        instruction("hand.draw",              String(localized: "Drag one finger across the tablet, then pinch with two", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"), .fingerTouch)
                     }
                     .padding(.horizontal, 20)
+
+                    checklistFootnote
+                        .padding(.horizontal, 20)
+                        .padding(.top, 10)
 
                     deviceModeInitControl
                         .padding(.horizontal, 20)
@@ -273,7 +305,11 @@ struct CaptureGuideView: View {
     ///
     /// The bare `hidDevice` fallback remains for a device whose interfaces
     /// never got listed at all.
-    private func captureInterfaces() -> [IOHIDDevice] {
+    /// Just this tablet's own interfaces — the ones a driver already reads
+    /// and forwards to `recordRaw`. Separated from `captureInterfaces()` so
+    /// the caller can tell them from devices swept up for breadth, which
+    /// need their own listener.
+    private func ownCaptureInterfaces() -> [IOHIDDevice] {
         let context = tabletManager.contexts[productID]
         let listed = (context?.captureInterfaces ?? []).compactMap(\.device)
         if !listed.isEmpty {
@@ -282,12 +318,37 @@ struct CaptureGuideView: View {
             return [primary] + listed.filter { $0 !== primary }
         }
         if let hidDevice = context?.hidDevice { return [hidDevice] }
+        return []
+    }
+
+    private func captureInterfaces() -> [IOHIDDevice] {
+        let own = ownCaptureInterfaces()
+        if !own.isEmpty {
+            return own + companionDevices(excluding: own)
+        }
         // No known device at all — rather than error out, profile every HID
         // device on the bus instead. TabletManager's own `IOHIDManager` only
         // matches vendors we already know, so it can't answer "is the tablet
         // even visible to the OS." If nothing shows up here either, that's
         // itself the diagnosis (unpowered hub, cable fault, wrong port).
         return Self.allConnectedHIDDevices()
+    }
+
+    /// Every other known-vendor device, so one run covers the whole desk.
+    ///
+    /// Appended *after* the target's own interfaces: the first entry names the
+    /// hardware in the header and fills the top-level block triage tooling
+    /// reads, so the opened window stays primary.
+    private func companionDevices(excluding claimed: [IOHIDDevice]) -> [IOHIDDevice] {
+        // Compared by registry ID rather than `===`: `claimed` holds the
+        // driver's long-lived device objects while the enumeration returns
+        // fresh CF wrappers for the same hardware, so identity never matches
+        // and every already-recorded interface would be added a second time.
+        let claimedIDs = Set(claimed.compactMap(DiagnosticSession.registryID(of:)))
+        return DiagnosticSession.knownVendorDevices().filter { candidate in
+            guard let id = DiagnosticSession.registryID(of: candidate) else { return true }
+            return !claimedIDs.contains(id)
+        }
     }
 
     /// One-shot, unfiltered enumeration of every HID device IOKit currently
@@ -299,7 +360,26 @@ struct CaptureGuideView: View {
         else { return [] }
         IOHIDManagerSetDeviceMatching(manager, nil)
         guard let deviceSet = IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice> else { return [] }
-        return Array(deviceSet)
+        return deviceSet.filter { !isTextEntryDevice($0) }
+    }
+
+    /// True for devices whose input reports can carry what the user is typing.
+    ///
+    /// This sweep is otherwise indiscriminate by design, but a keyboard's
+    /// reports *are* keystrokes and must never reach a file bound for a public
+    /// issue — a session opened on an Apple sensor hub fell through here and
+    /// recorded 14 of them. Matched by top-level usage, never by name.
+    ///
+    /// Mice are **not** excluded: a DTK-2400 and a PTH-860's pen interface
+    /// both declare Generic Desktop/Mouse, and excluding it dropped a real
+    /// tablet and its 1,500 samples.
+    private static func isTextEntryDevice(_ device: IOHIDDevice) -> Bool {
+        let page = IOHIDDeviceGetProperty(device, kIOHIDPrimaryUsagePageKey as CFString) as? Int
+        let usage = IOHIDDeviceGetProperty(device, kIOHIDPrimaryUsageKey as CFString) as? Int
+        guard let page else { return false }
+        if page == kHIDPage_Consumer { return true }
+        guard page == kHIDPage_GenericDesktop, let usage else { return false }
+        return usage == kHIDUsage_GD_Keyboard || usage == kHIDUsage_GD_Keypad
     }
 
     /// This tablet's touch configuration, for the capture file.
@@ -308,10 +388,52 @@ struct CaptureGuideView: View {
     /// exist on every `TabletSettings` but do nothing without a touch sensor,
     /// and recording them there would invite reading a meaningless `false` as
     /// a cause.
+    /// Mapping and pen-feel settings for the capture file. Unconditional,
+    /// unlike `touchSettingsSnapshot()` — gating these the same way left
+    /// non-Wacom captures with no app-side configuration at all.
+    private func appSettingsSnapshot() -> DiscoveryAppSettings? {
+        guard let s = tabletManager.contexts[productID]?.settings else { return nil }
+        return DiscoveryAppSettings(
+            activeAreaX: s.activeAreaX,
+            activeAreaY: s.activeAreaY,
+            activeAreaWidth: s.activeAreaWidth,
+            activeAreaHeight: s.activeAreaHeight,
+            proportionalMapping: s.proportionalMapping,
+            tabletOrientationRawValue: s.tabletOrientation.rawValue,
+            targetDisplayIndex: s.targetDisplayIndex,
+            displayRegionX: s.displayRegionX,
+            displayRegionY: s.displayRegionY,
+            displayRegionWidth: s.displayRegionWidth,
+            displayRegionHeight: s.displayRegionHeight,
+            hasCalibration: !s.calibrationEntries.isEmpty,
+            // Omitted when linear, so its presence in a file always means
+            // the curve is a candidate cause.
+            pressureCurve: s.pressureCurve == .linear
+                ? nil
+                : String(
+                    format: "%.3f,%.3f %.3f,%.3f",
+                    s.pressureCurve.p1.x, s.pressureCurve.p1.y,
+                    s.pressureCurve.p2.x, s.pressureCurve.p2.y),
+            smoothingStrength: s.smoothingStrength,
+            pressureSmoothingStrength: s.pressureSmoothingStrength,
+            dragThreshold: s.dragThreshold,
+            tipUpAssistDelay: s.tipUpAssistDelay,
+            doubleClickDistance: s.doubleClickDistance,
+            relativeCursorMovement: s.relativeCursorMovement,
+            invertRotation: s.invertRotation)
+    }
+
     private func touchSettingsSnapshot() -> DiscoveryTouchSettings? {
-        guard let settings = tabletManager.contexts[productID]?.settings,
-            WacomDeviceRegistry.spec(for: productID)?.hasFingerTouch == true
-        else { return nil }
+        guard let settings = tabletManager.contexts[productID]?.settings else { return nil }
+        // Omitted only when a spec positively says the device has no finger
+        // touch — there the settings are inert and a `false` would read as a
+        // cause. A device with *no* spec is a different case: we can't rule
+        // touch out, and dropping the block left every non-Wacom capture with
+        // no touch configuration at all (an Xencelabs session recorded none,
+        // which is how this was found).
+        if let spec = WacomDeviceRegistry.spec(for: productID), !spec.hasFingerTouch {
+            return nil
+        }
         return DiscoveryTouchSettings(
             touchEnabled: settings.touchEnabled,
             tapToClick: settings.tapToClick,
@@ -341,14 +463,36 @@ struct CaptureGuideView: View {
     /// Fold any interface that has attached since collection started into the
     /// running session, keeping what's already been gathered.
     ///
-    /// Cheap enough to run on every context change: it does nothing unless an
-    /// interface is genuinely new to the session, which happens once or twice
-    /// in a device's lifetime.
+    /// Reads only this context's already-cached interface list. It must stay
+    /// that cheap: `DeviceContext` publishes on routine pen traffic
+    /// (`activeToolSerial`, `liveButtons`, battery), so this runs repeatedly
+    /// while the user is drawing. The whole-desk enumeration in
+    /// `companionDevices` is deliberately *not* here — it creates an
+    /// `IOHIDManager` and copies the device set, which has no business
+    /// running on the main actor mid-stroke. Companions are picked up once at
+    /// session start, and by `adoptNewCompanions()` on its own slow timer.
     private func adoptNewInterfaces() {
         guard engine.isRunning else { return }
-        for device in captureInterfaces() where !engine.isRecording(device) {
+        let context = tabletManager.contexts[productID]
+        let listed = (context?.captureInterfaces ?? []).compactMap(\.device)
+        for device in listed where !engine.isRecording(device) {
             guard let info = deviceInfo(device: device) else { continue }
             engine.addInterface(device: device, deviceInfo: info)
+        }
+    }
+
+    /// Fold in hardware connected mid-run. Separate from
+    /// `adoptNewInterfaces` and on a slow timer: this pays for a full IOKit
+    /// enumeration.
+    private func adoptNewCompanions() {
+        guard engine.isRunning else { return }
+        for device in DiagnosticSession.knownVendorDevices() where !engine.isRecording(device) {
+            guard let info = deviceInfo(device: device) else { continue }
+            // Tapped: nothing else is listening to these. Unlike this
+            // tablet's own interfaces, which a driver already reads and
+            // forwards, a device picked up purely for breadth has no driver
+            // behind it — see `CaptureEngine.openPassiveTap`.
+            engine.addInterface(device: device, deviceInfo: info, tapped: true)
         }
     }
 
@@ -510,17 +654,87 @@ struct CaptureGuideView: View {
         }
     }
 
-    @ViewBuilder
-    private func instruction(_ icon: String, _ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: icon)
+    /// Explains what an unticked row means, so a blank one doesn't read as a
+    /// failed session.
+    ///
+    /// A checkmark means MockTab recognized that activity — not that the row
+    /// is a requirement. Rows stay blank for controls the tablet doesn't
+    /// have, and for controls whose reports we can't read yet, which on an
+    /// unsupported device is most of them. Everything that arrives is
+    /// recorded either way.
+    /// Both lines stay in the layout so the sheet never changes height. The
+    /// second would otherwise appear a fraction of a second in, once the probe
+    /// has enough reports to say — a visible lurch. Only emphasis changes.
+    private var checklistFootnote: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(String(
+                localized: "Checkmarks show what MockTab recognized. Rows can stay blank for controls your tablet doesn't have, or ones it can't read yet — everything your tablet sends is recorded either way.",
+                comment: "Footnote under the data collection checklist explaining that unticked rows are not a failure"))
+            Text(String(
+                localized: "Some of what your tablet sent isn't recognized yet. That data is in the file and is exactly what's needed to add support.",
+                comment: "Shown during collection when reports arrived that no decoder could read"))
+            .foregroundStyle(hasUndecodedTraffic ? AnyShapeStyle(.secondary) : AnyShapeStyle(.clear))
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: hasUndecodedTraffic)
+            .accessibilityHidden(!hasUndecodedTraffic)
+        }
+        .appFont(.caption)
+        .foregroundStyle(.tertiary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// One row of the "do whatever your tablet supports" checklist.
+    ///
+    /// Gates nothing — Done stays enabled, and the stepped-progress version of
+    /// this sheet was abandoned for being tedious. The point is that a tester
+    /// sees the pen row still blank and retries while the tablet is in their
+    /// hands; on issue #14 no session ever caught the pen, and nothing said
+    /// so.
+    enum CaptureChecklistItem: Hashable {
+        case penTip, penButtons, eraser, tabletButtons, ringOrStrip, fingerTouch
+    }
+
+    /// Fold probe state into `satisfied`. Only ever inserts — see
+    /// `satisfied` for why rows latch.
+    private func refreshChecklist() {
+        guard engine.isRunning else { return }
+        let seen = CaptureActivityProbe.snapshot()
+        for row in seen.confirmed() {
+            switch row {
+            case .penTip: satisfied.insert(.penTip)
+            case .penButtons: satisfied.insert(.penButtons)
+            case .eraser: satisfied.insert(.eraser)
+            case .tabletButtons: satisfied.insert(.tabletButtons)
+            case .ringOrStrip: satisfied.insert(.ringOrStrip)
+            }
+        }
+        // Finger touch is counted by the injection pipeline rather than the
+        // decoder, and is likewise zeroed per session by `startDiscovery`.
+        if TouchPipelineProbe.snapshot().contactsDecoded > 0 {
+            satisfied.insert(.fingerTouch)
+        }
+        hasUndecodedTraffic = seen.hasUndecodedTraffic
+    }
+
+    private func instruction(
+        _ icon: String, _ text: String, _ item: CaptureChecklistItem
+    ) -> some View {
+        let done = satisfied.contains(item)
+        return HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: done ? "checkmark.circle.fill" : icon)
                 .appFont(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(done ? Color.green : Color.secondary)
                 .frame(width: 18)
                 .accessibilityHidden(true)
             Text(text)
                 .appFont(.body)
+                .foregroundStyle(done ? .secondary : .primary)
         }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: done)
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(
+            done
+                ? String(localized: "Recorded", comment: "Accessibility value for a satisfied data-collection checklist row")
+                : String(localized: "Not yet recorded", comment: "Accessibility value for a data-collection checklist row with no matching activity yet"))
     }
 
     // MARK: - Completion
@@ -706,14 +920,52 @@ struct CaptureGuideView: View {
 
         engine.onDiscoveryComplete = { result in
             Task { @MainActor in
-                if let url = engine.exportDiscoveryJSON(result: result) {
-                    savedURL = url
+                guard let summaryURL = engine.exportDiscoveryJSON(result: result) else { return }
+                // Finalized here rather than on dismiss: the summary is
+                // written when the user clicks Done, while this sheet is
+                // still up, so packaging at dismiss time would zip a log
+                // that hadn't been flushed yet.
+                let rawLogURL = onFinalizeRawCapture?()
+                let packaged = DiagnosticPackage.build(
+                    summaryURL: summaryURL, rawLogURL: rawLogURL,
+                    productID: result.deviceInfo.productID)
+                // Falls back to the loose summary when packaging fails, so a
+                // zip problem can never cost the user their capture.
+                savedURL = packaged ?? summaryURL
+                if packaged != nil {
+                    // Only once the archive holds them.
+                    try? FileManager.default.removeItem(at: summaryURL)
+                    if let rawLogURL { try? FileManager.default.removeItem(at: rawLogURL) }
                 }
             }
         }
+        // Everything past this tablet's own interfaces was swept up for
+        // breadth and has no driver reading it.
+        let ownInterfaces = ownCaptureInterfaces()
+        let companions = targets.map(\.0).filter { candidate in
+            !ownInterfaces.contains { $0 === candidate }
+        }
         engine.startDiscovery(
             devices: targets, duration: 3600, touchSettings: touchSettingsSnapshot(),
-            bluetoothAddressCandidate: tabletManager.contexts[productID]?.bluetoothAddressCandidate)
+            appSettings: appSettingsSnapshot(),
+            bluetoothAddressCandidate: tabletManager.contexts[productID]?.bluetoothAddressCandidate,
+            tapped: companions)
+
+        // Picks up hardware powered on or plugged in mid-session. Slow on
+        // purpose — `adoptNewCompanions` pays for an IOKit enumeration, and a
+        // few seconds' delay adopting a device the user just connected costs
+        // nothing, since they still have to pick it up and use it.
+        companionScanTimer?.invalidate()
+        companionScanTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+            Task { @MainActor in adoptNewCompanions() }
+        }
+        // The checklist reads two lock-guarded probes — cheap enough to poll
+        // often, and it needs to be: a row that ticks seconds after the user
+        // presses the button reads as unresponsive rather than as feedback.
+        checklistTimer?.invalidate()
+        checklistTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in
+            Task { @MainActor in refreshChecklist() }
+        }
     }
 
     /// Parses the device's own raw descriptor bytes for a mode-switch feature

@@ -79,6 +79,9 @@
 		AA0002F2 /* FootprintProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0002F2 /* FootprintProbe.swift */; };
 		AA0001F1 /* DiscoveryAccumulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F1 /* DiscoveryAccumulator.swift */; };
 		AA000102 /* CaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000102 /* CaptureEngine.swift */; };
+		AA0001F3 /* DiagnosticSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F3 /* DiagnosticSession.swift */; };
+		AA0001F4 /* CaptureActivityProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F4 /* CaptureActivityProbe.swift */; };
+		AA0001F5 /* DiagnosticPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F5 /* DiagnosticPackage.swift */; };
 		AA002100 /* BluetoothLinkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB002100 /* BluetoothLinkMonitor.swift */; };
 		AA000103 /* CaptureGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000103 /* CaptureGuideView.swift */; };
 		AA000154 /* TouchRingDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000154 /* TouchRingDiagramView.swift */; };
@@ -193,6 +196,9 @@
 		AB0002F2 /* FootprintProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FootprintProbe.swift; sourceTree = "<group>"; };
 		AB0001F1 /* DiscoveryAccumulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoveryAccumulator.swift; sourceTree = "<group>"; };
 		AB000102 /* CaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEngine.swift; sourceTree = "<group>"; };
+		AB0001F3 /* DiagnosticSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticSession.swift; sourceTree = "<group>"; };
+		AB0001F4 /* CaptureActivityProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureActivityProbe.swift; sourceTree = "<group>"; };
+		AB0001F5 /* DiagnosticPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticPackage.swift; sourceTree = "<group>"; };
 		AB002100 /* BluetoothLinkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothLinkMonitor.swift; sourceTree = "<group>"; };
 		AB000103 /* CaptureGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGuideView.swift; sourceTree = "<group>"; };
 		AB000154 /* TouchRingDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchRingDiagramView.swift; sourceTree = "<group>"; };
@@ -345,6 +351,9 @@
 			isa = PBXGroup;
 			children = (
 				AB000102 /* CaptureEngine.swift */,
+				AB0001F3 /* DiagnosticSession.swift */,
+				AB0001F4 /* CaptureActivityProbe.swift */,
+				AB0001F5 /* DiagnosticPackage.swift */,
 				AB002100 /* BluetoothLinkMonitor.swift */,
 				AB000101 /* CaptureModels.swift */,
 				AB0001F1 /* DiscoveryAccumulator.swift */,
@@ -642,6 +651,9 @@
 				AA0001F2 /* TouchPipelineProbe.swift in Sources */,
 				AA0002F2 /* FootprintProbe.swift in Sources */,
 				AA000102 /* CaptureEngine.swift in Sources */,
+				AA0001F3 /* DiagnosticSession.swift in Sources */,
+				AA0001F4 /* CaptureActivityProbe.swift in Sources */,
+				AA0001F5 /* DiagnosticPackage.swift in Sources */,
 				AA002100 /* BluetoothLinkMonitor.swift in Sources */,
 				AA0001F1 /* DiscoveryAccumulator.swift in Sources */,
 				AA00HD01 /* LiveHIDDescriptorInspector.swift in Sources */,

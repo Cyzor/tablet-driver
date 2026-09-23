@@ -435,29 +435,6 @@
         }
       }
     },
-    "(changing)" : {
-      "comment" : "Appended to the raw-capture ticker when the flags byte differs from the previous poll",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(ändert sich)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(cambiando)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "（変化中）"
-          }
-        }
-      }
-    },
     "(Charging)" : {
       "comment" : "Suffix when device is charging, e.g. '85%  (Charging)'",
       "localizations" : {
@@ -1031,59 +1008,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld pt"
-          }
-        }
-      }
-    },
-    "%lld reports" : {
-      "comment" : "Live report count while raw capture is running",
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Report"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Reports"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld reporte"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld reportes"
-                }
-              }
-            }
-          }
-        },
-        "ja" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld件のレポート"
-                }
-              }
-            }
           }
         }
       }
@@ -2363,6 +2287,29 @@
         }
       }
     },
+    "Another tablet's window is collecting data right now. Finish that one first." : {
+      "comment" : "Description below the Collect Device Data button when another window owns the recording\nHelp text when data collection is unavailable because another window owns the recording",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ein anderes Fenster erfasst gerade Daten. Schließ das zuerst ab."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Otra ventana está recopilando datos ahora mismo. Termina esa primero."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "別のタブレットのウィンドウがデータを収集中です。先にそちらを終了してください。"
+          }
+        }
+      }
+    },
     "App       : MockTab %@ (build %@)" : {
       "comment" : "Diagnostic: app version and build number",
       "localizations" : {
@@ -3528,6 +3475,29 @@
         }
       }
     },
+    "Checkmarks show what MockTab recognized. Rows can stay blank for controls your tablet doesn't have, or ones it can't read yet — everything your tablet sends is recorded either way." : {
+      "comment" : "Footnote under the data collection checklist explaining that unticked rows are not a failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Häkchen zeigen, was MockTab erkannt hat. Zeilen bleiben leer für Bedienelemente, die dein Gerät nicht hat oder noch nicht gelesen werden können — aufgezeichnet wird trotzdem alles."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Las marcas indican lo que MockTab reconoció. Algunas filas quedan vacías si tu tableta no tiene ese control o aún no se puede leer: todo lo que envía se registra igualmente."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "チェックはMockTabが認識した操作を示します。タブレットにない操作や、まだ解析できない操作は空欄のままです。送信された内容はすべて記録されます。"
+          }
+        }
+      }
+    },
     "Choose a MockTab backup file to import" : {
       "comment" : "File picker message for importing backup",
       "localizations" : {
@@ -3971,52 +3941,6 @@
         }
       }
     },
-    "Collect Full Diagnostics…" : {
-      "comment" : "Button label: start guided data collection plus a silent raw capture together (Option-revealed)",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vollständige Diagnose erfassen…"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recopilar diagnóstico completo…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "完全な診断データを収集…"
-          }
-        }
-      }
-    },
-    "Collect tablet details for support, plus a full raw+decoded capture in the background. Creates larger files for detailed analysis." : {
-      "comment" : "Description below the Collect Full Diagnostics button",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sammelt Tablet-Details für den Support und zusätzlich im Hintergrund eine vollständige Roh- und Decodier-Aufzeichnung. Erzeugt größere Dateien für die detaillierte Analyse."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recopila los datos de la tableta para soporte y, además, una captura completa sin procesar y decodificada en segundo plano. Genera archivos más grandes para un análisis detallado."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "サポート用のタブレット詳細情報に加え、バックグラウンドで完全な生データとデコード済みデータの記録も行います。詳細な分析のためファイルサイズは大きくなります。"
-          }
-        }
-      }
-    },
     "Collect tablet details for support. May take a few minutes. Hold ⌥ for raw capture." : {
       "comment" : "Description below the Collect Device Data button",
       "extractionState" : "stale",
@@ -4041,25 +3965,25 @@
         }
       }
     },
-    "Collect tablet details for support. May take a few minutes. Hold ⌥ to also record a full raw capture." : {
+    "Collect tablet details for support. Saves one zip file containing a summary and a full recording of what your tablet sent." : {
       "comment" : "Description below the Collect Device Data button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tablet-Details für den Support sammeln. Kann ein paar Minuten dauern. ⌥ gedrückt halten, um zusätzlich eine vollständige Rohdatenaufzeichnung zu erstellen."
+            "state" : "needs_review",
+            "value" : "Sammelt Tablet-Details für den Support. Speichert eine ZIP-Datei mit Zusammenfassung und vollständiger Aufzeichnung."
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recopila los datos de la tableta para soporte. Puede tardar unos minutos. Mantén ⌥ para grabar además una captura completa sin procesar."
+            "state" : "needs_review",
+            "value" : "Recopila detalles de la tableta para soporte. Guarda un zip con un resumen y la grabación completa."
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "サポート用にタブレットの詳細情報を収集します。数分かかる場合があります。⌥を押したままにすると、完全な生データの記録も同時に行います。"
+            "state" : "needs_review",
+            "value" : "サポート用にタブレットの詳細を収集します。概要と完全な記録を含むzipファイルを1つ保存します。"
           }
         }
       }
@@ -9980,29 +9904,6 @@
         }
       }
     },
-    "Last report 0x%02X byte2: 0x%02X%@" : {
-      "comment" : "Live raw-capture ticker: report ID and flags byte, with a trailing '(changing)' marker appended in code when the value differs from the previous poll",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Letzter Report 0x%02X Byte2: 0x%02X%@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Último informe 0x%02X byte2: 0x%02X%@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "直近のレポート 0x%02X byte2: 0x%02X%@"
-          }
-        }
-      }
-    },
     "Launch at Login" : {
       "comment" : "Menu toggle: start app automatically on login\nRow label in Info tab status table",
       "localizations" : {
@@ -11741,29 +11642,6 @@
         }
       }
     },
-    "No proximity recognized yet" : {
-      "comment" : "Warning shown during raw capture when the decoder has never seen the pen as in-range",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch keine Nähe erkannt"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aún no se detecta proximidad"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "まだ近接を検出していません"
-          }
-        }
-      }
-    },
     "No tablet data found in this file." : {
       "comment" : "Import error — backup file has no tablet entries",
       "localizations" : {
@@ -12229,6 +12107,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "レジストリにありません — このタブレットが接続されるとプロファイルが利用可能になります。"
+          }
+        }
+      }
+    },
+    "Not yet recorded" : {
+      "comment" : "Accessibility value for a data-collection checklist row with no matching activity yet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Noch nicht erfasst"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aún sin registrar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "未記録"
           }
         }
       }
@@ -14228,6 +14129,7 @@
     },
     "Record everything the tablet sends. Creates large files for detailed analysis." : {
       "comment" : "Description below the Record Raw Data button",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -14302,6 +14204,29 @@
         }
       }
     },
+    "Recorded" : {
+      "comment" : "Accessibility value for a satisfied data-collection checklist row",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Erfasst"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Registrado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "記録済み"
+          }
+        }
+      }
+    },
     "Records details about your tablet for analysis." : {
       "comment" : "Subtitle for device data collection when tablet is not yet supported",
       "localizations" : {
@@ -14325,54 +14250,25 @@
         }
       }
     },
-    "Records the guided statistical summary and a full raw+decoded capture at the same time — two files from one session." : {
-      "comment" : "Help text for the Collect Full Diagnostics button",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erstellt die geführte statistische Zusammenfassung und gleichzeitig eine vollständige Roh- und Decodier-Aufzeichnung — zwei Dateien aus einer Sitzung."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Genera el resumen estadístico guiado y, al mismo tiempo, una captura completa sin procesar y decodificada — dos archivos en una sola sesión."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ガイド付きの統計サマリーと、完全な生データ・デコード済みデータの記録を同時に作成します。1回のセッションで2つのファイルが得られます。"
-          }
-        }
-      }
-    },
-    "Records what your tablet sends to the Mac and saves it as a small JSON file you can share." : {
+    "Records what your tablet sends to the Mac and saves it as a zip file you can share." : {
       "comment" : "Help text for the Collect Device Data button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zeichnet auf, was dein Grafiktablett an den Mac sendet, und speichert es als kleine JSON-Datei zum Teilen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Records what your tablet sends to the Mac and saves it as a small JSON file you can share."
+            "state" : "needs_review",
+            "value" : "Zeichnet auf, was dein Grafiktablett an den Mac sendet, und speichert es als ZIP-Datei zum Teilen."
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Graba lo que tu tableta envía al Mac y lo guarda como un archivo JSON pequeño que puedes compartir."
+            "state" : "needs_review",
+            "value" : "Registra lo que tu tableta envía al Mac y lo guarda en un archivo zip que puedes compartir."
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "タブレットがMacに送信する内容を記録し、共有できる小さなJSONファイルとして保存します。"
+            "state" : "needs_review",
+            "value" : "タブレットがMacに送信する内容を記録し、共有できるzipファイルとして保存します。"
           }
         }
       }
@@ -17646,6 +17542,29 @@
         }
       }
     },
+    "Some of what your tablet sent isn't recognized yet. That data is in the file and is exactly what's needed to add support." : {
+      "comment" : "Shown during collection when reports arrived that no decoder could read",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ein Teil der gesendeten Daten wird noch nicht erkannt. Genau diese Daten stehen in der Datei und werden für die Unterstützung gebraucht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Parte de lo que envió tu tableta aún no se reconoce. Esos datos están en el archivo y son justo lo necesario para añadir compatibilidad."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "タブレットが送信した一部はまだ認識できていません。そのデータはファイルに含まれており、対応を追加するために必要なものです。"
+          }
+        }
+      }
+    },
     "Source Code" : {
       "comment" : "Link label: view source code on GitHub",
       "extractionState" : "stale",
@@ -17984,29 +17903,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "停止して破棄"
-          }
-        }
-      }
-    },
-    "Stop Capture" : {
-      "comment" : "Button label: stop raw HID capture",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aufzeichnung stoppen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Detener captura"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "記録を停止"
           }
         }
       }

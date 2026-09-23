@@ -1348,6 +1348,14 @@ final class WacomKnownDevice: TabletDevice {
             registeredInterfaces.count > 1
             ? "\(name) [\(ObjectIdentifier(captureInterface).hashValue & 0xFFFF)]" : name
         HIDCapture.shared.record(tag: captureTag, report: report, length: length, decoded: results)
+        // An empty decode on a device we otherwise know is exactly the
+        // interesting case — the Xencelabs dongle's report 0x02 delivered 627
+        // such samples in one session (Quick Keys traffic nothing claims).
+        if results.isEmpty {
+            CaptureActivityProbe.noteUndecoded()
+        } else {
+            CaptureActivityProbe.note(results)
+        }
         if deviceSpec.parser == .xencelabs, !results.isEmpty {
             xencelabsLastReportAt = DispatchTime.now().uptimeNanoseconds
         }

@@ -316,6 +316,27 @@ final class TabletManager: ObservableObject {
         activeContext?.injector
     }
 
+    // MARK: - Known vendors
+
+    /// Every USB vendor whose tablets MockTab recognizes, decoded or not.
+    ///
+    /// Drives both this manager's device matching and the scope of a
+    /// diagnostic collection run (`DiagnosticSession.knownVendorDevices`) —
+    /// one list so the two can't drift. Gated by vendor ID rather than by
+    /// product name on purpose: names lie. Xencelabs hardware reports itself
+    /// as "HANVON UGEE", so any name-based match would miss it.
+    ///
+    /// - 0x056A Wacom.
+    /// - 0x0531 Wacom Technology Corp. — a second Wacom VID used by the
+    ///   consumer "Wacom One" CTC line (CTC-4110WL/6110WL). Confirmed via
+    ///   Linux's device-ID table and libwacom, not just OTD (see
+    ///   WacomDeviceRegistry's CTC section) — routed the same as 0x056A in
+    ///   `vendorGate` below.
+    /// - 0x256C Huion (recognition only).
+    /// - 0x28BD Xencelabs / XP-Pen (recognition only).
+    /// - 0x5543 UC-Logic OEMs (recognition only).
+    static let knownVendorIDs: [Int] = [0x056A, 0x0531, 0x256C, 0x28BD, 0x5543]
+
     // MARK: - Init
 
     private init() {
@@ -325,26 +346,16 @@ final class TabletManager: ObservableObject {
     func start() {
         IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
 
-        // Primary match: Wacom (VID 0x056A) — the only vendor we actually decode.
-        //
-        // Secondary matches: Huion, Xencelabs/XP-Pen, UC-Logic — vendors covered
-        // by VendorDeviceRegistry.  These devices are *not* decoded; deviceConnected
-        // logs them by name and returns immediately, so the user can see in
-        // `log show --predicate 'subsystem == "com.cyzor.mocktab"'` that the device
-        // was recognised even though MockTab can't drive it yet.  This keeps the
-        // unknown-device discovery flow honest: "your tablet is a Huion H1060P,
-        // and we don't support it" beats "your tablet is invisible to us."
-        let matching: [[String: Any]] = [
-            [kIOHIDVendorIDKey: 0x056A as NSNumber],  // Wacom
-            // Wacom Technology Corp. — a second Wacom VID used by the
-            // consumer "Wacom One" CTC line (CTC-4110WL/6110WL). Confirmed
-            // via Linux's device-ID table and libwacom, not just OTD (see
-            // WacomDeviceRegistry's CTC section) — routed the same as
-            // 0x056A in vendorGate below.
-            [kIOHIDVendorIDKey: 0x0531 as NSNumber],  // Wacom Technology Corp.
-            [kIOHIDVendorIDKey: 0x256C as NSNumber],  // Huion (recognition only)
-            [kIOHIDVendorIDKey: 0x28BD as NSNumber],  // Xencelabs / XP-Pen (recognition only)
-            [kIOHIDVendorIDKey: 0x5543 as NSNumber],  // UC-Logic OEMs (recognition only)
+        // Matched by vendor (see `knownVendorIDs`). Only Wacom is actually
+        // decoded; the rest are recognition-only — deviceConnected logs them
+        // by name and returns, so the user can see in
+        // `log show --predicate 'subsystem == "com.cyzor.mocktab"'` that the
+        // device was recognised even though MockTab can't drive it yet. This
+        // keeps the unknown-device discovery flow honest: "your tablet is a
+        // Huion H1060P, and we don't support it" beats "your tablet is
+        // invisible to us."
+        let matching: [[String: Any]] =
+            Self.knownVendorIDs.map { [kIOHIDVendorIDKey: $0 as NSNumber] } + [
             // Universal floor: any vendor's standards-compliant pen digitizer
             // (top-level usage Digitizer/Pen). Matching on the Pen usage — not
             // just the page — excludes trackpads (0x05) and touch screens (0x04),

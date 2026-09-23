@@ -30,26 +30,17 @@ struct InfoView: View {
     @State private var diagnosticSnapshotAt = Date()
     @State private var conflicts: [ConflictFinding] = []
     @State private var showCaptureGuide = false
-    /// Set when the guide sheet was opened with Option held — pairs a silent
-    /// `HIDCapture` recording with the guided collection so one click nets
-    /// both files. Not shown in the sheet's own UI.
-    @State private var captureGuideAlsoRecordsRaw = false
     @State private var rawCaptureRunning = false
+    /// True when a *different* window's session holds the process-wide raw
+    /// capture. Shown as a disabled button rather than a silent no-op: the
+    /// singleton can only serve one session, and a button that appears to do
+    /// nothing is worse than one that says why.
+    @State private var rawCaptureHeldElsewhere = false
     @State private var rawCaptureReportCount = 0
-    @State private var rawCaptureLastSample: HIDCapture.LiveSample?
-    /// Byte-2 value one poll ago, purely to render "(changing)".
-    @State private var rawCapturePreviousByte2: UInt8?
     @State private var rawCaptureSavedURL: URL?
     /// Polls `HIDCapture.shared.reportCount` while running — no publisher on
     /// the capture buffer, and a per-report UI update would be wasteful.
     @State private var rawCaptureCountTimer: Timer?
-    /// Reveals the raw+decoded capture tool in place of "Collect Device
-    /// Data…" while Option is held — same convention as `AppOverrideBar`'s
-    /// Reset/Remove All swap. Live-tracked for the label; the action itself
-    /// re-reads `NSEvent.modifierFlags` at click time in case Option was
-    /// released since the last render.
-    @State private var optionKeyDown = false
-    @State private var optionKeyMonitor: Any?
     /// Refreshes the diagnostic snapshot on mouse-up; active only while the
     /// panel is expanded — see `.onChange(of: diagnosticsExpanded)` below.
     @State private var mouseUpMonitor: Any?
@@ -67,6 +58,10 @@ struct InfoView: View {
     /// Per-window, not a shared singleton — two tablet windows collecting
     /// data must not see each other's state.
     @StateObject private var captureEngine = CaptureEngine()
+    /// Owns this window's claim on the process-wide raw-capture buffer, so
+    /// both collectors start and stop as one run. Per-window for the same
+    /// reason `captureEngine` is.
+    @State private var diagnosticSession = DiagnosticSession()
 
     var body: some View {
         SettingsPane(
@@ -104,10 +99,10 @@ struct InfoView: View {
         }
         .onAppear {
             refresh()
-            // HIDCapture.shared keeps recording/flushing across tab
-            // switches; only this view's poll timer stops on disappear —
-            // resume it here, or catch up on an auto-stop that happened
-            // while this view wasn't around to notice.
+            // A capture only runs while the guide sheet is up, but this view
+            // can still disappear under it (tab switch), stopping the poll
+            // timer. Resume it, or catch up on the 30-minute auto-stop if
+            // that fired while we weren't watching.
             if rawCaptureRunning {
                 if !HIDCapture.shared.isCapturing {
                     finishRawCaptureTeardown()
@@ -115,42 +110,16 @@ struct InfoView: View {
                     startRawCapturePollTimer()
                 }
             }
-            optionKeyDown = NSEvent.modifierFlags.contains(.option)
-            if optionKeyMonitor == nil {
-                optionKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
-                    optionKeyDown = event.modifierFlags.contains(.option)
-                    return event
-                }
-            }
+            rawCaptureHeldElsewhere = DiagnosticSession.rawCaptureHeldByOther(than: diagnosticSession)
         }
         .onDisappear {
             rawCaptureCountTimer?.invalidate()
             rawCaptureCountTimer = nil
-            if let optionKeyMonitor { NSEvent.removeMonitor(optionKeyMonitor) }
-            optionKeyMonitor = nil
-            optionKeyDown = false
         }
-        // Escape/Cmd-. end a raw capture session, same as clicking Stop.
-        // `.onExitCommand` alone doesn't reliably fire here — SettingsPane's
-        // List/Form claims the key view loop for row navigation — so these
-        // route through AppKit's command dispatch instead via
-        // `.keyboardShortcut`, which works regardless of first responder.
-        // Only present in the hierarchy while a capture is running, so
-        // neither shortcut is claimed the rest of the time.
-        .background {
-            if rawCaptureRunning {
-                Button("", action: stopRawCapture)
-                    .keyboardShortcut(.cancelAction)
-                    .buttonStyle(.plain)
-                    .frame(width: 0, height: 0)
-                    .accessibilityHidden(true)
-                Button("", action: stopRawCapture)
-                    .keyboardShortcut(".", modifiers: .command)
-                    .buttonStyle(.plain)
-                    .frame(width: 0, height: 0)
-                    .accessibilityHidden(true)
-            }
-        }
+        // No Escape/Cmd-. handlers here any more. They existed to stop a
+        // standalone raw capture, which can no longer run without the guide
+        // sheet — and while that sheet is up it owns Escape itself, so
+        // claiming the shortcut from underneath would only fight it.
         .onReceive(
             NotificationCenter.default.publisher(
                 for: NSApplication.didBecomeActiveNotification)
@@ -162,14 +131,29 @@ struct InfoView: View {
                 productID: productID ?? 0,
                 onDismiss: {
                     showCaptureGuide = false
-                    if captureGuideAlsoRecordsRaw {
-                        captureGuideAlsoRecordsRaw = false
-                        // Same teardown as a manual Stop, so state stays
-                        // consistent either way.
-                        stopRawCapture()
-                    }
+                    // Usually already stopped by onFinalizeRawCapture; this
+                    // covers Cancel, where no package is built.
+                    if rawCaptureRunning { stopRawCapture() }
+                    rawCaptureHeldElsewhere = DiagnosticSession.rawCaptureHeldByOther(
+                        than: diagnosticSession)
+                },
+                onFinalizeRawCapture: {
+                    guard rawCaptureRunning else { return nil }
+                    finishRawCaptureTeardown()
+                    return rawCaptureSavedURL
                 }
             )
+            // Backstop, not the primary path: the raw capture starts before
+            // the sheet is presented, so a dismissal route that skips
+            // `onDismiss` — a startup error, Escape, or a future third exit
+            // — would otherwise leave it recording with no UI to stop it.
+            // Tied to the sheet's own disappearance, which every route
+            // reaches. Idempotent via `ownsRawCapture`.
+            .onDisappear {
+                if rawCaptureRunning { stopRawCapture() }
+                rawCaptureHeldElsewhere = DiagnosticSession.rawCaptureHeldByOther(
+                    than: diagnosticSession)
+            }
         }
     }
 
@@ -462,54 +446,33 @@ struct InfoView: View {
 
     // MARK: - HID capture section
 
-    /// One button. Default is "Collect Device Data…"
-    /// (`CaptureGuideView`/`DiscoveryAccumulator`), a statistical summary for
-    /// first-contact triage. Holding Option additionally arms a silent
-    /// `HIDCapture` recording for the same session — a second file appears
-    /// alongside the guide's JSON when the user clicks Done.
+    /// One button: "Collect Device Data…", which opens `CaptureGuideView`
+    /// and records both the statistical summary and the full raw log for the
+    /// same session, packaged into one zip.
+    ///
+    /// There is deliberately no running/stopped state here. The raw capture
+    /// used to be startable on its own (and Option-armable alongside the
+    /// sheet), so this section carried its own Stop button and live counter
+    /// — which left the window showing an active recording after the sheet
+    /// was cancelled. The capture's lifetime is now exactly the sheet's.
     private var captureSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                if rawCaptureRunning && !showCaptureGuide {
-                    // The guide sheet's modal covers this section while
-                    // open, even though the paired capture keeps running
-                    // underneath.
-                    Button(String(localized: "Stop Capture", comment: "Button label: stop raw HID capture")) {
-                        stopRawCapture()
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 6, height: 6)
-                        Text(String(localized: "\(rawCaptureReportCount) reports", comment: "Live report count while raw capture is running"))
-                            .appFont(.settingsLabel)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                } else {
-                    Button(
-                        optionKeyDown
-                            ? String(localized: "Collect Full Diagnostics…", comment: "Button label: start guided data collection plus a silent raw capture together (Option-revealed)")
-                            : String(localized: "Collect Device Data…", comment: "Button label: start device data collection")
-                    ) {
-                        // Re-read at click time — Option may have been
-                        // released since the last render (see
-                        // startRawCapture for the same guard).
-                        if NSEvent.modifierFlags.contains(.option) {
-                            captureGuideAlsoRecordsRaw = true
-                            startRawCapture()
-                        }
+                Button(String(localized: "Collect Device Data…", comment: "Button label: start device data collection")) {
+                        // Always records both the summary and the full log —
+                        // the raw capture used to be Option-only, which meant
+                        // the default path produced half the evidence and a
+                        // follow-up round to ask for the rest.
+                        startRawCapture()
                         showCaptureGuide = true
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .disabled(rawCaptureHeldElsewhere)
                     .help(
-                        optionKeyDown
-                            ? String(localized: "Records the guided statistical summary and a full raw+decoded capture at the same time — two files from one session.", comment: "Help text for the Collect Full Diagnostics button")
-                            : String(localized: "Records what your tablet sends to the Mac and saves it as a small JSON file you can share.", comment: "Help text for the Collect Device Data button"))
-                }
+                        rawCaptureHeldElsewhere
+                            ? String(localized: "Another tablet's window is collecting data right now. Finish that one first.", comment: "Help text when data collection is unavailable because another window owns the recording")
+                            : String(localized: "Records what your tablet sends to the Mac and saves it as a zip file you can share.", comment: "Help text for the Collect Device Data button"))
                 Spacer()
                 if let url = rawCaptureSavedURL {
                     Button {
@@ -523,64 +486,25 @@ struct InfoView: View {
                 }
             }
 
-            if rawCaptureRunning {
-                rawCaptureLiveTicker
-            }
-
             Text(
-                optionKeyDown
-                    ? String(localized: "Collect tablet details for support, plus a full raw+decoded capture in the background. Creates larger files for detailed analysis.", comment: "Description below the Collect Full Diagnostics button")
-                    : rawCaptureRunning
-                        ? String(localized: "Record everything the tablet sends. Creates large files for detailed analysis.", comment: "Description below the Record Raw Data button")
-                        : String(localized: "Collect tablet details for support. May take a few minutes. Hold ⌥ to also record a full raw capture.", comment: "Description below the Collect Device Data button")
+                rawCaptureHeldElsewhere
+                    ? String(localized: "Another tablet's window is collecting data right now. Finish that one first.", comment: "Description below the Collect Device Data button when another window owns the recording")
+                    : String(localized: "Collect tablet details for support. Saves one zip file containing a summary and a full recording of what your tablet sent.", comment: "Description below the Collect Device Data button")
             )
             .appFont(.settingsLabel)
             .foregroundStyle(.tertiary)
         }
     }
 
-    /// Shows the most recent report's ID and flags byte updating live, plus a
-    /// nudge if proximity has never been recognized yet — gives the user
-    /// something visibly reacting the instant they touch the pen down.
-    @ViewBuilder
-    private var rawCaptureLiveTicker: some View {
-        if let sample = rawCaptureLastSample {
-            VStack(alignment: .leading, spacing: 2) {
-                if let byte2 = sample.lastByte2 {
-                    let changing = byte2 != rawCapturePreviousByte2
-                    Text(
-                        String(
-                            format: String(
-                                localized: "Last report 0x%02X byte2: 0x%02X%@",
-                                comment: "Live raw-capture ticker: report ID and flags byte, with a trailing '(changing)' marker appended in code when the value differs from the previous poll"),
-                            sample.reportID, byte2,
-                            changing
-                                ? " " + String(localized: "(changing)", comment: "Appended to the raw-capture ticker when the flags byte differs from the previous poll")
-                                : "")
-                    )
-                    .appFont(.settingsLabel)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                }
-                if sample.inProximity != true {
-                    Label(
-                        String(localized: "No proximity recognized yet", comment: "Warning shown during raw capture when the decoder has never seen the pen as in-range"),
-                        systemImage: "exclamationmark.triangle")
-                    .appFont(.settingsLabel)
-                    .foregroundStyle(.orange)
-                }
-            }
-        }
-    }
 
     /// Starts `HIDCapture` and arms the UI-side polling for the live ticker
-    /// and report count. Used both standalone and as the companion capture
-    /// `captureGuideAlsoRecordsRaw` arms alongside the guide sheet.
+    /// and report count. Paired with every guided collection — see the
+    /// Collect Device Data button.
     private func startRawCapture() {
-        HIDCapture.shared.start()
+        // Refused when another window's session already holds the raw-capture
+        // singleton — starting anyway would reset its buffer mid-recording.
+        guard diagnosticSession.startRawCapture() else { return }
         rawCaptureReportCount = 0
-        rawCaptureLastSample = nil
-        rawCapturePreviousByte2 = nil
         rawCaptureSavedURL = nil
         rawCaptureRunning = true
         startRawCapturePollTimer()
@@ -590,8 +514,6 @@ struct InfoView: View {
         rawCaptureCountTimer?.invalidate()
         rawCaptureCountTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
             rawCaptureReportCount = HIDCapture.shared.reportCount
-            rawCapturePreviousByte2 = rawCaptureLastSample?.lastByte2
-            rawCaptureLastSample = HIDCapture.shared.lastSample
             // Flushing/auto-stop are owned by HIDCapture's own background
             // timer, not this poll — this only needs to notice when
             // isCapturing flips false on its own (the ceiling fired) and
@@ -603,7 +525,6 @@ struct InfoView: View {
     }
 
     private func stopRawCapture() {
-        HIDCapture.shared.stop()
         finishRawCaptureTeardown()
     }
 
@@ -614,7 +535,7 @@ struct InfoView: View {
         rawCaptureCountTimer = nil
         rawCaptureReportCount = HIDCapture.shared.reportCount
         rawCaptureRunning = false
-        rawCaptureSavedURL = HIDCapture.shared.finish()
+        rawCaptureSavedURL = diagnosticSession.finishRawCapture()
     }
 
     // MARK: - Diagnostic section

@@ -128,7 +128,22 @@ struct DiscoveryResult: Codable {
     /// active at capture time there's no way to relate it to what the Touch
     /// pane UI displayed. New field is optional, so v14 readers/files still
     /// decode.
-    var captureVersion: Int = 15
+    ///
+    /// v16 adds `findings` — observations computed at export from data the
+    /// file already carried, chiefly declared-but-never-observed input
+    /// reports. Derived, not newly collected: every one of them was already
+    /// answerable from a v15 file by hand, which is precisely the problem
+    /// (see `DiscoveryFinding`). Optional, so v15 readers and files still
+    /// decode.
+    ///
+    /// v17 adds `appSettings` and makes `touchSettings` unconditional.
+    /// Settings were only ever recorded for a Wacom device whose spec
+    /// declared finger touch, so a capture from any other vendor carried no
+    /// app-side configuration at all — an Xencelabs session recorded none.
+    /// `interfaces` entries also gain `productID`/`deviceName`, needed since
+    /// a session now spans every attached device rather than one tablet. All
+    /// new fields are optional, so v16 readers and files still decode.
+    var captureVersion: Int = 17
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -165,6 +180,9 @@ struct DiscoveryResult: Codable {
     /// for a device whose spec declares finger touch — on everything else
     /// these settings are inert and would be misleading noise.
     var touchSettings: DiscoveryTouchSettings?
+    /// Mapping and pen-feel settings in force during the session. Recorded
+    /// for every device, unlike `touchSettings` — see `DiscoveryAppSettings`.
+    var appSettings: DiscoveryAppSettings?
     /// Per-stage tallies of what the touch injection pipeline did with the
     /// contacts it decoded. Present only when the pipeline saw at least one
     /// frame, so a pen-only session doesn't carry a block of zeroes.
@@ -172,6 +190,10 @@ struct DiscoveryResult: Codable {
     /// RSSI/link-quality samples taken during the session, Bluetooth only.
     /// See `captureVersion` 13's doc line for the address-match caveat.
     var bluetoothLink: DiscoveryBluetoothLink?
+    /// Precomputed observations for triage — see `DiscoveryFinding`. Omitted
+    /// when nothing notable was found, so a clean capture doesn't carry an
+    /// empty block.
+    var findings: [DiscoveryFinding]?
     var notes: String?
     var submitterContact: String?
 }
@@ -197,6 +219,136 @@ struct DiscoveryBluetoothLink: Codable {
     let rawRSSIMin: Int?
     let rawRSSIMax: Int?
     let rawRSSIAvg: Double?
+}
+
+/// One precomputed observation, for whoever triages the file.
+///
+/// Not shown to the user — they know it's broken and want it fixed. The
+/// reader is a maintainer holding several near-identical files days later,
+/// and the deciding facts must be *derived* by comparing keys across every
+/// interface. On issue #14 "the pen report never fired" was derivable from
+/// the first file and went unnoticed for three rounds.
+///
+/// Observations, never verdicts: "these declared reports never arrived" is a
+/// fact; "the pen is broken" would be wrong for a user who never touched it
+/// down.
+struct DiscoveryFinding: Codable {
+    /// Stable machine-readable kind, so tooling can group findings without
+    /// parsing prose.
+    let kind: String
+    /// Which device this is about, as hex product ID — findings now span a
+    /// whole desk, not one tablet.
+    var productID: String?
+    /// One plain sentence stating the observation.
+    let detail: String
+}
+
+/// Derive triage observations from a finished result.
+///
+/// A free function, not a `CaptureEngine` method: it needs no device, session
+/// or main actor, which lets `tools/tests/capture-findings-tests` run it
+/// against real capture files without linking AppKit. Collects nothing new.
+func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
+    var found: [DiscoveryFinding] = []
+    let pid = result.deviceInfo.productID
+
+    // Every interface — the silent one is usually the interesting one.
+    let allInterfaces:
+        [(LiveHIDDescriptorInspector.Parsed?, [String: DiscoveryReportSummary], String?)] =
+        result.interfaces.map { list in
+            list.map { iface in
+                // Named so several findings from one device don't read as
+                // the same line repeated.
+                let label = [iface.usagePage, iface.usage]
+                    .compactMap { $0 }
+                    .joined(separator: "/")
+                return (iface.hidReportDescriptor, iface.reports, label.isEmpty ? nil : label)
+            }
+        } ?? [(result.hidReportDescriptor, result.reports, nil)]
+
+    for (descriptor, reports, interfaceLabel) in allInterfaces {
+        guard let descriptor else { continue }
+        // Descriptor keys are "<direction>:0x<id>", `reports` bare "0x<id>"
+        // — same ID formatting, so dropping the prefix is enough.
+        let declared = descriptor.reports.keys
+            .filter { $0.hasPrefix("input:") }
+            .map { String($0.dropFirst("input:".count)) }
+        let observed = Set(reports.keys)
+        let missing = declared.filter { !observed.contains($0) }.sorted()
+        guard !missing.isEmpty else { continue }
+        let noun: String = missing.count == 1 ? "report" : "reports"
+        let list: String = missing.joined(separator: ", ")
+        let seconds: String = String(format: "%.1f", result.duration)
+        let on: String = interfaceLabel.map { " on interface \($0)" } ?? ""
+        let detail: String =
+            "Declared input \(noun) \(list)\(on) never arrived during \(seconds)s."
+        found.append(
+            DiscoveryFinding(
+                kind: "declaredReportsNeverObserved", productID: pid, detail: detail))
+    }
+
+    // Already in `notes` as prose; here as a structured fact.
+    if result.observedToolCodes?.isEmpty ?? true {
+        found.append(
+            DiscoveryFinding(
+                kind: "noToolCodeObserved",
+                productID: pid,
+                detail: "No pen tool code was observed — no pen entered proximity this session."))
+    }
+
+    // A setting that independently explains the symptom.
+    if result.touchSettings?.touchEnabled == false {
+        found.append(
+            DiscoveryFinding(
+                kind: "touchDisabledInSettings",
+                productID: pid,
+                detail: "Finger touch was switched off in MockTab's settings during this capture."))
+    }
+
+    return found
+}
+
+/// The app-side settings in force during a capture.
+///
+/// A capture records what the *device* sent, which is half the picture when
+/// reports arrive well-formed and nothing happens. Each field here can
+/// independently explain a symptom: a flattened pressure curve reads as "no
+/// pressure", a cropped area as "the pen only reaches part of the screen".
+///
+/// Excluded because they identify the user rather than explain behavior:
+/// per-app override bundle IDs, nicknames, serial numbers. Button bindings
+/// too — which key a button sends has never been the thing in doubt, only
+/// whether its report arrived, which `reports` answers.
+struct DiscoveryAppSettings: Codable {
+    // Mapping — explains "the pen reaches the wrong part of the screen".
+    var activeAreaX: Double?
+    var activeAreaY: Double?
+    var activeAreaWidth: Double?
+    var activeAreaHeight: Double?
+    var proportionalMapping: Bool?
+    var tabletOrientationRawValue: Int?
+    var targetDisplayIndex: Int?
+    var displayRegionX: Double?
+    var displayRegionY: Double?
+    var displayRegionWidth: Double?
+    var displayRegionHeight: Double?
+    /// True when a calibration has been applied at all. The entries
+    /// themselves are a per-user measurement, and their presence is the part
+    /// that explains an offset.
+    var hasCalibration: Bool?
+
+    // Pen feel — explains "pressure is wrong" / "strokes lag or get dropped".
+    /// Control points as a compact string, the same shape `BezierCurve`
+    /// serializes to. `nil` when the curve is linear (the default), so a file
+    /// only carries it when it could be the cause.
+    var pressureCurve: String?
+    var smoothingStrength: Double?
+    var pressureSmoothingStrength: Double?
+    var dragThreshold: Double?
+    var tipUpAssistDelay: Double?
+    var doubleClickDistance: Double?
+    var relativeCursorMovement: Bool?
+    var invertRotation: Bool?
 }
 
 /// The user's touch configuration at capture time.
@@ -608,6 +760,12 @@ struct DiscoveryInterface: Codable {
     /// a touchscreen, `0xFF00`+ a vendor-private tunnel.
     var usagePage: String?
     var usage: String?
+    /// Which device this interface belongs to. Redundant while a capture
+    /// covered one tablet; required now that a session spans every
+    /// known-vendor device attached, where "interface 0xFF0A/0x0001" alone
+    /// can't say whether a silent interface is the display's or a dongle's.
+    var productID: String?
+    var deviceName: String?
     /// True for the interface whose data is also duplicated at the top level
     /// of `DiscoveryResult`. Exactly one interface has this.
     let isPrimary: Bool

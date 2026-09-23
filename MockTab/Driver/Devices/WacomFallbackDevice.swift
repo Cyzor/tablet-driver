@@ -363,6 +363,7 @@ final class WacomFallbackDevice: TabletDevice {
         // with the decoded point, so it must not also be captured here.
         if length == 0 || penDecoders[id] == nil {
             HIDCapture.shared.record(tag: tag, report: report, length: length)
+            CaptureActivityProbe.noteUndecoded()
         }
 
         // ── BLE HOGP pen report (Report ID 0x01, ≥11 bytes) ────────────
@@ -450,6 +451,7 @@ final class WacomFallbackDevice: TabletDevice {
         if let decoder = penDecoders[id] {
             if let point = decoder.decode(report: Array(UnsafeBufferPointer(start: report, count: length))) {
                 HIDCapture.shared.record(tag: tag, report: report, length: length, decoded: [.pen(point)])
+                CaptureActivityProbe.note([.pen(point)])
                 onTablet(point)
             }
             return

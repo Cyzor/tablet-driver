@@ -60,9 +60,12 @@ final class CaptureEngine: ObservableObject {
     /// `cancelDiscovery`/`finishDiscovery`. Lock-guarded because drivers call
     /// `recordRaw` from HIDThread, never the main actor.
     /// The device's touch settings as of `startDiscovery`, recorded into the
-    /// capture file. Nil for a device without finger touch, where these
-    /// settings are inert.
+    /// capture file. Nil for a device a spec says has no finger touch, where
+    /// these settings are inert.
     private var capturedTouchSettings: DiscoveryTouchSettings?
+    /// Mapping and pen-feel settings as of `startDiscovery`. Unlike touch,
+    /// recorded for every device — see `DiscoveryAppSettings`.
+    private var capturedAppSettings: DiscoveryAppSettings?
     /// Live for the session only — created in `startDiscovery` when the
     /// device is Bluetooth and a candidate address is available, torn down
     /// in `finishDiscovery`/`cancelDiscovery`. Not a standing per-device
@@ -168,7 +171,9 @@ final class CaptureEngine: ObservableObject {
         devices: [(IOHIDDevice, CaptureDeviceInfo)],
         duration: TimeInterval = 60,
         touchSettings: DiscoveryTouchSettings? = nil,
-        bluetoothAddressCandidate: String? = nil
+        appSettings: DiscoveryAppSettings? = nil,
+        bluetoothAddressCandidate: String? = nil,
+        tapped: [IOHIDDevice] = []
     ) {
         guard !devices.isEmpty else { return }
         stopTimers()
@@ -180,13 +185,23 @@ final class CaptureEngine: ObservableObject {
         // Zeroed per session so the counters describe this recording rather
         // than everything since launch.
         TouchPipelineProbe.reset()
+        CaptureActivityProbe.reset()
         capturedTouchSettings = touchSettings
+        capturedAppSettings = appSettings
         bluetoothLinkMonitor = bluetoothAddressCandidate.flatMap {
             BluetoothLinkMonitor(addressCandidate: $0)
         }
 
-        let started = devices.map {
-            InterfaceSession(device: $0.0, info: $0.1, accumulator: DiscoveryAccumulator())
+        // By registry ID, not object identity: this list mixes the driver's
+        // own interfaces with a fresh enumeration, where the same interface
+        // arrives under a different CF wrapper. One landed in a file three
+        // times, inflating its sample count and repeating its findings.
+        var seenRegistryIDs: Set<UInt64> = []
+        let started = devices.compactMap { device, info -> InterfaceSession? in
+            if let id = Self.registryID(of: device) {
+                guard seenRegistryIDs.insert(id).inserted else { return nil }
+            }
+            return InterfaceSession(device: device, info: info, accumulator: DiscoveryAccumulator())
         }
         sessions = started
         // Arm each accumulator before announcing it: a report arriving between
@@ -200,6 +215,12 @@ final class CaptureEngine: ObservableObject {
             }
         }
         isRunning = true
+        // Devices no driver is feeding need their own listener — see
+        // `openPassiveTap`. The caller marks them because it knows which
+        // interfaces belong to the tablet whose window this is (already
+        // driven, already forwarding reports) and which were swept up for
+        // breadth.
+        for device in tapped { openPassiveTap(on: device) }
 
         pollTimer = scheduledTimer(interval: 0.5, repeats: true) { [weak self] in
             guard let self, self.isRunning else { return }
@@ -241,7 +262,18 @@ final class CaptureEngine: ObservableObject {
 
     /// Whether `device` is one of the interfaces this session is recording.
     func isRecording(_ device: IOHIDDevice) -> Bool {
-        sessions.contains { $0.device === device }
+        if sessions.contains(where: { $0.device === device }) { return true }
+        // Object identity alone isn't enough: `IOHIDManagerCopyDevices` hands
+        // back a fresh wrapper each call, so a rescan using `===` re-adds the
+        // whole device set every tick — 226 interfaces in one 93s session,
+        // 224 of them silent because only the first copy was registered.
+        guard let id = Self.registryID(of: device) else { return false }
+        return sessions.contains { Self.registryID(of: $0.device) == id }
+    }
+
+    /// Stable per-interface identity — see `DiagnosticSession.registryID`.
+    private static func registryID(of device: IOHIDDevice) -> UInt64? {
+        DiagnosticSession.registryID(of: device)
     }
 
     /// Start recording one more interface on a session already under way,
@@ -254,7 +286,7 @@ final class CaptureEngine: ObservableObject {
     /// or act on, which is the same silent half-capture recording every
     /// interface exists to prevent. Never primary: the interface that named
     /// the hardware in the header keeps that role for the whole session.
-    func addInterface(device: IOHIDDevice, deviceInfo: CaptureDeviceInfo) {
+    func addInterface(device: IOHIDDevice, deviceInfo: CaptureDeviceInfo, tapped: Bool = false) {
         guard isRunning, !isRecording(device) else { return }
         let accumulator = DiscoveryAccumulator()
         accumulator.start()
@@ -262,6 +294,64 @@ final class CaptureEngine: ObservableObject {
             InterfaceSession(device: device, info: deviceInfo, accumulator: accumulator))
         let key = ObjectIdentifier(device)
         Self.activeAccumulators.withLock { $0[key] = accumulator }
+        if tapped { openPassiveTap(on: device) }
+    }
+
+    /// Interfaces this session opened itself, to be closed when it ends.
+    private var tappedDevices: [IOHIDDevice] = []
+
+    /// Listen to a device no driver has claimed.
+    ///
+    /// An armed accumulator isn't enough: `recordRaw` is only called from the
+    /// driver classes, and a device only reaches one if `TabletManager`
+    /// claimed it. Devices adopted for breadth — a second tablet, a dongle —
+    /// otherwise sit armed with nothing feeding them.
+    ///
+    /// Read-only, never written. Failure is expected and harmless: another
+    /// owner may hold the device, leaving that interface silent as before.
+    private func openPassiveTap(on device: IOHIDDevice) {
+        guard IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone)) == kIOReturnSuccess
+        else {
+            logger.info("capture tap: device already claimed, leaving it to its owner")
+            return
+        }
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: Self.tapBufferSize)
+        buffer.initialize(repeating: 0, count: Self.tapBufferSize)
+        tapBuffers[ObjectIdentifier(device)] = buffer
+        IOHIDDeviceRegisterInputReportCallback(
+            device, buffer, Self.tapBufferSize,
+            { _, _, sender, _, reportID, report, length in
+                guard let sender else { return }
+                // Straight into the accumulator table, the same path a
+                // driver's `recordRaw` takes — no decode, no ownership.
+                let device = Unmanaged<IOHIDDevice>.fromOpaque(sender).takeUnretainedValue()
+                CaptureEngine.recordRaw(
+                    device: device, reportID: reportID, pointer: report, length: length)
+                CaptureActivityProbe.noteUndecoded()
+            }, nil)
+        IOHIDDeviceScheduleWithRunLoop(
+            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+        tappedDevices.append(device)
+    }
+
+    private static let tapBufferSize = 256
+    private var tapBuffers: [ObjectIdentifier: UnsafeMutablePointer<UInt8>] = [:]
+
+    /// Unhook every passive tap. Idempotent.
+    private func closePassiveTaps() {
+        for device in tappedDevices {
+            let key = ObjectIdentifier(device)
+            if let buffer = tapBuffers[key] {
+                IOHIDDeviceRegisterInputReportCallback(device, buffer, Self.tapBufferSize, nil, nil)
+            }
+            IOHIDDeviceUnscheduleFromRunLoop(
+                device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
+            IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
+            if let buffer = tapBuffers.removeValue(forKey: key) {
+                buffer.deallocate()
+            }
+        }
+        tappedDevices = []
     }
 
     /// Events recorded across every interface — what the sheet's live counter
@@ -293,6 +383,10 @@ final class CaptureEngine: ObservableObject {
     /// `recordRaw` stops delivering reports to them. Idempotent; safe with no
     /// active session.
     private func deregisterAccumulators() {
+        // Before the early return: a tap can outlive an empty session list,
+        // and leaving one open would keep an unowned device scheduled on the
+        // run loop for the rest of the process's life.
+        closePassiveTaps()
         guard !sessions.isEmpty else { return }
         let keys = sessions.map { ObjectIdentifier($0.device) }
         Self.activeAccumulators.withLock { table in
@@ -545,6 +639,8 @@ final class CaptureEngine: ObservableObject {
                 DiscoveryInterface(
                     usagePage: session.info.usagePage.map { String(format: "0x%04X", $0) },
                     usage: session.info.usage.map { String(format: "0x%04X", $0) },
+                    productID: session.info.productIDHex,
+                    deviceName: session.info.name,
                     isPrimary: session.device === primaryDevice,
                     sampleCount: session.accumulator.sampleCount,
                     reports: Self.reportSummaries(
@@ -604,7 +700,7 @@ final class CaptureEngine: ObservableObject {
                 rawRSSIAvg: summary.rawRSSIAvg)
         }
 
-        return DiscoveryResult(
+        var result = DiscoveryResult(
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
             appBuildDate: Bundle.main.object(forInfoDictionaryKey: "MockTabBuildDate") as? String,
             capturedAt: Date(),
@@ -624,11 +720,15 @@ final class CaptureEngine: ObservableObject {
             initReports: initReportsSent.isEmpty ? nil : initReportsSent,
             observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
             touchSettings: capturedTouchSettings,
+            appSettings: capturedAppSettings,
             touchPipeline: touchPipeline.isEmpty ? nil : touchPipeline,
             bluetoothLink: discoveryBluetoothLink,
             notes: notes,
             submitterContact: nil
         )
+        let found = discoveryFindings(for: result)
+        result.findings = found.isEmpty ? nil : found
+        return result
     }
 
     /// Summarize one interface's accumulated reports.

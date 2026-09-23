@@ -191,6 +191,9 @@ final class GenericHIDDigitizer: TabletDevice {
         let me = Unmanaged<GenericHIDDigitizer>.fromOpaque(ctx).takeUnretainedValue()
         HIDCapture.shared.record(tag: me.tag, report: report, length: length)
         CaptureEngine.recordRaw(device: me.device, reportID: reportID, pointer: report, length: length)
+        // This class decodes through IOKit elements, not a report decoder —
+        // the report itself is never parsed here.
+        CaptureActivityProbe.noteUndecoded()
     }
 
     /// One element changed. Update the decode frame, then emit a fresh point.
