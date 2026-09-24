@@ -22,6 +22,23 @@ struct MarkdownBodyView: View {
     private var bodySize:    CGFloat { Self.bodyBase    + CGFloat(fontSizeStep) }
     private var headingSize: CGFloat { Self.headingBase + CGFloat(fontSizeStep) }
 
+    // Gaps track the type size so the text-size control doesn't crowd the
+    // layout at the top of its range.
+    private var paragraphGap: CGFloat { bodySize * 0.6 }
+    private var bulletGap:    CGFloat { bodySize * 0.3 }
+    private var headingGap:   CGFloat { bodySize * 3.0 }
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Headings take the system accent so help matches the rest of the UI.
+    /// Pale accents (yellow, orange) are unreadable as light-mode body text,
+    /// so mix toward black there.
+    private var headingColor: Color {
+        guard colorScheme == .light else { return .accentColor }
+        let accent = NSColor.controlAccentColor.usingColorSpace(.sRGB) ?? .controlAccentColor
+        return Color(nsColor: accent.blended(withFraction: 0.45, of: .black) ?? accent)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
@@ -77,13 +94,14 @@ struct MarkdownBodyView: View {
         case .heading(let level, let text):
             Text(text)
                 .font(.system(size: headingSize + (level == 1 ? 2 : 0), weight: .semibold))
-                .padding(.top, index == 0 ? 0 : (level == 1 ? 20 : 16))
-                .padding(.bottom, 4)
+                .foregroundStyle(headingColor)
+                .padding(.top, index == 0 ? 0 : headingGap * (level == 1 ? 1.15 : 1))
+                .padding(.bottom, bodySize * 0.35)
 
         case .paragraph(let text):
             inlineText(text)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 8)
+                .padding(.top, paragraphGap)
 
         case .bullet(let text):
             HStack(alignment: .top, spacing: 6) {
@@ -93,7 +111,7 @@ struct MarkdownBodyView: View {
                 inlineText(text)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.top, 4)
+            .padding(.top, bulletGap)
         }
     }
 
