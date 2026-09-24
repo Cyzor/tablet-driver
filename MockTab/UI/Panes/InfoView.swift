@@ -131,9 +131,11 @@ struct InfoView: View {
                 productID: productID ?? 0,
                 onDismiss: {
                     showCaptureGuide = false
-                    // Usually already stopped by onFinalizeRawCapture; this
-                    // covers Cancel, where no package is built.
-                    if rawCaptureRunning { stopRawCapture() }
+                    // Still running here means `onFinalizeRawCapture` never
+                    // ran — the user cancelled. Discard rather than finalize:
+                    // no package is built around it, so saving would leave a
+                    // partial recording behind that looks like a real one.
+                    if rawCaptureRunning { discardRawCapture() }
                     rawCaptureHeldElsewhere = DiagnosticSession.rawCaptureHeldByOther(
                         than: diagnosticSession)
                 },
@@ -150,7 +152,9 @@ struct InfoView: View {
             // Tied to the sheet's own disappearance, which every route
             // reaches. Idempotent via `ownsRawCapture`.
             .onDisappear {
-                if rawCaptureRunning { stopRawCapture() }
+                // Same reasoning as `onDismiss`: reaching here still running
+                // means no package was built, so the recording is incomplete.
+                if rawCaptureRunning { discardRawCapture() }
                 rawCaptureHeldElsewhere = DiagnosticSession.rawCaptureHeldByOther(
                     than: diagnosticSession)
             }
@@ -524,8 +528,15 @@ struct InfoView: View {
         }
     }
 
-    private func stopRawCapture() {
-        finishRawCaptureTeardown()
+    /// Cancel counterpart to `finishRawCaptureTeardown`: same UI teardown, but
+    /// the recording and its partial file are thrown away instead of kept.
+    private func discardRawCapture() {
+        rawCaptureCountTimer?.invalidate()
+        rawCaptureCountTimer = nil
+        rawCaptureReportCount = 0
+        rawCaptureRunning = false
+        rawCaptureSavedURL = nil
+        diagnosticSession.cancelRawCapture()
     }
 
     /// Shared by manual Stop, Escape/Cmd-., and a detected auto-stop —

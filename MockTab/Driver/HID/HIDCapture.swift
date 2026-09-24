@@ -186,12 +186,32 @@ final class HIDCapture {
         backgroundFlushTimer = nil
     }
 
+    /// Discards the recording, including the partial file on disk.
+    ///
+    /// `start()` writes the header immediately so a crash still leaves
+    /// something valid behind, which means a cancelled capture has a real file
+    /// to clean up — dropping only the `fileURL` reference orphaned it, and
+    /// those accumulated in the capture folder as truncated `.txt` files that
+    /// look like genuine recordings.
     func clear() {
-        state.withLock {
+        let orphan: URL? = state.withLock {
             $0.samples.removeAll()
             $0.summaries.removeAll()
             $0.reportCount = 0
+            let url = $0.fileURL
             $0.fileURL = nil
+            return url
+        }
+        if let orphan {
+            do {
+                try FileManager.default.removeItem(at: orphan)
+            } catch CocoaError.fileNoSuchFile {
+                // Never flushed, so the header write is all there was — or the
+                // user already moved it. Nothing to do.
+            } catch {
+                logger.error(
+                    "HIDCapture: could not remove cancelled capture: \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
