@@ -1337,10 +1337,17 @@ final class WacomKnownDevice: TabletDevice {
             // prove non-Art-Pen; a still Art Pen also reads neutral), and
             // takes priority over the generic-synthesis fallback below since
             // both read the same point and must not double-insert.
+            //
+            // `hasValidRotationFrame` is required, not decoration: a pen with
+            // no barrel sensor never sets it, and the decoder reports 0.0
+            // until it does — which is 180° off neutral and read here as a
+            // hard twist. That mislabelled every Pro Pen 3 on this transport
+            // as an Art Pen one frame after its real announcement.
             let rotationImpliesArtPen =
                 deviceSpec.parser == .intuosV3 && isBluetooth
                 && state.currentToolCode != 0x0804 && state.currentToolCode != 0x1108
                 && (decodedPoint?.inProximity ?? false)
+                && state.hasValidRotationFrame
                 && abs((decodedPoint?.rotation ?? 180.0) - 180.0) > 2.0
             if rotationImpliesArtPen {
                 // currentToolCode only — never lastToolCode/lastSerial.
