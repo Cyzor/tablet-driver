@@ -2261,7 +2261,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab erlauben, dein Grafiktablett zu lesen. Ohne diese Berechtigung wird das Tablett erkannt, sendet aber nichts."
+            "value" : "MockTab erlauben, dein Grafiktablett zu lesen. Ohne diese Berechtigung wird es erkannt, sendet aber nichts."
           }
         },
         "es" : {
@@ -2819,13 +2819,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Las marcas indican lo que MockTab reconoció. Algunas filas quedan vacías si tu tableta no tiene ese control o aún no se puede leer: todo lo que envía se registra igualmente."
+            "value" : "Las filas vacías solo significan que MockTab no reconoció ese control; se guarda todo."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "チェックはMockTabが認識した操作を示します。タブレットにない操作や、まだ解析できない操作は空欄のままです。送信された内容はすべて記録されます。"
+            "value" : "空欄は認識できなかった操作というだけです。データはすべて保存されます。"
           }
         }
       }
@@ -4065,7 +4065,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Farbe und Helligkeit der Beleuchtung hinter den Rahmentasten. Die Hardware behält ihre eigene Farbe, bis Sie sie ändern."
+            "value" : "Farbe und Helligkeit der Beleuchtung hinter den Rahmentasten. Die Hardware behält ihre eigene Farbe, bis du sie änderst."
           }
         },
         "es" : {
@@ -6488,13 +6488,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Desliza un dedo por la tableta y luego pellizca con dos"
+            "value" : "Desliza un dedo y luego pellizca con dos"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "指1本でタブレットをなぞり、次に2本の指でピンチします"
+            "value" : "指1本でなぞり、次に2本の指でピンチします"
           }
         }
       }
@@ -6563,7 +6563,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ziehen Sie den Pfeil, um festzulegen, wo der Cursor relativ zur Stiftspitze erscheint."
+            "value" : "Zieh den Pfeil, um festzulegen, wo der Cursor relativ zur Stiftspitze erscheint."
           }
         },
         "en" : {
@@ -6689,7 +6689,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Legen Sie eine Profil-JSON-Datei hier ab, um sie zu importieren, oder ziehen Sie diesen Bereich, um das aktuelle Profil zu exportieren."
+            "value" : "Leg eine Profil-JSON-Datei hier ab, um sie zu importieren, oder zieh diesen Bereich, um das aktuelle Profil zu exportieren."
           }
         },
         "es" : {
@@ -11264,7 +11264,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wireless-Empfänger (Maus, Tastatur, Wi-Fi-Dongles) vom Tablett entfernen."
+            "value" : "Wireless-Empfänger (Maus, Tastatur, Wi-Fi-Dongles) vom Grafiktablett entfernen."
           }
         },
         "es" : {
@@ -14299,19 +14299,19 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeichne Daten deines Grafiktabletts für den Support auf."
+            "value" : "Erfasst das Verhalten deines Grafiktabletts zur Analyse."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Graba lo que envía tu tableta para que se pueda añadir compatibilidad."
+            "value" : "Recopila detalles del comportamiento de tu tableta para analizarlos."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "対応を追加できるよう、タブレットが送信する内容を記録します。"
+            "value" : "タブレットの動作の詳細を収集して解析します。"
           }
         }
       }
@@ -16259,7 +16259,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drehen Sie die aktive Fläche um 90° im Uhrzeigersinn. Halten Sie das Grafiktablett im Hochformat."
+            "value" : "Dreh die aktive Fläche um 90° im Uhrzeigersinn. Halte das Grafiktablett im Hochformat."
           }
         },
         "en" : {
@@ -16288,7 +16288,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drehen Sie die aktive Fläche um 90° gegen den Uhrzeigersinn."
+            "value" : "Dreh die aktive Fläche um 90° gegen den Uhrzeigersinn."
           }
         },
         "en" : {
@@ -16899,6 +16899,18 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Sent %1$@ = %2$@ on connect. Pen details will be missing."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Se envió %@ = %@ al conectar. Faltarán detalles del lápiz."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "接続時に %@ = %@ を送信しました。ペンの詳細が不足します。"
           }
         }
       }
@@ -17585,13 +17597,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Parte de lo que envió tu tableta aún no se reconoce. Esos datos están en el archivo y son justo lo necesario para añadir compatibilidad."
+            "value" : "Parte de los datos aún no se reconoce: justo para eso sirve el archivo."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "タブレットが送信した一部はまだ認識できていません。そのデータはファイルに含まれており、対応を追加するために必要なものです。"
+            "value" : "まだ認識できないデータもあります。このファイルはまさにそのためのものです。"
           }
         }
       }
@@ -17608,13 +17620,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Algunas tabletas no envían nada hasta que se les pide. Prueba esto si no se está grabando nada."
+            "value" : "Algunas tabletas no envían nada hasta que se les pide."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "指示を受けるまで何も送信しないタブレットもあります。何も記録されない場合に試してください。"
+            "value" : "尋ねられるまで何も送信しないタブレットもあります。"
           }
         }
       }
@@ -18692,13 +18704,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "El issue se abre con los datos de tu tableta ya rellenados. Si son demasiado grandes para el formulario, arrastra el archivo desde el Finder."
+            "value" : "El issue viene rellenado. ¿Demasiado grande para el formulario? Arrastra el archivo."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "作成されるIssueにはタブレットのデータが入力済みです。フォームに収まらない場合は、Finderからファイルをドラッグしてください。"
+            "value" : "Issueは入力済みです。フォームに収まらない場合はファイルをドラッグしてください。"
           }
         }
       }
@@ -18733,6 +18745,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das Grafiktablett hat den nötigen Einrichtungsbefehl abgelehnt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La tableta rechazó el comando de configuración necesario para enviar todos los datos."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "タブレットが、全データの送信に必要な設定コマンドを拒否しました。"
           }
         }
       }
