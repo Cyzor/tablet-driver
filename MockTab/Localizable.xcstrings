@@ -2738,7 +2738,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Batterie  : %1$lld%%%2$@"
+            "value" : "Batterie       : %1$lld%%%2$@"
           }
         },
         "en" : {
@@ -17784,7 +17784,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tempo     : %@"
+            "value" : "Tempo          : %@"
           }
         },
         "es" : {
@@ -18405,7 +18405,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tabletts  : %lld"
+            "value" : "Grafiktabletts : %lld"
           }
         },
         "es" : {
@@ -18428,7 +18428,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tabletts  : keine"
+            "value" : "Grafiktabletts : keine"
           }
         },
         "en" : {
@@ -19694,7 +19694,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transport : %@"
+            "value" : "Transport      : %@"
           }
         },
         "es" : {
