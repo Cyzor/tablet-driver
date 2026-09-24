@@ -177,8 +177,8 @@ struct CaptureGuideView: View {
 
     private var subtitle: String {
         isRecognizedTablet
-            ? String(localized: "Records what your tablet sends, to help track down a problem.", comment: "Subtitle for device data collection when tablet is already supported")
-            : String(localized: "Records details about your tablet for analysis.", comment: "Subtitle for device data collection when tablet is not yet supported")
+            ? String(localized: "Records what your tablet sends to help track down a problem.", comment: "Subtitle for device data collection when tablet is already supported")
+            : String(localized: "Collects details about your tablet's behavior for analysis.", comment: "Subtitle for device data collection when tablet is not yet supported")
     }
 
     // MARK: - Recording view
@@ -200,7 +200,7 @@ struct CaptureGuideView: View {
                         instruction("eraser.line.dashed", String(localized: "Touch the pen's eraser end to the tablet", comment: "Device data collection instruction: eraser"), .eraser)
                         instruction("rectangle.grid.2x2",    String(localized: "Press each button on the tablet", comment: "Device data collection instruction: tablet buttons"), .tabletButtons)
                         instruction("circle.dashed",          String(localized: "Slide a finger around any ring or strip", comment: "Device data collection instruction: touch ring/strip"), .ringOrStrip)
-                        instruction("hand.draw",              String(localized: "Drag one finger across the tablet, then pinch with two", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"), .fingerTouch)
+                        instruction("hand.draw",              String(localized: "Drag one finger, then pinch with two", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"), .fingerTouch)
                     }
                     .padding(.horizontal, 20)
 
@@ -545,7 +545,7 @@ struct CaptureGuideView: View {
             isExpanded: $showInitControl
         ) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(String(localized: "Try sending a signal to awaken an unresponsive tablet.  Some stay quiet unless prompted to answer.", comment: "Explanation of the advanced device mode init control in device data collection"))
+                Text(String(localized: "Some tablets stay quiet unless they're asked to answer.", comment: "Explanation of the advanced device mode init control in device data collection"))
                     .appFont(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -689,10 +689,10 @@ struct CaptureGuideView: View {
     private var checklistFootnote: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(String(
-                localized: "Checkmarks show what MockTab recognized. Rows can stay blank for controls your tablet doesn't have, or ones it can't read yet — everything your tablet sends is recorded either way.",
+                localized: "Blank rows just mean MockTab didn't recognize that control — all data is saved.",
                 comment: "Footnote under the data collection checklist explaining that unticked rows are not a failure"))
             Text(String(
-                localized: "Some of what your tablet sent isn't recognized yet. That data is in the file and is exactly what's needed to add support.",
+                localized: "Some data isn't recognized yet — that's exactly what the file is for.",
                 comment: "Shown during collection when reports arrived that no decoder could read"))
             .foregroundStyle(hasUndecodedTraffic ? AnyShapeStyle(.secondary) : AnyShapeStyle(.clear))
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: hasUndecodedTraffic)
@@ -789,7 +789,7 @@ struct CaptureGuideView: View {
                 .controlSize(.small)
             }
 
-            Text(String(localized: "The issue comes pre-filled with your tablet's data. If it's too big for the form, drag the file in from Finder.", comment: "Caption on the data-collection completion screen"))
+            Text(String(localized: "The issue comes pre-filled. Too big for the form? Drag the file in.", comment: "Caption on the data-collection completion screen"))
                 .appFont(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)

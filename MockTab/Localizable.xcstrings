@@ -2807,6 +2807,29 @@
         }
       }
     },
+    "Blank rows just mean MockTab didn't recognize that control — all data is saved." : {
+      "comment" : "Footnote under the data collection checklist explaining that unticked rows are not a failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leere Zeilen heißen nur: nicht erkannt. Aufgezeichnet wird trotzdem alles."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Las marcas indican lo que MockTab reconoció. Algunas filas quedan vacías si tu tableta no tiene ese control o aún no se puede leer: todo lo que envía se registra igualmente."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "チェックはMockTabが認識した操作を示します。タブレットにない操作や、まだ解析できない操作は空欄のままです。送信された内容はすべて記録されます。"
+          }
+        }
+      }
+    },
     "Blue" : {
       "comment" : "LED swatch name",
       "localizations" : {
@@ -3485,29 +3508,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ディスプレイ枠のボタンと同様に、パネル自体の画質設定を変更します。"
-          }
-        }
-      }
-    },
-    "Checkmarks show what MockTab recognized. Rows can stay blank for controls your tablet doesn't have, or ones it can't read yet — everything your tablet sends is recorded either way." : {
-      "comment" : "Footnote under the data collection checklist explaining that unticked rows are not a failure",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Häkchen zeigen, was MockTab erkannt hat. Zeilen bleiben leer für Bedienelemente, die dein Gerät nicht hat oder noch nicht gelesen werden können — aufgezeichnet wird trotzdem alles."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Las marcas indican lo que MockTab reconoció. Algunas filas quedan vacías si tu tableta no tiene ese control o aún no se puede leer: todo lo que envía se registra igualmente."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "チェックはMockTabが認識した操作を示します。タブレットにない操作や、まだ解析できない操作は空欄のままです。送信された内容はすべて記録されます。"
           }
         }
       }
@@ -6470,30 +6470,30 @@
         }
       }
     },
-    "Drag one finger across the tablet, then pinch with two" : {
+    "Drag one finger, then pinch with two" : {
       "comment" : "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit einem Finger übers Grafiktablett streichen, dann mit zwei Fingern zoomen"
+            "value" : "Mit einem Finger streichen, dann mit zwei Fingern zoomen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Drag one finger across the tablet, then pinch with two"
+            "value" : "Drag one finger, then pinch with two"
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Desliza un dedo por la tableta y luego pellizca con dos"
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "指1本でタブレットをなぞり、次に2本の指でピンチします"
           }
         }
@@ -14241,25 +14241,31 @@
         }
       }
     },
-    "Records details about your tablet for analysis." : {
-      "comment" : "Subtitle for device data collection when tablet is not yet supported",
+    "Records what your tablet sends to help track down a problem." : {
+      "comment" : "Subtitle for device data collection when tablet is already supported",
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Zeichnet auf, was dein Grafiktablett sendet, damit Unterstützung dafür ergänzt werden kann."
+            "state" : "translated",
+            "value" : "Zeichnet auf, was dein Grafiktablett sendet, um ein Problem zu finden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Records what your tablet sends to help track down a problem."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Graba lo que envía tu tableta para que se pueda añadir compatibilidad."
+            "value" : "Graba lo que envía tu tableta para ayudar a localizar un problema."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "対応を追加できるよう、タブレットが送信する内容を記録します。"
+            "value" : "問題の原因を突き止めるため、タブレットが送信する内容を記録します。"
           }
         }
       }
@@ -14287,31 +14293,25 @@
         }
       }
     },
-    "Records what your tablet sends, to help track down a problem." : {
-      "comment" : "Subtitle for device data collection when tablet is already supported",
+    "Collects details about your tablet's behavior for analysis." : {
+      "comment" : "Subtitle for device data collection when tablet is not yet supported",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zeichnet auf, was dein Grafiktablett sendet, um einem Problem auf die Spur zu kommen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Records what your tablet sends, to help track down a problem."
+            "value" : "Zeichne Daten deines Grafiktabletts für den Support auf."
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Graba lo que envía tu tableta para ayudar a localizar un problema."
+            "state" : "needs_review",
+            "value" : "Graba lo que envía tu tableta para que se pueda añadir compatibilidad."
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "問題の原因を突き止めるため、タブレットが送信する内容を記録します。"
+            "state" : "needs_review",
+            "value" : "対応を追加できるよう、タブレットが送信する内容を記録します。"
           }
         }
       }
@@ -16886,6 +16886,23 @@
         }
       }
     },
+    "Sent %@ = %@ on connect. Pen details will be missing." : {
+      "comment" : "Detail line naming the rejected automatic init write and its consequence",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Verbinden %@ = %@ gesendet. Stiftdetails fehlen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Sent %1$@ = %2$@ on connect. Pen details will be missing."
+          }
+        }
+      }
+    },
     "Serial" : {
       "comment" : "Live Input table row label — tool serial number",
       "localizations" : {
@@ -17556,13 +17573,13 @@
         }
       }
     },
-    "Some of what your tablet sent isn't recognized yet. That data is in the file and is exactly what's needed to add support." : {
+    "Some data isn't recognized yet — that's exactly what the file is for." : {
       "comment" : "Shown during collection when reports arrived that no decoder could read",
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Ein Teil der gesendeten Daten wird noch nicht erkannt. Genau diese Daten stehen in der Datei und werden für die Unterstützung gebraucht."
+            "state" : "translated",
+            "value" : "Manches wird noch nicht erkannt — genau dafür ist die Datei da."
           }
         },
         "es" : {
@@ -17575,6 +17592,29 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "タブレットが送信した一部はまだ認識できていません。そのデータはファイルに含まれており、対応を追加するために必要なものです。"
+          }
+        }
+      }
+    },
+    "Some tablets stay quiet unless they're asked to answer." : {
+      "comment" : "Explanation of the advanced device mode init control in device data collection",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manche Grafiktabletts senden erst, wenn man sie dazu auffordert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Algunas tabletas no envían nada hasta que se les pide. Prueba esto si no se está grabando nada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "指示を受けるまで何も送信しないタブレットもあります。何も記録されない場合に試してください。"
           }
         }
       }
@@ -18634,30 +18674,30 @@
         }
       }
     },
-    "The issue comes pre-filled with your tablet's data. If it's too big for the form, drag the file in from Finder." : {
+    "The issue comes pre-filled. Too big for the form? Drag the file in." : {
       "comment" : "Caption on the data-collection completion screen",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Issue ist mit den Daten deines Grafiktabletts vorausgefüllt. Wenn es zu groß fürs Formular ist, zieh die Datei aus dem Finder hinein."
+            "value" : "Das Issue ist vorausgefüllt. Zu groß fürs Formular? Datei hineinziehen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "The issue comes pre-filled with your tablet's data. If it's too big for the form, drag the file in from Finder."
+            "value" : "The issue comes pre-filled. Too big for the form? Drag the file in."
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "El issue se abre con los datos de tu tableta ya rellenados. Si son demasiado grandes para el formulario, arrastra el archivo desde el Finder."
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "作成されるIssueにはタブレットのデータが入力済みです。フォームに収まらない場合は、Finderからファイルをドラッグしてください。"
           }
         }
@@ -18682,6 +18722,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Linux Wacom Project"
+          }
+        }
+      }
+    },
+    "The tablet refused the setup command it needs to report fully." : {
+      "comment" : "Warning that the driver's own device-mode init write was rejected by the tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Grafiktablett hat den nötigen Einrichtungsbefehl abgelehnt."
           }
         }
       }
@@ -19659,29 +19710,6 @@
         }
       }
     },
-    "Try sending a signal to awaken an unresponsive tablet.  Some stay quiet unless prompted to answer." : {
-      "comment" : "Explanation of the advanced device mode init control in device data collection",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Manche Grafiktabletts senden erst, wenn sie dazu aufgefordert werden. Probier das, wenn nichts aufgezeichnet wird."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Algunas tabletas no envían nada hasta que se les pide. Prueba esto si no se está grabando nada."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "指示を受けるまで何も送信しないタブレットもあります。何も記録されない場合に試してください。"
-          }
-        }
-      }
-    },
     "Two fingers held well apart, swiveling about their center, rotate — the same as a trackpad rotate gesture. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own." : {
       "comment" : "Help text for the \"Rotate\" toggle in the TouchView.",
       "localizations" : {
@@ -20275,30 +20303,30 @@
         }
       }
     },
-    "Waiting on the tablet. This can take a few seconds over Bluetooth." : {
+    "Waiting on the tablet — over Bluetooth this takes a moment." : {
       "comment" : "Status shown while a device mode init write is in flight",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Warten auf das Grafiktablett. Über Bluetooth kann das ein paar Sekunden dauern."
+            "value" : "Warten auf das Grafiktablett — über Bluetooth dauert das etwas."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Waiting on the tablet. This can take a few seconds over Bluetooth."
+            "value" : "Waiting on the tablet — over Bluetooth this takes a moment."
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "Esperando a la tableta. Por Bluetooth puede tardar unos segundos."
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "translated",
+            "state" : "needs_review",
             "value" : "タブレットの応答を待っています。Bluetoothでは数秒かかることがあります。"
           }
         }
