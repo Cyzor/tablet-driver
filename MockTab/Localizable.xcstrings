@@ -1316,7 +1316,27 @@
       }
     },
     "⌘+click to add or remove a display from the selection. ⇧+click to select a range." : {
-      "comment" : "Help text for the display canvas while in Toggle or Span mode"
+      "comment" : "Help text for the display canvas while in Toggle or Span mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⌘+Klick fügt eine Anzeige zur Auswahl hinzu oder entfernt sie. ⇧+Klick wählt einen Bereich aus."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "⌘+clic añade o quita una pantalla de la selección. ⇧+clic selecciona un rango."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "⌘+クリックでディスプレイを選択に追加／解除。⇧+クリックで範囲を選択。"
+          }
+        }
+      }
     },
     "⌥ Option" : {
       "comment" : "A modifier key option for a button binding.",
@@ -1878,7 +1898,26 @@
       }
     },
     "Active Displays" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktive Anzeigen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Pantallas activas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "有効なディスプレイ"
+          }
+        }
+      }
     },
     "Active profile:" : {
       "comment" : "Label in active profile banner",
@@ -3985,7 +4024,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Sammelt Tablet-Details für den Support. Speichert eine ZIP-Datei mit Zusammenfassung und vollständiger Aufzeichnung."
+            "value" : "Sammelt Details zu deinem Grafiktablett für den Support. Speichert eine ZIP-Datei mit Zusammenfassung und vollständiger Aufzeichnung."
           }
         },
         "es" : {
@@ -4349,7 +4388,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontrast des integrierten Tablet-Displays. Die Hardware behält ihren Wert, bis du ihn änderst."
+            "value" : "Kontrast des integrierten Grafiktablett-Displays. Die Hardware behält ihren Wert, bis du ihn änderst."
           }
         },
         "es" : {
@@ -4483,7 +4522,27 @@
       }
     },
     "Couldn't open this device (%@) — another tablet driver may already be using it." : {
-      "comment" : "Shown when IOHIDDeviceOpen fails, with the IOReturn code substituted"
+      "comment" : "Shown when IOHIDDeviceOpen fails, with the IOReturn code substituted",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Gerät (%@) ließ sich nicht öffnen – vermutlich nutzt es bereits ein anderer Grafiktablett-Treiber."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "No se pudo abrir este dispositivo (%@): puede que ya lo esté usando otro controlador de tableta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "このデバイス（%@）を開けませんでした。他のタブレットドライバが使用中の可能性があります。"
+          }
+        }
+      }
     },
     "Couldn't prepare the file: %@" : {
       "comment" : "Capture error shown when the collected data could not be encoded",
@@ -6245,7 +6304,26 @@
       }
     },
     "Display Region" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anzeigebereich"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Región de pantalla"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ディスプレイ領域"
+          }
+        }
+      }
     },
     "Display Rotation Detected" : {
       "comment" : "Warning title for rotated display",
@@ -6921,19 +6999,19 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "machine_translated",
-            "value" : "Fingereingabe aktivieren"
+            "state" : "translated",
+            "value" : "Fingerberührung aktivieren"
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "machine_translated",
+            "state" : "translated",
             "value" : "Habilitar toque con el dedo"
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "machine_translated",
+            "state" : "translated",
             "value" : "指によるタッチを有効にする"
           }
         }
@@ -8635,7 +8713,26 @@
       }
     },
     "Higher values add lag and reduce precision during fast motion." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Höhere Werte erhöhen die Latenz und mindern die Präzision bei schnellen Bewegungen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Los valores más altos añaden latencia y reducen la precisión en movimientos rápidos."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "値が高いほどラグが増え、素早い動きでの精度が落ちます。"
+          }
+        }
+      }
     },
     "Hold Command modifier (⌘)" : {
       "comment" : "A button that assigns the \"Hold Command modifier (⌘)\" action.",
@@ -10508,7 +10605,26 @@
       }
     },
     "Map the tablet to the entire selected display (undoable)." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildet das Grafiktablett auf die gesamte ausgewählte Anzeige ab (widerrufbar)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Asigna la tableta a toda la pantalla seleccionada (se puede deshacer)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "タブレットを選択中のディスプレイ全体に割り当てます（取り消し可能）。"
+          }
+        }
+      }
     },
     "Map the tablet to your main display." : {
       "comment" : "A radio button label that instructs the user to map the tablet to their main display.",
@@ -11198,7 +11314,27 @@
       }
     },
     "Modifier resync: %llu move events deferred to the keyboard" : {
-      "comment" : "Diagnostic: count of move events that omitted physical modifier bits because the cached keyboard state was older than the report being stamped"
+      "comment" : "Diagnostic: count of move events that omitted physical modifier bits because the cached keyboard state was older than the report being stamped",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier-Resync: %llu Bewegungsereignisse an die Tastatur delegiert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Resincronización de modificadores: %llu eventos de movimiento delegados al teclado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "修飾キー再同期: %llu 件の移動イベントをキーボードに委譲"
+          }
+        }
+      }
     },
     "Momentum Scrolling" : {
       "localizations" : {
@@ -14399,7 +14535,26 @@
       }
     },
     "Reduces cursor wobble and makes clicks and taps steadier. Higher values smooth more aggressively but add input lag and reduce precision during fast motion." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reduziert das Zittern des Cursors und macht Klicks und Tippen treffsicherer. Höhere Werte glätten stärker, erhöhen aber die Eingabeverzögerung und mindern die Präzision bei schnellen Bewegungen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Reduce el temblor del cursor y hace que los clics y toques sean más certeros. Los valores más altos suavizan más, pero añaden latencia de entrada y reducen la precisión en movimientos rápidos."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "カーソルのブレを抑え、クリックやタップが安定します。値が高いほど強く補正されますが、入力遅延が増え、素早い動きでの精度が落ちます。"
+          }
+        }
+      }
     },
     "Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but add input lag." : {
       "comment" : "Help: smoothing strength",
@@ -15520,19 +15675,19 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "machine_translated",
+            "state" : "translated",
             "value" : "Richtung umkehren"
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "machine_translated",
+            "state" : "translated",
             "value" : "Invertir dirección"
           }
         },
         "ja" : {
           "stringUnit" : {
-            "state" : "machine_translated",
+            "state" : "translated",
             "value" : "方向を反転"
           }
         }
@@ -17942,7 +18097,26 @@
       }
     },
     "Steadiness" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stabilisierung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Estabilización"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "手ぶれ補正"
+          }
+        }
+      }
     },
     "Stop and Discard" : {
       "comment" : "Destructive button that ends the in-progress data collection session and discards its data",
@@ -18669,7 +18843,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das angeschlossene Tablet hat keine kapazitive Berührungsfläche."
+            "value" : "Das angeschlossene Grafiktablett hat keine kapazitive Berührungsfläche."
           }
         },
         "es" : {
@@ -20040,7 +20214,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nicht erkanntes Tablet"
+            "value" : "Nicht erkanntes Grafiktablett"
           }
         },
         "es" : {
