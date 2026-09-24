@@ -817,14 +817,12 @@ final class TabletManager: ObservableObject {
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         // Called on HIDThread — hop to main before touching @Published properties.
         let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
-            // Set identity synchronously: pen points inject inline on this
-            // same thread, so the main-actor Task below loses the race (next
-            // frame measured 6 ms later). `postProximityEvent` derives
-            // `vendorPointerType` from `activeToolCode`, so losing it reported
-            // the Art Pen as a plain Grip Pen and apps ignored its rotation.
-            //
-            // `previousToolCode` is read before the overwrite; the main-actor
-            // block needs the code this tool replaced.
+            // Set synchronously: pen points inject inline on this thread, so
+            // the main-actor Task below loses the race by ~6 ms.
+            // `postProximityEvent` derives `vendorPointerType` from
+            // `activeToolCode`, so losing it reported the Art Pen as a Grip
+            // Pen and apps ignored its rotation. `previousToolCode` is read
+            // first — the main-actor block needs the code this one replaced.
             let previousToolCode = context?.injector.activeToolCode
             if let injector = context?.injector {
                 injector.activeToolCode = identity.toolCode

@@ -681,10 +681,9 @@ final class WacomKnownDevice: TabletDevice {
     /// `initStep[0] failed: 0xe0005000` / `IntuosV1 LED slot=0 failed:
     /// 0xe0005000` on a session where a raw HID capture showed zero touch
     /// containers ever arriving — the sensor was simply never armed).
-    /// Superseded for init-target selection by `declaresInitFeatureReports`,
-    /// which narrows this to the report IDs actually written — this one
-    /// answering "true" on the PTK-870's vendor interface is what sent
-    /// DATAMODE to an endpoint that rejected it.
+    /// Superseded for init-target selection by `declaresInitFeatureReports`:
+    /// this one answering "true" on the PTK-870's vendor interface is what
+    /// sent DATAMODE to an endpoint that rejected it.
     private func hasAnyFeatureReport(_ candidate: IOHIDDevice) -> Bool {
         guard let hex = hidReportDescriptorHex(candidate),
             let layout = try? HIDReportDescriptorParser.parse(hex: hex)
@@ -695,17 +694,15 @@ final class WacomKnownDevice: TabletDevice {
     /// True if `candidate` declares every Feature report ID this device's
     /// `initSteps` actually write.
     ///
-    /// Stronger than `hasAnyFeatureReport`, and the PTK-870 is why. Its vendor
-    /// interface (usagePage 0xFFD1) enumerates first and does declare feature
-    /// reports, so the any-feature test accepted it and sent DATAMODE there,
-    /// where report 0x02 does not exist: `initStep[0] failed: 0xE0005000` on
-    /// open and every retry, the tablet stuck on its reduced 0x06 report, and
-    /// the pen arriving as a generic device (no tool identity, barrel button 2
-    /// dead, no rotation). The pen interface (usagePage 0x01) is the one
-    /// declaring feature:0x02.
+    /// Stronger than `hasAnyFeatureReport`, and the PTK-870 is why: its vendor
+    /// interface (usagePage 0xFFD1) enumerates first and declares feature
+    /// reports, so the weaker test sent DATAMODE there, where report 0x02 does
+    /// not exist. Every write failed 0xE0005000, the tablet stayed on its
+    /// reduced 0x06 report, and the pen arrived generic — no tool identity,
+    /// dead barrel button 2, no rotation. feature:0x02 lives on the pen
+    /// interface (usagePage 0x01).
     ///
-    /// Devices whose `initSteps` write no feature reports are unaffected: an
-    /// empty requirement set matches any interface.
+    /// An empty requirement set matches any interface.
     private func declaresInitFeatureReports(_ candidate: IOHIDDevice) -> Bool {
         let required: Set<UInt8> = Set(
             deviceSpec.initSteps.compactMap {

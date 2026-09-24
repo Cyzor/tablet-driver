@@ -308,13 +308,10 @@ extension InputInjector {
             // pressure updates from a stationary pen (airbrush buildup) — but
             // not for Finder, where the resulting drag events cancel desktop
             // rename-edit (see AppInputProfile.finderPlainMouse).
-            // Barrel twist counts as movement for the same reason pressure
-            // does: an Art Pen rotated in place moves neither, so the gate
-            // would drop every twist-only report and no app would ever
-            // receive rotation. Not gated on `tipDown` — Rebelle and Krita
-            // both track barrel angle while hovering, to orient the brush
-            // before the stroke starts. Excluded for the plain-mouse
-            // profiles, which want no tablet-driven drags at all.
+            // Twist counts as movement for the same reason pressure does: a
+            // pen rotated in place moves neither. Not gated on `tipDown` —
+            // Rebelle and Krita orient the brush while hovering. Plain-mouse
+            // profiles want no tablet-driven drags at all.
             let rotated =
                 activeAppProfile == .generic
                 && rotationDelta(pose.rotation, lastPostedRotation) > Self.rotationEpsilon
@@ -1012,10 +1009,8 @@ extension InputInjector {
     }
 
     /// Shortest angular distance between two barrel angles, in degrees.
-    ///
-    /// Rotation is reported on 0..<360 and wraps, so a plain subtraction
-    /// reads one step across the seam (359.8° to 0.2°) as a 359.6° sweep.
-    /// Never more than 180.
+    /// Rotation wraps at 360, so plain subtraction reads one step across the
+    /// seam (359.8° to 0.2°) as a 359.6° sweep. Never more than 180.
     func rotationDelta(_ a: Double, _ b: Double) -> Double {
         let d = (a - b).magnitude.truncatingRemainder(dividingBy: 360.0)
         return d > 180.0 ? 360.0 - d : d

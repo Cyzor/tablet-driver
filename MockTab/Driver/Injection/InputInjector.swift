@@ -518,11 +518,9 @@ final class InputInjector: @unchecked Sendable {
 
     static let positionEpsilon: CGFloat = 0.5  // sub-pixel, not worth posting
     static let pressureEpsilon: Double = 0.002
-    /// Degrees of barrel twist worth posting. Twisting an Art Pen in place
-    /// moves neither position nor pressure, so without this the movement gate
-    /// drops the event and no app ever sees rotation. One decoded step is
-    /// 0.2° (5 raw counts/degree), so this passes any real twist while still
-    /// rejecting a value that merely repeats.
+    /// Degrees of barrel twist worth posting. Without this the movement gate
+    /// drops twist-only reports and no app sees rotation. One decoded step is
+    /// 0.2°, so any real twist passes.
     static let rotationEpsilon: Double = 0.1
 
     // MARK: - Stale-report suppression

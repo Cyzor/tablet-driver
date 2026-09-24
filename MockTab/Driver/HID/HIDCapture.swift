@@ -188,11 +188,9 @@ final class HIDCapture {
 
     /// Discards the recording, including the partial file on disk.
     ///
-    /// `start()` writes the header immediately so a crash still leaves
-    /// something valid behind, which means a cancelled capture has a real file
-    /// to clean up — dropping only the `fileURL` reference orphaned it, and
-    /// those accumulated in the capture folder as truncated `.txt` files that
-    /// look like genuine recordings.
+    /// `start()` writes the header immediately, so a cancelled capture has a
+    /// real file to clean up. Dropping only the `fileURL` orphaned it, leaving
+    /// truncated `.txt` files that look like genuine recordings.
     func clear() {
         let orphan: URL? = state.withLock {
             $0.samples.removeAll()
@@ -468,22 +466,17 @@ final class HIDCapture {
         var tiltXRange: ClosedRange<Double>?
         var tiltYRange: ClosedRange<Double>?
         var hoverRange: ClosedRange<Int>?
-        /// Art Pen barrel rotation. Every `TabletPoint` carries this field
-        /// (defaulting to 0), so an all-zero range means "no rotation sensor"
-        /// rather than "the sensor read zero"; `render` omits it in that case
-        /// to keep non-Art-Pen captures clean. Before this, a condensed run
-        /// hid the Art Pen's most important axis entirely.
+        /// Art Pen barrel rotation. Every `TabletPoint` carries this field,
+        /// so an all-zero range means "no rotation sensor" rather than "read
+        /// zero" — `render` omits it then, keeping other captures clean.
         var rotationRange: ClosedRange<Double>?
-        /// Frames carrying a live rotation reading, bucketed by hover distance
-        /// in steps of 20. `rotationRange` alone can't separate the two cases
-        /// that matter: a run rendering `hover:20-122 rot:0-358` fits both
-        /// rotation tracking the full height and rotation dying just off the
-        /// surface. Measured where MockTab decodes, which a parallel
-        /// `hid_input_capture` run cannot speak to.
+        /// Frames carrying live rotation, bucketed by hover distance in steps
+        /// of 20. `rotationRange` alone can't tell rotation tracking the full
+        /// hover height from rotation dying just off the surface — both render
+        /// as `hover:20-122 rot:0-358`.
         var rotationByHoverBucket: [Int: Int] = [:]
-        /// Denominator for the above: in-proximity frames per bucket, with or
-        /// without rotation. Without it a low count reads as "no rotation up
-        /// here" when it may just be "barely hovered up here."
+        /// Denominator for the above. Without it a low count reads as "no
+        /// rotation up here" when it may be "barely hovered up here."
         var framesByHoverBucket: [Int: Int] = [:]
 
         // Explicit init: the compiler-synthesized memberwise init would

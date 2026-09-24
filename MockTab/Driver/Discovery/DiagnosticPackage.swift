@@ -61,16 +61,13 @@ enum DiagnosticPackage {
     /// only the files themselves.
     ///
     /// `ditto` writes an AppleDouble `._name` sidecar for every file carrying
-    /// xattrs, and `copyItem` faithfully brings them along from the originals
-    /// — a file the user has opened or that Finder has touched picks up things
-    /// like `kMDItemWhereFroms` or a quarantine flag. Verified: a file with no
-    /// xattrs produces no sidecar, and one attribute is enough to produce one.
-    /// These are plain text and JSON whose resource forks carry nothing worth
-    /// shipping, so the sidecars are pure noise in a file someone attaches to
-    /// an issue.
+    /// xattrs, and `copyItem` brings them along — a file Finder has touched
+    /// picks up `kMDItemWhereFroms` or a quarantine flag. One attribute is
+    /// enough to produce a sidecar. Nothing in these text and JSON resource
+    /// forks is worth shipping.
     ///
-    /// Operates only on the throwaway staging copies, never the user's own
-    /// files. Best-effort: a failure here costs cosmetics, not the capture.
+    /// Staging copies only, never the user's files. Best-effort: failing here
+    /// costs cosmetics, not the capture.
     private static func stripExtendedAttributes(in directory: URL) {
         let fm = FileManager.default
         guard let entries = try? fm.contentsOfDirectory(
