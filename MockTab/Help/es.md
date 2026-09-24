@@ -147,6 +147,14 @@ El mapeo de pantalla determina qué pantalla trata la tableta como activa.
 
 **Cambiar pantalla** – Asigna la acción Cambiar pantalla a una tecla express o a un botón lateral para recorrer las pantallas conectadas sin abrir los ajustes.
 
+## Área de pantalla
+
+Como el área activa, pero del lado de la pantalla: recorta la zona del display que el lápiz puede alcanzar.
+
+**Seleccionar en pantalla…** – Arrastra la región directamente sobre tu escritorio, como con la herramienta de capturas de macOS.
+
+**Usar pantalla completa** – Restablece el área a toda la pantalla.
+
 [devices]
 
 ## Dispositivos conectados

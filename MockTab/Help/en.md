@@ -149,6 +149,14 @@ Display mapping determines which screen the tablet treats as active.
 
 **Toggle Display** – Assign the Toggle Display action to an express key or barrel button to cycle through connected displays without opening settings.
 
+## Screen Area
+
+Like Active Area, but on the screen side: crops which part of the display the pen can reach.
+
+**Select on Screen…** – Drag the region directly over your desktop, like the macOS screenshot tool.
+
+**Use Whole Screen** – Restores the full display.
+
 [devices]
 
 ## Connected Devices

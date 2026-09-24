@@ -149,6 +149,14 @@ Die Anzeigezuordnung legt fest, welcher Bildschirm dem Grafiktablett zugeordnet 
 
 **Anzeige umschalten** – Weise die Aktion Anzeige umschalten einer Express-Taste oder Barrel-Taste zu, um zwischen angeschlossenen Displays zu wechseln, ohne die Einstellungen zu öffnen.
 
+## Bildschirmbereich
+
+Wie der aktive Bereich, nur auf der Bildschirmseite: legt fest, welchen Teil des Displays der Stift erreicht.
+
+**Auf dem Bildschirm auswählen…** – Ziehe den Bereich direkt über deinen Desktop, wie beim macOS-Screenshot-Tool.
+
+**Ganzen Bildschirm verwenden** – Setzt den Bereich auf das gesamte Display zurück.
+
 [devices]
 
 ## Verbundene Geräte
