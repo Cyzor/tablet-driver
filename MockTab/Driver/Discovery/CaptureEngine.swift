@@ -159,6 +159,13 @@ final class CaptureEngine: ObservableObject {
     /// Device-mode init writes attempted this session, in order. Surfaced in the
     /// capture UI and carried into the exported JSON.
     @Published private(set) var initReportsSent: [CaptureInitReport] = []
+    /// Mirror of the automatic-init buffer for the capture UI, refreshed by the
+    /// poll timer. Separate from `initReportsSent` because the two answer
+    /// different questions: a rejected *automatic* write means the tablet was
+    /// never armed at all, so every observation in the session describes a
+    /// device in reduced reporting mode — worth saying plainly while the user
+    /// is still standing at the tablet, rather than only in the exported file.
+    @Published private(set) var initReportsAutomatic: [CaptureInitReport] = []
     /// True while a `sendInitReport` write is in flight. `IOHIDDeviceSetReport`
     /// blocks for the full device round-trip — several seconds is normal over
     /// Bluetooth — so callers must not invoke it on the main thread; this flag
@@ -265,9 +272,16 @@ final class CaptureEngine: ObservableObject {
         // breadth.
         for device in tapped { openPassiveTap(on: device) }
 
+        // Seed immediately: the writes that matter happened at `open()`, long
+        // before this session started, so waiting for the first tick would
+        // leave the UI blank about a tablet that was never armed.
+        initReportsAutomatic = Self.autoInitReportsSnapshot()
         pollTimer = scheduledTimer(interval: 0.5, repeats: true) { [weak self] in
             guard let self, self.isRunning else { return }
             self.discoverySampleCount = self.totalSampleCount
+            // Picks up the idle-recovery retries, which keep firing every few
+            // seconds while a device stays unarmed.
+            self.initReportsAutomatic = Self.autoInitReportsSnapshot()
         }
         discoveryTimer = scheduledTimer(interval: duration, repeats: false) { [weak self] in
             self?.finishDiscovery()

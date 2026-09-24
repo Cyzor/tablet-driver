@@ -588,10 +588,31 @@ struct CaptureGuideView: View {
                 }
 
                 if showSendingIndicator {
-                    Text(String(localized: "Waiting on the tablet. This can take a few seconds over Bluetooth.", comment: "Status shown while a device mode init write is in flight"))
+                    Text(String(localized: "Waiting on the tablet — over Bluetooth this takes a moment.", comment: "Status shown while a device mode init write is in flight"))
                         .appFont(.caption)
                         .foregroundStyle(.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // The driver's own init write, which happened when the tablet
+                // connected — before this sheet was open. When it was refused
+                // the tablet never left its reduced reporting mode, so the
+                // whole capture describes a half-awake device. Said here
+                // because the exported file alone is too late to help someone
+                // still standing at the hardware.
+                if let failed = engine.initReportsAutomatic.last(where: { !$0.succeeded }) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(String(localized: "The tablet refused the setup command it needs to report fully.", comment: "Warning that the driver's own device-mode init write was rejected by the tablet"))
+                            Text(String(localized: "Sent \(failed.reportIDHex) = \(failed.valueHex) on connect. Pen details will be missing.", comment: "Detail line naming the rejected automatic init write and its consequence"))
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                    }
+                    .appFont(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
 
                 if let last = engine.initReportsSent.last {
