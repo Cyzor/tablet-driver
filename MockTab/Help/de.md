@@ -211,7 +211,7 @@ Diese Ansicht hilft bei der Diagnose unerwarteten Verhaltens, zum Beispiel um zu
 
 ## Gerätedaten erfassen
 
-**Gerätedaten erfassen** zeichnet auf, was das Grafiktablett bei der Benutzung sendet. Das Ergebnis ist eine kompakte JSON-Datei, die sich an eine Anfrage anhängen lässt, mit der Unterstützung für ein Gerät hinzugefügt oder verbessert werden soll.
+**Gerätedaten erfassen** zeichnet auf, was das Grafiktablett bei der Benutzung sendet. Das Ergebnis ist eine einzelne ZIP-Datei, die sich an eine Anfrage anhängen lässt, mit der Unterstützung für ein Gerät hinzugefügt oder verbessert werden soll.
 
 [website]
 
