@@ -51,8 +51,51 @@ enum DiagnosticPackage {
             return nil
         }
 
+        stripExtendedAttributes(in: staging)
+
         guard runDitto(from: staging, to: destination) else { return nil }
         return destination
+    }
+
+    /// Remove extended attributes from the staged copies so the archive holds
+    /// only the files themselves.
+    ///
+    /// `ditto` writes an AppleDouble `._name` sidecar for every file carrying
+    /// xattrs, and `copyItem` faithfully brings them along from the originals
+    /// — a file the user has opened or that Finder has touched picks up things
+    /// like `kMDItemWhereFroms` or a quarantine flag. Verified: a file with no
+    /// xattrs produces no sidecar, and one attribute is enough to produce one.
+    /// These are plain text and JSON whose resource forks carry nothing worth
+    /// shipping, so the sidecars are pure noise in a file someone attaches to
+    /// an issue.
+    ///
+    /// Operates only on the throwaway staging copies, never the user's own
+    /// files. Best-effort: a failure here costs cosmetics, not the capture.
+    private static func stripExtendedAttributes(in directory: URL) {
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: nil)
+        else { return }
+        for url in entries {
+            url.withUnsafeFileSystemRepresentation { path in
+                guard let path else { return }
+                // Size the name buffer from the actual list, then remove each.
+                let length = listxattr(path, nil, 0, 0)
+                guard length > 0 else { return }
+                var names = [CChar](repeating: 0, count: length)
+                guard listxattr(path, &names, length, 0) == length else { return }
+                // The list is a flat run of NUL-terminated names.
+                var start = 0
+                for i in 0..<length where names[i] == 0 {
+                    if i > start {
+                        names.withUnsafeBufferPointer { buffer in
+                            _ = removexattr(path, buffer.baseAddress! + start, 0)
+                        }
+                    }
+                    start = i + 1
+                }
+            }
+        }
     }
 
     /// Without `--sequesterRsrc`, which is what *creates* the `__MACOSX/._*`
