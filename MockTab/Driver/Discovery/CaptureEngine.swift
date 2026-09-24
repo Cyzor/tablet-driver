@@ -120,6 +120,57 @@ final class CaptureEngine: ObservableObject {
         autoInitReports.withLock { $0 }
     }
 
+    /// One device a sweep refused to open, identified only by its numbers.
+    struct ExcludedDevice: Hashable {
+        let vendorID: Int
+        let productID: Int
+        let usagePage: Int
+        let usage: Int?
+    }
+
+    /// Devices from a tablet vendor that the text-entry exclusion dropped.
+    ///
+    /// The exclusion runs at enumeration, before any result exists, so an
+    /// excluded device leaves no trace at all: "the accessory sent nothing"
+    /// and "we never listened to it" read identically in the capture. An
+    /// accessory that enumerates on the Consumer page — a button remote, say —
+    /// would vanish this way.
+    ///
+    /// Vendor, product and usage only. Nothing is ever read from an excluded
+    /// device, which is the whole point of excluding it.
+    private nonisolated static let excludedDevices =
+        OSAllocatedUnfairLock<Set<ExcludedDevice>>(initialState: [])
+
+    /// Note that a known-vendor device was skipped. Deduplicated: enumeration
+    /// runs on every sweep and would otherwise repeat the same device.
+    nonisolated static func recordExcludedDevice(
+        vendorID: Int, productID: Int, usagePage: Int, usage: Int?
+    ) {
+        guard TabletManager.knownVendorIDs.contains(vendorID) else { return }
+        excludedDevices.withLock {
+            $0.insert(ExcludedDevice(
+                vendorID: vendorID, productID: productID,
+                usagePage: usagePage, usage: usage))
+        }
+    }
+
+    /// Findings for every known-vendor device a sweep skipped, for the
+    /// exporter. Sorted so two captures of one desk compare cleanly.
+    nonisolated static func excludedDeviceFindings() -> [DiscoveryFinding] {
+        excludedDevices.withLock { $0 }
+            .sorted { ($0.vendorID, $0.productID) < ($1.vendorID, $1.productID) }
+            .map { device in
+                let pid = String(format: "0x%04X", device.productID)
+                let usage = device.usage.map { String(format: "/0x%04X", $0) } ?? ""
+                return DiscoveryFinding(
+                    kind: "knownVendorDeviceExcluded",
+                    productID: pid,
+                    detail: "Skipped \(String(format: "0x%04X", device.vendorID))/\(pid): "
+                        + "its top-level usage \(String(format: "0x%04X", device.usagePage))\(usage) "
+                        + "marks it as a text-entry device, so nothing was recorded from it.")
+            }
+    }
+
     /// Record one raw HID input report toward whichever session (if any) is
     /// currently capturing `device`.
     ///
@@ -841,7 +892,7 @@ final class CaptureEngine: ObservableObject {
             notes: notes,
             submitterContact: nil
         )
-        let found = discoveryFindings(for: result)
+        let found = discoveryFindings(for: result) + Self.excludedDeviceFindings()
         result.findings = found.isEmpty ? nil : found
         return result
     }

@@ -377,9 +377,24 @@ struct CaptureGuideView: View {
         let page = IOHIDDeviceGetProperty(device, kIOHIDPrimaryUsagePageKey as CFString) as? Int
         let usage = IOHIDDeviceGetProperty(device, kIOHIDPrimaryUsageKey as CFString) as? Int
         guard let page else { return false }
-        if page == kHIDPage_Consumer { return true }
-        guard page == kHIDPage_GenericDesktop, let usage else { return false }
-        return usage == kHIDUsage_GD_Keyboard || usage == kHIDUsage_GD_Keypad
+        let excluded: Bool
+        if page == kHIDPage_Consumer {
+            excluded = true
+        } else if page == kHIDPage_GenericDesktop, let usage {
+            excluded = usage == kHIDUsage_GD_Keyboard || usage == kHIDUsage_GD_Keypad
+        } else {
+            excluded = false
+        }
+        // A tablet vendor's accessory dropped here is silent otherwise —
+        // see `CaptureEngine.recordExcludedDevice`.
+        if excluded, let vendor = IOHIDDeviceGetProperty(device, kIOHIDVendorIDKey as CFString) as? Int {
+            CaptureEngine.recordExcludedDevice(
+                vendorID: vendor,
+                productID: IOHIDDeviceGetProperty(device, kIOHIDProductIDKey as CFString) as? Int ?? 0,
+                usagePage: page,
+                usage: usage)
+        }
+        return excluded
     }
 
     /// This tablet's touch configuration, for the capture file.

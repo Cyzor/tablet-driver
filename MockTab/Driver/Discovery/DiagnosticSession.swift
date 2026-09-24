@@ -69,9 +69,25 @@ final class DiagnosticSession {
         return devices.filter { device in
             let page = IOHIDDeviceGetProperty(device, kIOHIDPrimaryUsagePageKey as CFString) as? Int
             let usage = IOHIDDeviceGetProperty(device, kIOHIDPrimaryUsageKey as CFString) as? Int
-            if page == kHIDPage_Consumer { return false }
-            guard page == kHIDPage_GenericDesktop, let usage else { return true }
-            return usage != kHIDUsage_GD_Keyboard && usage != kHIDUsage_GD_Keypad
+            let keep: Bool
+            if page == kHIDPage_Consumer {
+                keep = false
+            } else if page == kHIDPage_GenericDesktop, let usage {
+                keep = usage != kHIDUsage_GD_Keyboard && usage != kHIDUsage_GD_Keypad
+            } else {
+                keep = true
+            }
+            // Vendor matching already ran, so everything dropped here belongs
+            // to a tablet vendor — see `CaptureEngine.recordExcludedDevice`.
+            if !keep, let page,
+               let vendor = IOHIDDeviceGetProperty(device, kIOHIDVendorIDKey as CFString) as? Int {
+                CaptureEngine.recordExcludedDevice(
+                    vendorID: vendor,
+                    productID: IOHIDDeviceGetProperty(device, kIOHIDProductIDKey as CFString) as? Int ?? 0,
+                    usagePage: page,
+                    usage: usage)
+            }
+            return keep
         }
     }
 
