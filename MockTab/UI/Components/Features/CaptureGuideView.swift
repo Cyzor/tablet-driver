@@ -1004,8 +1004,12 @@ struct CaptureGuideView: View {
     /// screen must never introduce.
     ///
     /// Runs once, before the tester can have typed anything, so it never
-    /// clobbers a manual edit. No classic Wacom or Xencelabs descriptor tested
-    /// so far declares either usage, so this still does nothing on all of them.
+    /// clobbers a manual edit.
+    ///
+    /// Not only modern hardware: the PTK-870's 1324-byte USB descriptor
+    /// declares `WACOM_HID_WD_DATAMODE` at feature report `0x02`, so this does
+    /// fire on classic Wacom tablets. (An earlier note here claimed no tested
+    /// Wacom or Xencelabs descriptor declared either usage.)
     private func applyAutoDetectedModeSwitch(from targets: [(IOHIDDevice, CaptureDeviceInfo)]) {
         for (device, info) in targets {
             guard let hex = info.parsedDescriptor?.rawHex,
@@ -1016,7 +1020,13 @@ struct CaptureGuideView: View {
             autoDetectedModeReportID = reportID
             modeSwitchDevice = device
             initReportIDText = String(format: "0x%02X", reportID)
-            showInitControl = true
+            // Deliberately does NOT expand the section. Pre-filling the field
+            // is the useful part; opening it put two text fields on screen at
+            // first layout, and AppKit handed first responder to the Report
+            // field — instantiating the shared field editor, which drew a
+            // blank panel for a frame and then zoomed its focus ring in. An
+            // experimental control almost nobody touches should not take the
+            // keyboard, and the value is waiting for anyone who opens it.
             return
         }
     }
