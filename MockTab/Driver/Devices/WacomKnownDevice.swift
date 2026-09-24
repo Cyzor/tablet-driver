@@ -703,9 +703,11 @@ final class WacomKnownDevice: TabletDevice {
     /// interface (usagePage 0x01).
     ///
     /// An empty requirement set matches any interface.
-    private func declaresInitFeatureReports(_ candidate: IOHIDDevice) -> Bool {
+    private func declaresInitFeatureReports(
+        _ candidate: IOHIDDevice, for steps: [InitStep]? = nil
+    ) -> Bool {
         let required: Set<UInt8> = Set(
-            deviceSpec.initSteps.compactMap {
+            (steps ?? deviceSpec.initSteps).compactMap {
                 if case .featureReport(let bytes) = $0 { return bytes.first } else { return nil }
             })
         guard !required.isEmpty else { return true }
@@ -793,6 +795,27 @@ final class WacomKnownDevice: TabletDevice {
             // text cache lets the next display push actually resend.
             xencelabsSentText.removeAll()
             setRingLED(index: pendingLEDIndex)
+        }
+
+        // Touch sensor that enumerates as its own USB product: its Device Mode
+        // write has to land on the sensor, not on the pen interface every other
+        // init path here targets. Sent last, after the input-report callback
+        // above is installed, so whatever the mode change provokes is seen
+        // rather than raced past.
+        if !deviceSpec.touchCompanionInitSteps.isEmpty,
+            let companionPID = deviceSpec.touchCompanionPID,
+            hidIntProperty(device, kIOHIDProductIDKey) == companionPID
+        {
+            let steps = deviceSpec.touchCompanionInitSteps
+            if declaresInitFeatureReports(device, for: steps) {
+                executeInitSteps(on: device, steps: steps)
+            } else {
+                // Same check the PTK-870 taught: a write to an interface that
+                // never declared the report fails 0xE0005000 and leaves the
+                // device quietly in its reduced mode. The sensor still streams
+                // its single-contact report, so this costs gestures, not touch.
+                logger.info("\(name, privacy: .public): touch sensor does not declare the Device Mode feature report — skipping multitouch init")
+            }
         }
     }
 
@@ -928,7 +951,14 @@ final class WacomKnownDevice: TabletDevice {
     /// Runs synchronously until a `.delay` step is encountered; at that point the
     /// remaining steps are scheduled on the main queue and this call returns.
     /// Callers must be on the main thread — `IOHIDDeviceSetReport` is not thread-safe.
-    private func executeInitSteps(from index: Int = 0, on target: IOHIDDevice? = nil) {
+    ///
+    /// `steps` defaults to `deviceSpec.initSteps`. A caller passes its own only
+    /// for an interface with a different sequence than the tablet's own — today
+    /// just the touch companion (`touchCompanionInitSteps`), which needs its
+    /// write addressed to the sensor rather than to the pen.
+    private func executeInitSteps(
+        from index: Int = 0, on target: IOHIDDevice? = nil, steps: [InitStep]? = nil
+    ) {
         // Prefer the interface that declares the init feature reports.
         //
         // `capableInterfaceDevice` was assigned and then never read, so every
@@ -938,7 +968,7 @@ final class WacomKnownDevice: TabletDevice {
         // DATAMODE. Falling back to `self.device` leaves single-interface
         // devices unchanged.
         let device = target ?? capableInterfaceDevice ?? self.device
-        let steps = deviceSpec.initSteps
+        let steps = steps ?? deviceSpec.initSteps
         guard index < steps.count else { return }
         switch steps[index] {
         case .featureReport(var bytes):
@@ -964,7 +994,7 @@ final class WacomKnownDevice: TabletDevice {
                 let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
                 logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] feature report succeeded on interface usagePage=0x\(String(usagePage, radix: 16), privacy: .public)")
             }
-            executeInitSteps(from: index + 1, on: target)
+            executeInitSteps(from: index + 1, on: target, steps: steps)
         case .outputReport(var bytes):
             // Vendor tablet-mode init over the HID output pipe (Xencelabs:
             // [0x02, 0xB0, 0x04]). Confirmed 2026-07-01 on a Pen Display: a
@@ -995,14 +1025,14 @@ final class WacomKnownDevice: TabletDevice {
             // here, since "no error" has been ambiguous with "never ran."
             let hex = String(format: "0x%08x", ret)
             logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] output report result=\(hex, privacy: .public)")
-            executeInitSteps(from: index + 1, on: target)
+            executeInitSteps(from: index + 1, on: target, steps: steps)
         case .delay(let seconds):
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
-                self?.executeInitSteps(from: index + 1, on: target)
+                self?.executeInitSteps(from: index + 1, on: target, steps: steps)
             }
         case .stringDescriptor:
             // Not yet wired up (Huion); advance to keep the sequence moving.
-            executeInitSteps(from: index + 1, on: target)
+            executeInitSteps(from: index + 1, on: target, steps: steps)
         }
     }
 

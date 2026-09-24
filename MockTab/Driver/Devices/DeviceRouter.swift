@@ -64,6 +64,19 @@ enum DeviceRouter {
         /// on that driver.
         case ledCompanion(parentContext: DeviceContext)
 
+        /// Touch-sensor interface enumerating under its own PID, matching the
+        /// `touchCompanionPID` of an already-attached tablet. Caller calls
+        /// `registerDevice(device)` on that tablet's driver, so the sensor's
+        /// descriptor is read by a driver whose spec has `hasFingerTouch` —
+        /// the gate `deriveTouchDecoders` checks.
+        case touchCompanion(parentContext: DeviceContext)
+
+        /// A touch sensor whose claiming tablet hasn't enumerated yet. Caller
+        /// holds `device` in `pendingTouchCompanions` until it does. Distinct
+        /// from `.deferred`, which is keyed by the driver's own raw PID and so
+        /// can't hold an interface belonging to a different PID.
+        case deferredTouchCompanion
+
         /// No action — interface has no digitizer elements and no LED match.
         case skip
     }
@@ -98,6 +111,7 @@ enum DeviceRouter {
         // non-Wacom devices arrive with an explicit `overrideSpec` instead.
         let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
         let isWacom = WacomDeviceRegistry.vendorIDs.contains(vendorID)
+        let pidStr = String(productID, radix: 16, uppercase: true)
 
         // ── ACK-40401 RF wireless dongle ─────────────────────────────────────
         // The dongle presents the same HID descriptor as the paired tablet
@@ -127,6 +141,32 @@ enum DeviceRouter {
                 onPairedPID: callbacks.onPairedPID,
                 onOpenFailed: callbacks.onOpenFailed)
             return .driver(drv, seized: false)
+        }
+
+        // ── Touch sensor enumerating under its own PID ───────────────────────
+        // Checked ahead of the registry lookup below: these sensors do have
+        // registry rows, but name-only ones (maxX and buttonCount both 0), so
+        // they fail that branch's digitizer gate and fall through to the
+        // observe-only multitouch fallback — reports reach diagnostics and
+        // nothing else. Routing to the pen driver instead gets the sensor's
+        // descriptor read by a spec that declares `hasFingerTouch`, which is
+        // what `deriveTouchDecoders` gates on.
+        //
+        // Ordered after the dongle branch above so a dongle PID can never be
+        // claimed as someone's touch companion.
+        if isWacom, overrideSpec == nil {
+            let touchParent = contexts.values.first { ctx in
+                ctx.tabletDevice is WacomKnownDevice
+                    && WacomDeviceRegistry.spec(for: ctx.productID)?.touchCompanionPID == productID
+            }
+            if let parent = touchParent {
+                routerLog.info("Wacom 0x\(pidStr, privacy: .public) — touch sensor for 0x\(String(parent.productID, radix: 16, uppercase: true), privacy: .public)")
+                return .touchCompanion(parentContext: parent)
+            }
+            if WacomDeviceRegistry.touchCompanionPIDs.contains(productID) {
+                routerLog.info("Wacom 0x\(pidStr, privacy: .public) — touch sensor, holding until its tablet enumerates")
+                return .deferredTouchCompanion
+            }
         }
 
         // ── Recognised PID with a live decoder ───────────────────────────────
@@ -177,7 +217,6 @@ enum DeviceRouter {
         // Devices with X/Y digitizer elements get the generic fallback driver.
         // Devices without are either non-input interfaces (LED controller,
         // status interface) or LED companions of a previously-attached tablet.
-        let pidStr = String(productID, radix: 16, uppercase: true)
         let (probeX, _, _, _) = queryHIDDigitizerSpec(device)
 
         // A multitouch interface passes the X/Y probe — `queryHIDDigitizerSpec`

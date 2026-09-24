@@ -180,6 +180,15 @@ final class TabletManager: ObservableObject {
     /// the same canonical identity (Xencelabs puck/dongle) build separate
     /// drivers and must not drain into each other's.
     private var pendingInterfaces: [Int: [IOHIDDevice]] = [:]
+    /// Touch sensors that enumerate under their own PID (Cintiq 27QHD Touch's
+    /// 0x032C) and arrived before the pen interface that claims them via
+    /// `touchCompanionPID`. Keyed by the sensor's own PID; drained when the
+    /// claiming tablet's driver appears. `pendingInterfaces` can't serve this:
+    /// it's keyed by the driver's raw PID, which a cross-PID companion by
+    /// definition doesn't share. Enumeration order is arrival luck, so without
+    /// this the sensor's fate would depend on which interface macOS reports
+    /// first.
+    private var pendingTouchCompanions: [Int: [IOHIDDevice]] = [:]
 
     // MARK: - Manager-level published state
     //
@@ -1289,6 +1298,24 @@ final class TabletManager: ObservableObject {
             }
             return
 
+        case .deferredTouchCompanion:
+            pendingTouchCompanions[productID, default: []].append(device)
+            return
+
+        case .touchCompanion(let parentCtx):
+            guard let driver = parentCtx.tabletDevice as? WacomKnownDevice else { return }
+            hidDeviceMap[device] = parentCtx
+            // Keyed to the parent's raw PID, not this interface's own: the
+            // sensor is now part of that driver, and `deviceRawProductID`
+            // is what teardown and driver-slot lookup both consult.
+            deviceRawProductID[device] = parentCtx.productID
+            driver.registerDevice(device)
+            // Same reason `.driver` and the reuse path above both offer their
+            // interfaces: an interface a driver reads is capturable, and the
+            // sensor is the one a touch problem needs in the file.
+            Self.offerForCapture(device, usagePage: usagePage, on: parentCtx, driver: driver)
+            return
+
         case .skip:
             return
 
@@ -1321,6 +1348,20 @@ final class TabletManager: ObservableObject {
                 Self.offerForCapture(
                     pending, usagePage: hidIntProperty(pending, kIOHIDPrimaryUsagePageKey),
                     on: context, driver: wacomDevice as? WacomKnownDevice)
+            }
+            // Same drain for a touch sensor that enumerated ahead of the
+            // tablet claiming it — held under its own PID, not this driver's.
+            if let touchPID = WacomDeviceRegistry.spec(for: productID)?.touchCompanionPID,
+                let driver = wacomDevice as? WacomKnownDevice
+            {
+                for sensor in pendingTouchCompanions.removeValue(forKey: touchPID) ?? [] {
+                    hidDeviceMap[sensor] = context
+                    deviceRawProductID[sensor] = rawProductID
+                    driver.registerDevice(sensor)
+                    Self.offerForCapture(
+                        sensor, usagePage: hidIntProperty(sensor, kIOHIDPrimaryUsagePageKey),
+                        on: context, driver: driver)
+                }
             }
             if hadNoDriverYet {
                 // First transport this context has ever seen — wire the

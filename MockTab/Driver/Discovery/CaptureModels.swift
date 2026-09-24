@@ -304,7 +304,36 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
             DiscoveryFinding(
                 kind: "noToolCodeObserved",
                 productID: pid,
-                detail: "No pen tool code was observed — no pen entered proximity this session."))
+                detail: "No pen tool code was observed. Either no pen entered "
+                    + "proximity during this capture, or the tablet never "
+                    + "reported one — this file cannot tell those apart. A "
+                    + "capture with the pen deliberately held to the surface "
+                    + "can."))
+    }
+
+    // What the session never exercised. A capture records what arrived; it
+    // cannot record what the tester meant to try, so a whole subsystem sitting
+    // at zero reads identically to a broken one. Naming the untested ones up
+    // front is what stops a reader inferring a fault from an untouched
+    // control: on issue #14 nine captures across a week showed no pen report,
+    // which was read as evidence about the pen until it turned out no capture
+    // had ever involved picking it up.
+    var untested: [String] = []
+    if result.observedToolCodes?.isEmpty ?? true { untested.append("the pen") }
+    let sawTouch = (result.interfaces ?? []).contains { iface in
+        iface.sampleCount > 0 && iface.usagePage != "0x0001"
+    }
+    if result.touchSettings?.touchEnabled == true, !sawTouch {
+        untested.append("finger touch")
+    }
+    if !untested.isEmpty {
+        found.append(
+            DiscoveryFinding(
+                kind: "subsystemsNotExercised",
+                productID: pid,
+                detail: "This capture contains no data for: \(untested.joined(separator: ", ")). "
+                    + "That is a gap in what was tried, not a fault — rerun and "
+                    + "use each one deliberately to say anything about it."))
     }
 
     // A setting that independently explains the symptom.
