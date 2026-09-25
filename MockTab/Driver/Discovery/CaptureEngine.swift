@@ -66,6 +66,10 @@ final class CaptureEngine: ObservableObject {
     /// Mapping and pen-feel settings as of `startDiscovery`. Unlike touch,
     /// recorded for every device — see `DiscoveryAppSettings`.
     private var capturedAppSettings: DiscoveryAppSettings?
+    /// Tools the device registry has ever recorded for this tablet, injected
+    /// at start like the settings above — `CaptureEngine` stays free of the
+    /// main-actor registry so the standalone harnesses can build a result.
+    private var capturedEverSeenTools: [String]?
     /// Live for the session only — created in `startDiscovery` when the
     /// device is Bluetooth and a candidate address is available, torn down
     /// in `finishDiscovery`/`cancelDiscovery`. Not a standing per-device
@@ -273,6 +277,7 @@ final class CaptureEngine: ObservableObject {
         duration: TimeInterval = 60,
         touchSettings: DiscoveryTouchSettings? = nil,
         appSettings: DiscoveryAppSettings? = nil,
+        everSeenTools: [String]? = nil,
         bluetoothAddressCandidate: String? = nil,
         tapped: [IOHIDDevice] = []
     ) {
@@ -289,6 +294,7 @@ final class CaptureEngine: ObservableObject {
         CaptureActivityProbe.reset()
         capturedTouchSettings = touchSettings
         capturedAppSettings = appSettings
+        capturedEverSeenTools = everSeenTools
         bluetoothLinkMonitor = bluetoothAddressCandidate.flatMap {
             BluetoothLinkMonitor(addressCandidate: $0)
         }
@@ -885,6 +891,7 @@ final class CaptureEngine: ObservableObject {
                 return all.isEmpty ? nil : all
             }(),
             observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
+            everSeenTools: capturedEverSeenTools,
             touchSettings: capturedTouchSettings,
             appSettings: capturedAppSettings,
             touchPipeline: touchPipeline.isEmpty ? nil : touchPipeline,

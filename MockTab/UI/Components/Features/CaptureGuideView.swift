@@ -438,6 +438,20 @@ struct CaptureGuideView: View {
             invertRotation: s.invertRotation)
     }
 
+    /// Every tool the registry has ever recorded for this tablet, newest
+    /// naming first. Nil rather than an empty array when the registry has no
+    /// entry for the device at all — "never asked" and "asked, none" are
+    /// different answers and the file should not blur them.
+    private func everSeenToolsSnapshot() -> [String]? {
+        let registry = DeviceRegistry.shared
+        guard registry.knownTablets.contains(where: { $0.productID == productID })
+        else { return nil }
+        return registry.allKnownTools.map { tool in
+            let kind = tool.kind.isEmpty ? tool.nickname : tool.kind
+            return "\(kind) (\(tool.displayID))"
+        }
+    }
+
     private func touchSettingsSnapshot() -> DiscoveryTouchSettings? {
         guard let settings = tabletManager.contexts[productID]?.settings else { return nil }
         // Omitted only when a spec positively says the device has no finger
@@ -984,6 +998,7 @@ struct CaptureGuideView: View {
         engine.startDiscovery(
             devices: targets, duration: 3600, touchSettings: touchSettingsSnapshot(),
             appSettings: appSettingsSnapshot(),
+            everSeenTools: everSeenToolsSnapshot(),
             bluetoothAddressCandidate: tabletManager.contexts[productID]?.bluetoothAddressCandidate,
             tapped: companions)
 

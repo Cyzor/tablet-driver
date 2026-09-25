@@ -187,6 +187,17 @@ struct DiscoveryResult: Codable {
     /// `0x080A` eraser). The clearest evidence of which tools a device reports
     /// distinctly, which no amount of byte-level analysis recovers on its own.
     var observedToolCodes: [String]?
+    /// Tools this app has ever recorded for this tablet, from the persisted
+    /// device registry — not from this session.
+    ///
+    /// `observedToolCodes` above answers "was a pen used while recording",
+    /// which is silent for a tester who never picked one up. This answers the
+    /// different and often more useful question "has this tablet ever seen a
+    /// pen at all". An empty list on a tablet its owner has used for months is
+    /// a real signal; a capture that only ever reports the first question
+    /// cannot distinguish an unused pen from an undetected one, and on issue
+    /// #14 that ambiguity survived nine captures.
+    var everSeenTools: [String]?
     /// The touch-related settings in force during the session. Present only
     /// for a device whose spec declares finger touch — on everything else
     /// these settings are inert and would be misleading noise.
@@ -304,11 +315,28 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
             DiscoveryFinding(
                 kind: "noToolCodeObserved",
                 productID: pid,
-                detail: "No pen tool code was observed. Either no pen entered "
-                    + "proximity during this capture, or the tablet never "
-                    + "reported one — this file cannot tell those apart. A "
-                    + "capture with the pen deliberately held to the surface "
-                    + "can."))
+                detail: {
+                    let base = "No pen tool code was observed during this capture. "
+                    switch result.everSeenTools {
+                    case .some(let tools) where !tools.isEmpty:
+                        // The registry remembers a pen, so the hardware has
+                        // reported one before — this session simply didn't use
+                        // it. That rules out the alarming reading outright.
+                        return base
+                            + "This app has recorded \(tools.count) tool(s) for this tablet "
+                            + "previously (\(tools.joined(separator: ", "))), so the pen has "
+                            + "been detected before and was just not used while recording."
+                    case .some:
+                        return base
+                            + "This app has never recorded any tool for this tablet, across "
+                            + "every session — so either a pen has never been used with it, "
+                            + "or one has been used and never detected."
+                    case .none:
+                        return base
+                            + "Either no pen entered proximity, or the tablet never reported "
+                            + "one — this file cannot tell those apart."
+                    }
+                }()))
     }
 
     // What the session never exercised. A capture records what arrived; it
