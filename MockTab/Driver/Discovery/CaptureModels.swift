@@ -185,8 +185,9 @@ struct DiscoveryResult: Codable {
     /// more than one, so single-interface captures (the overwhelming majority)
     /// stay byte-for-byte the shape they always were.
     var interfaces: [DiscoveryInterface]?
-    /// Device-mode init writes attempted during the session, in order. Empty
-    /// when the tester didn't use the advanced control — the common case.
+    /// Device-mode init writes attempted during the session, in order, both
+    /// the automatic `initSteps` sent at open and any the tester triggered by
+    /// hand — `automatic` tells them apart. Empty only when neither happened.
     var initReports: [CaptureInitReport]?
     /// Wacom tool codes observed while collecting, as hex (e.g. `0x0802` pen,
     /// `0x080A` eraser). The clearest evidence of which tools a device reports
