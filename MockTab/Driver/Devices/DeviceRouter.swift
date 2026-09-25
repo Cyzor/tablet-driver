@@ -102,7 +102,8 @@ enum DeviceRouter {
         isBLE: Bool,
         contexts: [DeviceInstanceKey: DeviceContext],
         callbacks: Callbacks,
-        overrideSpec: WacomDeviceSpec? = nil
+        overrideSpec: WacomDeviceSpec? = nil,
+        holdTouchCompanion: Bool = true
     ) -> Routed {
 
         // Wacom-specific routing (dongle remap, registry decoders) only applies
@@ -163,7 +164,7 @@ enum DeviceRouter {
                 routerLog.info("Wacom 0x\(pidStr, privacy: .public) — touch sensor for 0x\(String(parent.productID, radix: 16, uppercase: true), privacy: .public)")
                 return .touchCompanion(parentContext: parent)
             }
-            if WacomDeviceRegistry.touchCompanionPIDs.contains(productID) {
+            if holdTouchCompanion, WacomDeviceRegistry.touchCompanionPIDs.contains(productID) {
                 routerLog.info("Wacom 0x\(pidStr, privacy: .public) — touch sensor, holding until its tablet enumerates")
                 return .deferredTouchCompanion
             }

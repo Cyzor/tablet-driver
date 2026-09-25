@@ -680,7 +680,7 @@ final class TabletManager: ObservableObject {
             locationID: locationID, instanceKey: instanceKey)
     }
 
-    private func deviceConnected(_ device: IOHIDDevice) {
+    private func deviceConnected(_ device: IOHIDDevice, holdTouchCompanion: Bool = true) {
         // Connect-phase work (handshakes, paced writes) stalls report
         // delivery; keep those episodes out of the steady-state latency stats.
         LatencyProbe.shared.noteDeviceConnected()
@@ -1285,7 +1285,7 @@ final class TabletManager: ObservableObject {
         switch DeviceRouter.route(
             device: device, productID: productID, usagePage: usagePage,
             isBLE: isBLE, contexts: deviceContexts, callbacks: callbacks,
-            overrideSpec: vendorSpec)
+            overrideSpec: vendorSpec, holdTouchCompanion: holdTouchCompanion)
         {
         case .deferred:
             pendingInterfaces[rawProductID, default: []].append(device)
@@ -1300,6 +1300,20 @@ final class TabletManager: ObservableObject {
 
         case .deferredTouchCompanion:
             pendingTouchCompanions[productID, default: []].append(device)
+            // Siblings enumerate within a second. A sensor still waiting
+            // after this gets a window of its own, as before it could be
+            // held, so a desk whose pen never appears can still be captured.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+                guard let self,
+                    let idx = self.pendingTouchCompanions[productID]?.firstIndex(where: { $0 === device })
+                else { return }
+                self.pendingTouchCompanions[productID]?.remove(at: idx)
+                if self.pendingTouchCompanions[productID]?.isEmpty == true {
+                    self.pendingTouchCompanions[productID] = nil
+                }
+                logger.info("Wacom 0x\(String(productID, radix: 16, uppercase: true), privacy: .public) — touch sensor's tablet never appeared, routing on its own")
+                self.deviceConnected(device, holdTouchCompanion: false)
+            }
             return
 
         case .touchCompanion(let parentCtx):
@@ -1442,6 +1456,9 @@ final class TabletManager: ObservableObject {
     }
 
     private func deviceDisconnected(_ device: IOHIDDevice) {
+        for (pid, held) in pendingTouchCompanions where held.contains(where: { $0 === device }) {
+            pendingTouchCompanions[pid] = held.filter { $0 !== device }
+        }
         guard let context = hidDeviceMap.removeValue(forKey: device) else { return }
         // Only clear hidDevice when the disconnecting interface is the one it
         // actually points to (the primary digitizer interface). A secondary
