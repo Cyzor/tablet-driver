@@ -25,6 +25,7 @@
 		AA000083 /* InputInjector+Touch.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000083 /* InputInjector+Touch.swift */; };
 		AA000084 /* InputInjector+CGEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000084 /* InputInjector+CGEvents.swift */; };
 		AA0000DM /* DisplayMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000DM /* DisplayMapper.swift */; };
+		AA000901 /* RelativeBallistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000901 /* RelativeBallistics.swift */; };
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
 		AA000010 /* BezierCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* BezierCurve.swift */; };
 		AA002099 /* UnknownFieldsCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB002099 /* UnknownFieldsCodable.swift */; };
@@ -141,6 +142,7 @@
 		AB000083 /* InputInjector+Touch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InputInjector+Touch.swift"; sourceTree = "<group>"; };
 		AB000084 /* InputInjector+CGEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InputInjector+CGEvents.swift"; sourceTree = "<group>"; };
 		AB0000DM /* DisplayMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMapper.swift; sourceTree = "<group>"; };
+		AB000901 /* RelativeBallistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelativeBallistics.swift; sourceTree = "<group>"; };
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
 		AB000010 /* BezierCurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BezierCurve.swift; sourceTree = "<group>"; };
 		AB002099 /* UnknownFieldsCodable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnknownFieldsCodable.swift; sourceTree = "<group>"; };
@@ -346,6 +348,7 @@
 			isa = PBXGroup;
 			children = (
 				AB0000DM /* DisplayMapper.swift */,
+				AB000901 /* RelativeBallistics.swift */,
 				AB000035 /* AppWatcher.swift */,
 			);
 			path = Mapping;
@@ -684,6 +687,7 @@
 				AA000083 /* InputInjector+Touch.swift in Sources */,
 				AA000084 /* InputInjector+CGEvents.swift in Sources */,
 				AA0000DM /* DisplayMapper.swift in Sources */,
+				AA000901 /* RelativeBallistics.swift in Sources */,
 				AA00IS01 /* InjectionSnapshot.swift in Sources */,
 				AA000009 /* TabletSettings.swift in Sources */,
 				AA000044 /* ToolSettings.swift in Sources */,

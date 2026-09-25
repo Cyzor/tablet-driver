@@ -100,7 +100,7 @@ struct DisplayMapper {
     /// Recomputed on main when displays change (didChangeScreenParametersNotification).
     private var cachedVirtualScreenBounds: CGRect = .zero
 
-    /// Last normalized tablet position while in relative-cursor-movement mode.
+    /// Last pen position (oriented raw units) while in relative mode.
     /// Cleared at proximity exit so the first report after hover-entry doesn't
     /// produce a large jump.
     private var lastRelativeNorm: CGPoint? = nil
@@ -125,12 +125,9 @@ struct DisplayMapper {
     private var cachedRelativeSurfaceMM: (w: Double, h: Double)?
     private var cachedRelativeSurfaceSpecPID: Int = -1
 
-    /// Cursor points moved per millimetre of physical pen travel in relative
-    /// mode. Chosen so a full sweep of a typical tablet's active area
-    /// traverses roughly a full screen width — a small, deliberate pen
-    /// motion should sweep the cursor a long way, the way a shrunk mapped
-    /// area would, rather than crawling like a low-DPI mouse.
-    private static let relativeGainPointsPerMM: Double = 20.0
+    /// Speed-dependent scaling for relative mode; see `RelativeBallistics`.
+    private var relativeBallistics = RelativeBallistics()
+    private var lastRelativeTime: CFAbsoluteTime = 0
 
     /// Fallback physical width/height (mm) used when the device's active
     /// area isn't in the registry (no vendor mm data). Matches a typical
@@ -159,6 +156,7 @@ struct DisplayMapper {
     mutating func clearRelativeAnchor() {
         lastRelativeNorm = nil
         ownedRelativePosition = nil
+        relativeBallistics.reset()
     }
 
     /// Recomputes `cachedVirtualScreenBounds` from `NSScreen.screens`.
@@ -239,18 +237,15 @@ struct DisplayMapper {
 
     // MARK: - Point mapping
 
-    /// In relative mode: computes a delta from the previous normalized tablet position
-    /// and applies it to the current cursor location.
+    /// In relative mode: moves the cursor from where it is by the pen's travel
+    /// since the previous report.
     ///
-    /// Display mapping is intentionally ignored — it makes no sense for mouse-like input.
-    /// The delta is grounded in physical pen travel (the device's real active-area size
-    /// in millimetres) rather than the screen's own dimensions, so the feel doesn't
-    /// depend on tablet model or monitor size: a given pen movement always covers the
-    /// same amount of screen. Sub-point remainders are carried across reports so slow,
-    /// small motions still register instead of rounding away to nothing. The cursor is
-    /// clamped to the virtual-screen union so it can reach any display.
-    ///
-    /// Active-area crop is still respected: a smaller crop = higher sensitivity.
+    /// The travel is first scaled exactly as absolute mode would draw it (crop,
+    /// display region, proportional mapping), so relative mode keeps the same
+    /// proportions, the way touch does. `RelativeBallistics` then speeds up
+    /// quick sweeps and holds a resting pen still. Sub-point remainders are
+    /// carried across reports. The cursor is clamped to the virtual-screen union
+    /// so it can reach any display.
     mutating func resolveRelativePoint(
         _ point: TabletPoint, snapshot: InjectionSnapshot, currentCursorPosition: CGPoint,
         deviceProductID: Int
@@ -264,40 +259,45 @@ struct DisplayMapper {
                 height: CGFloat(CGDisplayPixelsHigh(CGMainDisplayID())))
             : virtualBounds
 
-        // Compute normalized position within the active area (same orientation math
-        // as mapToScreen; active-area crop controls sensitivity).
-        let rawX = Double(point.x)
-        let rawY = Double(point.y)
-        let rawMaxX = Double(point.maxX)
-        let rawMaxY = Double(point.maxY)
         let orientation = snapshot.tabletOrientation
         let (ox, oy, effMaxX, effMaxY) = Self.orient(
-            x: rawX, y: rawY, maxX: rawMaxX, maxY: rawMaxY, orientation: orientation)
-        let areaW = Swift.max(snapshot.activeAreaWidth, 0.001) * effMaxX
-        let areaH = Swift.max(snapshot.activeAreaHeight, 0.001) * effMaxY
-        let norm = CGPoint(
-            x: (ox - snapshot.activeAreaX * effMaxX) / areaW,
-            y: (oy - snapshot.activeAreaY * effMaxY) / areaH)
+            x: Double(point.x), y: Double(point.y),
+            maxX: Double(point.maxX), maxY: Double(point.maxY), orientation: orientation)
+        let pen = CGPoint(x: ox, y: oy)
 
         // First report after proximity entry: anchor without moving, seeding
         // the owned position from the real cursor so it can't drift from
         // reality across a proximity exit/re-entry.
+        let now = CFAbsoluteTimeGetCurrent()
         guard let prev = lastRelativeNorm else {
-            lastRelativeNorm = norm
+            lastRelativeNorm = pen
+            lastRelativeTime = now
+            relativeBallistics.reset()
             ownedRelativePosition = currentCursorPosition
             return currentCursorPosition
         }
-        lastRelativeNorm = norm
+        lastRelativeNorm = pen
+        let dt = now - lastRelativeTime
+        lastRelativeTime = now
 
-        // Ground the delta in physical pen travel: norm is fractional
-        // position within the (possibly cropped) active area, so
-        // norm-delta × crop-size-in-mm is the physical distance moved.
+        let dox: Double = ox - Double(prev.x)
+        let doy: Double = oy - Double(prev.y)
+
+        // Absolute mode's scale, points per raw unit on each axis.
+        let bounds = displayBounds(for: snapshot)
+        let area = mappedArea(
+            snapshot: snapshot, deviceProductID: deviceProductID, orientation: orientation,
+            effMaxX: effMaxX, effMaxY: effMaxY, displayBounds: bounds)
+        let pointsX: Double = dox * Double(bounds.width) / area.w
+        let pointsY: Double = doy * Double(bounds.height) / area.h
+
+        // Physical travel for speed and rest detection.
         let surfaceMM = relativeSurfaceMM(deviceProductID: deviceProductID)
-        let cropWidthMM = surfaceMM.w * snapshot.activeAreaWidth
-        let cropHeightMM = surfaceMM.h * snapshot.activeAreaHeight
-        let gain = Self.relativeGainPointsPerMM
-        let dx = (norm.x - prev.x) * cropWidthMM * gain
-        let dy = (norm.y - prev.y) * cropHeightMM * gain
+        let widthMM: Double = orientation.swapsAxes ? surfaceMM.h : surfaceMM.w
+        let heightMM: Double = orientation.swapsAxes ? surfaceMM.w : surfaceMM.h
+        let (dx, dy) = relativeBallistics.cursorDelta(
+            dxMM: dox / effMaxX * widthMM, dyMM: doy / effMaxY * heightMM,
+            dxPoints: pointsX, dyPoints: pointsY, dt: dt)
 
         // Accumulate on the owned float — never on a value read back from the
         // OS. The float itself carries sub-point precision across reports, so
@@ -353,6 +353,56 @@ struct DisplayMapper {
         let (ox, oy, effMaxX, effMaxY) = Self.orient(
             x: rawX, y: rawY, maxX: rawMaxX, maxY: rawMaxY, orientation: orientation)
 
+        let (areaX, areaY, areaW, areaH) = mappedArea(
+            snapshot: snapshot, deviceProductID: deviceProductID, orientation: orientation,
+            effMaxX: effMaxX, effMaxY: effMaxY, displayBounds: displayBounds)
+
+        // Clamped, not rejected: once the pen tip is beyond the mapped
+        // active area, the cursor is already sitting at the edge of where
+        // it can appear onscreen — exactly like a physical mouse cursor
+        // pinned at a monitor's edge while the mouse keeps moving past it.
+        // Overshoot past the boundary simply doesn't matter once clamped,
+        // however far or erratic it gets, so there's no need to detect or
+        // filter it upstream (see the PTK-870 BLE bezel/express-key-band
+        // investigation this replaced, in
+        // `project_ptk870_ble_new_report_protocol` memory). Matches the
+        // existing touch-at-screen-edges precedent
+        // (`InputInjector.pinNearScreenEdges`, +Touch.swift) that made
+        // touch-triggered Dock reveal reliable the same way.
+        let relX = Swift.min(Swift.max((ox - areaX) / areaW, 0), 1)
+        let relY = Swift.min(Swift.max((oy - areaY) / areaH, 0), 1)
+
+        // Apply multi-point calibration transform in normalized space (if available).
+        var calX = relX, calY = relY
+        let orientRaw = orientation.rawValue
+        if cachedCalibrationOrientation != orientRaw {
+            cachedCalibration = snapshot.calibration(for: orientation,
+                                                     displayUUID: cachedDisplayUUID)
+            cachedCalibrationOrientation = orientRaw
+        }
+        if let cal = cachedCalibration {
+            (calX, calY) = cal.apply(to: (relX, relY))
+        }
+
+        var sx = displayBounds.minX + calX * displayBounds.width
+        var sy = displayBounds.minY + calY * displayBounds.height
+
+        // Additive fine-tune offset (points, user-configured) — stacks on top of calibration.
+        sx += snapshot.parallaxOffsetX
+        sy += snapshot.parallaxOffsetY
+
+        sx = Swift.min(Swift.max(sx, displayBounds.minX), displayBounds.maxX)
+        sy = Swift.min(Swift.max(sy, displayBounds.minY), displayBounds.maxY)
+        return CGPoint(x: sx, y: sy)
+    }
+
+    /// The active area in oriented raw units that maps onto `displayBounds`,
+    /// after the user's crop and, when proportional mapping is on, the aspect
+    /// correction. Shared by absolute mapping and relative mode's scale.
+    private mutating func mappedArea(
+        snapshot: InjectionSnapshot, deviceProductID: Int, orientation: TabletOrientation,
+        effMaxX: Double, effMaxY: Double, displayBounds: CGRect
+    ) -> (x: Double, y: Double, w: Double, h: Double) {
         var areaX = snapshot.activeAreaX * effMaxX
         var areaY = snapshot.activeAreaY * effMaxY
         var areaW = Swift.max(snapshot.activeAreaWidth, 0.001) * effMaxX
@@ -394,44 +444,7 @@ struct DisplayMapper {
                 effMaxX: effMaxX, effMaxY: effMaxY,
                 surfaceAspect: surfaceAspect, displayAspect: displayAspect)
         }
-
-        // Clamped, not rejected: once the pen tip is beyond the mapped
-        // active area, the cursor is already sitting at the edge of where
-        // it can appear onscreen — exactly like a physical mouse cursor
-        // pinned at a monitor's edge while the mouse keeps moving past it.
-        // Overshoot past the boundary simply doesn't matter once clamped,
-        // however far or erratic it gets, so there's no need to detect or
-        // filter it upstream (see the PTK-870 BLE bezel/express-key-band
-        // investigation this replaced, in
-        // `project_ptk870_ble_new_report_protocol` memory). Matches the
-        // existing touch-at-screen-edges precedent
-        // (`InputInjector.pinNearScreenEdges`, +Touch.swift) that made
-        // touch-triggered Dock reveal reliable the same way.
-        let relX = Swift.min(Swift.max((ox - areaX) / areaW, 0), 1)
-        let relY = Swift.min(Swift.max((oy - areaY) / areaH, 0), 1)
-
-        // Apply multi-point calibration transform in normalized space (if available).
-        var calX = relX, calY = relY
-        let orientRaw = orientation.rawValue
-        if cachedCalibrationOrientation != orientRaw {
-            cachedCalibration = snapshot.calibration(for: orientation,
-                                                     displayUUID: cachedDisplayUUID)
-            cachedCalibrationOrientation = orientRaw
-        }
-        if let cal = cachedCalibration {
-            (calX, calY) = cal.apply(to: (relX, relY))
-        }
-
-        var sx = displayBounds.minX + calX * displayBounds.width
-        var sy = displayBounds.minY + calY * displayBounds.height
-
-        // Additive fine-tune offset (points, user-configured) — stacks on top of calibration.
-        sx += snapshot.parallaxOffsetX
-        sy += snapshot.parallaxOffsetY
-
-        sx = Swift.min(Swift.max(sx, displayBounds.minX), displayBounds.maxX)
-        sy = Swift.min(Swift.max(sy, displayBounds.minY), displayBounds.maxY)
-        return CGPoint(x: sx, y: sy)
+        return (areaX, areaY, areaW, areaH)
     }
 
     // MARK: - Display bounds resolution

@@ -9,6 +9,7 @@ set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
 MAPPER="$ROOT/MockTab/Driver/Mapping/DisplayMapper.swift"
+BALLISTICS="$ROOT/MockTab/Driver/Mapping/RelativeBallistics.swift"
 ORIENTATION="$ROOT/MockTab/Settings/Model/TabletOrientation.swift"
 CALIBRATION="$ROOT/MockTab/Settings/Model/CalibrationData.swift"
 STUB="$DIR/TabletSettingsStub.swift"
@@ -19,5 +20,5 @@ BIN="$(mktemp -d)/display-region-tests"
 # it once and caches it.
 KIT="$($ROOT/tools/tests/build-tabletkit.sh)"
 
-swiftc -O -I "$KIT" "$MAPPER" "$ORIENTATION" "$CALIBRATION" "$STUB" "$TEST" "$KIT/libTabletKit.a" -o "$BIN"
+swiftc -O -I "$KIT" "$MAPPER" "$BALLISTICS" "$ORIENTATION" "$CALIBRATION" "$STUB" "$TEST" "$KIT/libTabletKit.a" -o "$BIN"
 "$BIN"
