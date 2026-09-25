@@ -92,7 +92,9 @@ private func testDeviceSettingsCarrySecondDial() {
         "touchRingActiveSlotIndex2": 1,
     ], into: &values)
     expect(decodedRotaries(values)?.controls.count == 2, "device-level rotaries import")
-    expect(values["touchRingButtonBinding2"] as? String == ButtonBinding(kind: .ringCycle2).encoded,
+    // Compared decoded: encoded key order isn't stable between encodings.
+    expect((values["touchRingButtonBinding2"] as? String).flatMap(ButtonBinding.decode)
+               == ButtonBinding(kind: .ringCycle2),
            "second toggle key imports")
     expect(values["reverseRingDirection"] as? Bool == true, "direction imports")
     expect(values["touchRingActiveSlotIndex2"] as? Int == 1, "second active index imports")
