@@ -361,8 +361,12 @@ final class DeviceRegistry: ObservableObject {
         // Refresh kind on existing entry (model name table may have improved).
         if let idx = knownTools.firstIndex(where: { $0.id == toolID }) {
             if knownTools[idx].kind != kind {
+                // A nickname still equal to the old kind is a default; keep
+                // anything the user typed.
+                if knownTools[idx].nickname == knownTools[idx].kind {
+                    knownTools[idx].nickname = kind
+                }
                 knownTools[idx].kind = kind
-                knownTools[idx].nickname = kind  // Update nickname to match kind
                 if knownTools[idx].toolCode == nil {
                     knownTools[idx].toolCode = identity.toolCode
                     knownTools[idx].serial = identity.serial
