@@ -675,6 +675,9 @@ private struct TouchRingModeListCore: View, Equatable {
                 .font(.system(size: 48, weight: .light))
                 .foregroundStyle(.secondary)
                 .frame(width: 104, height: 104)
+                // A recessed disc anchors the glyph, the way the ring diagram
+                // anchors its wedges.
+                .background(Circle().fill(Self.badgeWellColor).frame(width: 80, height: 80))
                 .contentShape(Rectangle())
                 .overlay {
                     RightClickMenuHost { _ in slotActionMenu(for: activeSlotIndex) }
@@ -690,6 +693,12 @@ private struct TouchRingModeListCore: View, Equatable {
         .frame(width: 120)
         .padding(.top, 2)
     }
+
+    /// Slightly darker than the grouped section in either appearance.
+    private static let badgeWellColor = Color(nsColor: NSColor(name: nil) { appearance in
+        let dark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        return NSColor.black.withAlphaComponent(dark ? 0.22 : 0.05)
+    })
 
     /// Glyph for the mode the dial is currently on.
     ///
