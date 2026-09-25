@@ -204,6 +204,35 @@ struct ControlSlot: Codable, Equatable, Identifiable {
             }
         }
 
+        /// Glyph for the dial-mode badge (`TouchRingModeList`'s stand-in for
+        /// the mode LED this hardware doesn't have).
+        ///
+        /// `.rotate`'s symbol postdates our macOS 13 floor, so it carries a
+        /// fallback the badge resolves at runtime — see
+        /// `TouchRingModeList.resolvedSymbol`. `crop.rotate` is the same
+        /// gesture drawn on a crop frame, which reads as "straighten a photo"
+        /// rather than "turn the canvas"; it stands in only where the better
+        /// glyph doesn't exist.
+        ///
+        /// `nil` for `.skip`: a skipped slot is passed over by the mode cycle,
+        /// so it can never be the active mode the badge reports.
+        var symbolName: String? {
+            switch self {
+            case .scroll: return "arrow.up.arrow.down"
+            case .zoom: return "square.arrowtriangle.4.outward"
+            case .rotate: return "rectangle.landscape.rotate"
+            case .keyPress: return "keyboard"
+            case .off: return "circle.dashed"
+            case .skip: return nil
+            }
+        }
+
+        /// Stand-in for `symbolName` where it doesn't exist yet; nil when the
+        /// preferred glyph ships on every system we run on.
+        var symbolFallbackName: String? {
+            self == .rotate ? "crop.rotate" : nil
+        }
+
         /// Speed to land on when a slot is freshly switched *to* this
         /// action, for actions whose speed range isn't the shared
         /// `.scroll`/`.keyPress` multiplier — without this, switching a

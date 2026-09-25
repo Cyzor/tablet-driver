@@ -128,6 +128,10 @@ struct TouchRingModeListView: View {
     let centerDown: Bool
     /// Rings show the schematic diagram; strips have no round diagram.
     let showsDiagram: Bool
+    /// Mechanical dials show the active mode's glyph in the diagram's column
+    /// instead — they have neither a ring to draw nor a mode LED. Ignored
+    /// when `showsDiagram` is set; strips leave both off.
+    var showsModeBadge: Bool = false
     let actionBinding: (Int) -> Binding<ControlSlot.Action>
     let speedBinding: (Int) -> Binding<Double>
     let cwBinding: (Int) -> Binding<ButtonBinding>
@@ -176,6 +180,7 @@ struct TouchRingModeListView: View {
             activeSlotIndex: activeSlotIndex,
             centerDown: centerDown,
             showsDiagram: showsDiagram,
+            showsModeBadge: showsModeBadge,
             selected: selected,
             setSelected: { selected = $0 },
             pressed: pressed,
@@ -208,6 +213,7 @@ private struct TouchRingModeListCore: View, Equatable {
     let activeSlotIndex: Int
     let centerDown: Bool
     let showsDiagram: Bool
+    let showsModeBadge: Bool
     let selected: Int?
     let setSelected: (Int?) -> Void
     let pressed: RingDiagramRegion?
@@ -229,6 +235,7 @@ private struct TouchRingModeListCore: View, Equatable {
             && lhs.activeSlotIndex == rhs.activeSlotIndex
             && lhs.centerDown == rhs.centerDown
             && lhs.showsDiagram == rhs.showsDiagram
+            && lhs.showsModeBadge == rhs.showsModeBadge
             && lhs.selected == rhs.selected
             && lhs.pressed == rhs.pressed
             && lhs.maxSpeed == rhs.maxSpeed
@@ -248,6 +255,11 @@ private struct TouchRingModeListCore: View, Equatable {
                 HStack(alignment: .top, spacing: 12) {
                     modeList
                     diagram
+                }
+            } else if showsModeBadge {
+                HStack(alignment: .top, spacing: 12) {
+                    modeList
+                    modeBadge
                 }
             } else {
                 modeList
@@ -642,6 +654,62 @@ private struct TouchRingModeListCore: View, Equatable {
         case nil:
             return nil
         }
+    }
+
+    // MARK: - Mode badge
+
+    /// The mechanical dial's stand-in for the schematic ring: just the active
+    /// mode's glyph, in the same fixed-width column the diagram would occupy,
+    /// under the same caption. That hardware has no mode LED and no ring to
+    /// draw, so the column would otherwise sit empty.
+    ///
+    /// Deliberately not clickable. The diagram's wedges are a shortcut for
+    /// picking a mode to edit; a single glyph has nothing to aim at, and the
+    /// summary rows beside it already do that job.
+    private var modeBadge: some View {
+        VStack(spacing: 2) {
+            Image(systemName: badgeSymbol)
+                .font(.system(size: 48, weight: .light))
+                .foregroundStyle(.secondary)
+                .frame(width: 104, height: 104)
+                .accessibilityHidden(true)
+            Text(activeCaption)
+                .appFont(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 4)
+        }
+        .frame(width: 120)
+        .padding(.top, 2)
+    }
+
+    /// Glyph for the mode the dial is currently on.
+    ///
+    /// Deliberately not gated on `isRingActive` — that flag means the dial is
+    /// *being turned this instant*, not that its mode is known, so gating on
+    /// it left the badge inert on a connected tablet until you touched the
+    /// dial. The diagram fills its active wedge unconditionally for the same
+    /// reason; only the caption below falls back.
+    ///
+    /// Stays uncolored in every state. The ring diagram's accent earns its
+    /// keep by showing which of four wedges is live on hardware you can't
+    /// feel; a dial's detents already tell you that, so color here would only
+    /// add noise.
+    private var badgeSymbol: String {
+        guard slots.indices.contains(activeSlotIndex) else { return "dial.medium" }
+        let action = slots[activeSlotIndex].action
+        guard let symbol = action.symbolName else { return "dial.medium" }
+        guard let fallback = action.symbolFallbackName else { return symbol }
+        return Self.resolvedSymbol(symbol, fallback: fallback)
+    }
+
+    /// The first of the two names this system actually has. Asking AppKit
+    /// beats an `#available` check against a remembered SF Symbols release —
+    /// a symbol missing at runtime renders as a blank slot, not a build error,
+    /// so the version number is the one thing worth not trusting.
+    private static func resolvedSymbol(_ name: String, fallback: String) -> String {
+        NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil ? name : fallback
     }
 
     private var activeCaption: String {

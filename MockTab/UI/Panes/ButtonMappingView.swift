@@ -487,6 +487,7 @@ struct ButtonMappingView: View {
                     touchRingSlotsSection(
                         ringSectionLabel,
                         isActive: lb.touchRing2Active, showsDiagram: !hasMechanicalDial,
+                        showsModeBadge: hasMechanicalDial,
                         ring: .secondary)
                     if !hasTouchStrips { reverseRingDirectionToggle }
                 }
@@ -555,6 +556,7 @@ struct ButtonMappingView: View {
                 ? String(localized: "Dial", comment: "Section header / row label for a mechanical rotate-only dial")
                 : String(localized: "Touch Ring", comment: "Section header / row label for touch ring"),
             isActive: lb.touchRingActive, showsDiagram: !hasMechanicalDial,
+            showsModeBadge: hasMechanicalDial,
             onCenterTap: hasMechanicalDial ? nil : { centerRecordToken += 1 },
             centerBinding: hasMechanicalDial ? nil : settings.recordingBinding(
                 String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
@@ -849,6 +851,7 @@ struct ButtonMappingView: View {
     @ViewBuilder
     private func touchRingSlotsSection(
         _ label: String, isActive: Bool, showsDiagram: Bool = false,
+        showsModeBadge: Bool = false,
         ring: RingIdentity = .primary,
         onCenterTap: (() -> Void)? = nil,
         centerBinding: Binding<ButtonBinding>? = nil
@@ -875,6 +878,7 @@ struct ButtonMappingView: View {
             // regardless of whatever `touchRingButtonDown` happens to read.
             centerDown: hasMechanicalDial ? false : liveButtons.touchRingButtonDown,
             showsDiagram: showsDiagram,
+            showsModeBadge: showsModeBadge,
             actionBinding: slotBinding(at:),
             speedBinding: slotSpeedBinding(at:),
             cwBinding: { self.slotBinding(for: $0, direction: .cw) },
