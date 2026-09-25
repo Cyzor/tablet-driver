@@ -619,21 +619,7 @@ private struct TouchRingModeListCore: View, Equatable {
     private func wedgeContextMenu(for region: RingDiagramRegion?) -> NSMenu? {
         switch region {
         case .wedge(let idx):
-            guard slots.indices.contains(idx) else { return nil }
-            let menu = NSMenu()
-            for action in ControlSlot.Action.allCases {
-                let item = NSMenuItem(
-                    title: action.displayLabel,
-                    action: #selector(RingMenuTarget.selectAction(_:)), keyEquivalent: "")
-                item.state = slots[idx].action == action ? .on : .off
-                item.target = RingMenuTarget.shared
-                item.representedObject = RingMenuAction { [actionBinding, setSelected] in
-                    actionBinding(idx).wrappedValue = action
-                    setSelected(idx)
-                }
-                menu.addItem(item)
-            }
-            return menu
+            return slotActionMenu(for: idx)
 
         case .center:
             guard let centerBinding else { return nil }
@@ -656,6 +642,25 @@ private struct TouchRingModeListCore: View, Equatable {
         }
     }
 
+    /// The Action picker's choices for one mode, as a menu.
+    private func slotActionMenu(for idx: Int) -> NSMenu? {
+        guard slots.indices.contains(idx) else { return nil }
+        let menu = NSMenu()
+        for action in ControlSlot.Action.allCases {
+            let item = NSMenuItem(
+                title: action.displayLabel,
+                action: #selector(RingMenuTarget.selectAction(_:)), keyEquivalent: "")
+            item.state = slots[idx].action == action ? .on : .off
+            item.target = RingMenuTarget.shared
+            item.representedObject = RingMenuAction { [actionBinding, setSelected] in
+                actionBinding(idx).wrappedValue = action
+                setSelected(idx)
+            }
+            menu.addItem(item)
+        }
+        return menu
+    }
+
     // MARK: - Mode badge
 
     /// The mechanical dial's stand-in for the schematic ring: just the active
@@ -663,15 +668,17 @@ private struct TouchRingModeListCore: View, Equatable {
     /// under the same caption. That hardware has no mode LED and no ring to
     /// draw, so the column would otherwise sit empty.
     ///
-    /// Deliberately not clickable. The diagram's wedges are a shortcut for
-    /// picking a mode to edit; a single glyph has nothing to aim at, and the
-    /// summary rows beside it already do that job.
+    /// Right-click retargets the active mode, like a ring wedge.
     private var modeBadge: some View {
         VStack(spacing: 2) {
             Image(systemName: badgeSymbol)
                 .font(.system(size: 48, weight: .light))
                 .foregroundStyle(.secondary)
                 .frame(width: 104, height: 104)
+                .contentShape(Rectangle())
+                .overlay {
+                    RightClickMenuHost { _ in slotActionMenu(for: activeSlotIndex) }
+                }
                 .accessibilityHidden(true)
             Text(activeCaption)
                 .appFont(.caption)
