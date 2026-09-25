@@ -21,6 +21,7 @@ swiftc -O \
     "$IMPORT_PLAN" \
     "$SETTINGS/Model/ButtonBinding.swift" \
     "$SETTINGS/Model/ControlSlot.swift" \
+    "$SETTINGS/Model/RotaryConfig.swift" \
     "$SETTINGS/Serialization/UnknownFieldsCodable.swift" \
     "$SETTINGS/Model/BezierCurve.swift" \
     "$STUB" \

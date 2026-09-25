@@ -113,6 +113,20 @@ final class PresetExporter {
         d["touchStrip1Key"] = d["touchRingKey"]
         d["touchStrip2"] = d["touchRing"]
         d["touchStrip2Key"] = d["touchRingKey"]
+        d["touchRingButton2"] = s.touchRingButtonBinding2.displayLabel
+        d["touchRingButton2Key"] = s.touchRingButtonBinding2.encoded
+        d["reverseRingDirection"] = s.reverseRingDirection
+        d["touchRingActiveSlotIndex"] = s.touchRingActiveSlotIndex
+        d["touchRingActiveSlotIndex2"] = s.touchRingActiveSlotIndex2
+        if let data = try? JSONEncoder().encode(s.touchRingSlots),
+           let obj = try? JSONSerialization.jsonObject(with: data) {
+            d["touchRingSlots"] = obj
+        }
+        // Stored bytes, not `s.rotaries`: an offline tablet's settings load
+        // trimmed to one control, which would drop a PTK's second dial.
+        if let obj = Self.jsonObject(UserDefaults.standard.data(forKey: devicePrefix + "rotariesJSON")) {
+            d["rotaries"] = obj
+        }
         let expressKeys = s.expressKeyBindings.map(\.displayLabel)
         if expressKeys.contains(where: { $0 != "None" }) {
             d["expressKeys"] = expressKeys
@@ -205,7 +219,7 @@ final class PresetExporter {
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (roundFrac(ud.double(forKey: prefix + key)), nil)
 
-        case "proportionalMapping", "invertRotation", "relativeCursorMovement":
+        case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (ud.bool(forKey: prefix + key), nil)
 
@@ -225,7 +239,7 @@ final class PresetExporter {
             return (TabletOrientation(rawValue: raw)?.label ?? "", raw)
 
         case "penButton1Binding", "penButton2Binding",
-             "touchRingButtonBinding", "tipBinding", "eraserBinding":
+             "touchRingButtonBinding", "touchRingButtonBinding2", "tipBinding", "eraserBinding":
             guard let raw = ud.string(forKey: prefix + key) else { return nil }
             let binding = ButtonBinding.decode(raw)
             return (binding?.displayLabel ?? raw, binding?.encoded)
@@ -247,17 +261,26 @@ final class PresetExporter {
             else { return nil }
             return (exportCurve(curve), nil)
 
-        case "touchRingSlotsJSON", "calibrationJSON":
+        // Stored as JSON bytes; embedded as JSON so the file stays readable.
+        case "touchRingSlotsJSON", "rotariesJSON":
+            guard let obj = Self.jsonObject(ud.data(forKey: prefix + key)) else { return nil }
+            return (obj, nil)
+
+        case "calibrationJSON":
             guard let raw = ud.string(forKey: prefix + key) else { return nil }
             return (raw, nil)
 
-        case "touchRingActiveSlotIndex":
+        case "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (ud.integer(forKey: prefix + key), nil)
 
         default:
             return nil
         }
+    }
+
+    private static func jsonObject(_ data: Data?) -> Any? {
+        data.flatMap { try? JSONSerialization.jsonObject(with: $0) }
     }
 
     private func exportCurve(_ c: BezierCurve) -> [String: Any] {

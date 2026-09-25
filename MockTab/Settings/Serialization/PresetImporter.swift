@@ -155,6 +155,18 @@ struct PresetImporter {
         } else if let v = s["touchRingButton"] as? String, !v.isEmpty {
             values["touchRingButtonBinding"] = ButtonBinding.fromDisplayLabel(v).encoded
         }
+        if let v = s["touchRingButton2Key"] as? String, !v.isEmpty {
+            values["touchRingButtonBinding2"] = (ButtonBinding.decode(v) ?? .none).encoded
+        }
+        if let v = s["reverseRingDirection"] as? Bool { values["reverseRingDirection"] = v }
+        if let v = s["touchRingActiveSlotIndex"] as? Int { values["touchRingActiveSlotIndex"] = v }
+        if let v = s["touchRingActiveSlotIndex2"] as? Int { values["touchRingActiveSlotIndex2"] = v }
+        if let v = s["touchRingSlots"], let data = decodeSlotsData(v) {
+            values["touchRingSlotsJSON"] = data
+        }
+        if let v = s["rotaries"], let data = decodeRotariesData(v) {
+            values["rotariesJSON"] = data
+        }
         if let v = s["touchRingKey"] as? String {
             values["touchRingMode"] = (TouchRingMode(rawValue: v) ?? .off).rawValue
         } else if let v = s["touchRing"] as? String {
@@ -201,7 +213,7 @@ struct PresetImporter {
                  "smoothingStrength", "doubleClickDistance":
                 if let v = rawValue as? Double, v.isFinite { values[key] = v }
 
-            case "proportionalMapping", "invertRotation", "relativeCursorMovement":
+            case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection":
                 if let v = rawValue as? Bool { values[key] = v }
 
             case "targetDisplayIndex":
@@ -218,7 +230,7 @@ struct PresetImporter {
                 }
 
             case "penButton1Binding", "penButton2Binding",
-                 "touchRingButtonBinding", "tipBinding", "eraserBinding":
+                 "touchRingButtonBinding", "touchRingButtonBinding2", "tipBinding", "eraserBinding":
                 if let v = s[key + "Key"] as? String, !v.isEmpty {
                     values[key] = (ButtonBinding.decode(v) ?? .none).encoded
                 } else if let v = rawValue as? String, !v.isEmpty {
@@ -244,10 +256,17 @@ struct PresetImporter {
                     values[key] = data
                 }
 
-            case "touchRingSlotsJSON", "calibrationJSON":
+            // Stored as Data, which the app reads with `data(forKey:)`.
+            case "touchRingSlotsJSON":
+                if let data = decodeSlotsData(rawValue) { values[key] = data }
+
+            case "rotariesJSON":
+                if let data = decodeRotariesData(rawValue) { values[key] = data }
+
+            case "calibrationJSON":
                 if let v = rawValue as? String { values[key] = v }
 
-            case "touchRingActiveSlotIndex":
+            case "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2":
                 if let v = rawValue as? Int { values[key] = v }
 
             default:
@@ -321,6 +340,29 @@ struct PresetImporter {
             return ""
         }
         return s
+    }
+
+    /// Mode lists arrive as embedded JSON, or as a JSON string in the shape
+    /// older code expected. Kept only if they decode, so a malformed entry
+    /// can't block the app from saving over it later.
+    static func decodeSlotsData(_ value: Any) -> Data? {
+        guard let data = jsonData(value),
+              (try? JSONDecoder().decode([ControlSlot].self, from: data)) != nil
+        else { return nil }
+        return data
+    }
+
+    static func decodeRotariesData(_ value: Any) -> Data? {
+        guard let data = jsonData(value),
+              (try? JSONDecoder().decode(RotarySet.self, from: data)) != nil
+        else { return nil }
+        return data
+    }
+
+    private static func jsonData(_ value: Any) -> Data? {
+        if let s = value as? String { return s.data(using: .utf8) }
+        guard JSONSerialization.isValidJSONObject(value) else { return nil }
+        return try? JSONSerialization.data(withJSONObject: value)
     }
 
     static func decodeCurveData(_ d: [String: Any]) -> Data? {
