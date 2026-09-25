@@ -246,6 +246,26 @@ private struct ChipInteractionProxy: NSViewRepresentable {
     }
 }
 
+// MARK: - Dragged chip collapse
+
+/// Shrinks the dragged chip, and one row spacing, to nothing while a drop gap
+/// is open. Width is explicit on both ends so the change animates in step
+/// with the gap. One view structure throughout: a branch would rebuild the
+/// chip's NSView, which hosts the drag session, mid-press.
+private struct CollapsedDragSource: ViewModifier {
+    let width: CGFloat?
+    let collapsed: Bool
+    let spacing: CGFloat
+
+    func body(content: Content) -> some View {
+        let active = width != nil && collapsed
+        content
+            .frame(width: width.map { collapsed ? 0 : $0 }, alignment: .leading)
+            .opacity(active ? 0 : 1)
+            .padding(.trailing, active ? -spacing : 0)
+    }
+}
+
 // MARK: - Chip row drop zone (manual NSDraggingDestination)
 
 /// Transparent overlay spanning the chip row that owns drop handling for
@@ -502,6 +522,9 @@ struct AppOverrideBar: View {
 
     @State private var isDropTargeted = false
     @State private var dragEnabledID: String? = nil
+    /// The dragged chip's width, captured on arm — its live frame reads zero
+    /// once it collapses to make room for the gap.
+    @State private var dragSourceWidth: CGFloat? = nil
     @State private var dragHoverTargetID: String? = nil
     /// True when the hovered insertion point is past the last chip (append at
     /// end); the gap then opens on the last chippy-chip's trailing side.
@@ -559,7 +582,7 @@ struct AppOverrideBar: View {
     /// Gap opened ahead of the hovered drop target: wide enough to fit the
     /// chip being dragged, so it reads as "there's room for it here."
     private var dragHoverGap: CGFloat {
-        guard let id = dragEnabledID, let width = chipFrames[id]?.width else { return 60 }
+        guard let width = dragSourceWidth else { return 60 }
         return width + chipRowSpacing
     }
 
@@ -812,6 +835,13 @@ struct AppOverrideBar: View {
                     isSelected: selectedBundleID == override.bundleID,
                     domainKeyCount: override.overriddenKeys.intersection(domainKeys).count
                 )
+                // While a gap is open the dragged chip gives up its slot, so
+                // the row's width never changes. Growing it tipped a narrow
+                // window in and out of overflow, flickering the scroll bar.
+                .modifier(CollapsedDragSource(
+                    width: dragEnabledID == override.bundleID ? dragSourceWidth : nil,
+                    collapsed: dragHoverTargetID != nil,
+                    spacing: chipRowSpacing))
                 .padding(.leading, dragHoverTargetID == override.bundleID && !dragHoverAtEnd ? dragHoverGap : 0)
                 .padding(.trailing, dragHoverAtEnd && isLast ? dragHoverGap : 0)
                 .background(
@@ -906,9 +936,13 @@ struct AppOverrideBar: View {
                         renameText = label
                     }
                 },
-                onArm: { dragEnabledID = bundleID },
+                onArm: {
+                    dragEnabledID = bundleID
+                    dragSourceWidth = bundleID.flatMap { chipFrames[$0]?.width }
+                },
                 onDisarm: {
                     dragEnabledID = nil
+                    dragSourceWidth = nil
                     dragHoverTargetID = nil
                     dragHoverAtEnd = false
                 },
