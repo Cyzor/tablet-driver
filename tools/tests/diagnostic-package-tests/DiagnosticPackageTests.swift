@@ -15,6 +15,7 @@ import Foundation
     let log = tmp.appendingPathComponent("mocktab-raw-x.txt")
     try! "line one\nline two\n".write(to: log, atomically: true, encoding: .utf8)
 
+
     // With a raw log
     let zip = DiagnosticPackage.build(summaryURL: summary, rawLogURL: log, productID: "0x520D")
     check(zip != nil, "archive is produced")
@@ -72,6 +73,21 @@ import Foundation
     let ghost = tmp.appendingPathComponent("nope.txt")
     check(DiagnosticPackage.build(summaryURL: summary, rawLogURL: ghost, productID: "0x1") != nil,
           "a missing raw log still produces an archive")
+
+    // The round-trip checks above cannot catch a missing `--noextattr`: the
+    // staged copies are stripped first, so in-process there is never an
+    // attribute left for ditto to serialize. The signed app hits the case the
+    // harness cannot — a real submission arrived with a `._` sidecar per file,
+    // each holding only `com.apple.provenance`. Assert the flag itself, since
+    // behavior here would pass either way.
+    let sourcePath = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : ""
+    if let source = try? String(contentsOfFile: sourcePath, encoding: .utf8) {
+        check(source.contains("\"--noextattr\""), "ditto is told not to serialize xattrs")
+        check(source.contains("\"--norsrc\""), "ditto is told not to serialize resource forks")
+        check(!source.contains("\"--sequesterRsrc\""), "ditto does not sequester resource forks")
+    } else {
+        check(false, "source file readable for the flag checks")
+    }
 
     if fails == 0 { print("ok — \(checks) checks passed"); exit(0) }
     FileHandle.standardError.write(Data("\(fails) of \(checks) checks failed\n".utf8)); exit(1)

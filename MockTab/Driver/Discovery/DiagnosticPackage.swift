@@ -67,7 +67,8 @@ enum DiagnosticPackage {
     /// forks is worth shipping.
     ///
     /// Staging copies only, never the user's files. Best-effort: failing here
-    /// costs cosmetics, not the capture.
+    /// costs cosmetics, not the capture. `runDitto` is what actually
+    /// guarantees no sidecars; this keeps the staged files clean besides.
     private static func stripExtendedAttributes(in directory: URL) {
         let fm = FileManager.default
         guard let entries = try? fm.contentsOfDirectory(
@@ -98,11 +99,21 @@ enum DiagnosticPackage {
     /// Without `--sequesterRsrc`, which is what *creates* the `__MACOSX/._*`
     /// entries rather than suppressing them — confirmed on a real archive,
     /// three phantom files for three real ones.
+    ///
+    /// `--noextattr`/`--norsrc` because stripping the staged copies is not
+    /// enough on its own: a submitted archive built by the signed app still
+    /// carried a `._` sidecar per file, each holding only
+    /// `com.apple.provenance`, which the system applies to files the app
+    /// writes. Telling `ditto` not to serialize attributes does not depend on
+    /// winning that race.
     private static func runDitto(from source: URL, to destination: URL) -> Bool {
         try? FileManager.default.removeItem(at: destination)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
-        process.arguments = ["-c", "-k", "--keepParent", source.path, destination.path]
+        process.arguments = [
+            "-c", "-k", "--norsrc", "--noextattr", "--keepParent",
+            source.path, destination.path,
+        ]
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
         do {
