@@ -827,6 +827,11 @@ final class CaptureEngine: ObservableObject {
         let deviceInfo = sessions[0].info
         let toolCodeHex = allToolCodes.map { String(format: "0x%04X", $0) }.sorted()
         let touchPipeline = TouchPipelineProbe.snapshot()
+        // Same probe that ticks the sheet's checklist, so the file can't
+        // contradict the checkmarks the tester watched appear.
+        let penActivitySeen = CaptureActivityProbe.snapshot().decoded.contains {
+            $0 == .penTip || $0 == .eraser || $0 == .penButtons
+        }
         var notes = "Observed tool codes: \(toolCodeHex.isEmpty ? "none" : toolCodeHex.joined(separator: ", "))"
         if allToolCodes.contains(0x080A) {
             notes += " (eraser capable)"
@@ -893,6 +898,7 @@ final class CaptureEngine: ObservableObject {
             }(),
             observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
             everSeenTools: capturedEverSeenTools,
+            observedPenActivity: penActivitySeen,
             touchSettings: capturedTouchSettings,
             appSettings: capturedAppSettings,
             touchPipeline: touchPipeline.isEmpty ? nil : touchPipeline,

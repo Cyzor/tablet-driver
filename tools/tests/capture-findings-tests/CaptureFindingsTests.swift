@@ -33,7 +33,8 @@ func makeResult(
     declaredInput: [String] = [],
     observed: [String] = [],
     toolCodes: [String]? = nil,
-    touchEnabled: Bool? = nil
+    touchEnabled: Bool? = nil,
+    penActivity: Bool? = nil
 ) -> DiscoveryResult {
     var layouts: [String: LiveHIDDescriptorInspector.ReportLayout] = [:]
     for id in declaredInput {
@@ -56,6 +57,7 @@ func makeResult(
         hidReportDescriptor: LiveHIDDescriptorInspector.Parsed(
             rawHex: nil, rawLength: 0, reports: layouts),
         observedToolCodes: toolCodes,
+        observedPenActivity: penActivity,
         touchSettings: touchEnabled.map { enabled in
             DiscoveryTouchSettings(
                 touchEnabled: enabled, tapToClick: false, twoFingerScroll: false,
@@ -115,6 +117,30 @@ check(
     discoveryFindings(for: makeResult(toolCodes: ["0x0802"]))
         .contains { $0.kind == "noToolCodeObserved" } == false,
     "an observed tool code suppresses the proximity finding")
+// A protocol that carries no tool code at all — Wacom One S report 0x1F. The
+// pen frames decoded, so neither finding may claim the pen went undetected or
+// untried. A working capture was told its pen had never been seen.
+let noToolCodeProtocol = makeResult(toolCodes: [], penActivity: true)
+let noToolCodeFound = discoveryFindings(for: noToolCodeProtocol)
+check(
+    !noToolCodeFound.contains { $0.kind == "subsystemsNotExercised" },
+    "decoded pen frames mean the pen is not reported as unexercised")
+let noToolCodeDetail = noToolCodeFound
+    .first { $0.kind == "noToolCodeObserved" }?.detail ?? ""
+check(
+    noToolCodeDetail.contains("reports no tool identity"),
+    "the tool-code finding attributes the gap to the protocol")
+check(
+    !noToolCodeDetail.contains("never detected"),
+    "the tool-code finding never claims an undetected pen when frames decoded")
+
+// Without pen activity the original wording stands — an untouched pen really
+// is untried, which is the issue #14 case the findings exist for.
+check(
+    discoveryFindings(for: makeResult(toolCodes: [], penActivity: false))
+        .contains { $0.kind == "subsystemsNotExercised" },
+    "no pen activity still reports the pen as unexercised")
+
 check(
     discoveryFindings(for: makeResult(toolCodes: ["0x0802"], touchEnabled: false))
         .contains { $0.kind == "touchDisabledInSettings" },

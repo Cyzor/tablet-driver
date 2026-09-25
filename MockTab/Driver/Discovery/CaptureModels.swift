@@ -154,7 +154,12 @@ struct DiscoveryResult: Codable {
     /// `interfaces` entries also gain `productID`/`deviceName`, needed since
     /// a session now spans every attached device rather than one tablet. All
     /// new fields are optional, so v16 readers and files still decode.
-    var captureVersion: Int = 17
+    ///
+    /// v18 adds `observedPenActivity`. The pen findings keyed off
+    /// `observedToolCodes`, which a protocol carrying no tool code never fills
+    /// — a working Wacom One S capture was told its pen had never been
+    /// detected. Optional, so v17 readers and files still decode.
+    var captureVersion: Int = 18
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -198,6 +203,14 @@ struct DiscoveryResult: Codable {
     /// cannot distinguish an unused pen from an undetected one, and on issue
     /// #14 that ambiguity survived nine captures.
     var everSeenTools: [String]?
+    /// True when a decoder read at least one pen frame in proximity or under
+    /// pressure this session, from `CaptureActivityProbe`.
+    ///
+    /// Distinct from `observedToolCodes`, which only fills from a tool-identity
+    /// frame: a protocol that carries no tool code (Wacom One S report 0x1F)
+    /// leaves that empty however much the pen is used, so tool codes alone
+    /// cannot answer "was a pen used". Both findings below read this instead.
+    var observedPenActivity: Bool?
     /// The touch-related settings in force during the session. Present only
     /// for a device whose spec declares finger touch — on everything else
     /// these settings are inert and would be misleading noise.
@@ -317,6 +330,15 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
                 productID: pid,
                 detail: {
                     let base = "No pen tool code was observed during this capture. "
+                    // Pen frames decoded, so the absence is about the protocol
+                    // carrying no tool code — not about pen detection. Saying
+                    // otherwise tells a reporter whose pen works that it was
+                    // never seen.
+                    if result.observedPenActivity == true {
+                        return base
+                            + "Pen frames were decoded regardless, so this device reports no "
+                            + "tool identity rather than having gone undetected."
+                    }
                     switch result.everSeenTools {
                     case .some(let tools) where !tools.isEmpty:
                         // The registry remembers a pen, so the hardware has
@@ -347,7 +369,11 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     // which was read as evidence about the pen until it turned out no capture
     // had ever involved picking it up.
     var untested: [String] = []
-    if result.observedToolCodes?.isEmpty ?? true { untested.append("the pen") }
+    // Decoded frames, not tool codes — a tool code is absent for a whole
+    // protocol family whose pen works fine.
+    if result.observedPenActivity != true, result.observedToolCodes?.isEmpty ?? true {
+        untested.append("the pen")
+    }
     let sawTouch = (result.interfaces ?? []).contains { iface in
         iface.sampleCount > 0 && iface.usagePage != "0x0001"
     }
