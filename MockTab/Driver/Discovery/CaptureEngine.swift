@@ -810,7 +810,8 @@ final class CaptureEngine: ObservableObject {
                     isPrimary: session.device === primaryDevice,
                     sampleCount: session.accumulator.sampleCount,
                     reports: Self.reportSummaries(
-                        reports, descriptor: session.info.parsedDescriptor),
+                        reports, descriptor: session.info.parsedDescriptor,
+                        productID: session.info.productID),
                     hidReportDescriptor: session.info.parsedDescriptor))
         }
 
@@ -914,12 +915,15 @@ final class CaptureEngine: ObservableObject {
     ///   interfaces that `WacomKnownDevice`'s `sender`-based routing fixed.
     private static func reportSummaries(
         _ reports: [UInt8: DiscoveryAccumulator.ReportStats],
-        descriptor: LiveHIDDescriptorInspector.Parsed?
+        descriptor: LiveHIDDescriptorInspector.Parsed?,
+        productID: Int
     ) -> [String: DiscoveryReportSummary] {
         var reportSummaries: [String: DiscoveryReportSummary] = [:]
 
         for (reportID, stats) in reports {
             let idHex = String(format: "0x%02X", reportID)
+            let serialBytes = Set(CaptureSerialRedaction.serialByteOffsets(
+                productID: productID, reportID: reportID))
 
             var varyingBytes: [Int] = []
             var constantBytes: [Int] = []
@@ -934,15 +938,22 @@ final class CaptureEngine: ObservableObject {
                 switch role {
                 case .constant(let value):
                     constantBytes.append(idx)
-                    constantValues.append(Int(value))
+                    // Position still listed, value withheld: a serial sits
+                    // still for a whole session, so it lands here rather than
+                    // in the varying stats.
+                    constantValues.append(serialBytes.contains(idx) ? -1 : Int(value))
                 case .varying, .optional:
                     if role == .optional {
                         optionalBytes.append(idx)
                     } else {
                         varyingBytes.append(idx)
                     }
+                    // A serial normally reads as constant, but swapping
+                    // remotes mid-session makes it vary, and the min/max
+                    // would then carry it. Omit the stat rather than publish
+                    // a range over serials.
                     let seen = stats.byteValues[idx]
-                    if let lo = seen.min, let hi = seen.max {
+                    if let lo = seen.min, let hi = seen.max, !serialBytes.contains(idx) {
                         byteStats[idx] = Self.byteStat(seen, lo: lo, hi: hi)
                     }
                 }
@@ -992,12 +1003,15 @@ final class CaptureEngine: ObservableObject {
                 varyingBytes: varyingBytes,
                 constantBytes: constantBytes,
                 optionalBytes: optionalBytes.isEmpty ? nil : optionalBytes,
-                firstSample: stats.firstSample.map { String(format: "%02X", $0) }.joined(),
+                firstSample: stats.firstSample.enumerated()
+                    .map { serialBytes.contains($0.offset) ? "--" : String(format: "%02X", $0.element) }
+                    .joined(),
                 constantValues: constantValues.isEmpty ? nil : constantValues,
                 byteStats: byteStats.isEmpty ? nil : byteStats,
                 descriptorReadable: descriptorReadable,
                 repeatingStructure: repeatingStructure,
-                byteStatsByDiscriminator: Self.discriminatedStats(stats),
+                byteStatsByDiscriminator: Self.discriminatedStats(
+                    stats, serialBytes: serialBytes),
                 arrivalGaps: arrivalGaps
             )
         }
@@ -1022,7 +1036,8 @@ final class CaptureEngine: ObservableObject {
     /// own cardinality falls outside `discriminatorMaxDistinct` — see that
     /// property and `DiscoveryReportSummary.byteStatsByDiscriminator`.
     private static func discriminatedStats(
-        _ stats: DiscoveryAccumulator.ReportStats
+        _ stats: DiscoveryAccumulator.ReportStats,
+        serialBytes: Set<Int>
     ) -> [String: DiscoveryDiscriminatedStats]? {
         let distinctDiscriminatorValues = stats.byDiscriminator.count
         guard (2...discriminatorMaxDistinct).contains(distinctDiscriminatorValues) else { return nil }
@@ -1031,7 +1046,8 @@ final class CaptureEngine: ObservableObject {
         for (disc, bucket) in stats.byDiscriminator {
             var byteStats: [Int: DiscoveryByteStat] = [:]
             for (idx, seen) in bucket.enumerated() {
-                guard let lo = seen.min, let hi = seen.max else { continue }
+                guard let lo = seen.min, let hi = seen.max,
+                      !serialBytes.contains(idx) else { continue }
                 byteStats[idx] = Self.byteStat(seen, lo: lo, hi: hi)
             }
             let key = String(format: "%02X", disc)
