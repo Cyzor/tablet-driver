@@ -224,7 +224,7 @@ struct ProfilesView: View {
             Text(
                 String(
                     localized:
-                        "Export your current configuration as a JSON file. You can restore it later if settings get reset or corrupted.",
+                        "Export current configuration as a JSON file.",
                     comment: "Description of the backup/export functionality")
             )
             .appFont(.settingsLabel)
@@ -245,7 +245,7 @@ struct ProfilesView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(
                         String(
-                            localized: "Drag out to save a backup. Drag a .json file in to import.",
+                            localized: "Drag this icon out to save a copy of your settings. Drop back in to restore prior settings.",
                             comment: "Description of export/import drag-and-drop functionality")
                     )
                     .appFont(.settingsLabel)

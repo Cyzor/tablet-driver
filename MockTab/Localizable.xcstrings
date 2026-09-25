@@ -6673,31 +6673,25 @@
         }
       }
     },
-    "Drag out to save a backup. Drag a .json file in to import." : {
+    "Drag this icon out to save a copy of your settings. Drop back in to restore prior settings." : {
       "comment" : "Description of export/import drag-and-drop functionality",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zieh dieses Symbol nach draußen, um ein Backup als JSON-Datei zu speichern. Oder zieh eine vorhandene Backup-Datei wieder hinein, um frühere Einstellungen wiederherzustellen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drag this icon out to save a backup as a JSON file.  Or drop an existing backup file back in to restore prior settings."
+            "value" : "Zieh dieses Symbol heraus, um eine Kopie deiner Einstellungen zu speichern. Zieh sie wieder hinein, um frühere Einstellungen wiederherzustellen."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arrastra este icono para guardar una copia de seguridad como archivo JSON.  O bien, arrastra un archivo de copia de seguridad ya existente hasta aquí para restaurar la configuración anterior."
+            "value" : "Arrastra este icono fuera para guardar una copia de tus ajustes. Suéltala aquí para restaurar los ajustes anteriores."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このアイコンをドラッグして、バックアップをJSONファイルとして保存してください。または、既存のバックアップファイルをここにドロップして、以前の設定を復元してください。"
+            "value" : "このアイコンをドラッグして設定のコピーを保存します。ここにドロップすると以前の設定に戻せます。"
           }
         }
       }
@@ -7556,31 +7550,25 @@
         }
       }
     },
-    "Export your current configuration as a JSON file. You can restore it later if settings get reset or corrupted." : {
+    "Export current configuration as a JSON file." : {
       "comment" : "Description of the backup/export functionality",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Speichere deine Einstellungen als JSON-Datei. Dann kannst du sie später wiederherstellen, falls sie zurückgesetzt oder verloren gehen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Save your settings as a JSON file. You can reload them later if they ever get reset or damaged."
+            "value" : "Aktuelle Konfiguration als JSON-Datei exportieren."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Guarda tus ajustes como un archivo JSON. Así podrás recuperarlos después si se borran o se estropean."
+            "value" : "Exporta la configuración actual como archivo JSON."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "設定をJSONファイルとして保存してください。後でリセットされたり壊れたりした場合に復元できます。"
+            "value" : "現在の設定をJSONファイルとして書き出します。"
           }
         }
       }
