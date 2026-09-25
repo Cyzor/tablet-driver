@@ -396,7 +396,23 @@ extension InputInjector {
                     // the cursor freezes and jumps once when live data
                     // resumes, instead of crawling through stale history at a
                     // reduced rate.
+                    // Logged because nothing else sees this path, and it
+                    // freezes the cursor without a proximity change.
+                    staleHoverSuppressCount += 1
+                    let now = Date()
+                    if now.timeIntervalSince(lastStaleHoverLogAt) > 1.0 {
+                        injectLog.info(
+                            "hover move suppressed as stale backlog (\(self.staleHoverSuppressCount) in a row)"
+                        )
+                        lastStaleHoverLogAt = now
+                    }
                 } else {
+                    if staleHoverSuppressCount > 0 {
+                        injectLog.info(
+                            "hover resumed after \(self.staleHoverSuppressCount) suppressed stale report(s)"
+                        )
+                        staleHoverSuppressCount = 0
+                    }
                     postMouseMoved(
                         at: screenPoint, point: point, pose: pose,
                         snapshot: snap)

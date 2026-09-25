@@ -560,6 +560,9 @@ final class InputInjector: @unchecked Sendable {
     /// decoded is backlog, not a live sample — see the section doc above.
     static let staleReportThresholdMs: Double = 50.0
 
+    /// Log a single `event.post` slower than this; normally well under 1 ms.
+    static let eventPostWarnThresholdMs: Double = 20.0
+
     // MARK: - Tip-down pressure threshold
     //
     // Curve-mapped pressure above which a report counts as tip contact (drives
@@ -724,6 +727,11 @@ final class InputInjector: @unchecked Sendable {
     var lastPostedPressure: Double = -1.0
     var lastPostedRotation: Double = 0.0
     var hasPostedPoint = false
+
+    /// Consecutive hover moves dropped as stale backlog; logged at most once
+    /// a second.
+    var staleHoverSuppressCount = 0
+    var lastStaleHoverLogAt: Date = .distantPast
 
     // MARK: - Click state
 

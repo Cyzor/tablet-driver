@@ -278,7 +278,15 @@ extension InputInjector {
         if Self.currentReportTimestampNs != 0 {
             event.timestamp = Self.currentReportTimestampNs
         }
+        // Diagnostic: `event.post` is synchronous IPC into WindowServer and
+        // the only stage no other stall probe covers.
+        let postStart = mach_absolute_time()
         event.post(tap: .cghidEventTap)
+        let postMs =
+            Double(mach_absolute_time() &- postStart) * LatencyProbe.timebaseFactor / 1_000_000.0
+        if postMs > Self.eventPostWarnThresholdMs {
+            injectLog.info("CGEventPost took \(postMs, format: .fixed(precision: 1))ms")
+        }
     }
 
     @MainActor
