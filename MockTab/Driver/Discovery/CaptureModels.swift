@@ -399,6 +399,20 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
                 detail: "Finger touch was switched off in MockTab's settings during this capture."))
     }
 
+    // Relative mode integrates deltas, so sensor noise accumulates as cursor
+    // motion instead of rounding away against a screen pixel. A jitter report
+    // reads identically either way until someone checks the setting; this cost
+    // a full round-trip on the PTH-850 once.
+    if result.appSettings?.relativeCursorMovement == true {
+        found.append(
+            DiscoveryFinding(
+                kind: "relativeModeActive",
+                productID: pid,
+                detail: "The pen was in relative mode during this capture, where sensor noise "
+                    + "accumulates into cursor motion rather than rounding away. Compare against "
+                    + "absolute mode before treating jitter as a decoding fault."))
+    }
+
     return found
 }
 

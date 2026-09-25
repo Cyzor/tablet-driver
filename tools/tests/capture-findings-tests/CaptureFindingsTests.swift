@@ -34,7 +34,8 @@ func makeResult(
     observed: [String] = [],
     toolCodes: [String]? = nil,
     touchEnabled: Bool? = nil,
-    penActivity: Bool? = nil
+    penActivity: Bool? = nil,
+    relativeMode: Bool? = nil
 ) -> DiscoveryResult {
     var layouts: [String: LiveHIDDescriptorInspector.ReportLayout] = [:]
     for id in declaredInput {
@@ -63,6 +64,11 @@ func makeResult(
                 touchEnabled: enabled, tapToClick: false, twoFingerScroll: false,
                 pinchZoom: false, sensitivity: 1, areaX: 0, areaY: 0, areaWidth: 1,
                 areaHeight: 1)
+        },
+        appSettings: relativeMode.map { relative in
+            var s = DiscoveryAppSettings()
+            s.relativeCursorMovement = relative
+            return s
         })
 }
 
@@ -149,6 +155,21 @@ check(
     discoveryFindings(for: makeResult(toolCodes: ["0x0802"], touchEnabled: true))
         .contains { $0.kind == "touchDisabledInSettings" } == false,
     "touch switched on produces no setting finding")
+
+// Relative mode turns the same harmless noise floor into visible cursor
+// jitter, and a capture reads identically either way without this.
+check(
+    discoveryFindings(for: makeResult(toolCodes: ["0x0802"], relativeMode: true))
+        .contains { $0.kind == "relativeModeActive" },
+    "relative mode is surfaced as an explanation for jitter")
+check(
+    discoveryFindings(for: makeResult(toolCodes: ["0x0802"], relativeMode: false))
+        .contains { $0.kind == "relativeModeActive" } == false,
+    "absolute mode produces no relative-mode finding")
+check(
+    discoveryFindings(for: makeResult(toolCodes: ["0x0802"]))
+        .contains { $0.kind == "relativeModeActive" } == false,
+    "a capture with no app settings makes no claim about mode")
 
 // MARK: - Real submitted captures
 
