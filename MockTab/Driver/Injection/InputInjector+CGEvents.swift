@@ -645,7 +645,7 @@ extension InputInjector {
             switch toolCode {
             case 0x0804, 0x1108, 0x1804:  // Art Pen variants
                 vendorPtr = 0x0812  // Art Pen / rotation-capable pen
-            case 0x0842:  // Pro Pen 3
+            case 0x0842:  // Pro Pen 2
                 vendorPtr = 0x0842
             case 0x0832:  // Pro Pen 2
                 vendorPtr = 0x0832
@@ -1272,7 +1272,7 @@ extension InputInjector {
 
     /// PTK-470/670/870 gen-3 dials: 24 `0x11` reports per slow revolution,
     /// measured on a PTK-870. The 38 ridges are grip, not detents. Bluetooth
-    /// still over-reports — see `IntuosV3Decoder.decodeBLEReport`.
+    /// sends one frame per detent too.
     static let wacomDialStepsPerRevolution = 24.0
 
     /// Xencelabs Quick Keys puck: 13 report-0x02 frames per slow revolution,
