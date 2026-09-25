@@ -1105,18 +1105,16 @@ extension InputInjector {
             // gesture path never applied it even for the capacitive ring,
             // which is the case already validated as feeling right.
             let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
-            // Both zoom and rotate need a mechanism-specific scale — the
-            // ring and the mechanical dial have different, measured
-            // steps/revolution (72 vs. 13), and zoom's multiplicative
-            // compounding makes that difference matter for it too, not just
-            // rotate. See `dialGestureZoomScaleMechanical`'s and
-            // `dialGestureRotateScaleMechanical`'s doc comments.
+            // Scale matches this control's steps/revolution: ring 72, Wacom
+            // dial 24, Xencelabs dial 13.
             let scale: Double
             switch (kind, hasMechanicalDial) {
             case (.zoom, false): scale = Self.dialGestureZoomScale
-            case (.zoom, true): scale = Self.dialGestureZoomScaleMechanical
+            case (.zoom, true):
+                scale = Self.dialGestureZoomScaleMechanical(steps: dialStepsPerRevolution)
             case (.rotate, false): scale = Self.dialGestureRotateScale
-            case (.rotate, true): scale = Self.dialGestureRotateScaleMechanical
+            case (.rotate, true):
+                scale = Self.dialGestureRotateScaleMechanical(steps: dialStepsPerRevolution)
             }
             let delta = Double(rawDelta) * slot.speed * scale
             if hasMechanicalDial {
@@ -1260,19 +1258,12 @@ extension InputInjector {
     /// dial's own, tick-count-corrected constant.
     static let dialGestureZoomScale = 1.0 / 300.0
 
-    /// **Mechanical dial only.** `dialGestureZoomScale` scaled by the ratio
-    /// of tick counts (ring 72 : dial 13) so one full revolution produces
-    /// roughly the same zoom-per-revolution on either mechanism, despite
-    /// the dial needing far fewer, much larger per-tick jumps to get there.
-    /// Not exact — `magnify.value`'s multiplicative compounding means a
-    /// per-tick linear correction can only approximate the ring's smoother,
-    /// finer-grained curve, not reproduce it — but it closes the ~4.7x gap
-    /// down to matching within a few percent at max speed (measured: ring
-    /// ≈6.65x/revolution, dial ≈5.99x/revolution at this value). PTK-470/
-    /// 670/870's gen-3 dials share this constant for now (see
-    /// `dialGestureRotateScaleMechanical`'s doc comment on why, and its
-    /// caveat about their own tick count being unmeasured).
-    static let dialGestureZoomScaleMechanical = dialGestureZoomScale * 72.0 / 13.0
+    /// **Mechanical dial only.** `dialGestureZoomScale` scaled by ring 72 :
+    /// dial `steps`, so a revolution zooms about as far as on the ring.
+    /// Approximate because zoom compounds (Xencelabs ≈5.99x vs ring ≈6.65x).
+    static func dialGestureZoomScaleMechanical(steps: Double) -> Double {
+        dialGestureZoomScale * 72.0 / steps
+    }
 
     /// Rotation scale — radians per raw ring/dial tick, at 1x speed.
     ///
@@ -1293,46 +1284,21 @@ extension InputInjector {
     /// instead of 360°/revolution, confirmed on hardware (2026-09).
     static let dialGestureRotateScale = Double.pi / 36.0
 
-    /// **Mechanical dial only** (Xencelabs puck; also PTK-470/670/870's
-    /// gen-3 dials, pending their own measurement — see the note below).
-    ///
-    /// Same derivation as `dialGestureRotateScale`, using the dial's own
-    /// steps/revolution in place of the ring's 72: `2π/13` radians/step
-    /// (≈27.7°/step) makes one full physical revolution of the dial equal
-    /// exactly one full 360° canvas rotation at 1x speed.
-    ///
-    /// The 13 was measured directly via `tools/capture/hid_input_capture.c`
-    /// against report ID 0x02 (2026-09): one full slow physical revolution
-    /// produced exactly 13 identical `02 f0 00 00 00 00 00 01 00 00` input
-    /// reports, one per detent-equivalent step — no field in that report
-    /// carries anything finer (seven of its nine bytes are always zero; the
-    /// descriptor bounds it to flat 8-bit fields, no sub-step position or
-    /// magnitude). A faster revolution produced only 10 reports for the
-    /// same physical turn, meaning the encoder or its firmware drops steps
-    /// under fast rotation — a real hardware ceiling, not something this
-    /// scale can compensate for. An earlier, indirect measurement (binding
-    /// rotation to a keypress in the vendor's own native driver and
-    /// counting 14 key-repeats per turn) was close but one off; the direct
-    /// capture above is the more trustworthy count and superseded it.
-    ///
-    /// `speedRange(for: .rotate)`'s 1.0 ceiling still applies unchanged: it
-    /// means "one dial revolution" here exactly as it means "one ring
-    /// revolution" for the capacitive case — the per-device scale is what
-    /// carries the physical difference, not the ceiling. The dial's
-    /// intrinsically coarse ~27.7°-per-step granularity (confirmed above as
-    /// a hardware limit, not a software one) is why rotation on this
-    /// mechanism reads as steppier than the ring's smoother 5°-per-step feel
-    /// even once the revolution-to-360° mapping is correct — there is
-    /// nothing left to extract from the input stream to smooth it further.
-    ///
-    /// PTK-470/670/870's gen-3 dials are a different physical mechanism
-    /// from the Xencelabs dial (see `WacomDeviceSpec.hasMechanicalDial`'s
-    /// doc comment) and share `hasMechanicalDial: true`, hence this
-    /// constant today — but their own steps/revolution has not been
-    /// separately measured. If their rotate feel turns out wrong, that's
-    /// this constant needing to become genuinely per-model rather than
-    /// per-mechanism, not evidence the Xencelabs measurement above is wrong.
-    static let dialGestureRotateScaleMechanical = 2.0 * Double.pi / 13.0
+    /// **Mechanical dial only.** One revolution rotates 360° at 1x speed.
+    /// Coarse steps (15° at 24, 27.7° at 13) are why it reads steppier than
+    /// the ring's 5°; the input stream has nothing finer to smooth with.
+    static func dialGestureRotateScaleMechanical(steps: Double) -> Double {
+        2.0 * Double.pi / steps
+    }
+
+    /// PTK-470/670/870 gen-3 dials: 24 `0x11` reports per slow revolution,
+    /// measured on a PTK-870. The 38 ridges are grip, not detents. Bluetooth
+    /// still over-reports — see `IntuosV3Decoder.decodeBLEReport`.
+    static let wacomDialStepsPerRevolution = 24.0
+
+    /// Xencelabs Quick Keys puck: 13 report-0x02 frames per slow revolution,
+    /// no finer magnitude. Fast turns drop steps in hardware.
+    static let xencelabsDialStepsPerRevolution = 13.0
 
     /// Mechanism-neutral gesture post: both the mechanical-dial and
     /// capacitive-ring paths in `dispatchRingDelta`, plus `injectAux`'s

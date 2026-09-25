@@ -207,6 +207,11 @@ final class InputInjector: @unchecked Sendable {
     /// pen tablets/display have neither express keys nor a dial of their own.
     let hasMechanicalDial: Bool
 
+    /// Detents per revolution of this device's mechanical dial; sets how far
+    /// one tick rotates or zooms. Per-model: Xencelabs 13, PTK gen-3 24.
+    /// Unread without `hasMechanicalDial`.
+    let dialStepsPerRevolution: Double
+
     var activeToolSettings: ToolSettings? = nil {
         didSet { reconcileSyntheticFlags() }
     }
@@ -340,6 +345,7 @@ final class InputInjector: @unchecked Sendable {
             WacomDeviceRegistry.spec(for: productID)?.parser == .intuosV1
         if let spec = WacomDeviceRegistry.spec(for: productID) {
             self.hasMechanicalDial = spec.hasMechanicalDial
+            self.dialStepsPerRevolution = Self.wacomDialStepsPerRevolution
         } else if vendorID == 0x28BD,
             let profile = VendorDeviceRegistry.drivableProfile(
                 forVendorID: vendorID, productID: productID)
@@ -347,8 +353,10 @@ final class InputInjector: @unchecked Sendable {
             // Mirrors TabletManager.vendorDeviceSpec's isAuxOnly check: only
             // the aux-only Quick Keys puck/dongle has a dial.
             self.hasMechanicalDial = profile.maxX == nil
+            self.dialStepsPerRevolution = Self.xencelabsDialStepsPerRevolution
         } else {
             self.hasMechanicalDial = false
+            self.dialStepsPerRevolution = Self.xencelabsDialStepsPerRevolution
         }
         Self.liveInjectorsLock.withLock { $0.table.add(self) }
         recomputeVirtualScreenBounds()
