@@ -91,6 +91,26 @@ check(
     "the report that did arrive is not listed as missing")
 check(missingFinding?.productID == "0x032B", "finding is attributed to its device")
 
+// A whole-desk capture: a silent interface on the remote's receiver must be
+// attributed to the receiver, not to the primary tablet.
+var desk = makeResult(declaredInput: ["0x11"], observed: ["0x11"], toolCodes: ["0x0802"])
+desk.interfaces = [
+    DiscoveryInterface(
+        usagePage: "0x0001", usage: "0x0002", productID: "0x032B", deviceName: nil,
+        isPrimary: true, sampleCount: 1, reports: desk.reports,
+        hidReportDescriptor: desk.hidReportDescriptor),
+    DiscoveryInterface(
+        usagePage: "0xFF0C", usage: "0x0000", productID: "0x0331", deviceName: nil,
+        isPrimary: false, sampleCount: 0, reports: [:],
+        hidReportDescriptor: LiveHIDDescriptorInspector.Parsed(
+            rawHex: nil, rawLength: 0,
+            reports: ["input:0x11": LiveHIDDescriptorInspector.ReportLayout(
+                reportID: 0x11, direction: .input, fields: [])])),
+]
+let deskFindings = discoveryFindings(for: desk).filter { $0.kind == "declaredReportsNeverObserved" }
+check(deskFindings.count == 1, "only the silent interface is reported")
+check(deskFindings.first?.productID == "0x0331", "a finding names the device it came from")
+
 // A device that sent everything it declared has nothing to say.
 let complete = makeResult(
     declaredInput: ["0x01", "0x10"], observed: ["0x01", "0x10"], toolCodes: ["0x0802"])

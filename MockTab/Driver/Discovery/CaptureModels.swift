@@ -289,8 +289,10 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     let pid = result.deviceInfo.productID
 
     // Every interface — the silent one is usually the interesting one.
+    // Each interface carries its own product ID: a whole-desk capture spans
+    // several devices, and tagging all of them with the primary's misattributes.
     let allInterfaces:
-        [(LiveHIDDescriptorInspector.Parsed?, [String: DiscoveryReportSummary], String?)] =
+        [(LiveHIDDescriptorInspector.Parsed?, [String: DiscoveryReportSummary], String?, String)] =
         result.interfaces.map { list in
             list.map { iface in
                 // Named so several findings from one device don't read as
@@ -298,11 +300,13 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
                 let label = [iface.usagePage, iface.usage]
                     .compactMap { $0 }
                     .joined(separator: "/")
-                return (iface.hidReportDescriptor, iface.reports, label.isEmpty ? nil : label)
+                return (
+                    iface.hidReportDescriptor, iface.reports, label.isEmpty ? nil : label,
+                    iface.productID ?? pid)
             }
-        } ?? [(result.hidReportDescriptor, result.reports, nil)]
+        } ?? [(result.hidReportDescriptor, result.reports, nil, pid)]
 
-    for (descriptor, reports, interfaceLabel) in allInterfaces {
+    for (descriptor, reports, interfaceLabel, interfacePID) in allInterfaces {
         guard let descriptor else { continue }
         // Descriptor keys are "<direction>:0x<id>", `reports` bare "0x<id>"
         // — same ID formatting, so dropping the prefix is enough.
@@ -320,7 +324,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
             "Declared input \(noun) \(list)\(on) never arrived during \(seconds)s."
         found.append(
             DiscoveryFinding(
-                kind: "declaredReportsNeverObserved", productID: pid, detail: detail))
+                kind: "declaredReportsNeverObserved", productID: interfacePID, detail: detail))
     }
 
     // Already in `notes` as prose; here as a structured fact.
