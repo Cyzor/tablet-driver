@@ -563,7 +563,7 @@ private struct TouchRingModeListCore: View, Equatable {
                 centerPressed: pressed == .center
             )
             .equatable()
-            .frame(width: 104, height: 104)
+            .frame(width: 88, height: 88)
             .overlay {
                 GeometryReader { geo in
                     Color.clear
