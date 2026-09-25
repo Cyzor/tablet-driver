@@ -3994,49 +3994,25 @@
         }
       }
     },
-    "Collect tablet details for support. May take a few minutes. Hold ⌥ for raw capture." : {
+    "Collect tablet details for support." : {
       "comment" : "Description below the Collect Device Data button",
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablet-Details für den Support sammeln. Kann ein paar Minuten dauern. Für Rohdaten ⌥ gedrückt halten."
+            "value" : "Tablet-Details für den Support sammeln."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recopila los datos de la tableta para soporte. Puede tardar unos minutos. Mantén ⌥ para captura sin procesar."
+            "value" : "Recopila datos de la tableta para soporte."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "サポート用にタブレットの詳細情報を収集します。数分かかる場合があります。生データの記録には⌥を押したままにしてください。"
-          }
-        }
-      }
-    },
-    "Collect tablet details for support. Saves one zip file containing a summary and a full recording of what your tablet sent." : {
-      "comment" : "Description below the Collect Device Data button",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Sammelt Details zu deinem Grafiktablett für den Support. Speichert eine ZIP-Datei mit Zusammenfassung und vollständiger Aufzeichnung."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Recopila detalles de la tableta para soporte. Guarda un zip con un resumen y la grabación completa."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "サポート用にタブレットの詳細を収集します。概要と完全な記録を含むzipファイルを1つ保存します。"
+            "value" : "サポート用にタブレットの詳細を収集します。"
           }
         }
       }

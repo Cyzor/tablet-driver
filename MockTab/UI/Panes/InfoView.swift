@@ -493,7 +493,7 @@ struct InfoView: View {
             Text(
                 rawCaptureHeldElsewhere
                     ? String(localized: "Another tablet's window is collecting data right now. Finish that one first.", comment: "Description below the Collect Device Data button when another window owns the recording")
-                    : String(localized: "Collect tablet details for support. Saves one zip file containing a summary and a full recording of what your tablet sent.", comment: "Description below the Collect Device Data button")
+                    : String(localized: "Collect tablet details for support.", comment: "Description below the Collect Device Data button")
             )
             .appFont(.settingsLabel)
             .foregroundStyle(.tertiary)
