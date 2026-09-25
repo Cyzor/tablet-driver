@@ -65,6 +65,9 @@ struct InjectionSnapshot: Sendable, Equatable {
     /// Active mode slot for the second, independent dial (PTK-670/870's right
     /// dial). Unused on every other device.
     var touchRingActiveSlotIndex2: Int
+    /// Per-control rotary state; replaces the three fields above on
+    /// independent hardware.
+    var rotaries: RotarySet
     var reverseRingDirection: Bool
 
     // MARK: - Capacitive finger touch
@@ -132,6 +135,16 @@ struct InjectionSnapshot: Sendable, Equatable {
             $0.key.orientation == orientation.rawValue && $0.key.displayUUID == displayUUID
         }
     }
+
+    /// One rotary control's mode state, from whichever storage this tablet
+    /// uses. See `RotarySet.resolving`.
+    func rotary(_ index: RotaryIndex) -> RotaryConfig {
+        rotaries.resolving(
+            index,
+            legacySlots: touchRingSlots,
+            legacyActiveIndex: touchRingActiveSlotIndex,
+            legacyActiveIndex2: touchRingActiveSlotIndex2)
+    }
 }
 
 // MARK: - Snapshot construction
@@ -178,6 +191,7 @@ extension TabletSettings {
             touchRingSlots: touchRingSlots,
             touchRingActiveSlotIndex: touchRingActiveSlotIndex,
             touchRingActiveSlotIndex2: touchRingActiveSlotIndex2,
+            rotaries: rotaries,
             reverseRingDirection: reverseRingDirection,
             pairedProductID: pairedProductID,
             touchEnabled: touchEnabled,

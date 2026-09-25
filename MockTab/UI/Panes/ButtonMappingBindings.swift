@@ -461,6 +461,92 @@ extension ButtonMappingView {
         }
     }
 
+    // MARK: - Per-control slot bindings
+
+    /// Slot bindings for a second control, or any control on independent
+    /// hardware. The pre-allocated bindings above write `touchRingSlots`,
+    /// which independent dials don't read.
+    private func usesLegacySlotBindings(_ control: RotaryIndex) -> Bool {
+        control == .first && !settings.controlsAreIndependent
+    }
+
+    private func rotarySlots(_ control: RotaryIndex) -> [ControlSlot] {
+        settings.rotary(control).slots
+    }
+
+    private func writeRotarySlot(
+        _ control: RotaryIndex, _ index: Int, _ undoName: String,
+        _ mutate: @escaping (inout ControlSlot) -> Void
+    ) {
+        let oldSlots = rotarySlots(control)
+        guard oldSlots.indices.contains(index) else { return }
+        var newSlots = oldSlots
+        mutate(&newSlots[index])
+        settings.setSlots(newSlots, for: control)
+        settings.recordToggle(undoName, from: oldSlots, to: newSlots) {
+            self.settings.setSlots($0, for: control)
+        }
+    }
+
+    func slotActionBinding(control: RotaryIndex, at index: Int) -> Binding<ControlSlot.Action> {
+        guard !usesLegacySlotBindings(control) else { return slotBinding(at: index) }
+        return Binding(
+            get: {
+                let slots = self.rotarySlots(control)
+                return slots.indices.contains(index) ? slots[index].action : .scroll
+            },
+            set: { newAction in
+                self.writeRotarySlot(
+                    control, index,
+                    String(localized: "Ring Slot Action",
+                           comment: "Undo action name: ring/dial mode action in the Buttons pane")
+                ) { slot in
+                    slot.action = newAction
+                    // Mirrors slotNActionBinding: a fresh action whose speed
+                    // range differs must not inherit an out-of-range speed.
+                    if let seed = newAction.defaultSpeedOnSwitch { slot.speed = seed }
+                }
+            })
+    }
+
+    func slotSpeedBinding(control: RotaryIndex, at index: Int) -> Binding<Double> {
+        guard !usesLegacySlotBindings(control) else { return slotSpeedBinding(at: index) }
+        return Binding(
+            get: {
+                let slots = self.rotarySlots(control)
+                return slots.indices.contains(index) ? slots[index].speed : 1.0
+            },
+            set: { newSpeed in
+                self.writeRotarySlot(
+                    control, index,
+                    String(localized: "Ring Slot Speed",
+                           comment: "Undo action name: ring/dial mode speed in the Buttons pane")
+                ) { $0.speed = newSpeed }
+            })
+    }
+
+    func slotBinding(
+        control: RotaryIndex, for index: Int, direction: SlotDirection
+    ) -> Binding<ButtonBinding> {
+        guard !usesLegacySlotBindings(control) else { return slotBinding(for: index, direction: direction) }
+        return Binding(
+            get: {
+                let slots = self.rotarySlots(control)
+                guard slots.indices.contains(index) else { return .none }
+                return direction == .cw ? slots[index].cwBinding : slots[index].ccwBinding
+            },
+            set: { newBinding in
+                self.writeRotarySlot(
+                    control, index,
+                    String(localized: "Ring Slot Rotation",
+                           comment: "Undo action name: ring/dial mode rotation binding in the Buttons pane")
+                ) { slot in
+                    if direction == .cw { slot.cwBinding = newBinding }
+                    else { slot.ccwBinding = newBinding }
+                }
+            })
+    }
+
     /// Array index → CW rotation binding (used when action == .keyPress).
     func slotCWBinding(at index: Int) -> Binding<ButtonBinding> {
         Binding(

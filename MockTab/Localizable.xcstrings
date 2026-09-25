@@ -4099,6 +4099,29 @@
         }
       }
     },
+    "Collects details about your tablet's behavior for analysis." : {
+      "comment" : "Subtitle for device data collection when tablet is not yet supported",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erfasst das Verhalten deines Grafiktabletts zur Analyse."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Recopila detalles del comportamiento de tu tableta para analizarlos."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "タブレットの動作の詳細を収集して解析します。"
+          }
+        }
+      }
+    },
     "Color and brightness of the light behind the bezel buttons. The hardware keeps its own color until you change it." : {
       "localizations" : {
         "de" : {
@@ -14429,29 +14452,6 @@
         }
       }
     },
-    "Collects details about your tablet's behavior for analysis." : {
-      "comment" : "Subtitle for device data collection when tablet is not yet supported",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erfasst das Verhalten deines Grafiktabletts zur Analyse."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Recopila detalles del comportamiento de tu tableta para analizarlos."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "タブレットの動作の詳細を収集して解析します。"
-          }
-        }
-      }
-    },
     "Red" : {
       "comment" : "LED swatch name",
       "localizations" : {
@@ -16332,6 +16332,15 @@
           }
         }
       }
+    },
+    "Ring Slot Action" : {
+      "comment" : "Undo action name: ring/dial mode action in the Buttons pane"
+    },
+    "Ring Slot Rotation" : {
+      "comment" : "Undo action name: ring/dial mode rotation binding in the Buttons pane"
+    },
+    "Ring Slot Speed" : {
+      "comment" : "Undo action name: ring/dial mode speed in the Buttons pane"
     },
     "Ring: Cycle" : {
       "comment" : "Button action: cycle ring mode",

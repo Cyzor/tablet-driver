@@ -97,6 +97,18 @@ final class DeviceContext: ObservableObject, Identifiable {
 
     func installDriver(_ driver: any TabletDevice, forRawProductID rawPID: Int) {
         driverSlots[rawPID] = driver
+        applyRotaryHardware()
+    }
+
+    /// Tells the settings how many rotary controls this tablet has and
+    /// whether they're independent. Independence is `hasMechanicalDial` for
+    /// now: the 24HD still reads `touchRingSlots`.
+    private func applyRotaryHardware() {
+        // Registry, not `tabletDevice.spec`: `DigitizerSpec` lacks these flags.
+        guard let spec = WacomDeviceRegistry.spec(for: productID) else { return }
+        settings.applyRotaryHardware(
+            controlCount: spec.hasDualRings ? 2 : 1,
+            independent: spec.hasMechanicalDial)
     }
 
     /// Removes and returns the driver for a departing transport, if any.

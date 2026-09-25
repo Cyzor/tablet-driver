@@ -71,6 +71,9 @@ final class TabletSettings: ObservableObject {
     var appBindingsLoadFailed = false
     var pressureCurveLoadFailed = false
     var touchRingSlotsLoadFailed = false
+    /// Separate from `touchRingSlotsLoadFailed` so an unreadable
+    /// `rotariesJSON` doesn't block saving slots.
+    var rotariesLoadFailed = false
     var calibrationLoadFailed = false
 
     /// Undo manager for this device's settings. Owned by the device, not by
@@ -607,13 +610,69 @@ final class TabletSettings: ObservableObject {
     }
     /// Active mode slot for the second, independent dial (PTK-670/870's right
     /// dial). Unused on every other device — those only ever read/write
-    /// `touchRingActiveSlotIndex`. Kept as its own stored property rather
-    /// than an array/dictionary because exactly two dials exist on any
-    /// current or foreseeable hardware, matching the codebase's established
-    /// `touchRingActive`/`touchRing2Active`-style pairing convention.
+    /// `touchRingActiveSlotIndex`. Superseded by `rotaries` on independent
+    /// hardware; write through that.
     @Published var touchRingActiveSlotIndex2: Int = 0 {
         didSet { persist("touchRingActiveSlotIndex2", touchRingActiveSlotIndex2) }
     }
+
+    /// Per-control mode state. Used only by independent hardware (the PTK
+    /// series); everything else still reads `touchRingSlots`, which has
+    /// stored settings in the field.
+    @Published var rotaries: RotarySet = RotarySet() {
+        didSet { saveRotaries() }
+    }
+
+    /// Set from the device spec at connect time. Applying it must not count
+    /// as an edit: a save would claim `rotariesJSON` for whatever app
+    /// override is active.
+    var controlsAreIndependent: Bool {
+        get { rotaries.controlsAreIndependent }
+        set {
+            guard rotaries.controlsAreIndependent != newValue else { return }
+            isApplyingRotaryCapability = true
+            rotaries.controlsAreIndependent = newValue
+            isApplyingRotaryCapability = false
+        }
+    }
+
+    /// True only while `controlsAreIndependent`'s setter runs — see its comment.
+    var isApplyingRotaryCapability = false
+
+    /// One rotary control's mode state, from whichever storage this tablet
+    /// uses. See `RotarySet.resolving`.
+    func rotary(_ index: RotaryIndex) -> RotaryConfig {
+        rotaries.resolving(
+            index,
+            legacySlots: touchRingSlots,
+            legacyActiveIndex: touchRingActiveSlotIndex,
+            legacyActiveIndex2: touchRingActiveSlotIndex2)
+    }
+
+    /// Moves one control to a mode, writing to whichever storage it uses.
+    func setActiveSlotIndex(_ newIndex: Int, for index: RotaryIndex) {
+        guard rotaries.controlsAreIndependent else {
+            if index == .second {
+                touchRingActiveSlotIndex2 = newIndex
+            } else {
+                touchRingActiveSlotIndex = newIndex
+            }
+            return
+        }
+        rotaries[index].activeSlotIndex = newIndex
+        // Kept in step for the ring LED observer.
+        if index == .first { touchRingActiveSlotIndex = newIndex }
+    }
+
+    /// One control's mode definitions, written to whichever storage it uses.
+    func setSlots(_ newSlots: [ControlSlot], for index: RotaryIndex) {
+        guard rotaries.controlsAreIndependent else {
+            touchRingSlots = newSlots
+            return
+        }
+        rotaries[index].slots = newSlots
+    }
+
     /// When true, the sign of every ring/dial/strip delta is flipped before the
     /// slot's action sees it, so clockwise does what counter-clockwise did.
     /// Applies to all four actions (scroll, zoom, rotate, key press) and to

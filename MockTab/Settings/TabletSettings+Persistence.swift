@@ -55,6 +55,7 @@ extension TabletSettings {
         loadTouchRingSlots()
         touchRingActiveSlotIndex = loadInt("touchRingActiveSlotIndex", default: 0)
         touchRingActiveSlotIndex2 = loadInt("touchRingActiveSlotIndex2", default: 0)
+        loadRotaries(controlCount: rotaries.controls.count)
         reverseRingDirection = loadBool("reverseRingDirection", default: false)
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
         invertRotation = loadBool("invertRotation", default: false)
@@ -306,6 +307,87 @@ extension TabletSettings {
         }
     }
 
+    // MARK: - Per-dial persistence
+
+    /// Saves `rotaries` using the same override/preset/device prefix logic as
+    /// `saveTouchRingSlots`.
+    func saveRotaries() {
+        guard !isLoading, !isApplyingRotaryCapability else { return }
+        guard !rotariesLoadFailed else {
+            settingsLogger.error("Refusing to save rotaries: last load couldn't parse existing data")
+            return
+        }
+        guard let data = try? JSONEncoder().encode(rotaries) else { return }
+        if var override = effectiveOverride {
+            ud.set(data, forKey: appOverrideKeyPrefix(override) + "rotariesJSON")
+            guard !override.overriddenKeys.contains("rotariesJSON") else { return }
+            override.overriddenKeys.insert("rotariesJSON")
+            if activeAppOverride?.bundleID == override.bundleID { activeAppOverride = override }
+            if driverOverride?.bundleID == override.bundleID { driverOverride = override }
+            if let idx = appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
+                appOverrides[idx] = override
+            }
+            saveAppOverrides()
+        } else if var preset = activeProfile {
+            ud.set(data, forKey: profileKeyPrefix(preset) + "rotariesJSON")
+            guard !preset.overriddenKeys.contains("rotariesJSON") else { return }
+            preset.overriddenKeys.insert("rotariesJSON")
+            activeProfile = preset
+            if let idx = profiles.firstIndex(where: { $0.id == preset.id }) {
+                profiles[idx] = preset
+            }
+            saveProfileList()
+        } else {
+            ud.set(data, forKey: devicePrefix + "rotariesJSON")
+        }
+    }
+
+    /// Loads `rotaries`, or defaults when nothing is stored. No migration —
+    /// see `RotarySet.resize`.
+    func loadRotaries(controlCount: Int) {
+        var data: Data?
+        if let override = effectiveOverride, override.overriddenKeys.contains("rotariesJSON") {
+            data = ud.data(forKey: appOverrideKeyPrefix(override) + "rotariesJSON")
+        } else if let preset = activeProfile, preset.overriddenKeys.contains("rotariesJSON") {
+            data = ud.data(forKey: profileKeyPrefix(preset) + "rotariesJSON")
+        } else {
+            data = ud.data(forKey: devicePrefix + "rotariesJSON")
+        }
+
+        let wasIndependent = rotaries.controlsAreIndependent
+        if let data {
+            guard var stored = try? JSONDecoder().decode(RotarySet.self, from: data) else {
+                rotariesLoadFailed = true
+                settingsLogger.error("rotariesJSON data exists but failed to decode; blocking overwrite")
+                isApplyingRotaryCapability = true
+                rotaries = RotarySet(controls: [RotaryConfig()], controlsAreIndependent: wasIndependent)
+                isApplyingRotaryCapability = false
+                return
+            }
+            rotariesLoadFailed = false
+            stored.controlsAreIndependent = wasIndependent
+            stored.resize(to: controlCount)
+            isApplyingRotaryCapability = true
+            rotaries = stored
+            isApplyingRotaryCapability = false
+            return
+        }
+
+        rotariesLoadFailed = false
+        var fresh = RotarySet(controls: [RotaryConfig()], controlsAreIndependent: wasIndependent)
+        fresh.resize(to: controlCount)
+        isApplyingRotaryCapability = true
+        rotaries = fresh
+        isApplyingRotaryCapability = false
+    }
+
+    /// Applies the tablet's rotary layout at connect time and reloads under
+    /// it; the stored blob's device prefix isn't known any earlier.
+    func applyRotaryHardware(controlCount: Int, independent: Bool) {
+        controlsAreIndependent = independent
+        loadRotaries(controlCount: max(1, controlCount))
+    }
+
     /// Loads touchRingSlots with migration from legacy touchRingMode/touchStrip*Mode keys.
     private func loadTouchRingSlots() {
         // Try override, then preset, then device, then legacy keys.
@@ -375,6 +457,7 @@ extension TabletSettings {
         touchRingSlots = ControlSlot.defaults
         touchRingActiveSlotIndex = 0
         touchRingActiveSlotIndex2 = 0
+        rotaries = rotaries.resetToDefaults()
     }
 
     // MARK: - First-run defaults

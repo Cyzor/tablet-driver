@@ -902,7 +902,7 @@ extension InputInjector {
             if let s = settings {
                 Task { @MainActor in s.targetDisplayIndex = TabletSettings.displayModeToggle }
             }
-        case .ringCycle:
+        case .ringCycle, .ringCycle2:
             guard down else { break }
             // Close any open .zoom/.rotate envelope before the mode changes
             // out from under it — synchronous, on HIDThread, before the
@@ -911,53 +911,24 @@ extension InputInjector {
             // for either mechanism regardless of which one this device uses.
             closeRingGestureEnvelopes()
             if let s = settings {
+                let control: RotaryIndex = binding.kind == .ringCycle2 ? .second : .first
+                // Live settings, not `snapshot`: two quick presses would
+                // otherwise both advance from the same stale index.
                 Task { @MainActor in
-                    // Slots set to Skip are left out of the rotation —
-                    // Wacom's native way to shorten the mode cycle when only
-                    // one or two modes matter. If every slot is set to Skip,
-                    // stay where we are.
-                    let count = max(1, s.touchRingSlots.count)
-                    var next = s.touchRingActiveSlotIndex
-                    for _ in 0..<count {
-                        next = (next + 1) % count
-                        if s.touchRingSlots.indices.contains(next),
-                            s.touchRingSlots[next].action != .skip
-                        { break }
-                    }
-                    s.touchRingActiveSlotIndex = next
+                    s.setActiveSlotIndex(s.rotary(control).indexAfterCycling(), for: control)
                 }
             }
-        case .ringSelectSlot:
+        case .ringSelectSlot, .ringSelectSlot2:
             guard down else { break }
             closeRingGestureEnvelopes()
-            let target = min(Int(binding.keyCode), max(0, snapshot.touchRingSlots.count - 1))
             if let s = settings {
-                Task { @MainActor in s.touchRingActiveSlotIndex = target }
-            }
-        case .ringCycle2:
-            guard down else { break }
-            // Second, independent dial (PTK-670/870's right dial) — same
-            // cycle logic as .ringCycle, targeting touchRingActiveSlotIndex2.
-            closeRingGestureEnvelopes()
-            if let s = settings {
+                let control: RotaryIndex =
+                    binding.kind == .ringSelectSlot2 ? .second : .first
+                let requested = Int(binding.keyCode)
                 Task { @MainActor in
-                    let count = max(1, s.touchRingSlots.count)
-                    var next = s.touchRingActiveSlotIndex2
-                    for _ in 0..<count {
-                        next = (next + 1) % count
-                        if s.touchRingSlots.indices.contains(next),
-                            s.touchRingSlots[next].action != .skip
-                        { break }
-                    }
-                    s.touchRingActiveSlotIndex2 = next
+                    s.setActiveSlotIndex(
+                        s.rotary(control).clampedSlotTarget(requested), for: control)
                 }
-            }
-        case .ringSelectSlot2:
-            guard down else { break }
-            closeRingGestureEnvelopes()
-            let target = min(Int(binding.keyCode), max(0, snapshot.touchRingSlots.count - 1))
-            if let s = settings {
-                Task { @MainActor in s.touchRingActiveSlotIndex2 = target }
             }
         case .doubleClick:
             guard down else { break }

@@ -93,8 +93,7 @@ extension InputInjector {
         // Position 0x7F means no contact.  Compute a wrap-aware delta when a
         // finger is actively moving (both current and previous positions valid).
         // The ring has 72 steps (0–71, ~5° each); wrap threshold is 36.
-        let activeSlot: ControlSlot? = snap.touchRingSlots.indices.contains(snap.touchRingActiveSlotIndex)
-            ? snap.touchRingSlots[snap.touchRingActiveSlotIndex] : nil
+        let activeSlot: ControlSlot? = snap.rotary(.first).activeSlot
 
         // Capacitive `.zoom`/`.rotate` envelope: opens on the false→true
         // contact edge (before this report's delta dispatch, so the very
@@ -138,8 +137,10 @@ extension InputInjector {
         if !buttons.touchRingActive { ringAccum = 0 }
         lastRingPos = buttons.touchRingActive ? ringPos : 0x7F
 
-        // ── Touch ring 2 (DTK-2400 right bezel) — shares touchRingSlots ──
-        if !hasMechanicalDial, let slot = activeSlot, slot.action == .zoom || slot.action == .rotate {
+        // ── Touch ring 2 (DTK-2400 right bezel) ──────────────────────────
+        // Reads control 1: the 24HD's rings mirror each other.
+        let ring2Slot = activeSlot
+        if !hasMechanicalDial, let slot = ring2Slot, slot.action == .zoom || slot.action == .rotate {
             let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
             if buttons.touchRing2Active, !ring2GestureOpen {
                 ring2GestureOpen = true
@@ -160,7 +161,7 @@ extension InputInjector {
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
             if ringDeltaIsInverted { delta = -delta }
-            if delta != 0, let slot = activeSlot {
+            if delta != 0, let slot = ring2Slot {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ring2Accum,
                                   at: cursorPos, snapshot: snap, settings: settings)
             }
@@ -282,16 +283,11 @@ extension InputInjector {
         // dial 1 always played `touchRingSlots[0]` and dial 2 always played
         // `touchRingSlots[1]`, regardless of the selected mode. Fixed
         // 2026-09-16 on a real PTK-870 report.
-        let slotIndex: Int
-        if deviceVendorID == 0x28BD {
-            slotIndex = snap.touchRingActiveSlotIndex
-        } else if index == 0 {
-            slotIndex = snap.touchRingActiveSlotIndex
-        } else {
-            slotIndex = snap.touchRingActiveSlotIndex2
-        }
-        let slot: ControlSlot? = snap.touchRingSlots.indices.contains(slotIndex)
-            ? snap.touchRingSlots[slotIndex] : nil
+        // The Xencelabs Quick Keys' single dial is hardware wheel index 1 on
+        // some transports, so it must not be read as a second control.
+        let control: RotaryIndex =
+            (deviceVendorID == 0x28BD || index == 0) ? .first : .second
+        let slot: ControlSlot? = snap.rotary(control).activeSlot
         if let slot {
             if index == 0 {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &wheel0Accum,

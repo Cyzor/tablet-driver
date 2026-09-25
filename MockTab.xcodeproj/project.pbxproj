@@ -73,6 +73,7 @@
 		AA000204 /* TabletSettings+Presets.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000204 /* TabletSettings+Presets.swift */; };
 		AA000201 /* ButtonBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000201 /* ButtonBinding.swift */; };
 		AA000202 /* ControlSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000202 /* ControlSlot.swift */; };
+		AA000900 /* RotaryConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000900 /* RotaryConfig.swift */; };
 		AA000203 /* TabletOrientation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000203 /* TabletOrientation.swift */; };
 		AA000101 /* CaptureModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000101 /* CaptureModels.swift */; };
 		AA0001F6 /* CaptureSerialRedaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F6 /* CaptureSerialRedaction.swift */; };
@@ -191,6 +192,7 @@
 		AB000204 /* TabletSettings+Presets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+Presets.swift"; sourceTree = "<group>"; };
 		AB000201 /* ButtonBinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonBinding.swift; sourceTree = "<group>"; };
 		AB000202 /* ControlSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlSlot.swift; sourceTree = "<group>"; };
+		AB000900 /* RotaryConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotaryConfig.swift; sourceTree = "<group>"; };
 		AB000203 /* TabletOrientation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletOrientation.swift; sourceTree = "<group>"; };
 		AB000101 /* CaptureModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureModels.swift; sourceTree = "<group>"; };
 		AB0001F6 /* CaptureSerialRedaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSerialRedaction.swift; sourceTree = "<group>"; };
@@ -384,6 +386,7 @@
 			children = (
 				AB000201 /* ButtonBinding.swift */,
 				AB000202 /* ControlSlot.swift */,
+				AB000900 /* RotaryConfig.swift */,
 				AB000203 /* TabletOrientation.swift */,
 				AB000010 /* BezierCurve.swift */,
 				AB000044 /* ToolSettings.swift */,
@@ -694,6 +697,7 @@
 				AA000204 /* TabletSettings+Presets.swift in Sources */,
 				AA000201 /* ButtonBinding.swift in Sources */,
 				AA000202 /* ControlSlot.swift in Sources */,
+				AA000900 /* RotaryConfig.swift in Sources */,
 				AA000203 /* TabletOrientation.swift in Sources */,
 				AA000012 /* TabletAreaView.swift in Sources */,
 				AA000073 /* OrientationPickerView.swift in Sources */,

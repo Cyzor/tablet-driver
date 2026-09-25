@@ -213,7 +213,7 @@ struct ButtonMappingView: View {
     private typealias ButtonSettingsState = (
         expressKeys: [ButtonBinding], touchRingButton: ButtonBinding, touchRingButton2: ButtonBinding,
         touchRingSlots: [ControlSlot], touchRingActiveSlot: Int, touchRingActiveSlot2: Int,
-        reverseRingDirection: Bool
+        rotaries: RotarySet, reverseRingDirection: Bool
     )
 
     private func resetToDefaults() {
@@ -221,7 +221,7 @@ struct ButtonMappingView: View {
         let settingsOld: ButtonSettingsState = (
             settings.expressKeyBindings, settings.touchRingButtonBinding, settings.touchRingButtonBinding2,
             settings.touchRingSlots, settings.touchRingActiveSlotIndex, settings.touchRingActiveSlotIndex2,
-            settings.reverseRingDirection
+            settings.rotaries, settings.reverseRingDirection
         )
         let isMouse = activeToolSpec?.toolType == .mouse
         let toolDefaults: ButtonToolState = (.leftClick, .eraser, .rightClick, isMouse ? .rightClick : .middleClick)
@@ -229,7 +229,7 @@ struct ButtonMappingView: View {
         let settingsDefaults: ButtonSettingsState = (
             TabletSettings.defaultExpressKeyBindings(vendorID: vendorID),
             ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2),
-            ControlSlot.defaults, 0, 0, false
+            ControlSlot.defaults, 0, 0, settings.rotaries.resetToDefaults(), false
         )
 
         settings.undoManager?.beginUndoGrouping()
@@ -248,13 +248,13 @@ struct ButtonMappingView: View {
                 companionSettings.touchRingButtonBinding2,
                 companionSettings.touchRingSlots, companionSettings.touchRingActiveSlotIndex,
                 companionSettings.touchRingActiveSlotIndex2,
-                companionSettings.reverseRingDirection
+                companionSettings.rotaries, companionSettings.reverseRingDirection
             )
             let companionVendorID = companionContext?.vendorID ?? vendorID
             let companionSettingsDefaults: ButtonSettingsState = (
                 TabletSettings.defaultExpressKeyBindings(vendorID: companionVendorID),
                 ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2),
-                ControlSlot.defaults, 0, 0, false
+                ControlSlot.defaults, 0, 0, companionSettings.rotaries.resetToDefaults(), false
             )
             applyButtonSettingsReset(
                 companionSettingsDefaults, undoTo: companionSettingsOld, on: companionSettings)
@@ -290,6 +290,7 @@ struct ButtonMappingView: View {
         target.touchRingSlots = new.touchRingSlots
         target.touchRingActiveSlotIndex = new.touchRingActiveSlot
         target.touchRingActiveSlotIndex2 = new.touchRingActiveSlot2
+        target.rotaries = new.rotaries
         target.reverseRingDirection = new.reverseRingDirection
         settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applyButtonSettingsReset(old, undoTo: new, on: target)
@@ -865,11 +866,12 @@ struct ButtonMappingView: View {
 
         // Show only as many slots as the spec declares (default 4); model always stores 4.
         let ringSlotCount = spec?.ringSlotCount ?? 4
-        let activeIndex = ring == .primary
-            ? settings.touchRingActiveSlotIndex : settings.touchRingActiveSlotIndex2
+        let control: RotaryIndex = ring == .primary ? .first : .second
+        let rotary = settings.rotary(control)
+        let activeIndex = rotary.activeSlotIndex
         TouchRingModeListView(
-            slots: settings.touchRingSlots,
-            shownSlotCount: min(settings.touchRingSlots.count, ringSlotCount),
+            slots: rotary.slots,
+            shownSlotCount: min(rotary.slots.count, ringSlotCount),
             ringSlotCount: ringSlotCount,
             isRingActive: isActive,
             activeSlotIndex: activeIndex,
@@ -879,10 +881,10 @@ struct ButtonMappingView: View {
             centerDown: hasMechanicalDial ? false : liveButtons.touchRingButtonDown,
             showsDiagram: showsDiagram,
             showsModeBadge: showsModeBadge,
-            actionBinding: slotBinding(at:),
-            speedBinding: slotSpeedBinding(at:),
-            cwBinding: { self.slotBinding(for: $0, direction: .cw) },
-            ccwBinding: { self.slotBinding(for: $0, direction: .ccw) },
+            actionBinding: { self.slotActionBinding(control: control, at: $0) },
+            speedBinding: { self.slotSpeedBinding(control: control, at: $0) },
+            cwBinding: { self.slotBinding(control: control, for: $0, direction: .cw) },
+            ccwBinding: { self.slotBinding(control: control, for: $0, direction: .ccw) },
             onCenterTap: onCenterTap,
             centerBinding: centerBinding
         )
