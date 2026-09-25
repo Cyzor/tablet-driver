@@ -1400,11 +1400,12 @@ final class TabletManager: ObservableObject {
             // accessory's own — invisible — mapping. Pen-bearing devices
             // (all Wacom hardware) never get a forwarder.
             if wacomDevice.spec.maxX == 0 {
+                let accessoryVendor = context.vendorID
                 context.injector.displayToggleForwarder = { [weak self] in
-                    Task { @MainActor in self?.toggleDisplayOnPenTablet() }
+                    Task { @MainActor in self?.toggleDisplayOnPenTablet(vendorID: accessoryVendor) }
                 }
                 context.injector.relativeModeToggleForwarder = { [weak self] in
-                    Task { @MainActor in self?.toggleRelativeModeOnPenTablet() }
+                    Task { @MainActor in self?.toggleRelativeModeOnPenTablet(vendorID: accessoryVendor) }
                 }
             }
             context.settings.applyExpressKeyDefaults(vendorID: context.vendorID)
@@ -1533,17 +1534,21 @@ final class TabletManager: ObservableObject {
     /// falling back to any connected pen-bearing tablet. Mirrors the two
     /// steps of the injector's own `.displayToggle` handling — cycle the
     /// target's mapper on HIDThread, persist the mode on main.
-    private func toggleDisplayOnPenTablet() {
-        let isPenBearing: (DeviceContext) -> Bool = {
-            $0.isConnected && ($0.tabletDevice.map { $0.spec.maxX > 0 } ?? false)
+    /// The pen tablet an accessory's toggle should steer: the active one if
+    /// it's the accessory's own brand, else any connected one that is. Never
+    /// another vendor's — a Quick Keys press once flipped a Wacom tablet into
+    /// relative mode because it happened to be the active one.
+    private func penTablet(forAccessoryVendor vendorID: Int) -> DeviceContext? {
+        let isTarget: (DeviceContext) -> Bool = {
+            $0.isConnected && $0.vendorID == vendorID
+                && ($0.tabletDevice.map { $0.spec.maxX > 0 } ?? false)
         }
-        var target: DeviceContext?
-        if let active = activeContext, isPenBearing(active) {
-            target = active
-        } else {
-            target = deviceContexts.values.first(where: isPenBearing)
-        }
-        guard let target else { return }
+        if let active = activeContext, isTarget(active) { return active }
+        return deviceContexts.values.first(where: isTarget)
+    }
+
+    private func toggleDisplayOnPenTablet(vendorID: Int) {
+        guard let target = penTablet(forAccessoryVendor: vendorID) else { return }
         let injector = target.injector
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
             if let snap = injector.injectionSnapshot {
@@ -1554,20 +1559,10 @@ final class TabletManager: ObservableObject {
         target.settings.targetDisplayIndex = TabletSettings.displayModeToggle
     }
 
-    /// Same pen-bearing-target resolution as `toggleDisplayOnPenTablet`, for
-    /// a `.relativeModeToggle` binding fired from an aux-only accessory
-    /// (Quick Keys) that has no cursor of its own.
-    private func toggleRelativeModeOnPenTablet() {
-        let isPenBearing: (DeviceContext) -> Bool = {
-            $0.isConnected && ($0.tabletDevice.map { $0.spec.maxX > 0 } ?? false)
-        }
-        var target: DeviceContext?
-        if let active = activeContext, isPenBearing(active) {
-            target = active
-        } else {
-            target = deviceContexts.values.first(where: isPenBearing)
-        }
-        guard let target else { return }
+    /// `.relativeModeToggle` from an aux-only accessory (Quick Keys), which
+    /// has no cursor of its own. Target as in `penTablet(forAccessoryVendor:)`.
+    private func toggleRelativeModeOnPenTablet(vendorID: Int) {
+        guard let target = penTablet(forAccessoryVendor: vendorID) else { return }
         let injector = target.injector
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
             injector.displayMapper.clearRelativeAnchor()
