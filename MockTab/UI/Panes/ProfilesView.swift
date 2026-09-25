@@ -351,7 +351,7 @@ struct ProfilesView: View {
                         completion(data, nil)
                         return nil
                     }
-                    provider.suggestedName = defaultFilename
+                    provider.suggestedName = PresetExporter.suggestedFileBaseName
                     return provider
                 }
                 .contextMenu {
@@ -381,21 +381,13 @@ struct ProfilesView: View {
                 )
             }
         }
-
-        private var defaultFilename: String {
-            let fmt = DateFormatter()
-            fmt.dateFormat = "yyyy-MM-dd"
-            return "MockTab-\(fmt.string(from: Date())).json"
-        }
     }
 
     private func saveExportToFile() {
         let exporter = PresetExporter(registry: registry, tabletManager: tabletManager)
         guard let data = exporter.export() else { return }
         let panel = NSSavePanel()
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        panel.nameFieldStringValue = "MockTab-\(fmt.string(from: Date())).json"
+        panel.nameFieldStringValue = PresetExporter.suggestedFileBaseName
         panel.allowedContentTypes = [.json]
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }

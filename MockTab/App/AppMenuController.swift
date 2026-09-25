@@ -837,9 +837,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
             tabletManager: TabletManager.shared)
         guard let data = exporter.export() else { return }
         let panel = NSSavePanel()
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        panel.nameFieldStringValue = "MockTab-\(fmt.string(from: Date())).json"
+        panel.nameFieldStringValue = PresetExporter.suggestedFileBaseName
         panel.allowedContentTypes = [.json]
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }

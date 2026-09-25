@@ -16,6 +16,14 @@ final class PresetExporter {
         self.tabletManager = tabletManager
     }
 
+    /// Suggested backup file name, without extension: a drag's provider adds
+    /// one from its type, and a save panel adds one from `allowedContentTypes`.
+    static var suggestedFileBaseName: String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return "MockTab-Settings-\(fmt.string(from: Date()))"
+    }
+
     /// Builds a complete JSON backup of all known tablets and their settings.
     func export() -> Data? {
         let tablets = registry.knownTablets.map { exportTablet($0) }
