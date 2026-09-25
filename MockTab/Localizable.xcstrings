@@ -5043,6 +5043,28 @@
         }
       }
     },
+    "Cycle Dial Mode" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad-Modus wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar modo del dial"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤルモード切り替え"
+          }
+        }
+      }
+    },
     "Cycle through dial modes" : {
       "localizations" : {
         "de" : {

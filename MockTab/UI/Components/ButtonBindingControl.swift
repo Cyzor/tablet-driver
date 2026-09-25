@@ -30,6 +30,10 @@ struct ButtonBindingControl: View, Equatable {
     /// "Ring: Cycle"), independent of whether this specific row also offers
     /// second-dial actions. See `ButtonMappingView.hasMechanicalDial`.
     var isMechanicalDialHardware: Bool = false
+    /// Set on a PTK dial's own toggle key. The mode submenu then collapses to
+    /// one flat Cycle item aimed at this dial — jumping to a mode was carried
+    /// over from the Cintiq 24HD, which has no such key.
+    var dialToggleControl: RotaryIndex? = nil
     /// Incremented by an external control (the ring diagram's center button)
     /// to begin recording in this field, exactly as if it had been clicked.
     var recordRequestToken: Int = 0
@@ -48,6 +52,7 @@ struct ButtonBindingControl: View, Equatable {
             && lhs.ringSlotCount == rhs.ringSlotCount
             && lhs.offersSecondDial == rhs.offersSecondDial
             && lhs.isMechanicalDialHardware == rhs.isMechanicalDialHardware
+            && lhs.dialToggleControl == rhs.dialToggleControl
             && lhs.recordRequestToken == rhs.recordRequestToken
     }
 
@@ -129,28 +134,35 @@ struct ButtonBindingControl: View, Equatable {
                 .help("Switch tablet mapping between displays")
             Button("Toggle Relative Mode") { binding = ButtonBinding(kind: .relativeModeToggle) }
                 .help("Switch between absolute (stylus) and relative (mouse) cursor movement")
-            Menu(isMechanicalDialHardware ? "Dial Mode" : "Touch Ring Mode") {
-                Button("Cycle") { binding = ButtonBinding(kind: .ringCycle) }
-                    .help(isMechanicalDialHardware ? "Cycle through dial modes" : "Cycle through ring modes")
-                Divider()
-                ForEach(0..<ringSlotCount, id: \.self) { i in
-                    Button("Jump to Mode \(i + 1)") {
-                        binding = ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i))
-                    }
-                    .help(isMechanicalDialHardware
-                        ? "Switch the dial directly to mode \(i + 1)"
-                        : "Switch ring directly to mode \(i + 1)")
+            if let control = dialToggleControl {
+                Button("Cycle Dial Mode") {
+                    binding = ButtonBinding(kind: control == .second ? .ringCycle2 : .ringCycle)
                 }
-                if offersSecondDial {
-                    Divider()
-                    Button("Cycle (Second Dial)") { binding = ButtonBinding(kind: .ringCycle2) }
-                        .help("Cycle through the second dial's modes")
+                .help("Cycle through dial modes")
+            } else {
+                Menu(isMechanicalDialHardware ? "Dial Mode" : "Touch Ring Mode") {
+                    Button("Cycle") { binding = ButtonBinding(kind: .ringCycle) }
+                        .help(isMechanicalDialHardware ? "Cycle through dial modes" : "Cycle through ring modes")
                     Divider()
                     ForEach(0..<ringSlotCount, id: \.self) { i in
-                        Button("Jump Second Dial to Mode \(i + 1)") {
-                            binding = ButtonBinding(kind: .ringSelectSlot2, keyCode: UInt16(i))
+                        Button("Jump to Mode \(i + 1)") {
+                            binding = ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i))
                         }
-                        .help("Switch the second dial directly to mode \(i + 1)")
+                        .help(isMechanicalDialHardware
+                            ? "Switch the dial directly to mode \(i + 1)"
+                            : "Switch ring directly to mode \(i + 1)")
+                    }
+                    if offersSecondDial {
+                        Divider()
+                        Button("Cycle (Second Dial)") { binding = ButtonBinding(kind: .ringCycle2) }
+                            .help("Cycle through the second dial's modes")
+                        Divider()
+                        ForEach(0..<ringSlotCount, id: \.self) { i in
+                            Button("Jump Second Dial to Mode \(i + 1)") {
+                                binding = ButtonBinding(kind: .ringSelectSlot2, keyCode: UInt16(i))
+                            }
+                            .help("Switch the second dial directly to mode \(i + 1)")
+                        }
                     }
                 }
             }
@@ -202,9 +214,13 @@ struct ButtonBindingControl: View, Equatable {
         // binding.displayLabel stays device-unaware (shared by presets/undo
         // text/every other caller), so the rename lives here, display-only,
         // rather than in the model.
+        // A toggle key cycling its own dial just says "Dial: Cycle".
+        if dialToggleControl == .second, binding.kind == .ringCycle2 {
+            return String(localized: "Dial: Cycle", comment: "Button action: cycle a mechanical dial's mode")
+        }
         if isMechanicalDialHardware {
             switch binding.kind {
-            case .ringCycle:
+            case .ringCycle where dialToggleControl != .second:
                 return String(localized: "Dial: Cycle", comment: "Button action: cycle a mechanical dial's mode")
             case .ringSelectSlot:
                 return String(

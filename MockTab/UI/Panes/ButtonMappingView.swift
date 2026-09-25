@@ -540,6 +540,7 @@ struct ButtonMappingView: View {
                     set: { settings.touchRingButtonBinding = $0 }),
                 ringSlotCount: spec?.ringSlotCount ?? 4,
                 isMechanicalDialHardware: true,
+                dialToggleControl: .first,
                 recordRequestToken: centerRecordToken)
         } else {
             buttonRow(
@@ -581,8 +582,8 @@ struct ButtonMappingView: View {
                 get: { settings.touchRingButtonBinding2 },
                 set: { settings.touchRingButtonBinding2 = $0 }),
             ringSlotCount: spec?.ringSlotCount ?? 4,
-            offersSecondDial: true,
-            isMechanicalDialHardware: true)
+            isMechanicalDialHardware: true,
+            dialToggleControl: .second)
     }
 
     /// Direction preference for every ring/dial/strip on the device — one
