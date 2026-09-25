@@ -2892,6 +2892,52 @@
         }
       }
     },
+    "Both Dials" : {
+      "comment" : "Section header for a setting shared by a tablet's two dials",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beide Einstellräder"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambos diales"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "両方のダイヤル"
+          }
+        }
+      }
+    },
+    "Both Touch Rings" : {
+      "comment" : "Section header for a setting shared by a tablet's two touch rings",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beide Touch Rings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambos anillos táctiles"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "両方のタッチリング"
+          }
+        }
+      }
+    },
     "Briefly touch the tablet's surface to click." : {
       "localizations" : {
         "de" : {

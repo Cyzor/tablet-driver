@@ -476,12 +476,6 @@ struct ButtonMappingView: View {
             if hasDualRings {
                 Section("\(ringSectionLabel) — Left") {
                     touchRingBlock(lb: lb)
-                    // reverseRingDirection is one device-wide setting, not
-                    // per-ring — shown in both Left and Right sections
-                    // (bound to the same value) so neither section visually
-                    // implies it's scoped to just that dial. Previously
-                    // shown only under Right, which read as right-dial-only.
-                    if !hasTouchStrips { reverseRingDirectionToggle }
                 }
                 Section("\(ringSectionLabel) — Right") {
                     if hasMechanicalDial { dialToggleBlock2(lb: lb) }
@@ -490,8 +484,8 @@ struct ButtonMappingView: View {
                         isActive: lb.touchRing2Active, showsDiagram: !hasMechanicalDial,
                         showsModeBadge: hasMechanicalDial,
                         ring: .secondary)
-                    if !hasTouchStrips { reverseRingDirectionToggle }
                 }
+                if !hasTouchStrips { bothRingsDirectionSection }
             } else {
                 Section(ringSectionLabel) {
                     touchRingBlock(lb: lb)
@@ -601,6 +595,18 @@ struct ButtonMappingView: View {
     /// never shown for a device with both a ring/dial and strips at once
     /// today (see the call sites' `if !hasTouchStrips` guards), so branching
     /// on `hasTouchStrips` alone is sufficient — revisit if that changes.
+    /// The direction toggle on two-ring hardware, in its own section so the
+    /// header states its scope; under either ring it read as that ring's.
+    private var bothRingsDirectionSection: some View {
+        Section(
+            hasMechanicalDial
+                ? String(localized: "Both Dials", comment: "Section header for a setting shared by a tablet's two dials")
+                : String(localized: "Both Touch Rings", comment: "Section header for a setting shared by a tablet's two touch rings")
+        ) {
+            reverseRingDirectionToggle
+        }
+    }
+
     @ViewBuilder
     private var reverseRingDirectionToggle: some View {
         DescribedToggle(
@@ -735,8 +741,8 @@ struct ButtonMappingView: View {
                 String(
                     localized: "Touch Ring", comment: "Section header / row label for touch ring"),
                 isActive: lb.touchRing2Active, showsDiagram: true)
-            reverseRingDirectionToggle
         }
+        bothRingsDirectionSection
     }
 
     // MARK: - Bezel buttons (device's own onboard capacitive buttons, e.g.
