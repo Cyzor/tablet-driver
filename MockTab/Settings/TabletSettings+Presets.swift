@@ -54,6 +54,9 @@ extension TabletSettings {
         if let data = try? JSONEncoder().encode(touchRingSlots) {
             ud.set(data, forKey: prefix + "touchRingSlotsJSON")
         }
+        if let data = try? JSONEncoder().encode(rotaries) {
+            ud.set(data, forKey: prefix + "rotariesJSON")
+        }
         ud.set(touchRingActiveSlotIndex, forKey: prefix + "touchRingActiveSlotIndex")
         ud.set(touchRingActiveSlotIndex2, forKey: prefix + "touchRingActiveSlotIndex2")
         if let data = try? JSONEncoder().encode(pressureCurve) {
@@ -68,6 +71,7 @@ extension TabletSettings {
             "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding",
             "touchRingButtonBinding2", "touchRingSlotsJSON",
             "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2", "pressureCurve", "calibrationJSON",
+            "rotariesJSON",
         ]
 
         profiles.append(profile)
@@ -204,6 +208,7 @@ extension TabletSettings {
         "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding",
         "touchRingButtonBinding2", "touchRingSlotsJSON",
         "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2", "pressureCurve", "calibrationJSON",
+        "rotariesJSON",
     ]
 
     func deletePreset(_ profile: Profile) {
@@ -345,6 +350,7 @@ extension TabletSettings {
         var touchRingSlots: [ControlSlot]
         var touchRingActiveSlotIndex: Int
         var touchRingActiveSlotIndex2: Int
+        var rotaries: RotarySet
         var autoSwitchEnabled: Bool
     }
 
@@ -374,6 +380,7 @@ extension TabletSettings {
             touchRingSlots: touchRingSlots,
             touchRingActiveSlotIndex: touchRingActiveSlotIndex,
             touchRingActiveSlotIndex2: touchRingActiveSlotIndex2,
+            rotaries: rotaries,
             autoSwitchEnabled: autoSwitchEnabled)
     }
 
@@ -414,6 +421,7 @@ extension TabletSettings {
         touchRingSlots = snap.touchRingSlots
         touchRingActiveSlotIndex = snap.touchRingActiveSlotIndex
         touchRingActiveSlotIndex2 = snap.touchRingActiveSlotIndex2
+        rotaries = snap.rotaries
         autoSwitchEnabled = snap.autoSwitchEnabled
     }
 
