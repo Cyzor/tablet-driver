@@ -16378,13 +16378,73 @@
       }
     },
     "Ring Slot Action" : {
-      "comment" : "Undo action name: ring/dial mode action in the Buttons pane"
+      "comment" : "Undo action name: ring/dial mode action in the Buttons pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ringfeld – Aktion"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ranura del ring: acción"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リングスロット：アクション"
+          }
+        }
+      }
     },
     "Ring Slot Rotation" : {
-      "comment" : "Undo action name: ring/dial mode rotation binding in the Buttons pane"
+      "comment" : "Undo action name: ring/dial mode rotation binding in the Buttons pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ringfeld – Drehung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ranura del ring: giro"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リングスロット：回転"
+          }
+        }
+      }
     },
     "Ring Slot Speed" : {
-      "comment" : "Undo action name: ring/dial mode speed in the Buttons pane"
+      "comment" : "Undo action name: ring/dial mode speed in the Buttons pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ringfeld – Geschwindigkeit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ranura del ring: velocidad"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リングスロット：速度"
+          }
+        }
+      }
     },
     "Ring: Cycle" : {
       "comment" : "Button action: cycle ring mode",
