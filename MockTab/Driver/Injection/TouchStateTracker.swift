@@ -830,8 +830,9 @@ struct TouchStateTracker {
                 lastScrollPhase = .ended
                 mode = .pointer
                 tapAnchor = nil
-                lastPositions = Dictionary(uniqueKeysWithValues:
-                    contacts.prefix(1).map { ($0.id, $0.screen) })
+                lastPositions = Dictionary(
+                    contacts.prefix(1).map { ($0.id, $0.screen) },
+                    uniquingKeysWith: { first, _ in first })
                 // A two-finger sequence never ran absolute-mode's own
                 // primary-pinning — clear both so `.pointer where
                 // absoluteTouch` re-derives cleanly from this frame's
@@ -949,8 +950,9 @@ struct TouchStateTracker {
             if anyTwoFingerGesture {
                 mode = .scroll
                 let pair = Array(contacts.prefix(2))
-                lastPositions = Dictionary(uniqueKeysWithValues:
-                    pair.map { ($0.id, $0.screen) })
+                lastPositions = Dictionary(
+                    pair.map { ($0.id, $0.screen) },
+                    uniquingKeysWith: { first, _ in first })
                 tapAnchor = nil  // tap is off the table once we go to two fingers
                 twoFingerKind = (pinchZoom || rotate || smartZoom) ? .undecided : .pan
                 lastPinchDistance = Self.distance(between: pair)
@@ -1062,8 +1064,9 @@ struct TouchStateTracker {
                 : lastPinchDistance
             let oldDistance = lastPinchDistance
             let scaleDelta = newDistance - oldDistance
-            lastPositions = Dictionary(uniqueKeysWithValues:
-                current.map { ($0.id, $0.screen) })
+            lastPositions = Dictionary(
+                current.map { ($0.id, $0.screen) },
+                uniquingKeysWith: { first, _ in first })
             lastPinchDistance = newDistance
 
             // A committed pan that has dropped to a single contact for longer
