@@ -2800,6 +2800,29 @@
         }
       }
     },
+    "Best Fit" : {
+      "comment" : "VoiceOver label for the mapping sheet's one-click fit button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beste Anpassung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mejor ajuste"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最適化"
+          }
+        }
+      }
+    },
     "Bezel Button %lld" : {
       "comment" : "Bezel button N label, e.g. 'Bezel Button 1'",
       "localizations" : {
@@ -20566,6 +20589,29 @@
           "stringUnit" : {
             "state" : "machine_translated",
             "value" : "2本指のジェスチャでスクロールします。"
+          }
+        }
+      }
+    },
+    "Use the whole tablet, and give the screen area its shape as large as the display allows." : {
+      "comment" : "Tooltip for the mapping sheet's Best Fit button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nutzt das ganze Grafiktablett und gibt dem Bildschirmbereich dessen Form, so groß wie möglich."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa toda la tableta y da al área de pantalla su forma, lo más grande posible."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレット全体を使い、画面エリアをその形でできるだけ大きくします。"
           }
         }
       }

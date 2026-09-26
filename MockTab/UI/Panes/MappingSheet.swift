@@ -164,6 +164,14 @@ struct MappingSheet: View {
                 Spacer(minLength: 0)
 
                 HStack {
+                    Button(action: bestFit) { Image(systemName: "wand.and.stars") }
+                        .buttonStyle(.borderless)
+                        .font(.system(size: 15))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Color.recessedWell))
+                        .accessibilityLabel("Best Fit")
+                        .help("Use the whole tablet, and give the screen area its shape as large as the display allows.")
                     Spacer()
                     Button("Cancel", role: .cancel) { onClose() }
                         .keyboardShortcut(.cancelAction)
@@ -187,6 +195,20 @@ struct MappingSheet: View {
 
     private static let full = NormalizedRect(x: 0, y: 0, w: 1, h: 1)
     private static let undoTarget = NSObject()
+
+    /// The whole tablet, with the largest screen area of its shape — the most
+    /// drawing surface and the most screen that correct proportions allow.
+    /// Without a screen area (All, Span, Toggle), the tablet takes the
+    /// largest area of the destination's shape instead.
+    private func bestFit() {
+        if destination.single != nil {
+            edit(
+                tablet: Self.full,
+                screen: fitted(shape: tabletAspect, in: displayAspect, around: screenRect))
+        } else {
+            edit(tablet: fitted(shape: screenShape, in: tabletAspect, around: Self.full))
+        }
+    }
 
     /// Applies new rects as one undoable step.
     private func edit(tablet: NormalizedRect? = nil, screen: NormalizedRect? = nil) {
