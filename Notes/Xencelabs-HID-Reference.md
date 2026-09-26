@@ -349,7 +349,7 @@ The following data requires a live HID descriptor capture (`sudo usbhid-dump -d 
 
 ## 15. Display Color Controls (Pen Display, MockTab reverse-engineering)
 
-> **MockTab-original, not from OTD/community sources.** Decoded 2026-07-10 through 2026-07-12 from static analysis of the XencelabsAgent vendor app plus hardware cross-testing. Uses the same `02 B5` vendor output-report pipe as the dial LED work (`Notes/Xencelabs-Quick-Keys-Puck-Reference.md`) — same pacing requirements apply (see Section 4 above / the dial-LED write-pacing note): writes need ~3 ms spacing or they desync. Living implementation: `TabletKit/Sources/TabletKit/XencelabsControl.swift`, pipeline in `MockTab/Driver/WacomKnownDevice.swift`, UI in `MockTab/UI/Panes/DisplayMappingView.swift`.
+> **MockTab-original, not from OTD/community sources.** Decoded 2026-07-10 through 2026-07-12 from static analysis of the XencelabsAgent vendor app plus hardware cross-testing. Uses the same `02 B5` vendor output-report pipe as the dial LED work (`Notes/Xencelabs-Quick-Keys-Puck-Reference.md`) — same pacing requirements apply (see Section 4 above / the dial-LED write-pacing note): writes need ~3 ms spacing or they desync. Living implementation: `TabletKit/Sources/TabletKit/XencelabsControl.swift`, pipeline in `MockTab/Driver/WacomKnownDevice.swift`, UI in `MockTab/UI/Panes/Display/DisplayMappingView.swift`.
 
 ### Frame format
 

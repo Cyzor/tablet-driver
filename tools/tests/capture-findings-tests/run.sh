@@ -7,7 +7,7 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/Discovery/CaptureModels.swift"
+SRC="$ROOT/MockTab/Driver/Diagnostics/CaptureModels.swift"
 INSPECTOR="$ROOT/MockTab/Driver/HID/LiveHIDDescriptorInspector.swift"
 TEST="$DIR/CaptureFindingsTests.swift"
 BIN="$(mktemp -d)/capture-findings-tests"

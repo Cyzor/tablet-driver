@@ -6,7 +6,7 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/Discovery/DiagnosticPackage.swift"
+SRC="$ROOT/MockTab/Driver/Diagnostics/DiagnosticPackage.swift"
 TEST="$DIR/DiagnosticPackageTests.swift"
 BIN="$(mktemp -d)/diagnostic-package-tests"
 

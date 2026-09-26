@@ -51,37 +51,36 @@ synchronization needed on the 133 Hz hot path.
 
 ```
 MockTab/
-  App/         AppKit entry point, menu bar, top-level windows
+  App/         AppKit entry point, menu bar, status item
+    Windows/   Settings, Help and About window controllers
   Driver/      App glue around the TabletKit decoder layer
     HID/       IOHIDManager plumbing: the dedicated thread, diagnostic
                capture, descriptor reads
     Devices/   TabletManager + the per-device wrapper classes
     Injection/ InputInjector and its extensions, snapshot delivery
     Mapping/   Display selection, orientation, per-app overrides
-    Discovery/ Unknown-device capture and triage
+    Diagnostics/ Captures, diagnostics zip, display and USB survey
   Settings/    Live settings, presets, calibration, profile load/save
     Model/         Value types the settings model stores
     Serialization/ Profile JSON import/export
   UI/
-    Panes/       The tabs of the settings window
-    Components/  Reusable views
-      Diagrams/  The SVG-driven pen and touch ring diagrams
-      Features/  Self-contained views that landed in Components/ rather
-                 than Panes/ (a settings-window overlay, an import sheet, …)
-    Support/     Non-view logic and extensions that aren't UI components
+    Panes/       One folder per settings tab, with the pieces only it uses
+    Shared/      Views and helpers more than one pane uses
+    Calibration/ The calibration overlay
+    Help/        The help panel
   Help/          In-app help content
 ```
 
 This mirrors the pipeline above: HID bytes arrive in `HID/`, get routed to a
 `Devices/` class, decoded (by TabletKit) into events, and pushed through
-`Injection/`; `Mapping/` and `Discovery/` are side channels rather than
+`Injection/`; `Mapping/` and `Diagnostics/` are side channels rather than
 stops on that main path.
 
 The decoder layer — `TabletReportDecoder`, the decoder structs, the device registries, and their pure-logic helpers — doesn't live in this tree at all; see the next section.
 
 ## TabletKit (SwiftPM package, git submodule)
 
-The pure-logic decoder layer lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit), an MPL-2.0 SwiftPM package checked out here as a git submodule at `TabletKit/`. It holds `TabletReportDecoder` (the protocol every decoder implements), the value types it speaks (`DecodeResult`, `TabletPoint`, `ToolIdentity`, `AuxButtons`, `TouchContact`, `WirelessStatus`, `DigitizerSpec`, `DecoderState`), `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, the Wacom decoder structs (one per protocol family), and pure-logic helpers (`CursorSmoother`, `ModifierMath`). Nothing in TabletKit touches AppKit, SwiftUI, or app-wide state; the gear that does lives in this repo's `MockTab/Driver/` (`HID/HIDThread`, `HID/HIDCapture`, `Discovery/CaptureEngine`, `Injection/InputInjector`, `Devices/TabletManager`, `Devices/DeviceContext`, the three `Devices/Wacom*Device` classes) plus everything under `Settings/` and `UI/`.
+The pure-logic decoder layer lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit), an MPL-2.0 SwiftPM package checked out here as a git submodule at `TabletKit/`. It holds `TabletReportDecoder` (the protocol every decoder implements), the value types it speaks (`DecodeResult`, `TabletPoint`, `ToolIdentity`, `AuxButtons`, `TouchContact`, `WirelessStatus`, `DigitizerSpec`, `DecoderState`), `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, the Wacom decoder structs (one per protocol family), and pure-logic helpers (`CursorSmoother`, `ModifierMath`). Nothing in TabletKit touches AppKit, SwiftUI, or app-wide state; the gear that does lives in this repo's `MockTab/Driver/` (`HID/HIDThread`, `HID/HIDCapture`, `Diagnostics/CaptureEngine`, `Injection/InputInjector`, `Devices/TabletManager`, `Devices/DeviceContext`, the three `Devices/Wacom*Device` classes) plus everything under `Settings/` and `UI/`.
 
 `MockTab.xcodeproj` consumes TabletKit through an `XCLocalSwiftPackageReference` that points at `TabletKit` (the submodule). Each app commit pins the exact TabletKit commit it builds against; clone with `--recurse-submodules` (or run `git submodule update --init`). Decoder work happens inside the submodule and is pushed to the TabletKit repo — push the kit before pushing an app commit that bumps the pin. Files in this repo that touch TabletKit types carry an explicit `import TabletKit`.
 
@@ -177,7 +176,7 @@ The settings layer calls `DeviceContext.observeInjectionSnapshot(…)` whenever 
 
 ## UI
 
-The settings window hosts a tab bar; each tab maps to one file in `UI/Panes/`. Each pane corresponds to a settings concern: Devices, Tablet Area, Display Mapping, Pen Feel, Button Mapping, Touch, Scratchpad, Profiles, Info. `UI/Components/` holds widgets that more than one pane uses (the disclosure row, the orientation picker), plus two subfolders: `Diagrams/` for the SVG-driven pen and touch ring diagrams, and `Features/` for self-contained views that landed here rather than in `Panes/` (`AppOverrideBar`, `CaptureGuideView`, `ImportPreviewSheet`, `AboutView`). `UI/Support/` holds non-view logic that isn't a UI component at all — `FontExtensions`, `Path+SVGData`, `LiveResizeDetector`, `TabletColorTheme`, and the Info pane's `ConflictDetection` process matcher.
+The settings window hosts a tab bar; each tab maps to a folder in `UI/Panes/` holding that pane's view and any pieces only it uses — `Buttons/` has the binding controls, LED color picker and pen and touch ring diagrams; `Display/` has the Edit Mapping sheet and screen overlay; `Info/` has the capture guide. `UI/Shared/` holds what more than one pane uses: `NormalizedAreaEditor`, `SettingsControls`, `DeviceStatusBar`, `DisclosureRow`, `AppOverrideBar`, plus non-view helpers (`FontExtensions`, `Path+SVGData`, `TabletColorTheme`, `ConflictDetection`). Window controllers and the About view live in `App/Windows/`.
 
 ## Tests
 
@@ -204,5 +203,5 @@ The decoder test suite lives in `TabletKit/Tests/TabletKitTests/` and runs via `
 | Tweak position smoothing | `TabletKit/Sources/TabletKit/Smoothing/CursorSmoother.swift` |
 | Tweak display mapping or calibration | `MockTab/Driver/Mapping/DisplayMapper.swift` |
 | Add a settings knob | `Settings/TabletSettings.swift` + relevant pane |
-| Add a new settings pane | `UI/Panes/` + `App/SettingsWindowController.swift` |
+| Add a new settings pane | `UI/Panes/` + `App/Windows/SettingsWindowController.swift` |
 | Diagnose a misbehaving tablet | Settings → Info → Start Capture (writes to Desktop) |

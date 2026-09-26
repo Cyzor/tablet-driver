@@ -250,16 +250,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		47A5AA2037FC42E2BFC54602 /* Calibration */ = {
-			isa = PBXGroup;
-			children = (
-				0CA2A9E683E3436B8576AFFF /* CalibrationSession.swift */,
-				F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */,
-				BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */,
-			);
-			path = Calibration;
-			sourceTree = "<group>";
-		};
 		AC000000 /* MockTab */ = {
 			isa = PBXGroup;
 			children = (
@@ -277,245 +267,12 @@
 			path = MockTab;
 			sourceTree = "<group>";
 		};
-		AC000001 /* App */ = {
-			isa = PBXGroup;
-			children = (
-				AB000001 /* MockTabApp.swift */,
-				AB000002 /* StatusItemController.swift */,
-				AB000074 /* MainMenuBuilder.swift */,
-				AB000017 /* SettingsWindowManager.swift */,
-				AB000043 /* SettingsWindowController.swift */,
-				AB000036 /* AppMenuController.swift */,
-				05BFE59B2F79FE5200782B9E /* AboutWindowController.swift */,
-				AB002002 /* HelpWindowController.swift */,
-			);
-			path = App;
-			sourceTree = "<group>";
-		};
-		AC000002 /* Driver */ = {
-			isa = PBXGroup;
-			children = (
-				AC0000B1 /* HID */,
-				AC0000B2 /* Devices */,
-				AC0000B3 /* Injection */,
-				AC0000B4 /* Mapping */,
-				AC0000B5 /* Discovery */,
-			);
-			path = Driver;
-			sourceTree = "<group>";
-		};
-		AC0000B1 /* HID */ = {
-			isa = PBXGroup;
-			children = (
-				AB000070 /* HIDCapture.swift */,
-				AB00HH01 /* HIDHelpers.swift */,
-				AB00HD01 /* LiveHIDDescriptorInspector.swift */,
-			);
-			path = HID;
-			sourceTree = "<group>";
-		};
-		AC0000B2 /* Devices */ = {
-			isa = PBXGroup;
-			children = (
-				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
-				AB00DR01 /* DeviceRouter.swift */,
-				AB000042 /* DeviceContext.swift */,
-				AB000039 /* DeviceRegistry.swift */,
-				AB00DK01 /* DeviceInstanceClaims.swift */,
-				AB000049 /* WacomKnownDevice.swift */,
-				AB0000A2 /* WacomKnownDevice+XencelabsOutput.swift */,
-				AB0000A1 /* WacomKnownDevice+DisplayOutput.swift */,
-				AB00PBP1 /* BatchFramePacer.swift */,
-				AB000045 /* WacomFallbackDevice.swift */,
-				AB00GD01 /* GenericHIDDigitizer.swift */,
-			);
-			path = Devices;
-			sourceTree = "<group>";
-		};
-		AC0000B3 /* Injection */ = {
-			isa = PBXGroup;
-			children = (
-				AB000008 /* InputInjector.swift */,
-				AB000084 /* InputInjector+CGEvents.swift */,
-				AB000081 /* InputInjector+PenInjection.swift */,
-				AB000082 /* InputInjector+AuxInput.swift */,
-				AB000083 /* InputInjector+Touch.swift */,
-				AB00IS01 /* InjectionSnapshot.swift */,
-				AB00PS01 /* PanScrollTracker.swift */,
-				AB00MT01 /* MomentumTail.swift */,
-				AB00TT01 /* TouchStateTracker.swift */,
-			);
-			path = Injection;
-			sourceTree = "<group>";
-		};
-		AC0000B4 /* Mapping */ = {
-			isa = PBXGroup;
-			children = (
-				AB0000DM /* DisplayMapper.swift */,
-				AB000901 /* RelativeBallistics.swift */,
-				AB000035 /* AppWatcher.swift */,
-			);
-			path = Mapping;
-			sourceTree = "<group>";
-		};
-		AC0000B5 /* Discovery */ = {
-			isa = PBXGroup;
-			children = (
-				AB000102 /* CaptureEngine.swift */,
-				AB0001F3 /* DiagnosticSession.swift */,
-				AB0001F4 /* CaptureActivityProbe.swift */,
-				AB0001F5 /* DiagnosticPackage.swift */,
-				AB002100 /* BluetoothLinkMonitor.swift */,
-				AB000101 /* CaptureModels.swift */,
-				AB0001F6 /* CaptureSerialRedaction.swift */,
-				AB0001F1 /* DiscoveryAccumulator.swift */,
-				AB0001F2 /* TouchPipelineProbe.swift */,
-				AB0002F2 /* FootprintProbe.swift */,
-				AB000903 /* HardwareSurveyProbe.swift */,
-			);
-			path = Discovery;
-			sourceTree = "<group>";
-		};
-		AC000003 /* Settings */ = {
-			isa = PBXGroup;
-			children = (
-				AB000009 /* TabletSettings.swift */,
-				AB000206 /* TabletSettings+Persistence.swift */,
-				AB000205 /* TabletSettings+AppOverrides.swift */,
-				AB000204 /* TabletSettings+Presets.swift */,
-				AC0000D1 /* Model */,
-				AC0000D2 /* Serialization */,
-			);
-			path = Settings;
-			sourceTree = "<group>";
-		};
-		AC0000D1 /* Model */ = {
-			isa = PBXGroup;
-			children = (
-				AB000201 /* ButtonBinding.swift */,
-				AB000202 /* ControlSlot.swift */,
-				AB000900 /* RotaryConfig.swift */,
-				AB000203 /* TabletOrientation.swift */,
-				AB000010 /* BezierCurve.swift */,
-				AB000044 /* ToolSettings.swift */,
-				22D2FFEB9A0346788DD687D6 /* CalibrationData.swift */,
-			);
-			path = Model;
-			sourceTree = "<group>";
-		};
-		AC0000D2 /* Serialization */ = {
-			isa = PBXGroup;
-			children = (
-				AB000100 /* Profile.swift */,
-				AAAAAA05 /* ImportPlan.swift */,
-				AB002099 /* UnknownFieldsCodable.swift */,
-				AAAAAA01 /* PresetExporter.swift */,
-				AAAAAA03 /* PresetImporter.swift */,
-			);
-			path = Serialization;
-			sourceTree = "<group>";
-		};
-		AC000004 /* UI */ = {
-			isa = PBXGroup;
-			children = (
-				47A5AA2037FC42E2BFC54602 /* Calibration */,
-				AC000006 /* Panes */,
-				AC000007 /* Components */,
-				AC0000C1 /* Support */,
-				AC000011 /* Help */,
-			);
-			path = UI;
-			sourceTree = "<group>";
-		};
-		AC0000C1 /* Support */ = {
-			isa = PBXGroup;
-			children = (
-				AB0000A0 /* ConflictDetection.swift */,
-				AC000008 /* TabletColorTheme.swift */,
-				AB000053 /* FontExtensions.swift */,
-				057B24D72F899E3A0032B29E /* Path+SVGData.swift */,
-				AB000077 /* LiveResizeDetector.swift */,
-			);
-			path = Support;
-			sourceTree = "<group>";
-		};
-		AC000006 /* Panes */ = {
-			isa = PBXGroup;
-			children = (
-				AB000012 /* TabletAreaView.swift */,
-				AB000013 /* PenFeelView.swift */,
-				AB000014 /* ButtonMappingView.swift */,
-				AB000079 /* ButtonMappingQuickKeys.swift */,
-				AB000080 /* ButtonMappingBindings.swift */,
-				AB000015 /* DisplayMappingView.swift */,
-				AB0000A3 /* ScreenAreaOverlayWindow.swift */,
-				AB0000B0 /* ScreenAreaOverlayView.swift */,
-				AB000902 /* MappingSheet.swift */,
-				AB000016 /* ScratchpadView.swift */,
-				AB000033 /* InfoView.swift */,
-				AB000034 /* ProfilesView.swift */,
-				AB000040 /* DevicesView.swift */,
-				AB00TV01 /* TouchView.swift */,
-			);
-			path = Panes;
-			sourceTree = "<group>";
-		};
-		AC000007 /* Components */ = {
-			isa = PBXGroup;
-			children = (
-				AB000207 /* LEDColorControl.swift */,
-				AB000076 /* ButtonBindingControl.swift */,
-				AB000078 /* ButtonRow.swift */,
-				AB000055 /* DisclosureRow.swift */,
-				AB000056 /* SettingsControls.swift */,
-				AB000041 /* DeviceStatusBar.swift */,
-				AAAAAA07 /* ExportDragWell.swift */,
-				AB000073 /* OrientationPickerView.swift */,
-				AB000200 /* NormalizedAreaEditor.swift */,
-				AC0000E1 /* Diagrams */,
-				AC0000E2 /* Features */,
-			);
-			path = Components;
-			sourceTree = "<group>";
-		};
-		AC0000E1 /* Diagrams */ = {
-			isa = PBXGroup;
-			children = (
-				AB000054 /* PenDiagramView.swift */,
-				AB000154 /* TouchRingDiagramView.swift */,
-				AB000208 /* TouchRingModeList.swift */,
-			);
-			path = Diagrams;
-			sourceTree = "<group>";
-		};
-		AC0000E2 /* Features */ = {
-			isa = PBXGroup;
-			children = (
-				AB000052 /* AppOverrideBar.swift */,
-				AB000103 /* CaptureGuideView.swift */,
-				AAAAAA09 /* ImportPreviewSheet.swift */,
-				05D7EB7A2F79E6E30086E03F /* AboutView.swift */,
-			);
-			path = Features;
-			sourceTree = "<group>";
-		};
 		AC000010 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				AB000099 /* MockTab.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		AC000011 /* Help */ = {
-			isa = PBXGroup;
-			children = (
-				AB002004 /* HelpSection.swift */,
-				AB002010 /* HelpContent.swift */,
-				AB002006 /* HelpPanelView.swift */,
-				AB002008 /* MarkdownBodyView.swift */,
-			);
-			path = Help;
 			sourceTree = "<group>";
 		};
 		AC000012 /* Help */ = {
@@ -536,6 +293,313 @@
 				AC000010 /* Products */,
 				05FE52D02F9E8D730084E37D /* AppIcon.icon */,
 			);
+			sourceTree = "<group>";
+		};
+		ACF00001 /* Windows */ = {
+			isa = PBXGroup;
+			children = (
+				05D7EB7A2F79E6E30086E03F /* AboutView.swift */,
+				05BFE59B2F79FE5200782B9E /* AboutWindowController.swift */,
+				AB002002 /* HelpWindowController.swift */,
+				AB000043 /* SettingsWindowController.swift */,
+				AB000017 /* SettingsWindowManager.swift */,
+			);
+			path = Windows;
+			sourceTree = "<group>";
+		};
+		AC000001 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				ACF00001 /* Windows */,
+				AB000036 /* AppMenuController.swift */,
+				AB000074 /* MainMenuBuilder.swift */,
+				AB000001 /* MockTabApp.swift */,
+				AB000002 /* StatusItemController.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		AC0000B2 /* Devices */ = {
+			isa = PBXGroup;
+			children = (
+				AB00PBP1 /* BatchFramePacer.swift */,
+				AB000042 /* DeviceContext.swift */,
+				AB00DK01 /* DeviceInstanceClaims.swift */,
+				AB000039 /* DeviceRegistry.swift */,
+				AB00DR01 /* DeviceRouter.swift */,
+				AB00GD01 /* GenericHIDDigitizer.swift */,
+				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
+				AB000045 /* WacomFallbackDevice.swift */,
+				AB0000A1 /* WacomKnownDevice+DisplayOutput.swift */,
+				AB0000A2 /* WacomKnownDevice+XencelabsOutput.swift */,
+				AB000049 /* WacomKnownDevice.swift */,
+			);
+			path = Devices;
+			sourceTree = "<group>";
+		};
+		ACF00002 /* Diagnostics */ = {
+			isa = PBXGroup;
+			children = (
+				AB002100 /* BluetoothLinkMonitor.swift */,
+				AB0001F4 /* CaptureActivityProbe.swift */,
+				AB000102 /* CaptureEngine.swift */,
+				AB000101 /* CaptureModels.swift */,
+				AB0001F6 /* CaptureSerialRedaction.swift */,
+				AB0001F5 /* DiagnosticPackage.swift */,
+				AB0001F3 /* DiagnosticSession.swift */,
+				AB0001F1 /* DiscoveryAccumulator.swift */,
+				AB0002F2 /* FootprintProbe.swift */,
+				AB000903 /* HardwareSurveyProbe.swift */,
+				AB0001F2 /* TouchPipelineProbe.swift */,
+			);
+			path = Diagnostics;
+			sourceTree = "<group>";
+		};
+		AC0000B1 /* HID */ = {
+			isa = PBXGroup;
+			children = (
+				AB000070 /* HIDCapture.swift */,
+				AB00HH01 /* HIDHelpers.swift */,
+				AB00HD01 /* LiveHIDDescriptorInspector.swift */,
+			);
+			path = HID;
+			sourceTree = "<group>";
+		};
+		AC0000B3 /* Injection */ = {
+			isa = PBXGroup;
+			children = (
+				AB00IS01 /* InjectionSnapshot.swift */,
+				AB000082 /* InputInjector+AuxInput.swift */,
+				AB000084 /* InputInjector+CGEvents.swift */,
+				AB000081 /* InputInjector+PenInjection.swift */,
+				AB000083 /* InputInjector+Touch.swift */,
+				AB000008 /* InputInjector.swift */,
+				AB00MT01 /* MomentumTail.swift */,
+				AB00PS01 /* PanScrollTracker.swift */,
+				AB00TT01 /* TouchStateTracker.swift */,
+			);
+			path = Injection;
+			sourceTree = "<group>";
+		};
+		AC0000B4 /* Mapping */ = {
+			isa = PBXGroup;
+			children = (
+				AB000035 /* AppWatcher.swift */,
+				AB0000DM /* DisplayMapper.swift */,
+				AB000901 /* RelativeBallistics.swift */,
+			);
+			path = Mapping;
+			sourceTree = "<group>";
+		};
+		AC000002 /* Driver */ = {
+			isa = PBXGroup;
+			children = (
+				AC0000B2 /* Devices */,
+				ACF00002 /* Diagnostics */,
+				AC0000B1 /* HID */,
+				AC0000B3 /* Injection */,
+				AC0000B4 /* Mapping */,
+			);
+			path = Driver;
+			sourceTree = "<group>";
+		};
+		AC0000D1 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				AB000010 /* BezierCurve.swift */,
+				AB000201 /* ButtonBinding.swift */,
+				22D2FFEB9A0346788DD687D6 /* CalibrationData.swift */,
+				AB000202 /* ControlSlot.swift */,
+				AB000900 /* RotaryConfig.swift */,
+				AB000203 /* TabletOrientation.swift */,
+				AB000044 /* ToolSettings.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		AC0000D2 /* Serialization */ = {
+			isa = PBXGroup;
+			children = (
+				AAAAAA05 /* ImportPlan.swift */,
+				AAAAAA01 /* PresetExporter.swift */,
+				AAAAAA03 /* PresetImporter.swift */,
+				AB000100 /* Profile.swift */,
+				AB002099 /* UnknownFieldsCodable.swift */,
+			);
+			path = Serialization;
+			sourceTree = "<group>";
+		};
+		AC000003 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				AC0000D1 /* Model */,
+				AC0000D2 /* Serialization */,
+				AB000205 /* TabletSettings+AppOverrides.swift */,
+				AB000206 /* TabletSettings+Persistence.swift */,
+				AB000204 /* TabletSettings+Presets.swift */,
+				AB000009 /* TabletSettings.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		47A5AA2037FC42E2BFC54602 /* Calibration */ = {
+			isa = PBXGroup;
+			children = (
+				BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */,
+				F3D0D50313CE4401A9B8AC2A /* CalibrationOverlayWindow.swift */,
+				0CA2A9E683E3436B8576AFFF /* CalibrationSession.swift */,
+			);
+			path = Calibration;
+			sourceTree = "<group>";
+		};
+		AC000007 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		AC000011 /* Help */ = {
+			isa = PBXGroup;
+			children = (
+				AB002010 /* HelpContent.swift */,
+				AB002006 /* HelpPanelView.swift */,
+				AB002004 /* HelpSection.swift */,
+				AB002008 /* MarkdownBodyView.swift */,
+			);
+			path = Help;
+			sourceTree = "<group>";
+		};
+		ACF00003 /* Buttons */ = {
+			isa = PBXGroup;
+			children = (
+				AB000076 /* ButtonBindingControl.swift */,
+				AB000080 /* ButtonMappingBindings.swift */,
+				AB000079 /* ButtonMappingQuickKeys.swift */,
+				AB000014 /* ButtonMappingView.swift */,
+				AB000078 /* ButtonRow.swift */,
+				AB000207 /* LEDColorControl.swift */,
+				AB000077 /* LiveResizeDetector.swift */,
+				AB000054 /* PenDiagramView.swift */,
+				AB000154 /* TouchRingDiagramView.swift */,
+				AB000208 /* TouchRingModeList.swift */,
+			);
+			path = Buttons;
+			sourceTree = "<group>";
+		};
+		ACF00004 /* Devices */ = {
+			isa = PBXGroup;
+			children = (
+				AB000040 /* DevicesView.swift */,
+			);
+			path = Devices;
+			sourceTree = "<group>";
+		};
+		ACF00005 /* Display */ = {
+			isa = PBXGroup;
+			children = (
+				AB000015 /* DisplayMappingView.swift */,
+				AB000902 /* MappingSheet.swift */,
+				AB0000B0 /* ScreenAreaOverlayView.swift */,
+				AB0000A3 /* ScreenAreaOverlayWindow.swift */,
+			);
+			path = Display;
+			sourceTree = "<group>";
+		};
+		ACF00006 /* Info */ = {
+			isa = PBXGroup;
+			children = (
+				AB000103 /* CaptureGuideView.swift */,
+				AB000033 /* InfoView.swift */,
+			);
+			path = Info;
+			sourceTree = "<group>";
+		};
+		ACF00007 /* PenFeel */ = {
+			isa = PBXGroup;
+			children = (
+				AB000013 /* PenFeelView.swift */,
+			);
+			path = PenFeel;
+			sourceTree = "<group>";
+		};
+		ACF00008 /* Profiles */ = {
+			isa = PBXGroup;
+			children = (
+				AAAAAA07 /* ExportDragWell.swift */,
+				AAAAAA09 /* ImportPreviewSheet.swift */,
+				AB000034 /* ProfilesView.swift */,
+			);
+			path = Profiles;
+			sourceTree = "<group>";
+		};
+		ACF00009 /* Scratchpad */ = {
+			isa = PBXGroup;
+			children = (
+				AB000016 /* ScratchpadView.swift */,
+			);
+			path = Scratchpad;
+			sourceTree = "<group>";
+		};
+		ACF0000A /* TabletArea */ = {
+			isa = PBXGroup;
+			children = (
+				AB000073 /* OrientationPickerView.swift */,
+				AB000012 /* TabletAreaView.swift */,
+			);
+			path = TabletArea;
+			sourceTree = "<group>";
+		};
+		ACF0000B /* Touch */ = {
+			isa = PBXGroup;
+			children = (
+				AB00TV01 /* TouchView.swift */,
+			);
+			path = Touch;
+			sourceTree = "<group>";
+		};
+		AC000006 /* Panes */ = {
+			isa = PBXGroup;
+			children = (
+				ACF00003 /* Buttons */,
+				ACF00004 /* Devices */,
+				ACF00005 /* Display */,
+				ACF00006 /* Info */,
+				ACF00007 /* PenFeel */,
+				ACF00008 /* Profiles */,
+				ACF00009 /* Scratchpad */,
+				ACF0000A /* TabletArea */,
+				ACF0000B /* Touch */,
+			);
+			path = Panes;
+			sourceTree = "<group>";
+		};
+		ACF0000C /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				AB000052 /* AppOverrideBar.swift */,
+				AB0000A0 /* ConflictDetection.swift */,
+				AB000041 /* DeviceStatusBar.swift */,
+				AB000055 /* DisclosureRow.swift */,
+				AB000053 /* FontExtensions.swift */,
+				AB000200 /* NormalizedAreaEditor.swift */,
+				057B24D72F899E3A0032B29E /* Path+SVGData.swift */,
+				AB000056 /* SettingsControls.swift */,
+				AC000008 /* TabletColorTheme.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		AC000004 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				47A5AA2037FC42E2BFC54602 /* Calibration */,
+				AC000007 /* Components */,
+				AC000011 /* Help */,
+				AC000006 /* Panes */,
+				ACF0000C /* Shared */,
+			);
+			path = UI;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
