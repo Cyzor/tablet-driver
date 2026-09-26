@@ -81,6 +81,28 @@ struct TabletAreaView: View {
         return tabletManager.context(forKey: boundKey)?.isConnected == true
     }
 
+    /// Real shape of the mapped screen area; nil when mapping spans several
+    /// displays and has no single shape.
+    private var screenAreaAspect: Double? {
+        targetDisplayAspectRatio.map {
+            $0 * settings.displayRegionWidth / max(settings.displayRegionHeight, 0.001)
+        }
+    }
+
+    /// Largest screen-area-shaped active area, kept around its current center.
+    private func fitActiveAreaToScreen() {
+        guard let shape = screenAreaAspect else { return }
+        let before = TabletSettings.AreaSnapshot(
+            x: settings.activeAreaX, y: settings.activeAreaY,
+            w: settings.activeAreaWidth, h: settings.activeAreaHeight)
+        let r = TabletSettings.fittedRegion(
+            tabletAspect: shape, displayAspect: orientedAspectRatio,
+            centerX: before.x + before.w / 2, centerY: before.y + before.h / 2)
+        settings.activeAreaX = r.x; settings.activeAreaY = r.y
+        settings.activeAreaWidth = r.w; settings.activeAreaHeight = r.h
+        settings.recordAreaDrag(before: before)
+    }
+
     private var activeAspectRatio: Double {
         tabletManager.surfaceAspectRatio(for: boundKey)
     }
@@ -152,9 +174,7 @@ struct TabletAreaView: View {
                         .frame(width: cs.width, height: cs.height)
                     }
                     .snapping(
-                        to: targetDisplayAspectRatio.map {
-                            $0 * settings.displayRegionWidth / max(settings.displayRegionHeight, 0.001)
-                        },
+                        to: screenAreaAspect,
                         label: String(localized: "Matches screen area", comment: "Badge on the tablet-area crop while its shape snaps to the mapped screen area"))
                     .frame(height: 200)
                     .listRowBackground(Color.clear)
@@ -173,7 +193,13 @@ struct TabletAreaView: View {
                             .help("Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed.")
                         
                         Spacer()
-                        
+
+                        Button("Fit to Screen Area") { fitActiveAreaToScreen() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(screenAreaAspect == nil)
+                            .help("Make the active area the screen area's shape, as large as the tablet allows, so the cursor isn't stretched.")
+
                         Button("Reset to Full Area") {
                             let snap = TabletSettings.AreaSnapshot(
                                 x: settings.activeAreaX, y: settings.activeAreaY,

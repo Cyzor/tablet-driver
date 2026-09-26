@@ -7996,6 +7996,52 @@
         }
       }
     },
+    "Fit to Screen Area" : {
+      "comment" : "Button: set the tablet's active area to the screen area's shape, as large as the tablet allows",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An Bildschirmbereich anpassen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustar al área de pantalla"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面エリアに合わせる"
+          }
+        }
+      }
+    },
+    "Fit to Tablet" : {
+      "comment" : "Button: set the screen area to the tablet's shape, as large as the display allows",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An Grafiktablett anpassen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustar a la tableta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレットに合わせる"
+          }
+        }
+      }
+    },
     "Fix…" : {
       "comment" : "Button on the Conflicts row that opens an alert describing the detected conflicts",
       "localizations" : {
@@ -10542,6 +10588,52 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "マゼンタ"
+          }
+        }
+      }
+    },
+    "Make the active area the screen area's shape, as large as the tablet allows, so the cursor isn't stretched." : {
+      "comment" : "Tooltip for the Fit to Screen Area button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gibt dem aktiven Bereich die Form des Bildschirmbereichs, so groß wie möglich – so wird der Zeiger nicht verzerrt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Da al área activa la forma del área de pantalla, lo más grande posible, para que el cursor no se deforme."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アクティブ領域を画面エリアと同じ形にし、できるだけ大きくします。ポインタが歪みません。"
+          }
+        }
+      }
+    },
+    "Make the screen area the tablet's shape, as large as the display allows, so none of the tablet goes unused." : {
+      "comment" : "Tooltip for the Fit to Tablet button",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gibt dem Bildschirmbereich die Form des Grafiktabletts, so groß wie möglich – so bleibt keine Tablettfläche ungenutzt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Da al área de pantalla la forma de la tableta, lo más grande posible, para no desperdiciar superficie de la tableta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面エリアをタブレットと同じ形にし、できるだけ大きくします。タブレットの面積を無駄にしません。"
           }
         }
       }

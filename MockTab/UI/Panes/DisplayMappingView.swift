@@ -341,6 +341,20 @@ struct DisplayMappingView: View {
         return surface * settings.activeAreaWidth / max(settings.activeAreaHeight, 0.001)
     }
 
+    /// Largest tablet-shaped region, kept around the current region's center.
+    private func fitScreenAreaToTablet(_ display: DisplayInfo) {
+        let before = TabletSettings.AreaSnapshot(
+            x: settings.displayRegionX, y: settings.displayRegionY,
+            w: settings.displayRegionWidth, h: settings.displayRegionHeight)
+        let r = TabletSettings.fittedRegion(
+            tabletAspect: tabletAreaAspect,
+            displayAspect: Double(display.bounds.width) / Double(max(display.bounds.height, 1)),
+            centerX: before.x + before.w / 2, centerY: before.y + before.h / 2)
+        settings.displayRegionX = r.x; settings.displayRegionY = r.y
+        settings.displayRegionWidth = r.w; settings.displayRegionHeight = r.h
+        settings.recordDisplayRegionDrag(before: before)
+    }
+
     private static var matchesTabletLabel: String {
         String(localized: "Matches tablet area", comment: "Badge on the screen-area crop while its shape snaps to the tablet's active area")
     }
@@ -394,6 +408,11 @@ struct DisplayMappingView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .help("Drag the region directly over your desktop, like the macOS screenshot tool.")
+
+                    Button("Fit to Tablet") { fitScreenAreaToTablet(display) }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("Make the screen area the tablet's shape, as large as the display allows, so none of the tablet goes unused.")
 
                     Button("Use Whole Screen") {
                         let snap = TabletSettings.AreaSnapshot(

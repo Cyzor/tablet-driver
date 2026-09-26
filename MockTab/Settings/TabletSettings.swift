@@ -1082,6 +1082,19 @@ final class TabletSettings: ObservableObject {
     /// `recordAreaDrag` for the Display Mapping pane's target-region rect.
     /// Same contract: one undo entry per completed gesture, registered from
     /// the editor's drag-end callback.
+    /// The largest region of `tabletAspect` (real width ÷ height) that fits a
+    /// display of `displayAspect`, centered on the given point where it fits.
+    static func fittedRegion(
+        tabletAspect: Double, displayAspect: Double, centerX: Double, centerY: Double
+    ) -> AreaSnapshot {
+        let w = Swift.min(1, tabletAspect / displayAspect)
+        let h = Swift.min(1, displayAspect / tabletAspect)
+        return AreaSnapshot(
+            x: Swift.min(Swift.max(centerX - w / 2, 0), 1 - w),
+            y: Swift.min(Swift.max(centerY - h / 2, 0), 1 - h),
+            w: w, h: h)
+    }
+
     func recordDisplayRegionDrag(before snap: AreaSnapshot) {
         record(String(localized: "Display Region")) { [weak self] in
             guard let self else { return }
