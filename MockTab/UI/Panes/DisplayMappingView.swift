@@ -394,16 +394,7 @@ struct DisplayMappingView: View {
                     }
                 )
                 .snapping(to: tabletAreaAspect, label: Self.matchesTabletLabel)
-                .contextMenu {
-                    Button("Edit Mapping…") {
-                        MappingSheetPresenter.present(
-                            from: windowRef.window, settings: settings,
-                            tabletAspect: settings.tabletOrientation.applying(
-                                toAspectRatio: tabletManager.surfaceAspectRatio(for: instanceKey)),
-                            tabletCaption: registry.caption(forProductID: productID, tabletManager: tabletManager),
-                            display: display)
-                    }
-                }
+                .editMappingMenu { presentMappingSheet() }
                 .background(WindowReader(ref: windowRef))
                 .frame(height: 130)
                 .listRowBackground(Color.clear)
@@ -492,8 +483,7 @@ struct DisplayMappingView: View {
     /// Centers on the live crop rect, not the full canvas — matching
     /// `TabletAreaView.tabletBadge`, whose badge tracks the crop box as it's
     /// dragged. Clips to `areaRect` and hides once the box is too narrow to
-    /// hold the badge, same threshold as `tabletBadge`.
-    /// Shaded caption centered on a crop area. Shared with `MappingSheet`.
+    /// hold the badge, same threshold as `tabletBadge`. Shared with `MappingSheet`.
     struct DisplayNameBadge: View {
         let name: String
         let resolution: String
@@ -847,20 +837,83 @@ struct DisplayMappingView: View {
     // MARK: - Canvas layout
 
     private var displayCanvas: some View {
+        let idx = settings.targetDisplayIndex
+        let toggleIDSet = settings.toggleDisplayIDSet
+        return DisplayArrangementView(
+            displays: displays,
+            isSelected: { info in
+                if idx == modeAll { return true }
+                if idx == modeToggle || idx == modeSpan { return toggleIDSet.isEmpty || toggleIDSet.contains(info.id) }
+                return idx == info.listIndex
+            },
+            onTap: { i in
+                let flags = NSApplication.shared.currentEvent?.modifierFlags ?? []
+                if flags.contains(.shift), displays.count > 1 {
+                    // Shift+click extends the current selection (Primary/a
+                    // single display, or the existing Toggle/Span set) by a
+                    // range — same as Finder, regardless of starting mode.
+                    canvasRangeClick(at: i)
+                } else if flags.contains(.command), displays.count > 1 {
+                    // Cmd+click → build toggle rotation and activate Toggle mode
+                    canvasCmdClick(at: i)
+                } else {
+                    // Plain click → select that specific display
+                    let old = settings.targetDisplayIndex
+                    let newVal = displays[i].listIndex
+                    guard old != newVal else { return }
+                    settings.targetDisplayIndex = newVal
+                    settings.recordToggle(String(localized: "Display Mapping"), from: old, to: newVal) { self.settings.targetDisplayIndex = $0 }
+                }
+            })
+        .editMappingMenu { presentMappingSheet() }
+        .background(WindowReader(ref: windowRef))
+        .frame(height: 180)
+        .help(canvasHelpText)
+    }
+
+    private func presentMappingSheet() {
+        MappingSheetPresenter.present(
+            from: windowRef.window, settings: settings,
+            tabletAspect: settings.tabletOrientation.applying(
+                toAspectRatio: tabletManager.surfaceAspectRatio(for: instanceKey)),
+            tabletCaption: registry.caption(forProductID: productID, tabletManager: tabletManager),
+            destination: MappingDestination.current(for: settings, displays: displays))
+    }
+
+    private var canvasHelpText: String {
+        if settings.targetDisplayIndex == modeToggle || settings.targetDisplayIndex == modeSpan {
+            return String(localized: "⌘+click to add or remove a display from the selection. ⇧+click to select a range.", comment: "Help text for the display canvas while in Toggle or Span mode")
+        }
+        return String(localized: "Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays.", comment: "Help text for the display canvas in single-display modes")
+    }
+
+    // MARK: - Coordinate helpers
+
+
+}
+
+// MARK: - DisplayArrangementView
+
+/// The displays drawn in their real arrangement, to scale, with wallpapers and
+/// name badges; `isSelected` tints and outlines the mapped ones. Shared by the
+/// Display pane's preview and the mapping sheet.
+struct DisplayArrangementView: View {
+    let displays: [DisplayInfo]
+    let isSelected: (DisplayInfo) -> Bool
+    /// Index of a clicked display; nil makes the view read-only.
+    var onTap: ((Int) -> Void)? = nil
+
+    @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
+    private var textScale: CGFloat { AppearancePrefs.scale(forIndex: textSizeIndex) }
+
+    var body: some View {
         GeometryReader { geo in
             let scale = layoutScale(in: geo.size)
             let offset = layoutOffset(in: geo.size, scale: scale)
             let rects: [CGRect] = displays.map {
                 swiftUIRect(for: $0, scale: scale, offset: offset)
             }
-            // Pre-compute per-display selection state for use in Canvas closure.
-            let idx = settings.targetDisplayIndex
-            let toggleIDSet = settings.toggleDisplayIDSet
-            let selectedStates: [Bool] = displays.map { info in
-                if idx == modeAll { return true }
-                if idx == modeToggle || idx == modeSpan { return toggleIDSet.isEmpty || toggleIDSet.contains(info.id) }
-                return idx == info.listIndex
-            }
+            let selectedStates: [Bool] = displays.map(isSelected)
 
             Canvas { ctx, _ in
                 for (index, info) in displays.enumerated() {
@@ -980,47 +1033,11 @@ struct DisplayMappingView: View {
                 }
             }
             .onTapGesture { location in
-                let flags = NSApplication.shared.currentEvent?.modifierFlags ?? []
-
-                if flags.contains(.shift), displays.count > 1 {
-                    // Shift+click extends the current selection (Primary/a
-                    // single display, or the existing Toggle/Span set) by a
-                    // range — same as Finder, regardless of starting mode.
-                    if let i = rects.firstIndex(where: { $0.contains(location) }) {
-                        canvasRangeClick(at: i)
-                    }
-
-                } else if flags.contains(.command), displays.count > 1 {
-                    // Cmd+click → build toggle rotation and activate Toggle mode
-                    if let i = rects.firstIndex(where: { $0.contains(location) }) {
-                        canvasCmdClick(at: i)
-                    }
-
-                } else {
-                    // Plain click → select that specific display
-                    for (index, rect) in rects.enumerated() where rect.contains(location) {
-                        let old = settings.targetDisplayIndex
-                        let newVal = displays[index].listIndex
-                        guard old != newVal else { break }
-                        settings.targetDisplayIndex = newVal
-                        settings.recordToggle(String(localized: "Display Mapping"), from: old, to: newVal) { self.settings.targetDisplayIndex = $0 }
-                        break
-                    }
-                }
+                guard let onTap, let i = rects.firstIndex(where: { $0.contains(location) }) else { return }
+                onTap(i)
             }
         }
-        .frame(height: 180)
-        .help(canvasHelpText)
     }
-
-    private var canvasHelpText: String {
-        if settings.targetDisplayIndex == modeToggle || settings.targetDisplayIndex == modeSpan {
-            return String(localized: "⌘+click to add or remove a display from the selection. ⇧+click to select a range.", comment: "Help text for the display canvas while in Toggle or Span mode")
-        }
-        return String(localized: "Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays.", comment: "Help text for the display canvas in single-display modes")
-    }
-
-    // MARK: - Coordinate helpers
 
     private func swiftUIRect(
         for info: DisplayInfo,

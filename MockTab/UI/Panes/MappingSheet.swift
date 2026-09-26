@@ -8,30 +8,36 @@ import SwiftUI
 /// the other by eye. Each pane shows only its half of the mapping; this shows
 /// both, live. Opened from either pane's canvas context menu.
 ///
-/// Shows only the target display, large: a screen area applies to a single
-/// display, so the arrangement around it adds nothing here. The tablet is an
-/// abstract rectangle in its real, rotated shape — no product artwork.
+/// With one target display it shows that display large, with its editable
+/// screen area. All, Span and Toggle have no screen area, so they show the
+/// arrangement read-only, the mapped displays highlighted, and the tablet
+/// matches the destination's shape. The tablet is an abstract rectangle in its
+/// real, rotated shape — no product artwork.
 struct MappingSheet: View {
     @ObservedObject var settings: TabletSettings
     /// Full tablet surface, width ÷ height, after rotation.
     let tabletAspect: Double
     let tabletCaption: DeviceRegistry.Caption
-    let display: DisplayInfo
+    let destination: MappingDestination
     /// Ends the sheet; it's presented from AppKit, which owns the window.
     var onClose: () -> Void = {}
 
     @State private var tabletRect: NormalizedRect
+    /// The sheet window's own undo manager — the key window while the sheet
+    /// is up, so Edit ▸ Undo and ⌘Z step through the sheet's edits. The pane's
+    /// history only sees Done, as one step.
+    @Environment(\.undoManager) private var undoManager
     @State private var screenRect: NormalizedRect
 
     init(
         settings: TabletSettings, tabletAspect: Double,
-        tabletCaption: DeviceRegistry.Caption, display: DisplayInfo,
+        tabletCaption: DeviceRegistry.Caption, destination: MappingDestination,
         onClose: @escaping () -> Void
     ) {
         self.settings = settings
         self.tabletAspect = tabletAspect
         self.tabletCaption = tabletCaption
-        self.display = display
+        self.destination = destination
         self.onClose = onClose
         _tabletRect = State(initialValue: NormalizedRect(
             x: settings.activeAreaX, y: settings.activeAreaY,
@@ -41,17 +47,31 @@ struct MappingSheet: View {
             w: settings.displayRegionWidth, h: settings.displayRegionHeight))
     }
 
-    private var displayAspect: Double {
-        Double(display.bounds.width) / Double(max(display.bounds.height, 1))
+    /// Shape of the top canvas: the target display, or the whole arrangement.
+    private var displayAspect: Double { Self.canvasAspect(for: destination) }
+    /// The destination's shape, live while the screen area is edited.
+    private var screenShape: Double {
+        destination.single == nil
+            ? destination.shape ?? displayAspect
+            : displayAspect * screenRect.w / max(screenRect.h, 0.001)
     }
-    private var screenShape: Double { displayAspect * screenRect.w / max(screenRect.h, 0.001) }
+
+    static func canvasAspect(for destination: MappingDestination) -> Double {
+        let r = destination.single.map { $0.bounds }
+            ?? destination.displays.map(\.bounds).reduce(CGRect.null) { $0.union($1) }
+        return r.height > 0 ? Double(r.width / r.height) : 16.0 / 10.0
+    }
     private var tabletShape: Double { tabletAspect * tabletRect.w / max(tabletRect.h, 0.001) }
 
     // Layout: the two canvases share whatever height the controls leave.
-    private static let padding: CGFloat = 24
+    // Every edge sits `padding + canvasInset` in: the canvases draw that far
+    // inside their frames, and the button row is inset to match.
+    private static let padding: CGFloat = 16
+    private static let canvasInset: CGFloat = 8
     private static let spacing: CGFloat = 20
-    /// Two control wells, the button row, and the gaps between five rows.
-    private static let chromeHeight: CGFloat = 36 * 2 + 30 + spacing * 4
+    /// Two control wells, the button row with its inset, and the gaps
+    /// between six rows (the spacer above the buttons counts as one).
+    private static let chromeHeight: CGFloat = 36 * 2 + 30 + canvasInset + spacing * 5
     private static let displayShare: CGFloat = 0.64
     static let defaultWidth: CGFloat = 640
     static let maxWidth: CGFloat = 1100
@@ -59,52 +79,65 @@ struct MappingSheet: View {
     /// Content size at `width` where the display canvas exactly fills its
     /// row, so no size of the sheet leaves it stranded in empty margin.
     static func contentSize(width: CGFloat, displayAspect: Double) -> CGSize {
-        let canvasHeight = (width - padding * 2) / CGFloat(displayAspect)
-        return CGSize(
-            width: width,
-            height: canvasHeight / displayShare + chromeHeight + padding * 2)
+        let drawn = width - padding * 2 - canvasInset * 2
+        let row = drawn / CGFloat(displayAspect) + canvasInset * 2
+        return CGSize(width: width, height: row / displayShare + chromeHeight + padding * 2)
     }
 
     /// Inverse of `contentSize`: the width whose content is `height` tall.
     static func width(forContentHeight height: CGFloat, displayAspect: Double) -> CGFloat {
-        (height - chromeHeight - padding * 2) * displayShare * CGFloat(displayAspect) + padding * 2
+        let row = (height - chromeHeight - padding * 2) * displayShare
+        return (row - canvasInset * 2) * CGFloat(displayAspect) + canvasInset * 2 + padding * 2
     }
 
     var body: some View {
         GeometryReader { geo in
             let flexible = max(geo.size.height - Self.chromeHeight, 160)
             VStack(spacing: Self.spacing) {
-                NormalizedAreaEditor(
-                    aspectRatio: displayAspect,
-                    rect: $screenRect,
-                    background: {
-                        if let wallpaper = display.wallpaper {
-                            GeometryReader { geo in
-                                Image(nsImage: wallpaper)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: geo.size.width, height: geo.size.height)
-                                    .clipped()
+                Group {
+                    if let display = destination.single {
+                        NormalizedAreaEditor(
+                            aspectRatio: displayAspect,
+                            rect: $screenRect,
+                            onCommit: { before in recordEdit(tablet: tabletRect, screen: before) },
+                            background: {
+                                if let wallpaper = display.wallpaper {
+                                    GeometryReader { geo in
+                                        Image(nsImage: wallpaper)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fill)
+                                            .frame(width: geo.size.width, height: geo.size.height)
+                                            .clipped()
+                                    }
+                                }
+                            },
+                            overlay: { areaRect, _ in
+                                DisplayMappingView.DisplayNameBadge(
+                                    name: display.name, resolution: display.resolution, areaRect: areaRect)
                             }
-                        }
-                    },
-                    overlay: { areaRect, _ in
-                        DisplayMappingView.DisplayNameBadge(
-                            name: display.name, resolution: display.resolution, areaRect: areaRect)
+                        )
+                        .snapping(to: tabletShape, label: String(localized: "Matches tablet area"))
+                    } else {
+                        DisplayArrangementView(
+                            displays: destination.displays,
+                            isSelected: { info in destination.included.contains { $0.id == info.id } })
                     }
-                )
-                .snapping(to: tabletShape, label: String(localized: "Matches tablet area"))
+                }
                 .frame(height: flexible * Self.displayShare)
 
                 fitButtons(
-                    fit: { screenRect = fitted(shape: tabletShape, in: displayAspect, around: screenRect) },
-                    full: { screenRect = Self.full },
+                    fit: { edit(screen: fitted(shape: tabletShape, in: displayAspect, around: screenRect)) },
+                    full: { edit(screen: Self.full) },
                     fitLabel: "Fit to Tablet",
                     fitHelp: "Make the screen area the tablet's shape, as large as the display allows, so none of the tablet goes unused.",
                     fullLabel: "Use Whole Screen",
                     fullHelp: "Map the tablet to the entire selected display (undoable).")
+                    .disabled(destination.single == nil)
 
-                NormalizedAreaEditor(aspectRatio: tabletAspect, rect: $tabletRect) { areaRect, cs in
+                NormalizedAreaEditor(
+                    aspectRatio: tabletAspect, rect: $tabletRect,
+                    onCommit: { before in recordEdit(tablet: before, screen: screenRect) }
+                ) { areaRect, cs in
                     ZStack {
                         Canvas { ctx, _ in
                             letterbox(ctx: ctx, areaRect: areaRect, canvas: cs)
@@ -119,12 +152,16 @@ struct MappingSheet: View {
                 .frame(height: flexible * (1 - Self.displayShare))
 
                 fitButtons(
-                    fit: { tabletRect = fitted(shape: screenShape, in: tabletAspect, around: tabletRect) },
-                    full: { tabletRect = Self.full },
+                    fit: { edit(tablet: fitted(shape: screenShape, in: tabletAspect, around: tabletRect)) },
+                    full: { edit(tablet: Self.full) },
                     fitLabel: "Fit to Screen Area",
                     fitHelp: "Make the active area the screen area's shape, as large as the tablet allows, so the cursor isn't stretched.",
                     fullLabel: "Reset to Full Area",
                     fullHelp: "Reset the active area to the full tablet surface (undoable).")
+
+                // Pins the buttons to the bottom margin; `chromeHeight` is an
+                // estimate, and any slack belongs above the buttons, not below.
+                Spacer(minLength: 0)
 
                 HStack {
                     Spacer()
@@ -140,13 +177,34 @@ struct MappingSheet: View {
                     }
                     .keyboardShortcut(.defaultAction)
                 }
+                .padding([.horizontal, .bottom], Self.canvasInset)
             }
+            .frame(maxHeight: .infinity)
         }
         .padding(Self.padding)
         .background(SheetMaterial())
     }
 
     private static let full = NormalizedRect(x: 0, y: 0, w: 1, h: 1)
+    private static let undoTarget = NSObject()
+
+    /// Applies new rects as one undoable step.
+    private func edit(tablet: NormalizedRect? = nil, screen: NormalizedRect? = nil) {
+        let before = (tabletRect, screenRect)
+        if let tablet { tabletRect = tablet }
+        if let screen { screenRect = screen }
+        recordEdit(tablet: before.0, screen: before.1)
+    }
+
+    /// Registers undo back to the given rects — for a change already made,
+    /// such as a finished drag. Undoing registers the redo the same way.
+    private func recordEdit(tablet: NormalizedRect, screen: NormalizedRect) {
+        guard tablet != tabletRect || screen != screenRect else { return }
+        undoManager?.registerUndo(withTarget: Self.undoTarget) { _ in
+            edit(tablet: tablet, screen: screen)
+        }
+        undoManager?.setActionName(String(localized: "Edit Mapping"))
+    }
 
     private func fitted(shape: Double, in container: Double, around r: NormalizedRect) -> NormalizedRect {
         let f = TabletSettings.fittedRegion(
@@ -225,6 +283,64 @@ extension DeviceRegistry {
     }
 }
 
+extension View {
+    /// Right-click menu offering Edit Mapping…, served from AppKit: SwiftUI's
+    /// `.contextMenu` sometimes misses the first right-click on views with
+    /// their own tap and drag gestures, which every mapping canvas has.
+    func editMappingMenu(enabled: Bool = true, action: @escaping () -> Void) -> some View {
+        overlay(RightClickMenuHost { _ in
+            let menu = NSMenu()
+            menu.autoenablesItems = false
+            let item = NSMenuItem(
+                title: String(localized: "Edit Mapping…"),
+                action: #selector(RingMenuTarget.selectAction(_:)), keyEquivalent: "")
+            item.target = RingMenuTarget.shared
+            item.representedObject = RingMenuAction(action)
+            item.isEnabled = enabled
+            menu.addItem(item)
+            return menu
+        })
+    }
+}
+
+/// Where the tablet maps in the current display mode, and the shape it maps
+/// to. One display: that display, cropped to the screen area. All and Span:
+/// the bounding rectangle of the included displays. Toggle: one display at a
+/// time — measured against the first in the rotation.
+struct MappingDestination {
+    let displays: [DisplayInfo]
+    /// The displays the mapping covers or rotates through.
+    let included: [DisplayInfo]
+    /// Set only in single-display mode, the one mode with a screen area.
+    let single: DisplayInfo?
+    /// Real width ÷ height the tablet maps to.
+    let shape: Double?
+
+    @MainActor
+    static func current(for settings: TabletSettings, displays: [DisplayInfo] = DisplayInfo.all()) -> Self {
+        let idx = settings.targetDisplayIndex
+        let ids = settings.toggleDisplayIDSet
+        let chosen = ids.isEmpty ? displays : displays.filter { ids.contains($0.id) }
+        func aspect(_ r: CGRect) -> Double? { r.height > 0 ? Double(r.width / r.height) : nil }
+        switch idx {
+        case TabletSettings.displayModeAll, TabletSettings.displayModeSpan:
+            let set = idx == TabletSettings.displayModeAll ? displays : chosen
+            let union = set.map(\.bounds).reduce(CGRect.null) { $0.union($1) }
+            return Self(displays: displays, included: set, single: nil, shape: set.isEmpty ? nil : aspect(union))
+        case TabletSettings.displayModeToggle:
+            // Rotation follows the system's display list, not screen position.
+            let first = chosen.min { $0.listIndex < $1.listIndex }
+            return Self(displays: displays, included: chosen, single: nil, shape: first.flatMap { aspect($0.bounds) })
+        default:
+            let d = DisplayInfo.targeted(by: idx, in: displays)
+            let shape = d.flatMap { aspect($0.bounds) }.map {
+                $0 * settings.displayRegionWidth / max(settings.displayRegionHeight, 0.001)
+            }
+            return Self(displays: displays, included: d.map { [$0] } ?? [], single: d, shape: shape)
+        }
+    }
+}
+
 extension DisplayInfo {
     /// The display a single-display target index selects; nil for All,
     /// Toggle and Span, which have no single screen area.
@@ -247,11 +363,11 @@ enum MappingSheetPresenter {
     /// inactive window doesn't make it key.
     static func present(
         from parent: NSWindow?, settings: TabletSettings, tabletAspect: Double,
-        tabletCaption: DeviceRegistry.Caption, display: DisplayInfo
+        tabletCaption: DeviceRegistry.Caption, destination: MappingDestination
     ) {
         guard let parent, parent.attachedSheet == nil else { return }
         parent.makeKeyAndOrderFront(nil)
-        let aspect = Double(display.bounds.width) / Double(max(display.bounds.height, 1))
+        let aspect = MappingSheet.canvasAspect(for: destination)
 
         // Opens at its default size, fitted inside the window it hangs from;
         // that is also its minimum — resizing only ever makes it larger.
@@ -267,7 +383,7 @@ enum MappingSheetPresenter {
             maxWidth: max(MappingSheet.maxWidth, minWidth), contentSize: size)
         let host = NSHostingController(rootView: MappingSheet(
             settings: settings, tabletAspect: tabletAspect,
-            tabletCaption: tabletCaption, display: display,
+            tabletCaption: tabletCaption, destination: destination,
             onClose: { [weak parent, weak sheet] in
                 if let sheet { parent?.endSheet(sheet) }
             }))
@@ -354,7 +470,11 @@ struct WindowReader: NSViewRepresentable {
         required init?(coder: NSCoder) { nil }
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            ref.window = window
+            // Record, never clear: several readers can share one ref, and a
+            // reader leaving the pane (the Screen Area section on switching to
+            // Toggle) must not blank the window for the ones that stay. The
+            // ref is weak, so a closed window still clears itself.
+            if let window { ref.window = window }
         }
     }
 }

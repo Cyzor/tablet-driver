@@ -81,12 +81,10 @@ struct TabletAreaView: View {
         return tabletManager.context(forKey: boundKey)?.isConnected == true
     }
 
-    /// Real shape of the mapped screen area; nil when mapping spans several
-    /// displays and has no single shape.
+    /// Real shape the tablet maps to in the current display mode; see
+    /// `MappingDestination`.
     private var screenAreaAspect: Double? {
-        targetDisplayAspectRatio.map {
-            $0 * settings.displayRegionWidth / max(settings.displayRegionHeight, 0.001)
-        }
+        MappingDestination.current(for: settings).shape
     }
 
     /// Largest screen-area-shaped active area, kept around its current center.
@@ -176,17 +174,12 @@ struct TabletAreaView: View {
                     .snapping(
                         to: screenAreaAspect,
                         label: String(localized: "Matches screen area", comment: "Badge on the tablet-area crop while its shape snaps to the mapped screen area"))
-                    .contextMenu {
-                        Button("Edit Mapping…") {
-                            guard let display = DisplayInfo.targeted(
-                                by: settings.targetDisplayIndex, in: DisplayInfo.all())
-                            else { return }
-                            MappingSheetPresenter.present(
-                                from: windowRef.window, settings: settings,
-                                tabletAspect: orientedAspectRatio,
-                                tabletCaption: deviceLabel, display: display)
-                        }
-                        .disabled(screenAreaAspect == nil)
+                    .editMappingMenu(enabled: screenAreaAspect != nil) {
+                        MappingSheetPresenter.present(
+                            from: windowRef.window, settings: settings,
+                            tabletAspect: orientedAspectRatio,
+                            tabletCaption: deviceLabel,
+                            destination: MappingDestination.current(for: settings))
                     }
                     .background(WindowReader(ref: windowRef))
                     .frame(height: 200)
@@ -441,22 +434,6 @@ struct TabletAreaView: View {
         }
         if idx > 0, idx <= ids.count { return CalibrationKey.uuidString(for: ids[idx - 1]) }
         return CalibrationKey.uuidString(for: CGMainDisplayID())
-    }
-
-    /// Aspect ratio of the current target display, or `nil` for "All
-    /// Displays"/"Span" (no single aspect ratio applies) or if resolution fails.
-    /// Mirrors `resolveCurrentDisplayUUID`'s display-lookup pattern.
-    private var targetDisplayAspectRatio: Double? {
-        let idx = settings.targetDisplayIndex
-        guard idx != TabletSettings.displayModeAll, idx != TabletSettings.displayModeSpan else { return nil }
-        var count: UInt32 = 0
-        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return nil }
-        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return nil }
-        let displayID = (idx > 0 && idx <= ids.count) ? ids[idx - 1] : CGMainDisplayID()
-        let bounds = CGDisplayBounds(displayID)
-        guard bounds.height > 0 else { return nil }
-        return Double(bounds.width) / Double(bounds.height)
     }
 
     /// Insets `rect` (the active area, in the same [0,1] fraction space as

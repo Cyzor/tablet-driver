@@ -24,7 +24,7 @@ enum RingDiagramRegion: Equatable {
 
 /// Wraps a menu item's action as a plain closure, since `NSMenuItem` needs
 /// an `@objc` target/selector rather than accepting one directly.
-private final class RingMenuAction: NSObject {
+final class RingMenuAction: NSObject {
     let perform: () -> Void
     init(_ perform: @escaping () -> Void) { self.perform = perform }
 }
@@ -32,7 +32,7 @@ private final class RingMenuAction: NSObject {
 /// Stateless `@objc` relay for the diagram's right-click menu items: each
 /// item carries its own action as a `RingMenuAction` in `representedObject`,
 /// so one shared target can dispatch every item across every menu instance.
-private final class RingMenuTarget: NSObject {
+final class RingMenuTarget: NSObject {
     static let shared = RingMenuTarget()
 
     @objc func selectAction(_ sender: NSMenuItem) {
@@ -50,7 +50,7 @@ private final class RingMenuTarget: NSObject {
 /// AppKit avoids that state round-trip entirely, and it's still one-shot
 /// (no continuous tracking), so it carries none of the hover-driven
 /// invalidation cost the equatable-core split above exists to avoid.
-private struct RightClickMenuHost: NSViewRepresentable {
+struct RightClickMenuHost: NSViewRepresentable {
     let menuBuilder: (CGPoint) -> NSMenu?
 
     func makeNSView(context: Context) -> NSView {
