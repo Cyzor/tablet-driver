@@ -547,43 +547,4 @@ extension ButtonMappingView {
             })
     }
 
-    /// Array index → CW rotation binding (used when action == .keyPress).
-    func slotCWBinding(at index: Int) -> Binding<ButtonBinding> {
-        Binding(
-            get: {
-                guard self.settings.touchRingSlots.indices.contains(index) else { return .none }
-                return self.settings.touchRingSlots[index].cwBinding
-            },
-            set: { newBinding in
-                let oldSlots = self.settings.touchRingSlots
-                guard oldSlots.indices.contains(index) else { return }
-                var newSlots = oldSlots
-                newSlots[index].cwBinding = newBinding
-                self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle(String(localized: "Ring Slot \(index + 1) CW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) {
-                    self.settings.touchRingSlots = $0
-                }
-            }
-        )
-    }
-
-    /// Array index → CCW rotation binding (used when action == .keyPress).
-    func slotCCWBinding(at index: Int) -> Binding<ButtonBinding> {
-        Binding(
-            get: {
-                guard self.settings.touchRingSlots.indices.contains(index) else { return .none }
-                return self.settings.touchRingSlots[index].ccwBinding
-            },
-            set: { newBinding in
-                let oldSlots = self.settings.touchRingSlots
-                guard oldSlots.indices.contains(index) else { return }
-                var newSlots = oldSlots
-                newSlots[index].ccwBinding = newBinding
-                self.settings.touchRingSlots = newSlots
-                self.settings.recordToggle(String(localized: "Ring Slot \(index + 1) CCW", comment: "Undo action name: touch ring slot rotation binding in the Buttons pane"), from: oldSlots, to: newSlots) {
-                    self.settings.touchRingSlots = $0
-                }
-            }
-        )
-    }
 }

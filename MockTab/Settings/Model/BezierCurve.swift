@@ -66,12 +66,6 @@ struct BezierCurve: Codable, Equatable {
 
     // MARK: - Precomputed lookup table (256 entries)
 
-    func buildLookupTable() -> [Double] {
-        (0..<256).map { i in
-            evaluate(Double(i) / 255.0)
-        }
-    }
-
     // MARK: - Private helpers
 
     /// Find parametric t such that bezierX(t) ≈ x, using bisection.

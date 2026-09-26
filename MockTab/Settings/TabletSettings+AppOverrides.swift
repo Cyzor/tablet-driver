@@ -36,28 +36,6 @@ extension TabletSettings {
         activationSource = .app(bundleID: bundleID, name: appName)
     }
 
-    /// Binds the currently frontmost app to `preset`.
-    /// Replaces any existing binding for that bundle ID.
-    func bindFrontmostApp(to profile: Profile) {
-        guard let app = NSWorkspace.shared.frontmostApplication,
-            let bundleID = app.bundleIdentifier
-        else { return }
-        let name = app.localizedName ?? bundleID
-        appBindings.removeAll { $0.bundleID == bundleID }
-        appBindings.append(
-            AppProfileBinding(
-                bundleID: bundleID,
-                appName: name,
-                profileID: profile.id))
-        saveAppBindings()
-    }
-
-    /// Removes the app binding with the given bundle ID.
-    func unbindApp(bundleID: String) {
-        appBindings.removeAll { $0.bundleID == bundleID }
-        saveAppBindings()
-    }
-
     // MARK: - App override management
 
     /// Called by AppWatcher on every app-focus change.
@@ -246,12 +224,6 @@ extension TabletSettings {
                 self?.removeAllAppOverrides()
             }
         }
-    }
-
-    /// True if this device already has a locally-customized override for `bundleID`.
-    /// Used by the import preview to detect a collision before the user commits.
-    func hasAppOverride(bundleID: String) -> Bool {
-        appOverrides.contains(where: { $0.bundleID == bundleID })
     }
 
     /// Imports a per-app override's settings from a backup.

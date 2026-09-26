@@ -563,15 +563,6 @@ struct TabletAreaView: View {
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
-    /// An editable text field showing a 0–100 % value.
-    private func percentField(_ binding: Binding<Double>) -> some View {
-        TextField("", value: binding, format: .percent.precision(.fractionLength(1)))
-            .textFieldStyle(.roundedBorder)
-            .lineLimit(1)
-            .scaledFrame(width: 100)
-            .multilineTextAlignment(.trailing)
-    }
-
     /// An editable text field showing a pixel value derived from a fraction.
     private func pixelField(fraction: Binding<Double>, maxValue: Int,
                             minFraction: Double, maxFraction: Double) -> some View {

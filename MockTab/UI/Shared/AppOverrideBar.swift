@@ -477,10 +477,6 @@ struct AppOverrideBar: View {
         "displayRegionX", "displayRegionY", "displayRegionWidth", "displayRegionHeight",
     ]
 
-    static let orientationKeys: Set<String> = [
-        "tabletOrientation"
-    ]
-
     static let pressureKeys: Set<String> = [
         "pressureCurve", "smoothingStrength", "pressureSmoothingStrength", "pressureThreshold",
         "doubleClickDistance",
