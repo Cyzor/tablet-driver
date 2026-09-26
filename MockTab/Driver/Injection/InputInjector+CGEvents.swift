@@ -55,14 +55,21 @@ extension InputInjector {
     /// makes delivery order deterministic, not fresh. `physicalCacheIsCurrent` closes
     /// it by comparing stamps rather than assuming.
     var moveSafeEventFlags: CGEventFlags {
+        let synthetic = groundTruthSyntheticFlags.rawValue
+            | SharedAuxModifierState.shared.groundTruthFlags.rawValue
+        // A held modifier leaves the cache older than every report, so the
+        // timestamp alone would drop it from each drag.
         let current = ModifierMath.physicalCacheIsCurrent(
             reportTimestampNs: Self.currentReportTimestampNs,
             cacheUpdatedAtNs: tapLastPhysicalFlagsAtNs)
+            || ModifierMath.physicalCacheAgrees(
+                systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
+                tapPhysicalManaged: tapLastPhysicalFlags,
+                syntheticFlags: synthetic)
         if !current { staleModifierCacheDrops &+= 1 }
         return CGEventFlags(rawValue: ModifierMath.moveEventFlags(
             tapPhysicalManaged: tapLastPhysicalFlags,
-            syntheticFlags: groundTruthSyntheticFlags.rawValue
-                | SharedAuxModifierState.shared.groundTruthFlags.rawValue,
+            syntheticFlags: synthetic,
             physicalCacheIsCurrent: current && !Self.forceDropPhysicalMoveFlags))
     }
 
