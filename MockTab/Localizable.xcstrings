@@ -372,6 +372,28 @@
         }
       }
     },
+    "Reset View" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ansicht zurücksetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer vista"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表示をリセット"
+          }
+        }
+      }
+    },
     "Right %lld" : {
       "comment" : "ExpressKey Remote outer key, right column, top to bottom",
       "localizations" : {
@@ -484,6 +506,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "右上"
+          }
+        }
+      }
+    },
+    "Undo scrolling, zooming, and rotation of the test canvas" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrollen, Zoomen und Drehen der Testfläche zurücksetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer el desplazamiento, el zoom y la rotación del lienzo de prueba"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "テスト用キャンバスのスクロール、ズーム、回転を元に戻します"
           }
         }
       }

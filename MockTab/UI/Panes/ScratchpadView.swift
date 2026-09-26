@@ -43,6 +43,8 @@ struct ScratchpadView: View {
 
     @State private var currentPressure: Double = 0
     @State private var clearID = 0
+    @State private var resetViewID = 0
+    @State private var isViewMoved = false
 
     /// Tracks whether this view is on-screen AND the app is frontmost.
     /// Used to gate the live-touch publish — when either is false, the
@@ -118,6 +120,8 @@ struct ScratchpadView: View {
             ScratchpadCanvas(
                 currentPressure: $currentPressure,
                 clearID: clearID,
+                resetViewID: resetViewID,
+                isViewMoved: $isViewMoved,
                 tabletManager: tabletManager,
                 undoManager: undoManager
             )
@@ -177,6 +181,13 @@ struct ScratchpadView: View {
                 .scaledFrame(width: 44, alignment: .trailing)
 
             Spacer()
+
+            Button("Reset View") {
+                resetViewID += 1
+            }
+            .help("Undo scrolling, zooming, and rotation of the test canvas")
+            .controlSize(.small)
+            .disabled(!isViewMoved)
 
             Button("Clear") {
                 clearID += 1
@@ -426,6 +437,8 @@ private struct TouchContactsCanvas: View, Equatable {
 private struct ScratchpadCanvas: NSViewRepresentable {
     @Binding var currentPressure: Double
     let clearID: Int
+    let resetViewID: Int
+    @Binding var isViewMoved: Bool
     let tabletManager: TabletManager
     let undoManager: UndoManager?
 
@@ -433,6 +446,9 @@ private struct ScratchpadCanvas: NSViewRepresentable {
         let view = ScratchpadNSView()
         view.onPressureChange = { pressure in
             currentPressure = pressure
+        }
+        view.onViewMovedChange = { moved in
+            isViewMoved = moved
         }
         view.tabletManager = tabletManager
         view.injectedUndoManager = undoManager
@@ -446,17 +462,23 @@ private struct ScratchpadCanvas: NSViewRepresentable {
             nsView.clear()
             context.coordinator.lastClearID = clearID
         }
+        if resetViewID != context.coordinator.lastResetViewID {
+            nsView.resetView()
+            context.coordinator.lastResetViewID = resetViewID
+        }
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(clearID: clearID)
+        Coordinator(clearID: clearID, resetViewID: resetViewID)
     }
 
     final class Coordinator {
         var lastClearID: Int
+        var lastResetViewID: Int
 
-        init(clearID: Int) {
+        init(clearID: Int, resetViewID: Int) {
             self.lastClearID = clearID
+            self.lastResetViewID = resetViewID
         }
     }
 }
@@ -465,6 +487,7 @@ private struct ScratchpadCanvas: NSViewRepresentable {
 
 final class ScratchpadNSView: NSView {
     var onPressureChange: ((Double) -> Void)?
+    var onViewMovedChange: ((Bool) -> Void)?
     weak var tabletManager: TabletManager?
     var injectedUndoManager: UndoManager?
 
@@ -495,6 +518,23 @@ final class ScratchpadNSView: NSView {
     /// before coordinates are stored.
     private var contentOffset: CGPoint = .zero
 
+    /// Scroll, zoom and rotation, applied before `contentOffset` so resizes
+    /// keep shifting the content uniformly. Lets rings, dials and touch
+    /// gestures show their effect here as in any other app.
+    private var userTransform: CGAffineTransform = .identity {
+        didSet {
+            strokeCache = nil
+            needsDisplay = true
+            let moved = userTransform != .identity
+            if moved != (oldValue != .identity) { onViewMovedChange?(moved) }
+        }
+    }
+
+    private var canvasToView: CGAffineTransform {
+        userTransform.concatenating(
+            CGAffineTransform(translationX: contentOffset.x, y: contentOffset.y))
+    }
+
     override var isOpaque: Bool { false }
     override var acceptsFirstResponder: Bool { true }
 
@@ -516,8 +556,22 @@ final class ScratchpadNSView: NSView {
         return NSCursor(image: image, hotSpot: NSPoint(x: size / 2, y: size / 2))
     }()
 
-    override func resetCursorRects() {
-        addCursorRect(bounds, cursor: Self.ringCursor)
+    // A cursorUpdate tracking area, not a cursor rect: the SwiftUI host
+    // resets the cursor over cursor rects.
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.filter { $0.owner === self }.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(
+            rect: .zero, options: [.cursorUpdate, .mouseMoved, .activeAlways, .inVisibleRect],
+            owner: self))
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        Self.ringCursor.set()
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        Self.ringCursor.set()
     }
 
     override init(frame frameRect: NSRect) {
@@ -559,17 +613,73 @@ final class ScratchpadNSView: NSView {
 
     /// Converts a point in view space to canvas space (stable across resizes).
     private func canvasPoint(_ viewPt: NSPoint) -> NSPoint {
-        NSPoint(x: viewPt.x - contentOffset.x, y: viewPt.y - contentOffset.y)
+        viewPt.applying(canvasToView.inverted())
     }
 
     /// Converts a point in canvas space back to view space (for dirty-rect math).
     private func viewPoint(_ canvasPt: NSPoint) -> NSPoint {
-        NSPoint(x: canvasPt.x + contentOffset.x, y: canvasPt.y + contentOffset.y)
+        canvasPt.applying(canvasToView)
+    }
+
+    // MARK: - View navigation
+
+    private static let zoomRange: ClosedRange<CGFloat> = 0.25...8
+
+    func resetView() {
+        userTransform = .identity
+    }
+
+    /// Scales and rotates about `viewPt`, the pointer or gesture location.
+    private func transformView(about viewPt: NSPoint, _ change: CGAffineTransform) {
+        let p = CGPoint(x: viewPt.x - contentOffset.x, y: viewPt.y - contentOffset.y)
+        userTransform = userTransform
+            .concatenating(CGAffineTransform(translationX: -p.x, y: -p.y))
+            .concatenating(change)
+            .concatenating(CGAffineTransform(translationX: p.x, y: p.y))
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        // Line-based wheels report a few units per notch.
+        let scale: CGFloat = event.hasPreciseScrollingDeltas ? 1 : 10
+        userTransform = userTransform.concatenating(CGAffineTransform(
+            translationX: event.scrollingDeltaX * scale,
+            y: -event.scrollingDeltaY * scale))
+    }
+
+    override func magnify(with event: NSEvent) {
+        let t = userTransform
+        let zoom = sqrt(t.a * t.a + t.b * t.b)
+        let target = min(max(zoom * (1 + event.magnification), Self.zoomRange.lowerBound),
+                         Self.zoomRange.upperBound)
+        let factor = target / zoom
+        transformView(about: convert(event.locationInWindow, from: nil),
+                      CGAffineTransform(scaleX: factor, y: factor))
+    }
+
+    override func rotate(with event: NSEvent) {
+        transformView(about: convert(event.locationInWindow, from: nil),
+                      CGAffineTransform(rotationAngle: CGFloat(event.rotation) * .pi / 180))
+    }
+
+    override func smartMagnify(with event: NSEvent) {
+        resetView()
+    }
+
+    // Middle- and right-drag pan, as in Rebelle.
+    override func otherMouseDragged(with event: NSEvent) { pan(by: event) }
+    override func rightMouseDragged(with event: NSEvent) { pan(by: event) }
+    override func otherMouseDown(with event: NSEvent) {}
+    override func rightMouseDown(with event: NSEvent) {}
+
+    private func pan(by event: NSEvent) {
+        userTransform = userTransform.concatenating(
+            CGAffineTransform(translationX: event.deltaX, y: -event.deltaY))
     }
 
     // MARK: - Mouse events
 
     override func mouseDown(with event: NSEvent) {
+        Self.ringCursor.set()
         let pt = canvasPoint(convert(event.locationInWindow, from: nil))
         let activeContext = tabletManager?.activeContext
         let isEraser = tabletManager?.injector?.activeToolIsEraser == true
@@ -591,6 +701,7 @@ final class ScratchpadNSView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
+        Self.ringCursor.set()
         let viewPt = convert(event.locationInWindow, from: nil)
         let pt = canvasPoint(viewPt)
         if isErasingGesture {
@@ -603,7 +714,9 @@ final class ScratchpadNSView: NSView {
         onPressureChange?(Double(event.pressure))
         // Dirty rect is in view space; convert the previous canvas point back.
         let previousView = viewPoint(previousCanvas)
-        let pad: CGFloat = Swift.max(2, CGFloat(event.pressure) * 20)
+        let t = userTransform
+        let zoom = sqrt(t.a * t.a + t.b * t.b)
+        let pad: CGFloat = Swift.max(2, CGFloat(event.pressure) * 20) * zoom
         let minX = Swift.min(previousView.x, viewPt.x) - pad
         let maxX = Swift.max(previousView.x, viewPt.x) + pad
         let minY = Swift.min(previousView.y, viewPt.y) - pad
@@ -766,10 +879,12 @@ final class ScratchpadNSView: NSView {
         }
     }
 
-    /// Pushes the canvas-to-view translation onto the current graphics context.
+    /// Pushes the canvas-to-view transform onto the current graphics context.
     private func applyContentOffset() {
         let xform = NSAffineTransform()
-        xform.translateX(by: contentOffset.x, yBy: contentOffset.y)
+        let t = canvasToView
+        xform.transformStruct = NSAffineTransformStruct(
+            m11: t.a, m12: t.b, m21: t.c, m22: t.d, tX: t.tx, tY: t.ty)
         xform.concat()
     }
 
@@ -787,30 +902,49 @@ final class ScratchpadNSView: NSView {
         return image
     }
 
+    /// Dots live in canvas space so they move with the view but keep a fixed
+    /// on-screen size. Spacing doubles when zoomed out so the dot count stays
+    /// bounded; the in-between dots fade in with zoom rather than popping.
     private func drawDotGrid(in dirtyRect: NSRect) {
-        let gridColor = NSColor.gridColor.withAlphaComponent(0.20)
-        gridColor.setFill()
+        let t = canvasToView
+        let zoom = sqrt(t.a * t.a + t.b * t.b)
+        var spacing: CGFloat = 16
+        while spacing * zoom < 12 { spacing *= 2 }
+        let fade = min(max((spacing * zoom - 12) / 8, 0), 1)
+        let fineAlpha = fade * fade * (3 - 2 * fade)
+        let radius: CGFloat = 1
+        // Centers snap to device pixels: antialiasing at varying subpixel
+        // offsets reads as blocks of lighter and darker dots when rotating.
+        let scale = window?.backingScaleFactor ?? 2
 
-        let spacing: CGFloat = 16
-        let radius: CGFloat = 0.75
-
-        // Snap to the nearest grid line on or before the dirty rect, then
-        // iterate only within it. A single batched path avoids allocating one
-        // NSBezierPath per dot on every partial repaint.
-        let startX = ceil(max(spacing, dirtyRect.minX - radius) / spacing) * spacing
-        let startY = ceil(max(spacing, dirtyRect.minY - radius) / spacing) * spacing
-
-        let path = NSBezierPath()
-        var x = startX
-        while x < bounds.width && x <= dirtyRect.maxX + radius {
-            var y = startY
-            while y < bounds.height && y <= dirtyRect.maxY + radius {
-                path.appendOval(in: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
-                y += spacing
+        let area = dirtyRect.insetBy(dx: -radius, dy: -radius)
+            .applying(t.inverted())
+        let coarse = NSBezierPath()
+        let fine = NSBezierPath()
+        var i = Int(floor(area.minX / spacing))
+        while CGFloat(i) * spacing <= area.maxX {
+            var j = Int(floor(area.minY / spacing))
+            while CGFloat(j) * spacing <= area.maxY {
+                let p = CGPoint(x: CGFloat(i) * spacing, y: CGFloat(j) * spacing).applying(t)
+                let x = (p.x * scale).rounded() / scale
+                let y = (p.y * scale).rounded() / scale
+                let dot = CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)
+                if i.isMultiple(of: 2) && j.isMultiple(of: 2) {
+                    coarse.appendOval(in: dot)
+                } else {
+                    fine.appendOval(in: dot)
+                }
+                j += 1
             }
-            x += spacing
+            i += 1
         }
-        path.fill()
+        let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let (white, alpha): (CGFloat, CGFloat) = isDark ? (1, 0.25) : (0, 0.16)
+        NSColor(white: white, alpha: alpha).setFill()
+        coarse.fill()
+        guard fineAlpha > 0 else { return }
+        NSColor(white: white, alpha: alpha * fineAlpha).setFill()
+        fine.fill()
     }
 
     private func drawStroke(_ stroke: Stroke) {
