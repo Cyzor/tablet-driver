@@ -176,6 +176,19 @@ struct TabletAreaView: View {
                     .snapping(
                         to: screenAreaAspect,
                         label: String(localized: "Matches screen area", comment: "Badge on the tablet-area crop while its shape snaps to the mapped screen area"))
+                    .contextMenu {
+                        Button("Edit Mapping…") {
+                            guard let display = DisplayInfo.targeted(
+                                by: settings.targetDisplayIndex, in: DisplayInfo.all())
+                            else { return }
+                            MappingSheetPresenter.present(
+                                from: windowRef.window, settings: settings,
+                                tabletAspect: orientedAspectRatio,
+                                tabletCaption: deviceLabel, display: display)
+                        }
+                        .disabled(screenAreaAspect == nil)
+                    }
+                    .background(WindowReader(ref: windowRef))
                     .frame(height: 200)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
@@ -393,29 +406,8 @@ struct TabletAreaView: View {
 
     // MARK: - Device identity
 
-    private struct DeviceLabel {
-        let primary: String
-        let secondary: String?
-    }
-
-    private var deviceLabel: DeviceLabel {
-        guard let pid = boundProductID else {
-            if let activePID = tabletManager.activeContext?.productID {
-                return DeviceLabel(primary: TabletManager.deviceName(forProductID: activePID), secondary: nil)
-            }
-            return DeviceLabel(primary: String(localized: "No device", comment: "Fallback label when no tablet is connected"), secondary: nil)
-        }
-        // Prefer the model name the registry captured when the tablet was last
-        // seen: it carries the right vendor. Re-deriving from the PID alone
-        // defaults to Wacom once the device — and its lastSeenVendorID — is
-        // gone, printing e.g. "Wacom 0x520D" for a disconnected Xencelabs.
-        if let tablet = registry.knownTablets.first(where: { $0.productID == pid }) {
-            if tablet.nickname != tablet.modelName {
-                return DeviceLabel(primary: tablet.nickname, secondary: tablet.modelName)
-            }
-            return DeviceLabel(primary: tablet.modelName, secondary: nil)
-        }
-        return DeviceLabel(primary: TabletManager.deviceName(forProductID: pid), secondary: nil)
+    private var deviceLabel: DeviceRegistry.Caption {
+        registry.caption(forProductID: boundProductID, tabletManager: tabletManager)
     }
 
     // MARK: - Section heading
@@ -499,6 +491,7 @@ struct TabletAreaView: View {
     }
 
     @State private var calibrationWindow: CalibrationOverlayWindow?
+    @State private var windowRef = WindowRef()
 
     /// Launch the calibration overlay on the target display.
     private func startCalibration() {

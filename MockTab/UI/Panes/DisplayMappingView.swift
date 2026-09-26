@@ -23,6 +23,7 @@ struct DisplayMappingView: View {
     /// another tab is showing (other tabs stay alive off-screen, same as `InfoView`).
     @State private var isShowing = false
     @State private var screenAreaWindow: ScreenAreaOverlayWindow?
+    @State private var windowRef = WindowRef()
 
     @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
     private var textScale: CGFloat { AppearancePrefs.scale(forIndex: textSizeIndex) }
@@ -308,10 +309,7 @@ struct DisplayMappingView: View {
     /// whole section is hidden rather than shown disabled, since there's no
     /// one display thumbnail to draw the picker over.
     private var targetedDisplay: DisplayInfo? {
-        let idx = settings.targetDisplayIndex
-        guard idx != modeAll, idx != modeToggle, idx != modeSpan else { return nil }
-        let resolvedIndex = idx > 0 ? idx : 1  // idx == 0 → "Primary display" → first in `displays`
-        return displays.first { $0.listIndex == resolvedIndex } ?? displays.first
+        DisplayInfo.targeted(by: settings.targetDisplayIndex, in: displays)
     }
 
     /// Single rect binding over the four `displayRegion*` settings, the form
@@ -396,6 +394,17 @@ struct DisplayMappingView: View {
                     }
                 )
                 .snapping(to: tabletAreaAspect, label: Self.matchesTabletLabel)
+                .contextMenu {
+                    Button("Edit Mapping…") {
+                        MappingSheetPresenter.present(
+                            from: windowRef.window, settings: settings,
+                            tabletAspect: settings.tabletOrientation.applying(
+                                toAspectRatio: tabletManager.surfaceAspectRatio(for: instanceKey)),
+                            tabletCaption: registry.caption(forProductID: productID, tabletManager: tabletManager),
+                            display: display)
+                    }
+                }
+                .background(WindowReader(ref: windowRef))
                 .frame(height: 130)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
@@ -484,7 +493,8 @@ struct DisplayMappingView: View {
     /// `TabletAreaView.tabletBadge`, whose badge tracks the crop box as it's
     /// dragged. Clips to `areaRect` and hides once the box is too narrow to
     /// hold the badge, same threshold as `tabletBadge`.
-    private struct DisplayNameBadge: View {
+    /// Shaded caption centered on a crop area. Shared with `MappingSheet`.
+    struct DisplayNameBadge: View {
         let name: String
         let resolution: String
         let areaRect: CGRect
@@ -507,7 +517,7 @@ struct DisplayMappingView: View {
                         .appFont(.badgeTitle)
                         .bold()
                         .lineLimit(1)
-                    if fullName {
+                    if fullName, !resolution.isEmpty {
                         Text(resolution)
                             .appFont(.badgeSubtitle)
                     }

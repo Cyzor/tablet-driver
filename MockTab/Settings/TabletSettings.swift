@@ -1095,6 +1095,23 @@ final class TabletSettings: ObservableObject {
             w: w, h: h)
     }
 
+    /// Sets the tablet and screen areas together, as one undo step — the
+    /// mapping sheet's Done.
+    func applyMapping(tablet: AreaSnapshot, screen: AreaSnapshot) {
+        let oldTablet = AreaSnapshot(
+            x: activeAreaX, y: activeAreaY, w: activeAreaWidth, h: activeAreaHeight)
+        let oldScreen = AreaSnapshot(
+            x: displayRegionX, y: displayRegionY, w: displayRegionWidth, h: displayRegionHeight)
+        activeAreaX = tablet.x; activeAreaY = tablet.y
+        activeAreaWidth = tablet.w; activeAreaHeight = tablet.h
+        displayRegionX = screen.x; displayRegionY = screen.y
+        displayRegionWidth = screen.w; displayRegionHeight = screen.h
+        record(String(localized: "Edit Mapping", comment: "Undo action name: tablet and screen areas changed together")) {
+            [weak self] in
+            self?.applyMapping(tablet: oldTablet, screen: oldScreen)
+        }
+    }
+
     func recordDisplayRegionDrag(before snap: AreaSnapshot) {
         record(String(localized: "Display Region")) { [weak self] in
             guard let self else { return }

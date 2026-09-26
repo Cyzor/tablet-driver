@@ -694,11 +694,7 @@ private struct TouchRingModeListCore: View, Equatable {
         .padding(.top, 2)
     }
 
-    /// Slightly darker than the grouped section in either appearance.
-    private static let badgeWellColor = Color(nsColor: NSColor(name: nil) { appearance in
-        let dark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        return NSColor.black.withAlphaComponent(dark ? 0.22 : 0.05)
-    })
+    private static let badgeWellColor = Color.recessedWell
 
     /// Glyph for the mode the dial is currently on.
     ///
@@ -781,4 +777,13 @@ private struct TouchRingModeListCore: View, Equatable {
         if onCenterTap != nil, isCenter(point, in: size) { return .center }
         return nil
     }
+}
+
+extension Color {
+    /// Recessed-well fill, slightly darker than a grouped section in either
+    /// appearance. Behind the dial mode badge and the mapping sheet's controls.
+    static let recessedWell = Color(nsColor: NSColor(name: nil) { appearance in
+        let dark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        return NSColor.black.withAlphaComponent(dark ? 0.22 : 0.05)
+    })
 }
