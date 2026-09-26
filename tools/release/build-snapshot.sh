@@ -37,7 +37,6 @@ SHA_SHORT=$(git rev-parse --short HEAD)
 
 ARCHIVE="$BUILD_DIR/MockTab-snapshot.xcarchive"
 EXPORT_PATH="$BUILD_DIR/export-snapshot"
-DMG_STAGING="$BUILD_DIR/dmg-snapshot"
 DMG_PATH="$DIST_DIR/MockTab-snapshot.dmg"
 
 rm -rf "$BUILD_DIR" "$DMG_PATH"
@@ -78,13 +77,10 @@ xcrun stapler staple "$APP_PATH"
 xcrun stapler validate "$APP_PATH"
 
 echo "==> Building DMG"
-mkdir -p "$DMG_STAGING"
-cp -R "$APP_PATH" "$DMG_STAGING/"
-ln -s /Applications "$DMG_STAGING/Applications"
-hdiutil create -volname "MockTab snapshot ($SHA_SHORT)" \
-    -srcfolder "$DMG_STAGING" \
-    -ov -format UDZO \
-    "$DMG_PATH"
+source tools/release/dmgbuild.sh
+"$DMGBUILD" -s tools/release/dmg_settings.py -D app="$APP_PATH" \
+    -D background=tools/release/dmg_background.png \
+    "MockTab snapshot ($SHA_SHORT)" "$DMG_PATH"
 
 echo "==> Notarizing DMG"
 xcrun notarytool submit "$DMG_PATH" \

@@ -45,7 +45,6 @@ fi
 
 ARCHIVE="$BUILD_DIR/MockTab-$VERSION.xcarchive"
 EXPORT_PATH="$BUILD_DIR/export-$VERSION"
-DMG_STAGING="$BUILD_DIR/dmg-$VERSION"
 DMG_PATH="$DIST_DIR/MockTab-$VERSION.dmg"
 
 rm -rf "$BUILD_DIR" "$DMG_PATH"
@@ -90,19 +89,10 @@ xcrun stapler staple "$APP_PATH"
 xcrun stapler validate "$APP_PATH"
 
 echo "==> Building DMG"
-if command -v dmgbuild >/dev/null 2>&1; then
-    dmgbuild -s tools/release/dmg_settings.py -D app="$APP_PATH" \
-        "MockTab $VERSION" "$DMG_PATH"
-else
-    echo "warning: dmgbuild not found, falling back to plain hdiutil DMG (no custom window/background)" >&2
-    mkdir -p "$DMG_STAGING"
-    cp -R "$APP_PATH" "$DMG_STAGING/"
-    ln -s /Applications "$DMG_STAGING/Applications"
-    hdiutil create -volname "MockTab $VERSION" \
-        -srcfolder "$DMG_STAGING" \
-        -ov -format UDZO \
-        "$DMG_PATH"
-fi
+source tools/release/dmgbuild.sh
+"$DMGBUILD" -s tools/release/dmg_settings.py -D app="$APP_PATH" \
+    -D background=tools/release/dmg_background.png \
+    "MockTab $VERSION" "$DMG_PATH"
 
 echo "==> Notarizing DMG"
 xcrun notarytool submit "$DMG_PATH" \
