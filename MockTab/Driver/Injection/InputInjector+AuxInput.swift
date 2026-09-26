@@ -71,9 +71,26 @@ extension InputInjector {
             }
         }
 
+        // ── Firmware-owned ring mode (ExpressKey Remote) ───────────────────────
+        // The remote's center button switches its own mode LEDs, so the
+        // active slot follows the reported mode and the button fires nothing:
+        // a host-side cycle on the same press would drift out of step.
+        if let mode = buttons.touchRingHardwareMode {
+            if mode != lastHardwareRingMode {
+                lastHardwareRingMode = mode
+                closeRingGestureEnvelopes()
+                if let s = settings {
+                    Task { @MainActor in
+                        s.setActiveSlotIndex(s.rotary(.first).clampedSlotTarget(mode), for: .first)
+                    }
+                }
+            }
+            lastRingButtonDown = buttons.touchRingButtonDown
+        }
+
         // ── Touch ring center button ───────────────────────────────────────────
         let ringButtonDown = buttons.touchRingButtonDown
-        if ringButtonDown != lastRingButtonDown {
+        if buttons.touchRingHardwareMode == nil, ringButtonDown != lastRingButtonDown {
             lastRingButtonDown = ringButtonDown
             fireButtonAction(snap.touchRingButtonBinding, down: ringButtonDown,
                              at: cursorPos, snapshot: snap, settings: settings, isAux: true)

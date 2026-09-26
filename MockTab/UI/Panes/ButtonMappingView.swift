@@ -45,7 +45,7 @@ struct ButtonMappingView: View {
         // name-only placeholder (maxX/maxY/buttonCount all 0) — skip it
         // and fall back to the paired tablet's PID reported over the RF
         // link instead of showing an empty Buttons pane.
-        if let s = WacomDeviceRegistry.spec(for: pid), s.maxX > 0 { return s }
+        if let s = WacomDeviceRegistry.spec(for: pid), s.maxX > 0 || s.isAuxOnly { return s }
         if let ctx = tabletManager.context(forKey: instanceKey), ctx.pairedProductID > 0 {
             return WacomDeviceRegistry.spec(for: ctx.pairedProductID)
         }
@@ -90,6 +90,9 @@ struct ButtonMappingView: View {
         hasDualRings && spec?.parser == .cintiqV1
     }
     private var bezelButtonCount: Int { spec?.bezelButtonCount ?? 0 }
+    /// ExpressKey Remote: keys and a ring, no pen. Its firmware owns the
+    /// ring's mode button, so that row is omitted.
+    private var isRemote: Bool { spec?.parser == .expressKeyRemote }
 
     // MARK: - Companion peripheral (e.g. Xencelabs Quick Keys puck/dongle)
 
@@ -171,6 +174,8 @@ struct ButtonMappingView: View {
                     isDeviceConnected: isSelfConnected,
                     nameLabel: DeviceNameLabel(
                         tabletManager: tabletManager, registry: registry, instanceKey: instanceKey))
+            } else if isRemote {
+                singleSidedSection(lb: liveButtons)
             } else {
                 penButtonsSection(lb: liveButtons)
                 if hasSplitPadLayout {
@@ -441,7 +446,9 @@ struct ButtonMappingView: View {
         // Xencelabs tablets/displays report 0 here — their express keys live
         // on the puck/dongle companion instead (see quickKeysSection below) —
         // so skip an empty section rather than showing a header with no rows.
-        if expressKeyCount > 0 {
+        if isRemote {
+            remoteKeySections(lb: lb)
+        } else if expressKeyCount > 0 {
             Section {
                 ForEach(0..<expressKeyCount, id: \.self) { i in
                     expressKeyRow(
@@ -509,6 +516,49 @@ struct ButtonMappingView: View {
         quickKeysSection
     }
 
+    /// ExpressKey Remote keys, grouped and ordered as on the hardware.
+    /// Indices follow libwacom's layout (wire bit N+1 → key N; bit 0 is
+    /// the ring toggle): ring keys 0–4, outer 5, 7, 8, 10, 11, 13, 15, 16,
+    /// inner 6, 9, 12, 14.
+    @ViewBuilder
+    private func remoteKeySections(lb: LiveButtonState) -> some View {
+        Section {
+            remoteKeyRow(1, String(localized: "Top Left", comment: "ExpressKey Remote key position"), lb: lb)
+            remoteKeyRow(2, String(localized: "Top Right", comment: "ExpressKey Remote key position"), lb: lb)
+            remoteKeyRow(0, String(localized: "Left", comment: "Left touch strip row label"), lb: lb)
+            remoteKeyRow(3, String(localized: "Right", comment: "Right touch strip row label"), lb: lb)
+            remoteKeyRow(4, String(localized: "Bottom", comment: "ExpressKey Remote key position"), lb: lb)
+        } header: {
+            PaneSectionHeader("Ring Keys") {
+                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
+            }
+        }
+        Section("Outer Keys") {
+            ForEach(Array([5, 8, 11, 15].enumerated()), id: \.offset) { n, index in
+                remoteKeyRow(index, String(localized: "Left \(n + 1)", comment: "ExpressKey Remote outer key, left column, top to bottom"), lb: lb)
+            }
+            ForEach(Array([7, 10, 13, 16].enumerated()), id: \.offset) { n, index in
+                remoteKeyRow(index, String(localized: "Right \(n + 1)", comment: "ExpressKey Remote outer key, right column, top to bottom"), lb: lb)
+            }
+        }
+        Section("Inner Keys") {
+            ForEach(Array([6, 9, 12, 14].enumerated()), id: \.offset) { n, index in
+                remoteKeyRow(index, String(localized: "Key \(n + 1)", comment: "Express key N label, e.g. 'Key 1'"), lb: lb)
+            }
+        }
+    }
+
+    /// Key 17 arrives past the 16 express-key slots, where the injector
+    /// reads bezel binding 0; the remote has no bezel.
+    @ViewBuilder
+    private func remoteKeyRow(_ index: Int, _ label: String, lb: LiveButtonState) -> some View {
+        if index < 16 {
+            expressKeyRow(index: index, label: label, lb: lb)
+        } else {
+            bezelButtonRow(index: 0, label: label, lb: lb)
+        }
+    }
+
     /// Center-click row plus the ring's mode list — the body of the primary
     /// ring's section, shared by the single-ring and dual-ring headers above.
     ///
@@ -536,7 +586,7 @@ struct ButtonMappingView: View {
                 isMechanicalDialHardware: true,
                 dialToggleControl: .first,
                 recordRequestToken: centerRecordToken)
-        } else {
+        } else if !isRemote {
             buttonRow(
                 String(localized: "Center", comment: "Touch ring center button row label"),
                 isActive: lb.touchRingButtonDown,
@@ -553,8 +603,8 @@ struct ButtonMappingView: View {
                 : String(localized: "Touch Ring", comment: "Section header / row label for touch ring"),
             isActive: lb.touchRingActive, showsDiagram: !hasMechanicalDial,
             showsModeBadge: hasMechanicalDial,
-            onCenterTap: hasMechanicalDial ? nil : { centerRecordToken += 1 },
-            centerBinding: hasMechanicalDial ? nil : settings.recordingBinding(
+            onCenterTap: hasMechanicalDial || isRemote ? nil : { centerRecordToken += 1 },
+            centerBinding: hasMechanicalDial || isRemote ? nil : settings.recordingBinding(
                 String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
                 get: { settings.touchRingButtonBinding },
                 set: { settings.touchRingButtonBinding = $0 }))
@@ -906,3 +956,11 @@ struct ButtonMappingView: View {
 // detector used above all live in UI/Components/ now — see
 // TouchRingSlotRow.swift, ButtonBindingControl.swift, and
 // LiveResizeDetector.swift.
+
+#Preview("ExpressKey Remote") {
+    let key = DeviceInstanceKey(productID: 0x0331, instance: "preview")
+    ButtonMappingView(
+        settings: TabletSettings(instanceKey: key), tabletManager: .shared,
+        registry: .shared, instanceKey: key)
+        .frame(width: 620, height: 900)
+}

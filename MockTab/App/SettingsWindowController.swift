@@ -408,12 +408,11 @@ final class SettingsWindowController: NSWindowController {
         // express keys and dial, no pen digitizer — gets a trimmed window of
         // Buttons, Devices, and Info. The pen-oriented tabs are structurally
         // inapplicable there, so hiding (not disabling) is the right
-        // treatment. Scoped to the Xencelabs parser so no Wacom window
-        // changes shape. (The wireless dongle no longer has a window
+        // treatment. The ExpressKey Remote gets the same window. (The wireless dongle no longer has a window
         // identity of its own — it folds into the puck's canonical PID, see
         // `VendorDeviceRegistry.canonicalProductID(for:)`.)
         let staticSpec = productID.flatMap { TabletManager.staticSpec(forProductID: $0) }
-        let isAuxOnly = staticSpec?.parser == .xencelabs && staticSpec?.maxX == 0
+        let isAuxOnly = staticSpec?.isAuxOnly == true
         let hasTouchTab = staticSpec?.hasFingerTouch == true
         let tabCount = isAuxOnly ? 3 : (hasTouchTab ? 9 : 8)
         window.minSize = NSSize(width: CGFloat(tabCount) * 70 + 80, height: 500)

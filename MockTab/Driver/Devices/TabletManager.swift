@@ -1745,3 +1745,11 @@ final class TabletManager: ObservableObject {
         NSApp.dockTile.badgeLabel = anyLow ? "!" : nil
     }
 }
+
+extension WacomDeviceSpec {
+    /// Keys and a dial or ring, no pen: the Quick Keys puck and the
+    /// ExpressKey Remote. Gets the Buttons, Devices and Info window.
+    var isAuxOnly: Bool {
+        maxX == 0 && (parser == .xencelabs || parser == .expressKeyRemote)
+    }
+}

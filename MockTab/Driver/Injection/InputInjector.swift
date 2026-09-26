@@ -744,6 +744,8 @@ final class InputInjector: @unchecked Sendable {
 
     var lastAuxButtons = [Bool](repeating: false, count: 19)
     var lastRingButtonDown = false
+    /// Last ring mode the device's firmware reported (ExpressKey Remote).
+    var lastHardwareRingMode: Int?
     /// Same as `lastRingButtonDown`, for the second dial's own toggle key
     /// (PTK-670/870's right cluster center). Unused on every other device.
     var lastRing2ButtonDown = false
