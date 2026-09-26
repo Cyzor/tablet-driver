@@ -480,7 +480,9 @@ struct TabletAreaView: View {
     /// letterbox preview track the crop box while it's being dragged,
     /// instead of only updating once the drag commits.
     private func proportionalCropRect(insetting rect: NormalizedRect) -> NormalizedRect? {
-        guard settings.proportionalMapping, let displayAspect = targetDisplayAspectRatio else {
+        // The screen area's shape, not the whole display's: the mapping crops
+        // against the region, so a cropped screen changes the bands.
+        guard settings.proportionalMapping, let displayAspect = screenAreaAspect else {
             return nil
         }
         // Work in the same oriented, unit-free space DisplayMapper/
