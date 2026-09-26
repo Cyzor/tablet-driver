@@ -70,6 +70,8 @@ final class CaptureEngine: ObservableObject {
     /// at start like the settings above — `CaptureEngine` stays free of the
     /// main-actor registry so the standalone harnesses can build a result.
     private var capturedEverSeenTools: [String]?
+    /// Filled a second or two into the session; see `HardwareSurveyProbe`.
+    private var capturedHardwareSurvey: DiscoveryHardwareSurvey?
     /// Live for the session only — created in `startDiscovery` when the
     /// device is Bluetooth and a candidate address is available, torn down
     /// in `finishDiscovery`/`cancelDiscovery`. Not a standing per-device
@@ -295,6 +297,17 @@ final class CaptureEngine: ObservableObject {
         capturedTouchSettings = touchSettings
         capturedAppSettings = appSettings
         capturedEverSeenTools = everSeenTools
+        // Off the main thread: each DDC request waits ~50 ms on the panel.
+        // Keyed to the session start so a slow survey can't land in the next.
+        capturedHardwareSurvey = nil
+        let sessionStart = discoveryStartTime
+        Task.detached(priority: .utility) { [weak self] in
+            let survey = HardwareSurveyProbe.run()
+            await MainActor.run {
+                guard let self, self.discoveryStartTime == sessionStart else { return }
+                self.capturedHardwareSurvey = survey
+            }
+        }
         bluetoothLinkMonitor = bluetoothAddressCandidate.flatMap {
             BluetoothLinkMonitor(addressCandidate: $0)
         }
@@ -853,6 +866,11 @@ final class CaptureEngine: ObservableObject {
             notes += " \(touchPipeline.framesTracked)."
         }
 
+        if let survey = capturedHardwareSurvey, !survey.displays.isEmpty {
+            let answered = survey.displays.filter { $0.ddc == "answered" }.count
+            notes += " External displays: \(survey.displays.count), \(answered) answered DDC/CI."
+        }
+
         // Only worth recording if any RSSI sample actually landed — a
         // candidate that resolved to the wrong (or no) device produces a
         // block of pure zeros/nils that would read as "signal is fine"
@@ -903,6 +921,7 @@ final class CaptureEngine: ObservableObject {
             appSettings: capturedAppSettings,
             touchPipeline: touchPipeline.isEmpty ? nil : touchPipeline,
             bluetoothLink: discoveryBluetoothLink,
+            hardwareSurvey: capturedHardwareSurvey,
             notes: notes,
             submitterContact: nil
         )

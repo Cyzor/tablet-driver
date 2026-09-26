@@ -159,7 +159,13 @@ struct DiscoveryResult: Codable {
     /// `observedToolCodes`, which a protocol carrying no tool code never fills
     /// — a working Wacom One S capture was told its pen had never been
     /// detected. Optional, so v17 readers and files still decode.
-    var captureVersion: Int = 18
+    ///
+    /// v19 adds `hardwareSurvey`: external displays with whatever DDC/CI
+    /// answers over the video cable, and the USB devices around each tablet
+    /// with the macOS driver that claimed them. Panel controls and bridge
+    /// chips live there, not on the tablet's HID interfaces. Optional, so
+    /// v18 readers and files still decode.
+    var captureVersion: Int = 19
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -226,12 +232,64 @@ struct DiscoveryResult: Codable {
     /// RSSI/link-quality samples taken during the session, Bluetooth only.
     /// See `captureVersion` 13's doc line for the address-match caveat.
     var bluetoothLink: DiscoveryBluetoothLink?
+    /// Displays and USB hardware around the tablet, read once when the
+    /// capture starts. See `HardwareSurveyProbe`.
+    var hardwareSurvey: DiscoveryHardwareSurvey?
     /// Precomputed observations for triage — see `DiscoveryFinding`. Omitted
     /// when nothing notable was found, so a clean capture doesn't carry an
     /// empty block.
     var findings: [DiscoveryFinding]?
     var notes: String?
     var submitterContact: String?
+}
+
+/// What `HardwareSurveyProbe` found. Read-only by construction: DDC/CI
+/// traffic is limited to Get VCP Feature and Capabilities requests.
+struct DiscoveryHardwareSurvey: Codable {
+    var displays: [DiscoveryDisplay]
+    var usbDevices: [DiscoveryUSBDevice]
+}
+
+struct DiscoveryDisplay: Codable {
+    var name: String?
+    /// EDID vendor and product, hex.
+    let vendorID: String
+    let productID: String
+    /// `answered`, `noReply` (transport found, panel silent), or
+    /// `noTransport` (no DDC path from this Mac: Intel, or no AV service).
+    var ddc: String
+    /// Whether the Mac sees an HDMI sink. Some Macs' HDMI ports don't pass
+    /// DDC/CI through.
+    var hdmi: Bool?
+    /// I2C address that answered, hex.
+    var ddcAddress: String?
+    /// Which checksum the panel accepted: `spec` (0x6E^0x51^…) or `short`
+    /// (0x6E^…, what the August probe used).
+    var ddcChecksum: String?
+    /// VCP code (hex) → value, for codes that replied with a nonzero max.
+    /// Every code the capabilities string advertises, minus write-only ones.
+    var vcp: [String: DiscoveryVCPValue]?
+    /// MCCS capabilities string, as far as it could be read.
+    var capabilities: String?
+}
+
+struct DiscoveryVCPValue: Codable {
+    let current: Int
+    let max: Int
+}
+
+struct DiscoveryUSBDevice: Codable {
+    let vendorID: String
+    let productID: String
+    var name: String?
+    let locationID: String
+    /// Why it's listed: `tablet` (Wacom or Xencelabs), `bridgeChip`
+    /// (FTDI, Silicon Labs, TI), `hub` (the hub a tablet hangs from, climbed
+    /// through the vendor's own internal hubs), or `underHub` (anything else
+    /// in that hub's tree).
+    let reason: String
+    /// Driver classes attached below the device, e.g. `AppleUSBFTDI`.
+    var drivers: [String]
 }
 
 /// RSSI and link-quality summary for a Bluetooth capture session. See

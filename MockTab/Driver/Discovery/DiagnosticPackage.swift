@@ -132,7 +132,8 @@ enum DiagnosticPackage {
 
     /// Plain-text note, first thing anyone sees on unzip.
     ///
-    /// The no-keystrokes claim holds by construction: keyboards and
+    /// The hardware lines match `HardwareSurveyProbe`'s scope. The
+    /// no-keystrokes claim holds by construction: keyboards and
     /// Consumer-page devices are excluded by top-level usage in both sweeps
     /// (`CaptureGuideView.isTextEntryDevice`,
     /// `DiagnosticSession.knownVendorDevices`). Change that filtering and
@@ -148,9 +149,11 @@ enum DiagnosticPackage {
         }
         lines.append(contentsOf: [
             "",
-            "This contains tablet, pen, and button activity only. No keystrokes,",
-            "no personal files, no screen contents. Everything here is readable",
-            "text — open it and look before you send it.",
+            "This contains tablet, pen, and button activity, plus the model and",
+            "settings of your external displays and of USB devices sharing a hub",
+            "with the tablet. No keystrokes, no personal files, no screen",
+            "contents. Everything here is readable text — open it and look",
+            "before you send it.",
             "",
             "MockTab MockTap Metrics",
             readmeDate(date),
