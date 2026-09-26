@@ -104,7 +104,6 @@
 		AAAAAA02 /* PresetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA01 /* PresetExporter.swift */; };
 		AAAAAA04 /* PresetImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA03 /* PresetImporter.swift */; };
 		AAAAAA06 /* ImportPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA05 /* ImportPlan.swift */; };
-		AAAAAA08 /* ExportDragWell.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA07 /* ExportDragWell.swift */; };
 		AAAAAA10 /* ImportPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA09 /* ImportPreviewSheet.swift */; };
 		AB001001 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AB001000 /* Localizable.xcstrings */; };
 		AB002001 /* HelpWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB002002 /* HelpWindowController.swift */; };
@@ -133,7 +132,6 @@
 		AAAAAA01 /* PresetExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetExporter.swift; sourceTree = "<group>"; };
 		AAAAAA03 /* PresetImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetImporter.swift; sourceTree = "<group>"; };
 		AAAAAA05 /* ImportPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPlan.swift; sourceTree = "<group>"; };
-		AAAAAA07 /* ExportDragWell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportDragWell.swift; sourceTree = "<group>"; };
 		AAAAAA09 /* ImportPreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportPreviewSheet.swift; sourceTree = "<group>"; };
 		AB000001 /* MockTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTabApp.swift; sourceTree = "<group>"; };
 		AB000002 /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
@@ -526,7 +524,6 @@
 		ACF00008 /* Profiles */ = {
 			isa = PBXGroup;
 			children = (
-				AAAAAA07 /* ExportDragWell.swift */,
 				AAAAAA09 /* ImportPreviewSheet.swift */,
 				AB000034 /* ProfilesView.swift */,
 			);
@@ -804,7 +801,6 @@
 				AAAAAA02 /* PresetExporter.swift in Sources */,
 				AAAAAA04 /* PresetImporter.swift in Sources */,
 				AAAAAA06 /* ImportPlan.swift in Sources */,
-				AAAAAA08 /* ExportDragWell.swift in Sources */,
 				AAAAAA10 /* ImportPreviewSheet.swift in Sources */,
 				AC000009 /* TabletColorTheme.swift in Sources */,
 				AB002001 /* HelpWindowController.swift in Sources */,
