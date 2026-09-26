@@ -1297,6 +1297,7 @@ final class TabletManager: ObservableObject {
                     DeviceRegistry.shared.updateModelName(
                         forDonglePairing: key, to: TabletManager.deviceName(forProductID: pid))
                 }
+                self?.reconcileDongleHandoff(windowsToo: true)
             }
         }
 
@@ -1448,6 +1449,7 @@ final class TabletManager: ObservableObject {
             if activeContext == nil && !isDongleAwaitingHandoff(productID: productID) {
                 activeContext = context
             }
+            reconcileDongleHandoff(windowsToo: false)
 
             DeviceRegistry.shared.recordTablet(
                 instanceKey: context.instanceKey, usbSerial: usbSerial,
@@ -1614,6 +1616,31 @@ final class TabletManager: ObservableObject {
             connectedProductID = connectedProductIDs.last ?? 0
         }
         revertStaleDongleNameIfBare()
+    }
+
+    /// Re-applies the dongle handoff after the inputs to
+    /// `isDongleAwaitingHandoff` change. Pairing arrives after the dongle
+    /// connects, and the direct tablet can arrive while the dongle is active;
+    /// the connect-time checks alone leave the dongle current (or no device
+    /// current) in both cases.
+    ///
+    /// `windowsToo` re-publishes `deviceContexts` so `SettingsWindowManager`
+    /// re-runs its handoff pass; connects already publish on their own.
+    private func reconcileDongleHandoff(windowsToo: Bool) {
+        if let active = activeContext, isDongleAwaitingHandoff(productID: active.productID) {
+            activeContext = hidDeviceMap.values.first(where: {
+                !isDongleAwaitingHandoff(productID: $0.productID)
+            })
+            updateDockBadge()
+        } else if activeContext == nil,
+            let live = hidDeviceMap.values.first(where: {
+                !isDongleAwaitingHandoff(productID: $0.productID)
+            })
+        {
+            activeContext = live
+            updateDockBadge()
+        }
+        if windowsToo { deviceContexts = deviceContexts }
     }
 
     /// Reverts the dongle's registry row back to its own name once it's
