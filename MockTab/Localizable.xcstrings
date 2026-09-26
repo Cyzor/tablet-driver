@@ -256,282 +256,6 @@
         }
       }
     },
-    "Bottom" : {
-      "comment" : "ExpressKey Remote key position",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Bottom"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abajo"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "下"
-          }
-        }
-      }
-    },
-    "Inner Keys" : {
-      "comment" : "ExpressKey Remote section: the center key column",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Innere Tasten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Inner Keys"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teclas interiores"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "内側のキー"
-          }
-        }
-      }
-    },
-    "Left %lld" : {
-      "comment" : "ExpressKey Remote outer key, left column, top to bottom",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Links %lld"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Left %lld"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Izquierda %lld"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "左 %lld"
-          }
-        }
-      }
-    },
-    "Outer Keys" : {
-      "comment" : "ExpressKey Remote section: the two outer key columns",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Äußere Tasten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Outer Keys"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teclas exteriores"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "外側のキー"
-          }
-        }
-      }
-    },
-    "Reset View" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ansicht zurücksetzen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restablecer vista"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "表示をリセット"
-          }
-        }
-      }
-    },
-    "Right %lld" : {
-      "comment" : "ExpressKey Remote outer key, right column, top to bottom",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rechts %lld"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Right %lld"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Derecha %lld"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "右 %lld"
-          }
-        }
-      }
-    },
-    "Ring Keys" : {
-      "comment" : "ExpressKey Remote section: keys around the touch ring",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ring-Tasten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Ring Keys"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teclas del anillo"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "リングキー"
-          }
-        }
-      }
-    },
-    "Top Left" : {
-      "comment" : "ExpressKey Remote key position",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oben links"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Top Left"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arriba a la izquierda"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "左上"
-          }
-        }
-      }
-    },
-    "Top Right" : {
-      "comment" : "ExpressKey Remote key position",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oben rechts"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Top Right"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arriba a la derecha"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "右上"
-          }
-        }
-      }
-    },
-    "Undo scrolling, zooming, and rotation of the test canvas" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scrollen, Zoomen und Drehen der Testfläche zurücksetzen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deshacer el desplazamiento, el zoom y la rotación del lienzo de prueba"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "テスト用キャンバスのスクロール、ズーム、回転を元に戻します"
-          }
-        }
-      }
-    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -3233,6 +2957,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "両方のタッチリング"
+          }
+        }
+      }
+    },
+    "Bottom" : {
+      "comment" : "ExpressKey Remote key position",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Bottom"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abajo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下"
           }
         }
       }
@@ -6972,29 +6725,6 @@
         }
       }
     },
-    "Drag this icon out to save a copy of your settings. Drop back in to restore prior settings." : {
-      "comment" : "Description of export/import drag-and-drop functionality",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zieh dieses Symbol heraus, um eine Kopie deiner Einstellungen zu speichern. Zieh sie wieder hinein, um frühere Einstellungen wiederherzustellen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arrastra este icono fuera para guardar una copia de tus ajustes. Suéltala aquí para restaurar los ajustes anteriores."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このアイコンをドラッグして設定のコピーを保存します。ここにドロップすると以前の設定に戻せます。"
-          }
-        }
-      }
-    },
     "Drag the arrow to set where the cursor appears relative to the pen tip." : {
       "comment" : "Tooltip on the cursor offset pad.",
       "localizations" : {
@@ -7043,6 +6773,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS のスクリーンショットツールのように、画面上で直接ドラッグして範囲を選択。"
+          }
+        }
+      }
+    },
+    "Drag this icon out to save a copy of your settings. Drop back in to restore prior settings." : {
+      "comment" : "Description of export/import drag-and-drop functionality",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zieh dieses Symbol heraus, um eine Kopie deiner Einstellungen zu speichern. Zieh sie wieder hinein, um frühere Einstellungen wiederherzustellen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra este icono fuera para guardar una copia de tus ajustes. Suéltala aquí para restaurar los ajustes anteriores."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアイコンをドラッグして設定のコピーを保存します。ここにドロップすると以前の設定に戻せます。"
           }
         }
       }
@@ -7117,29 +6870,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "キャンバスに描画して、筆圧とクリックの動作を確認してください。"
-          }
-        }
-      }
-    },
-    "Drop a profile JSON file here to import, or drag this well to export the current profile." : {
-      "comment" : "Accessibility help text describing the drag well's two directions",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leg eine Profil-JSON-Datei hier ab, um sie zu importieren, oder zieh diesen Bereich, um das aktuelle Profil zu exportieren."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suelte aquí un archivo JSON de perfil para importar, o arrastre este elemento para exportar el perfil actual."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "プロファイルのJSONファイルをここにドロップしてインポートするか、このウェルをドラッグして現在のプロファイルをエクスポートします。"
           }
         }
       }
@@ -7249,29 +6979,6 @@
         }
       }
     },
-    "Edit Mapping…" : {
-      "comment" : "Context menu on the tablet or screen area canvas: opens the combined mapping sheet",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zuordnung bearbeiten…"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Editar asignación…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "マッピングを編集…"
-          }
-        }
-      }
-    },
     "Edit Mapping" : {
       "comment" : "Undo action name: tablet and screen areas changed together",
       "localizations" : {
@@ -7291,6 +6998,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "マッピングを編集"
+          }
+        }
+      }
+    },
+    "Edit Mapping…" : {
+      "comment" : "Context menu on the tablet or screen area canvas: opens the combined mapping sheet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuordnung bearbeiten…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar asignación…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マッピングを編集…"
           }
         }
       }
@@ -9962,6 +9692,35 @@
         }
       }
     },
+    "Inner Keys" : {
+      "comment" : "ExpressKey Remote section: the center key column",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Innere Tasten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Inner Keys"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teclas interiores"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内側のキー"
+          }
+        }
+      }
+    },
     "Input Monitor  : %@" : {
       "comment" : "Diagnostic: Input Monitoring permission",
       "localizations" : {
@@ -10582,6 +10341,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "左"
+          }
+        }
+      }
+    },
+    "Left %lld" : {
+      "comment" : "ExpressKey Remote outer key, left column, top to bottom",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Links %lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Left %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izquierda %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左 %lld"
           }
         }
       }
@@ -13329,6 +13117,35 @@
         }
       }
     },
+    "Outer Keys" : {
+      "comment" : "ExpressKey Remote section: the two outer key columns",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Äußere Tasten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Outer Keys"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teclas exteriores"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外側のキー"
+          }
+        }
+      }
+    },
     "Pan View" : {
       "comment" : "Button action: hold to pan/scroll with pen motion",
       "localizations" : {
@@ -14277,29 +14094,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "プロファイル操作"
-          }
-        }
-      }
-    },
-    "Profile import and export drop target" : {
-      "comment" : "Accessibility label for the bidirectional drag-and-drop well in Profiles",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ablagebereich zum Importieren und Exportieren von Profilen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Destino de arrastre para importar y exportar perfiles"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "プロファイルのインポートおよびエクスポートのドロップターゲット"
           }
         }
       }
@@ -16050,6 +15844,28 @@
         }
       }
     },
+    "Reset View" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ansicht zurücksetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer vista"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表示をリセット"
+          }
+        }
+      }
+    },
     "Restore settings from a previously saved JSON backup" : {
       "comment" : "Help text for the \"Import from File…\" button in the ProfilesView.",
       "isCommentAutoGenerated" : true,
@@ -16336,6 +16152,35 @@
         }
       }
     },
+    "Right %lld" : {
+      "comment" : "ExpressKey Remote outer key, right column, top to bottom",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechts %lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Right %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Derecha %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右 %lld"
+          }
+        }
+      }
+    },
     "Right Click" : {
       "comment" : "Button action: right mouse click",
       "localizations" : {
@@ -16434,48 +16279,31 @@
         }
       }
     },
-    "Ring Slot %lld CCW" : {
-      "comment" : "Undo action name: touch ring slot rotation binding in the Buttons pane",
+    "Ring Keys" : {
+      "comment" : "ExpressKey Remote section: keys around the touch ring",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ringfeld %lld – Gegenuhrzeigersinn"
+            "value" : "Ring-Tasten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Ring Keys"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring %lld: antihorario"
+            "value" : "Teclas del anillo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "リングスロット%lld：反時計回り"
-          }
-        }
-      }
-    },
-    "Ring Slot %lld CW" : {
-      "comment" : "Undo action name: touch ring slot rotation binding in the Buttons pane",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ringfeld %lld – Uhrzeigersinn"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ranura del ring %lld: horario"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "リングスロット%lld：時計回り"
+            "value" : "リングキー"
           }
         }
       }
@@ -20154,6 +19982,64 @@
         }
       }
     },
+    "Top Left" : {
+      "comment" : "ExpressKey Remote key position",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oben links"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Top Left"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arriba a la izquierda"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左上"
+          }
+        }
+      }
+    },
+    "Top Right" : {
+      "comment" : "ExpressKey Remote key position",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oben rechts"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Top Right"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arriba a la derecha"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右上"
+          }
+        }
+      }
+    },
     "Touch" : {
       "comment" : "Help section title\nMenu item: open Touch tab\nTab name: capacitive finger-touch settings",
       "localizations" : {
@@ -20741,6 +20627,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "元に戻す"
+          }
+        }
+      }
+    },
+    "Undo scrolling, zooming, and rotation of the test canvas" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrollen, Zoomen und Drehen der Testfläche zurücksetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer el desplazamiento, el zoom y la rotación del lienzo de prueba"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "テスト用キャンバスのスクロール、ズーム、回転を元に戻します"
           }
         }
       }
