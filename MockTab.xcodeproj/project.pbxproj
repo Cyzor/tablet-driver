@@ -33,6 +33,8 @@
 		AA000013 /* PenFeelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* PenFeelView.swift */; };
 		AA000014 /* ButtonMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ButtonMappingView.swift */; };
 		AA000015 /* DisplayMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* DisplayMappingView.swift */; };
+		AA00F102 /* DisplayArrangementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F102 /* DisplayArrangementView.swift */; };
+		AA00F101 /* DisplayInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F101 /* DisplayInfo.swift */; };
 		AA0000A3 /* ScreenAreaOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000A3 /* ScreenAreaOverlayWindow.swift */; };
 		AA0000B0 /* ScreenAreaOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000B0 /* ScreenAreaOverlayView.swift */; };
 		AA000902 /* MappingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000902 /* MappingSheet.swift */; };
@@ -40,6 +42,7 @@
 		AA000017 /* SettingsWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* SettingsWindowManager.swift */; };
 		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* Assets.xcassets */; };
 		AA000033 /* InfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* InfoView.swift */; };
+		AA00F103 /* LiveInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F103 /* LiveInputView.swift */; };
 		AA0000A0 /* ConflictDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000A0 /* ConflictDetection.swift */; };
 		AA000034 /* ProfilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* ProfilesView.swift */; };
 		AA000035 /* AppWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000035 /* AppWatcher.swift */; };
@@ -56,6 +59,7 @@
 		AA0000A1 /* WacomKnownDevice+DisplayOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000A1 /* WacomKnownDevice+DisplayOutput.swift */; };
 		AA00PBP1 /* BatchFramePacer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00PBP1 /* BatchFramePacer.swift */; };
 		AA000052 /* AppOverrideBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* AppOverrideBar.swift */; };
+		AA00F104 /* AppOverrideChipInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F104 /* AppOverrideChipInteraction.swift */; };
 		AA000076 /* ButtonBindingControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000076 /* ButtonBindingControl.swift */; };
 		AA000077 /* LiveResizeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000077 /* LiveResizeDetector.swift */; };
 		AA000078 /* ButtonRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000078 /* ButtonRow.swift */; };
@@ -149,6 +153,8 @@
 		AB000013 /* PenFeelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenFeelView.swift; sourceTree = "<group>"; };
 		AB000014 /* ButtonMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingView.swift; sourceTree = "<group>"; };
 		AB000015 /* DisplayMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMappingView.swift; sourceTree = "<group>"; };
+		AB00F102 /* DisplayArrangementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayArrangementView.swift; sourceTree = "<group>"; };
+		AB00F101 /* DisplayInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayInfo.swift; sourceTree = "<group>"; };
 		AB0000A3 /* ScreenAreaOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenAreaOverlayWindow.swift; sourceTree = "<group>"; };
 		AB0000B0 /* ScreenAreaOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenAreaOverlayView.swift; sourceTree = "<group>"; };
 		AB000902 /* MappingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MappingSheet.swift; sourceTree = "<group>"; };
@@ -158,6 +164,7 @@
 		AB000021 /* MockTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MockTab.entitlements; sourceTree = "<group>"; };
 		AB000030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000033 /* InfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoView.swift; sourceTree = "<group>"; };
+		AB00F103 /* LiveInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveInputView.swift; sourceTree = "<group>"; };
 		AB0000A0 /* ConflictDetection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictDetection.swift; sourceTree = "<group>"; };
 		AB000034 /* ProfilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilesView.swift; sourceTree = "<group>"; };
 		AB000035 /* AppWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWatcher.swift; sourceTree = "<group>"; };
@@ -174,6 +181,7 @@
 		AB0000A1 /* WacomKnownDevice+DisplayOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WacomKnownDevice+DisplayOutput.swift"; sourceTree = "<group>"; };
 		AB00PBP1 /* BatchFramePacer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchFramePacer.swift; sourceTree = "<group>"; };
 		AB000052 /* AppOverrideBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverrideBar.swift; sourceTree = "<group>"; };
+		AB00F104 /* AppOverrideChipInteraction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverrideChipInteraction.swift; sourceTree = "<group>"; };
 		AB000076 /* ButtonBindingControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonBindingControl.swift; sourceTree = "<group>"; };
 		AB000077 /* LiveResizeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveResizeDetector.swift; sourceTree = "<group>"; };
 		AB000078 /* ButtonRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonRow.swift; sourceTree = "<group>"; };
@@ -494,6 +502,8 @@
 			isa = PBXGroup;
 			children = (
 				AB000015 /* DisplayMappingView.swift */,
+				AB00F102 /* DisplayArrangementView.swift */,
+				AB00F101 /* DisplayInfo.swift */,
 				AB000902 /* MappingSheet.swift */,
 				AB0000B0 /* ScreenAreaOverlayView.swift */,
 				AB0000A3 /* ScreenAreaOverlayWindow.swift */,
@@ -506,6 +516,7 @@
 			children = (
 				AB000103 /* CaptureGuideView.swift */,
 				AB000033 /* InfoView.swift */,
+				AB00F103 /* LiveInputView.swift */,
 			);
 			path = Info;
 			sourceTree = "<group>";
@@ -572,6 +583,7 @@
 			isa = PBXGroup;
 			children = (
 				AB000052 /* AppOverrideBar.swift */,
+				AB00F104 /* AppOverrideChipInteraction.swift */,
 				AB0000A0 /* ConflictDetection.swift */,
 				AB000041 /* DeviceStatusBar.swift */,
 				AB000055 /* DisclosureRow.swift */,
@@ -774,14 +786,18 @@
 				AA000013 /* PenFeelView.swift in Sources */,
 				AA000014 /* ButtonMappingView.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,
+				AA00F102 /* DisplayArrangementView.swift in Sources */,
+				AA00F101 /* DisplayInfo.swift in Sources */,
 				AA0000A3 /* ScreenAreaOverlayWindow.swift in Sources */,
 				AA0000B0 /* ScreenAreaOverlayView.swift in Sources */,
 				AA000902 /* MappingSheet.swift in Sources */,
 				AA000016 /* ScratchpadView.swift in Sources */,
 				AA000033 /* InfoView.swift in Sources */,
+				AA00F103 /* LiveInputView.swift in Sources */,
 				AA0000A0 /* ConflictDetection.swift in Sources */,
 				AA000034 /* ProfilesView.swift in Sources */,
 				AA000052 /* AppOverrideBar.swift in Sources */,
+				AA00F104 /* AppOverrideChipInteraction.swift in Sources */,
 				AA000076 /* ButtonBindingControl.swift in Sources */,
 				AA000077 /* LiveResizeDetector.swift in Sources */,
 				AA000078 /* ButtonRow.swift in Sources */,
