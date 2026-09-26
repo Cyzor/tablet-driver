@@ -59,6 +59,11 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     /// the *entire* canvas here (rather than just the area rect) will paint
     /// over the border — use `background` instead for anything full-canvas.
     @ViewBuilder var overlay: (CGRect, CGSize) -> Overlay
+    /// Real (width ÷ height) shape resizing snaps to when near it — the
+    /// other side of the mapping, so the tablet and screen areas can be
+    /// matched by eye. Command drags freely. Set via `snapping(to:label:)`.
+    var snapAspect: Double? = nil
+    var snapLabel: String? = nil
 
     @State private var dragOrigin = NormalizedRect(x: 0, y: 0, w: 0, h: 0)
     @State private var draftRect: NormalizedRect?
@@ -67,6 +72,9 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     /// meaningful travel, so which axis stays cursor-exact doesn't
     /// flip-flop frame to frame — see `applyKeepProportions`.
     @State private var cornerDominantAxisIsWidth: Bool?
+    @State private var isSnapped = false
+    /// Brief border pulse when a snap lands.
+    @State private var snapPulse = false
 
     /// Drives the focus ring for keyboard users; also enables `.onKeyPress`
     /// nudging on macOS 14+ via the conditional modifier below.
@@ -97,9 +105,20 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                         .frame(width: cs.width, height: cs.height)
                 }
                 cropOverlay(canvasSize: cs)
+                if isSnapped, let label = snapLabel {
+                    let r = draftRect ?? rect
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.accentColor)
+                        .accessibilityLabel(label)
+                        .transition(.opacity)
+                        .position(x: (r.x + r.w) * cs.width - 14, y: r.y * cs.height + 14)
+                        .allowsHitTesting(false)
+                }
             }
             .frame(width: cs.width, height: cs.height)
             .coordinateSpace(name: Self.coordinateSpaceName)
+            .animation(.easeOut(duration: 0.15), value: isSnapped)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .accessibilityRepresentation { accessibilityControls }
             .modifier(KeyboardNudgeModifier(
@@ -269,6 +288,13 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             .offset(x: x, y: y)
             .allowsHitTesting(false)
 
+            Rectangle()
+                .strokeBorder(Color.accentColor, lineWidth: 5)
+                .opacity(snapPulse ? 0.9 : 0)
+                .frame(width: w, height: h)
+                .offset(x: x, y: y)
+                .allowsHitTesting(false)
+
             overlay(areaRect, cs)
                 .allowsHitTesting(false)
 
@@ -329,6 +355,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             .frame(width: max(frame.0, 0), height: max(frame.1, 0))
             .offset(x: offset.0, y: offset.1)
             .gesture(cropGesture(edge, cs: cs))
+            .simultaneousGesture(TapGesture(count: 2).onEnded { fitShape(from: edge) })
             .cursor(edgeCursor(edge), active: dragAnchor == nil)
     }
 
@@ -366,6 +393,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             .frame(width: s, height: s)
             .offset(x: pos.0 - s / 2, y: pos.1 - s / 2)
             .gesture(cropGesture(corner, cs: cs))
+            .simultaneousGesture(TapGesture(count: 2).onEnded { fitShape(from: corner) })
             .cursor(.crosshair, active: dragAnchor == nil)
     }
 
@@ -404,7 +432,8 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                 applyDrag(
                     edge: edge, dx: dx, dy: dy,
                     fromCenter: flags.contains(.option),
-                    keepProportions: flags.contains(.shift))
+                    keepProportions: flags.contains(.shift),
+                    snap: !flags.contains(.command), canvas: cs)
             }
             .onEnded { _ in
                 if dragAnchor != nil, let draft = draftRect {
@@ -414,12 +443,14 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                 dragAnchor = nil
                 draftRect = nil
                 cornerDominantAxisIsWidth = nil
+                isSnapped = false
             }
     }
 
     private func applyDrag(
         edge: CropEdge, dx rawDx: Double, dy rawDy: Double,
-        fromCenter: Bool = false, keepProportions: Bool = false
+        fromCenter: Bool = false, keepProportions: Bool = false, snap: Bool = false,
+        canvas: CGSize = .zero
     ) {
         guard var draft = draftRect else { return }
         let o = dragOrigin
@@ -478,7 +509,29 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
         }
 
         if keepProportions, o.h > 0 {
-            draft = applyKeepProportions(edge: edge, draft: draft, origin: o, minDimension: minD)
+            draft = applyKeepProportions(
+                edge: edge, draft: draft, origin: o, targetAspect: o.w / o.h, minDimension: minD)
+        }
+        // Sticky, and measured in on-screen points so it feels the same on a
+        // small pane canvas and full screen: engages near the fit, releases
+        // only once dragged well past it.
+        var didSnap = false
+        if snap, !keepProportions, let target = snapTarget,
+            let s = snapped(edge: edge, draft: draft, origin: o, target: target, minDimension: minD)
+        {
+            let off = Swift.max(
+                abs(s.x - draft.x) * canvas.width,
+                abs(s.x + s.w - draft.x - draft.w) * canvas.width,
+                abs(s.y - draft.y) * canvas.height,
+                abs(s.y + s.h - draft.y - draft.h) * canvas.height)
+            if off <= (isSnapped ? Self.snapRelease : Self.snapEngage) {
+                draft = s
+                didSnap = true
+            }
+        }
+        if didSnap != isSnapped {
+            isSnapped = didSnap
+            if didSnap { landSnap() }
         }
         if fromCenter {
             draft = anchorToCenter(edge: edge, draft: draft, origin: o)
@@ -494,10 +547,10 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     /// fractional change wins. Re-anchors the edges Shift didn't drive so
     /// the grabbed handle stays under the cursor.
     private func applyKeepProportions(
-        edge: CropEdge, draft: NormalizedRect, origin o: NormalizedRect, minDimension minD: Double
+        edge: CropEdge, draft: NormalizedRect, origin o: NormalizedRect,
+        targetAspect: Double, minDimension minD: Double
     ) -> NormalizedRect {
         var draft = draft
-        let targetAspect = o.w / o.h
 
         // `fixedRight`/`fixedBottom`: true when that opposite edge must stay
         // pinned at its origin position (i.e. the near edge is what's being
@@ -539,6 +592,102 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
         draft.w = Swift.min(draft.w, 1 - draft.x)
         draft.h = Swift.min(draft.h, 1 - draft.y)
         return draft
+    }
+
+    /// `snapAspect` in this canvas's normalized units.
+    private var snapTarget: Double? {
+        guard let real = snapAspect, real > 0, aspectRatio > 0 else { return nil }
+        return real / aspectRatio
+    }
+
+    /// The draft with its shape set to `target`. An edge drag snaps the
+    /// dragged edge itself, so the far side never moves; a corner adjusts the
+    /// axis it drives less, as Shift does. Nil if the snapped rect wouldn't fit.
+    private func snapped(
+        edge: CropEdge, draft: NormalizedRect, origin o: NormalizedRect,
+        target: Double, minDimension minD: Double
+    ) -> NormalizedRect? {
+        var d = draft
+        switch edge {
+        case .left:
+            d.w = d.h * target
+            d.x = o.x + o.w - d.w
+        case .right:
+            d.w = d.h * target
+        case .top:
+            d.h = d.w / target
+            d.y = o.y + o.h - d.h
+        case .bottom:
+            d.h = d.w / target
+        case .topLeft, .topRight, .bottomLeft, .bottomRight:
+            d = applyKeepProportions(
+                edge: edge, draft: draft, origin: o, targetAspect: target, minDimension: minD)
+        case .body:
+            return nil
+        }
+        let fits = d.x >= 0 && d.y >= 0 && d.x + d.w <= 1.0001 && d.y + d.h <= 1.0001
+            && d.w >= minD && d.h >= minD
+        return fits ? d : nil
+    }
+
+    /// Points from the fit where a snap engages, and how far past it a drag
+    /// must go to break free.
+    private static var snapEngage: CGFloat { 8 }
+    private static var snapRelease: CGFloat { 16 }
+
+    /// The landing: a border pulse, and the system alignment tap on a Force
+    /// Touch trackpad.
+    private func landSnap() {
+        NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+        snapPulse = true
+        withAnimation(.easeOut(duration: 0.35)) { snapPulse = false }
+    }
+
+    /// Double-click on a handle: fit the rect to the snap shape, like
+    /// InDesign's Fit Frame to Content. An edge moves itself, the opposite
+    /// edge staying put; a corner shrinks the overlong side toward the
+    /// opposite corner. One undo step.
+    private func fitShape(from edge: CropEdge) {
+        guard let target = snapTarget, dragAnchor == nil else { return }
+        let o = rect
+        var d = o
+        switch edge {
+        case .left, .right:
+            d.w = o.h * target
+            if d.w > (edge == .right ? 1 - o.x : o.x + o.w) {
+                // Doesn't fit sideways: keep the width, fit the height instead.
+                d.w = o.w
+                d.h = o.w / target
+                d.y = o.y + (o.h - d.h) / 2
+            } else if edge == .left {
+                d.x = o.x + o.w - d.w
+            }
+        case .top, .bottom:
+            d.h = o.w / target
+            if d.h > (edge == .bottom ? 1 - o.y : o.y + o.h) {
+                d.h = o.h
+                d.w = o.h * target
+                d.x = o.x + (o.w - d.w) / 2
+            } else if edge == .top {
+                d.y = o.y + o.h - d.h
+            }
+        case .topLeft, .topRight, .bottomLeft, .bottomRight:
+            if o.w / o.h > target {
+                d.w = o.h * target
+                if edge == .topLeft || edge == .bottomLeft { d.x = o.x + o.w - d.w }
+            } else {
+                d.h = o.w / target
+                if edge == .topLeft || edge == .topRight { d.y = o.y + o.h - d.h }
+            }
+        case .body:
+            return
+        }
+        d.x = Swift.min(Swift.max(d.x, 0), 1 - d.w)
+        d.y = Swift.min(Swift.max(d.y, 0), 1 - d.h)
+        guard d.w >= minDimension, d.h >= minDimension, d != o else { return }
+        rect = d
+        onCommit?(o)
+        landSnap()
     }
 
     /// Re-centers the rect on the drag's original center after a mirrored
@@ -632,6 +781,17 @@ extension NormalizedAreaEditor where Overlay == EmptyView {
         self.onCommit = onCommit
         self.background = background
         self.overlay = { _, _ in EmptyView() }
+    }
+}
+
+extension NormalizedAreaEditor {
+    /// Snaps resizing to `aspect` (real width ÷ height) when near it, showing
+    /// `label` while snapped. Nil leaves snapping off.
+    func snapping(to aspect: Double?, label: String) -> Self {
+        var copy = self
+        copy.snapAspect = aspect
+        copy.snapLabel = label
+        return copy
     }
 }
 

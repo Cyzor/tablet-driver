@@ -81,24 +81,8 @@ struct TabletAreaView: View {
         return tabletManager.context(forKey: boundKey)?.isConnected == true
     }
 
-    /// Raw digitizer coordinate density isn't always the same on both axes
-    /// (confirmed on Xencelabs' Pen Display: very different units-per-mm per
-    /// axis), so `maxX / maxY` in raw units is not a reliable stand-in for
-    /// the tablet's visual aspect ratio — it rendered this preview box as a
-    /// tall portrait rectangle for a landscape display. Prefer the vendor
-    /// profile's physical mm dimensions when available; same fix as
-    /// InputInjector.mapToScreen and CalibrationSession's proportional
-    /// mapping.
     private var activeAspectRatio: Double {
-        if let pid = boundProductID,
-            let profile = VendorDeviceRegistry.profile(forProductID: pid),
-            let w = profile.activeWidthMM, w > 0, let h = profile.activeHeightMM, h > 0
-        {
-            return w / h
-        }
-        let y = activeDeviceMaxY
-        guard y > 0 else { return 44800.0 / 29600.0 }
-        return Double(activeDeviceMaxX) / Double(y)
+        tabletManager.surfaceAspectRatio(for: boundKey)
     }
 
     /// Aspect ratio adjusted for the user's tablet orientation (90°/270° swap
@@ -167,6 +151,11 @@ struct TabletAreaView: View {
                         }
                         .frame(width: cs.width, height: cs.height)
                     }
+                    .snapping(
+                        to: targetDisplayAspectRatio.map {
+                            $0 * settings.displayRegionWidth / max(settings.displayRegionHeight, 0.001)
+                        },
+                        label: String(localized: "Matches screen area", comment: "Badge on the tablet-area crop while its shape snaps to the mapped screen area"))
                     .frame(height: 200)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))

@@ -137,6 +137,31 @@ final class TabletManager: ObservableObject {
     /// Context for a window/pane identity. An exact instance matches its own
     /// unit; the legacy empty-instance identity resolves the way PID keying
     /// did — to the unit holding the model's claimed namespace.
+    /// Physical width ÷ height of a tablet's whole surface, before rotation.
+    /// Vendor millimetres where registered: raw units aren't square on every
+    /// tablet (Xencelabs' Pen Display differs per axis), so maxX ÷ maxY alone
+    /// can draw a landscape surface as portrait.
+    func surfaceAspectRatio(for key: DeviceInstanceKey?) -> Double {
+        guard let pid = key?.productID else { return 44800.0 / 29600.0 }
+        if let profile = VendorDeviceRegistry.profile(forProductID: pid),
+            let w = profile.activeWidthMM, w > 0, let h = profile.activeHeightMM, h > 0
+        {
+            return w / h
+        }
+        let dims: (Int, Int)?
+        if let s = context(forKey: key)?.tabletDevice?.spec {
+            dims = (s.maxX, s.maxY)
+        } else if let s = WacomDeviceRegistry.spec(for: pid) {
+            dims = (s.maxX, s.maxY)
+        } else if let p = VendorDeviceRegistry.profile(forProductID: pid), let x = p.maxX, let y = p.maxY {
+            dims = (x, y)
+        } else {
+            dims = nil
+        }
+        guard let (x, y) = dims, y > 0 else { return 44800.0 / 29600.0 }
+        return Double(x) / Double(y)
+    }
+
     func context(forKey key: DeviceInstanceKey?) -> DeviceContext? {
         guard let key else { return nil }
         if !key.instance.isEmpty {

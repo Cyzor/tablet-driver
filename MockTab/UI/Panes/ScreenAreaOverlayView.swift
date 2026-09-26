@@ -14,6 +14,8 @@ import SwiftUI
 struct ScreenAreaOverlayView: View {
     let aspectRatio: Double
     let initialRect: NormalizedRect
+    let snapAspect: Double?
+    let snapLabel: String
     var onDone: (NormalizedRect) -> Void
     var onCancel: () -> Void
 
@@ -21,10 +23,13 @@ struct ScreenAreaOverlayView: View {
 
     init(
         aspectRatio: Double, initialRect: NormalizedRect,
+        snapAspect: Double?, snapLabel: String,
         onDone: @escaping (NormalizedRect) -> Void, onCancel: @escaping () -> Void
     ) {
         self.aspectRatio = aspectRatio
         self.initialRect = initialRect
+        self.snapAspect = snapAspect
+        self.snapLabel = snapLabel
         self.onDone = onDone
         self.onCancel = onCancel
         self._rect = State(initialValue: initialRect)
@@ -43,6 +48,7 @@ struct ScreenAreaOverlayView: View {
                         dimensionHUD(areaRect: areaRect)
                     }
                 )
+                .snapping(to: snapAspect, label: snapLabel)
                 .frame(width: geo.size.width, height: geo.size.height)
 
                 // Anchored near the top rather than the bottom — the Dock

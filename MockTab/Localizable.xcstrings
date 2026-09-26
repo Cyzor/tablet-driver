@@ -10711,6 +10711,52 @@
         }
       }
     },
+    "Matches screen area" : {
+      "comment" : "Badge on the tablet-area crop while its shape snaps to the mapped screen area",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passt zum Bildschirmbereich"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coincide con el área de pantalla"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面エリアと一致"
+          }
+        }
+      }
+    },
+    "Matches tablet area" : {
+      "comment" : "Badge on the screen-area crop while its shape snaps to the tablet's active area",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passt zum Grafiktablett-Bereich"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coincide con el área de tableta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレット領域と一致"
+          }
+        }
+      }
+    },
     "Max" : {
       "comment" : "Double-click distance label — maximum value\nPressure smoothing strength label — maximum value\nRing speed level: fastest\nSteadiness strength label — maximum value",
       "localizations" : {

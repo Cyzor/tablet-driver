@@ -333,6 +333,18 @@ struct DisplayMappingView: View {
         )
     }
 
+    /// Real shape of the tablet's active area, which the screen area snaps
+    /// to so the whole tablet can be used without calculating proportions.
+    private var tabletAreaAspect: Double {
+        let surface = settings.tabletOrientation.applying(
+            toAspectRatio: tabletManager.surfaceAspectRatio(for: instanceKey))
+        return surface * settings.activeAreaWidth / max(settings.activeAreaHeight, 0.001)
+    }
+
+    private static var matchesTabletLabel: String {
+        String(localized: "Matches tablet area", comment: "Badge on the screen-area crop while its shape snaps to the tablet's active area")
+    }
+
     @ViewBuilder
     private var displayRegionSection: some View {
         if let display = targetedDisplay {
@@ -369,6 +381,7 @@ struct DisplayMappingView: View {
                         DisplayNameBadge(name: display.name, resolution: display.resolution, areaRect: areaRect)
                     }
                 )
+                .snapping(to: tabletAreaAspect, label: Self.matchesTabletLabel)
                 .frame(height: 130)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
@@ -417,6 +430,7 @@ struct DisplayMappingView: View {
         let window = ScreenAreaOverlayWindow(
             displayBounds: display.bounds,
             initialRect: displayRegionBinding.wrappedValue,
+            snapAspect: tabletAreaAspect, snapLabel: Self.matchesTabletLabel,
             onFinish: { result in
                 screenAreaWindow = nil
                 guard let result else { return }

@@ -18,7 +18,11 @@ final class ScreenAreaOverlayWindow: NSWindow {
     private var onFinish: ((NormalizedRect?) -> Void)?
     private var resignActiveObserver: NSObjectProtocol?
 
-    init(displayBounds: CGRect, initialRect: NormalizedRect, onFinish: @escaping (NormalizedRect?) -> Void) {
+    init(
+        displayBounds: CGRect, initialRect: NormalizedRect,
+        snapAspect: Double?, snapLabel: String,
+        onFinish: @escaping (NormalizedRect?) -> Void
+    ) {
         self.onFinish = onFinish
         super.init(
             contentRect: displayBounds,
@@ -37,6 +41,7 @@ final class ScreenAreaOverlayWindow: NSWindow {
         let overlayView = ScreenAreaOverlayView(
             aspectRatio: displayBounds.width / max(displayBounds.height, 1),
             initialRect: Self.withEdgeMargin(initialRect, displayBounds: displayBounds),
+            snapAspect: snapAspect, snapLabel: snapLabel,
             onDone: { [weak self] rect in self?.finish(with: rect) },
             onCancel: { [weak self] in self?.finish(with: nil) })
         let hostingView = NSHostingView(rootView: overlayView)
