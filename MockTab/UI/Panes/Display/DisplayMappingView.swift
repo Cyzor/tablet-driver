@@ -4,7 +4,6 @@
 
 import AppKit
 import CoreGraphics
-import CoreImage
 import ImageIO
 import SwiftUI
 import TabletKit
@@ -1158,8 +1157,6 @@ struct DisplayInfo {
         }
     }
 
-    private static let ciContext = CIContext()
-
     /// Keyed by desktop-image URL so re-running `all()` skips decoding
     /// thumbnails for displays whose wallpaper hasn't changed.
     private static var thumbnailCache: [URL: NSImage] = [:]
@@ -1188,14 +1185,37 @@ struct DisplayInfo {
     /// backdrop rather than competing with the crop chrome drawn over it —
     /// most setups resolve to Apple's default wallpaper here (see
     /// `wallpaper`'s doc comment), which is busy and heavily saturated at
-    /// full strength. `nil` on any filter failure; caller falls back to the
-    /// untouched thumbnail.
+    /// full strength. `nil` on failure; caller falls back to the untouched
+    /// thumbnail.
+    ///
+    /// Plain pixel math rather than Core Image: a `CIContext` loads Metal
+    /// kernel archives worth ~130 MB, a spike on every settings window open.
     private static func tonedDown(_ cg: CGImage) -> CGImage? {
-        guard let filter = CIFilter(name: "CIColorControls") else { return nil }
-        filter.setValue(CIImage(cgImage: cg), forKey: kCIInputImageKey)
-        filter.setValue(0.35, forKey: kCIInputSaturationKey)
-        filter.setValue(0.85, forKey: kCIInputContrastKey)
-        guard let output = filter.outputImage else { return nil }
-        return ciContext.createCGImage(output, from: output.extent)
+        let width = cg.width, height = cg.height
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let ctx = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4, space: space,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let data = ctx.data
+        else { return nil }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        let saturation: Float = 0.35, contrast: Float = 0.85
+        let pixels = data.bindMemory(to: UInt8.self, capacity: width * height * 4)
+        for i in stride(from: 0, to: width * height * 4, by: 4) {
+            let r = Float(pixels[i]), g = Float(pixels[i + 1]), b = Float(pixels[i + 2])
+            let a = Float(pixels[i + 3])
+            let luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
+            // Premultiplied, so mid-gray and the clamp scale with alpha.
+            func tone(_ c: Float) -> UInt8 {
+                let adjusted = (luma + saturation * (c - luma) - a / 2) * contrast + a / 2
+                return UInt8(min(max(adjusted, 0), a).rounded())
+            }
+            pixels[i] = tone(r)
+            pixels[i + 1] = tone(g)
+            pixels[i + 2] = tone(b)
+        }
+        return ctx.makeImage()
     }
 }
