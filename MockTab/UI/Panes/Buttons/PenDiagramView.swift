@@ -159,8 +159,11 @@ private struct PenDiagramCore: View, Equatable {
                 context.stroke(p, with: .color(stroke), style: StrokeStyle(lineWidth: 0.1))
             }
 
-            let passive = Color.secondary
-            let bodyFill = Color.primary.opacity(0.80)
+            // Light mode swaps the fills: a darker body under lighter
+            // buttons keeps the highlighted part leading.
+            let isDark = context.environment.colorScheme == .dark
+            let passive = isDark ? Color.secondary : Color.primary.opacity(0.35)
+            let bodyFill = isDark ? Color.primary.opacity(0.80) : Color.secondary
             let strokeDim = Color.secondary
             let accent = Color.accentColor
 

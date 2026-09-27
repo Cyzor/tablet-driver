@@ -672,7 +672,7 @@ private struct TouchRingModeListCore: View, Equatable {
     private var modeBadge: some View {
         VStack(spacing: 2) {
             Image(systemName: badgeSymbol)
-                .font(.system(size: 48, weight: .light))
+                .font(.system(size: 38, weight: .light))
                 .foregroundStyle(.secondary)
                 .frame(width: 104, height: 104)
                 // A recessed disc anchors the glyph, the way the ring diagram

@@ -88,7 +88,8 @@ struct TouchRingDiagramView: View, Equatable {
             }
 
             let passive = Color.secondary
-            let bodyFill = Color.primary.opacity(0.80)
+            // Light mode gets a softer body so the highlighted part leads.
+            let bodyFill = Color.primary.opacity(context.environment.colorScheme == .dark ? 0.80 : 0.35)
             let strokeDim = Color.secondary
             let accent = Color.accentColor
 
