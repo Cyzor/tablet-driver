@@ -124,16 +124,13 @@ final class TabletManager: ObservableObject {
             .first { !isDongleRawProductID($0.productID) }?.instanceKey
     }
 
-    /// True when `productID` is the dongle and USB already covers whatever
-    /// it's relaying — no pairing yet, or the paired tablet is also
-    /// connected directly. Live equivalent of `isConnectedCompanion`, since
-    /// pairing isn't known statically.
-    func isDongleAwaitingHandoff(productID: Int) -> Bool {
+    /// True when `productID` is a connected dongle that hasn't yet reported
+    /// its paired tablet. Once it does, `rehomeDongleTransport` moves it onto
+    /// that tablet and its own context is gone, so this is the only state in
+    /// which the dongle is visible as a device of its own.
+    func isDongleAwaitingPairing(productID: Int) -> Bool {
         guard productID == Self.ack40401ProductID else { return false }
-        guard let dongleContext = contexts[productID] else { return false }
-        let pairedPID = dongleContext.pairedProductID
-        guard pairedPID != 0 else { return true }
-        return connectedProductIDs.contains(pairedPID)
+        return contexts[productID]?.pairedProductID == 0
     }
 
     /// Context for a registry row. A row with an instance token matches the
@@ -1471,14 +1468,18 @@ final class TabletManager: ObservableObject {
 
             // A bare/still-pairing dongle must never become the active
             // context — `activeDeviceKey()` reads it before any dongle filter.
-            if activeContext == nil && !isDongleAwaitingHandoff(productID: productID) {
+            if activeContext == nil && !isDongleAwaitingPairing(productID: productID) {
                 activeContext = context
             }
-            reconcileDongleHandoff(windowsToo: false)
 
             DeviceRegistry.shared.recordTablet(
                 instanceKey: context.instanceKey, usbSerial: usbSerial,
                 vendorID: vendorID, productString: productString)
+            if rawProductID == Self.ack40401ProductID {
+                // Undo the paired-model rename earlier builds gave its row.
+                DeviceRegistry.shared.updateModelName(
+                    forDonglePairing: instanceKey, to: Self.deviceName(forProductID: rawProductID))
+            }
         }
     }
 
@@ -1583,7 +1584,7 @@ final class TabletManager: ObservableObject {
         refreshConnectedIDs(mostRecent: nil)
         if activeContext === context {
             activeContext = hidDeviceMap.values.first(where: {
-                !isDongleAwaitingHandoff(productID: $0.productID)
+                !isDongleAwaitingPairing(productID: $0.productID)
             })
             updateDockBadge()
         }
@@ -1648,7 +1649,6 @@ final class TabletManager: ObservableObject {
         } else {
             connectedProductID = connectedProductIDs.last ?? 0
         }
-        revertStaleDongleNameIfBare()
     }
 
     /// Moves a dongle's driver slot onto the context of the tablet it relays,
@@ -1725,7 +1725,10 @@ final class TabletManager: ObservableObject {
         }
         target.settings.applyExpressKeyDefaults(vendorID: target.vendorID)
 
-        if activeContext === source { activeContext = target }
+        if activeContext == nil || activeContext === source {
+            activeContext = target
+            updateDockBadge()
+        }
         if !source.hasAnyDriverSlot {
             markFullyDisconnected(source)
             if source.instanceKey == dongleKey {
@@ -1734,53 +1737,8 @@ final class TabletManager: ObservableObject {
         }
         DeviceRegistry.shared.recordTablet(
             instanceKey: target.instanceKey, usbSerial: nil, vendorID: target.vendorID)
-        // Undo the paired-model rename earlier builds gave the dongle's row.
-        DeviceRegistry.shared.updateModelName(
-            forDonglePairing: dongleKey, to: Self.deviceName(forProductID: rawPID))
         logger.info("TabletManager: ACK-40401 now relaying for \(Self.deviceName(forProductID: pid), privacy: .public)")
         refreshConnectedIDs(mostRecent: pid)
-        reconcileDongleHandoff(windowsToo: true)
-    }
-
-    /// Re-applies the dongle handoff after the inputs to
-    /// `isDongleAwaitingHandoff` change. Pairing arrives after the dongle
-    /// connects, and the direct tablet can arrive while the dongle is active;
-    /// the connect-time checks alone leave the dongle current (or no device
-    /// current) in both cases.
-    ///
-    /// `windowsToo` re-publishes `deviceContexts` so `SettingsWindowManager`
-    /// re-runs its handoff pass; connects already publish on their own.
-    private func reconcileDongleHandoff(windowsToo: Bool) {
-        if let active = activeContext, isDongleAwaitingHandoff(productID: active.productID) {
-            activeContext = hidDeviceMap.values.first(where: {
-                !isDongleAwaitingHandoff(productID: $0.productID)
-            })
-            updateDockBadge()
-        } else if activeContext == nil,
-            let live = hidDeviceMap.values.first(where: {
-                !isDongleAwaitingHandoff(productID: $0.productID)
-            })
-        {
-            activeContext = live
-            updateDockBadge()
-        }
-        if windowsToo { deviceContexts = deviceContexts }
-    }
-
-    /// Reverts the dongle's registry row back to its own name once it's
-    /// genuinely unpaired — `updateModelName(forDonglePairing:)` renames it
-    /// to the paired tablet's model, but nothing previously undid that once
-    /// the tablet was gone. Only triggers on `pairedProductID == 0` (never
-    /// paired this link), not merely "paired tablet also reachable via USB":
-    /// that's a live pairing and must be left alone, since re-pairing is an
-    /// RF event that won't re-fire just because USB later disconnects again.
-    private func revertStaleDongleNameIfBare() {
-        guard let dongleContext = contexts[Self.ack40401ProductID],
-            dongleContext.pairedProductID == 0
-        else { return }
-        DeviceRegistry.shared.updateModelName(
-            forDonglePairing: dongleContext.instanceKey,
-            to: TabletManager.deviceName(forProductID: Self.ack40401ProductID))
     }
 
     // MARK: - Latency-critical activity assertion

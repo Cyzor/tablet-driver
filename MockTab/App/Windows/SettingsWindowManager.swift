@@ -127,7 +127,7 @@ final class SettingsWindowManager: ObservableObject {
                        !self.windows.contains(where: { $0.productID == id })
                            && !VendorDeviceRegistry.isConnectedCompanion(
                                productID: id, connectedProductIDs: ids)
-                           && !TabletManager.shared.isDongleAwaitingHandoff(productID: id)
+                           && !TabletManager.shared.isDongleRawProductID(id)
                    }) {
                     self.replaceWindow(dw, withDeviceID: pid)
                 }
@@ -148,7 +148,7 @@ final class SettingsWindowManager: ObservableObject {
                 for pid in arrived
                 where !VendorDeviceRegistry.isConnectedCompanion(
                     productID: pid, connectedProductIDs: ids)
-                    && !TabletManager.shared.isDongleAwaitingHandoff(productID: pid)
+                    && !TabletManager.shared.isDongleRawProductID(pid)
                 {
                     self.frontExistingWindow(forProductID: pid)
                 }
@@ -168,12 +168,12 @@ final class SettingsWindowManager: ObservableObject {
                 guard let self else { return }
                 // Companions fold into their owner's window rather than
                 // getting one of their own — a Quick Keys puck arriving with
-                // its tablet must not open a second window; same for a
-                // dongle already covered by USB.
+                // its tablet must not open a second window. The dongle
+                // never gets one at all.
                 if VendorDeviceRegistry.isConnectedCompanion(
                     productID: key.productID,
                     connectedProductIDs: TabletManager.shared.connectedProductIDs)
-                    || TabletManager.shared.isDongleAwaitingHandoff(productID: key.productID)
+                    || TabletManager.shared.isDongleRawProductID(key.productID)
                 {
                     return
                 }
@@ -549,16 +549,16 @@ final class SettingsWindowManager: ObservableObject {
     private func activeDeviceKey() -> DeviceInstanceKey? {
         let tm = TabletManager.shared
         let connected = tm.connectedProductIDs
-        // Never hand out a claimed companion (puck/dongle whose owning
-        // tablet is connected) — its UI lives in the owner's window.
+        // Never hand out a claimed companion (puck whose owning tablet is
+        // connected) or a dongle — their UI lives in the owner's window.
         return tm.activeContext.flatMap {
-            tm.isDongleAwaitingHandoff(productID: $0.productID) ? nil : $0.instanceKey
+            tm.isDongleRawProductID($0.productID) ? nil : $0.instanceKey
         }
             ?? tm.deviceContexts.values.first(where: {
                 $0.isConnected
                     && !VendorDeviceRegistry.isConnectedCompanion(
                         productID: $0.productID, connectedProductIDs: connected)
-                    && !tm.isDongleAwaitingHandoff(productID: $0.productID)
+                    && !tm.isDongleRawProductID($0.productID)
             })?.instanceKey
             ?? connected.first(where: { !tm.isDongleRawProductID($0) })
                 .map { resolveKey(forProductID: $0) }
