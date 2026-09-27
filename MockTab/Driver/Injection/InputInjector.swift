@@ -49,8 +49,18 @@ final class SharedAuxModifierState {
 final class SharedPanScrollState {
     static let shared = SharedPanScrollState()
     private init() {}
-    /// The injector currently hosting the live gesture, if any.
-    weak var driver: InputInjector?
+    /// The injector currently hosting the live gesture, if any. Every
+    /// engage and close path goes through here, so it also drives the
+    /// on-screen indicator.
+    weak var driver: InputInjector? {
+        didSet {
+            let engaged = driver != nil
+            guard engaged != (oldValue != nil) else { return }
+            DispatchQueue.main.async {
+                if engaged { PanIndicator.shared.show() } else { PanIndicator.shared.hide() }
+            }
+        }
+    }
 }
 
 /// Converts raw TabletPoint reports into CGEvents and posts them to the HID event tap.

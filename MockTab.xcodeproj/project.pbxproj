@@ -103,6 +103,7 @@
 		AA00TT01 /* TouchStateTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00TT01 /* TouchStateTracker.swift */; };
 		AA00PS01 /* PanScrollTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00PS01 /* PanScrollTracker.swift */; };
 		AA00MT01 /* MomentumTail.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00MT01 /* MomentumTail.swift */; };
+		AA00PI01 /* PanIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00PI01 /* PanIndicator.swift */; };
 		AA00TV01 /* TouchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00TV01 /* TouchView.swift */; };
 		AAAAAA02 /* PresetExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA01 /* PresetExporter.swift */; };
 		AAAAAA04 /* PresetImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAAAA03 /* PresetImporter.swift */; };
@@ -236,6 +237,7 @@
 		AB00TT01 /* TouchStateTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchStateTracker.swift; sourceTree = "<group>"; };
 		AB00PS01 /* PanScrollTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanScrollTracker.swift; sourceTree = "<group>"; };
 		AB00MT01 /* MomentumTail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MomentumTail.swift; sourceTree = "<group>"; };
+		AB00PI01 /* PanIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanIndicator.swift; sourceTree = "<group>"; };
 		AB00TV01 /* TouchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchView.swift; sourceTree = "<group>"; };
 		AC000008 /* TabletColorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletColorTheme.swift; sourceTree = "<group>"; };
 		BDC20CF025504F52A66B1155 /* CalibrationOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationOverlayView.swift; sourceTree = "<group>"; };
@@ -379,6 +381,7 @@
 				AB000083 /* InputInjector+Touch.swift */,
 				AB000008 /* InputInjector.swift */,
 				AB00MT01 /* MomentumTail.swift */,
+				AB00PI01 /* PanIndicator.swift */,
 				AB00PS01 /* PanScrollTracker.swift */,
 				AB00TT01 /* TouchStateTracker.swift */,
 			);
@@ -748,6 +751,7 @@
 				AA00TT01 /* TouchStateTracker.swift in Sources */,
 				AA00PS01 /* PanScrollTracker.swift in Sources */,
 				AA00MT01 /* MomentumTail.swift in Sources */,
+				AA00PI01 /* PanIndicator.swift in Sources */,
 				AA00TV01 /* TouchView.swift in Sources */,
 				AA000049 /* WacomKnownDevice.swift in Sources */,
 				AA0000A2 /* WacomKnownDevice+XencelabsOutput.swift in Sources */,
