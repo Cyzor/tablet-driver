@@ -115,12 +115,40 @@ private func testCacheInvalidatesOnRegionChangeAlone() {
 
 @main
 enum DisplayRegionTestRunner {
+    // PTH-850: 325×203 mm surface.
+    static func testTouchAspectFollowsOrientation() {
+        let full = (x: 0.0, y: 0.0, w: 1.0, h: 1.0)
+        expectClose(
+            DisplayMapper.orientedCropAspect(
+                widthMM: 325, heightMM: 203, crop: full, orientation: .landscape),
+            325.0 / 203.0, 1e-9, "landscape keeps the surface aspect")
+        for orientation in [TabletOrientation.portrait, .portraitFlipped] {
+            expectClose(
+                DisplayMapper.orientedCropAspect(
+                    widthMM: 325, heightMM: 203, crop: full, orientation: orientation),
+                203.0 / 325.0, 1e-9, "\(orientation) inverts the surface aspect")
+        }
+    }
+
+    static func testTouchAspectFollowsCrop() {
+        // Left half of a landscape surface, turned portrait: the crop is
+        // already oriented, so it's the top half of a 203×325 surface.
+        let crop = DisplayMapper.orientedCropRect(
+            areaX: 0, areaY: 0, areaWidth: 0.5, areaHeight: 1, orientation: .portrait)
+        expectClose(
+            DisplayMapper.orientedCropAspect(
+                widthMM: 325, heightMM: 203, crop: crop, orientation: .portrait),
+            203.0 / 162.5, 1e-9, "portrait crop uses the cropped physical size")
+    }
+
     static func main() {
         testDefaultRegionIsWholeDisplay()
         testPartialRegionNarrowsIntoSubRect()
         testOffsetRegionTranslatesOrigin()
         testRegionRespectsNonZeroDisplayOrigin()
         testCacheInvalidatesOnRegionChangeAlone()
+        testTouchAspectFollowsOrientation()
+        testTouchAspectFollowsCrop()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

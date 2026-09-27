@@ -174,13 +174,6 @@ extension InputInjector {
                 "touch palm filter: rejected=id:major/minor[\(rejected, privacy: .public)], accepted=id:major/minor[\(accepted, privacy: .public)]")
         }
 
-        // Resolve display bounds — touch shares the pen's target display,
-        // fit to the touch surface's physical aspect so shapes traced on the
-        // pad aren't stretched by the display's own ratio.
-        let displayBounds = DisplayMapper.aspectFitRect(
-            displayMapper.displayBounds(for: snap),
-            aspect: cachedTouchWidthMM / cachedTouchHeightMM)
-
         // Rotate the touch-area crop and the sensor maxima into oriented
         // space once per frame — `snap.touchAreaX/Y/Width/Height` are stored
         // raw (unlike pen's already-oriented activeAreaX/Y/Width/Height), so
@@ -195,6 +188,16 @@ extension InputInjector {
             orientation: orientation)
         let effMaxX: Double = orientation.swapsAxes ? Double(cachedTouchMaxY) : Double(cachedTouchMaxX)
         let effMaxY: Double = orientation.swapsAxes ? Double(cachedTouchMaxX) : Double(cachedTouchMaxY)
+
+        // Resolve display bounds — touch shares the pen's target display,
+        // fit to the physical aspect of the touch area as the tablet is
+        // turned, so shapes traced on the pad aren't stretched by the
+        // display's own ratio.
+        let displayBounds = DisplayMapper.aspectFitRect(
+            displayMapper.displayBounds(for: snap),
+            aspect: DisplayMapper.orientedCropAspect(
+                widthMM: cachedTouchWidthMM, heightMM: cachedTouchHeightMM,
+                crop: orientedArea, orientation: orientation))
 
         // Project each contact to screen-space using the touch-area mapping.
         // Contacts whose raw position falls outside the crop rect return nil

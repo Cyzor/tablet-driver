@@ -235,6 +235,20 @@ struct DisplayMapper {
             width: w, height: h)
     }
 
+    /// Physical w/h of a normalized crop of a `widthMM`×`heightMM` surface,
+    /// as it sits once the tablet is turned to `orientation`. `crop` is in
+    /// already-oriented 0…1 space (`orientedCropRect`), so only the surface
+    /// size needs swapping.
+    static func orientedCropAspect(
+        widthMM: Double, heightMM: Double,
+        crop: (x: Double, y: Double, w: Double, h: Double),
+        orientation: TabletOrientation
+    ) -> Double {
+        let (w, h) = orientation.swapsAxes ? (heightMM, widthMM) : (widthMM, heightMM)
+        guard crop.h > 0, h > 0 else { return 0 }
+        return (crop.w * w) / (crop.h * h)
+    }
+
     // MARK: - Point mapping
 
     /// In relative mode: moves the cursor from where it is by the pen's travel
