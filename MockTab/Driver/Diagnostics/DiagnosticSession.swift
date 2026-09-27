@@ -32,6 +32,10 @@ final class DiagnosticSession {
         return owner !== session
     }
 
+    /// Whether any session is recording — gates the Help menu's
+    /// Collect Device Data item.
+    static var rawCaptureHeld: Bool { rawCaptureOwner != nil }
+
     /// True once this session has claimed the singleton, so teardown only
     /// releases what it actually took.
     private(set) var ownsRawCapture = false
@@ -152,5 +156,21 @@ final class DiagnosticSession {
         MainActor.assumeIsolated {
             if Self.rawCaptureOwner === self { Self.rawCaptureOwner = nil }
         }
+    }
+}
+
+/// A pending Help > Collect Device Data request, addressed to the window bound
+/// to `target` (inner nil = the unbound window). The Info pane consumes it on
+/// appear or on change, whichever comes first.
+@MainActor
+final class DeviceDataCollectionRequest: ObservableObject {
+    static let shared = DeviceDataCollectionRequest()
+    @Published var target: DeviceInstanceKey??
+
+    /// Clears the request and returns true when it's addressed to `key`.
+    func consume(for key: DeviceInstanceKey?) -> Bool {
+        guard case .some(let wanted) = target, wanted == key else { return false }
+        target = nil
+        return true
     }
 }

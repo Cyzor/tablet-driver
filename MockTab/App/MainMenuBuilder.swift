@@ -130,6 +130,13 @@ enum MainMenuBuilder {
         helpItem.target = AppMenuController.shared
         menu.addItem(helpItem)
 
+        let collectItem = NSMenuItem(
+            title: String(localized: "Collect Device Data…", comment: "Button label: start device data collection"),
+            action: #selector(AppMenuController.collectDeviceDataFromMainMenu),
+            keyEquivalent: "")
+        collectItem.target = AppMenuController.shared
+        menu.addItem(collectItem)
+
         let websiteItem = NSMenuItem(
             title: String(localized: "MockTab Website\u{2026}", comment: "Help menu: open MockTab website"),
             action: #selector(AppMenuController.showWebsiteFromMainMenu),

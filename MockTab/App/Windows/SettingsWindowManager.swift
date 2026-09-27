@@ -237,6 +237,23 @@ final class SettingsWindowManager: ObservableObject {
         window.showTab(tab)
     }
 
+    /// Help > Collect Device Data: opens the collection sheet on the frontmost
+    /// settings window, else on the window for the most relevant tablet —
+    /// active, then connected, then last seen (`activeDeviceKey`).
+    func collectDeviceData() {
+        NSApp.activate(ignoringOtherApps: true)
+        let front = NSApp.orderedWindows.lazy.compactMap { win in
+            self.windows.first(where: { $0.window === win && win.isVisible })
+        }.first
+        let wc = front
+            ?? activeDeviceKey().flatMap { openWindow(forInstanceKey: $0) }
+            ?? ensureDefaultWindow()
+        wc.show()
+        guard wc.hasTab(.info) else { return }
+        DeviceDataCollectionRequest.shared.target = .some(wc.instanceKey)
+        wc.showTab(.info)
+    }
+
     // MARK: - Multi-window
 
     @discardableResult
@@ -562,6 +579,9 @@ final class SettingsWindowManager: ObservableObject {
             })?.instanceKey
             ?? connected.first(where: { !tm.isDongleRawProductID($0) })
                 .map { resolveKey(forProductID: $0) }
+            ?? tm.lastActiveInstanceKey.flatMap { key in
+                Self.row(forKey: key) != nil ? key : nil
+            }
             ?? DeviceRegistry.shared.knownTablets
                 .first(where: { !tm.isDongleRawProductID($0.productID) })?.instanceKey
     }

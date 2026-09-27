@@ -62,6 +62,7 @@ struct InfoView: View {
     /// both collectors start and stop as one run. Per-window for the same
     /// reason `captureEngine` is.
     @State private var diagnosticSession = DiagnosticSession()
+    @ObservedObject private var collectionRequest = DeviceDataCollectionRequest.shared
 
     var body: some View {
         SettingsPane(
@@ -111,7 +112,9 @@ struct InfoView: View {
                 }
             }
             rawCaptureHeldElsewhere = DiagnosticSession.rawCaptureHeldByOther(than: diagnosticSession)
+            handleCollectionRequest()
         }
+        .onReceive(collectionRequest.$target) { _ in DispatchQueue.main.async { handleCollectionRequest() } }
         .onDisappear {
             rawCaptureCountTimer?.invalidate()
             rawCaptureCountTimer = nil
@@ -467,8 +470,7 @@ struct InfoView: View {
                         // the raw capture used to be Option-only, which meant
                         // the default path produced half the evidence and a
                         // follow-up round to ask for the rest.
-                        startRawCapture()
-                        showCaptureGuide = true
+                        beginCollection()
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -504,6 +506,19 @@ struct InfoView: View {
     /// Starts `HIDCapture` and arms the UI-side polling for the live ticker
     /// and report count. Paired with every guided collection — see the
     /// Collect Device Data button.
+    private func beginCollection() {
+        startRawCapture()
+        showCaptureGuide = true
+    }
+
+    /// Help > Collect Device Data, addressed to this window.
+    private func handleCollectionRequest() {
+        guard collectionRequest.consume(for: instanceKey),
+              !showCaptureGuide, !rawCaptureHeldElsewhere
+        else { return }
+        beginCollection()
+    }
+
     private func startRawCapture() {
         // Refused when another window's session already holds the raw-capture
         // singleton — starting anyway would reset its buffer mid-recording.

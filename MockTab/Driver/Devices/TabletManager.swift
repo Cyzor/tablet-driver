@@ -186,7 +186,17 @@ final class TabletManager: ObservableObject {
         didSet {
             if oldValue !== activeContext { oldValue?.injector.isActive = false }
             activeContext?.injector.isActive = true
+            if let context = activeContext, !isDongleRawProductID(context.productID) {
+                UserDefaults.standard.set(context.instanceKey.stringValue, forKey: Self.lastActiveDeviceKey)
+            }
         }
+    }
+    /// Instance key of the tablet most recently driving the cursor, persisted
+    /// so "most recently seen" survives disconnects and relaunches.
+    static let lastActiveDeviceKey = "lastActiveDeviceID"
+    var lastActiveInstanceKey: DeviceInstanceKey? {
+        UserDefaults.standard.string(forKey: Self.lastActiveDeviceKey)
+            .flatMap(DeviceInstanceKey.init(stringValue:))
     }
     /// Most-recent touch contacts from the active device's touch surface.
     /// Empty when no contacts are active or the device has no finger touch.

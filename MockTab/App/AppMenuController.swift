@@ -73,6 +73,10 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     /// touchless devices, most tabs on aux-only ones). With no settings window
     /// key, items stay enabled: activating one targets the default window.
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        // One recording at a time, process-wide.
+        if item.action == #selector(collectDeviceDataFromMainMenu) {
+            return !DiagnosticSession.rawCaptureHeld
+        }
         guard item.action == #selector(showTabFromMainMenu(_:)),
               let tab = SettingsWindowController.Tab(rawValue: item.tag)
         else { return true }
@@ -81,6 +85,10 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
 
     @objc func showHelpFromMainMenu() {
         HelpWindowController.shared.show()
+    }
+
+    @objc func collectDeviceDataFromMainMenu() {
+        SettingsWindowManager.shared.collectDeviceData()
     }
 
     @objc func showWebsiteFromMainMenu() {
