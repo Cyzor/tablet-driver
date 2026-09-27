@@ -117,7 +117,7 @@ extension InputInjector {
         // first delta lands as `.changed` after a real `.began`), closes on
         // true→false (posting `.ended`). No-op for hardware where
         // `hasMechanicalDial` is true — that path's envelope lives in
-        // `dialCoaster` instead (see `dispatchRingDelta`). Keyed on
+        // `mechanicalDialGestureIdleTimer` instead (see `dispatchRingDelta`). Keyed on
         // `touchRingActive` alone; see `ring1GestureOpen`'s doc comment for
         // why `lastRingButtonDown` must not be used here.
         if !hasMechanicalDial, let slot = activeSlot, slot.action == .zoom || slot.action == .rotate {
@@ -138,8 +138,27 @@ extension InputInjector {
         }
 
         let ringPos = buttons.touchRingPosition
-        if buttons.touchRingActive, lastRingPos != 0x7F {
-            var delta = Int(ringPos) - Int(lastRingPos)
+        let now = CFAbsoluteTimeGetCurrent()
+        // A slow finger can read as lifted for a frame mid-turn and come back
+        // several steps on (PTH-660 capture, 2026-09-27: 41 → no contact →
+        // 36 after 320 ms). Treat a quick, nearby re-touch as the same touch
+        // so that distance isn't dropped.
+        var fromPos = lastRingPos
+        if buttons.touchRingActive, lastRingPos == 0x7F, ringLiftPos != 0x7F,
+           now - ringLiftTime < Self.ringDropoutBridge {
+            var gap = Int(ringPos) - Int(ringLiftPos)
+            if gap > 36 { gap -= 72 }
+            if gap < -36 { gap += 72 }
+            if abs(gap) < 10 { fromPos = ringLiftPos }
+        }
+        if !buttons.touchRingActive, lastRingPos != 0x7F {
+            ringLiftPos = lastRingPos
+            ringLiftTime = now
+        } else if buttons.touchRingActive {
+            ringLiftPos = 0x7F
+        }
+        if buttons.touchRingActive, fromPos != 0x7F {
+            var delta = Int(ringPos) - Int(fromPos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
             // Normalize to the touch strip's "increasing = up" convention.

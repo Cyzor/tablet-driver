@@ -120,7 +120,7 @@ final class SharedPanScrollState {
 /// | `leakWatchdogTimer` (1Hz) | `init`, runs continuously | deinit only — by design, it must outlive quiescence | Backstop absent for the rows above |
 /// | `lastProximity` | pen in range | proximity exit; 1Hz watchdog forces exit after `stuckProximityTimeout` | Touch gated off as "pen busy" |
 /// | `lastAuxButtons`, `lastRingButtonDown` | express key / ring center down | matching up edge in `injectAux`; 0.4s `watchdogTimer` for modifier flags | Express-key binding stuck held |
-/// | `panMomentumTail`, `touchMomentumTail`, `dialCoaster` | flick release with velocity | decay to zero, new gesture start (`cancel()` — the new gesture's own `.began` phase is itself a valid terminal signal), tool change / disconnect / proximity exit / app switch / sleep / quit (all `stop()` — posts a terminal event; added for macOS 27's stuck-gesture auto-cancel timer, which can now force-cancel a tail an app never received a terminal event for), `cancel()` in deinit | Scrolling continues after release pre-27; force-cancelled mid-stream by the receiving app on 27+ if left non-terminal |
+/// | `panMomentumTail`, `touchMomentumTail` | flick release with velocity | decay to zero, new gesture start (`cancel()` — the new gesture's own `.began` phase is itself a valid terminal signal), tool change / disconnect / proximity exit / app switch / sleep / quit (all `stop()` — posts a terminal event; added for macOS 27's stuck-gesture auto-cancel timer, which can now force-cancel a tail an app never received a terminal event for), `cancel()` in deinit | Scrolling continues after release pre-27; force-cancelled mid-stream by the receiving app on 27+ if left non-terminal |
 /// | `mechanicalDialGestureOpen`, `ring1/2GestureOpen` | `.zoom`/`.rotate` ring slot engaged (dial click or ring contact) | 0.4s `mechanicalDialGestureIdleTimer` after the last click (dial) or ring contact lift (capacitive); explicit `closeRingGestureEnvelopes()` on ring-mode-cycle/select-slot bindings and the modifier-held zoom fallback; **`deinit` closes silently** (timer invalidated, no `.ended` posted — see below) | Frontmost app stuck mid-pinch/-rotate |
 ///
 /// On disconnect: `releaseHeldStateForToolChange` releases held buttons but
@@ -337,6 +337,9 @@ final class InputInjector: @unchecked Sendable {
     static let forceDropPhysicalMoveFlags: Bool =
         UserDefaults.standard.bool(forKey: "dropPhysicalModifiersFromMoveEvents")
 
+    /// Longest no-contact gap on the touch ring still treated as one touch.
+    static let ringDropoutBridge: TimeInterval = 0.4
+
     @MainActor
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
@@ -433,7 +436,8 @@ final class InputInjector: @unchecked Sendable {
         panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
         panMomentumTail.cancel()
         touchMomentumTail.cancel()
-        dialCoaster.cancel()
+        ringGlide.cancel()
+        dialGlide.cancel()
         mechanicalDialGestureIdleTimer.map { CFRunLoopTimerInvalidate($0) }
         button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
@@ -663,16 +667,16 @@ final class InputInjector: @unchecked Sendable {
     /// vocabulary.
     enum RingGestureKind { case zoom, rotate }
 
-    /// Inertial emitter for mechanical-dial hardware (Xencelabs dial;
-    /// PTK-470/670/870's gen-3 dials — see `hasMechanicalDial`). Scroll
-    /// only: this is the *only* thing that posts for that input — see
-    /// `DialScrollCoaster` for why the dial needs that shape. `.zoom`/
-    /// `.rotate` ring-slot actions do NOT use this — they dispatch linearly
-    /// per raw tick instead (see `dispatchRingDelta`), because a dial click
-    /// is already a final, discrete ±1 step and running it through this
-    /// coaster's inertial buildup produced visibly nonlinear zoom/rotation
-    /// per click on hardware (confirmed on the Xencelabs puck, 2026-09).
-    lazy var dialCoaster = DialScrollCoaster { [weak self] dy in
+    /// Direct-drive glide for capacitive ring/strip scrolling; see
+    /// `RingScrollGlide`. Scroll only: `.zoom`/`.rotate` slots dispatch
+    /// linearly per raw tick (see `dispatchRingDelta`).
+    lazy var ringGlide = RingScrollGlide { [weak self] dy in
+        self?.postDialScroll(dy: dy)
+    }
+
+    /// Mechanical-dial variant of `ringGlide` (Xencelabs dial; PTK-470/670/870
+    /// gen-3 dials — see `hasMechanicalDial`), with stray-reversal rejection.
+    lazy var dialGlide = RingScrollGlide(confirmReversals: true) { [weak self] dy in
         self?.postDialScroll(dy: dy)
     }
 
@@ -751,6 +755,10 @@ final class InputInjector: @unchecked Sendable {
     var lastRing2ButtonDown = false
     /// Last observed touch ring position (0–71). 0x7F = no contact.
     var lastRingPos: UInt8 = 0x7F
+    /// Last ring position before contact was lost, and when. Slow fingers
+    /// drop out for a frame mid-turn (PTH-660); see `ringDropoutBridge`.
+    var ringLiftPos: UInt8 = 0x7F
+    var ringLiftTime: CFAbsoluteTime = 0
     /// Last observed right touch ring position (DTK-2400). 0x7F = no contact.
     var lastRing2Pos: UInt8 = 0x7F
     /// Last observed Intuos3 WS touch strip positions. 0xFF = no contact.

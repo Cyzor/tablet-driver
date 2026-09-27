@@ -177,130 +177,143 @@ final class MomentumTail {
     }
 }
 
-/// Inertial scroll model for a *discrete click* encoder — currently only the
-/// Xencelabs Quick Keys dial.
-///
-/// Deliberately not a `MomentumTail`: that type coasts *after* a gesture ends,
-/// seeded once from a measured release velocity. The dial's problem is the
-/// opposite shape. Its encoder emits occasional runs of 2-3 wrong-direction
-/// clicks in the middle of a fast one-way spin — present in the native
-/// Xencelabs driver too, so it is the hardware's own signal, not a decode bug.
-/// While clicks post scroll events one-for-one, such a run is a 150-360 ms hole
-/// in forward motion, which is the lurch the user perceives. Suppressing the
-/// wrong-signed clicks was tried on hardware and changed nothing, precisely
-/// because the complaint is the missing forward motion, not the small backward
-/// motion.
-///
-/// `.zoom`/`.rotate` ring-slot actions do NOT go through this coaster, on
-/// either mechanism — a dial click is already a discrete, final ±1 tick
-/// (confirmed for the Xencelabs dial: see `XencelabsDecoder`'s "Dial clicks
-/// arrive as discrete events, not a counter"), and running it through this
-/// class's inertial buildup compounded into visibly nonlinear zoom/rotation
-/// per click on hardware. They dispatch linearly instead — see
-/// `dispatchRingDelta`'s `.zoom`/`.rotate` branch and
-/// `closeMechanicalDialGesture` for the mechanical-dial envelope, which an
-/// idle timer owns instead of this coaster's decay.
-///
-/// So here the ticker is the *sole* emitter and clicks never post anything
-/// themselves: each click only adds a signed impulse to a velocity that
-/// constant friction is always bleeding off. Output is therefore continuous
-/// regardless of click timing, and a wrong-direction run subtracts a fraction
-/// of an established spin's velocity instead of interrupting it — the arcade
-/// trackball behaviour that was asked for, where a bearing's minor friction is
-/// irrelevant once the ball is moving. A *sustained* reversal still pulls
-/// velocity through zero within a few clicks, and after any pause friction has
-/// already parked it at zero, so a deliberate flick the other way stays
-/// responsive.
-///
-/// HIDThread-confined on the same terms as `MomentumTail`.
-final class DialScrollCoaster {
+/// Direct-drive smoothing for ring, strip, and dial scrolling: every notch
+/// moves the page exactly its own distance, spread over a few frames to hide
+/// the step, with no stored velocity. A reversal drops whatever is still
+/// pending, so the page turns on a dime instead of coasting through zero as
+/// an inertial coaster would.
+final class RingScrollGlide {
 
     /// Posts one scroll increment, in points. Must capture its owner weakly.
     private let post: (_ dy: Double) -> Void
 
     private var timer: CFRunLoopTimer?
-    /// Signed, points/second. Positive follows the same convention as the
-    /// caller's `lines` — the natural-scrolling flip is applied upstream.
-    private var velocity = 0.0
-    /// Fractional-point carry; scroll events are whole points and a decaying
-    /// tail spends its last frames well under 1 pt/tick.
-    private var accum = 0.0
+    /// Signed points not yet posted.
+    private var pending = 0.0
     private var lastTickTime: CFAbsoluteTime = 0
-    /// True between the first impulse from rest and the end of `launchWindow`.
-    private var launching = false
 
-    // MARK: - Tunables
-    //
-    // Starting points chosen to preserve the current per-click feel at slow,
-    // deliberate turns while letting a fast spin build real inertia. Expect
-    // these to need a hardware tuning pass.
+    static let tickInterval: TimeInterval = 1.0 / 120.0
 
-    static let tickInterval: TimeInterval = 1.0 / 60.0
+    /// Points per line: 3 lines per notch at ~10 px/line, the distance the
+    /// discrete `.line` path always produced.
+    static let pointsPerLine = 30.0
 
-    /// Velocity (points/second) added per line of dial travel. Under constant
-    /// friction a lone click travels `kick² / (2 · friction)`, so this value
-    /// sets the granularity of a slow click-by-click turn: ≈ 12 pt, about one
-    /// line, at the default 1x speed. An earlier 440 gave ≈ 48 pt and read as
-    /// coarse on hardware — too big a jump for a dial that looks analog.
-    static let kick = 220.0
+    /// Exponential catch-up time constant for fast input. About 95% of a
+    /// notch lands within three of these, short enough to feel attached.
+    static let timeConstant: TimeInterval = 0.025
 
-    /// How long a spin starting from rest accumulates impulses before the
-    /// ticker emits anything.
-    ///
-    /// The encoder's wrong-direction runs are worst at the very start of a
-    /// spin, where there is no established velocity for them to merely dent —
-    /// a lone stray click at rest gets the full launch impulse to itself and
-    /// reads as a visible flinch backwards before the spin takes off. Summing
-    /// impulses across this window first lets a stray click cancel against the
-    /// real ones around it before any of it becomes motion. Short enough not
-    /// to read as lag on a deliberate single-click nudge, which still lands —
-    /// this defers motion, it never suppresses it.
-    static let launchWindow: TimeInterval = 0.08
+    /// Slow input stretches the glide to fill the gap between clicks, so a
+    /// slow turn reads as continuous motion instead of step-pause-step. The
+    /// time constant tracks this fraction of the last click interval, capped
+    /// at `maxTimeConstant` so a long pause doesn't turn into a slow drift.
+    static let intervalFraction = 0.35
+    static let maxTimeConstant: TimeInterval = 0.07
+    private var currentTimeConstant = RingScrollGlide.timeConstant
 
-    /// Constant deceleration (points/second²). Low enough that a 300 ms hole
-    /// in forward clicks costs only part of an established spin's velocity
-    /// rather than stopping it.
-    static let friction = 2000.0
+    /// Mechanical encoders emit stray wrong-direction clicks mid-spin (the
+    /// Xencelabs dial about once per revolution). When set, a lone reversed
+    /// click arriving within `reversalWindow` of the last one is held until a
+    /// second reversed click confirms it; a forward click discards it, and
+    /// silence applies it, so a deliberate single nudge back still lands.
+    private let confirmReversals: Bool
+    private var lastDirection = 0.0
+    private var lastClickTime: CFAbsoluteTime = 0
+    private var held: [Double] = []
+    /// Consecutive same-direction clicks, each within `reversalWindow`.
+    private var runLength = 0
+    /// A run this long is an established spin, which needs one more reversed
+    /// click to confirm a reversal (the Xencelabs stray can arrive in pairs).
+    static let establishedRun = 4
+    private var heldTimer: CFRunLoopTimer?
 
-    /// Ceiling on accumulated velocity. Without one, a spin whose clicks
-    /// arrive faster than friction can bleed them off grows without bound.
-    static let maxVelocity = 4000.0
+    static let reversalWindow: TimeInterval = 0.08
 
-    init(post: @escaping (_ dy: Double) -> Void) {
+    init(confirmReversals: Bool = false, post: @escaping (_ dy: Double) -> Void) {
+        self.confirmReversals = confirmReversals
         self.post = post
     }
 
-    /// Feeds one dial click in, as signed lines of travel (already scaled by
-    /// the user's speed setting). Never posts directly — it only changes the
-    /// velocity the ticker is emitting from.
     func impulse(lines: Double) {
-        // Opposing clicks are free to carry velocity straight through zero and
-        // out the other side. A variant that braked to a standstill first —
-        // one click to cancel the spin, a second to reverse it — was tried on
-        // hardware and rejected: it removed a slight backwards overshoot when
-        // counter-twisting to a stop, but cost noticeably more than that in
-        // responsiveness under rapid CW-CCW-CW twisting, which is the motion
-        // people actually make. The overshoot is the better trade.
-        velocity = min(Self.maxVelocity, max(-Self.maxVelocity, velocity + lines * Self.kick))
-        guard timer == nil else { return }
-        accum = 0
-        launching = true
-        lastTickTime = CFAbsoluteTimeGetCurrent()
-        scheduleTick(after: Self.launchWindow)
+        let points = lines * Self.pointsPerLine
+        guard points != 0 else { return }
+        let direction: Double = points < 0 ? -1 : 1
+        let now = CFAbsoluteTimeGetCurrent()
+        if confirmReversals, lastDirection != 0, direction != lastDirection,
+           now - lastClickTime < Self.reversalWindow {
+            held.append(points)
+            let needed = runLength >= Self.establishedRun ? 3 : 2
+            if held.count >= needed {
+                let confirmed = held
+                clearHeld()
+                runLength = 0
+                confirmed.forEach(apply)
+            } else if held.count == 1 {
+                armHeldTimer()
+            }
+            return
+        }
+        clearHeld()  // a forward click marks a held reversal as a stray
+        apply(points)
     }
 
     func cancel() {
         timer.map { CFRunLoopTimerInvalidate($0) }
         timer = nil
-        velocity = 0
-        accum = 0
-        launching = false
+        pending = 0
+        clearHeld()
+        lastDirection = 0
+        runLength = 0
     }
 
-    private func scheduleTick(after interval: TimeInterval = DialScrollCoaster.tickInterval) {
+    private func apply(_ points: Double) {
+        let now = CFAbsoluteTimeGetCurrent()
+        let direction: Double = points < 0 ? -1 : 1
+        let interval = now - lastClickTime
+        if direction == lastDirection, interval < Self.reversalWindow {
+            runLength += 1
+        } else {
+            runLength = 1
+        }
+        currentTimeConstant = direction == lastDirection
+            ? min(Self.maxTimeConstant, max(Self.timeConstant, interval * Self.intervalFraction))
+            : Self.timeConstant
+        // Opposite direction: discard the unposted remainder so the reversal
+        // is immediate rather than first playing out the old direction.
+        if pending != 0, (pending < 0) != (points < 0) { pending = 0 }
+        pending += points
+        lastDirection = direction
+        lastClickTime = now
+        guard timer == nil else { return }
+        lastTickTime = lastClickTime
+        tick()
+    }
+
+    private func armHeldTimer() {
         let t = CFRunLoopTimerCreateWithHandler(
             kCFAllocatorDefault,
-            CFAbsoluteTimeGetCurrent() + interval,
+            CFAbsoluteTimeGetCurrent() + Self.reversalWindow,
+            0, 0, 0
+        ) { [weak self] _ in
+            guard let self, !self.held.isEmpty else { return }
+            let pending = self.held
+            self.heldTimer = nil
+            self.held = []
+            pending.forEach(self.apply)
+        }
+        CFRunLoopAddTimer(HIDThread.shared.runLoop, t, .commonModes)
+        heldTimer = t
+    }
+
+    private func clearHeld() {
+        heldTimer.map { CFRunLoopTimerInvalidate($0) }
+        heldTimer = nil
+        held = []
+    }
+
+    private func scheduleTick() {
+        let t = CFRunLoopTimerCreateWithHandler(
+            kCFAllocatorDefault,
+            CFAbsoluteTimeGetCurrent() + Self.tickInterval,
             0, 0, 0
         ) { [weak self] _ in
             self?.tick()
@@ -312,33 +325,16 @@ final class DialScrollCoaster {
     private func tick() {
         timer = nil
         let now = CFAbsoluteTimeGetCurrent()
-        // The launch window accumulates impulses only — it contributes no
-        // travel, so the deferral shows up as a brief delay before motion
-        // starts rather than as a jump covering the whole window at once.
-        if launching {
-            launching = false
-            lastTickTime = now
-            guard velocity != 0 else { accum = 0; return }
-            scheduleTick()
-            return
-        }
-        let dt = now - lastTickTime
+        // First tick of a burst posts one interval's worth rather than zero.
+        let dt = max(now - lastTickTime, Self.tickInterval)
         lastTickTime = now
-
-        let speed = abs(velocity)
-        guard speed > 0 else { accum = 0; return }
-        let direction = velocity < 0 ? -1.0 : 1.0
-        // Trapezoidal integration, as in MomentumTail: travel uses the average
-        // of the speed at both ends of the tick so it doesn't depend on cadence.
-        let newSpeed = max(0, speed - Self.friction * dt)
-        accum += direction * (speed + newSpeed) / 2 * dt
-        velocity = direction * newSpeed
-
-        let whole = accum.rounded(.towardZero)
-        accum -= whole
-        if whole != 0 { post(whole) }
-
-        guard newSpeed > 0 else { accum = 0; return }
+        var step = pending * (1 - exp(-dt / currentTimeConstant))
+        if abs(pending) < 1 { step = pending }
+        let whole = step.rounded(.awayFromZero)
+        let posted = abs(whole) > abs(pending) ? pending.rounded() : whole
+        pending -= posted
+        if posted != 0 { post(posted) }
+        if abs(pending) < 0.5 { pending = 0; return }
         scheduleTick()
     }
 }

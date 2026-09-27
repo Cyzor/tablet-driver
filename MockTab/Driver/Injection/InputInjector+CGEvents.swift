@@ -1039,13 +1039,10 @@ extension InputInjector {
         // from `ringDeltaIsInverted`, which has already normalized the raw
         // hardware convention by the time deltas reach this point.
         let rawDelta = snapshot.reverseRingDirection ? -unflippedDelta : unflippedDelta
-        // Mechanical-dial hardware (Xencelabs dial; PTK-470/670/870 gen-3 —
-        // see `hasMechanicalDial`), scrolling: hand the click to the
-        // inertial emitter instead of posting for it. Everything else about
-        // the slot still applies — speed scaling and the natural-scrolling
-        // convention below are the same numbers, they just seed velocity
-        // rather than a one-shot event. Key-press and off/skip slots are
-        // untouched, and so is every other device's ring or strip.
+        // Scrolling on any ring, strip, or dial goes through a direct-drive
+        // glide (`RingScrollGlide`): exact distance per tick, spread over a
+        // few frames, no stored velocity. Key-press and off/skip slots are
+        // untouched.
         // Modifier-held dial scrolling is not scrolling: apps read ⌥/⌘+wheel as
         // zoom, and zoom is a stepped operation, one notch per detent. A 60 Hz
         // continuous stream hands those apps dozens of zoom steps per second —
@@ -1065,18 +1062,18 @@ extension InputInjector {
             // so one click's line count could cross the chunk threshold that
             // works around AppKit's per-event clamp. Pixel-unit output has no
             // such clamp to work around, so that headroom is now dead — and a
-            // saved 20 would put a single click past the velocity ceiling.
+            // saved 20 would make a single click jump 600 points.
             // The slider is back to the normal 0-3x range, so this clamp only
             // catches values saved while the taller one was live.
             let lines = Double(rawDelta) * min(slot.speed, 3.0)
-            dialCoaster.impulse(lines: Self.naturalScrollingEnabled ? lines : -lines)
+            dialGlide.impulse(lines: Self.naturalScrollingEnabled ? lines : -lines)
             return
         }
         if slot.action == .zoom || slot.action == .rotate {
             // One post per raw tick, linearly scaled — no accumulator, no
             // physics, on *either* mechanism. This branch used to be
             // capacitive-ring-only, with mechanical-dial hardware routed
-            // through `dialCoaster`'s inertial physics instead; that was
+            // through an inertial coaster instead; that was
             // wrong (see `closeMechanicalDialGesture`'s doc comment) — a
             // dial click is a discrete, already-quantized ±1 tick (confirmed
             // for the Xencelabs dial: `XencelabsDecoder`'s "Dial clicks
@@ -1118,6 +1115,11 @@ extension InputInjector {
                 rearmMechanicalDialGestureIdleTimer(kind: kind)
             }
             postRingGesture(delta: delta, phase: .changed, kind: kind)
+            return
+        }
+        if !modifierHeld, case .scroll = slot.action {
+            let lines = Double(rawDelta) * slot.speed
+            ringGlide.impulse(lines: Self.naturalScrollingEnabled ? lines : -lines)
             return
         }
         accum += Double(rawDelta) * slot.speed
@@ -1177,6 +1179,28 @@ extension InputInjector {
     }
 
     func postScrollWheelEvent(delta: Int, at location: CGPoint) {
+        // Continuous pixel events, like `postDialScroll`: scroll smoothers such
+        // as Mac Mouse Fix and MOS re-accelerate non-continuous wheel events
+        // from any sender whose path lacks "wacom", and pass continuous ones
+        // through. With a modifier held, apps read the wheel as stepped zoom,
+        // so keep real `.line` detents there.
+        let zoomModifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
+        if currentEventFlags.intersection(zoomModifiers).isEmpty {
+            // Same 3 lines per detent, at the ~10 px/line scale
+            // `applyTrackpadDeltaFields` uses. No phases, as in `postDialScroll`.
+            let dy = Double(delta * 3 * 10)
+            guard
+                let e = CGEvent(
+                    scrollWheelEvent2Source: sessionSource, units: .pixel,
+                    wheelCount: 1, wheel1: Int32(dy), wheel2: 0, wheel3: 0)
+            else { return }
+            e.location = location
+            e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+            applyTrackpadDeltaFields(e, dx: 0, dy: dy)
+            e.flags = currentEventFlags
+            finalizeAndPost(e)
+            return
+        }
         // .line units: one detent = one scroll line, consistent with trackpad / Magic Mouse.
         guard
             let e = CGEvent(
@@ -1188,8 +1212,8 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Sole event-construction site for the Xencelabs dial; the inertia lives
-    /// in `dialCoaster` (see MomentumTail.swift).
+    /// Event-construction site for ring, strip, and dial scrolling; the
+    /// smoothing lives in `ringGlide`/`dialGlide` (see MomentumTail.swift).
     ///
     /// Pixel units rather than the `.line` units `postScrollWheelEvent` uses,
     /// for two reasons. A 60 Hz emitter needs sub-line granularity — in line

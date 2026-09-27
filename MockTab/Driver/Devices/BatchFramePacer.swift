@@ -40,7 +40,7 @@ enum BatchedFrame {
 /// `WacomKnownDevice.dispatchBatch`).
 ///
 /// HIDThread-confined, like every other injection-adjacent timer in this
-/// codebase (`MomentumTail`, `DialScrollCoaster`) — scheduled on
+/// codebase (`MomentumTail`, `RingScrollGlide`) — scheduled on
 /// `HIDThread.shared.runLoop`, mutated only from its own timer handler or
 /// from calls already on that thread.
 final class BatchFramePacer {
