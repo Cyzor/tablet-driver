@@ -115,6 +115,15 @@ final class TabletManager: ObservableObject {
         productID == Self.ack40401ProductID
     }
 
+    /// The tablet a dongle is relaying for, once pairing has moved it onto
+    /// that tablet's context. A key with no live match (e.g. a saved window's
+    /// empty-instance form) falls back to any relaying dongle.
+    func relayedTabletKey(forDongleKey key: DeviceInstanceKey) -> DeviceInstanceKey? {
+        let transports = dongleTransports[key].map { [$0] } ?? Array(dongleTransports.values)
+        return transports.compactMap(\.home)
+            .first { !isDongleRawProductID($0.productID) }?.instanceKey
+    }
+
     /// True when `productID` is the dongle and USB already covers whatever
     /// it's relaying — no pairing yet, or the paired tablet is also
     /// connected directly. Live equivalent of `isConnectedCompanion`, since
@@ -198,6 +207,10 @@ final class TabletManager: ObservableObject {
     /// `hidDeviceMap` only gets you back to the context, and owner-aware
     /// teardown has to know which transport slot just departed.
     private var deviceRawProductID: [IOHIDDevice: Int] = [:]
+    /// Live ACK-40401 dongles, keyed by the dongle's own instance. Pairing
+    /// moves a dongle's driver slot onto its tablet's context; this tracks
+    /// where it went so late interfaces, re-pairing and teardown can follow.
+    private var dongleTransports: [DeviceInstanceKey: DongleTransport] = [:]
     private var shimObservers: [NSObjectProtocol] = []
     /// Interfaces deferred because they arrived before the control interface (0xFF00) for their PID.
     /// Drained into registerDevice() once a WacomKnownDevice is created for that raw PID.
@@ -705,6 +718,31 @@ final class TabletManager: ObservableObject {
             locationID: locationID, instanceKey: instanceKey)
     }
 
+    /// Per-connect setup shared by a direct connect and a dongle rehoming
+    /// onto a context that may never have been live.
+    private func prepareConnectingContext(_ context: DeviceContext) {
+        // Seed the per-app override for whatever app is currently frontmost.
+        // AppWatcher seeds existing contexts at start(), but a device may connect
+        // after launch (or in dockless mode where no app switch occurred yet).
+        if let app = NSWorkspace.shared.frontmostApplication,
+            let bundleID = app.bundleIdentifier
+        {
+            let name = app.localizedName ?? bundleID
+            context.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
+            context.injector.activeAppNeedsTabletPointerEvents =
+                AppWatcher.qtGtkBundleIDs.contains(bundleID)
+            context.injector.activeAppProfile = AppWatcher.inputProfile(for: bundleID)
+        }
+
+        // Propagate context.objectWillChange to TabletManager so SwiftUI observers
+        // get updates when per-device state changes (transport, battery, livePoint, etc).
+        if context.cancellables.isEmpty {
+            context.objectWillChange
+                .sink { [weak self] in self?.objectWillChange.send() }
+                .store(in: &context.cancellables)
+        }
+    }
+
     private func deviceConnected(_ device: IOHIDDevice, holdTouchCompanion: Bool = true) {
         // Connect-phase work (handshakes, paced writes) stalls report
         // delivery; keep those episodes out of the steady-state latency stats.
@@ -773,7 +811,12 @@ final class TabletManager: ObservableObject {
         }
 
         let context: DeviceContext
-        if let existing = deviceContexts[instanceKey] {
+        if rawProductID == Self.ack40401ProductID,
+            let home = dongleTransports[instanceKey]?.home
+        {
+            // A late interface of a dongle already rehomed onto its tablet.
+            context = home
+        } else if let existing = deviceContexts[instanceKey] {
             context = existing
         } else if instanceKey.instance.isEmpty {
             // No serial on this interface: fall back to the model's existing
@@ -811,26 +854,7 @@ final class TabletManager: ObservableObject {
         // device-data collection (which reads it) with no effect on normal
         // operation (nothing else reads it). See the property's doc comment.
 
-        // Seed the per-app override for whatever app is currently frontmost.
-        // AppWatcher seeds existing contexts at start(), but a device may connect
-        // after launch (or in dockless mode where no app switch occurred yet).
-        if let app = NSWorkspace.shared.frontmostApplication,
-            let bundleID = app.bundleIdentifier
-        {
-            let name = app.localizedName ?? bundleID
-            context.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
-            context.injector.activeAppNeedsTabletPointerEvents =
-                AppWatcher.qtGtkBundleIDs.contains(bundleID)
-            context.injector.activeAppProfile = AppWatcher.inputProfile(for: bundleID)
-        }
-
-        // Propagate context.objectWillChange to TabletManager so SwiftUI observers
-        // get updates when per-device state changes (transport, battery, livePoint, etc).
-        if context.cancellables.isEmpty {
-            context.objectWillChange
-                .sink { [weak self] in self?.objectWillChange.send() }
-                .store(in: &context.cancellables)
-        }
+        prepareConnectingContext(context)
 
         // Set initial connection state for this device. Cleared here rather
         // than only on success — a fresh connection attempt deserves a clean
@@ -1291,22 +1315,11 @@ final class TabletManager: ObservableObject {
         // ── Wireless dongle paired PID ──────────────────────────────────────────
         // Called on HIDThread when the 0x80 status report reveals the paired
         // tablet's PID (once per RF link — re-fires on a genuine re-pairing,
-        // e.g. a different tablet swapped onto the same dongle), so
-        // ButtonMappingView can fall back to its spec (the dongle's own PID
-        // isn't in WacomDeviceRegistry).
-        let onPairedPID: (Int) -> Void = { [weak self, contextHandle] pid in
-            let context = contextHandle.context
-            Task { @MainActor [weak self, weak context] in
-                context?.pairedProductID = pid
-                // DeviceContext is nested inside `contexts`, so observers of
-                // TabletManager (e.g. ButtonMappingView) don't see this
-                // @Published change on its own — nudge them explicitly.
-                self?.objectWillChange.send()
-                if let key = context?.instanceKey {
-                    DeviceRegistry.shared.updateModelName(
-                        forDonglePairing: key, to: TabletManager.deviceName(forProductID: pid))
-                }
-                self?.reconcileDongleHandoff(windowsToo: true)
+        // e.g. a different tablet swapped onto the same dongle). Moves the
+        // dongle's transport onto that tablet's context, as BT/USB share one.
+        let onPairedPID: (Int) -> Void = { [weak self] pid in
+            Task { @MainActor [weak self] in
+                self?.rehomeDongleTransport(dongleKey: instanceKey, pairedProductID: pid)
             }
         }
 
@@ -1371,6 +1384,9 @@ final class TabletManager: ObservableObject {
         case .driver(let wacomDevice, _):
             let hadNoDriverYet = !context.hasAnyDriverSlot
             context.installDriver(wacomDevice, forRawProductID: rawProductID)
+            if rawProductID == Self.ack40401ProductID {
+                dongleTransports[instanceKey] = DongleTransport(handle: contextHandle, home: context)
+            }
             // Only the first `.driver`-routed interface for this context
             // claims `hidDevice` — see that property's doc comment for why a
             // later sibling interface must never overwrite it.
@@ -1518,7 +1534,11 @@ final class TabletManager: ObservableObject {
         // shared one driver slot, so the first departure nuked all of it.
         if let rawPID {
             let wasOwner = context.activeDriverRawProductID == rawPID
-            context.removeDriverSlot(forRawProductID: rawPID)?.close()
+            let removed = context.removeDriverSlot(forRawProductID: rawPID)
+            removed?.close()
+            if removed != nil, rawPID == Self.ack40401ProductID {
+                dongleTransports = dongleTransports.filter { $0.value.home !== context }
+            }
             if let survivorPID = context.activeDriverRawProductID {
                 if wasOwner {
                     // The departing transport was driving; the survivor was
@@ -1532,10 +1552,14 @@ final class TabletManager: ObservableObject {
             }
         }
 
-        // No transport remains — fully disconnected. Anything the departing
-        // tool was holding (a barrel button, a puck's mouse-mode click, a
-        // Scroll Drag pan) gets no proximity-exit report to release it —
-        // there's no more device to send one. Same release call as a tool
+        markFullyDisconnected(context)
+    }
+
+    /// Resets a context whose last transport just left.
+    private func markFullyDisconnected(_ context: DeviceContext) {
+        // Anything the departing tool was holding (a barrel button, a puck's
+        // mouse-mode click, a Scroll Drag pan) gets no proximity-exit report
+        // to release it — there's no more device to send one. Same release call as a tool
         // change; see `releaseHeldStateForToolChange`.
         let injector = context.injector
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
@@ -1625,6 +1649,97 @@ final class TabletManager: ObservableObject {
             connectedProductID = connectedProductIDs.last ?? 0
         }
         revertStaleDongleNameIfBare()
+    }
+
+    /// Moves a dongle's driver slot onto the context of the tablet it relays,
+    /// so the tablet keeps one identity, settings and window across USB and
+    /// wireless — the way BT/USB fold at connect. Pairing arrives after the
+    /// dongle connects, so this happens mid-session: the slot, its interfaces
+    /// and its callbacks all move, and the context it leaves is torn down if
+    /// that was its last transport.
+    private func rehomeDongleTransport(dongleKey: DeviceInstanceKey, pairedProductID pid: Int) {
+        let rawPID = Self.ack40401ProductID
+        guard let transport = dongleTransports[dongleKey],
+            let source = transport.home,
+            source.productID != pid,
+            let driver = source.driverSlot(forRawProductID: rawPID)
+        else { return }
+        // An unknown paired PID has no spec to drive with; the dongle stays
+        // on its own context and the panes fall back to `pairedProductID`.
+        guard WacomDeviceRegistry.spec(for: pid) != nil else {
+            source.pairedProductID = pid
+            objectWillChange.send()
+            return
+        }
+        let target = contexts[pid] ?? {
+            let stub = DeviceContext(productID: pid)
+            registerRestoredContext(stub)
+            return stub
+        }()
+        prepareConnectingContext(target)
+
+        source.removeDriverSlot(forRawProductID: rawPID)
+        target.installDriver(driver, forRawProductID: rawPID)
+        transport.home = target
+        // Retarget on HIDThread, between reports, so none is split across
+        // the two contexts.
+        let handle = transport.handle
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            handle.context = target
+        }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+
+        for (device, context) in hidDeviceMap
+        where context === source && deviceRawProductID[device] == rawPID {
+            hidDeviceMap[device] = target
+            if let candidate = source.captureInterfaces.first(where: { $0.device === device }) {
+                source.captureInterfaces.removeAll { $0 === candidate }
+                target.captureInterfaces.append(candidate)
+            }
+            if source.hidDevice === device {
+                source.hidDevice = nil
+                source.firstDriverInterfaceClaimed = false
+            }
+            if !target.firstDriverInterfaceClaimed {
+                target.firstDriverInterfaceClaimed = true
+                target.hidDevice = device
+            }
+        }
+
+        target.connectionErrorMessage = nil
+        target.isConnected = true
+        if target.activeDriverRawProductID == rawPID {
+            target.transport = source.transport
+            target.usbSpeed = source.usbSpeed
+        }
+        if target.batteryPercent == nil {
+            target.batteryPercent = source.batteryPercent
+            target.batteryCharging = source.batteryCharging
+        }
+        if !target.hasWiredDriverLifecycle {
+            target.observeRingLED()
+            target.observeInjectionSnapshot()
+            target.hasWiredDriverLifecycle = true
+        } else if target.activeDriverRawProductID == rawPID {
+            target.resyncActiveDriverDisplayState()
+        }
+        target.settings.applyExpressKeyDefaults(vendorID: target.vendorID)
+
+        if activeContext === source { activeContext = target }
+        if !source.hasAnyDriverSlot {
+            markFullyDisconnected(source)
+            if source.instanceKey == dongleKey {
+                deviceContexts.removeValue(forKey: dongleKey)
+            }
+        }
+        DeviceRegistry.shared.recordTablet(
+            instanceKey: target.instanceKey, usbSerial: nil, vendorID: target.vendorID)
+        // Undo the paired-model rename earlier builds gave the dongle's row.
+        DeviceRegistry.shared.updateModelName(
+            forDonglePairing: dongleKey, to: Self.deviceName(forProductID: rawPID))
+        logger.info("TabletManager: ACK-40401 now relaying for \(Self.deviceName(forProductID: pid), privacy: .public)")
+        refreshConnectedIDs(mostRecent: pid)
+        reconcileDongleHandoff(windowsToo: true)
     }
 
     /// Re-applies the dongle handoff after the inputs to
@@ -1798,5 +1913,17 @@ final class DriverContextHandle {
 
     init(_ context: DeviceContext) {
         self.context = context
+    }
+}
+
+/// Where an ACK-40401 dongle's transport currently lives. `home` is the
+/// main-actor view of the context `handle` points the callbacks at.
+private final class DongleTransport {
+    let handle: DriverContextHandle
+    weak var home: DeviceContext?
+
+    init(handle: DriverContextHandle, home: DeviceContext) {
+        self.handle = handle
+        self.home = home
     }
 }

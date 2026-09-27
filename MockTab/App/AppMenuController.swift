@@ -636,9 +636,9 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
                 let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
                 let label = SettingsWindowManager.shared.menuLabel(forKey: tablet.instanceKey) + suffix
                 // The dongle has no window of its own (`openWindow`) — grey it
-                // out rather than let the click silently no-op, unless it's
-                // actively relaying a tablet reachable no other way.
-                let isDongleDisabled = tm.isDongleAwaitingHandoff(productID: tablet.productID)
+                // out rather than let the click silently no-op. A tablet it
+                // relays is listed, and checked, under its own row.
+                let isDongleDisabled = tm.isDongleRawProductID(tablet.productID)
                 let item = NSMenuItem(
                     title: label,
                     action: isDongleDisabled ? nil : #selector(openDeviceWindow(_:)),

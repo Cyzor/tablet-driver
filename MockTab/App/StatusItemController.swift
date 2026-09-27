@@ -92,9 +92,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                 let connected = tm.connectedProductIDs.contains(tablet.productID)
                 let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
                 // The dongle has no window of its own (`openWindow`) — grey it
-                // out rather than let the click silently no-op, unless it's
-                // actively relaying a tablet reachable no other way.
-                let isDongleDisabled = tm.isDongleAwaitingHandoff(productID: tablet.productID)
+                // out rather than let the click silently no-op. A tablet it
+                // relays is listed, and checked, under its own row.
+                let isDongleDisabled = tm.isDongleRawProductID(tablet.productID)
                 let item = NSMenuItem(title: pwc.menuLabel(forKey: tablet.instanceKey) + suffix,
                                        action: isDongleDisabled ? nil : #selector(openTablet(_:)), keyEquivalent: "")
                 item.target = self

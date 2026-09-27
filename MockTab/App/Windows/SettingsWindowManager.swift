@@ -105,14 +105,14 @@ final class SettingsWindowManager: ObservableObject {
                 // claimed companion — devices enumerate one at a time, so a
                 // puck/dongle that arrived before its owning tablet got a
                 // window while momentarily unowned. The loop below then
-                // opens (or keeps) the owner's window in its place. The
-                // ACK-40401 dongle gets the same treatment once its paired
-                // tablet is reachable directly over USB.
+                // opens (or keeps) the owner's window in its place. An
+                // ACK-40401 dongle window (only ever from an older build's
+                // saved state) is closed outright.
                 for wc in self.windows {
                     if let pid = wc.productID,
                         VendorDeviceRegistry.isConnectedCompanion(
                             productID: pid, connectedProductIDs: ids)
-                        || TabletManager.shared.isDongleAwaitingHandoff(productID: pid)
+                        || TabletManager.shared.isDongleRawProductID(pid)
                     {
                         wc.window?.close()
                     }
@@ -253,14 +253,12 @@ final class SettingsWindowManager: ObservableObject {
             return openWindow(forInstanceKey: resolveKey(forProductID: ownerPID))
         }
         // The dongle, unlike the puck, has no standalone UI — it never gets
-        // a window: redirect to its paired tablet if reachable, else refuse.
-        // Not covered by `connectedCompanionOwner` above since pairing is
+        // a window: redirect to the tablet it relays, else refuse. Not
+        // covered by `connectedCompanionOwner` above since pairing is
         // runtime-discovered, not a static PID map.
-        if TabletManager.shared.isDongleAwaitingHandoff(productID: key.productID) {
-            if let pairedPID = TabletManager.shared.contexts[key.productID]?.pairedProductID,
-                pairedPID != 0
-            {
-                return openWindow(forInstanceKey: resolveKey(forProductID: pairedPID))
+        if TabletManager.shared.isDongleRawProductID(key.productID) {
+            if let relayed = TabletManager.shared.relayedTabletKey(forDongleKey: key) {
+                return openWindow(forInstanceKey: relayed)
             }
             return nil
         }
