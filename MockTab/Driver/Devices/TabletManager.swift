@@ -848,9 +848,16 @@ final class TabletManager: ObservableObject {
         // Accessibility here rather than at launch so the request has context.
         promptForAccessibilityIfNeeded()
 
+        // The HIDThread callbacks below reach their context through this
+        // handle rather than capturing it, so a transport can later be moved
+        // onto another context (dongle → paired tablet) without rebuilding
+        // its driver.
+        let contextHandle = DriverContextHandle(context)
+
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         // Called on HIDThread — hop to main before touching @Published properties.
-        let onToolEnter: (ToolIdentity) -> Void = { [weak self, weak context] identity in
+        let onToolEnter: (ToolIdentity) -> Void = { [weak self, contextHandle] identity in
+            let context = contextHandle.context
             // Set synchronously: pen points inject inline on this thread, so
             // the main-actor Task below loses the race by ~6 ms.
             // `postProximityEvent` derives `vendorPointerType` from
@@ -920,8 +927,8 @@ final class TabletManager: ObservableObject {
         // Slow path: active-context switching (proximity-enter from a non-active
         // device) and per-report UI updates still hop to main. Throughput-critical
         // CGEvent posting never waits on either.
-        let onTablet: (TabletPoint) -> Void = { [weak self, weak context] point in
-            guard let context else { return }
+        let onTablet: (TabletPoint) -> Void = { [weak self, contextHandle] point in
+            guard let context = contextHandle.context else { return }
             let injector = context.injector
 
             // ── Fast path: inject inline on HIDThread ─────────────────────────
@@ -1060,8 +1067,8 @@ final class TabletManager: ObservableObject {
         // ── Express key closure ──────────────────────────────────────────────
         // Called on HIDThread. injectAux runs inline (it reads from injectionSnapshot
         // and posts CGEvents — both thread-safe). UI state mutations hop to main.
-        let onAux: (AuxButtons) -> Void = { [weak self, weak context] aux in
-            guard let context else { return }
+        let onAux: (AuxButtons) -> Void = { [weak self, contextHandle] aux in
+            guard let context = contextHandle.context else { return }
             context.injector.injectAux(buttons: aux, settings: context.settings)
             // HID-thread gate: skip the Task hop entirely when no UI is watching.
             // Ring scrubbing streams aux reports at ~100 Hz; without this gate every
@@ -1105,7 +1112,8 @@ final class TabletManager: ObservableObject {
         // Called when a BT device reports its battery state (INTUOSP2_BT family).
         // Only fires when the raw battery byte changes — not on every pen report.
         // Called on HIDThread — hop to main.
-        let onBattery: (Int, Bool) -> Void = { [weak self, weak context] percent, charging in
+        let onBattery: (Int, Bool) -> Void = { [weak self, contextHandle] percent, charging in
+            let context = contextHandle.context
             Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
             context.batteryPercent = percent
@@ -1119,8 +1127,8 @@ final class TabletManager: ObservableObject {
         // (usagePage=0x01, seized).  Routes directly to the injector so buttons
         // fire at the current screen cursor position without a position remap.
         // Called on HIDThread; injectMouseButtons runs inline.
-        let onMouseButton: (UInt8) -> Void = { [weak context] mask in
-            guard let context else { return }
+        let onMouseButton: (UInt8) -> Void = { [contextHandle] mask in
+            guard let context = contextHandle.context else { return }
             context.injector.injectMouseButtons(mask: mask, settings: context.settings)
         }
 
@@ -1186,8 +1194,8 @@ final class TabletManager: ObservableObject {
         // ── Relative wheel closure (IntuosV3 PTK-x70 scroll wheels) ────────────
         // Called on HIDThread; injectWheel runs inline (same threading contract
         // as injectAux).
-        let onWheel: (Int, Int) -> Void = { [weak context] index, delta in
-            guard let context else { return }
+        let onWheel: (Int, Int) -> Void = { [contextHandle] index, delta in
+            guard let context = contextHandle.context else { return }
             context.injector.injectWheel(index: index, delta: delta, settings: context.settings)
         }
 
@@ -1205,7 +1213,7 @@ final class TabletManager: ObservableObject {
         // the closures below.
         var touchContactTrack: [Int: (x: Int, y: Int, area: Int?, framesAlive: Int, stalledFrames: Int)] = [:]
 
-        let onTouch: ([TouchContact]) -> Void = { [weak self, weak context] contacts in
+        let onTouch: ([TouchContact]) -> Void = { [weak self, contextHandle] contacts in
             // Erratic-touch diagnostics: a same-id jump far larger than a
             // finger can move in one ~10ms report period, a contact that
             // flickers away again within a couple of frames, or a contact
@@ -1258,7 +1266,7 @@ final class TabletManager: ObservableObject {
                     $0.stallY = stall.y
                 }
             }
-            guard let context, context.settings.touchEnabled else {
+            guard let context = contextHandle.context, context.settings.touchEnabled else {
                 TouchPipelineProbe.note { $0.framesTouchDisabled += 1 }
                 return
             }
@@ -1286,7 +1294,8 @@ final class TabletManager: ObservableObject {
         // e.g. a different tablet swapped onto the same dongle), so
         // ButtonMappingView can fall back to its spec (the dongle's own PID
         // isn't in WacomDeviceRegistry).
-        let onPairedPID: (Int) -> Void = { [weak self, weak context] pid in
+        let onPairedPID: (Int) -> Void = { [weak self, contextHandle] pid in
+            let context = contextHandle.context
             Task { @MainActor [weak self, weak context] in
                 context?.pairedProductID = pid
                 // DeviceContext is nested inside `contexts`, so observers of
@@ -1778,5 +1787,16 @@ extension WacomDeviceSpec {
     /// ExpressKey Remote. Gets the Buttons, Devices and Info window.
     var isAuxOnly: Bool {
         maxX == 0 && (parser == .xencelabs || parser == .expressKeyRemote)
+    }
+}
+
+/// The context a driver's HIDThread callbacks deliver into. Retargeted only
+/// on HIDThread, the same thread that reads it, so a report is never decoded
+/// into one context and delivered to another.
+final class DriverContextHandle {
+    weak var context: DeviceContext?
+
+    init(_ context: DeviceContext) {
+        self.context = context
     }
 }
