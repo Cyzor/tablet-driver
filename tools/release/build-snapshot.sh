@@ -12,7 +12,8 @@
 # ENABLE_HARDENED_RUNTIME = YES).
 #
 # Usage: tools/release/build-snapshot.sh
-#   Produces dist/MockTab-snapshot.dmg.
+#   Produces dist/MockTab-snapshot.dmg and dist/MockTab-snapshot.stamp (the
+#   app's UTC build stamp, for the snapshot tag message).
 
 set -euo pipefail
 
@@ -39,7 +40,7 @@ ARCHIVE="$BUILD_DIR/MockTab-snapshot.xcarchive"
 EXPORT_PATH="$BUILD_DIR/export-snapshot"
 DMG_PATH="$DIST_DIR/MockTab-snapshot.dmg"
 
-rm -rf "$BUILD_DIR" "$DMG_PATH"
+rm -rf "$BUILD_DIR" "$DMG_PATH" "$DIST_DIR/MockTab-snapshot.stamp"
 mkdir -p "$BUILD_DIR"
 
 echo "==> Archiving $SCHEME snapshot ($SHA_SHORT)"
@@ -47,11 +48,13 @@ if command -v xcbeautify >/dev/null 2>&1; then
     xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
         -archivePath "$ARCHIVE" \
         -destination "generic/platform=macOS" \
+        MOCKTAB_SNAPSHOT=YES \
         archive | xcbeautify
 else
     xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
         -archivePath "$ARCHIVE" \
         -destination "generic/platform=macOS" \
+        MOCKTAB_SNAPSHOT=YES \
         archive
 fi
 
@@ -66,6 +69,10 @@ if [[ ! -d "$APP_PATH" ]]; then
     echo "error: expected $APP_PATH after export" >&2
     exit 1
 fi
+
+# Build stamp for the snapshot tag message; the update page matches on it.
+STAMP_PATH="$DIST_DIR/MockTab-snapshot.stamp"
+/usr/libexec/PlistBuddy -c "Print :MockTabBuildStamp" "$APP_PATH/Contents/Info.plist" >"$STAMP_PATH"
 
 echo "==> Notarizing .app"
 APP_ZIP="$BUILD_DIR/MockTab-snapshot.zip"

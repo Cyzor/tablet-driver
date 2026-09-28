@@ -79,7 +79,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -f snapshot HEAD
+          git tag -f -a snapshot -m "$(cat dist/MockTab-snapshot.stamp)" HEAD
           git push origin snapshot --force
 
       - name: Replace the snapshot pre-release
