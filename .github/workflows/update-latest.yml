@@ -1,0 +1,56 @@
+# MockTab — record a published release or snapshot on the website.
+#
+# Runs when a release is published (the Publish click on a draft, from any
+# path). Updates mocktab-web/latest.json via tools/release/update-latest.sh,
+# which drives the site's Check for Updates page, and pushes it live. Run the
+# script by hand if this fails.
+#
+# Required repository secret: MOCKTAB_WEB_DEPLOY_KEY (private half of a
+# write-enabled deploy key on Cyzor/mocktab-web).
+
+name: Update website latest.json
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Published tag to record (e.g. v0.4.3 or snapshot)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-latest
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      # main's CHANGELOG.md, not the tag's: the snapshot tag can trail it.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Cyzor/mocktab-web
+          ssh-key: ${{ secrets.MOCKTAB_WEB_DEPLOY_KEY }}
+          path: mocktab-web
+
+      - name: Update latest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MOCKTAB_WEB: mocktab-web
+        run: |
+          git -C mocktab-web config user.name "github-actions[bot]"
+          git -C mocktab-web config user.email "github-actions[bot]@users.noreply.github.com"
+          tools/release/update-latest.sh "$TAG"
+
+      - name: Push
+        run: git -C mocktab-web push origin HEAD:main
