@@ -55,11 +55,13 @@ if command -v xcbeautify >/dev/null 2>&1; then
     xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
         -archivePath "$ARCHIVE" \
         -destination "generic/platform=macOS" \
+        MOCKTAB_RELEASE=YES \
         archive | xcbeautify
 else
     xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
         -archivePath "$ARCHIVE" \
         -destination "generic/platform=macOS" \
+        MOCKTAB_RELEASE=YES \
         archive
 fi
 

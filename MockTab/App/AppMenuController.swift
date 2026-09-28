@@ -390,13 +390,8 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     /// MockTab itself stays network-free. The version rides in the fragment,
     /// which browsers never send to the server.
     @objc func checkForUpdates() {
-        let info = Bundle.main.infoDictionary ?? [:]
-        var fragment = info["CFBundleShortVersionString"] as? String ?? ""
-        if info["MockTabSnapshot"] as? Bool == true, let stamp = info["MockTabBuildStamp"] as? String {
-            fragment += "-snapshot-" + stamp
-        }
         var components = URLComponents(string: "https://mocktab.org/update.html")!
-        components.fragment = fragment
+        components.fragment = Bundle.main.versionLabel
         if let url = components.url { NSWorkspace.shared.open(url) }
     }
 
@@ -1023,4 +1018,25 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         SettingsWindowManager.shared.showTab(.profiles)
     }
 
+}
+
+extension Bundle {
+    /// Only release.sh marks a build as a release, so dev and snapshot builds
+    /// never pass as the release they followed.
+    var isReleaseBuild: Bool {
+        object(forInfoDictionaryKey: "MockTabRelease") as? Bool == true
+    }
+
+    /// UTC build time, e.g. "20260928T1538Z".
+    var buildStamp: String? {
+        object(forInfoDictionaryKey: "MockTabBuildStamp") as? String
+    }
+
+    /// "0.4.2" for releases, "0.4.2-snapshot-20260928T1538Z" otherwise. Used by
+    /// the update page, diagnostics, and captures.
+    var versionLabel: String {
+        let version = object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        guard !isReleaseBuild, let buildStamp else { return version }
+        return version + "-snapshot-" + buildStamp
+    }
 }

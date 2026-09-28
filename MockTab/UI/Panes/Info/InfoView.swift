@@ -724,8 +724,7 @@ struct InfoView: View {
         fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
         lines += [String(localized: "Generated : \(fmt.string(from: Date()))", comment: "Diagnostic: timestamp when info was generated")]
 
-        let ver =
-            Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let ver = Bundle.main.versionLabel
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
         lines += [String(localized: "App       : MockTab \(ver) (build \(build))", comment: "Diagnostic: app version and build number")]
 
