@@ -65,7 +65,7 @@ fi
 # ─── 3. Move the snapshot tag and push ────────────────────────────────────────
 
 echo "==> Moving the snapshot tag to $SHA_SHORT"
-git tag -f snapshot HEAD
+git tag -f -a snapshot -m "$(cat dist/MockTab-snapshot.stamp)" HEAD
 git push origin snapshot --force
 
 # ─── 4. Replace the draft snapshot pre-release ────────────────────────────────

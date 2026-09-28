@@ -41,6 +41,12 @@ enum MainMenuBuilder {
                         action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
                         keyEquivalent: "")
 
+        let updatesItem = NSMenuItem(title: String(localized: "Check for Updates…", comment: "App menu: open the update page in the browser"),
+                                     action: #selector(AppMenuController.checkForUpdates), keyEquivalent: "")
+        updatesItem.target = AppMenuController.shared
+        updatesItem.toolTip = String(localized: "Opens the MockTab website in your browser.", comment: "Tooltip: Check for Updates menu item")
+        appMenu.addItem(updatesItem)
+
         appMenu.addItem(.separator())
 
         let servicesItem = NSMenuItem(title: String(localized: "Services", comment: "App menu: Services submenu"),

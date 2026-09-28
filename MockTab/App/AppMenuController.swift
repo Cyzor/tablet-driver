@@ -384,6 +384,22 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         AboutWindowController.shared.show()
     }
 
+    // MARK: - Check for Updates
+
+    /// Opens the website's update page; the browser does the networking, so
+    /// MockTab itself stays network-free. The version rides in the fragment,
+    /// which browsers never send to the server.
+    @objc func checkForUpdates() {
+        let info = Bundle.main.infoDictionary ?? [:]
+        var fragment = info["CFBundleShortVersionString"] as? String ?? ""
+        if info["MockTabSnapshot"] as? Bool == true, let stamp = info["MockTabBuildStamp"] as? String {
+            fragment += "-snapshot-" + stamp
+        }
+        var components = URLComponents(string: "https://mocktab.org/update.html")!
+        components.fragment = fragment
+        if let url = components.url { NSWorkspace.shared.open(url) }
+    }
+
     // MARK: - Factory Reset (Option-key hidden item)
 
     private weak var hideDockIconItem: NSMenuItem?
