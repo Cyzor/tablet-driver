@@ -13,15 +13,17 @@ struct AboutView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?.?"
     }
 
-    private var build: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?.?"
-    }
-
     /// Stamped by the "Stamp Build Date" build phase on every build (Debug,
     /// Release, or Archive) — not a version-bump script's business, so it
     /// stays accurate for a local Cmd-R build even between releases.
     private var buildDate: String? {
         Bundle.main.object(forInfoDictionaryKey: "MockTabBuildDate") as? String
+    }
+
+    private var versionLabel: String {
+        Bundle.main.isReleaseBuild
+            ? String(localized: "Version \(version)", comment: "App version label in about view")
+            : String(localized: "Version \(version) snapshot", comment: "App version label in about view, for builds between releases")
     }
 
     private var copyrightYears: String {
@@ -93,20 +95,10 @@ struct AboutView: View {
                     .appFont(.largeTitle).fontWeight(.semibold)
             }
 
-            // Version
-            HStack(spacing: 1) {
-                Text(String(localized: "Version \(version)", comment: "App version label in about view"))
-                Text(String(localized: "(\(build))", comment: "Build number in parentheses"))
-                    .foregroundColor(.secondary)
-            }
-            .appFont(.settingsLabel)
-            .foregroundColor(.secondary)
-
-            if let buildDate {
-                Text(String(localized: "\(buildDate)", comment: "Build date label in about view"))
-                    .appFont(.settingsBadge)
-                    .foregroundColor(.secondary)
-            }
+            // Version and build date on one line
+            Text([versionLabel, buildDate].compactMap { $0 }.joined(separator: " · "))
+                .appFont(.settingsLabel)
+                .foregroundColor(.secondary)
 
             Divider()
                 .frame(maxWidth: 220)
@@ -128,14 +120,24 @@ struct AboutView: View {
                 }
                 .buttonStyle(.link)
 
-                Link(destination: URL(string: "https://github.com/cyzor/tablet-driver/releases")!) {
-                    Label(String(localized: "Releases", comment: "Link label: view releases on GitHub"), systemImage: "arrow.down.circle")
+                Button {
+                    AppMenuController.shared.checkForUpdates()
+                } label: {
+                    Label(String(localized: "Check for Updates", comment: "Link label in about view: open the update page in the browser"), systemImage: "arrow.down.circle")
                 }
                 .buttonStyle(.link)
             }
             .appFont(.settingsBadge)
 
-            // Acknowledgments — device data and protocol research MockTab draws on.
+            // Acknowledgments — MockTab's own decoder library, then outside device data.
+            HStack(spacing: 4) {
+                Text(String(localized: "Built on", comment: "Acknowledgment line prefix, followed by the linked name TabletKit"))
+                    .foregroundColor(.secondary)
+                Link("TabletKit", destination: URL(string: "https://github.com/Cyzor/TabletKit")!)
+            }
+            .appFont(.badgeSubtitle)
+            .buttonStyle(.link)
+
             HStack(spacing: 4) {
                 Text(String(localized: "Device data from", comment: "Acknowledgment line prefix, followed by linked project names"))
                     .foregroundColor(.secondary)
@@ -153,33 +155,22 @@ struct AboutView: View {
                 .foregroundColor(.secondary)
         }
         .padding(28)
-        .frame(width: 480, height: 720)
+        .frame(width: 480, height: 690)
     }
 
     private var licenseBox: some View {
-        VStack(spacing: 0) {
-            Text(String(localized: "Open Source License", comment: "Section header: open source license information"))
-                .appFont(.settingsBadge).fontWeight(.medium)
-                .foregroundColor(.primary)
-
-            Text(String(localized: "MockTab is free software released under the GNU General Public License v3.0.", comment: "License description in about view"))
-                .appFont(.badgeSubtitle)
+        HStack(spacing: 4) {
+            Text(String(localized: "Free software under the GPL v3", comment: "License line in about view, followed by a View License link"))
                 .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(nil)
-
+            Text(verbatim: "·")
+                .foregroundColor(.secondary)
             Link(
                 String(localized: "View License", comment: "Link label: view full GPL v3.0 license text"),
                 destination: URL(string: "https://www.gnu.org/licenses/gpl-3.0.html")!
             )
-            .appFont(.badgeSubtitle)
         }
-        .padding(10)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
+        .appFont(.badgeSubtitle)
+        .buttonStyle(.link)
     }
 }
 

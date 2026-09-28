@@ -389,29 +389,6 @@
         }
       }
     },
-    "(%@)" : {
-      "comment" : "Build number in parentheses",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(%@)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(%@)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(%@)"
-          }
-        }
-      }
-    },
     "(Auto: %@)" : {
       "comment" : "Auto-activation suffix in Profile row, e.g. '(Auto: TextEdit)'",
       "localizations" : {
@@ -553,6 +530,7 @@
     },
     "%@" : {
       "comment" : "Build date label in about view",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3130,6 +3108,29 @@
         }
       }
     },
+    "Built on" : {
+      "comment" : "Acknowledgment line prefix, followed by the linked name TabletKit",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Basiert auf"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Basado en"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "基盤："
+          }
+        }
+      }
+    },
     "Built-in Display" : {
       "localizations" : {
         "de" : {
@@ -3645,6 +3646,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ディスプレイ枠のボタンと同様に、パネル自体の画質設定を変更します。"
+          }
+        }
+      }
+    },
+    "Check for Updates" : {
+      "comment" : "Link label in about view: open the update page in the browser",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Updates suchen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar actualizaciones"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アップデートを確認"
           }
         }
       }
@@ -8296,6 +8320,29 @@
         }
       }
     },
+    "Free software under the GPL v3" : {
+      "comment" : "License line in about view, followed by a View License link",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Software unter der GPL v3"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Software libre bajo la GPL v3"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPL v3で公開されているフリーソフトウェア"
+          }
+        }
+      }
+    },
     "Full Screen" : {
       "comment" : "Window menu",
       "localizations" : {
@@ -11459,35 +11506,6 @@
         }
       }
     },
-    "MockTab is free software released under the GNU General Public License v3.0." : {
-      "comment" : "License description in about view",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab ist freie Software, die unter der GNU General Public License v3.0 veröffentlicht wurde."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "MockTab is free software released under the GNU General Public License v3.0."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab es software libre lanzado bajo la Licencia Pública General de GNU v3.0."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab は GNU General Public License v3.0 の下でリリースされたフリーソフトウェアです。"
-          }
-        }
-      }
-    },
     "MockTab is running its generic driver, so basic pen input may work. Full support needs a short recording of what your tablet sends." : {
       "comment" : "Body of the unknown-device banner",
       "localizations" : {
@@ -12877,35 +12895,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "GitHubイシューを開く…"
-          }
-        }
-      }
-    },
-    "Open Source License" : {
-      "comment" : "Section header: open source license information",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open-Source-Lizenz"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Open Source License"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Licencia de código abierto"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オープンソースライセンス"
           }
         }
       }
@@ -15040,35 +15029,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "相対カーソル移動"
-          }
-        }
-      }
-    },
-    "Releases" : {
-      "comment" : "Link label: view releases on GitHub",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Veröffentlichungen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Releases"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lanzamientos"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "リリース"
           }
         }
       }
@@ -19001,6 +18961,9 @@
         }
       }
     },
+    "TabletKit" : {
+
+    },
     "Tablets" : {
       "comment" : "A label displayed above the list of connected tablets.",
       "isCommentAutoGenerated" : true,
@@ -20970,6 +20933,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "バージョン %@"
+          }
+        }
+      }
+    },
+    "Version %@ snapshot" : {
+      "comment" : "App version label in about view, for builds between releases",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %@ Snapshot"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión %@ snapshot"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "バージョン %@ スナップショット"
           }
         }
       }
