@@ -709,7 +709,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "mkdir -p \"${DERIVED_FILE_DIR}\"\nplist=\"${DERIVED_FILE_DIR}/Info.plist\"\ncp \"${SRCROOT}/MockTab/Info.plist\" \"$plist\"\n/usr/libexec/PlistBuddy -c \"Add :MockTabBuildDate string $(date '+%Y-%m-%d %H:%M')\" \"$plist\"\n";
+			shellScript = "mkdir -p \"${DERIVED_FILE_DIR}\"\nplist=\"${DERIVED_FILE_DIR}/Info.plist\"\ncp \"${SRCROOT}/MockTab/Info.plist\" \"$plist\"\nnow=$(date +%s)\n/usr/libexec/PlistBuddy -c \"Add :MockTabBuildDate string $(date -r $now '+%Y-%m-%d %H:%M')\" \"$plist\"\n# UTC, same instant; identifies a snapshot to the update page.\n/usr/libexec/PlistBuddy -c \"Add :MockTabBuildStamp string $(date -u -r $now '+%Y%m%dT%H%MZ')\" \"$plist\"\nif [ \"${MOCKTAB_SNAPSHOT}\" = YES ]; then\n    /usr/libexec/PlistBuddy -c \"Add :MockTabSnapshot bool true\" \"$plist\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

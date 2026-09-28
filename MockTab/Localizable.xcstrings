@@ -3649,6 +3649,29 @@
         }
       }
     },
+    "Check for Updates…" : {
+      "comment" : "App menu: open the update page in the browser",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Updates suchen…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar actualizaciones…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アップデートを確認…"
+          }
+        }
+      }
+    },
     "Choose a MockTab backup file to import" : {
       "comment" : "File picker message for importing backup",
       "localizations" : {
@@ -12965,6 +12988,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "キャリブレーション オーバーレイを開いて、ペン ディスプレイの十字線目標をタップします。"
+          }
+        }
+      }
+    },
+    "Opens the MockTab website in your browser." : {
+      "comment" : "Tooltip: Check for Updates menu item",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet die MockTab-Website in deinem Browser."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre el sitio web de MockTab en tu navegador."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ブラウザでMockTabのWebサイトを開きます。"
           }
         }
       }
