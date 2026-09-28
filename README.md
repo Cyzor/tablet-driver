@@ -2,7 +2,7 @@
 
 Mac driver for Wacom drawing tablets that no longer have official support.
 
-One self-contained app bundle. Pen input runs on a real-time thread at audio-grade scheduling priority.
+One self-contained app bundle. MockTab processes pen input on a high-priority thread to keep input responsive.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue) ![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue)
 
@@ -37,7 +37,7 @@ Other devices may not work yet. Filing an issue with diagnostic details can help
 
 ## Install
 
-1. Download the latest `.dmg` from [Releases](https://github.com/Cyzor/tablet-driver/releases).
+1. Download the latest `.dmg` from [Releases](https://github.com/Cyzor/tablet-driver/releases).  Interim <a href="https://github.com/Cyzor/tablet-driver/releases/tag/snapshot">Snapshots</a> are more recent but may be incomplete.
 2. Drag `MockTab.app` to Applications and launch it.
 3. Grant **Accessibility** when prompted, which MockTab needs for proper operation. Open System Settings, turn MockTab on, then relaunch.
 4. Grant **Input Monitoring** if prompted.
@@ -113,7 +113,7 @@ MockTab relies on [TabletKit](https://github.com/Cyzor/TabletKit), a Swift packa
 ```swift
 // Package.swift of a consumer project
 dependencies: [
-    .package(url: "https://github.com/Cyzor/TabletKit", from: "0.1.0"),
+    .package(url: "https://github.com/Cyzor/TabletKit", from: "0.4.0"),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
@@ -127,7 +127,7 @@ import TabletKit
 
 var state = DecoderState()
 var decoder: any TabletReportDecoder = IntuosV2Decoder()
-let results = decoder.decode(report: ptr, length: len, spec: spec, state: &state, deviceFamily: "intuosProGen2")
+let results = decoder.decode(report: ptr, length: len, spec: spec, state: &state, deviceFamily: .intuosProGen2)
 ```
 
 TabletKit has no AppKit or system-event dependencies of its own. It uses a registry of known devices, so it can run in any Swift context.
