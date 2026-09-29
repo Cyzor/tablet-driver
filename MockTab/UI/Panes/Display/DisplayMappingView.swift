@@ -950,7 +950,7 @@ private struct CintiqPanelSection: View {
         case .noDisplay:
             String(localized: "Available when the display is connected to this Mac's video output.")
         case .noReply:
-            String(localized: "The display didn't answer over its video cable. A different port or adapter may help.")
+            String(localized: "Not available for this display.")
         case .ready:
             String(localized: "Experimental. Changes the panel's own settings over its video cable.")
         }

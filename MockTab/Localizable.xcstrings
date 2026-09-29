@@ -19394,24 +19394,24 @@
         }
       }
     },
-    "The display didn't answer over its video cable. A different port or adapter may help." : {
+    "Not available for this display." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Display antwortet nicht über das Videokabel. Ein anderer Anschluss oder Adapter hilft vielleicht."
+            "value" : "Für dieses Display nicht verfügbar."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La pantalla no responde por el cable de vídeo. Prueba otro puerto o adaptador."
+            "value" : "No disponible para esta pantalla."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ディスプレイが映像ケーブル経由で応答しません。別のポートやアダプタを試してください。"
+            "value" : "このディスプレイでは使用できません。"
           }
         }
       }
