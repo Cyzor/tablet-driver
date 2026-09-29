@@ -5664,6 +5664,29 @@
         }
       }
     },
+    "Device actions" : {
+      "comment" : "Accessibility label for the ellipsis menu on a device row in the Devices pane.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geräteaktionen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acciones del dispositivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバイス操作"
+          }
+        }
+      }
+    },
     "Device data from" : {
       "comment" : "Acknowledgment line prefix, followed by linked project names",
       "localizations" : {
@@ -20041,6 +20064,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ツール"
+          }
+        }
+      }
+    },
+    "Tool actions" : {
+      "comment" : "Accessibility label for the ellipsis menu on a tool row in the Devices pane.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Werkzeugaktionen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acciones de la herramienta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ツール操作"
           }
         }
       }

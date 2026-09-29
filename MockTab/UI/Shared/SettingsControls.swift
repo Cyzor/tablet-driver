@@ -308,6 +308,29 @@ extension View {
     }
 }
 
+/// The trailing "…" flyout on list rows, shared so the Devices and Profiles
+/// panes look and hit-test identically.
+struct RowActionsMenu<Content: View>: View {
+    let accessibilityLabel: LocalizedStringKey
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        Menu {
+            content()
+        } label: {
+            Image(systemName: "ellipsis")
+                .appFont(.settingsBadge)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+                .accessibilityHidden(true)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .frame(width: 24)
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
 /// Keeps the system AutoFill panel invisible while a rename field takes focus.
 /// Its first appearance after launch flashes an empty rounded panel under the
 /// field (`SPRoundedWindow`, hosted by SafariPlatformSupport); no text-field

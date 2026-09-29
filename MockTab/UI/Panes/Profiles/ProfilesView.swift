@@ -574,19 +574,9 @@ private struct PresetListView: View {
                 appBindingsForPreset(preset)
             }
 
-            Menu {
+            RowActionsMenu(accessibilityLabel: "Profile actions") {
                 menuEntries(preset)
-            } label: {
-                Image(systemName: "ellipsis")
-                    .appFont(.settingsBadge)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 4)
-                    .accessibilityHidden(true)
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .frame(width: 24)
-            .accessibilityLabel("Profile actions")
         }
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor))

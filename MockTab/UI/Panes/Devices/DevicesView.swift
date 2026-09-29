@@ -245,20 +245,9 @@ struct DevicesView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .help("\(tablet.modelName) · \(shownID(tablet.displayID))")
 
-            // Always present so the row's trailing edge never moves; while
-            // editing it commits instead of re-entering edit mode.
-            Button {
-                if editingTabletID == tablet.id {
-                    commitTabletRename()
-                } else {
-                    beginTabletEdit(tablet)
-                }
-            } label: {
-                Image(systemName: "pencil")
-                    .accessibilityHidden(true)
+            RowActionsMenu(accessibilityLabel: "Device actions") {
+                tabletMenuEntries(tablet, isActive: isActive)
             }
-            .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
-            .accessibilityLabel("Rename")
         }
         .padding(.vertical, 2)
         // Quiet hint for which row's tools show below. `.listRowBackground`
@@ -322,14 +311,18 @@ struct DevicesView: View {
                     including: mask
                 )
         }
-        .contextMenu {
-            Button("Rename…") { beginTabletEdit(tablet) }
-            Divider()
-            Button("Remove from List…", role: .destructive) {
-                pendingRemoveTablet = tablet
-            }
-            .disabled(isActive)
+        .contextMenu { tabletMenuEntries(tablet, isActive: isActive) }
+    }
+
+    /// Shared entries for the row's "…" flyout and right-click context menu.
+    @ViewBuilder
+    private func tabletMenuEntries(_ tablet: DeviceRegistry.KnownTablet, isActive: Bool) -> some View {
+        Button("Rename…") { beginTabletEdit(tablet) }
+        Divider()
+        Button("Remove from List…", role: .destructive) {
+            pendingRemoveTablet = tablet
         }
+        .disabled(isActive)
     }
 
     /// SF Symbol for a device's row icon, by product kind. Aux-only
@@ -492,16 +485,9 @@ struct DevicesView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .help("\(tool.kind) · \(shownID(tool.displayID))")
 
-            Button {
-                if isEditing {
-                    commitToolRename()
-                } else {
-                    beginToolEdit(tool, inAllSection: inAllSection)
-                }
-            } label: {
-                Image(systemName: "pencil")
+            RowActionsMenu(accessibilityLabel: "Tool actions") {
+                toolMenuEntries(tool, deviceID: deviceID, inAllSection: inAllSection)
             }
-            .buttonStyle(.plain).foregroundStyle(.secondary).help("Rename")
         }
         .padding(.vertical, 2)
         .listRowBackground(isInProximity ? Color.accentColor.opacity(0.08) : nil)
@@ -511,13 +497,17 @@ struct DevicesView: View {
                 TapGesture(count: 2).onEnded { beginToolEdit(tool, inAllSection: inAllSection) },
                 including: mask)
         }
-        .contextMenu {
-            Button("Rename…") { beginToolEdit(tool, inAllSection: inAllSection) }
-            Divider()
-            Button("Remove from List…", role: .destructive) {
-                pendingForgetTool = tool
-                pendingForgetDeviceID = deviceID
-            }
+        .contextMenu { toolMenuEntries(tool, deviceID: deviceID, inAllSection: inAllSection) }
+    }
+
+    /// Shared entries for the row's "…" flyout and right-click context menu.
+    @ViewBuilder
+    private func toolMenuEntries(_ tool: DeviceRegistry.KnownTool, deviceID: String?, inAllSection: Bool) -> some View {
+        Button("Rename…") { beginToolEdit(tool, inAllSection: inAllSection) }
+        Divider()
+        Button("Remove from List…", role: .destructive) {
+            pendingForgetTool = tool
+            pendingForgetDeviceID = deviceID
         }
     }
 
