@@ -796,6 +796,7 @@ struct DevicesView: View {
     /// Focuses the rename text field and selects its full contents so the user
     /// can immediately type a replacement. Called from the field's `.onAppear`.
     private func focusAndSelectAll() {
+        hideAutoFillPanelDuringRename()
         editFieldFocused = true
         selectAllInFocusedRenameField()
     }

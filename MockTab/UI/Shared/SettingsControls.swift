@@ -308,6 +308,24 @@ extension View {
     }
 }
 
+/// Keeps the system AutoFill panel invisible while a rename field takes focus.
+/// Its first appearance after launch flashes an empty rounded panel under the
+/// field (`SPRoundedWindow`, hosted by SafariPlatformSupport); no text-field
+/// setting turns it off. A name field has nothing to fill, so hide it.
+@MainActor
+func hideAutoFillPanelDuringRename() {
+    let deadline = Date().addingTimeInterval(1.0)
+    Timer.scheduledTimer(withTimeInterval: 0.005, repeats: true) { timer in
+        let panels = NSApp.windows.filter { String(describing: type(of: $0)) == "SPRoundedWindow" }
+        if Date() > deadline {
+            timer.invalidate()
+            panels.forEach { $0.alphaValue = 1 }
+        } else {
+            panels.forEach { $0.alphaValue = 0 }
+        }
+    }
+}
+
 /// Selects the whole contents of the rename field that just took focus, so
 /// typing replaces the old name instead of appending to it.
 ///
