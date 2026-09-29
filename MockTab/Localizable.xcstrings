@@ -389,6 +389,9 @@
         }
       }
     },
+    "(%@)" : {
+
+    },
     "(Auto: %@)" : {
       "comment" : "Auto-activation suffix in Profile row, e.g. '(Auto: TextEdit)'",
       "localizations" : {
@@ -2647,6 +2650,28 @@
         }
       }
     },
+    "Available when the display is connected to this Mac's video output." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verfügbar, wenn das Display an einem Videoausgang dieses Macs hängt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disponible cuando la pantalla está conectada a una salida de vídeo de este Mac."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイをこのMacの映像出力に接続すると使用できます。"
+          }
+        }
+      }
+    },
     "Available when the display is connected." : {
       "localizations" : {
         "de" : {
@@ -2665,6 +2690,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ディスプレイ接続時に使用できます。"
+          }
+        }
+      }
+    },
+    "Backlight brightness of the tablet's built-in display." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hintergrundbeleuchtung des im Grafiktablett integrierten Displays."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brillo de la retroiluminación de la pantalla integrada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内蔵ディスプレイのバックライトの明るさ。"
           }
         }
       }
@@ -3696,6 +3743,28 @@
         }
       }
     },
+    "Checking the display…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display wird geprüft …"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobando la pantalla…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイを確認中…"
+          }
+        }
+      }
+    },
     "Choose a MockTab backup file to import" : {
       "comment" : "File picker message for importing backup",
       "localizations" : {
@@ -4523,6 +4592,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "コントラスト"
+          }
+        }
+      }
+    },
+    "Contrast of the tablet's built-in display." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontrast des integrierten Displays."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraste de la pantalla integrada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内蔵ディスプレイのコントラスト。"
           }
         }
       }
@@ -7616,6 +7707,28 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "詳細：タブレットをデータモードに切り替える"
+          }
+        }
+      }
+    },
+    "Experimental. Changes the panel's own settings over its video cable." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimentell. Ändert die Einstellungen des Displays selbst über das Videokabel."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimental. Cambia los ajustes de la propia pantalla por el cable de vídeo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "試験的機能。映像ケーブル経由でディスプレイ本体の設定を変更します。"
           }
         }
       }
@@ -19277,6 +19390,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "接続されているタブレットには静電容量式タッチ面がありません。"
+          }
+        }
+      }
+    },
+    "The display didn't answer over its video cable. A different port or adapter may help." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Display antwortet nicht über das Videokabel. Ein anderer Anschluss oder Adapter hilft vielleicht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La pantalla no responde por el cable de vídeo. Prueba otro puerto o adaptador."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイが映像ケーブル経由で応答しません。別のポートやアダプタを試してください。"
           }
         }
       }

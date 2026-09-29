@@ -84,6 +84,8 @@
 		AA0001F6 /* CaptureSerialRedaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F6 /* CaptureSerialRedaction.swift */; };
 		AA0001F2 /* TouchPipelineProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F2 /* TouchPipelineProbe.swift */; };
 		AA0002F2 /* FootprintProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0002F2 /* FootprintProbe.swift */; };
+		AA000904 /* DDCLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000904 /* DDCLink.swift */; };
+		AA000905 /* CintiqPanelControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000905 /* CintiqPanelControl.swift */; };
 		AA000903 /* HardwareSurveyProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000903 /* HardwareSurveyProbe.swift */; };
 		AA0001F1 /* DiscoveryAccumulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F1 /* DiscoveryAccumulator.swift */; };
 		AA000102 /* CaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000102 /* CaptureEngine.swift */; };
@@ -208,6 +210,8 @@
 		AB0001F6 /* CaptureSerialRedaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSerialRedaction.swift; sourceTree = "<group>"; };
 		AB0001F2 /* TouchPipelineProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchPipelineProbe.swift; sourceTree = "<group>"; };
 		AB0002F2 /* FootprintProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FootprintProbe.swift; sourceTree = "<group>"; };
+		AB000904 /* DDCLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DDCLink.swift; sourceTree = "<group>"; };
+		AB000905 /* CintiqPanelControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CintiqPanelControl.swift; sourceTree = "<group>"; };
 		AB000903 /* HardwareSurveyProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardwareSurveyProbe.swift; sourceTree = "<group>"; };
 		AB0001F1 /* DiscoveryAccumulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoveryAccumulator.swift; sourceTree = "<group>"; };
 		AB000102 /* CaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEngine.swift; sourceTree = "<group>"; };
@@ -328,6 +332,8 @@
 		AC0000B2 /* Devices */ = {
 			isa = PBXGroup;
 			children = (
+				AB000904 /* DDCLink.swift */,
+				AB000905 /* CintiqPanelControl.swift */,
 				AB00PBP1 /* BatchFramePacer.swift */,
 				AB000042 /* DeviceContext.swift */,
 				AB00DK01 /* DeviceInstanceClaims.swift */,
@@ -740,6 +746,8 @@
 				AA0001F2 /* TouchPipelineProbe.swift in Sources */,
 				AA0002F2 /* FootprintProbe.swift in Sources */,
 				AA000903 /* HardwareSurveyProbe.swift in Sources */,
+				AA000904 /* DDCLink.swift in Sources */,
+				AA000905 /* CintiqPanelControl.swift in Sources */,
 				AA000102 /* CaptureEngine.swift in Sources */,
 				AA0001F3 /* DiagnosticSession.swift in Sources */,
 				AA0001F4 /* CaptureActivityProbe.swift in Sources */,

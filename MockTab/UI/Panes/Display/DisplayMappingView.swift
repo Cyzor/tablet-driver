@@ -54,6 +54,9 @@ struct DisplayMappingView: View {
             if hasBrightnessControl {
                 brightnessSection
             }
+            if let name = cintiqPanelModelName {
+                CintiqPanelSection(modelName: name)
+            }
             displayRegionSection
         }
         .onAppear {
@@ -107,6 +110,16 @@ struct DisplayMappingView: View {
         guard let pid = productID, let spec = TabletManager.staticSpec(forProductID: pid)
         else { return false }
         return spec.parser == .xencelabs && spec.isPenDisplay
+    }
+
+    /// Model name of a Wacom pen display, whose panel may answer DDC/CI
+    /// over its video cable. Nil for everything else, Xencelabs included:
+    /// its vendor-HID brightness is the same register.
+    private var cintiqPanelModelName: String? {
+        guard !hasBrightnessControl, let pid = productID,
+              let spec = WacomDeviceRegistry.spec(for: pid), spec.isPenDisplay
+        else { return nil }
+        return spec.name
     }
 
     private var brightnessDeviceConnected: Bool {
@@ -886,4 +899,110 @@ struct DisplayMappingView: View {
         return String(localized: "Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays.", comment: "Help text for the display canvas in single-display modes")
     }
 
+}
+
+// MARK: - Wacom pen display panel (DDC/CI)
+
+/// Brightness and contrast for a Wacom pen display, sent over its video
+/// cable. Shown for every Wacom pen display and enabled only once the panel
+/// answers, so a Mac or adapter that can't reach it just greys it out.
+private struct CintiqPanelSection: View {
+    @StateObject private var panel: CintiqPanelControl
+
+    init(modelName: String) {
+        _panel = StateObject(wrappedValue: CintiqPanelControl(modelName: modelName))
+    }
+
+    #if DEBUG
+    init(preview panel: CintiqPanelControl) {
+        _panel = StateObject(wrappedValue: panel)
+    }
+    #endif
+
+    var body: some View {
+        Section {
+            Group {
+                row(String(localized: "Brightness"), symbol: "sun.max",
+                    value: panel.brightness, set: panel.setBrightness)
+                    .help("Backlight brightness of the tablet's built-in display.")
+                row(String(localized: "Contrast"), symbol: "circle.lefthalf.filled",
+                    value: panel.contrast, set: panel.setContrast)
+                    .help("Contrast of the tablet's built-in display.")
+            }
+            .opacity(panel.state == .ready ? 1 : 0.5)
+        } header: {
+            Text("Built-in Display").appFont(.headline)
+        } footer: {
+            Text(footer)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .disabled(panel.state != .ready)
+        .onAppear { panel.probe() }
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didChangeScreenParametersNotification)) { _ in panel.probe() }
+    }
+
+    private var footer: String {
+        switch panel.state {
+        case .probing:
+            String(localized: "Checking the display…")
+        case .noDisplay:
+            String(localized: "Available when the display is connected to this Mac's video output.")
+        case .noReply:
+            String(localized: "The display didn't answer over its video cable. A different port or adapter may help.")
+        case .ready:
+            String(localized: "Experimental. Changes the panel's own settings over its video cable.")
+        }
+    }
+
+    private func row(_ title: String, symbol: String,
+                     value: CintiqPanelControl.Value?, set: @escaping (Int) -> Void) -> some View {
+        HStack {
+            Image(systemName: symbol)
+                .foregroundStyle(.secondary)
+                .scaledFrame(width: 20)
+                .accessibilityHidden(true)
+            Text(title)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            // While probing the value is unknown, not unavailable: show a bare
+            // track so no knob claims a setting we haven't read.
+            Group {
+                if panel.state == .probing {
+                    Capsule()
+                        .fill(.quaternary)
+                        .frame(height: 4)
+                } else {
+                    Slider(
+                        value: Binding(
+                            get: { Double(value?.current ?? 50) },
+                            set: { set(Int($0.rounded())) }),
+                        in: 0...Double(max(value?.max ?? 100, 1)))
+                    .labelsHidden()
+                }
+            }
+            .scaledFrame(width: 200)
+            Text(value.map { "\($0.current * 100 / max($0.max, 1))%" } ?? "—")
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .scaledFrame(width: 48, alignment: .trailing)
+        }
+        .disabled(value == nil)
+    }
+}
+
+#Preview("Built-in Display") {
+    Form {
+        CintiqPanelSection(preview: CintiqPanelControl(
+            previewState: .ready,
+            brightness: .init(current: 70, max: 100),
+            contrast: .init(current: 50, max: 100)))
+        CintiqPanelSection(preview: CintiqPanelControl(
+            previewState: .ready, brightness: .init(current: 40, max: 100)))
+        CintiqPanelSection(preview: CintiqPanelControl(previewState: .probing))
+        CintiqPanelSection(preview: CintiqPanelControl(previewState: .noDisplay))
+        CintiqPanelSection(preview: CintiqPanelControl(previewState: .noReply))
+    }
+    .formStyle(.grouped)
+    .frame(width: 520, height: 900)
 }
