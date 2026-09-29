@@ -2718,6 +2718,29 @@
         }
       }
     },
+    "Awaiting response from remote" : {
+      "comment" : "Status bar: ExpressKey Remote receiver is connected but the remote hasn't sent anything yet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warte auf Antwort der Fernbedienung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando respuesta del mando"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リモートからの応答を待機中"
+          }
+        }
+      }
+    },
     "Backlight brightness of the tablet's built-in display." : {
       "localizations" : {
         "de" : {

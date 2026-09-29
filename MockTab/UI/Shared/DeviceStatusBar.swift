@@ -125,6 +125,13 @@ struct DeviceStatusBar: View {
                 if let (sym, label) = batteryItem {
                     Divider().frame(height: 12)
                     statusItem(symbol: sym, text: label, tint: batteryTint)
+                } else if awaitingRemote {
+                    Divider().frame(height: 12)
+                    statusItem(
+                        symbol: "hourglass",
+                        text: String(
+                            localized: "Awaiting response from remote",
+                            comment: "Status bar: ExpressKey Remote receiver is connected but the remote hasn't sent anything yet"))
                 }
                 if let (sym, label) = companionBatteryItem {
                     Divider().frame(height: 12)
@@ -213,6 +220,14 @@ struct DeviceStatusBar: View {
         // no literal glyph in the text label.
         let sym = BatteryIndicator.symbolName(pct: pct, charging: context.batteryCharging)
         return (sym, "\(pct)%")
+    }
+
+    /// The receiver lists an enrolled remote whether or not it's reachable,
+    /// and a live remote stays silent until a key is pressed. Its first report
+    /// carries the battery level, so no battery yet means not heard from.
+    private var awaitingRemote: Bool {
+        guard let context, context.isConnected, context.batteryPercent == nil else { return false }
+        return WacomDeviceRegistry.spec(for: context.productID)?.parser == .expressKeyRemote
     }
 
     private var batteryTint: Color {
