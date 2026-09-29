@@ -497,6 +497,10 @@ final class HIDCapture {
         /// baseline `isOutlier` compares against. Not a fixed threshold:
         /// coordinate scale and step size vary too much across devices for
         /// one constant to work everywhere.
+        /// Non-pen content, so a decoded touch or pad run doesn't read as
+        /// undecoded.
+        private var touchContactRange: ClosedRange<Int>?
+        private var otherKinds: Set<String> = []
         private var maxSeenDeltaX = 0
         private var maxSeenDeltaY = 0
         private var maxSeenDeltaTilt = 0.0
@@ -540,6 +544,13 @@ final class HIDCapture {
             lastHex = sample.hex
             guard let decoded = sample.decoded else { return }
             for result in decoded {
+                switch result {
+                case .touch(let contacts):
+                    touchContactRange = Self.extend(touchContactRange, with: contacts.count)
+                case .aux: otherKinds.insert("buttons")
+                case .remotePairing: otherKinds.insert("pairing table")
+                default: break
+                }
                 guard case .pen(let p) = result else { continue }
                 xRange = Self.extend(xRange, with: p.x)
                 yRange = Self.extend(yRange, with: p.y)
@@ -607,7 +618,11 @@ final class HIDCapture {
                 }
                 fields.append("rot@hover[\(rendered.joined(separator: " "))]")
             }
-            let fieldStr = fields.isEmpty ? "(no decoder — raw bytes only)" : fields.joined(separator: " ")
+            if let r = touchContactRange { fields.append("touch contacts:\(r.lowerBound)-\(r.upperBound)") }
+            fields += otherKinds.sorted().map { "\($0) unchanged" }
+            // Undecoded samples never join a run (see `Signature.isUndecoded`),
+            // so an empty field list here means decoded with nothing to range.
+            let fieldStr = fields.isEmpty ? "(decoded — no changing fields)" : fields.joined(separator: " ")
             return
                 "[\(ts)] \(padded) ID=\(hexDigitID) len=\(lenRange)  ×\(count) steady-state  →  \(fieldStr)"
         }

@@ -232,7 +232,18 @@ extension InputInjector {
             TouchPipelineProbe.note { $0.contactsOffArea += dropped }
         }
         if !projected.isEmpty {
-            TouchPipelineProbe.note { $0.framesTracked += 1 }
+            let direct = cachedTouchIsDirect
+            let matched = cachedTouchPanelBounds != nil
+            TouchPipelineProbe.note {
+                $0.framesTracked += 1
+                if direct {
+                    $0.touchScreenMatchedPanel = matched
+                    $0.touchScreenX = displayBounds.origin.x
+                    $0.touchScreenY = displayBounds.origin.y
+                    $0.touchScreenWidth = displayBounds.width
+                    $0.touchScreenHeight = displayBounds.height
+                }
+            }
         }
 
         // Diagnostic: a committed pan scroll running on fewer than two contacts

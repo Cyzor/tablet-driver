@@ -70,6 +70,8 @@ final class CaptureEngine: ObservableObject {
     /// at start like the settings above — `CaptureEngine` stays free of the
     /// main-actor registry so the standalone harnesses can build a result.
     private var capturedEverSeenTools: [String]?
+    private var capturedSettingsIdentity: DiscoverySettingsIdentity?
+    private var capturedAppEnvironment: DiscoveryAppEnvironment?
     /// Filled a second or two into the session; see `HardwareSurveyProbe`.
     private var capturedHardwareSurvey: DiscoveryHardwareSurvey?
     /// Live for the session only — created in `startDiscovery` when the
@@ -280,6 +282,8 @@ final class CaptureEngine: ObservableObject {
         touchSettings: DiscoveryTouchSettings? = nil,
         appSettings: DiscoveryAppSettings? = nil,
         everSeenTools: [String]? = nil,
+        settingsIdentity: DiscoverySettingsIdentity? = nil,
+        appEnvironment: DiscoveryAppEnvironment? = nil,
         bluetoothAddressCandidate: String? = nil,
         tapped: [IOHIDDevice] = []
     ) {
@@ -297,6 +301,8 @@ final class CaptureEngine: ObservableObject {
         capturedTouchSettings = touchSettings
         capturedAppSettings = appSettings
         capturedEverSeenTools = everSeenTools
+        capturedSettingsIdentity = settingsIdentity
+        capturedAppEnvironment = appEnvironment
         // Off the main thread: each DDC request waits ~50 ms on the panel.
         // Keyed to the session start so a slow survey can't land in the next.
         capturedHardwareSurvey = nil
@@ -919,6 +925,8 @@ final class CaptureEngine: ObservableObject {
             observedPenActivity: penActivitySeen,
             touchSettings: capturedTouchSettings,
             appSettings: capturedAppSettings,
+            settingsIdentity: capturedSettingsIdentity,
+            appEnvironment: capturedAppEnvironment,
             touchPipeline: touchPipeline.isEmpty ? nil : touchPipeline,
             bluetoothLink: discoveryBluetoothLink,
             hardwareSurvey: capturedHardwareSurvey,
@@ -1032,6 +1040,13 @@ final class CaptureEngine: ObservableObject {
                     .map { serialBytes.contains($0.offset) ? "--" : String(format: "%02X", $0.element) }
                     .joined(),
                 constantValues: constantValues.isEmpty ? nil : constantValues,
+                serialFingerprints: {
+                    guard !serialBytes.isEmpty else { return nil }
+                    let prints = CaptureSerialRedaction.serialFingerprints(
+                        productID: productID, reportID: reportID,
+                        bytes: stats.firstSample, salt: fingerprintSalt)
+                    return prints.isEmpty ? nil : prints
+                }(),
                 byteStats: byteStats.isEmpty ? nil : byteStats,
                 descriptorReadable: descriptorReadable,
                 repeatingStructure: repeatingStructure,
@@ -1042,6 +1057,15 @@ final class CaptureEngine: ObservableObject {
         }
 
         return reportSummaries
+    }
+
+    /// Per-install salt for `serialFingerprints`, created on first use.
+    private static var fingerprintSalt: Data {
+        let key = "_captureFingerprintSalt"
+        if let salt = UserDefaults.standard.data(forKey: key) { return salt }
+        let salt = Data((0..<16).map { _ in UInt8.random(in: 0...255) })
+        UserDefaults.standard.set(salt, forKey: key)
+        return salt
     }
 
     /// Values listed per byte position before the list is trimmed. See

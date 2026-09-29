@@ -452,6 +452,32 @@ struct CaptureGuideView: View {
         }
     }
 
+    private func settingsIdentitySnapshot() -> DiscoverySettingsIdentity? {
+        guard let context = tabletManager.contexts[productID] else { return nil }
+        let registry = DeviceRegistry.shared
+        let prefix = context.settings.devicePrefix
+        let key = registry.normalizedKey(context.instanceKey)
+        let row = registry.knownTablets.first { $0.instanceKey == key }
+        return DiscoverySettingsIdentity(
+            usbSerialReported: row.map { !($0.usbSerial ?? "").isEmpty },
+            sharedNamespace: !prefix.contains("#"),
+            knownUnitsOfModel: registry.knownTablets.filter { $0.productID == productID }.count,
+            storedSettingCount: UserDefaults.standard.dictionaryRepresentation().keys
+                .filter { $0.hasPrefix(prefix) }.count)
+    }
+
+    private func appEnvironmentSnapshot() -> DiscoveryAppEnvironment {
+        let path = Bundle.main.bundlePath
+        let location =
+            path.contains("/AppTranslocation/") ? "translocated"
+            : (path.hasPrefix("/Applications/") ? "applications" : "other")
+        return DiscoveryAppEnvironment(
+            accessibilityGranted: AXIsProcessTrusted(),
+            inputMonitoringGranted:
+                IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted,
+            installLocation: location)
+    }
+
     private func touchSettingsSnapshot() -> DiscoveryTouchSettings? {
         guard let settings = tabletManager.contexts[productID]?.settings else { return nil }
         // Omitted only when a spec positively says the device has no finger
@@ -999,6 +1025,8 @@ struct CaptureGuideView: View {
             devices: targets, duration: 3600, touchSettings: touchSettingsSnapshot(),
             appSettings: appSettingsSnapshot(),
             everSeenTools: everSeenToolsSnapshot(),
+            settingsIdentity: settingsIdentitySnapshot(),
+            appEnvironment: appEnvironmentSnapshot(),
             bluetoothAddressCandidate: tabletManager.contexts[productID]?.bluetoothAddressCandidate,
             tapped: companions)
 

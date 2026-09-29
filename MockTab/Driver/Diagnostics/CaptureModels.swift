@@ -170,7 +170,12 @@ struct DiscoveryResult: Codable {
     /// v20 adds `epicProvider` to each display, telling a Mac's own HDMI
     /// port from a USB-C/Thunderbolt DisplayPort link. Optional, so v19
     /// readers and files still decode.
-    var captureVersion: Int = 20
+    ///
+    /// v21 adds `settingsIdentity` and `appEnvironment`, for settings that
+    /// seem lost between launches, and touch-pipeline contact counts, contact
+    /// size presence, and the screen direct touch maps to. Optional, so v20
+    /// readers and files still decode.
+    var captureVersion: Int = 21
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -230,6 +235,10 @@ struct DiscoveryResult: Codable {
     /// Mapping and pen-feel settings in force during the session. Recorded
     /// for every device, unlike `touchSettings` — see `DiscoveryAppSettings`.
     var appSettings: DiscoveryAppSettings?
+    /// Where this tablet's settings are stored — see `DiscoverySettingsIdentity`.
+    var settingsIdentity: DiscoverySettingsIdentity?
+    /// Permissions and install location — see `DiscoveryAppEnvironment`.
+    var appEnvironment: DiscoveryAppEnvironment?
     /// Per-stage tallies of what the touch injection pipeline did with the
     /// contacts it decoded. Present only when the pipeline saw at least one
     /// frame, so a pen-only session doesn't carry a block of zeroes.
@@ -358,6 +367,10 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     // Every interface — the silent one is usually the interesting one.
     // Each interface carries its own product ID: a whole-desk capture spans
     // several devices, and tagging all of them with the primary's misattributes.
+    let switchedPages = Set((result.initReports ?? []).compactMap { report in
+        report.succeeded ? report.interfaceUsagePage : nil
+    })
+    var switchedLabels: [String: Bool] = [:]
     let allInterfaces:
         [(LiveHIDDescriptorInspector.Parsed?, [String: DiscoveryReportSummary], String?, String)] =
         result.interfaces.map { list in
@@ -367,6 +380,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
                 let label = [iface.usagePage, iface.usage]
                     .compactMap { $0 }
                     .joined(separator: "/")
+                switchedLabels[label] = iface.usagePage.map { switchedPages.contains($0) } ?? false
                 return (
                     iface.hidReportDescriptor, iface.reports, label.isEmpty ? nil : label,
                     iface.productID ?? pid)
@@ -387,8 +401,14 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
         let list: String = missing.joined(separator: ", ")
         let seconds: String = String(format: "%.1f", result.duration)
         let on: String = interfaceLabel.map { " on interface \($0)" } ?? ""
-        let detail: String =
+        var detail: String =
             "Declared input \(noun) \(list)\(on) never arrived during \(seconds)s."
+        // A mode switch replaces the default-mode report stream, so silence
+        // there is expected (DTH-2700 touch: 0x88 gives way to 0x81).
+        if switchedLabels[interfaceLabel ?? ""] == true {
+            detail += " A mode switch succeeded on this interface, so reports it only sends in"
+                + " its default mode are expected to stay silent."
+        }
         found.append(
             DiscoveryFinding(
                 kind: "declaredReportsNeverObserved", productID: interfacePID, detail: detail))
@@ -485,6 +505,75 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
                     + "absolute mode before treating jitter as a decoding fault."))
     }
 
+    // A tool the catalog doesn't know gets a generic name and is flagged as
+    // missing pressure and tilt it may well have. On #14 this sat in two
+    // captures' logs, unflagged, until someone read them line by line.
+    let family = Int(pid.dropFirst(2), radix: 16).flatMap { WacomDeviceRegistry.spec(for: $0)?.family }
+    let unknownTools = (result.observedToolCodes ?? []).filter { hex in
+        guard let code = UInt16(hex.dropFirst(2), radix: 16) else { return false }
+        return !WacomToolCatalog.capabilities(forToolCode: code, family: family).isSupported
+    }
+    if !unknownTools.isEmpty {
+        found.append(
+            DiscoveryFinding(
+                kind: "toolCodeNotInCatalog",
+                productID: pid,
+                detail: "Tool code(s) \(unknownTools.joined(separator: ", ")) are not cataloged for "
+                    + "this tablet, so the app names them generically and assumes no pressure or "
+                    + "tilt. Check the pen's frames before trusting that."))
+    }
+
+    if let touch = result.touchPipeline {
+        if touch.contactsDecoded > 0, touch.contactsWithSize == 0 {
+            found.append(
+                DiscoveryFinding(
+                    kind: "touchReportsNoContactSize",
+                    productID: pid,
+                    detail: "None of \(touch.contactsDecoded) touch contacts carried a size, so "
+                        + "palms can only be told apart by count or timing, not area."))
+        }
+        if touch.touchScreenMatchedPanel == false {
+            found.append(
+                DiscoveryFinding(
+                    kind: "touchScreenNotMatched",
+                    productID: pid,
+                    detail: "Direct touch could not identify the pen display's own screen by name "
+                        + "and used the screen under the pen's mapping instead."))
+        }
+    }
+
+    if let identity = result.settingsIdentity, identity.knownUnitsOfModel > 1 {
+        found.append(
+            DiscoveryFinding(
+                kind: "multipleUnitsOfModel",
+                productID: pid,
+                detail: "The app remembers \(identity.knownUnitsOfModel) units of this model. On a "
+                    + "desk with one, the tablet's identity changed between sessions and its "
+                    + "settings split across namespaces."))
+    }
+
+    if let env = result.appEnvironment {
+        var missing: [String] = []
+        if !env.accessibilityGranted { missing.append("Accessibility") }
+        if !env.inputMonitoringGranted { missing.append("Input Monitoring") }
+        if !missing.isEmpty {
+            found.append(
+                DiscoveryFinding(
+                    kind: "permissionsMissing",
+                    productID: nil,
+                    detail: "macOS had not granted \(missing.joined(separator: " or ")) while "
+                        + "recording."))
+        }
+        if env.installLocation == "translocated" {
+            found.append(
+                DiscoveryFinding(
+                    kind: "appTranslocated",
+                    productID: nil,
+                    detail: "The app ran from a quarantined download, not Applications. macOS "
+                        + "may treat each copy as a new app."))
+        }
+    }
+
     if let survey = result.hardwareSurvey {
         found += surveyFindings(survey)
     }
@@ -561,6 +650,33 @@ func surveyFindings(_ survey: DiscoveryHardwareSurvey) -> [DiscoveryFinding] {
 /// per-app override bundle IDs, nicknames, serial numbers. Button bindings
 /// too — which key a button sends has never been the thing in doubt, only
 /// whether its report arrived, which `reports` answers.
+/// Which settings namespace the tablet resolved to, without the serial that
+/// picks it. A tablet that reappears as a new unit starts from empty settings,
+/// and these fields tell that apart from settings that are stored but unused.
+struct DiscoverySettingsIdentity: Codable {
+    /// Whether the tablet reported a USB serial, which keys its settings.
+    var usbSerialReported: Bool?
+    /// True for the model's first-seen unit (`device-0x{PID}.`), false for a
+    /// later unit keyed by its serial.
+    let sharedNamespace: Bool
+    /// Units of this model the app remembers. More than one on a desk with
+    /// one tablet means its identity changed.
+    let knownUnitsOfModel: Int
+    /// Stored values under this tablet's namespace, per-pen ones included.
+    let storedSettingCount: Int
+}
+
+/// What macOS granted the app and where it runs from. An app copied over an
+/// old one that loses its permissions, or runs from a quarantined copy, looks
+/// to its user like it forgot its settings.
+struct DiscoveryAppEnvironment: Codable {
+    let accessibilityGranted: Bool
+    let inputMonitoringGranted: Bool
+    /// "applications", "translocated" (run from a quarantined download), or
+    /// "other". Never the path itself, which names the user.
+    let installLocation: String
+}
+
 struct DiscoveryAppSettings: Codable {
     // Mapping — explains "the pen reaches the wrong part of the screen".
     var activeAreaX: Double?
@@ -768,6 +884,47 @@ struct DiscoveryTouchPipeline: Codable {
     var observedMaxX: Int?
     var observedMinY: Int?
     var observedMaxY: Int?
+
+    /// Frames by contact count: index n holds frames with n contacts, the
+    /// last index everything at or above it. A resting palm on a sensor that
+    /// reports no contact size shows up here as extra contacts, not as area.
+    var contactsPerFrame: [Int] = []
+    /// Contacts that carried a contact size. Zero with contacts decoded means
+    /// the sensor reports none, so palm rejection cannot go by size.
+    var contactsWithSize: Int = 0
+
+    /// Where finger-under-cursor touch put the surface, in global screen
+    /// points: a pen display's own screen when `touchScreenMatchedPanel`,
+    /// else the whole screen under the pen's mapping. Nil for trackpad-style
+    /// touch. Compare with where the tester's finger landed.
+    var touchScreenMatchedPanel: Bool?
+    var touchScreenX: Double?
+    var touchScreenY: Double?
+    var touchScreenWidth: Double?
+    var touchScreenHeight: Double?
+
+    /// Multi-contact frames by the distance between their two closest
+    /// contacts, center to center: under 10, 10–20, 20–30, 30–50 and 50+ mm.
+    /// Wacom groups contacts closer than a threshold as one palm on sensors
+    /// that report no size, so this is what a palm rule would be tuned from.
+    var closestContactSpacingMM: [Int] = []
+    var minContactSpacingMM: Double?
+
+    mutating func noteContactSpacing(mm: Double) {
+        let bucket = [10.0, 20, 30, 50].firstIndex { mm < $0 } ?? 4
+        if closestContactSpacingMM.isEmpty { closestContactSpacingMM = [0, 0, 0, 0, 0] }
+        closestContactSpacingMM[bucket] += 1
+        minContactSpacingMM = Swift.min(minContactSpacingMM ?? mm, mm)
+    }
+
+    mutating func noteFrameContacts(_ count: Int, withSize: Int) {
+        let bucket = Swift.min(count, 10)
+        if contactsPerFrame.count <= bucket {
+            contactsPerFrame += Array(repeating: 0, count: bucket + 1 - contactsPerFrame.count)
+        }
+        contactsPerFrame[bucket] += 1
+        contactsWithSize += withSize
+    }
 
     /// Fold one contact's raw position into the observed extents.
     mutating func noteExtent(x: Int, y: Int) {
@@ -1081,6 +1238,9 @@ struct DiscoveryReportSummary: Codable {
     var optionalBytes: [Int]?
     var firstSample: String?          // hex string of first captured sample
     var constantValues: [Int]?        // values at `constantBytes`, same order
+    /// Salted fingerprints of any serial in the first sample — see
+    /// `CaptureSerialRedaction.serialFingerprints`.
+    var serialFingerprints: [String]?
     /// Per-byte statistics, keyed by byte index. Covers every position that
     /// took more than one value, plus every optional position.
     var byteStats: [Int: DiscoveryByteStat]?

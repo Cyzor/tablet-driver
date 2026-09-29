@@ -233,6 +233,68 @@ check(
         .contains { $0.kind == "relativeModeActive" } == false,
     "a capture with no app settings makes no claim about mode")
 
+// MARK: Issue #14, 2026-09-29 capture
+
+// The DTH-2700's Pro Pen folds to 0x1E02; once cataloged it must not be flagged.
+do {
+    let known = discoveryFindings(for: makeResult(toolCodes: ["0x1E02", "0x1E0A"], penActivity: true))
+    check(!known.contains { $0.kind == "toolCodeNotInCatalog" }, "cataloged Pro Pen is not flagged")
+    let unknown = discoveryFindings(for: makeResult(toolCodes: ["0x7F02"], penActivity: true))
+    check(
+        unknown.contains { $0.kind == "toolCodeNotInCatalog" && $0.detail.contains("0x7F02") },
+        "uncataloged tool code is flagged")
+}
+
+do {
+    var result = makeResult()
+    var touch = DiscoveryTouchPipeline()
+    touch.framesDecoded = 5
+    touch.contactsDecoded = 7
+    touch.touchScreenMatchedPanel = false
+    result.touchPipeline = touch
+    result.settingsIdentity = DiscoverySettingsIdentity(
+        usbSerialReported: true, sharedNamespace: false, knownUnitsOfModel: 2,
+        storedSettingCount: 3)
+    result.appEnvironment = DiscoveryAppEnvironment(
+        accessibilityGranted: true, inputMonitoringGranted: false, installLocation: "translocated")
+    let kinds = Set(discoveryFindings(for: result).map(\.kind))
+    for kind in [
+        "touchReportsNoContactSize", "touchScreenNotMatched", "multipleUnitsOfModel",
+        "permissionsMissing", "appTranslocated",
+    ] {
+        check(kinds.contains(kind), "\(kind) is surfaced")
+    }
+}
+
+do {
+    var touch = DiscoveryTouchPipeline()
+    touch.noteFrameContacts(2, withSize: 0)
+    touch.noteFrameContacts(14, withSize: 0)
+    check(touch.contactsPerFrame == [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1], "contact counts bucket, capped at 10")
+    touch.noteContactSpacing(mm: 8)
+    touch.noteContactSpacing(mm: 25)
+    touch.noteContactSpacing(mm: 90)
+    check(touch.closestContactSpacingMM == [1, 0, 1, 0, 1], "contact spacing buckets by mm")
+    check(touch.minContactSpacingMM == 8, "closest spacing kept")
+}
+
+do {
+    // Touch 0x88 goes quiet once the 0x83 mode switch lands.
+    var result = makeResult(declaredInput: ["0x88"], observed: [])
+    result.interfaces = [
+        DiscoveryInterface(
+            usagePage: "0xFF00", usage: "0x0001", productID: "0x032C", deviceName: nil,
+            isPrimary: false, sampleCount: 0, reports: [:],
+            hidReportDescriptor: result.hidReportDescriptor)
+    ]
+    result.initReports = [
+        CaptureInitReport(reportID: 131, value: 2, succeeded: true, interfaceUsagePage: "0xFF00")
+    ]
+    let detail = discoveryFindings(for: result)
+        .first { $0.kind == "declaredReportsNeverObserved" }?.detail ?? ""
+    check(detail.contains("mode switch succeeded"), "silence after a mode switch is explained")
+}
+
 // MARK: - Real submitted captures
 
 // Path is relative to this harness; absent on a fresh clone.

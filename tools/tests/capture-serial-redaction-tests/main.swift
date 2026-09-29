@@ -38,6 +38,35 @@ pairing[5] = 0x5B
 
 let maskedPairing = masked(pairing, productID: ekr, reportID: 0x10)
 check(!maskedPairing.contains("FB5B"), "the paired serial does not survive masking")
+
+// MARK: - Fingerprints
+
+let salt = Data("test-salt".utf8)
+let prints = CaptureSerialRedaction.serialFingerprints(
+    productID: ekr, reportID: 0x10, bytes: pairing, salt: salt)
+check(prints.count == 1 && prints[0].hasPrefix("slot0:"), "one occupied slot, one fingerprint")
+check(!prints.joined().lowercased().contains("fb5b"), "fingerprint does not carry the serial")
+check(
+    prints == CaptureSerialRedaction.serialFingerprints(
+        productID: ekr, reportID: 0x10, bytes: pairing, salt: salt),
+    "same serial and salt give the same fingerprint")
+check(
+    prints != CaptureSerialRedaction.serialFingerprints(
+        productID: ekr, reportID: 0x10, bytes: pairing, salt: Data("other".utf8)),
+    "another install's salt gives another fingerprint")
+var sender = [UInt8](repeating: 0, count: 32)
+sender[0] = 0x11
+sender[3] = 0xFB
+sender[4] = 0x5B
+let senderPrint = CaptureSerialRedaction.serialFingerprints(
+    productID: ekr, reportID: 0x11, bytes: sender, salt: salt)
+check(
+    senderPrint.map { $0.dropFirst("sender:".count) } == prints.map { $0.dropFirst("slot0:".count) },
+    "the sending remote matches its pairing slot")
+check(
+    CaptureSerialRedaction.serialFingerprints(
+        productID: 0x032B, reportID: 0x10, bytes: pairing, salt: salt).isEmpty,
+    "devices without serial bytes get no fingerprints")
 check(maskedPairing.hasPrefix("100001"), "bytes before the serial are untouched")
 
 // Occupancy must still be legible: that a slot was filled is the whole

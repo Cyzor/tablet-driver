@@ -1244,6 +1244,16 @@ final class TabletManager: ObservableObject {
         // the closures below.
         var touchContactTrack: [Int: (x: Int, y: Int, area: Int?, framesAlive: Int, stalledFrames: Int)] = [:]
 
+        // mm per touch unit, for the contact-spacing diagnostic; nil when the
+        // registry has no physical size for this tablet.
+        let touchMMPerUnit: (x: Double, y: Double)? = WacomDeviceRegistry.spec(for: productID)
+            .flatMap { spec in
+                guard let w = spec.activeWidthMM, let h = spec.activeHeightMM,
+                    spec.touchMaxX > 0, spec.touchMaxY > 0
+                else { return nil }
+                return (w / Double(spec.touchMaxX), h / Double(spec.touchMaxY))
+            }
+
         let onTouch: ([TouchContact]) -> Void = { [weak self, contextHandle] contacts in
             // Erratic-touch diagnostics: a same-id jump far larger than a
             // finger can move in one ~10ms report period, a contact that
@@ -1285,6 +1295,19 @@ final class TabletManager: ObservableObject {
             TouchPipelineProbe.note {
                 $0.framesDecoded += 1
                 $0.contactsDecoded += contacts.count
+                $0.noteFrameContacts(
+                    contacts.count, withSize: contacts.filter { $0.contactArea != nil }.count)
+                if let mm = touchMMPerUnit, contacts.count >= 2 {
+                    var closest = Double.infinity
+                    for i in contacts.indices {
+                        for j in contacts.indices where j > i {
+                            let dx = Double(contacts[i].x - contacts[j].x) * mm.x
+                            let dy = Double(contacts[i].y - contacts[j].y) * mm.y
+                            closest = Swift.min(closest, (dx * dx + dy * dy).squareRoot())
+                        }
+                    }
+                    $0.noteContactSpacing(mm: closest)
+                }
                 for contact in contacts { $0.noteExtent(x: contact.x, y: contact.y) }
                 if let frameMaxJump {
                     $0.maxContactJump = Swift.max($0.maxContactJump ?? 0, frameMaxJump)

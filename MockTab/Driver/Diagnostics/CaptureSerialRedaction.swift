@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import CryptoKit
 import Foundation
 
 /// Which byte positions of a report hold a hardware serial.
@@ -42,6 +43,27 @@ enum CaptureSerialRedaction {
             return offsets
         default:
             return []
+        }
+    }
+
+    /// Salted fingerprints of the serials a report carries, labeled by where
+    /// they sit ("sender", "slot0"…), so two captures can say "same remote"
+    /// without the serial. Unsalted, a 24-bit serial falls to brute force;
+    /// the salt never leaves the Mac, so fingerprints only compare within one
+    /// install. Empty and all-FF slots are skipped.
+    static func serialFingerprints(
+        productID: Int, reportID: UInt8, bytes: [UInt8], salt: Data
+    ) -> [String] {
+        let offsets = serialByteOffsets(productID: productID, reportID: reportID)
+        return stride(from: 0, to: offsets.count, by: 3).compactMap { start in
+            let group = offsets[start..<Swift.min(start + 3, offsets.count)]
+            guard let last = group.last, last < bytes.count else { return nil }
+            let serial = group.map { bytes[$0] }
+            if serial.allSatisfy({ $0 == 0 }) || serial.allSatisfy({ $0 == 0xFF }) { return nil }
+            let digest = SHA256.hash(data: salt + Data(serial))
+            let hex = digest.prefix(4).map { String(format: "%02x", $0) }.joined()
+            let label = reportID == 0x10 ? "slot\(start / 3)" : "sender"
+            return "\(label):\(hex)"
         }
     }
 
