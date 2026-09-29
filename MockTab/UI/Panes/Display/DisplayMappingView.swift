@@ -991,6 +991,7 @@ private struct CintiqPanelSection: View {
     }
 }
 
+#if DEBUG
 #Preview("Built-in Display") {
     Form {
         CintiqPanelSection(preview: CintiqPanelControl(
@@ -1006,3 +1007,4 @@ private struct CintiqPanelSection: View {
     .formStyle(.grouped)
     .frame(width: 520, height: 900)
 }
+#endif
