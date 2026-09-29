@@ -14,7 +14,8 @@
 #   release  — version from the tag, publish time, DMG link, notes from that
 #              version's CHANGELOG.md line (split at semicolons).
 #   snapshot — build stamp from the annotated snapshot tag's message (UTC,
-#              e.g. 20260927T1432Z, copied from the built app), DMG link.
+#              e.g. 20260927T1432Z, copied from the built app), DMG link,
+#              notes from CHANGELOG.md's Unreleased line.
 # Refuses drafts: the page must never link to a download that isn't public.
 #
 # Writes $MOCKTAB_WEB/latest.json (default: ../mocktab-web beside this repo)
@@ -29,6 +30,16 @@ if [[ "${1:-}" == "--dry-run" ]]; then DRY_RUN=1; shift; fi
 TAG="${1:?usage: update-latest.sh [--dry-run] <vX.Y.Z | snapshot>}"
 REPO="Cyzor/tablet-driver"
 WEB="${MOCKTAB_WEB:-../mocktab-web}"
+
+# CHANGELOG line: "- [v0.4.2](…) — first item; second item; third item."
+# Prints its items as a JSON array.
+changelog_notes() {
+    local line
+    line=$(grep -m1 -F -- "$1" CHANGELOG.md || true)
+    [[ -n "$line" ]] || { echo "error: no CHANGELOG.md line starting '$1'." >&2; exit 1; }
+    sed -E 's/^[^—]*— //; s/\.$//' <<<"$line" \
+        | jq -R 'split("; ") | map((.[:1] | ascii_upcase) + .[1:])'
+}
 
 INFO=$(gh release view "$TAG" --repo "$REPO" --json isDraft,publishedAt,assets)
 if [[ $(jq -r .isDraft <<<"$INFO") == "true" ]]; then
@@ -51,16 +62,13 @@ if [[ "$TAG" == "snapshot" ]]; then
         exit 1
     fi
     m=("${BASH_REMATCH[@]}")
+    NOTES=$(changelog_notes "- Unreleased —")
     ENTRY=$(jq -n --arg d "${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}Z" --arg u "$URL" \
-        '{snapshot: {date: $d, url: $u}}')
+        --argjson n "$NOTES" '{snapshot: {date: $d, url: $u, notes: $n}}')
 else
     VERSION="${TAG#v}"
     PUBLISHED=$(jq -r .publishedAt <<<"$INFO")
-    # CHANGELOG line: "- [v0.4.2](…) — first item; second item; third item."
-    LINE=$(grep -m1 -F -- "- [$TAG](" CHANGELOG.md || true)
-    [[ -n "$LINE" ]] || { echo "error: no CHANGELOG.md line for $TAG." >&2; exit 1; }
-    NOTES=$(sed -E 's/^[^—]*— //; s/\.$//' <<<"$LINE" \
-        | jq -R 'split("; ") | map((.[:1] | ascii_upcase) + .[1:])')
+    NOTES=$(changelog_notes "- [$TAG](")
     ENTRY=$(jq -n --arg v "$VERSION" --arg d "${PUBLISHED:0:16}Z" --arg u "$URL" \
         --argjson n "$NOTES" '{release: {version: $v, date: $d, url: $u, notes: $n}}')
 fi
