@@ -125,8 +125,9 @@ struct TouchView: View {
                 valueText: String(format: "%.2f×", settings.touchSensitivity),
                 caption: "Multiplier for cursor motion from finger drag."
             )
-            .disabled(!settings.touchEnabled)
-            .opacity(settings.touchEnabled ? 1 : 0.5)
+            // A pen display's touch puts the cursor under the finger, so speed has no effect.
+            .disabled(!settings.touchEnabled || spec?.isPenDisplay == true)
+            .opacity(settings.touchEnabled && spec?.isPenDisplay != true ? 1 : 0.5)
             .help("Multiplier for cursor motion from finger drag. 1.00× is the natural mapping through the touch area; raise to move faster across the screen, lower for finer control.")
         }
     }
@@ -206,6 +207,8 @@ struct TouchView: View {
         }
     }
 
+    private var areaEditable: Bool { settings.touchEnabled && spec?.isPenDisplay != true }
+
     private var areaSection: some View {
         Section("Touch Area") {
             Text("Define the active surface area for touch input.  Not available on all devices.")
@@ -218,8 +221,9 @@ struct TouchView: View {
                 .frame(height: 200)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
-                .disabled(!settings.touchEnabled)
-                .opacity(settings.touchEnabled ? 1 : 0.5)
+                // A pen display's touch always covers its whole screen.
+                .disabled(!areaEditable)
+                .opacity(areaEditable ? 1 : 0.5)
 
             HStack {
                 Spacer()
@@ -238,7 +242,7 @@ struct TouchView: View {
                 // "the rect is already full", which the pen pane doesn't do
                 // either. A reset button that greys out at exactly the state
                 // it produces reads as broken rather than as already-done.
-                .disabled(!settings.touchEnabled)
+                .disabled(!areaEditable)
                 .help("Reset the touch area to the full touch surface (undoable).")
             }
             .listRowBackground(Color.clear)

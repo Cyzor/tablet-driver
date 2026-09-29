@@ -178,6 +178,13 @@ extension DDCLink {
     /// EDID name leads the model name ("Cintiq 27QHDT" for "Cintiq 27QHD
     /// Touch (DTH-2700)"); nil when that can't settle it.
     static func wacomPanel(modelName: String) -> DDCLink? {
+        wacomPanelDisplay(modelName: modelName).flatMap { DDCLink(displayLocation: $0.location) }
+    }
+
+    /// The display ID and IOKit location of that same panel.
+    static func wacomPanelDisplay(
+        modelName: String
+    ) -> (id: CGDirectDisplayID, location: String)? {
         var count: UInt32 = 0
         guard CGGetOnlineDisplayList(0, nil, &count) == .success, count > 0 else { return nil }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
@@ -185,17 +192,18 @@ extension DDCLink {
 
         let squash = { (s: String) in s.lowercased().filter { !$0.isWhitespace } }
         let model = squash(modelName)
-        let panels: [(name: String, location: String)] = ids.prefix(Int(count)).compactMap { id in
+        let panels: [(id: CGDirectDisplayID, name: String, location: String)] =
+            ids.prefix(Int(count)).compactMap { id in
             guard CGDisplayVendorNumber(id) == wacomDisplayVendor,
                   let info = HardwareSurveyProbe.coreDisplayInfo(id),
                   let location = info["IODisplayLocation"] as? String
             else { return nil }
             let name = (info["DisplayProductName"] as? [String: String])?.values.first ?? ""
-            return (name, location)
+            return (id, name, location)
         }
         let named = panels.filter { !$0.name.isEmpty && model.hasPrefix(squash($0.name)) }
         guard let panel = named.count == 1 ? named[0] : (panels.count == 1 ? panels[0] : nil)
         else { return nil }
-        return DDCLink(displayLocation: panel.location)
+        return (panel.id, panel.location)
     }
 }

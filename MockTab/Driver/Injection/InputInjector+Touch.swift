@@ -64,6 +64,9 @@ extension InputInjector {
             // has no physical size — see `cachedTouchWidthMM`'s doc comment.
             cachedTouchWidthMM = spec?.activeWidthMM ?? Double(cachedTouchMaxX)
             cachedTouchHeightMM = spec?.activeHeightMM ?? Double(cachedTouchMaxY)
+            cachedTouchIsDirect = spec?.isPenDisplay ?? false
+            cachedTouchModelName = spec?.name ?? ""
+            touchPanelNeedsResolve = true
             cachedTouchSpecPID = effectiveTouchPID
         }
 
@@ -122,7 +125,7 @@ extension InputInjector {
                     pinchZoom: snap.pinchZoomEnabled,
                     smartZoom: snap.smartZoomEnabled,
                     rotate: snap.rotateEnabled,
-                    absoluteTouch: snap.touchAbsoluteMode,
+                    absoluteTouch: snap.touchAbsoluteMode || cachedTouchIsDirect,
                     onsetDelay: snap.touchOnsetDelay,
                     tapStabilizationPt: snap.touchTapStabilizationPt,
                     now: now)
@@ -182,10 +185,14 @@ extension InputInjector {
         // (cachedTouchMaxX/Y, orientation), so it's hoisted out of the loop
         // rather than recomputed via `DisplayMapper.orient` per contact.
         let orientation = snap.tabletOrientation
-        let orientedArea = DisplayMapper.orientedCropRect(
-            areaX: snap.touchAreaX, areaY: snap.touchAreaY,
-            areaWidth: snap.touchAreaWidth, areaHeight: snap.touchAreaHeight,
-            orientation: orientation)
+        // A pen display's touch covers its own screen whole, or the finger
+        // and cursor part ways.
+        let orientedArea = cachedTouchIsDirect
+            ? (x: 0.0, y: 0.0, w: 1.0, h: 1.0)
+            : DisplayMapper.orientedCropRect(
+                areaX: snap.touchAreaX, areaY: snap.touchAreaY,
+                areaWidth: snap.touchAreaWidth, areaHeight: snap.touchAreaHeight,
+                orientation: orientation)
         let effMaxX: Double = orientation.swapsAxes ? Double(cachedTouchMaxY) : Double(cachedTouchMaxX)
         let effMaxY: Double = orientation.swapsAxes ? Double(cachedTouchMaxX) : Double(cachedTouchMaxY)
 
@@ -193,11 +200,13 @@ extension InputInjector {
         // fit to the physical aspect of the touch area as the tablet is
         // turned, so shapes traced on the pad aren't stretched by the
         // display's own ratio.
-        let displayBounds = DisplayMapper.aspectFitRect(
-            displayMapper.displayBounds(for: snap),
-            aspect: DisplayMapper.orientedCropAspect(
-                widthMM: cachedTouchWidthMM, heightMM: cachedTouchHeightMM,
-                crop: orientedArea, orientation: orientation))
+        let displayBounds = cachedTouchIsDirect
+            ? touchPanelBounds(snap: snap)
+            : DisplayMapper.aspectFitRect(
+                displayMapper.displayBounds(for: snap),
+                aspect: DisplayMapper.orientedCropAspect(
+                    widthMM: cachedTouchWidthMM, heightMM: cachedTouchHeightMM,
+                    crop: orientedArea, orientation: orientation))
 
         // Project each contact to screen-space using the touch-area mapping.
         // Contacts whose raw position falls outside the crop rect return nil
@@ -319,7 +328,7 @@ extension InputInjector {
             rotate: snap.rotateEnabled,
             rawPositions: rawTouchPositionsMM,
             touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
-            absoluteTouch: snap.touchAbsoluteMode,
+            absoluteTouch: snap.touchAbsoluteMode || cachedTouchIsDirect,
             onsetDelay: snap.touchOnsetDelay,
             tapStabilizationPt: snap.touchTapStabilizationPt,
             now: now)
@@ -342,6 +351,25 @@ extension InputInjector {
     /// distinguish from two separate single-component sequences), and
     /// `twoFingerLateJoins` (a `.began` arriving on a sequence that had
     /// already committed — i.e. the late-join path firing at all).
+    /// The pen display's own screen, whatever the pen is mapped to. Falls back
+    /// to the whole screen under the pen's mapping when no Wacom panel matches
+    /// by name (non-Wacom pen displays, or two identical Cintiqs).
+    private func touchPanelBounds(snap: InjectionSnapshot) -> CGRect {
+        if touchPanelNeedsResolve {
+            touchPanelNeedsResolve = false
+            cachedTouchPanelBounds = DDCLink.wacomPanelDisplay(modelName: cachedTouchModelName)
+                .map { CGDisplayBounds($0.id) }
+        }
+        if let panel = cachedTouchPanelBounds { return panel }
+        let pen = displayMapper.displayBounds(for: snap)
+        var id: CGDirectDisplayID = 0
+        var found: UInt32 = 0
+        guard CGGetDisplaysWithPoint(CGPoint(x: pen.midX, y: pen.midY), 1, &id, &found) == .success,
+            found > 0
+        else { return pen }
+        return CGDisplayBounds(id)
+    }
+
     func noteGestureComponentBegan(pinch: Bool) {
         if touchSequenceCommitted {
             TouchPipelineProbe.note { $0.twoFingerLateJoins += 1 }

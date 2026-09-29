@@ -384,6 +384,7 @@ final class InputInjector: @unchecked Sendable {
             MainActor.assumeIsolated { self.recomputeVirtualScreenBounds() }
             CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
                 self.displayMapper.invalidateDisplayCache()
+                self.touchPanelNeedsResolve = true
             }
             CFRunLoopWakeUp(HIDThread.shared.runLoop)
         }
@@ -1142,6 +1143,15 @@ final class InputInjector: @unchecked Sendable {
     /// raw coordinate maximums (i.e. no correction) when the spec has none.
     var cachedTouchWidthMM: Double = 1
     var cachedTouchHeightMM: Double = 1
+    /// Touch on a pen display is a touchscreen: the finger drives the cursor
+    /// to where it lands, never trackpad-style deltas.
+    var cachedTouchIsDirect = false
+    /// Model name the pen display's own screen is matched by.
+    var cachedTouchModelName = ""
+    /// That screen's bounds; nil when no Wacom panel matched.
+    var cachedTouchPanelBounds: CGRect?
+    /// Set when the device or the display arrangement changes.
+    var touchPanelNeedsResolve = true
     var cachedTouchSpecPID: Int = -1
     private var displayObserver: NSObjectProtocol?
     /// See the `willSleepObserver`/`willTerminateObserver` registration in
