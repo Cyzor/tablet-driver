@@ -469,7 +469,10 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     let sawTouch = (result.interfaces ?? []).contains { iface in
         iface.sampleCount > 0 && iface.usagePage != "0x0001"
     }
-    if result.touchSettings?.touchEnabled == true, !sawTouch {
+    // Touch can share the pen's interface (Bluetooth containers), so decoded
+    // contacts count too.
+    let decodedTouch = (result.touchPipeline?.framesDecoded ?? 0) > 0
+    if result.touchSettings?.touchEnabled == true, !sawTouch, !decodedTouch {
         untested.append("finger touch")
     }
     if !untested.isEmpty {

@@ -295,6 +295,19 @@ do {
     check(detail.contains("mode switch succeeded"), "silence after a mode switch is explained")
 }
 
+do {
+    // PTH-860 over Bluetooth: touch rides in the pen's 0x80 container.
+    var result = makeResult(touchEnabled: true, penActivity: true)
+    var touch = DiscoveryTouchPipeline()
+    touch.framesDecoded = 906
+    result.touchPipeline = touch
+    let detail = discoveryFindings(for: result)
+        .first { $0.kind == "subsystemsNotExercised" }?.detail ?? ""
+    check(!detail.contains("finger touch"), "decoded touch counts as exercised")
+    let grip = discoveryFindings(for: makeResult(productID: "0x0361", toolCodes: ["0x0802"], penActivity: true))
+    check(!grip.contains { $0.kind == "toolCodeNotInCatalog" }, "Grip Pen is cataloged for PTH-860")
+}
+
 // MARK: - Real submitted captures
 
 // Path is relative to this harness; absent on a fresh clone.
