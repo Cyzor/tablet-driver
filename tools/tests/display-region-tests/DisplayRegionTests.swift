@@ -141,6 +141,61 @@ enum DisplayRegionTestRunner {
             203.0 / 162.5, 1e-9, "portrait crop uses the cropped physical size")
     }
 
+    // tablet-driver#17: two spanned displays with unaligned bottoms. The left
+    // one is 2560×1440; the right one is 1920×1080 and sits 200 pt lower, so
+    // its bottom is 160 pt above the union's.
+    static func testEdgePinningFollowsEachDisplay() {
+        let left = CGRect(x: 0, y: 0, width: 2560, height: 1440)
+        let right = CGRect(x: 2560, y: 200, width: 1920, height: 1080)
+        let members = [left, right]
+        let union = left.union(right)
+        let inset = DisplayMapper.edgePinInset
+        func pin(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            DisplayMapper.pinNearEdges(CGPoint(x: x, y: y), in: union, members: members)
+        }
+
+        // The tablet's bottom edge maps to the union's bottom. Under the
+        // shorter display that's empty space; it must land on that display's
+        // own bottom edge, all the way along it.
+        for x: CGFloat in [2600, 3500, 4400] {
+            let p = pin(x, 1440)
+            expectClose(p.y, 1280 - inset, 1e-9, "x=\(x): pinned to the right display's bottom")
+            expectClose(p.x, x, 1e-9, "x=\(x): sideways position kept")
+        }
+        expectClose(pin(1000, 1440).y, 1440 - inset, 1e-9, "left display keeps its own bottom")
+
+        // The edge between the two displays never pins, so crossing is free.
+        expectClose(pin(2559.5, 700).x, 2559.5, 1e-9, "shared edge, left side: no pin")
+        expectClose(pin(2561, 700).x, 2561, 1e-9, "shared edge, right side: no pin")
+        expectClose(pin(2561, 1279).x, 2561, 1e-9, "shared edge at the bottom corner: no x pin")
+        expectClose(pin(2561, 1279).y, 1280 - inset, 1e-9, "…but the bottom still pins")
+
+        // Outer edges still pin, including the top of the lower display.
+        expectClose(pin(4479, 700).x, 4480 - inset, 1e-9, "right outer edge pins")
+        expectClose(pin(3000, 100).y, 200 + inset, 1e-9, "gap above: lands on the display's top edge")
+
+        // A skipped display in the middle of a span is still a surface: the
+        // cursor crosses it, and the selected displays' inner edges don't pin.
+        let a = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        let skipped = CGRect(x: 1920, y: 0, width: 1920, height: 1080)
+        let c = CGRect(x: 3840, y: 0, width: 1920, height: 1080)
+        let row = [a, skipped, c]
+        let across = DisplayMapper.pinNearEdges(
+            CGPoint(x: 2800, y: 500), in: a.union(c), members: row)
+        expect(across == CGPoint(x: 2800, y: 500), "skipped display: cursor crosses it")
+        expectClose(DisplayMapper.pinNearEdges(
+            CGPoint(x: 1919, y: 500), in: a.union(c), members: row).x,
+            1919, 1e-9, "skipped display: edge next to it doesn't pin")
+
+        // One display: unchanged, no clamping.
+        let single = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        let p = DisplayMapper.pinNearEdges(CGPoint(x: 1919, y: 1079), in: single, members: [])
+        expectClose(p.x, 1920 - inset, 1e-9, "single display: right edge pins")
+        expectClose(p.y, 1080 - inset, 1e-9, "single display: bottom edge pins")
+        let mid = DisplayMapper.pinNearEdges(CGPoint(x: 900, y: 500), in: single, members: [])
+        expect(mid == CGPoint(x: 900, y: 500), "single display: interior untouched")
+    }
+
     static func main() {
         testDefaultRegionIsWholeDisplay()
         testPartialRegionNarrowsIntoSubRect()
@@ -149,6 +204,7 @@ enum DisplayRegionTestRunner {
         testCacheInvalidatesOnRegionChangeAlone()
         testTouchAspectFollowsOrientation()
         testTouchAspectFollowsCrop()
+        testEdgePinningFollowsEachDisplay()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

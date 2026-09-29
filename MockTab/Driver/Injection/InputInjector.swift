@@ -1360,30 +1360,6 @@ final class InputInjector: @unchecked Sendable {
     /// again with no perceptible delay.
     static let staleBusyTimeout: CFAbsoluteTime = 3.0
 
-    // ── Screen-edge pinning (Dock reveal / hot corners) ─────────────────────
-    // A hidden Dock and hot corners never trigger from injected moves that
-    // stop at the integer bounds edge; the OS detector wants the pointer
-    // fractionally *at* the edge. Xencelabs' own driver works around this the
-    // same way (PostTabletDockMove posts a sub-pixel Y pinned against the
-    // display-bounds bottom), which is where these constants come from.
-
-    /// How close (points) a mapped position must get to a bounds edge
-    /// before it is pinned onto that edge.
-    static let edgePinThreshold: CGFloat = 2.0
-    /// Sub-pixel inset from the exact edge, matching the vendor driver.
-    static let edgePinInset: CGFloat = 0.1196
-
-    /// Pins coordinates within `edgePinThreshold` of a bounds edge to a
-    /// fractional position hard against that edge.
-    static func pinNearScreenEdges(_ p: CGPoint, in bounds: CGRect) -> CGPoint {
-        var p = p
-        if p.x - bounds.minX < edgePinThreshold { p.x = bounds.minX + edgePinInset }
-        else if bounds.maxX - p.x < edgePinThreshold { p.x = bounds.maxX - edgePinInset }
-        if p.y - bounds.minY < edgePinThreshold { p.y = bounds.minY + edgePinInset }
-        else if bounds.maxY - p.y < edgePinThreshold { p.y = bounds.maxY - edgePinInset }
-        return p
-    }
-
     func currentCursorPosition() -> CGPoint {
         // CGEvent(source: nil).location is the cursor in CG global (top-left
         // origin) coordinates and is safe off the main thread — unlike

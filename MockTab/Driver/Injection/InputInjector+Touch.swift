@@ -507,7 +507,7 @@ extension InputInjector {
         let base = touchOwnedPointerPosition ?? currentCursorPosition()
         var target = CGPoint(x: base.x + dx, y: base.y + dy)
         if let snap = injectionSnapshot {
-            target = Self.pinNearScreenEdges(target, in: displayMapper.displayBounds(for: snap))
+            target = displayMapper.pinNearEdges(target, snapshot: snap)
         }
         touchOwnedPointerPosition = target
         postTouchPointerWarp(to: target)
@@ -522,7 +522,7 @@ extension InputInjector {
     private func postTouchPointerWarp(to point: CGPoint) {
         var target = point
         if let snap = injectionSnapshot {
-            target = Self.pinNearScreenEdges(target, in: displayMapper.displayBounds(for: snap))
+            target = displayMapper.pinNearEdges(target, snapshot: snap)
         }
         guard let e = CGEvent(
             mouseEventSource: sessionSource,

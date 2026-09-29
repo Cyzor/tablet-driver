@@ -75,6 +75,10 @@ struct DisplayMapper {
     /// Toggle/Span wouldn't invalidate the cache.
     private var cachedToggleDisplayIDs: Set<CGDirectDisplayID> = []
     private var cachedDisplayUUID: String = ""
+    /// Bounds of every display inside the Span/All union (selected or not);
+    /// empty for a single display. Edge pinning works per display, not on
+    /// the union.
+    private var cachedMemberRects: [CGRect] = []
     private var cachedCalibration: CalibrationEntry?
     private var cachedCalibrationOrientation: Int = -1
     private var currentToggleIndex: Int = 0
@@ -381,7 +385,7 @@ struct DisplayMapper {
         // investigation this replaced, in
         // `project_ptk870_ble_new_report_protocol` memory). Matches the
         // existing touch-at-screen-edges precedent
-        // (`InputInjector.pinNearScreenEdges`, +Touch.swift) that made
+        // (`DisplayMapper.pinNearEdges`, +Touch.swift) that made
         // touch-triggered Dock reveal reliable the same way.
         let relX = Swift.min(Swift.max((ox - areaX) / areaW, 0), 1)
         let relY = Swift.min(Swift.max((oy - areaY) / areaH, 0), 1)
@@ -474,8 +478,9 @@ struct DisplayMapper {
         )
         let toggleIDs = snapshot.toggleDisplayIDs
         if cachedDisplayIndex != idx || cachedDisplayRegion != region || cachedToggleDisplayIDs != toggleIDs {
-            let (bounds, displayID) = resolveDisplayBoundsAndID(snapshot: snapshot)
+            let (bounds, displayID, members) = resolveDisplayBoundsAndID(snapshot: snapshot)
             cachedDisplayBounds = bounds
+            cachedMemberRects = members.count > 1 ? members.map { CGDisplayBounds($0) } : []
             cachedDisplayUUID = CalibrationKey.uuidString(for: displayID)
             cachedDisplayIndex = idx
             cachedDisplayRegion = region
@@ -488,7 +493,7 @@ struct DisplayMapper {
 
     /// Queries the OS display list and returns the target display's bounds and ID.
     /// Only called on cache miss; results stored in cachedDisplayBounds/cachedDisplayUUID.
-    private func resolveDisplayBoundsAndID(snapshot: InjectionSnapshot) -> (CGRect, CGDirectDisplayID) {
+    private func resolveDisplayBoundsAndID(snapshot: InjectionSnapshot) -> (CGRect, CGDirectDisplayID, [CGDirectDisplayID]) {
         let mainID = CGMainDisplayID()
         let fallback = CGRect(
             x: 0, y: 0,
@@ -498,29 +503,33 @@ struct DisplayMapper {
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
             displayMapperLog.error("displayUnion: CGGetActiveDisplayList(count) failed or zero displays — falling back to main display")
-            return (fallback, mainID)
+            return (fallback, mainID, [])
         }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else {
             displayMapperLog.error("displayUnion: CGGetActiveDisplayList(ids) failed — falling back to main display")
-            return (fallback, mainID)
+            return (fallback, mainID, [])
         }
         let idx = snapshot.targetDisplayIndex
         if idx == TabletSettings.displayModeAll {
             // Union bounding rect spanning every active display — no single display ID.
-            return (Self.unionBounds(of: ids), 0)
+            return (Self.unionBounds(of: ids), 0, ids)
         }
         if idx == TabletSettings.displayModeSpan {
             // Union bounding rect over the selected subset — no single display ID.
             let included = toggleRotation(snapshot: snapshot, allIDs: ids)
-            guard !included.isEmpty else { return (Self.unionBounds(of: ids), 0) }
-            return (Self.unionBounds(of: included), 0)
+            guard !included.isEmpty else { return (Self.unionBounds(of: ids), 0, ids) }
+            // An unselected display inside the span stays reachable, as it
+            // always has; only empty space in the union counts as a gap.
+            let union = Self.unionBounds(of: included)
+            let surface = ids.filter { !CGDisplayBounds($0).intersection(union).isEmpty }
+            return (union, 0, surface)
         }
         if idx == TabletSettings.displayModeToggle {
             let rotation = toggleRotation(snapshot: snapshot, allIDs: ids)
-            guard !rotation.isEmpty else { return (CGDisplayBounds(mainID), mainID) }
+            guard !rotation.isEmpty else { return (CGDisplayBounds(mainID), mainID, []) }
             let toggleID = rotation[currentToggleIndex % rotation.count]
-            return (CGDisplayBounds(toggleID), toggleID)
+            return (CGDisplayBounds(toggleID), toggleID, [])
         }
         // Any other value resolves to exactly one specific display — either an
         // explicit 1-indexed pick, or the mainID fallback for idx==0 ("Primary
@@ -534,7 +543,64 @@ struct DisplayMapper {
         } else {
             targetID = mainID
         }
-        return (Self.applyDisplayRegion(CGDisplayBounds(targetID), snapshot: snapshot), targetID)
+        return (Self.applyDisplayRegion(CGDisplayBounds(targetID), snapshot: snapshot), targetID, [])
+    }
+
+    // ── Screen-edge pinning (Dock reveal / hot corners) ─────────────────────
+    // A hidden Dock and hot corners never trigger from injected moves that
+    // stop at the integer bounds edge; the OS detector wants the pointer
+    // fractionally *at* the edge. Xencelabs' own driver works around this the
+    // same way (PostTabletDockMove posts a sub-pixel Y pinned against the
+    // display-bounds bottom), which is where these constants come from.
+
+    /// How close (points) a mapped position must get to a bounds edge
+    /// before it is pinned onto that edge.
+    static let edgePinThreshold: CGFloat = 2.0
+    /// Sub-pixel inset from the exact edge, matching the vendor driver.
+    static let edgePinInset: CGFloat = 0.1196
+
+    /// Pins `p` against the edges of the display it lands on. Across several
+    /// displays that's the display under the point (or the closest one, when
+    /// the point falls in a gap of the union rect), and only edges with no
+    /// member display beyond them pin, so crossing between displays stays free.
+    mutating func pinNearEdges(_ p: CGPoint, snapshot: InjectionSnapshot) -> CGPoint {
+        let bounds = displayBounds(for: snapshot)
+        return Self.pinNearEdges(p, in: bounds, members: cachedMemberRects)
+    }
+
+    static func pinNearEdges(_ p: CGPoint, in bounds: CGRect, members: [CGRect]) -> CGPoint {
+        guard members.count > 1 else { return pin(p, in: bounds) { _ in true } }
+        func distance(_ r: CGRect) -> CGFloat {
+            hypot(Swift.max(r.minX - p.x, 0, p.x - r.maxX), Swift.max(r.minY - p.y, 0, p.y - r.maxY))
+        }
+        // In a gap of the union, prefer the display straight above or below
+        // (the tablet's bottom row under a shorter display belongs to it),
+        // then one level with the point, then the nearest.
+        let column = members.filter { p.x >= $0.minX && p.x <= $0.maxX }
+        let row = members.filter { p.y >= $0.minY && p.y <= $0.maxY }
+        let pool = !column.isEmpty ? column : (!row.isEmpty ? row : members)
+        guard let screen = pool.min(by: { distance($0) < distance($1) }) else { return p }
+        let clamped = CGPoint(
+            x: Swift.min(Swift.max(p.x, screen.minX), screen.maxX),
+            y: Swift.min(Swift.max(p.y, screen.minY), screen.maxY))
+        return pin(clamped, in: screen) { beyond in !members.contains { $0.contains(beyond) } }
+    }
+
+    /// `isOuter` gets a point just past the candidate edge and says whether
+    /// that edge may pin.
+    private static func pin(_ p: CGPoint, in r: CGRect, isOuter: (CGPoint) -> Bool) -> CGPoint {
+        var q = p
+        if p.x - r.minX < edgePinThreshold, isOuter(CGPoint(x: r.minX - 1, y: p.y)) {
+            q.x = r.minX + edgePinInset
+        } else if r.maxX - p.x < edgePinThreshold, isOuter(CGPoint(x: r.maxX + 1, y: p.y)) {
+            q.x = r.maxX - edgePinInset
+        }
+        if p.y - r.minY < edgePinThreshold, isOuter(CGPoint(x: p.x, y: r.minY - 1)) {
+            q.y = r.minY + edgePinInset
+        } else if r.maxY - p.y < edgePinThreshold, isOuter(CGPoint(x: p.x, y: r.maxY + 1)) {
+            q.y = r.maxY - edgePinInset
+        }
+        return q
     }
 
     /// Union bounding rect over the given display IDs. Empty input returns `.null`.

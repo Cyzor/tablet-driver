@@ -54,8 +54,7 @@ extension InputInjector {
             // handling is needed here. `nil` is only a defensive
             // possibility (e.g. a zero-size active area), not a real
             // "pen out of range" signal.
-            rawPoint = Self.pinNearScreenEdges(
-                absPoint, in: displayMapper.displayBounds(for: snap))
+            rawPoint = displayMapper.pinNearEdges(absPoint, snapshot: snap)
         } else {
             displayMapper.clearRelativeAnchor()
             return
