@@ -4,6 +4,7 @@
 
 import Foundation
 import IOKit.hid
+import TabletKit
 
 // MARK: - Device Mode Init
 
@@ -165,7 +166,11 @@ struct DiscoveryResult: Codable {
     /// with the macOS driver that claimed them. Panel controls and bridge
     /// chips live there, not on the tablet's HID interfaces. Optional, so
     /// v18 readers and files still decode.
-    var captureVersion: Int = 19
+    ///
+    /// v20 adds `epicProvider` to each display, telling a Mac's own HDMI
+    /// port from a USB-C/Thunderbolt DisplayPort link. Optional, so v19
+    /// readers and files still decode.
+    var captureVersion: Int = 20
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -261,6 +266,10 @@ struct DiscoveryDisplay: Codable {
     /// Whether the Mac sees an HDMI sink. Some Macs' HDMI ports don't pass
     /// DDC/CI through.
     var hdmi: Bool?
+    /// Display-port controller class behind this display (Apple silicon).
+    /// `AppleDCPMCDP29XX` is the Mac's own HDMI port; anything else is a
+    /// USB-C/Thunderbolt DisplayPort link, possibly adapted to HDMI.
+    var epicProvider: String?
     /// I2C address that answered, hex.
     var ddcAddress: String?
     /// Which checksum the panel accepted: `spec` (0x6E^0x51^…) or `short`
@@ -476,6 +485,68 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
                     + "absolute mode before treating jitter as a decoding fault."))
     }
 
+    if let survey = result.hardwareSurvey {
+        found += surveyFindings(survey)
+    }
+
+    return found
+}
+
+/// Wiring observations from the hardware survey. A pen display's pen and
+/// touch can be separate USB products behind its internal hub; one of them
+/// missing from USB is a cable or connection fact no report data can show.
+/// The Cintiq Pro 16 (DTH-167), for one, needs a USB cable alongside HDMI.
+func surveyFindings(_ survey: DiscoveryHardwareSurvey) -> [DiscoveryFinding] {
+    var found: [DiscoveryFinding] = []
+    let hex = { (pid: Int) in String(format: "0x%04X", pid) }
+    let wacomPIDs = Set(survey.usbDevices.compactMap { device -> Int? in
+        guard device.vendorID == "0x056A" else { return nil }
+        return Int(device.productID.dropFirst(2), radix: 16)
+    })
+
+    for pid in wacomPIDs.sorted() {
+        let pair: (partner: Int, role: String)?
+        if let touch = WacomDeviceRegistry.spec(for: pid)?.touchCompanionPID {
+            pair = (touch, "touch sensor")
+        } else if let pen = WacomDeviceRegistry.knownDevices.first(where: { $0.touchCompanionPID == pid }) {
+            pair = (pen.productID, "pen interface")
+        } else {
+            pair = nil
+        }
+        guard let pair, !wacomPIDs.contains(pair.partner) else { continue }
+        found.append(
+            DiscoveryFinding(
+                kind: "companionNotOnUSB",
+                productID: hex(pid),
+                detail: "\(hex(pid)) is on USB, but its paired \(pair.role) \(hex(pair.partner)) "
+                    + "never enumerated. Check how the display is cabled before reading "
+                    + "anything into missing reports."))
+    }
+
+    // EISA "WAC" — the EDID manufacturer of every Wacom-made display.
+    for display in survey.displays where display.vendorID == "0x5C23" {
+        let name = display.name ?? "Wacom display \(display.productID)"
+        let path: String
+        switch (display.epicProvider, display.hdmi) {
+        case ("AppleDCPMCDP29XX"?, _):
+            path = "the Mac's own HDMI port"
+        case (_?, true?):
+            // Usually a USB-C adapter; a newer Mac's own HDMI port may
+            // not use the MCDP29xx, so don't claim which.
+            path = "HDMI from a DisplayPort controller (adapter or dock likely)"
+        case (_?, _):
+            path = "USB-C or Thunderbolt DisplayPort"
+        case (nil, true?):
+            path = "HDMI"
+        case (nil, _):
+            path = "an undetermined video link"
+        }
+        found.append(
+            DiscoveryFinding(
+                kind: "wacomDisplayVideoPath",
+                productID: nil,
+                detail: "\(name) is connected over \(path); DDC/CI \(display.ddc)."))
+    }
     return found
 }
 

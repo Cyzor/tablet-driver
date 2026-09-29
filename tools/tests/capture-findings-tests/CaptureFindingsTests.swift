@@ -75,6 +75,48 @@ func makeResult(
 // MARK: - Checks
 
 func runChecks() {
+// MARK: Hardware survey wiring
+
+// Issue #19's shape: only the Cintiq Pro 16's touch sensor reached USB.
+func usb(_ pid: String) -> DiscoveryUSBDevice {
+    DiscoveryUSBDevice(
+        vendorID: "0x056A", productID: pid, name: nil, locationID: "0x02120000",
+        reason: "tablet", drivers: [])
+}
+let touchOnly = surveyFindings(DiscoveryHardwareSurvey(displays: [], usbDevices: [usb("0x03B3")]))
+check(
+    touchOnly.first { $0.kind == "companionNotOnUSB" }?.detail.contains("pen interface 0x03B2") == true,
+    "a touch sensor without its pen interface is flagged")
+let penOnly = surveyFindings(DiscoveryHardwareSurvey(displays: [], usbDevices: [usb("0x03B2")]))
+check(
+    penOnly.first { $0.kind == "companionNotOnUSB" }?.detail.contains("touch sensor 0x03B3") == true,
+    "a pen interface without its touch sensor is flagged")
+let both = surveyFindings(
+    DiscoveryHardwareSurvey(displays: [], usbDevices: [usb("0x03B2"), usb("0x03B3")]))
+check(!both.contains { $0.kind == "companionNotOnUSB" }, "a complete pair is not flagged")
+
+func wacomDisplay(provider: String?, hdmi: Bool?) -> DiscoveryDisplay {
+    var d = DiscoveryDisplay(
+        name: "Cintiq Pro 16", vendorID: "0x5C23", productID: "0x0001", ddc: "answered")
+    d.epicProvider = provider
+    d.hdmi = hdmi
+    return d
+}
+let paths: [(DiscoveryDisplay, String)] = [
+    (wacomDisplay(provider: "AppleDCPMCDP29XX", hdmi: true), "the Mac's own HDMI port"),
+    (wacomDisplay(provider: "AppleDCPDPTXController", hdmi: true), "HDMI from a DisplayPort controller"),
+    (wacomDisplay(provider: "AppleDCPDPTXController", hdmi: false), "USB-C or Thunderbolt DisplayPort"),
+]
+for (display, expected) in paths {
+    let detail = surveyFindings(DiscoveryHardwareSurvey(displays: [display], usbDevices: []))
+        .first { $0.kind == "wacomDisplayVideoPath" }?.detail ?? ""
+    check(detail.contains(expected), "video path reads as \(expected)")
+}
+let other = DiscoveryDisplay(name: "LG", vendorID: "0x1E6D", productID: "0x0001", ddc: "answered")
+check(
+    surveyFindings(DiscoveryHardwareSurvey(displays: [other], usbDevices: [])).isEmpty,
+    "non-Wacom displays get no video-path finding")
+
 // MARK: Declared-but-never-observed
 
 // The issue #14 shape: five declared input reports, one ever arrives.

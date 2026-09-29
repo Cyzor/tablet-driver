@@ -81,6 +81,7 @@ enum HardwareSurveyProbe {
                   let link = DDCLink(displayLocation: location)
             else { return display }
 
+            display.epicProvider = link.epicProvider
             display.ddc = "noReply"
             let capabilities = link.readCapabilities()
             let advertised = capabilities.map(advertisedCodes(in:)) ?? []
