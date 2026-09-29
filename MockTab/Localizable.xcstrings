@@ -562,6 +562,18 @@
             "state" : "translated",
             "value" : "%@ — Links"
           }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Izquierda"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — 左"
+          }
         }
       }
     },
@@ -571,6 +583,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ — Rechts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Derecha"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — 右"
           }
         }
       }
@@ -4393,6 +4417,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bildschirmbereich begrenzen. Der Rest bleibt zu."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limita la tableta a una parte de la pantalla. El resto queda fuera de alcance."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画面の一部だけに割り当てます。残りには届きません。"
           }
         }
       }
