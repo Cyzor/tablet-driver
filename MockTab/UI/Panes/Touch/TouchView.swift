@@ -344,7 +344,7 @@ struct TouchView: View {
                     Text("Not all system gestures are available.")
                         .appFont(.subheadline)
                         .fontWeight(.semibold)
-                    Text("MockTab does not currently support all system gestures, such as Mission Control, Spaces, Launchpad, and App Exposé.")
+                    Text("MockTab does not currently support all system gestures.")
                         .appFont(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

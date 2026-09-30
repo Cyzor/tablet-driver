@@ -11698,25 +11698,25 @@
         }
       }
     },
-    "MockTab does not currently support all system gestures, such as Mission Control, Spaces, Launchpad, and App Exposé." : {
+    "MockTab does not currently support all system gestures." : {
       "comment" : "Body text of the disclaimer at the bottom of the TouchView.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab unterstützt derzeit nicht alle Systemgesten, etwa Mission Control, Spaces, Launchpad und App Exposé."
+            "value" : "MockTab unterstützt derzeit nicht alle Systemgesten."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab todavía no admite todos los gestos del sistema, como Mission Control, Spaces, Launchpad y App Exposé."
+            "value" : "MockTab todavía no admite todos los gestos del sistema."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTabは現在、Mission Control、Spaces、Launchpad、App Exposéなど、一部のシステムジェスチャーには対応していません。"
+            "value" : "MockTabは現在、一部のシステムジェスチャーには対応していません。"
           }
         }
       }
