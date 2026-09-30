@@ -121,7 +121,6 @@ extension TabletSettings {
     static let toolSettingsKeys: [String] = [
         "smoothingStrength", "pressureSmoothingStrength", "pressureThreshold", "panScrollSpeed",
         "panScrollMomentum",
-        "useRotationAsTilt", "rotationTiltOffsetDegrees", "rotationTiltMagnitude",
         "tipBinding", "eraserBinding", "penButton1Binding", "penButton2Binding",
         "penButton3Binding", "penButton4Binding", "penButton5Binding", "wheelBinding",
         "pressureCurve",

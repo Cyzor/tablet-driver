@@ -79,36 +79,6 @@ struct PenFeelView: View {
                 .help(
                     "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
 
-                DescribedToggle(
-                    "Art Pen: Swap Tilt with Rotation",
-                    isOn: rotationAsTiltBinding,
-                    description:
-                        "Disables tilt so supported apps can detect barrel rotation."
-                )
-                .help(
-                    "Feeds barrel rotation into Photoshop's Pen Tilt control by sending fake tilt data. Real tilt is suppressed while this is on. Use in Brush Dynamics → Shape Dynamics → Angle → Pen Tilt."
-                )
-
-                if tool.useRotationAsTilt {
-                    SettingSliderRow(
-                        "Tilt Offset",
-                        value: settings.recordingBinding(
-                            String(localized: "Tilt Offset"), toolOwned: true,
-                            get: { tool.rotationTiltOffsetDegrees },
-                            set: { tool.rotationTiltOffsetDegrees = $0 }),
-                        in: -180...180,
-                        valueText: "\(Int(tool.rotationTiltOffsetDegrees))°")
-
-                    SettingSliderRow(
-                        "Tilt Magnitude",
-                        value: settings.recordingBinding(
-                            String(localized: "Tilt Magnitude"), toolOwned: true,
-                            get: { tool.rotationTiltMagnitude },
-                            set: { tool.rotationTiltMagnitude = $0 }),
-                        in: 0.1...1.0,
-                        valueText: String(format: "%.0f%%", tool.rotationTiltMagnitude * 100))
-                }
-
                 DescribedToggle("Relative Cursor Movement", isOn: relativeCursorMovementBinding) {
                     Text("Current: ")
                         + Text(
@@ -251,8 +221,7 @@ struct PenFeelView: View {
     /// single Cmd-Z undo the whole reset instead of two.
     private typealias ToolResetState = (
         curve: BezierCurve, smoothing: Double, pressureSmoothing: Double, pressureThreshold: Double,
-        rotationAsTilt: Bool, tiltOffset: Double, tiltMagnitude: Double, panSpeed: Double,
-        panMomentum: Bool
+        panSpeed: Double, panMomentum: Bool
     )
     private typealias SettingsResetState = (
         doubleClick: Double, invertRotation: Bool, relativeCursor: Bool,
@@ -262,14 +231,13 @@ struct PenFeelView: View {
     private func resetToDefaults() {
         let toolOld: ToolResetState = (
             tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength, tool.pressureThreshold,
-            tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
             tool.panScrollSpeed, tool.panScrollMomentum
         )
         let settingsOld: SettingsResetState = (
             settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
             settings.tipUpAssistDelay, settings.dragThreshold
         )
-        let toolDefaults: ToolResetState = (.linear, 0, 0, 0, false, 0, 0.8, 1.0, true)
+        let toolDefaults: ToolResetState = (.linear, 0, 0, 0, 1.0, true)
         let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, 0.0)
 
         settings.undoManager?.beginUndoGrouping()
@@ -281,7 +249,6 @@ struct PenFeelView: View {
     /// Self-recursive so "Reset to Defaults" also redoes the tool-owned half.
     private func applyToolReset(_ new: ToolResetState, undoTo old: ToolResetState) {
         (tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength, tool.pressureThreshold,
-         tool.useRotationAsTilt, tool.rotationTiltOffsetDegrees, tool.rotationTiltMagnitude,
          tool.panScrollSpeed, tool.panScrollMomentum) = new
         tool.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applyToolReset(old, undoTo: new)
@@ -346,13 +313,6 @@ struct PenFeelView: View {
             String(localized: "Invert Rotation", comment: "Undo action name: pen barrel-rotation direction in the Pen Feel pane"),
             get: { settings.invertRotation },
             set: { settings.invertRotation = $0 })
-    }
-
-    private var rotationAsTiltBinding: Binding<Bool> {
-        settings.recordingBinding(
-            String(localized: "Rotation as Tilt", comment: "Undo action name: mapping barrel rotation to fake tilt in the Pen Feel pane"), toolOwned: true,
-            get: { tool.useRotationAsTilt },
-            set: { tool.useRotationAsTilt = $0 })
     }
 
     private var relativeCursorMovementBinding: Binding<Bool> {

@@ -256,98 +256,6 @@
         }
       }
     },
-    "Email goes to %@" : {
-      "comment" : "Caption naming the address for emailed diagnostics",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "E-Mail an %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Correo a %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "メールの宛先：%@"
-          }
-        }
-      }
-    },
-    "Email…" : {
-      "comment" : "Button label: send the data collection file by email",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "E-Mail…"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Correo…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "メール…"
-          }
-        }
-      }
-    },
-    "Send to %@" : {
-      "comment" : "Line in the diagnostics email body naming the address to send it to",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Senden an %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enviar a %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "送信先：%@"
-          }
-        }
-      }
-    },
-    "How well is MockTab working for you? Please describe your experience and what needs to improve.\n\n" : {
-      "comment" : "Prompt placed in the body of the diagnostics email",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wie gut funktioniert MockTab bei dir? Beschreib bitte deine Erfahrung und was besser werden sollte.\n\n"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "¿Qué tal te funciona MockTab? Describe tu experiencia y qué debería mejorar.\n\n"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTabの使い心地はいかがですか？ご感想と改善してほしい点をお書きください。\n\n"
-          }
-        }
-      }
-    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -2634,6 +2542,7 @@
       }
     },
     "Art Pen: Swap Tilt with Rotation" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6432,6 +6341,7 @@
       }
     },
     "Disables tilt so supported apps can detect barrel rotation." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7396,6 +7306,52 @@
         }
       }
     },
+    "Email goes to %@" : {
+      "comment" : "Caption naming the address for emailed diagnostics",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-Mail an %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correo a %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メールの宛先：%@"
+          }
+        }
+      }
+    },
+    "Email…" : {
+      "comment" : "Button label: send the data collection file by email",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-Mail…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correo…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メール…"
+          }
+        }
+      }
+    },
     "Enable" : {
       "comment" : "Button that turns on Launch at Login from the Info tab",
       "localizations" : {
@@ -8244,6 +8200,7 @@
       }
     },
     "Feeds barrel rotation into Photoshop's Pen Tilt control by sending fake tilt data. Real tilt is suppressed while this is on. Use in Brush Dynamics → Shape Dynamics → Angle → Pen Tilt." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9648,6 +9605,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quick Keys がスリープするまでの時間。任意のキーを押すと復帰します。"
+          }
+        }
+      }
+    },
+    "How well is MockTab working for you? Please describe your experience and what needs to improve.\n\n" : {
+      "comment" : "Prompt placed in the body of the diagnostics email",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie gut funktioniert MockTab bei dir? Beschreib bitte deine Erfahrung und was besser werden sollte.\n\n"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Qué tal te funciona MockTab? Describe tu experiencia y qué debería mejorar.\n\n"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTabの使い心地はいかがですか？ご感想と改善してほしい点をお書きください。\n\n"
           }
         }
       }
@@ -12747,6 +12727,28 @@
         }
       }
     },
+    "Not available for this display." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für dieses Display nicht verfügbar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No disponible para esta pantalla."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このディスプレイでは使用できません。"
+          }
+        }
+      }
+    },
     "Not collecting" : {
       "comment" : "HID discovery: status shown when collection could not be started",
       "localizations" : {
@@ -13083,6 +13085,35 @@
           "stringUnit" : {
             "state" : "machine_translated",
             "value" : "オン（既定）: 2本の指でトラックパッド風のフェーズ付きストリームを送信するため、スクロールビューを持つアプリは指を離した後も動き続けます。オフ: 慣性はありませんが、はるかに多くのアプリ（“カレンダー”の月/年ビューを含む）でスクロールできるシンプルなストリームです。"
+          }
+        }
+      }
+    },
+    "On GitHub, drag the file into the form." : {
+      "comment" : "Caption on the data-collection completion screen",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf GitHub die Datei ins Formular ziehen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "The issue comes pre-filled. Too big for the form? Drag the file in."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "En GitHub, arrastra el archivo al formulario."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "GitHubではファイルをフォームにドラッグしてください。"
           }
         }
       }
@@ -17202,6 +17233,7 @@
     },
     "Rotation as Tilt" : {
       "comment" : "Undo action name: mapping barrel rotation to fake tilt in the Pen Feel pane",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17713,6 +17745,29 @@
           "stringUnit" : {
             "state" : "machine_translated",
             "value" : "送信"
+          }
+        }
+      }
+    },
+    "Send to %@" : {
+      "comment" : "Line in the diagnostics email body naming the address to send it to",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senden an %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar a %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "送信先：%@"
           }
         }
       }
@@ -19568,57 +19623,6 @@
         }
       }
     },
-    "Not available for this display." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Für dieses Display nicht verfügbar."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No disponible para esta pantalla."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このディスプレイでは使用できません。"
-          }
-        }
-      }
-    },
-    "On GitHub, drag the file into the form." : {
-      "comment" : "Caption on the data-collection completion screen",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf GitHub die Datei ins Formular ziehen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "The issue comes pre-filled. Too big for the form? Drag the file in."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "En GitHub, arrastra el archivo al formulario."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "GitHubではファイルをフォームにドラッグしてください。"
-          }
-        }
-      }
-    },
     "the Linux Wacom Project" : {
       "comment" : "Link label: the Linux Wacom Project (libwacom's parent project)",
       "localizations" : {
@@ -19828,6 +19832,7 @@
       }
     },
     "Tilt Magnitude" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -19856,6 +19861,7 @@
       }
     },
     "Tilt Offset" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

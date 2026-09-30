@@ -112,25 +112,16 @@ final class ToolSettings: ObservableObject {
         didSet { persist("panScrollMomentum", panScrollMomentum) }
     }
 
-    /// When true, real tilt is suppressed and barrel rotation is sent as synthetic tilt
-    /// instead — a "bait and switch" so Photoshop's Pen Tilt brush dynamics respond to
-    /// barrel twist. Intended as a per-app opt-in (e.g. Adobe Photoshop); real tilt is
-    /// sacrificed while this is enabled.
-    @Published var useRotationAsTilt: Bool = false {
-        didSet { persist("useRotationAsTilt", useRotationAsTilt) }
-    }
-
-    /// Offset (degrees) applied to barrel rotation before mapping to synthetic tilt.
-    /// Lets users align "neutral" pen orientation with a desired brush angle.
-    @Published var rotationTiltOffsetDegrees: Double = 0.0 {
-        didSet { persist("rotationTiltOffsetDegrees", rotationTiltOffsetDegrees) }
-    }
-
-    /// Magnitude (0.0–1.0) of the synthetic tilt vector derived from rotation.
-    /// Lower values reduce effective tilt range; 1.0 = full unit circle.
-    @Published var rotationTiltMagnitude: Double = 0.8 {
-        didSet { persist("rotationTiltMagnitude", rotationTiltMagnitude) }
-    }
+    /// Sends barrel rotation as synthetic tilt, suppressing real tilt. Obsolete
+    /// since Art Pens advertise rotation (Photoshop now reads it directly); kept
+    /// as a no-UI fallback, read from bare keys only so stale per-device values
+    /// from the old toggle stay inert:
+    /// `defaults write com.cyzor.mocktab useRotationAsTilt -bool true`.
+    private(set) var useRotationAsTilt = false
+    /// Degrees added to rotation before mapping (`rotationTiltOffsetDegrees`).
+    private(set) var rotationTiltOffsetDegrees = 0.0
+    /// Synthetic tilt vector length, 0.1–1.0 (`rotationTiltMagnitude`).
+    private(set) var rotationTiltMagnitude = 0.8
 
     @Published private var tipRaw: String = "" {
         didSet {
@@ -281,9 +272,10 @@ final class ToolSettings: ObservableObject {
             "pressureThreshold", default: Self.deviceDefaultPressureThreshold(prefix: prefix))
         panScrollSpeed = loadDouble("panScrollSpeed", default: 1.0)
         panScrollMomentum = loadBool("panScrollMomentum", default: false)
-        useRotationAsTilt = loadBool("useRotationAsTilt", default: false)
-        rotationTiltOffsetDegrees = loadDouble("rotationTiltOffsetDegrees", default: 0.0)
-        rotationTiltMagnitude = loadDouble("rotationTiltMagnitude", default: 0.8)
+        useRotationAsTilt = ud.bool(forKey: "useRotationAsTilt")
+        rotationTiltOffsetDegrees = ud.object(forKey: "rotationTiltOffsetDegrees") as? Double ?? 0.0
+        rotationTiltMagnitude = Swift.min(
+            1.0, Swift.max(0.1, ud.object(forKey: "rotationTiltMagnitude") as? Double ?? 0.8))
         tipRaw = loadString("tipBinding", default: "")
         eraserRaw = loadString("eraserBinding", default: "")
         pen1Raw = loadString("penButton1Binding", default: "")
@@ -383,9 +375,6 @@ final class ToolSettings: ObservableObject {
         self.pressureCurve = pressureCurve
         self.smoothingStrength = smoothingStrength
         self.pressureSmoothingStrength = pressureSmoothingStrength
-        self.useRotationAsTilt = false
-        self.rotationTiltOffsetDegrees = 0.0
-        self.rotationTiltMagnitude = 0.8
         isLoading = false
     }
 

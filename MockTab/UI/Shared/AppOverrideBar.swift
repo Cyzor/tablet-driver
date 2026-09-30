@@ -54,7 +54,6 @@ struct AppOverrideBar: View {
         "pressureCurve", "smoothingStrength", "pressureSmoothingStrength", "pressureThreshold",
         "doubleClickDistance",
         "invertRotation", "relativeCursorMovement", "tipUpAssistDelay", "dragThreshold",
-        "useRotationAsTilt", "rotationTiltOffsetDegrees", "rotationTiltMagnitude",
         "panScrollSpeed", "panScrollMomentum",
     ]
 
