@@ -4,6 +4,7 @@
     compare.py mocktab.jsonl reference.jsonl            # every event type
     compare.py mocktab.jsonl reference.jsonl --type 22  # scroll events only
     compare.py capture.jsonl --split-source             # one file, by sender
+    compare.py ours.jsonl ref.jsonl --from MockTab "pid 59923"   # one sender each
 
 For each event type seen in either capture, lists the fields only one side
 sends, and for shared fields, how their values differ. Fields that vary
@@ -97,6 +98,11 @@ def main():
         i = args.index("--type")
         only_type = int(args[i + 1])
         del args[i:i + 2]
+    senders = None
+    if "--from" in args:
+        i = args.index("--from")
+        senders = (args[i + 1], args[i + 2])
+        del args[i:i + 3]
     if "--split-source" in args:
         args.remove("--split-source")
         events = load(args[0])
@@ -112,7 +118,11 @@ def main():
     if len(args) != 2:
         print(__doc__.strip())
         return 2
-    compare(load(args[0]), load(args[1]), "A", "B", only_type)
+    a, b = load(args[0]), load(args[1])
+    if senders:
+        a = [e for e in a if e["source"] == senders[0]]
+        b = [e for e in b if e["source"] == senders[1]]
+    compare(a, b, "A", "B", only_type)
     print("\nA =", args[0], "\nB =", args[1])
     return 0
 
