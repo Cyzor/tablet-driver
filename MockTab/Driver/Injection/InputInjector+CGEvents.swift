@@ -286,6 +286,9 @@ extension InputInjector {
             event.timestamp = Self.currentReportTimestampNs
         }
         stampClickSequence(event)
+        // Wacom's driver marks every event non-coalesced, so the system keeps
+        // each pen sample instead of merging moves (event-probe, 2026-09-30).
+        event.flags.insert(.maskNonCoalesced)
         // Diagnostic: `event.post` is synchronous IPC into WindowServer and
         // the only stage no other stall probe covers.
         let postStart = mach_absolute_time()
@@ -449,6 +452,12 @@ extension InputInjector {
         return (tiltX, tiltY, rotation)
     }
 
+    /// Raw digitizer coordinates, which Wacom's driver puts on every pen event.
+    func stampTabletPosition(_ e: CGEvent, _ p: TabletPoint) {
+        e.setIntegerValueField(.tabletEventPointX, value: Int64(p.x))
+        e.setIntegerValueField(.tabletEventPointY, value: Int64(p.y))
+    }
+
     func postMouseDown(
         button: CGMouseButton, at location: CGPoint,
         pressure: Double, clickCount: Int,
@@ -475,6 +484,7 @@ extension InputInjector {
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
         e.setDoubleValueField(.mouseEventPressure, value: pressure)
         if let p = point {
+            stampTabletPosition(e, p)
             let pose = resolveEffectivePose(point: p, snapshot: snapshot)
             e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
             e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
@@ -509,6 +519,7 @@ extension InputInjector {
         e.setDoubleValueField(.tabletEventPointPressure, value: 0)
         e.setDoubleValueField(.mouseEventPressure, value: 0)
         if let p = point {
+            stampTabletPosition(e, p)
             let pose = resolveEffectivePose(point: p, snapshot: snapshot)
             e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
             e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
@@ -541,7 +552,8 @@ extension InputInjector {
         e.setIntegerValueField(.tabletEventPointButtons, value: pressure > InputInjector.tipPressureThreshold ? 1 : 0)
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
         e.setDoubleValueField(.mouseEventPressure, value: pressure)
-        if point != nil {
+        if let point {
+            stampTabletPosition(e, point)
             e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
             e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
             e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
@@ -568,9 +580,10 @@ extension InputInjector {
                 mouseEventSource: sessionSource, mouseType: .mouseMoved,
                 mouseCursorPosition: location, mouseButton: .left)
         else { return }
-        if point != nil {
+        if let point {
             e.setIntegerValueField(.mouseEventSubtype, value: 1)
             e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+            stampTabletPosition(e, point)
             e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
             e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
             e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
@@ -626,7 +639,25 @@ extension InputInjector {
         }
         e.type = .tabletProximity
         e.location = location
+        stampProximityFields(e, entering: entering, eraser: eraser)
+        e.flags = currentEventFlags
+        finalizeAndPost(e)
 
+        // Wacom's driver also sends each proximity change as a mouse event of
+        // subtype 2 carrying the same fields; Cocoa apps that read proximity
+        // from NSEvent subtypes only see this copy (event-probe, 2026-09-30).
+        guard
+            let m = CGEvent(
+                mouseEventSource: sessionSource, mouseType: .mouseMoved,
+                mouseCursorPosition: location, mouseButton: .left)
+        else { return }
+        m.setIntegerValueField(.mouseEventSubtype, value: 2)
+        stampProximityFields(m, entering: entering, eraser: eraser)
+        m.flags = moveSafeEventFlags
+        finalizeAndPost(m)
+    }
+
+    private func stampProximityFields(_ e: CGEvent, entering: Bool, eraser: Bool) {
         e.setIntegerValueField(
             .tabletProximityEventVendorID,
             value: Int64(deviceVendorID))
@@ -643,6 +674,7 @@ extension InputInjector {
         // Serial lets apps maintain per-tool brush memories (e.g. Photoshop's tool presets).
         // Eraser end uses serial | 0x80000000 so tip and eraser each get an independent slot.
         // kCGTabletProximityEventPointerSerialNumber = 172 (raw value; not exposed in Swift).
+        let toolCode = activeToolCode
         if activeToolSerial != 0 {
             let serial: Int64 =
                 eraser
@@ -654,44 +686,45 @@ extension InputInjector {
         }
         e.setIntegerValueField(.tabletProximityEventSystemTabletID, value: 0)
 
-        // pointerType: 0 = leaving, 1 = pen, 2 = cursor/mouse, 3 = eraser
-        let ptrType: Int64 = entering ? (eraser ? 3 : (activeToolIsMouse ? 2 : 1)) : 0
+        // pointerType: 1 = pen, 2 = cursor/mouse, 3 = eraser. Wacom keeps it on
+        // the leaving event too; enterProximity alone marks the direction.
+        let ptrType: Int64 = eraser ? 3 : (activeToolIsMouse ? 2 : 1)
         e.setIntegerValueField(.tabletProximityEventPointerType, value: ptrType)
 
-        // Use activeToolCode for vendor pointer type; default to Grip Pen (0x0802).
-        // Art Pen variants use 0x0812 (rotation-capable pen subtype) so apps like Krita
-        // and Rebelle categorise the tool correctly and use rotation rather than tilt.
-        // Previously reported as 0x0802 to work around a barrel-button debounce bug
-        // (EA/E0 sub-frame; barrel bits read from rotation packets) — now fixed.
-        let toolCode = activeToolCode
-        let vendorPtr: Int64
-        if eraser {
-            vendorPtr = 0x080A  // Grip Pen Eraser
-        } else if activeToolIsMouse {
+        // The pen's own tool code, as Wacom reports it. The eraser end sets
+        // bit 0x8 (Grip Pen 0x802 → 0x80A), which Photoshop and Krita need to
+        // switch tools: Wacom keeps the pen's code but gives the eraser its own
+        // unique ID, and without a serial ours would be identical.
+        var vendorPtr: Int64
+        let isArtPen: Bool
+        if activeToolIsMouse {
             vendorPtr = 0x0006  // Intuos Mouse
+            isArtPen = false
         } else {
             switch toolCode {
             case 0x0804, 0x1108, 0x1804:  // Art Pen variants
-                vendorPtr = 0x0812  // Art Pen / rotation-capable pen
-            case 0x0842:  // Pro Pen 2
-                vendorPtr = 0x0842
-            case 0x0832:  // Pro Pen 2
-                vendorPtr = 0x0832
-            case 0x0852:  // Pen 4K
-                vendorPtr = 0x0852
+                vendorPtr = 0x0804
+                isArtPen = true
+            case 0x0842, 0x0832, 0x0852:  // Pro Pen 2 variants, Pen 4K
+                vendorPtr = Int64(toolCode)
+                isArtPen = false
             default:
                 vendorPtr = 0x0802  // Grip Pen fallback
+                isArtPen = false
             }
         }
+        if eraser { vendorPtr |= 0x8 }
         e.setIntegerValueField(.tabletProximityEventVendorPointerType, value: vendorPtr)
-        // Device ID, abs X/Y, buttons, tilt X/Y, pressure; plus rotation
-        // (NX_TABLET_CAPABILITY_ROTATIONMASK) for Art Pens, so apps that check
-        // the mask, like Photoshop's Rotation brush control, accept it.
-        let capabilities: Int64 = vendorPtr == 0x0812 ? 0x25C7 : 0x05C7
+        // Unique per pen end: tool code above the serial, as Wacom's are built.
+        e.setIntegerValueField(
+            .tabletProximityEventVendorUniqueID,
+            value: vendorPtr << 32 | Int64(activeToolSerial))
+        // Wacom's mask minus abs Z, which we don't send: device ID, abs X/Y,
+        // buttons, tilt X/Y, pressure, orientation; plus rotation for Art Pens
+        // (Photoshop's Rotation brush control checks it).
+        let capabilities: Int64 = isArtPen ? 0x35C7 : 0x15C7
         e.setIntegerValueField(.tabletProximityEventCapabilityMask, value: capabilities)
         e.setIntegerValueField(.tabletProximityEventEnterProximity, value: entering ? 1 : 0)
-        e.flags = currentEventFlags
-        finalizeAndPost(e)
     }
 
     // MARK: - Button binding execution
@@ -1433,20 +1466,26 @@ extension InputInjector {
     /// well-phased gesture with zero deltas and ignored it. NSScrollView
     /// tolerates the wheel-only shape, which is why the gap was app-specific.
     func applyTrackpadDeltaFields(_ e: CGEvent, dx: Double, dy: Double) {
-        let ix = Int64(dx), iy = Int64(dy)
-        e.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: iy)
-        e.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: ix)
-        e.setIntegerValueField(.scrollWheelEventFixedPtDeltaAxis1, value: Int64(dy * 65536.0))
-        e.setIntegerValueField(.scrollWheelEventFixedPtDeltaAxis2, value: Int64(dx * 65536.0))
+        // Order matters: writing a line delta makes CoreGraphics recompute the
+        // point (lines × 8) and fixed-point (whole lines) fields, so lines go
+        // first. Writing them last quantized every pan to 8 pt steps and
+        // dropped sub-line motion entirely (event-probe, 2026-09-30).
+        //
         // Line deltas (~10 px/line, the scale real trackpads report); keep a
         // minimum of 1 so slow pans don't quantize to nothing on the legacy
         // line-delta path.
+        let ix = Int64(dx), iy = Int64(dy)
         e.setIntegerValueField(
             .scrollWheelEventDeltaAxis1,
             value: iy == 0 ? 0 : max(1, abs(iy) / 10) * (iy < 0 ? -1 : 1))
         e.setIntegerValueField(
             .scrollWheelEventDeltaAxis2,
             value: ix == 0 ? 0 : max(1, abs(ix) / 10) * (ix < 0 ? -1 : 1))
+        // Fixed-point deltas are fractional lines, as a trackpad sends them.
+        e.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1, value: dy / 10)
+        e.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2, value: dx / 10)
+        e.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: Int64(dy.rounded()))
+        e.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: Int64(dx.rounded()))
     }
 
     // MARK: - Scroll Drag momentum tail (Natural mode)

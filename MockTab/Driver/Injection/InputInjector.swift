@@ -595,9 +595,14 @@ final class InputInjector: @unchecked Sendable {
     /// Applies a tool's pressure LUT (dead zone + response curve) to a raw
     /// normalized sensor reading. Shared by the injection path and the Info
     /// pane so the pane's tip indicator can't disagree with what gets injected.
+    /// Interpolates between entries: indexing alone cut 8192-level sensors
+    /// down to 256 output steps (event-probe capture, 2026-09-30).
     static func curvedPressure(_ normalized: Double, lut: [Double]) -> Double {
-        let idx = Swift.min(Swift.max(Int((normalized * 255.0).rounded()), 0), 255)
-        return lut[idx]
+        let pos = Swift.min(Swift.max(normalized, 0), 1) * Double(lut.count - 1)
+        let i = Int(pos)
+        guard i < lut.count - 1 else { return lut[lut.count - 1] }
+        let frac = pos - Double(i)
+        return lut[i] + (lut[i + 1] - lut[i]) * frac
     }
 
     // MARK: - Tip-up assist
