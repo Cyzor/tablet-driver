@@ -403,9 +403,9 @@ extension InputInjector {
     }
 
     /// Resolves effective pen pose for CGEvent stamping.
-    /// When useRotationAsTilt is true on the active tool, real tilt is suppressed and
-    /// barrel rotation is sent as synthetic tilt instead — a "bait and switch" so
-    /// Photoshop's Pen Tilt brush dynamics respond to barrel twist.
+    /// With the no-UI `useRotationAsTilt` key set, real tilt is suppressed and
+    /// barrel rotation is sent as synthetic tilt instead. Obsolete Photoshop
+    /// workaround: Art Pens now advertise rotation, which Photoshop reads directly.
     func resolveEffectivePose(
         point: TabletPoint,
         snapshot: InjectionSnapshot

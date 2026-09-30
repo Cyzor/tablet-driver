@@ -726,9 +726,9 @@ final class InputInjector: @unchecked Sendable {
     /// `false` (Compatible): the pan stream is deliberately phase-FREE
     /// (`scrollWheelEventScrollPhase = 0`, no began/changed/ended envelope, no
     /// momentum tail). A real trackpad wraps its continuous deltas in a phase
-    /// lifecycle plus a companion gesture-event stream, but that gesture backing
-    /// can't be forged through the public CGEvent API — and without it, the
-    /// phased envelope is rejected by the recognizers named above. Captured
+    /// lifecycle plus a companion gesture-event stream; we assume that backing
+    /// is what the recognizers named above miss, though a field-by-field
+    /// comparison with a trackpad has never been done. Captured
     /// third-party scroll tools (Smooze) that pan those apps smoothly emit
     /// exactly this phase-free shape. Per-app opt-out where momentum isn't
     /// honored.

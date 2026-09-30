@@ -50,8 +50,6 @@ Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müss
 
 **Drehrichtung umkehren** – Kehrt die Drehrichtung des Stifts um. Aktiviere das pro App für Anwendungen, die Rotation verkehrt interpretieren, zum Beispiel Krita.
 
-**Art Pen: Neigung mit Rotation tauschen** – Leitet die Barrel-Rotation in Photoshops Pen-Tilt-Steuerung um, indem simulierte Neigungsdaten gesendet werden; echte Neigung wird dabei unterdrückt. Verwende es unter Brush Dynamics → Shape Dynamics → Angle → Pen Tilt. Nach dem Aktivieren erscheinen die Regler Tilt Offset und Tilt Magnitude, um das simulierte Signal fein abzustimmen.
-
 **Relative Cursorbewegung** – Wechselt vom absoluten Modus (jeder Punkt auf dem Grafiktablett entspricht einem festen Punkt auf dem Bildschirm, wie bei einem Stift) in den relativen Modus (der Cursor bewegt sich um die Strecke, die du den Stift bewegst, wie bei einer Maus).
 
 ## Pan View

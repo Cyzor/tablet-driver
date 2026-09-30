@@ -50,8 +50,6 @@ Este ajuste controla lo cerca que deben estar dos toques para contar como doble 
 
 **Invertir dirección de rotación** – Invierte el sentido de giro del lápiz. Actívalo por aplicación para las apps que interpretan la rotación al revés, como Krita.
 
-**Art Pen: intercambiar inclinación con rotación** – Envía la rotación del barril al control Pen Tilt de Photoshop mediante datos de inclinación simulados, a costa de suprimir la inclinación real mientras está activado. Úsalo en Brush Dynamics → Shape Dynamics → Angle → Pen Tilt. Al activarlo aparecen los deslizadores Tilt Offset y Tilt Magnitude para afinar la señal simulada.
-
 **Movimiento relativo del cursor** – Cambia del modo absoluto (cada punto de la tableta corresponde a un punto fijo de la pantalla, como con un lápiz) al modo relativo (el cursor se mueve según la distancia que desplazas el lápiz, como con un ratón).
 
 ## Pan View

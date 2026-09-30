@@ -15,22 +15,16 @@ import TabletKit
 /// drive it, and the only event-construction site (`InputInjector.postPanScroll`)
 /// stays a single replaceable backend.
 ///
-/// Momentum is *not* synthesized, and the stream carries no scroll-phase
-/// envelope. The posting backend (`InputInjector.postPanScroll`) tags every
-/// event continuous with `scrollWheelEventScrollPhase = 0` and no
-/// began/changed/ended lifecycle. That phase-free shape is deliberate: a real
-/// trackpad pairs its phased deltas with a companion gesture-event stream that
-/// the public CGEvent API cannot forge, and recognizers that key on the phase
-/// lifecycle (Calendar Month/Year, WebKit gesture-scroll / overscroll-behavior,
-/// Adobe palettes) reject a phased stream that lacks that gesture backing.
-/// Captured third-party scroll tools that pan those apps smoothly (Smooze)
-/// emit exactly this phase-free continuous shape.
-///
-/// A short-window release velocity is still maintained here regardless (it is
-/// the entire input a momentum tail needs, real or synthetic), for the day a
-/// virtual HID trackpad (the parked IOHIDUserDevice spike) lets this tracker's
-/// intents become "report contact began/moved/ended" with true system-level
-/// gesture + inertia in *every* app. v1 records the velocity and discards it.
+/// The stream's shape follows the tool's Momentum setting
+/// (`panScrollUsePhases`). On: a began/changed/ended phase envelope, and on
+/// release a synthetic coast (`panMomentumTail`, MomentumTail.swift) seeded
+/// from the release velocity tracked here. Off: phase-free continuous events
+/// and no coast. The phase-free shape exists because recognizers that key on
+/// the phase lifecycle (Calendar Month/Year, WebKit gesture-scroll, Adobe
+/// palettes) have rejected our phased stream; a real trackpad backs its
+/// phases with a companion gesture-event stream, and whether that is what
+/// we lack, or just missing fields, is untested. Smooze, which pans those
+/// apps smoothly, emits the phase-free shape.
 ///
 /// Owned by `InputInjector`; HIDThread-confined like its sibling trackers.
 struct PanScrollTracker {

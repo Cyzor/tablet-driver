@@ -50,8 +50,6 @@ This setting controls how close two taps must be to count as a double-click. Inc
 
 **Invert Rotation Direction** – reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).
 
-**Art Pen: Swap Tilt with Rotation** – feeds barrel rotation into Photoshop's Pen Tilt control by sending fake tilt data, at the cost of suppressing real tilt while it's on. Use in Brush Dynamics → Shape Dynamics → Angle → Pen Tilt. When enabled, Tilt Offset and Tilt Magnitude sliders appear to fine-tune the fake tilt signal.
-
 **Relative Cursor Movement** – switches from absolute mode (each point on the tablet maps to a fixed point on screen, like a stylus) to relative mode (the cursor moves by the distance you move the pen, like a mouse).
 
 ## Pan View
