@@ -671,18 +671,13 @@ extension InputInjector {
         e.setIntegerValueField(.tabletProximityEventPointerID, value: pointerID)
         e.setIntegerValueField(.tabletProximityEventDeviceID, value: 1)
 
-        // Serial lets apps maintain per-tool brush memories (e.g. Photoshop's tool presets).
-        // Eraser end uses serial | 0x80000000 so tip and eraser each get an independent slot.
-        // kCGTabletProximityEventPointerSerialNumber = 172 (raw value; not exposed in Swift).
+        // Serial lets apps keep per-pen tool presets (Photoshop). Both ends
+        // share it, as with Wacom; the unique ID below tells them apart.
         let toolCode = activeToolCode
         if activeToolSerial != 0 {
-            let serial: Int64 =
-                eraser
-                ? Int64(bitPattern: UInt64(activeToolSerial) | 0x8000_0000)
-                : Int64(activeToolSerial)
-            if let serialField = CGEventField(rawValue: 172) {
-                e.setIntegerValueField(serialField, value: serial)
-            }
+            e.setIntegerValueField(
+                .tabletProximityEventVendorPointerSerialNumber,
+                value: Int64(activeToolSerial))
         }
         e.setIntegerValueField(.tabletProximityEventSystemTabletID, value: 0)
 

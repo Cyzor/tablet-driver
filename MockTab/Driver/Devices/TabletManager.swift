@@ -937,9 +937,11 @@ final class TabletManager: ObservableObject {
             // affects only tuning, not tool recognition.
             context.injector.activeToolSettings = toolSets
             // Re-asserted for paths that reach this Task without running the
-            // synchronous block above; a no-op when they don't.
+            // synchronous block above; a no-op when they don't. Not the eraser
+            // flag: the first pen frame sets it from the report, and arriving
+            // ~6 ms later this reset a PTH-860 eraser (tool code says pen) to
+            // the pen, so the eraser left proximity as the pen.
             context.injector.activeToolIsMouse = identity.isMouse
-            context.injector.activeToolIsEraser = identity.isEraser
             context.injector.activeToolSerial = identity.serial
             context.injector.activeToolCode = identity.toolCode
             context.activeToolID = toolID
