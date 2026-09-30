@@ -145,12 +145,9 @@ extension InputInjector {
 
         // ── Proximity transitions (always immediate) ───────────────────────────
         if point.inProximity != lastProximity {
-            // Suppressed for Finder only (see AppInputProfile.finderPlainMouse).
-            if activeAppProfile == .generic {
-                postProximityEvent(
-                    entering: point.inProximity, at: rawPoint,
-                    eraser: point.eraser)
-            }
+            postProximityEvent(
+                entering: point.inProximity, at: rawPoint,
+                eraser: point.eraser)
             if point.inProximity {
                 TouchPipelineProbe.note { $0.penProximityEnters += 1 }
                 activeToolIsEraser = point.eraser
@@ -301,22 +298,19 @@ extension InputInjector {
         } else {
             // ── Continuous movement: delta gate ────────────────────────────────
             // Pressure-only changes count as movement so drawing apps receive
-            // pressure updates from a stationary pen (airbrush buildup) — but
-            // not for Finder, where the resulting drag events cancel desktop
-            // rename-edit (see AppInputProfile.finderPlainMouse).
+            // pressure updates from a stationary pen (airbrush buildup).
             // Twist counts as movement for the same reason pressure does: a
             // pen rotated in place moves neither. Not gated on `tipDown` —
             // Rebelle and Krita orient the brush while hovering.
             let rotated =
-                activeAppProfile == .generic
-                && rotationDelta(pose.rotation, lastPostedRotation) > Self.rotationEpsilon
+                rotationDelta(pose.rotation, lastPostedRotation) > Self.rotationEpsilon
 
             let moved =
                 !hasPostedPoint
                 || (screenPoint.x - lastPostedPoint.x).magnitude > Self.positionEpsilon
                 || (screenPoint.y - lastPostedPoint.y).magnitude > Self.positionEpsilon
                 || rotated
-                || (tipDown && activeAppProfile != .finderPlainMouse
+                || (tipDown
                     && (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon)
 
             // USB mouse left button held (KC-100): injectMouseButtons() already sent
@@ -865,8 +859,7 @@ extension InputInjector {
         let btn = activeButton
         let count = activeClickCount
 
-        if activeAppProfile == .generic
-            && snap.tipUpAssistDelay > 0
+        if snap.tipUpAssistDelay > 0
             && smoother.recentVelocity > Self.tipUpAssistVelocityThreshold {
             // Defer the mouseUp briefly so fast strokes aren't cut short.
             // The deferred mouseUp captures `snap` so it has all the values it

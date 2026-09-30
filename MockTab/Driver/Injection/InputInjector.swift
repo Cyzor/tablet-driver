@@ -244,18 +244,6 @@ final class InputInjector: @unchecked Sendable {
     /// saving one WindowServer IPC round-trip per inject() call.
     var activeAppNeedsTabletPointerEvents: Bool = false
 
-    /// Per-app input profile, set by AppWatcher on every app switch.
-    ///
-    /// `finderPlainMouse` (Finder): pressure fluctuation while the tip is held
-    /// on one spot must not emit drag events — Finder's desktop icon view
-    /// cancels its pending rename-edit on any leftMouseDragged after the
-    /// down, so a stationary pen click could never enter rename mode (window
-    /// views tolerate the sub-threshold drags; the desktop does not). It also
-    /// opts out of proximity events and tip-up assist (the `== .generic`
-    /// gates). Tablet fields stay on the events; Finder ignores them.
-    enum AppInputProfile { case generic, finderPlainMouse }
-    var activeAppProfile: AppInputProfile = .generic
-
     /// Click bookkeeping stamped onto every button event by `stampClickSequence`,
     /// matching what hardware (and Wacom's driver) sends: each press gets a new
     /// event number that its drags and release share, and the release repeats

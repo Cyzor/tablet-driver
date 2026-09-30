@@ -23,13 +23,6 @@ final class AppWatcher {
         "org.gimp.gimp",
     ]
 
-    /// Maps the frontmost app to its input profile. Also used by
-    /// TabletManager when a device connects after launch.
-    static func inputProfile(for bundleID: String) -> InputInjector.AppInputProfile {
-        if bundleID == "com.apple.finder" { return .finderPlainMouse }
-        return .generic
-    }
-
     private var observerToken: (any NSObjectProtocol)?
     private var releaseTokens: [any NSObjectProtocol] = []
 
@@ -42,11 +35,9 @@ final class AppWatcher {
         else { return }
         let name = app.localizedName ?? bundleID
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
-        let profile = Self.inputProfile(for: bundleID)
         for ctx in TabletManager.shared.deviceContexts.values {
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
             ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
-            ctx.injector.activeAppProfile = profile
         }
     }
 
@@ -106,12 +97,10 @@ final class AppWatcher {
         else { return }
         let name = app.localizedName ?? bundleID
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
-        let profile = Self.inputProfile(for: bundleID)
         for ctx in TabletManager.shared.deviceContexts.values {
             ctx.settings.handleAppActivation(bundleID: bundleID, appName: name)
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
             ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
-            ctx.injector.activeAppProfile = profile
             ctx.injector.releaseOnAppSwitch()
         }
     }
