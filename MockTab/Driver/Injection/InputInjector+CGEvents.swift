@@ -479,7 +479,7 @@ extension InputInjector {
         // keyed by subtype; Photoshop reads tabletEventPointPressure (the tablet
         // union), not mouseEventPressure; both must be set for full app coverage.
         e.setIntegerValueField(.mouseEventSubtype, value: 1)
-        e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+        e.setIntegerValueField(.tabletEventDeviceID, value: tabletDeviceID)
         e.setIntegerValueField(.tabletEventPointButtons, value: 1)
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
         e.setDoubleValueField(.mouseEventPressure, value: pressure)
@@ -514,7 +514,7 @@ extension InputInjector {
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
         e.setIntegerValueField(.mouseEventSubtype, value: 1)
-        e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+        e.setIntegerValueField(.tabletEventDeviceID, value: tabletDeviceID)
         e.setIntegerValueField(.tabletEventPointButtons, value: 0)
         e.setDoubleValueField(.tabletEventPointPressure, value: 0)
         e.setDoubleValueField(.mouseEventPressure, value: 0)
@@ -548,7 +548,7 @@ extension InputInjector {
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
         e.setIntegerValueField(.mouseEventSubtype, value: 1)
-        e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+        e.setIntegerValueField(.tabletEventDeviceID, value: tabletDeviceID)
         e.setIntegerValueField(.tabletEventPointButtons, value: pressure > InputInjector.tipPressureThreshold ? 1 : 0)
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
         e.setDoubleValueField(.mouseEventPressure, value: pressure)
@@ -582,7 +582,7 @@ extension InputInjector {
         else { return }
         if let point {
             e.setIntegerValueField(.mouseEventSubtype, value: 1)
-            e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+            e.setIntegerValueField(.tabletEventDeviceID, value: tabletDeviceID)
             stampTabletPosition(e, point)
             e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
             e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
@@ -610,7 +610,7 @@ extension InputInjector {
         }
         e.type = .tabletPointer
         e.location = location
-        e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+        e.setIntegerValueField(.tabletEventDeviceID, value: tabletDeviceID)
         e.setIntegerValueField(.tabletEventPointX, value: Int64(point.x))
         e.setIntegerValueField(.tabletEventPointY, value: Int64(point.y))
         e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
@@ -669,7 +669,7 @@ extension InputInjector {
         // 0x0002 = pen tip, 0x0082 = eraser (high bit marks the "other end" of the same pen).
         let pointerID: Int64 = eraser ? 0x0082 : 0x0002
         e.setIntegerValueField(.tabletProximityEventPointerID, value: pointerID)
-        e.setIntegerValueField(.tabletProximityEventDeviceID, value: 1)
+        e.setIntegerValueField(.tabletProximityEventDeviceID, value: tabletDeviceID)
 
         // Serial lets apps keep per-pen tool presets (Photoshop). Both ends
         // share it, as with Wacom; the unique ID below tells them apart.
@@ -714,10 +714,12 @@ extension InputInjector {
         e.setIntegerValueField(
             .tabletProximityEventVendorUniqueID,
             value: vendorPtr << 32 | Int64(activeToolSerial))
-        // Wacom's mask minus abs Z, which we don't send: device ID, abs X/Y,
-        // buttons, tilt X/Y, pressure, orientation; plus rotation for Art Pens
-        // (Photoshop's Rotation brush control checks it).
-        let capabilities: Int64 = isArtPen ? 0x35C7 : 0x15C7
+        // Wacom's mask minus abs Z (hover height), which we don't send: device
+        // ID, abs X/Y, buttons, tilt X/Y, pressure, orientation; plus rotation
+        // for Art Pens (Photoshop's Rotation brush control checks it).
+        var capabilities: Int64 = isArtPen ? 0x35C7 : 0x15C7
+        // Tilt X/Y and orientation only where the tablet has tilt.
+        if !reportsTilt { capabilities &= ~0x1180 }
         e.setIntegerValueField(.tabletProximityEventCapabilityMask, value: capabilities)
         e.setIntegerValueField(.tabletProximityEventEnterProximity, value: entering ? 1 : 0)
     }
@@ -753,7 +755,7 @@ extension InputInjector {
                 // `receivedEventMidStream`. Pressure stays 0: this is a button
                 // press, not a tip contact.
                 e.setIntegerValueField(.mouseEventSubtype, value: 1)
-                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                e.setIntegerValueField(.tabletEventDeviceID, value: tabletDeviceID)
                 e.setIntegerValueField(.tabletEventPointButtons, value: down ? 1 : 0)
                 e.setDoubleValueField(.tabletEventPointPressure, value: 0.0)
                 e.setDoubleValueField(.mouseEventPressure, value: 0.0)
@@ -771,7 +773,7 @@ extension InputInjector {
                 // CGEvent auto-sets mouseEventPressure=1.0 on mouseDown; zeroing it prevents
                 // apps like QGIS, SketchUp from treating the button press as a tip contact.
                 e.setIntegerValueField(.mouseEventSubtype, value: 1)
-                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                e.setIntegerValueField(.tabletEventDeviceID, value: tabletDeviceID)
                 e.setIntegerValueField(.tabletEventPointButtons, value: down ? 2 : 0)  // bit 1 = right
                 e.setDoubleValueField(.tabletEventPointPressure, value: 0.0)
                 e.setDoubleValueField(.mouseEventPressure, value: 0.0)
@@ -789,7 +791,7 @@ extension InputInjector {
                 // CGEvent auto-sets mouseEventPressure=1.0 on mouseDown; zeroing it prevents
                 // apps like SketchUp from treating the button press as a tip contact.
                 e.setIntegerValueField(.mouseEventSubtype, value: 1)
-                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                e.setIntegerValueField(.tabletEventDeviceID, value: tabletDeviceID)
                 e.setIntegerValueField(.tabletEventPointButtons, value: down ? 4 : 0)
                 e.setDoubleValueField(.tabletEventPointPressure, value: 0.0)
                 e.setDoubleValueField(.mouseEventPressure, value: 0.0)
@@ -806,7 +808,7 @@ extension InputInjector {
                 mouseCursorPosition: location, mouseButton: .center)
             {
                 e.setIntegerValueField(.mouseEventSubtype, value: 1)
-                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                e.setIntegerValueField(.tabletEventDeviceID, value: tabletDeviceID)
                 e.setIntegerValueField(.tabletEventPointButtons, value: down ? 4 : 0)  // bit 2 = middle
                 e.setDoubleValueField(.tabletEventPointPressure, value: down ? 1.0 : 0.0)
                 e.setDoubleValueField(.mouseEventPressure, value: down ? 1.0 : 0.0)

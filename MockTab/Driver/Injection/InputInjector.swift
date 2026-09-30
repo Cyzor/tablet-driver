@@ -346,10 +346,23 @@ final class InputInjector: @unchecked Sendable {
     /// Longest no-contact gap on the touch ring still treated as one touch.
     static let ringDropoutBridge: TimeInterval = 0.4
 
+    /// Stable per-tablet ID for `tabletEventDeviceID` and proximity events,
+    /// as Wacom's driver sends one per tablet; a shared constant made two
+    /// tablets look like one to apps that pair pointer and proximity events.
+    let tabletDeviceID: Int64
+    @MainActor private static var nextTabletDeviceID: Int64 = 1
+
+    /// False for tablets the registry knows have no tilt, so their
+    /// proximity events don't claim it.
+    let reportsTilt: Bool
+
     @MainActor
     init(vendorID: Int = 0x056A, productID: Int = 0) {
         self.deviceVendorID = vendorID
         self.deviceProductID = productID
+        self.tabletDeviceID = Self.nextTabletDeviceID
+        Self.nextTabletDeviceID += 1
+        self.reportsTilt = WacomDeviceRegistry.spec(for: productID)?.hasTilt ?? true
         self.ringDeltaIsInverted =
             WacomDeviceRegistry.spec(for: productID)?.parser == .intuosV1
         if let spec = WacomDeviceRegistry.spec(for: productID) {
