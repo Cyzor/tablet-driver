@@ -1,20 +1,18 @@
 name: Bug report
-description: Report a problem with MockTab — a device capture helps verify the fix
+description: Something in MockTab doesn't work as it should
 title: "Bug: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        **Before submitting:** in MockTab, open the Info pane, expand **Diagnostic Detail**, and copy its text into the **Diagnostics** field below.
-
-        **If your tablet is connected, please also use *Collect Device Data…* in the same Info tab** and attach the zip it saves to the **Capture data** field, even if the bug doesn't look device-related. It's most valuable for anything involving the pen, touch, or buttons — that's what lets a fix be verified against your exact hardware state later without needing you to come back and retest — but it also helps in less direct ways (e.g. catching an unrelated device quirk while it's on hand). Skip it for bugs with no device angle at all (a mislabeled menu item, a UI color, etc.).
+        For anything involving the pen, touch, or buttons, attach a capture from **Help › Collect Device Data…**, ideally taken while the problem happens.
 
   - type: input
     id: macos
     attributes:
       label: macOS version
-      placeholder: "e.g. 15.4"
+      placeholder: "e.g. 27.0"
     validations:
       required: true
 
@@ -22,7 +20,7 @@ body:
     id: model
     attributes:
       label: Tablet model
-      placeholder: "e.g. Intuos Pro Medium PTH-660"
+      placeholder: "e.g. Intuos Pro M (PTH-660)"
     validations:
       required: true
 
@@ -38,21 +36,17 @@ body:
     id: diagnostics
     attributes:
       label: Diagnostics
-      description: Copy the text from Info pane → Diagnostic Detail.
-      placeholder: |
-        ```
-        <paste diagnostics output here>
-        ```
+      description: Text from Info › Diagnostic Detail.
+      render: text
     validations:
       required: true
 
   - type: textarea
     id: capture
     attributes:
-      label: Capture data
-      description: |
-        Drag in the zip from Info pane → Collect Device Data…, ideally while reproducing the bug. Worth including even if the bug seems unrelated to your device — it's cheap to grab and can turn out useful in ways that aren't obvious upfront. Leave blank only for bugs with no device angle (UI, menus, settings, etc.).
-      placeholder: Drop the zip here, or leave blank.
+      label: Capture
+      description: The zip from Collect Device Data. Skip for purely visual or menu problems.
+      placeholder: Drop the zip here.
     validations:
       required: false
 
@@ -61,5 +55,5 @@ body:
     attributes:
       label: Checklist
       options:
-        - label: I searched existing issues and this is not a duplicate.
+        - label: No existing issue covers this.
           required: true

@@ -1,18 +1,18 @@
 name: Device support request
-description: Submit a capture for an unrecognized drawing tablet
+description: Tablet that MockTab doesn't recognize, or only partly drives
 title: "Device support: "
 labels: ["device-support"]
 body:
   - type: markdown
     attributes:
       value: |
-        **Before submitting:** use *Collect Device Data…* in MockTab's Info tab to generate a capture file. Paste its contents in the **Capture data** field below — that JSON is what makes new device support possible. If you used the in-app *Open GitHub Issue…* button the data is already pre-filled.
+        Run **Help › Collect Device Data…** in MockTab with the tablet connected, then attach the zip below.
 
   - type: input
     id: model
     attributes:
-      label: Model name / number
-      placeholder: "e.g. Intuos Pro Medium PTH-660"
+      label: Model
+      placeholder: "e.g. Intuos Pro M (PTH-660)"
     validations:
       required: true
 
@@ -31,27 +31,24 @@ body:
     id: macos
     attributes:
       label: macOS version
-      placeholder: "e.g. 15.4"
+      placeholder: "e.g. 27.0"
     validations:
       required: true
 
   - type: textarea
     id: behavior
     attributes:
-      label: What happens
-      description: Which of these work, and which don't — pen tracking, pressure, tilt, buttons, touch?
+      label: What works
+      description: Pen tracking, pressure, tilt, buttons, touch, rings or dials — which work and which don't?
     validations:
       required: false
 
   - type: textarea
     id: capture
     attributes:
-      label: Capture data
-      description: Paste the contents of the JSON file produced by *Collect Device Data…*.
-      placeholder: |
-        ```json
-        <paste capture JSON here>
-        ```
+      label: Capture
+      description: The zip from Collect Device Data. Drag it into this box.
+      placeholder: Drop the zip here.
     validations:
       required: true
 
@@ -60,7 +57,7 @@ body:
     attributes:
       label: Checklist
       options:
-        - label: I searched existing issues and this is not a duplicate.
+        - label: No existing issue covers this tablet.
           required: true
-        - label: The capture JSON is from this specific device, not copied from another issue.
+        - label: The capture came from this tablet.
           required: true
