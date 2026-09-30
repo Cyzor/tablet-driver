@@ -256,6 +256,98 @@
         }
       }
     },
+    "Email goes to %@" : {
+      "comment" : "Caption naming the address for emailed diagnostics",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-Mail an %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correo a %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メールの宛先：%@"
+          }
+        }
+      }
+    },
+    "Email…" : {
+      "comment" : "Button label: send the data collection file by email",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-Mail…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correo…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メール…"
+          }
+        }
+      }
+    },
+    "Send to %@" : {
+      "comment" : "Line in the diagnostics email body naming the address to send it to",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senden an %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar a %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "送信先：%@"
+          }
+        }
+      }
+    },
+    "How well is MockTab working for you? Please describe your experience and what needs to improve.\n\n" : {
+      "comment" : "Prompt placed in the body of the diagnostics email",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie gut funktioniert MockTab bei dir? Beschreib bitte deine Erfahrung und was besser werden sollte.\n\n"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Qué tal te funciona MockTab? Describe tu experiencia y qué debería mejorar.\n\n"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTabの使い心地はいかがですか？ご感想と改善してほしい点をお書きください。\n\n"
+          }
+        }
+      }
+    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -19498,13 +19590,13 @@
         }
       }
     },
-    "The issue comes pre-filled. Too big for the form? Drag the file in." : {
+    "On GitHub, drag the file into the form." : {
       "comment" : "Caption on the data-collection completion screen",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Issue ist vorausgefüllt. Zu groß fürs Formular? Datei hineinziehen."
+            "value" : "Auf GitHub die Datei ins Formular ziehen."
           }
         },
         "en" : {
@@ -19516,13 +19608,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "El issue viene rellenado. ¿Demasiado grande para el formulario? Arrastra el archivo."
+            "value" : "En GitHub, arrastra el archivo al formulario."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Issueは入力済みです。フォームに収まらない場合はファイルをドラッグしてください。"
+            "value" : "GitHubではファイルをフォームにドラッグしてください。"
           }
         }
       }

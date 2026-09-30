@@ -4,7 +4,7 @@ Full details for each release live in [`release-notes/`](release-notes/). This
 file is a one-line index. Keep the Unreleased line current; it becomes the
 snapshot's notes on the Check for Updates page, then the next release's line.
 
-- Unreleased — broadened PTK-series support; wider Cintiq Pro, MobileStudio Pro, and touch-Cintiq support; improved touch for early Intuos and Bamboo series; snappier touch ring and dial scrolling; new controls for display mapping; less wireless jitter and chatter; touch on pen displays follows the finger; more comprehensive diagnostics; Check for Updates command.
+- Unreleased — broadened PTK-series support; wider Cintiq Pro, MobileStudio Pro, and touch-Cintiq support; improved touch for early Intuos and Bamboo series; snappier touch ring and dial scrolling; new controls for display mapping; less wireless jitter and chatter; touch on pen displays follows the finger; more comprehensive diagnostics, sendable by email; Check for Updates command.
 - [v0.4.2](release-notes/v0.4.2.md) — multitouch gesture behavior; Bluetooth pen and touch reliability on macOS 27; Intuos Pro M (PTH-651) touch support.
 - [v0.4.1](release-notes/v0.4.1.md) — pressure threshold setting; more reliable touch controls; device-recognition fixes; lower idle memory use.
 - [v0.4.0](release-notes/v0.4.0.md) — pen feel and Pan View; per-unit tablet settings; Xencelabs Pen Display controls; broader device recognition.
