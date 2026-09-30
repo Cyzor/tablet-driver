@@ -64,6 +64,13 @@ final class WacomKnownDevice: TabletDevice {
             activeWidthMM: base.activeWidthMM, activeHeightMM: base.activeHeightMM)
     }
 
+    /// Touch range each touch sensor's own descriptor declares, keyed by the
+    /// owning driver's product ID. The injector falls back to it when the
+    /// registry has none. `exact` marks a range read from the report the
+    /// decoder actually parses, which outranks a range found elsewhere.
+    static let descriptorTouchRanges =
+        OSAllocatedUnfairLock<[Int: (x: Int, y: Int, exact: Bool)]>(initialState: [:])
+
     let device: IOHIDDevice
     var deviceSpec: WacomDeviceSpec
     /// Last logged pairing-table summary, so the receiver's twice-a-second
@@ -616,6 +623,14 @@ final class WacomKnownDevice: TabletDevice {
             guard !reserved.contains(touchLayout.reportID), touchDecoders[touchLayout.reportID] == nil
             else { continue }
             touchDecoders[touchLayout.reportID] = PrecisionTouchDecoder(layout: touchLayout)
+            if touchLayout.logicalMaxX > 0, touchLayout.logicalMaxY > 0 {
+                let pid = deviceSpec.productID
+                Self.descriptorTouchRanges.withLock {
+                    if $0[pid]?.exact != true {
+                        $0[pid] = (touchLayout.logicalMaxX, touchLayout.logicalMaxY, true)
+                    }
+                }
+            }
         }
     }
 
@@ -664,6 +679,22 @@ final class WacomKnownDevice: TabletDevice {
             fixedTouchDecoders[entry.reportID] == nil
         else { return }
         fixedTouchDecoders[entry.reportID] = entry.decoder
+
+        // Vendor-format reports, but the descriptor still names the finger
+        // X/Y range, the same place Linux reads it for these sensors.
+        guard let hex = hidReportDescriptorHex(device),
+            let layout = try? HIDReportDescriptorParser.parse(hex: hex)
+        else { return }
+        let fingerFields = layout.reports.filter { $0.direction == .input }
+            .flatMap(\.fields)
+            .filter { $0.collectionPath.contains(0x000D_0022) && $0.logicalMax > 0 }
+        guard let x = fingerFields.first(where: { $0.extendedUsage == 0x0001_0030 })?.logicalMax,
+            let y = fingerFields.first(where: { $0.extendedUsage == 0x0001_0031 })?.logicalMax
+        else { return }
+        let ownerPID = deviceSpec.productID
+        Self.descriptorTouchRanges.withLock {
+            if $0[ownerPID] == nil { $0[ownerPID] = (x, y, false) }
+        }
     }
 
     /// True if `candidate`'s HID descriptor declares any Feature report at all.

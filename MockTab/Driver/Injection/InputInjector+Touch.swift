@@ -58,8 +58,18 @@ extension InputInjector {
         let effectiveTouchPID = snap.pairedProductID != 0 ? snap.pairedProductID : deviceProductID
         if cachedTouchSpecPID != effectiveTouchPID {
             let spec = WacomDeviceRegistry.spec(for: effectiveTouchPID)
-            cachedTouchMaxX = Swift.max(1, spec?.touchMaxX ?? 1)
-            cachedTouchMaxY = Swift.max(1, spec?.touchMaxY ?? 1)
+            // No registry range: use what the sensor's descriptor declares
+            // rather than collapsing every contact into one corner. The
+            // registry still wins where set, since fixed-format decoders on
+            // verified tablets don't read the descriptor's coordinate space.
+            let described = WacomKnownDevice.descriptorTouchRanges.withLock { $0[effectiveTouchPID] }
+            if let described, (spec?.touchMaxX ?? 0) == 0 {
+                cachedTouchMaxX = Swift.max(1, described.x)
+                cachedTouchMaxY = Swift.max(1, described.y)
+            } else {
+                cachedTouchMaxX = Swift.max(1, spec?.touchMaxX ?? 1)
+                cachedTouchMaxY = Swift.max(1, spec?.touchMaxY ?? 1)
+            }
             // Falls back to the raw maximums (no correction) when the spec
             // has no physical size — see `cachedTouchWidthMM`'s doc comment.
             cachedTouchWidthMM = spec?.activeWidthMM ?? Double(cachedTouchMaxX)
