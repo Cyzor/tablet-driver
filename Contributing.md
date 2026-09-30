@@ -3,28 +3,50 @@
 MockTab is a macOS driver for older Wacom drawing tablets. It ships
 under GPL-3.0-or-later.
 
-## Getting the code running
+## Getting started
 
-```sh
-git clone --recurse-submodules https://github.com/Cyzor/tablet-driver.git
-cd tablet-driver
-open MockTab.xcodeproj
-```
+1. **Build it.**
 
-Requires Xcode 15 or later. Select the **MockTab** scheme and build. Run the
-decoder test suite with `cd TabletKit && swift test`. App-side logic that has no
-XCTest target has standalone checks under `tools/tests/` — run all of them with
-`tools/tests/run-all-tests.sh`, or run an individual harness directly by name
-(e.g. `tools/tests/calibration-tests/run.sh`).
-See the [README's Build from source section](README.md#build-from-source)
-for more detail.
+   ```sh
+   git clone --recurse-submodules https://github.com/Cyzor/tablet-driver.git
+   cd tablet-driver
+   open MockTab.xcodeproj
+   ```
 
-## Reading the code
+   You need Xcode 26 or later. Pick the **MockTab** scheme and build. In a
+   fork, set signing to your own team under Signing & Capabilities.
 
-[`Architecture.md`](Architecture.md) has a pipeline diagram, the threading
-rules, and a "Where to start" table mapping common goals to files — read that
-before diving into `MockTab/` or `TabletKit/`. Adding a new tablet model is
-its own guide: [`TabletKit/Extending-Support.md`](TabletKit/Extending-Support.md).
+2. **Run the tests.** Decoders first, then app logic:
+
+   ```sh
+   cd TabletKit && swift test && cd ..
+   tools/tests/run-all-tests.sh
+   ```
+
+   Each harness in `tools/tests/` also runs alone, e.g.
+   `tools/tests/calibration-tests/run.sh`.
+
+3. **Read the "Four paths" section of [`Architecture.md`](Architecture.md).**
+   It follows a pen sample, a settings change, a device plugging in, and
+   touch, file by file.
+
+4. **Watch one pen report go by.** Set a breakpoint in
+   `InputInjector.inject(point:settings:)`, run, and hover the pen. The call
+   stack shows the whole path from `handleReport`.
+
+5. **Read the logs.** Everything logs under the `com.cyzor.mocktab`
+   subsystem:
+
+   ```sh
+   log stream --predicate 'subsystem == "com.cyzor.mocktab"'
+   ```
+
+6. **Make a capture.** **Help › Collect Device Data…** records a session to a
+   zip on the Desktop. It's what users attach to bug reports, and the fastest
+   way to see what a tablet sends.
+
+Adding a tablet model has its own guide:
+[`TabletKit/Extending-Support.md`](TabletKit/Extending-Support.md).
 
 ## Where to start
 
@@ -45,13 +67,13 @@ context they need:
 ## How to file a bug report
 
 1. Reproduce the issue and note the steps.
-2. In MockTab, open the Info pane and press **Copy Diagnostics** to bundle your driver state into a text block. If the bug looks tablet-specific (protocol quirks, wrong dimensions, a decoder issue), also press **Collect Device Data…** to produce a JSON file with the device's HID descriptor and a report capture. Attach both.
-3. Open an issue using the [bug report template](.github/ISSUE_TEMPLATE/bug-report.yml). Include: macOS version, tablet model, steps to reproduce, and the diagnostics output.
+2. With the tablet connected, choose **Help › Collect Device Data…** and use the tablet as prompted. It saves a zip to the Desktop.
+3. Open an issue using the [bug report template](.github/ISSUE_TEMPLATE/bug-report.yml). Include your macOS version, tablet model, and steps to reproduce, and attach the zip.
 
 ## How to request device support
 
-1. In MockTab, open the Info pane and press **Collect Device Data…**. Use the tablet as prompted. This produces a JSON file with the device's HID descriptor, USB strings, and a summary of what it sent.
-2. Open an issue using the [Device support template](.github/ISSUE_TEMPLATE/device-support.yml) and attach the JSON file.
+1. Choose **Help › Collect Device Data…** and use the tablet as prompted. The zip holds the device's HID descriptor, USB strings, and a summary of what it sent.
+2. Open an issue using the [Device support template](.github/ISSUE_TEMPLATE/device-support.yml) and attach the zip.
 
 ## Translations
 

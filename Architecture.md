@@ -1,207 +1,150 @@
 # Architecture
 
-MockTab is a Mac driver for older Wacom drawing tablets.
+How MockTab turns tablet reports into cursor movement, clicks, and gestures.
 
-User documentation is available in `README.md`. Technical notes and protocol references reside in `Notes/`.
+## Overview
 
-## Pipeline
+A drawing tablet sends a small packet of bytes, called a report, every few milliseconds. Each report says where the pen is, how hard it's pressing, which buttons are down, and sometimes where fingers are touching. MockTab reads those reports, decides what they mean, and posts the matching mouse, tablet, and scroll events to macOS.
 
-Each pen sample travels a fixed path from the USB or Bluetooth bus to the WindowServer:
+The work splits into two parts:
 
-```
-IOHIDManager
-    │
-    ▼  (HIDThread — dedicated background CFRunLoop)
-WacomKnownDevice.handleReport  ──►  HIDCapture (diagnostic, opt-in)
-    │                          ──►  CaptureEngine (delta capture, opt-in)
-    ▼
-TabletReportDecoder.decode(report, length, spec, state, family)
-    │   returns [DecodeResult]: .pen / .aux / .toolEnter / .wireless / .battery …
-    ▼
-TabletDevice callbacks (onTablet / onAux / onToolEnter / …)
-    │
-    ▼  (TabletManager routes to the active context)
-DeviceContext + InputInjector
-    │
-    ▼  smoothing, click resolution, modifier synthesis, delta gating
-CGEvent  ──►  CGEventPost(.cghidEventTap)  ──►  WindowServer
-```
+- **TabletKit** understands the bytes. It holds a decoder for each report format and a registry of known tablets. It lives in `TabletKit/`, a git submodule with its own repo and license (MPL-2.0).
+- **The app** does everything else. It finds tablets, stores settings, posts events, and draws the settings window. It lives in `MockTab/` (GPL-3.0).
 
-Two threads carry live work:
+A rule of thumb: if a change is about what the bytes mean, it goes in TabletKit. If it's about what happens on screen, it goes in the app.
 
-- **HIDThread** owns the IOHIDManager run loop and every `handleReport`
-  callback, at the highest priority class macOS offers for app work, so a
-  busy main thread can never delay a pen sample (`HIDThread.swift` declares
-  the singleton).
-- **Main thread** runs everything else — AppKit, SwiftUI, settings storage,
-  most CGEvent posts.
+User documentation lives in `README.md`. Protocol notes live in `Notes/`.
 
-HIDThread hands work to the main thread with `Task { @MainActor in … }`, and
-receives work back via `CFRunLoopPerformBlock(HIDThread.shared.runLoop, …)`
-for state writes the hot path will read.
+## Two Threads
 
-A snapshot pattern keeps the two sides from stepping on each other:
-`TabletSettings` lives on the main thread with SwiftUI's `@Published`
-storage; when a setting changes, `makeInjectionSnapshot()` builds an
-immutable `InjectionSnapshot`, and `DeviceContext` pushes it onto HIDThread.
-`InputInjector` then just reads its working copy — no cross-thread
-synchronization needed on the 133 Hz hot path.
+Pen input has to feel instant, so it never waits on the user interface.
 
-## Layout
+MockTab handles every report on its own thread, `HIDThread`, which runs at the highest priority macOS gives an app. The report is decoded and turned into events on that thread, start to finish. The main thread runs the settings window and everything else.
+
+The two threads never change each other's data directly. When the pen thread needs to update the window, it sends the work to the main thread. When a setting changes, the main thread sends the pen thread a fresh copy of the settings, called a snapshot, and the pen thread uses it from the next report on.
+
+## Following a Pen Report
+
+Every pen report takes the same route:
 
 ```
+tablet ─► WacomKnownDevice ─► decoder ─► TabletManager ─► InputInjector ─► macOS
+```
+
+The report arrives at `WacomKnownDevice.handleReport` in `Driver/Devices/WacomKnownDevice.swift`. That object represents one connected tablet. It passes the bytes to the decoder that matches the tablet's report format. The tablet's entry in the registry names that format.
+
+The decoder returns a list of results: a pen position, a tool coming into range, a button press, a battery level. One report can produce several results. Bluetooth tablets often pack several pen positions into one report. `BatchFramePacer` spreads those out over the time they actually cover, so the cursor moves smoothly instead of jumping.
+
+Pen positions go to a closure that `TabletManager` set up when the tablet connected. If this tablet is the active one, the closure hands the position straight to `InputInjector`. If a different tablet was active, it makes this one active first.
+
+`InputInjector.inject(point:settings:)`, in `Injection/InputInjector+PenInjection.swift`, turns the position into events. It works in a fixed order: smooth the pressure, handle the pen entering or leaving range, check for the eraser, smooth the position, handle panning, and then handle the tip and buttons. `Injection/InputInjector+CGEvents.swift` builds and posts the events themselves. Each pen movement posts a tablet event and a mouse event that carries pressure, because drawing apps read one or the other.
+
+If the Info or Buttons pane is open, it gets a copy of the pen state a few times a second.
+
+## Following a Settings Change
+
+Settings live in `TabletSettings`, which the settings window edits directly.
+
+When a setting changes, `TabletSettings.persist` saves it to the user's preferences under that tablet's own prefix (`Settings/TabletSettings+Persistence.swift`). At the same time, `DeviceContext.observeInjectionSnapshot()` builds a new `InjectionSnapshot`, a frozen copy of everything the pen code reads, and sends it to the pen thread. The next report uses it.
+
+So adding a setting usually means changing four things: the property in `TabletSettings`, how it's saved, the snapshot if the pen code needs it, and the pane that shows it.
+
+## Following a Tablet Connecting
+
+macOS presents a tablet as several separate devices, called interfaces: often one for the pen, one for the buttons, one for touch. `TabletManager.deviceConnected(_:)` runs once for each.
+
+First it works out which physical tablet the interface belongs to. A tablet can show up under different product IDs over USB, Bluetooth, or a wireless dongle, so those all fold into the USB ID. The USB serial number then tells two identical tablets apart. That finds or creates the tablet's `DeviceContext`, the object that holds its settings, its event injector, and its driver.
+
+Next it sets up the closures that receive pen, button, touch, and battery results for this tablet.
+
+Then `DeviceRouter.route`, in `Driver/Devices/DeviceRouter.swift`, decides what this interface is. It might need a new driver, it might be the touch or light-control half of a tablet that already has one, it might need to wait for a sibling interface, or it might be something to ignore.
+
+The driver depends on how much MockTab knows about the tablet:
+
+- **`WacomKnownDevice`** handles any tablet with an entry in `WacomDeviceRegistry` or `VendorDeviceRegistry`. That's almost all of them.
+- **`WacomFallbackDevice`** handles Wacom tablets missing from the registry. It reads the tablet's own description of its reports and makes a best guess.
+- **`GenericHIDDigitizer`** handles any standard pen tablet from any maker. macOS decodes the fields, and MockTab reads the results.
+
+Last, `DeviceRegistry` records the tablet so the Devices pane can list it, and its settings load.
+
+## Following a Touch
+
+Touch-capable tablets report finger contacts alongside the pen. They reach `InputInjector.injectTouch` in `Injection/InputInjector+Touch.swift`.
+
+Touch is ignored while the pen is in range, so a resting palm doesn't move the cursor mid-stroke. Otherwise `TouchStateTracker` watches the contacts over time and decides what the user means: moving the pointer, tapping, scrolling, or pinching and rotating. The injector then posts the matching events. `MomentumTail` adds the coasting that follows a flick, when that's turned on.
+
+On pen displays, the finger places the cursor directly, like a touchscreen.
+
+## Telling Tablets Apart
+
+MockTab identifies a tablet in two ways.
+
+The model is the product ID, after the Bluetooth and dongle IDs fold into the USB one. Decoders and registry entries work by model.
+
+The unit is a `DeviceInstanceKey`: the model plus the USB serial number. Settings, windows, and menus work by unit, so two identical tablets keep separate settings.
+
+The first unit of a model stores its settings under `device-0x{PID}.`. Any later unit gets `device-0x{PID}#{serial}.`. `Driver/Devices/DeviceInstanceClaims.swift` applies that rule. Each pen gets its own settings within its tablet's.
+
+One limit: a Quick Keys remote pairs with a model, not a unit. Nothing in its reports says which unit it belongs to.
+
+## Collecting Device Data
+
+**Help › Collect Device Data…** records what a tablet sends while the user tries each control. It's how users report bugs and how MockTab learns new tablets.
+
+`DiagnosticSession` runs two recorders at once. `CaptureEngine` summarizes which bytes changed and what they decoded to. `HIDCapture` logs the raw reports. Smaller probes in `Driver/Diagnostics/` note touch behavior, settings, and hardware details. `DiagnosticPackage` zips the results to the Desktop, and `CaptureModels.swift` defines their format along with the automatic findings that flag likely problems.
+
+## Where Things Live
+
+```
+TabletKit/Sources/TabletKit/
+  Core/          The values decoders produce
+  Decoders/      One file per report format
+  Registry/      Known tablets, other makers, pens
+  HID/           The pen thread and report-description parsing
+  Smoothing/     Cursor, pan, and pressure smoothing
+  Output/        Data sent to tablets: lights, small screens, display controls
+
 MockTab/
-  App/         AppKit entry point, menu bar, status item
-    Windows/   Settings, Help and About window controllers
-  Driver/      App glue around the TabletKit decoder layer
-    HID/       IOHIDManager plumbing: the dedicated thread, diagnostic
-               capture, descriptor reads
-    Devices/   TabletManager + the per-device wrapper classes
-    Injection/ InputInjector and its extensions, snapshot delivery
-    Mapping/   Display selection, orientation, per-app overrides
-    Diagnostics/ Captures, diagnostics zip, display and USB survey
-  Settings/    Live settings, presets, calibration, profile load/save
-    Model/         Value types the settings model stores
-    Serialization/ Profile JSON import/export
-  UI/
-    Panes/       One folder per settings tab, with the pieces only it uses
-    Shared/      Views and helpers more than one pane uses
-    Calibration/ The calibration overlay
-    Help/        The help panel
-  Help/          In-app help content
+  App/           Startup, menus, and windows
+  Driver/
+    Devices/     Connecting tablets and telling them apart
+    Injection/   Turning input into events
+    Mapping/     Which part of which screen the tablet covers
+    Diagnostics/ Collect Device Data
+  Settings/      TabletSettings and the values it stores
+  UI/Panes/      One folder per settings tab
 ```
 
-This mirrors the pipeline above: HID bytes arrive in `HID/`, get routed to a
-`Devices/` class, decoded (by TabletKit) into events, and pushed through
-`Injection/`; `Mapping/` and `Diagnostics/` are side channels rather than
-stops on that main path.
+A few classes span several files, because Swift keeps stored properties in the main file. `InputInjector` splits into pen, touch, buttons and dials, and event posting. `WacomKnownDevice` keeps the data it sends to tablets, like light and screen updates, in two extensions. `TabletSettings` splits saving, presets, and per-app settings into their own files.
 
-The decoder layer — `TabletReportDecoder`, the decoder structs, the device registries, and their pure-logic helpers — doesn't live in this tree at all; see the next section.
+## Testing
 
-## TabletKit (SwiftPM package, git submodule)
+TabletKit's tests replay captured reports through each decoder and check the results. Run them with `cd TabletKit && swift test`. There are about 680, and they finish in about a second.
 
-The pure-logic decoder layer lives in the [TabletKit repo](https://github.com/Cyzor/TabletKit), an MPL-2.0 SwiftPM package checked out here as a git submodule at `TabletKit/`. It holds `TabletReportDecoder` (the protocol every decoder implements), the value types it speaks (`DecodeResult`, `TabletPoint`, `ToolIdentity`, `AuxButtons`, `TouchContact`, `WirelessStatus`, `DigitizerSpec`, `DecoderState`), `WacomDeviceRegistry`, `WacomToolCatalog`, `VendorDeviceRegistry`, the Wacom decoder structs (one per protocol family), and pure-logic helpers (`CursorSmoother`, `ModifierMath`). Nothing in TabletKit touches AppKit, SwiftUI, or app-wide state; the gear that does lives in this repo's `MockTab/Driver/` (`HID/HIDThread`, `HID/HIDCapture`, `Diagnostics/CaptureEngine`, `Injection/InputInjector`, `Devices/TabletManager`, `Devices/DeviceContext`, the three `Devices/Wacom*Device` classes) plus everything under `Settings/` and `UI/`.
+App logic without a natural place in Xcode's test system has standalone checks in `tools/tests/`. Run them all with `tools/tests/run-all-tests.sh`. CI runs both.
 
-`MockTab.xcodeproj` consumes TabletKit through an `XCLocalSwiftPackageReference` that points at `TabletKit` (the submodule). Each app commit pins the exact TabletKit commit it builds against; clone with `--recurse-submodules` (or run `git submodule update --init`). Decoder work happens inside the submodule and is pushed to the TabletKit repo — push the kit before pushing an app commit that bumps the pin. Files in this repo that touch TabletKit types carry an explicit `import TabletKit`.
+## Rules to Keep
 
-`swift test` runs the decoder suite from `TabletKit/`, not from this repo's root. The historical sidecar arrangement is gone.
+- **TabletKit reads nothing from the outside world.** No files, clocks, or shared state. The app passes in everything a decoder needs.
+- **Pen-thread code doesn't touch main-thread data.** It hands that work to the main thread, and only when needed, since most reports need nothing from it.
+- **Main-thread code doesn't touch pen-thread data.** It sends a new snapshot.
+- **Messages to the tablet go out on the pen thread.** Light, screen, and brightness updates run through `DeviceContext.onHIDThread(_:)`, because the macOS calls that talk to a tablet aren't safe to use from two threads at once.
+- **Events post from the pen thread.** macOS allows it, and it skips a delay.
 
-## Driver
+## Where to Start
 
-### Devices
-
-Two device wrappers sit between IOHIDManager and the decoders. Each schedules its own HID device on `HIDThread.shared.runLoop`.
-
-- `WacomKnownDevice` — a tablet whose VID/PID matches an entry in `WacomDeviceRegistry`. Carries the device's `DigitizerSpec` and a decoder instance. The common case. Like `InputInjector`, it spans several files: `WacomKnownDevice.swift` holds every stored property plus open/close, report dispatch, and the init handshake, while `WacomKnownDevice+XencelabsOutput.swift` (OLED text, dial colors, display controls, and the paced vendor-write path they share) and `WacomKnownDevice+DisplayOutput.swift` (ring/status LEDs and Intuos4 per-key OLED images) hold the vendor output paths.
-- `WacomFallbackDevice` — a Wacom-vendor tablet with no registry entry. Reads the HID descriptor and synthesizes a best-effort spec.
-
-`tools/capture/WacomProbeDevice.swift` is a third, temporary one: a one-shot probe that logs coordinate/pressure maxima for an unrecognized device, meant to be copied into `Devices/` and wired into `TabletManager.deviceConnected(_:)` only for the duration of a research session — see the file header. It isn't part of the Xcode target.
-
-`VendorDeviceRegistry` covers non-Wacom vendors with a similar shape.
-
-### Decoders
-
-Each decoder conforms to `TabletReportDecoder`:
-
-```swift
-mutating func decode(
-    report: UnsafePointer<UInt8>,
-    length: CFIndex,
-    spec: DigitizerSpec,
-    state: inout DecoderState,
-    deviceFamily: String
-) -> [DecodeResult]
-```
-
-Decoders parse a single report and emit zero or more `DecodeResult` values. The host (`WacomKnownDevice.handleReport`) owns the `DecoderState` and routes results to the `TabletManager` callbacks.
-
-Adding support for a new Wacom variant of an existing family means (all edits happen in the `TabletKit/` submodule):
-
-1. Add a row to `WacomDeviceRegistry` (and/or `WacomToolSpec` for new pen tools) with the VID/PID and physical dimensions.
-2. Add a fixture to the matching `*DecoderTests.swift` file under `Tests/TabletKitTests/`.
-
-Adding a new family means writing a new decoder under `Sources/TabletKit/Decoders/`, adding a `ReportParser` case for it, wiring that case to the decoder in `MockTab/Driver/Devices/WacomKnownDevice.swift`, and adding a test file. MockTab picks up the change automatically through the local package dep.
-
-### Injection
-
-`InputInjector` converts a `TabletPoint` into the CGEvent sequence apps expect: a proximity event, then a `.tabletPointer` event (which Krita, GIMP, and other Qt/GTK apps consume directly), then a mouse event carrying pressure via `.mouseEventPressure` and `.mouseEventSubtype = .tabletPoint`.
-
-Two self-contained transforms live outside the class entirely: position smoothing (`CursorSmoother`, in TabletKit) and display selection/orientation/calibration (`Driver/Mapping/DisplayMapper.swift`, in this repo).
-
-The class itself spans five files. `InputInjector.swift` holds every stored property (Swift extensions can't) plus the concerns that read broadly across that state:
-
-- click-count resolution for double- and triple-clicks
-- a brief mouse-up delay so fast pen lifts don't cut strokes short
-- a watchdog that releases buttons left stuck by a dropped report
-- a system-level tap that tracks physical modifier-key state
-- the Adobe shim replay and USB mouse-button injection
-
-Four sibling extensions divide the rest of the class by concern: `InputInjector+PenInjection.swift` (the per-report pen hot path), `InputInjector+Touch.swift` (capacitive finger touch), `InputInjector+AuxInput.swift` (express keys, rings, wheels), and `InputInjector+CGEvents.swift` (modifier synthesis and reconciliation, the event constructors, button-binding execution, and scroll dispatch). The class header in `InputInjector.swift` documents the threading rules; the main file's MARK sections cross-reference the extension that owns each state block's logic.
-
-### Aux inputs
-
-Everything that isn't the pen — express keys, touch rings, dials, and a device's own onboard bezel buttons — decodes into `AuxButtons` and flows through `TabletManager.onAux` into `InputInjector.injectAux`. Slot layout is a shared convention: indices 0–15 are express keys, 16–18 are bezel buttons (e.g. the Cintiq DTK-2400's capacitive OSD keys or the Xencelabs Pen Display's bezel buttons), and each range has its own binding array in `TabletSettings` (`expressKeyBindings`, `bezelButtonBindings`).
-
-Standalone aux-only peripherals (currently the Xencelabs Quick Keys puck) are *companion devices*: `VendorDeviceRegistry.connectedCompanion` pairs them with the pen-bearing device they belong to, and their controls fold into that device's settings window instead of getting their own. Battery status from wireless devices arrives as a `.battery` decode result and surfaces in the UI the same way.
-
-### Routing
-
-`TabletManager` runs on the main thread, owns the set of live devices, decides which one is the active context, and forwards decoded events into that context's `InputInjector`. `DeviceContext` holds the per-device state that the injector needs and is the object that pushes snapshots onto HIDThread.
-
-### Device identity
-
-Identity has two axes:
-
-- **Model** — the USB product ID. Decoders, `DigitizerSpec` lookups,
-  capability tables, and companion relationships all key on it, matching
-  how Wacom's own tables and libwacom work.
-- **Instance** — `DeviceInstanceKey`
-  (`MockTab/Driver/Devices/DeviceInstanceKey.swift`): the canonical PID plus
-  an instance token (USB serial, with a locationID fallback held in
-  reserve), so two physical units of the same model stay distinct.
-
-Contexts (`TabletManager.deviceContexts`), registry rows, settings windows,
-menu entries, and the panes all key on the instance; `TabletManager.contexts`
-remains as a PID-keyed compatibility view for model-level callers.
-
-Settings storage follows the *claim-the-legacy-prefix* rule (`DeviceRegistry.settingsPrefix(for:)`): the first unit ever seen for a model permanently claims the historical `device-0x{PID}.` UserDefaults prefix — existing installs keep every setting without migration — and any additional unit of the same model gets a fresh `device-0x{PID}#{instance}.` namespace. A key with no instance token resolves to the legacy prefix, which is exactly the old PID-only behavior.
-
-One known limitation: a companion peripheral (Quick Keys puck) is paired to its owner at the model level, because nothing in the wire protocol identifies *which* unit it belongs to. With two identical pen tablets and one puck, the app picks the first pen-bearing unit — inherently ambiguous, documented rather than papered over with pairing UI.
-
-## Settings
-
-`TabletSettings` lives on the main thread and acts as the single source of truth that SwiftUI views observe: pen-feel curves, button bindings, calibration, display mapping, per-app overrides, profiles. The class spans four files at `Settings/` root: `TabletSettings.swift` holds the stored properties, init, per-device loading, and undo/redo, while `TabletSettings+Presets.swift`, `TabletSettings+AppOverrides.swift`, and `TabletSettings+Persistence.swift` hold preset handling, per-app behavior, and the UserDefaults layer. The value types it stores (`ButtonBinding`, `ControlSlot`, `TabletOrientation`, `BezierCurve`, `ToolSettings`, `CalibrationData`) live in `Settings/Model/`. `Settings/Serialization/PresetExporter.swift`/`PresetImporter.swift` handle the JSON shape that ships in releases (`example-profile.json`).
-
-The settings layer calls `DeviceContext.observeInjectionSnapshot(…)` whenever a relevant value changes; `DeviceContext` packages the snapshot and hands it across.
-
-## UI
-
-The settings window hosts a tab bar; each tab maps to a folder in `UI/Panes/` holding that pane's view and any pieces only it uses — `Buttons/` has the binding controls, LED color picker and pen and touch ring diagrams; `Display/` has the Edit Mapping sheet and screen overlay; `Info/` has the capture guide. `UI/Shared/` holds what more than one pane uses: `NormalizedAreaEditor`, `SettingsControls`, `DeviceStatusBar`, `DisclosureRow`, `AppOverrideBar`, plus non-view helpers (`FontExtensions`, `Path+SVGData`, `TabletColorTheme`, `ConflictDetection`). Window controllers and the About view live in `App/Windows/`.
-
-## Tests
-
-The decoder test suite lives in `TabletKit/Tests/TabletKitTests/` and runs via `swift test` from the submodule (`cd TabletKit && swift test`). Each decoder has its own fixture suite; the `CaptureLogParser` replays the logs the in-app `HIDCapture` writes, so regressions surface as diff-able test failures. The suite (300+ tests — see CI for the current count) runs in well under a second.
-
-## Threading rules (the short version)
-
-- **Anything in TabletKit** (every conformer of `TabletReportDecoder`, the registries, the value types) lacks I/O, clocks, and globals. The host owns `DecoderState`.
-- **Anything reachable from `handleReport`** runs on HIDThread. It must not touch main-thread state directly — hand that work over with `Task { @MainActor in … }`. Decoding and injection stay inline on HIDThread (see the `CGEventPost` rule below), and the hop is gated so an ordinary in-proximity report allocates no `Task`.
-- **Anything marked `@MainActor`** runs on the main thread. It updates HIDThread state by packaging a snapshot and posting it onto `HIDThread.shared.runLoop`.
-- **`IOHIDDeviceSetReport` / `GetReport`** are not thread-safe, so every `TabletDevice` control write (LEDs, OLED, brightness, feature reports) is confined to HIDThread via `DeviceContext.onHIDThread(_:)` — `@MainActor` settings sinks hop rather than calling the driver inline. Writing from main raced `registerDevice()`/`flushPendingVendorWrites()` over the same unsynchronized "last-sent" cache.
-- **`CGEventPost`** is safe to call from HIDThread, and `InputInjector` does, to avoid a hop to the main thread on the hot path.
-
-## Where to start
-
-| Goal | File to open first |
-|------|--------------------|
-| Add a Wacom model in an existing family | `TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift` |
-| Add a new pen tool | `TabletKit/Sources/TabletKit/Registry/WacomToolSpec.swift` |
-| Add a non-Wacom vendor | `TabletKit/Sources/TabletKit/Registry/VendorDeviceRegistry.swift` |
-| Add a new protocol family | `TabletKit/Sources/TabletKit/Decoders/` + `ReportParser` case wired in `MockTab/Driver/Devices/WacomKnownDevice.swift` |
-| Tweak click resolution | `MockTab/Driver/Injection/InputInjector.swift` (read the header) |
-| Tweak button dispatch or modifier synthesis | `MockTab/Driver/Injection/InputInjector+CGEvents.swift` |
-| Tweak position smoothing | `TabletKit/Sources/TabletKit/Smoothing/CursorSmoother.swift` |
-| Tweak display mapping or calibration | `MockTab/Driver/Mapping/DisplayMapper.swift` |
-| Add a settings knob | `Settings/TabletSettings.swift` + relevant pane |
-| Add a new settings pane | `UI/Panes/` + `App/Windows/SettingsWindowController.swift` |
-| Diagnose a misbehaving tablet | Settings → Info → Start Capture (writes to Desktop) |
+| To do this | Open this |
+|---|---|
+| Add a Wacom model in a known format | `TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift` and [`TabletKit/Extending-Support.md`](TabletKit/Extending-Support.md) |
+| Add a pen | `TabletKit/Sources/TabletKit/Registry/WacomToolCatalog.swift` |
+| Add another maker's tablet | `TabletKit/Sources/TabletKit/Registry/VendorDeviceRegistry.swift` |
+| Add a new report format | A decoder in `TabletKit/Sources/TabletKit/Decoders/`, a `ReportParser` case, and its hookup in `WacomKnownDevice.init` |
+| Fix how a tablet is recognized | `MockTab/Driver/Devices/DeviceRouter.swift` |
+| Change how the pen behaves | `MockTab/Driver/Injection/InputInjector+PenInjection.swift` |
+| Change what a button does | `MockTab/Driver/Injection/InputInjector+CGEvents.swift` |
+| Change touch gestures | `MockTab/Driver/Injection/TouchStateTracker.swift` |
+| Change smoothing | `TabletKit/Sources/TabletKit/Smoothing/` |
+| Change screen mapping | `MockTab/Driver/Mapping/DisplayMapper.swift` |
+| Add a setting | `MockTab/Settings/TabletSettings.swift`, `InjectionSnapshot.swift`, and the pane |
+| Add a settings tab | `MockTab/UI/Panes/` and `SettingsWindowController.Tab` |
+| Record something new in diagnostics | `MockTab/Driver/Diagnostics/CaptureModels.swift` |

@@ -55,7 +55,7 @@ cd tablet-driver
 open MockTab.xcodeproj
 ```
 
-You need Xcode 15 or later. Select the **MockTab** scheme and build. If you build a fork, change code signing to your own team in the project’s Signing & Capabilities tab.
+You need Xcode 26 or later. Select the **MockTab** scheme and build. If you build a fork, change code signing to your own team in the project’s Signing & Capabilities tab.
 
 If you already cloned the repo without `--recurse-submodules`, run `git submodule update --init`.
 
