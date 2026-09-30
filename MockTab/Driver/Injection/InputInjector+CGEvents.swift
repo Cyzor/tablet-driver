@@ -684,7 +684,11 @@ extension InputInjector {
             }
         }
         e.setIntegerValueField(.tabletProximityEventVendorPointerType, value: vendorPtr)
-        e.setIntegerValueField(.tabletProximityEventCapabilityMask, value: 0x05C7)
+        // Device ID, abs X/Y, buttons, tilt X/Y, pressure; plus rotation
+        // (NX_TABLET_CAPABILITY_ROTATIONMASK) for Art Pens, so apps that check
+        // the mask, like Photoshop's Rotation brush control, accept it.
+        let capabilities: Int64 = vendorPtr == 0x0812 ? 0x25C7 : 0x05C7
+        e.setIntegerValueField(.tabletProximityEventCapabilityMask, value: capabilities)
         e.setIntegerValueField(.tabletProximityEventEnterProximity, value: entering ? 1 : 0)
         e.flags = currentEventFlags
         finalizeAndPost(e)
