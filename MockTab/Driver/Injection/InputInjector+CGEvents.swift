@@ -285,6 +285,7 @@ extension InputInjector {
         if Self.currentReportTimestampNs != 0 {
             event.timestamp = Self.currentReportTimestampNs
         }
+        stampClickSequence(event)
         // Diagnostic: `event.post` is synchronous IPC into WindowServer and
         // the only stage no other stall probe covers.
         let postStart = mach_absolute_time()
@@ -294,6 +295,45 @@ extension InputInjector {
         if postMs > Self.eventPostWarnThresholdMs {
             injectLog.info("CGEventPost took \(postMs, format: .fixed(precision: 1))ms")
         }
+    }
+
+    /// Radius a press may wander and still release as a click. Hardware
+    /// captures show sub-3 pt wobble keeping the click state, drags of tens of
+    /// points dropping it to 0; the exact system radius is unmeasured.
+    static let clickStrayRadius: CGFloat = 4
+
+    /// Gives button events the fields AppKit uses to pair a press with its
+    /// drags and release. Without them Pages rejected header/footer
+    /// double-clicks and fought drag-selection (captures:
+    /// Notes/Scratch/wacom-driver-apple-iwork-selection.txt).
+    func stampClickSequence(_ e: CGEvent) {
+        switch e.type {
+        case .leftMouseDown, .rightMouseDown, .otherMouseDown:
+            clickEventNumber &+= 1
+            var state = e.getIntegerValueField(.mouseEventClickState)
+            if state == 0 {
+                state = 1
+                e.setIntegerValueField(.mouseEventClickState, value: 1)
+            }
+            pressClickState = state
+            pressLocation = e.location
+            pressStrayed = false
+        case .leftMouseDragged, .rightMouseDragged, .otherMouseDragged:
+            if hypot(e.location.x - pressLocation.x, e.location.y - pressLocation.y)
+                > Self.clickStrayRadius {
+                pressStrayed = true
+            }
+        case .leftMouseUp, .rightMouseUp, .otherMouseUp:
+            if hypot(e.location.x - pressLocation.x, e.location.y - pressLocation.y)
+                > Self.clickStrayRadius {
+                pressStrayed = true
+            }
+            e.setIntegerValueField(
+                .mouseEventClickState, value: pressStrayed ? 0 : pressClickState)
+        default:
+            return
+        }
+        e.setIntegerValueField(.mouseEventNumber, value: clickEventNumber)
     }
 
     @MainActor
@@ -426,34 +466,23 @@ extension InputInjector {
                 mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
-        if activeAppProfile != .pagesPlainMouse {
-            // subtype must be set first — tabletEvent fields are stored in a union
-            // keyed by subtype; Photoshop reads tabletEventPointPressure (the tablet
-            // union), not mouseEventPressure; both must be set for full app coverage.
-            // Pages text engine is confused by subtype=1 and treats the event as a
-            // tablet gesture rather than a plain mouse click, breaking text selection.
-            e.setIntegerValueField(.mouseEventSubtype, value: 1)
-            e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-            e.setIntegerValueField(.tabletEventPointButtons, value: 1)
-            e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
-            e.setDoubleValueField(.mouseEventPressure, value: pressure)
-            if let p = point {
-                let pose = resolveEffectivePose(point: p, snapshot: snapshot)
-                e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
-                e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
-                e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
-            }
+        // subtype must be set first — tabletEvent fields are stored in a union
+        // keyed by subtype; Photoshop reads tabletEventPointPressure (the tablet
+        // union), not mouseEventPressure; both must be set for full app coverage.
+        e.setIntegerValueField(.mouseEventSubtype, value: 1)
+        e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+        e.setIntegerValueField(.tabletEventPointButtons, value: 1)
+        e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
+        e.setDoubleValueField(.mouseEventPressure, value: pressure)
+        if let p = point {
+            let pose = resolveEffectivePose(point: p, snapshot: snapshot)
+            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         }
-        // Synthetic CGEvents default to click count 0. Always set it so that
-        // double-clicks are recognised (e.g. entering floating text-box edit mode
-        // in Pages/Keynote/Numbers requires clickState=2 even in plain-mouse mode).
-        //
-        // In plain-mouse mode only inject click state for multi-clicks: Quartz
-        // already tracks single-click state internally, and explicitly setting
-        // clickState=1 disrupts Pages' drag-selection state machine.
-        if activeAppProfile != .pagesPlainMouse || clickCount > 1 {
-            e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
-        }
+        // Synthetic CGEvents default to click state 0; the release's value is
+        // derived from this one in `stampClickSequence`.
+        e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
         e.flags = currentEventFlags
         finalizeAndPost(e)
     }
@@ -474,22 +503,18 @@ extension InputInjector {
                 mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
-        if activeAppProfile != .pagesPlainMouse {
-            e.setIntegerValueField(.mouseEventSubtype, value: 1)
-            e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-            e.setIntegerValueField(.tabletEventPointButtons, value: 0)
-            e.setDoubleValueField(.tabletEventPointPressure, value: 0)
-            e.setDoubleValueField(.mouseEventPressure, value: 0)
-            if let p = point {
-                let pose = resolveEffectivePose(point: p, snapshot: snapshot)
-                e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
-                e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
-                e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
-            }
+        e.setIntegerValueField(.mouseEventSubtype, value: 1)
+        e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+        e.setIntegerValueField(.tabletEventPointButtons, value: 0)
+        e.setDoubleValueField(.tabletEventPointPressure, value: 0)
+        e.setDoubleValueField(.mouseEventPressure, value: 0)
+        if let p = point {
+            let pose = resolveEffectivePose(point: p, snapshot: snapshot)
+            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         }
-        if activeAppProfile != .pagesPlainMouse || clickCount > 1 {
-            e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
-        }
+        // Click state is set in `stampClickSequence`, from the press.
         e.flags = currentEventFlags
         finalizeAndPost(e)
     }
@@ -511,17 +536,15 @@ extension InputInjector {
                 mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: button)
         else { return }
-        if activeAppProfile != .pagesPlainMouse {
-            e.setIntegerValueField(.mouseEventSubtype, value: 1)
-            e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-            e.setIntegerValueField(.tabletEventPointButtons, value: pressure > InputInjector.tipPressureThreshold ? 1 : 0)
-            e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
-            e.setDoubleValueField(.mouseEventPressure, value: pressure)
-            if point != nil {
-                e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
-                e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
-                e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
-            }
+        e.setIntegerValueField(.mouseEventSubtype, value: 1)
+        e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+        e.setIntegerValueField(.tabletEventPointButtons, value: pressure > InputInjector.tipPressureThreshold ? 1 : 0)
+        e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
+        e.setDoubleValueField(.mouseEventPressure, value: pressure)
+        if point != nil {
+            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         }
         // Synthetic CGEvents default to zero deltas, breaking AppKit controls (e.g.
         // Xcode's minimap) that read event.deltaX/Y rather than diffing absolute
@@ -545,14 +568,12 @@ extension InputInjector {
                 mouseEventSource: sessionSource, mouseType: .mouseMoved,
                 mouseCursorPosition: location, mouseButton: .left)
         else { return }
-        if activeAppProfile != .pagesPlainMouse {
-            if point != nil {
-                e.setIntegerValueField(.mouseEventSubtype, value: 1)
-                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-                e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
-                e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
-                e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
-            }
+        if point != nil {
+            e.setIntegerValueField(.mouseEventSubtype, value: 1)
+            e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+            e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
+            e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
+            e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         }
         e.setIntegerValueField(
             .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
@@ -699,19 +720,11 @@ extension InputInjector {
                 // for AppKit's gesture recognizer to reject the up as
                 // `receivedEventMidStream`. Pressure stays 0: this is a button
                 // press, not a tip contact.
-                //
-                // Profile-gated, unlike the siblings: this button's release can
-                // arrive from `postMouseUp` (pen tip, `releaseBindingHeldButton`),
-                // which skips stamping entirely under `pagesPlainMouse`. Stamping
-                // unconditionally here would pair a stamped down with an unstamped
-                // up in Pages — the same mismatch, inverted.
-                if activeAppProfile != .pagesPlainMouse {
-                    e.setIntegerValueField(.mouseEventSubtype, value: 1)
-                    e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-                    e.setIntegerValueField(.tabletEventPointButtons, value: down ? 1 : 0)
-                    e.setDoubleValueField(.tabletEventPointPressure, value: 0.0)
-                    e.setDoubleValueField(.mouseEventPressure, value: 0.0)
-                }
+                e.setIntegerValueField(.mouseEventSubtype, value: 1)
+                e.setIntegerValueField(.tabletEventDeviceID, value: 1)
+                e.setIntegerValueField(.tabletEventPointButtons, value: down ? 1 : 0)
+                e.setDoubleValueField(.tabletEventPointPressure, value: 0.0)
+                e.setDoubleValueField(.mouseEventPressure, value: 0.0)
                 e.flags = currentEventFlags
                 finalizeAndPost(e)
             }

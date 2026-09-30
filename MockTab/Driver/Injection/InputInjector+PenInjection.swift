@@ -145,10 +145,7 @@ extension InputInjector {
 
         // ── Proximity transitions (always immediate) ───────────────────────────
         if point.inProximity != lastProximity {
-            // Suppress tabletProximity for plain-mouse profiles: receiving this event
-            // triggers NSTextView's tablet-tracking code path, causing it to route
-            // subsequent mouse events through pressure-selection logic that breaks
-            // normal text selection (drag doesn't extend, only Shift/Command drag works).
+            // Suppressed for Finder only (see AppInputProfile.finderPlainMouse).
             if activeAppProfile == .generic {
                 postProximityEvent(
                     entering: point.inProximity, at: rawPoint,
@@ -309,8 +306,7 @@ extension InputInjector {
             // rename-edit (see AppInputProfile.finderPlainMouse).
             // Twist counts as movement for the same reason pressure does: a
             // pen rotated in place moves neither. Not gated on `tipDown` —
-            // Rebelle and Krita orient the brush while hovering. Plain-mouse
-            // profiles want no tablet-driven drags at all.
+            // Rebelle and Krita orient the brush while hovering.
             let rotated =
                 activeAppProfile == .generic
                 && rotationDelta(pose.rotation, lastPostedRotation) > Self.rotationEpsilon
@@ -327,12 +323,6 @@ extension InputInjector {
             // leftMouseDown; use leftMouseDragged so apps receive proper drag events.
             let dragging = tipDown || (activeToolIsMouse && usbMouseLeftHeld)
 
-            // Pages text engine requires a leftMouseDragged immediately after
-            // leftMouseDown to start selection; tiny sub-epsilon pen movement on
-            // the first contact frame can cause the gate to suppress that first drag
-            // event, leaving Pages in a state where selection never begins.
-            let forceFirstDrag = dragging && activeAppProfile == .pagesPlainMouse && !didEmitDragSinceDown
-
             // Stale-backlog suppression covers both cursor-moving post
             // streams, not just the plain hover move below — a report this
             // old is backlog regardless of which stream carries it.
@@ -342,7 +332,7 @@ extension InputInjector {
             // pen's screen position momentarily reads as backlog.
             let isStale = !dragging && isStaleHoverMove()
 
-            if moved || forceFirstDrag {
+            if moved {
                 // Track velocity for tip-up assist.
                 if hasPostedPoint {
                     let delta = hypot(
@@ -361,10 +351,8 @@ extension InputInjector {
                 // down. Absorbs tremor/pressure jitter that would otherwise
                 // turn a tap into a spurious drag (e.g. canceling a Finder
                 // rename-edit or starting an unwanted text selection).
-                // forceFirstDrag always bypasses this — Pages needs that first
-                // drag event regardless.
                 let withinDragThreshold =
-                    tipDown && !didEmitDragSinceDown && !forceFirstDrag
+                    tipDown && !didEmitDragSinceDown
                     && snap.dragThreshold > 0
                     && hypot(screenPoint.x - tipDownOrigin.x, screenPoint.y - tipDownOrigin.y)
                         < snap.dragThreshold

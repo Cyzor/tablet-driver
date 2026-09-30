@@ -23,21 +23,9 @@ final class AppWatcher {
         "org.gimp.gimp",
     ]
 
-    /// Bundle IDs that need plain mouse events with no tablet-union metadata.
-    /// Pages text engine is confused by mouseEventSubtype=1 and ignores drags.
-    static let plainMouseBundleIDs: Set<String> = [
-        "com.apple.iWork.Pages",
-        "com.apple.iWork.Keynote",
-        "com.apple.iWork.Numbers",
-        "com.apple.Pages", // macOS 26+
-        "com.apple.Keynote",
-        "com.apple.Numbers",
-    ]
-
     /// Maps the frontmost app to its input profile. Also used by
     /// TabletManager when a device connects after launch.
     static func inputProfile(for bundleID: String) -> InputInjector.AppInputProfile {
-        if plainMouseBundleIDs.contains(bundleID) { return .pagesPlainMouse }
         if bundleID == "com.apple.finder" { return .finderPlainMouse }
         return .generic
     }

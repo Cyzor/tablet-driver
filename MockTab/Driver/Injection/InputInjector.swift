@@ -250,12 +250,20 @@ final class InputInjector: @unchecked Sendable {
     /// on one spot must not emit drag events — Finder's desktop icon view
     /// cancels its pending rename-edit on any leftMouseDragged after the
     /// down, so a stationary pen click could never enter rename mode (window
-    /// views tolerate the sub-threshold drags; the desktop does not). Like
-    /// `pagesPlainMouse`, it also opts out of proximity events and tip-up
-    /// assist (the `== .generic` gates); unlike it, tablet fields stay on
-    /// the events — Finder ignores them and the smaller diff is safer.
-    enum AppInputProfile { case generic, pagesPlainMouse, finderPlainMouse }
+    /// views tolerate the sub-threshold drags; the desktop does not). It also
+    /// opts out of proximity events and tip-up assist (the `== .generic`
+    /// gates). Tablet fields stay on the events; Finder ignores them.
+    enum AppInputProfile { case generic, finderPlainMouse }
     var activeAppProfile: AppInputProfile = .generic
+
+    /// Click bookkeeping stamped onto every button event by `stampClickSequence`,
+    /// matching what hardware (and Wacom's driver) sends: each press gets a new
+    /// event number that its drags and release share, and the release repeats
+    /// the press's click state, or 0 if the pointer strayed. HIDThread-confined.
+    var clickEventNumber: Int64 = 0
+    var pressClickState: Int64 = 0
+    var pressLocation: CGPoint = .zero
+    var pressStrayed = false
 
     /// True when this device is the active context (TabletManager.activeContext === me).
     /// Set from main when active changes; read from HIDThread to gate the inline
