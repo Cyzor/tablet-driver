@@ -602,10 +602,12 @@ extension InputInjector {
         // A real trackpad driver posts a gesture-scroll companion event
         // alongside the wheel event; apps that build their own gesture-scroll
         // physics (rather than relying on NSScrollView's free coast) key off
-        // this stream instead of — or in addition to — the wheel event. Post
-        // it first: posting the wheel event after it (not before) is what a
-        // real trackpad's ordering looks like and avoids a stutter seen when
-        // ordered the other way. Only meaningful with a real phase.
+        // this stream instead of — or in addition to — the wheel event. Posted
+        // first to avoid a stutter seen the other way round, though a real
+        // trackpad posts the wheel event first. Matching the trackpad's order
+        // and marker fields (137, 135, MayBegin) didn't fix sites that reject
+        // this phased stream (event-probe, 2026-09-30); only the phase-free
+        // mode reaches them. Only meaningful with a real phase.
         if usePhases {
             postTouchScrollGesture(dx: dx, dy: dy, phase: phase, location: loc)
         }

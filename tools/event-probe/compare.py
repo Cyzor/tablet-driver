@@ -31,8 +31,9 @@ NOISY = {"eventSourceUnixProcessID", "eventTargetUnixProcessID",
 
 
 def load(path):
+    # Skips anything that isn't an event, such as notes pasted above a capture.
     with open(path) as f:
-        return [json.loads(line) for line in f if line.strip()]
+        return [json.loads(line) for line in f if line.lstrip().startswith("{")]
 
 
 def by_type(events):
