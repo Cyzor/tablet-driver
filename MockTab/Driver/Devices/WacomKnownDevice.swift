@@ -18,23 +18,10 @@ final class WacomKnownDevice: TabletDevice {
 
     var spec: DigitizerSpec
 
-    /// Registry spec → decoder spec. Both the initial device and a wirelessly
-    /// paired tablet build one, so adding a capability field means editing here
-    /// only — miss a site and a paired-transport device silently loses it.
+    /// Registry spec → decoder spec, for the initial device and a wirelessly
+    /// paired tablet alike.
     private static func makeDigitizerSpec(from spec: WacomDeviceSpec) -> DigitizerSpec {
-        DigitizerSpec(
-            maxX: spec.maxX,
-            maxY: spec.maxY,
-            maxPressure: spec.maxPressure,
-            buttonCount: spec.buttonCount,
-            hasTilt: spec.hasTilt,
-            hasDualRings: spec.hasDualRings,
-            bezelButtonCount: spec.bezelButtonCount,
-            isPenDisplay: spec.isPenDisplay,
-            ringSlotCount: spec.ringSlotCount,
-            hasFingerTouch: spec.hasFingerTouch,
-            maxTouchContacts: spec.maxTouchContacts,
-            tiltMaxDegrees: spec.tiltMaxDegrees)
+        spec.digitizerSpec
     }
 
     /// Overlays a paired tablet's touch capability onto the dongle's own
