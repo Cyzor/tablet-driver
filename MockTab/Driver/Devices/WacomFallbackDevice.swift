@@ -435,7 +435,7 @@ final class WacomFallbackDevice: TabletDevice {
 
         // ── BLE HOGP pad report (Report ID 0x03, ≥3 bytes) ──────────────
         if id == 0x03 && length >= 3 {
-            if let aux = decodeBLEPadReport(report: report, length: length) {
+            if let aux = decodeBLEPadReport(report: HIDReport(pointer: report, count: length)) {
                 onAux?(aux)
             } else {
                 // Fall back to IntuosV1 express key decode (0x03 also used by PTZ-631W).
@@ -449,7 +449,7 @@ final class WacomFallbackDevice: TabletDevice {
         // own descriptor explains does not need `family` to decide its byte
         // layout, and should not go through a guess when it does not need one.
         if let decoder = penDecoders[id] {
-            if let point = decoder.decode(report: Array(UnsafeBufferPointer(start: report, count: length))) {
+            if let point = decoder.decode(report: HIDReport(pointer: report, count: length)) {
                 HIDCapture.shared.record(tag: tag, report: report, length: length, decoded: [.pen(point)])
                 CaptureActivityProbe.note([.pen(point)])
                 onTablet(point)
@@ -713,7 +713,7 @@ final class WacomFallbackDevice: TabletDevice {
     private func handleBLEPen(report: UnsafePointer<UInt8>, length: CFIndex) {
         guard
             let result = decodeBLEPenReport(
-                report: report, length: length, spec: spec,
+                report: HIDReport(pointer: report, count: length), spec: spec,
                 lastX: &lastX, lastY: &lastY
             )
         else { return }

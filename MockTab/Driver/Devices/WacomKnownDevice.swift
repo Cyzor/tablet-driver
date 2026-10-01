@@ -1349,6 +1349,7 @@ final class WacomKnownDevice: TabletDevice {
             deviceSpec.parser == .intuosV3 && isBluetooth
             && state.framesSinceProximityEnter == Self.toolAnnounceGraceFrames
 
+        let hidReport = HIDReport(pointer: report, count: length)
         let results: [DecodeResult]
         if length > 0, var fixedTouchDecoder = fixedTouchDecoders[report[0]] {
             // Checked before `touchDecoders` below: the two dictionaries'
@@ -1356,15 +1357,14 @@ final class WacomKnownDevice: TabletDevice {
             // to today, but a fixed, hand-specified layout should win over a
             // generically-derived one if that were ever to change.
             results = fixedTouchDecoder.decode(
-                report: report, length: length, spec: spec, state: &state,
+                report: hidReport, spec: spec, state: &state,
                 deviceFamily: deviceSpec.family)
             fixedTouchDecoders[report[0]] = fixedTouchDecoder
         } else if length > 0, let touchDecoder = touchDecoders[report[0]] {
-            let bytes = Array(UnsafeBufferPointer(start: report, count: length))
-            results = touchDecoder.decode(report: bytes).map { [.touch($0.contacts)] } ?? []
+            results = touchDecoder.decode(report: hidReport).map { [.touch($0.contacts)] } ?? []
         } else {
             var decoded = decoder.decode(
-                report: report, length: length, spec: spec, state: &state,
+                report: hidReport, spec: spec, state: &state,
                 deviceFamily: deviceSpec.family)
             let realToolEnter: ToolIdentity? = decoded.compactMap {
                 if case .toolEnter(let identity) = $0 { return identity } else { return nil }
