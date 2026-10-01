@@ -717,10 +717,10 @@ extension InputInjector {
             value: vendorPtr << 32 | Int64(activeToolSerial))
         // Wacom's mask minus abs Z (hover height), which we don't send: device
         // ID, abs X/Y, buttons, tilt X/Y, pressure, orientation; plus rotation
-        // for Art Pens (Photoshop's Rotation brush control checks it).
-        var capabilities: Int64 = isArtPen ? 0x35C7 : 0x15C7
-        // Tilt X/Y and orientation only where the tablet has tilt.
-        if !reportsTilt { capabilities &= ~0x1180 }
+        // for Art Pens (Photoshop's Rotation brush control checks it). Tilt
+        // stays even on tablets without it: no registry or catalog field says
+        // which those are, and clearing it hid tilt from apps on every tablet.
+        let capabilities: Int64 = isArtPen ? 0x35C7 : 0x15C7
         e.setIntegerValueField(.tabletProximityEventCapabilityMask, value: capabilities)
         e.setIntegerValueField(.tabletProximityEventEnterProximity, value: entering ? 1 : 0)
     }
