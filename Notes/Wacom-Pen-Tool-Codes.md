@@ -15,6 +15,7 @@ contributes to.
 | `0x0842` | Pro Pen 2 (KP-504E) | PTH-660, PTK-870 |
 | `0x0804` | Art Pen | PTK-870 (checked against a pen of known identity) |
 | `0x1108` | Art Pen | PTH-660 (Bluetooth) |
+| `0x1804` | Art Pen, Intuos4/5 era (kernel `0x10804`) | PTH-850 |
 | `0x0200` | Pro Pen 3 | PTK-870 |
 | `0x8822` / `0x882A` | GD-series Grip Pen, tip / eraser | GD-0608-U |
 | `0x1E02` | Pro Pen (KP-503E) | Cintiq 27QHD (DTK-2700), two units |

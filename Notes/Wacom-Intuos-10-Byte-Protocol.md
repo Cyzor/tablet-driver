@@ -55,7 +55,7 @@ confidence. Bits 1–4, read as `([1] >> 1) & 0x0F`, give the packet type:
 | --- | --- | --- |
 | `0x00`–`0x03` | Pen. Bits 1 and 2 are also barrel buttons 1 and 2 | observed |
 | `0x04` | 4D mouse, first packet | kernel |
-| `0x05` | Rotation (Art Pen on Intuos3 and later; 4D mouse) | kernel |
+| `0x05` | Rotation (Art Pen on Intuos3 and later; 4D mouse) | observed (Art Pen, PTH-850) |
 | `0x06` | Mouse (Intuos4-era, KC-100) | kernel |
 | `0x08` | 2D mouse or lens cursor | kernel |
 | `0x0A` | Airbrush, second packet | kernel |
@@ -133,9 +133,16 @@ left, `0x08` middle, `0x10` right. Lens cursors use a different button map.
 pen packet. It arrives between pen packets and has no pressure, so it must not
 be read as a tip release. (kernel)
 
-**Rotation, type `0x05`.** 11-bit value `[6] << 3 | ([7] >> 5) & 7`, with
-`[7] & 0x20` selecting the half-turn. Not decoded by TabletKit, so no Art Pen
-rotation on these tablets yet. (kernel)
+**Rotation, type `0x05`.** 11-bit value `t = [6] << 3 | ([7] >> 5) & 7`, with
+`[7] & 0x20` selecting the half-turn. The kernel maps it to −900…899 for one
+turn: `450 − t/2` with the bit clear; with it set, `(t − 1)/2 + 450`, or
+`(t − 1)/2 − 1350` above 900.
+
+An Art Pen sends one rotation packet after every pen packet, with status
+`0xEA` in contact and `0xAA` in hover. Bit 1 of that status is part of the
+type, not a barrel button, and bytes 6–7 hold the angle, not pressure. A
+decoder that reads it as a pen packet presses button 1 and jumps pressure on
+every other report. (observed, PTH-850 with an Intuos4/5 Art Pen)
 
 ## ExpressKeys and touch ring
 
@@ -185,6 +192,5 @@ Kernel only (`wacom_intuos_pad()`); no capture exists.
 
 ## Unverified
 
-- Art Pen rotation: the type `0x05` packet has not been captured.
 - 4D mouse, lens cursor and airbrush: no hardware on hand.
 - Intuos4 and CTL/CTH-x90 rows: mapped from the kernel, no captures.
