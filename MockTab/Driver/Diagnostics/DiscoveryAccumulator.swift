@@ -185,7 +185,7 @@ final class DiscoveryAccumulator: Sendable {
         /// byte 2's range looked large enough to span the tool ID space, not
         /// because the pen moved there, but because a handful of tool-change
         /// samples were mixed into the same histogram as thousands of pen
-        /// samples. See Notes/Wacom-HID-GD‑0608‑U-Reference.md.
+        /// samples. See Notes/Wacom-Intuos-10-Byte-Protocol.md.
         static let discriminatorByteIndex = 1
 
         /// Per-value byte statistics, keyed by the value seen at

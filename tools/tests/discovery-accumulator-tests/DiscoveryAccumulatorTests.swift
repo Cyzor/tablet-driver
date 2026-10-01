@@ -422,7 +422,7 @@ private func testToolCodes() {
 /// swept a range wide enough to span the tool-ID space — not because the pen
 /// moved there, but because a handful of tool-change samples carrying serial/
 /// type bytes at that position got mixed in with thousands of real position
-/// samples. See Notes/Wacom-HID-GD‑0608‑U-Reference.md.
+/// samples. See Notes/Wacom-Intuos-10-Byte-Protocol.md.
 private func testDiscriminatorSeparatesPacketShapes() {
     let acc = DiscoveryAccumulator()
     acc.start()

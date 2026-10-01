@@ -188,5 +188,6 @@ For post-install issues such as pressure not working, conflict warnings, or tabl
 - [CHANGELOG.md](CHANGELOG.md) — release history.
 - [mocktab.org](https://mocktab.org) — website and FAQ.
 - [Hardware compatibility](https://mocktab.org/hardware.html) — full device list.
+- [Tablet protocol notes](Notes/README.md) — report formats for Wacom and Xencelabs tablets, and how macOS apps read tablet events.
 - [Troubleshooting](https://mocktab.org/troubleshooting.html) — common problems and fixes.
 - [Issues](https://github.com/Cyzor/tablet-driver/issues) — bug reports and feature requests.
