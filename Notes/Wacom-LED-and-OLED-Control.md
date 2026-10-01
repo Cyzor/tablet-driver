@@ -98,4 +98,4 @@ Intuos5 and Intuos Pro have no key displays.
 ## Devices the host can't set
 
 The ExpressKey Remote lights its own ring-mode LEDs; the host can only read
-which mode is active (see the pen display page). (observed)
+which mode is active (see [pen displays](Wacom-Pen-Display-Protocols.md#expresskey-remote-ekr-100)). (observed)

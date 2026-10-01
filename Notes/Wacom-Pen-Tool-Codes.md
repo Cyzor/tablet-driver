@@ -36,8 +36,7 @@ wherever a protocol provides them. (observed)
 
 **Rotation.** Only the Art Pen family reports barrel rotation. Other pens
 leave the rotation field at a constant or at noise, so gate on the tool
-code. Where the tool code can be missed (Bluetooth on the PTK-x70; see
-that page), use the protocol's "no reading" value instead. (observed)
+code. Where the tool code can be missed (Bluetooth on the [PTK-x70](Wacom-Intuos-Pro-Gen3-Protocol.md)), use the protocol's "no reading" value instead. (observed)
 
 **Pro Pen 3** has no eraser end and three side-switch positions.
 
@@ -49,7 +48,7 @@ ends. Both fields read 0 out of proximity on the Intuos Pro gen 3.
 
 The Linux driver treats tool IDs as wider than 16 bits: for example
 `0x10804` (Intuos4 Art Pen) and `0x16802` (Pro Pen KP-503E). Each protocol
-spreads the ID across nibbles in its own way (see the Intuos 10-byte page),
+spreads the ID across nibbles in its own way (see the [Intuos 10-byte page](Wacom-Intuos-10-Byte-Protocol.md#tool-enter-packet)),
 and a decoder that stores 16 bits has to fold the high bits down. TabletKit
 folds `0x16802` to `0x1E02`, which is no longer the same number as libwacom's.
 Compare codes only within one convention. (kernel)

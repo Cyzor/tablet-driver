@@ -24,8 +24,7 @@ no second step, no delay. (observed)
 
 USB interfaces on the PTH-850: interface 0 carries pen and pad reports along
 with a mouse collection that the OS claims by default. Interface 1 (usage
-page `0xFF00`) carries finger touch in a 64-byte container; see the touch
-page. (observed)
+page `0xFF00`) carries finger touch in the [64-byte container](Wacom-Consumer-Tablet-Protocols.md#the-64-byte-container-report-0x02). (observed)
 
 ## Reports
 
@@ -36,7 +35,7 @@ page. (observed)
 | `0x0C` | 10 | ExpressKeys and touch ring (Intuos4) |
 | `0x11` | — | ExpressKeys on some models |
 | `0x03`, `0x04` | 22, 32 | PTK-540WL over Bluetooth: 2 or 3 packed frames |
-| `0x80` | 32 | ACK-40401 dongle link status; see the wireless page |
+| `0x80` | 32 | ACK-40401 dongle link status; see [wireless](Wacom-Wireless-and-Battery.md) |
 
 ## Pen report: status byte `[1]`
 
