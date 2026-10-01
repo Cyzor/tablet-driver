@@ -671,8 +671,9 @@ extension InputInjector {
         e.setIntegerValueField(.tabletProximityEventPointerID, value: pointerID)
         e.setIntegerValueField(.tabletProximityEventDeviceID, value: tabletDeviceID)
 
-        // Serial lets apps keep per-pen tool presets (Photoshop). Both ends
-        // share it, as with Wacom; the unique ID below tells them apart.
+        // Wacom sends each pen's serial; both ends share it, and the unique
+        // ID below tells them apart. No app has yet been seen to key tool
+        // settings on it (Photoshop, Krita, and Rebelle don't, 2026-09-30).
         let toolCode = activeToolCode
         if activeToolSerial != 0 {
             e.setIntegerValueField(

@@ -207,7 +207,7 @@ Esta vista ayuda a diagnosticar comportamientos inesperados, por ejemplo para co
 
 ## Recopilar datos del dispositivo
 
-**Recopilar datos del dispositivo** graba lo que la tableta envía mientras la usas. El resultado es un único archivo ZIP que puedes adjuntar a una solicitud para añadir o mejorar la compatibilidad con un dispositivo.
+**Recopilar datos del dispositivo** graba lo que la tableta envía mientras la usas. El resultado es un único archivo ZIP que puedes adjuntar a una solicitud en GitHub o enviar por correo electrónico para añadir o mejorar la compatibilidad con un dispositivo.
 
 [website]
 
