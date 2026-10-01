@@ -701,7 +701,7 @@ extension InputInjector {
             case 0x0804, 0x1108, 0x1804:  // Art Pen variants
                 vendorPtr = 0x0804
                 isArtPen = true
-            case 0x0842, 0x0832, 0x0852:  // Pro Pen 2 variants, Pen 4K
+            case 0x0842, 0x0832, 0x0852:  // Pro Pen 2, Stroke Pen, Intuos2 Grip Pen
                 vendorPtr = Int64(toolCode)
                 isArtPen = false
             default:
