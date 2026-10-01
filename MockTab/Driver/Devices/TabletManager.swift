@@ -389,7 +389,7 @@ final class TabletManager: ObservableObject {
     /// - 0x256C Huion (recognition only).
     /// - 0x28BD Xencelabs / XP-Pen (recognition only).
     /// - 0x5543 UC-Logic OEMs (recognition only).
-    static let knownVendorIDs: [Int] = [0x056A, 0x0531, 0x256C, 0x28BD, 0x5543]
+    nonisolated static let knownVendorIDs: [Int] = [0x056A, 0x0531, 0x256C, 0x28BD, 0x5543]
 
     // MARK: - Init
 

@@ -59,7 +59,8 @@ final class ScreenAreaOverlayWindow: NSWindow {
             forName: NSApplication.didResignActiveNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.finish(with: nil)
+            // Queue .main: already on the main actor.
+            MainActor.assumeIsolated { self?.finish(with: nil) }
         }
     }
 
