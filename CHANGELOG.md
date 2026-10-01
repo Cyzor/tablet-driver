@@ -4,7 +4,7 @@ Full details for each release live in [`release-notes/`](release-notes/). This
 file is a one-line index. Keep the Unreleased line current; it becomes the
 snapshot's notes on the Check for Updates page, then the next release's line.
 
-- Unreleased — fuller pen input in Pages, Keynote, Numbers, and Photoshop; a working Intuos Pro eraser and full pressure resolution; smoother scrolling and touch; new display-mapping controls; broader PTK, Cintiq, and MobileStudio Pro support; less wireless jitter; diagnostics sendable by email; Check for Updates command.
+- [v0.5.0](release-notes/v0.5.0.md) — fuller pen input in Pages, Keynote, Numbers, and Photoshop; a working Intuos Pro eraser and full pressure resolution; smoother scrolling and touch; new display-mapping controls; broader PTK, Cintiq, and MobileStudio Pro support; less wireless jitter; diagnostics sendable by email; Check for Updates command.
 - [v0.4.2](release-notes/v0.4.2.md) — multitouch gesture behavior; Bluetooth pen and touch reliability on macOS 27; Intuos Pro M (PTH-651) touch support.
 - [v0.4.1](release-notes/v0.4.1.md) — pressure threshold setting; more reliable touch controls; device-recognition fixes; lower idle memory use.
 - [v0.4.0](release-notes/v0.4.0.md) — pen feel and Pan View; per-unit tablet settings; Xencelabs Pen Display controls; broader device recognition.
