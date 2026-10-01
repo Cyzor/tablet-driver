@@ -203,7 +203,7 @@ struct TouchView: View {
             )
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
             .opacity(gestureRowOpacity)
-            .help("On (default): two fingers post a phased trackpad-style stream, so scroll-view apps coast after you lift. Off: a simpler stream that scrolls in far more apps (including Calendar's Month/Year view), but without inertia.")
+            .help("On: two fingers post a phased trackpad-style stream, so scroll-view apps coast after you lift. Off (default): a simpler stream that scrolls in far more apps (including Calendar's Month/Year view), but without inertia.")
         }
     }
 
