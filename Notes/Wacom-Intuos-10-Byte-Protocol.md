@@ -3,8 +3,8 @@
 The 10-byte pen report the Linux driver handles in `wacom_intuos_irq()`. It is
 used by the Intuos and Intuos2 (GD/XD), Intuos4 (PTK-x40), Intuos5 (PTH/PTK-x50)
 and Intuos Pro gen 1 (PTH-x51), by the 2015–2018 consumer Intuos (CTL/CTH-x90,
-CTL-x72), and by the Cintiq 13HD Touch. Intuos3 (PTZ) uses a related but
-incompatible format. TabletKit decodes it in `IntuosV1Decoder`; device
+CTL-x72), by the Intuos3 (PTZ) with differences noted below, and by the
+older Cintiqs. TabletKit decodes it in `IntuosV1Decoder`; device
 coverage lives in `TabletKit/registry.json` (`"parser": "intuosV1"`).
 
 Hardware evidence comes from the Intuos5 L (PTH-850), Intuos Pro L (PTH-851)
@@ -168,6 +168,21 @@ Each frame decodes as over USB: pen frames as above, pad frames as `0x0C`.
 Power byte: bits 0–2 index the battery table `1, 15, 30, 45, 60, 70, 85, 100`
 percent; bit 3 charging; bit 4 external power. Check the minimum lengths:
 the kernel once read past short reports here (GHSA-4mjh-m2x6-5qg4). (kernel)
+
+## Intuos3 (PTZ-x30, PTZ-x31)
+
+Same pen packet, tool enter packet and status tests. TabletKit decodes it
+separately (`Intuos3Decoder`) because it reads proximity from bit 6 (`0x40`),
+with no separate confidence bit, and because the pad differs:
+
+- Report `0x0C`: on the 6×11 (PTZ-631W) and 12×19 wide models, `[1]–[2]`
+  and `[3]–[4]` are the two touch strips, 13 bits each
+  (`([1] & 0x1F) << 8 | [2]`), with one bit set for the finger's zone and
+  0 for no finger. Other models carry four keys in the low nibbles of
+  `[5]` and `[6]`.
+- Report `0x03`: eight keys in `[4]`.
+
+Kernel only (`wacom_intuos_pad()`); no capture exists.
 
 ## Unverified
 

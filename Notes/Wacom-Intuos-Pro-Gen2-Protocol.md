@@ -64,6 +64,14 @@ on the surface. (observed)
 **Art Pen.** Tool codes `0x0804` and `0x1108`. `0x1108` has bit 3 set, so the
 common "tool code `& 0x08` means eraser" rule misfires on it. (observed)
 
+**Cordless mouse (KC-100).** Tool codes with low nibble `0x6` (`0x0806`) are
+the mouse; test `(code & 0x000F) == 0x0006`, since `0x0806` also has bit
+`0x0800` set. Its buttons never appear in report `0x10`: status stays `0x60`
+whatever is pressed. Left, right and middle arrive on the tablet's separate
+mouse interface as report `0x01` (4 bytes, `[1]` bit 0 left, 1 right, 2
+middle). The wheel is an 8-bit counter in `[16]`; take the signed difference
+from the previous report. (observed)
+
 ## USB pen report `0x1E` (pen displays)
 
 A second layout, seen on the Cintiq Pro 22 (DTH-227) and shared by the Cintiq

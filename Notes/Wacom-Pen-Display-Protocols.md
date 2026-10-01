@@ -41,6 +41,14 @@ field)
 on the 21UX2 and 22HD, `[3]`–`[4]` are touch-strip positions and `[5]`/`[7]`
 bit 0 are the two center toggles. (kernel)
 
+**24HD panel buttons.** The three "buttons" printed on the 24HD's bezel
+are one capacitive slider under three icons. A tap on an icon sets one
+fixed bit: `[3]` bit 4 for info (left), `[4]` bit 6 for the keyboard
+(middle), `[4]` bit 0 for the wrench (right). A swipe walks a single bit
+through `[3]` bits 4–0 and `[4]` bits 7–0. Decode only the three fixed
+bits; the kernel's approach of OR-ing whole regions misfires during swipes.
+(observed, DTK-2400)
+
 **27QHD panel buttons, report `0x11`.** `[2]` bits 0–2 are the three buttons
 on the display's own panel. Bytes 5, 7 and 9 drift slowly whether or not a
 button is pressed, possibly an ambient light sensor. (observed, DTH-2700)
