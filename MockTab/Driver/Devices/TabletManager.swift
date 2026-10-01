@@ -896,10 +896,27 @@ final class TabletManager: ObservableObject {
             // first — the main-actor block needs the code this one replaced.
             let previousToolCode = context?.injector.activeToolCode
             if let injector = context?.injector {
+                // Identity can arrive after the pen entered range: the PTK-x70
+                // sends none in its first frame, and the identity left over is
+                // the previous pen's. Apps read capabilities such as rotation
+                // only from proximity, so leave as the old tool and re-enter.
+                let changed = identity.toolCode != injector.activeToolCode
+                    || identity.serial != injector.activeToolSerial
+                let reannounce = changed && injector.lastProximity
+                if reannounce {
+                    injector.postProximityEvent(
+                        entering: false, at: injector.shimLastScreen,
+                        eraser: injector.activeToolIsEraser)
+                }
                 injector.activeToolCode = identity.toolCode
                 injector.activeToolSerial = identity.serial
                 injector.activeToolIsMouse = identity.isMouse
                 injector.activeToolIsEraser = identity.isEraser
+                if reannounce {
+                    injector.postProximityEvent(
+                        entering: true, at: injector.shimLastScreen,
+                        eraser: injector.activeToolIsEraser)
+                }
             }
             Task { @MainActor [weak self, weak context] in
             guard self != nil, let context else { return }
