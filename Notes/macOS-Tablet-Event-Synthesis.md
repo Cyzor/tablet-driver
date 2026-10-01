@@ -34,10 +34,19 @@ tool code and the same unique ID, Photoshop and Krita treat it as the pen.
 Wacom keeps the tool code, sets bit 3, and gives each end its own unique ID.
 
 **Capability mask.** Wacom sends `0x15C7` for ordinary pens and `0x35C7`
-for the Art Pen. The `0x2000` bit announces rotation: without it Photoshop
-ignores barrel rotation (its Rotation brush control stays dead), though
-Illustrator uses it regardless. Clear the tilt and orientation
-bits (`0x1180`) for tablets without tilt.
+for the Art Pen (plus `0x0200` when it reports hover height). The `0x2000`
+bit announces rotation: without it Photoshop ignores barrel rotation (its
+Rotation brush control stays dead), though Illustrator uses it regardless.
+Keep the tilt and orientation bits (`0x1180`) set: dropping them made Rebelle's
+rotation brushes flip unpredictably, and claiming tilt on a tablet without it
+does no harm.
+
+**Announce identity changes.** Apps read a pen's capabilities only from
+proximity events. If you learn the pen's identity after announcing proximity
+(the Intuos Pro gen 3 sends none in the first frame of an approach), post a
+leave with the old identity and an enter with the new one. Otherwise apps
+keep the previous pen's capabilities, and an Art Pen's rotation is ignored
+until the pen leaves range.
 
 ## Pen samples
 

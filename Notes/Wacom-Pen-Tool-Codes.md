@@ -45,6 +45,20 @@ code. Where the tool code can be missed (Bluetooth on the [PTK-x70](Wacom-Intuos
 ends. Both fields read 0 out of proximity on the Intuos Pro gen 3.
 (observed)
 
+## Art Pen generations
+
+| Full ID | Pen | libwacom group |
+| --- | --- | --- |
+| `0x804` | Art Pen (Intuos4 era) | intuos4 |
+| `0x10804` | Art Pen (Pro Pen 2 generation) | propengen2 |
+| `0x204` | Art Pen 2 (Pro Pen 3 generation) | propen3 |
+
+Tablets that report only 16 bits, such as the Intuos Pro gen 2 over USB and
+gen 3, show both older pens as `0x0804`. Only the 10-byte format's full ID
+tells them apart. On an Intuos Pro gen 3, one Art Pen of unknown generation
+loses rotation and tracking at about a quarter of the hover height another
+reaches; the same pen works through the full range on a PTH-860. (observed)
+
 ## Width
 
 The Linux driver treats tool IDs as wider than 16 bits: for example
