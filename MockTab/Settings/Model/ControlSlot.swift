@@ -178,7 +178,7 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         /// Analog pinch-zoom, synthesized the same way a real trackpad pinch
         /// is (`InputInjector.postTouchMagnify`) — smooth continuous zoom,
         /// not the stepped ⌥/⌘+wheel fallback `.scroll` uses under a
-        /// modifier. See `Notes/Scratch/ring-dial-analog-zoom-rotate-design.md`.
+        /// modifier.
         case zoom
         /// Analog rotate, synthesized like a real trackpad two-finger twist
         /// (`InputInjector.postTouchRotate`). Same design doc as `.zoom`.

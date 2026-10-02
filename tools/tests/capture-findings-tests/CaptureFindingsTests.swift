@@ -310,14 +310,10 @@ do {
 
 // MARK: - Real submitted captures
 
-// Path is relative to this harness; absent on a fresh clone.
-let fixtureDir = URL(fileURLWithPath: #filePath)
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .deletingLastPathComponent()
-    .appendingPathComponent(
-        "Notes/Scratch/Device-Diagnostics/Submitted-Discovery-Data-Capture/Wacom-Cintiq-DTH-2700")
+// Set MOCKTAB_SILENT_REPORT_CAPTURES to a folder of discovery captures in
+// which no pen ever came into range. Without it, these checks are skipped.
+let fixtureDir = URL(fileURLWithPath:
+    ProcessInfo.processInfo.environment["MOCKTAB_SILENT_REPORT_CAPTURES"] ?? "/nonexistent")
 
 if let files = try? FileManager.default.contentsOfDirectory(atPath: fixtureDir.path) {
     let decoder = JSONDecoder()

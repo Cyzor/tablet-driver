@@ -240,8 +240,7 @@ extension InputInjector {
     /// this device uses — safe to call unconditionally, a no-op when nothing
     /// is open. Called from the ring-mode-cycle and ring-select-slot binding
     /// paths (+CGEvents.swift) before the active slot changes out from under
-    /// a live gesture; see the `ended`-path enumeration in
-    /// `Notes/Scratch/ring-dial-analog-zoom-rotate-design.md`.
+    /// a live gesture.
     ///
     /// Deliberately NOT hooked to live in-place slot edits in the settings
     /// UI (a different case from the mode-cycle binding above): the

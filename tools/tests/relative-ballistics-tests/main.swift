@@ -117,13 +117,15 @@ _ = pb.cursorDelta(dxMM: 0.2, dyMM: 0.2, dxPoints: 2, dyPoints: 1, dt: 0.005)
 let prop = pb.cursorDelta(dxMM: 0.02, dyMM: 0.02, dxPoints: 0.2, dyPoints: 0.1, dt: 0.005)
 expect(abs(prop.dx / prop.dy - 2) < 1e-9, "x:y proportion is kept")
 
-// MARK: - Real stationary captures (local only)
+// MARK: - Real stationary captures (optional)
 
-let root = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "."
-let captureDir = root + "/Notes/Scratch/Device-Diagnostics/Internal-Discovery-Data-Capture/"
+// Set MOCKTAB_STATIONARY_CAPTURES to a colon-separated list of capture logs
+// of a pen held still. Without it, these checks are skipped.
+let stationaryCaptures = (ProcessInfo.processInfo.environment["MOCKTAB_STATIONARY_CAPTURES"] ?? "")
+    .split(separator: ":").map(String.init)
 
-private func loadFrames(_ name: String, reportID: String) -> [(Double, [UInt8])] {
-    guard let text = try? String(contentsOfFile: captureDir + name, encoding: .utf8) else { return [] }
+private func loadFrames(_ path: String, reportID: String) -> [(Double, [UInt8])] {
+    guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return [] }
     var out: [(Double, [UInt8])] = []
     for line in text.split(separator: "\n") where line.contains("[in id=0x\(reportID) ") {
         guard let tStart = line.range(of: "[t="), let tEnd = line.range(of: " dt="),
@@ -136,9 +138,10 @@ private func loadFrames(_ name: String, reportID: String) -> [(Double, [UInt8])]
     return out
 }
 
-func real(_ name: String, reportID: String, unitsPerMM: Double,
+func real(_ path: String, reportID: String, unitsPerMM: Double,
           _ xy: ([UInt8]) -> (Int, Int)?) {
-    let samples = loadFrames(name, reportID: reportID).compactMap { f -> (t: Double, x: Double, y: Double)? in
+    let name = (path as NSString).lastPathComponent
+    let samples = loadFrames(path, reportID: reportID).compactMap { f -> (t: Double, x: Double, y: Double)? in
         guard f.1.count >= 10, let p = xy(f.1) else { return nil }
         return (f.0, Double(p.0) / unitsPerMM, Double(p.1) / unitsPerMM)
     }
@@ -149,15 +152,19 @@ func real(_ name: String, reportID: String, unitsPerMM: Double,
     expect(new.flickers <= old.flickers / 4, "\(name): rest flicker not reduced enough")
 }
 
-real("850-wireless-dongle-stationary-2026-09-25.txt", reportID: "02", unitsPerMM: 65024 / 325.1) { b in
-    let s = b[1]
-    guard s & 0xFC != 0xC0, s & 0x20 != 0, s & 0xFE != 0x20 else { return nil }
-    return ((Int(b[3]) | Int(b[2]) << 8) << 1, (Int(b[5]) | Int(b[4]) << 8) << 1)
-}
-real("ptk-870-bt-art-pen-held-still.txt", reportID: "1a", unitsPerMM: 69800 / 311.0) { b in
-    guard b[1] & 0x0F != 0x01, b[3] & 0x80 != 0 else { return nil }
-    return (Int(b[4]) | Int(b[5]) << 8 | Int(b[6] & 0x0F) << 16,
-            Int(b[6] >> 4) | Int(b[7]) << 4 | Int(b[8]) << 12)
+for path in stationaryCaptures {
+    // Intuos5 (report 0x02, through the wireless receiver).
+    real(path, reportID: "02", unitsPerMM: 65024 / 325.1) { b in
+        let s = b[1]
+        guard s & 0xFC != 0xC0, s & 0x20 != 0, s & 0xFE != 0x20 else { return nil }
+        return ((Int(b[3]) | Int(b[2]) << 8) << 1, (Int(b[5]) | Int(b[4]) << 8) << 1)
+    }
+    // Intuos Pro gen 3 over Bluetooth (report 0x1A).
+    real(path, reportID: "1a", unitsPerMM: 69800 / 311.0) { b in
+        guard b[1] & 0x0F != 0x01, b[3] & 0x80 != 0 else { return nil }
+        return (Int(b[4]) | Int(b[5]) << 8 | Int(b[6] & 0x0F) << 16,
+                Int(b[6] >> 4) | Int(b[7]) << 4 | Int(b[8]) << 12)
+    }
 }
 
 if failures == 0 {

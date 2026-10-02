@@ -15,7 +15,7 @@
 //
 // This is the fallback path if a future macOS restricts CGEventPost: pen
 // input would enter the HID stack as a real digitizer instead of synthesized
-// events. See Notes/Scratch/Virtual-digitizer-spike-2026-07-16.md.
+// events.
 //
 // Build:  clang -O2 -o virtual_digitizer_spike virtual_digitizer_spike.c \
 //             -framework IOKit -framework CoreFoundation -framework ApplicationServices

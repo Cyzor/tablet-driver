@@ -1,8 +1,9 @@
 // Checks for the serial redaction applied to submitted captures.
 //
 // Compiles the real `CaptureSerialRedaction` rather than restating it. The
-// frames below are the ones an actual submission carried — a DTH-2700 desk
-// whose ExpressKey Remote reported serial 23547 in plain bytes.
+// frames below follow the layout of an actual submission, a DTH-2700 desk
+// whose ExpressKey Remote reported its serial in plain bytes. The serial
+// itself is made up.
 import Foundation
 
 var fails = 0, checks = 0
@@ -28,16 +29,16 @@ func masked(_ bytes: [UInt8], productID: Int, reportID: UInt8) -> String {
 
 // MARK: - The submitted frame
 
-// Report 0x10, verbatim from `DTH-2700-0x0331_20260917_155547.json`: one
-// remote paired in slot 0, serial 0x005BFB — 23547 — at bytes 4...6.
+// Report 0x10 from an ExpressKey Remote USB capture: one remote paired in
+// slot 0, serial 0x001234 at bytes 4...6.
 var pairing = [UInt8](repeating: 0, count: 32)
 pairing[0] = 0x10
 pairing[2] = 0x01
-pairing[4] = 0xFB
-pairing[5] = 0x5B
+pairing[4] = 0x34
+pairing[5] = 0x12
 
 let maskedPairing = masked(pairing, productID: ekr, reportID: 0x10)
-check(!maskedPairing.contains("FB5B"), "the paired serial does not survive masking")
+check(!maskedPairing.contains("3412"), "the paired serial does not survive masking")
 
 // MARK: - Fingerprints
 
@@ -45,7 +46,7 @@ let salt = Data("test-salt".utf8)
 let prints = CaptureSerialRedaction.serialFingerprints(
     productID: ekr, reportID: 0x10, bytes: pairing, salt: salt)
 check(prints.count == 1 && prints[0].hasPrefix("slot0:"), "one occupied slot, one fingerprint")
-check(!prints.joined().lowercased().contains("fb5b"), "fingerprint does not carry the serial")
+check(!prints.joined().lowercased().contains("3412"), "fingerprint does not carry the serial")
 check(
     prints == CaptureSerialRedaction.serialFingerprints(
         productID: ekr, reportID: 0x10, bytes: pairing, salt: salt),
@@ -56,8 +57,8 @@ check(
     "another install's salt gives another fingerprint")
 var sender = [UInt8](repeating: 0, count: 32)
 sender[0] = 0x11
-sender[3] = 0xFB
-sender[4] = 0x5B
+sender[3] = 0x34
+sender[4] = 0x12
 let senderPrint = CaptureSerialRedaction.serialFingerprints(
     productID: ekr, reportID: 0x11, bytes: sender, salt: salt)
 check(

@@ -621,16 +621,12 @@ final class WacomKnownDevice: TabletDevice {
         }
     }
 
-    // NOT HARDWARE-VERIFIED — none of the four product IDs below have been
-    // captured or tested against real hardware. Byte layouts are ported from
-    // the Linux kernel (`wacom_24hdt_irq()`, `WACOM_24HDT` branch) and
-    // checked only against synthetic test fixtures in TabletKit. See
-    // `Notes/Scratch/wacom-24hdt-touch-design-2026-09-08.md` for the full
-    // design rationale, the advisor reviews that approved shipping this
-    // unverified, and why it stays gated at `.experimental` in the registry
-    // rather than a stronger confidence tier. Do not raise confidence, add
-    // another PID, or assume this is correct on a specific unit without a
-    // real capture confirming it first.
+    // Unverified on hardware: we have no capture from any of the four product
+    // IDs below. The byte layouts come from the Linux kernel
+    // (`wacom_24hdt_irq()`, `WACOM_24HDT` branch), and only synthetic test
+    // fixtures in TabletKit check them, so the registry keeps them at
+    // `.experimental`. Do not raise confidence, add another PID, or assume this
+    // is correct on a specific unit without a real capture confirming it first.
     //
     // Unlike `deriveTouchDecoders` above (which reads whatever descriptor an
     // interface declares, generically), these decoders are hand-written for

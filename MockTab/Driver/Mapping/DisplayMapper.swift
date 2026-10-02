@@ -11,9 +11,8 @@ private let displayMapperLog = Logger(subsystem: "com.cyzor.mocktab", category: 
 
 /// Maps tablet points and raw touch reports to screen coordinates: display
 /// selection, orientation and active-area crop, multi-point calibration, and
-/// relative (mouse-like) mode. Extracted out of `InputInjector` per the
-/// 2026-05-18 review (`Notes/Scratch/InputInjector-review-2026-05-18.md`,
-/// Phase 1) — this is the class's most well-isolated concern.
+/// relative (mouse-like) mode. Extracted out of `InputInjector`, where it was
+/// the most self-contained concern.
 ///
 /// `InputInjector` holds this as a `var` field and calls its mutating methods
 /// inline on the hot path, exactly as it called its own private methods

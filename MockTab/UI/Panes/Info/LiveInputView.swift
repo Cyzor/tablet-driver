@@ -69,11 +69,10 @@ private struct LiveInputView: View {
 
     // MARK: - Rotation gauge
 
-    /// Total signed rotation since the gauge last reset, not clamped to
-    /// 0-360 — each new raw angle adds the shortest signed delta from the
-    /// previous one, so a wrap (358° -> 2°) contributes +4° instead of
-    /// snapping the hand back ~356° (confirmed against a ~9-revolution
-    /// capture, ptk-870-usb-funky-art-pen-rotation.txt).
+    /// Total signed rotation since the gauge last reset, not clamped to 0-360 —
+    /// each new raw angle adds the shortest signed delta from the previous one,
+    /// so a wrap (358° -> 2°) contributes +4° instead of snapping the hand back
+    /// ~356° (confirmed against a ~9-revolution PTK-870 USB capture).
     @State private var accumAngle: Double = 0
     @State private var lastRawAngle: Double?
 

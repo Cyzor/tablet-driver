@@ -11,9 +11,8 @@
 // statistics on the HID callback thread and never retains a raw sample, so a
 // classification bug is invisible until someone reads a submitted file.
 //
-// One case is replayed from real hardware — report 0xC0 of
-// Notes/Scratch/Discovery-Data-Caputure/mocktab_discovery_0x033E_20260703_004619.json
-// (Wacom CTH-690), whose four samples were all-constant with known values.
+// One case is replayed from real hardware — report 0xC0 of a Wacom CTH-690
+// capture, whose four samples were all-constant with known values.
 //
 // The app has no XCTest target (by design — see the project's test
 // conventions), so this runs as a small executable compiled against the real

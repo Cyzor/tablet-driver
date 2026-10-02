@@ -307,8 +307,7 @@ extension InputInjector {
 
     /// Gives button events the fields AppKit uses to pair a press with its
     /// drags and release. Without them Pages rejected header/footer
-    /// double-clicks and fought drag-selection (captures:
-    /// Notes/Scratch/wacom-driver-apple-iwork-selection.txt).
+    /// double-clicks and fought drag-selection.
     func stampClickSequence(_ e: CGEvent) {
         switch e.type {
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:

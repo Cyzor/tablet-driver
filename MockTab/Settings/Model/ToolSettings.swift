@@ -15,7 +15,7 @@ import TabletKit
 ///
 /// Storage namespaces:
 ///   Default tool (serial = 0): "device-0x0357."          (same as devicePrefix)
-///   Per-serial tool:           "device-0x0357.tool-0x21801D4E."
+///   Per-serial tool:           "device-0x0357.tool-0x21802222."
 @MainActor
 final class ToolSettings: ObservableObject {
 

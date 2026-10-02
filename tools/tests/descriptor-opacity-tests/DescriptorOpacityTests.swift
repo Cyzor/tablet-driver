@@ -2,11 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// DescriptorOpacityTests.swift — Standalone checks for LiveHIDDescriptorInspector's
-// readability primitive, against three real hardware captures:
-//   - Wacom CTH-690:        Notes/Scratch/Discovery-Data-Caputure/mocktab_discovery_0x033E_20260703_004619.json
-//   - Wacom Intuos5 touch L: Notes/Scratch/Discovery-Data-Caputure/descriptor_wacom_intuos5touch_0x0028_20260717.txt
-//   - Xencelabs (pen + Quick Keys interfaces): Notes/Scratch/Discovery-Data-Caputure/descriptor_xencelabs_0x28bd_20260717.txt
+// DescriptorOpacityTests.swift — Standalone checks for
+// LiveHIDDescriptorInspector's readability primitive, against descriptors
+// captured from three real devices: a Wacom CTH-690, a Wacom Intuos5 touch L,
+// and a Xencelabs (pen and Quick Keys interfaces).
 //
 // The app has no XCTest target (by design — see the project's test conventions),
 // so this runs as a small executable compiled against the real LiveHIDDescriptorInspector.swift.
