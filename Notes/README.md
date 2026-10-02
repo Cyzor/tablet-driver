@@ -41,6 +41,6 @@ formats; its decoder for each is named on the page.
 | --- | --- |
 | [Xencelabs](Xencelabs-Protocol.md) | Pen Tablet, Pen Display, Quick Keys: input and host writes |
 | [macOS tablet event synthesis](macOS-Tablet-Event-Synthesis.md) | Proximity, pen, click and scroll fields that apps check |
-| [Project description](Project-Description.md) | MockTab's own architecture notes |
+| [Developer notes](Project-Description.md) | Gotchas, advanced defaults keys, and build settings |
 
 Corrections are welcome as issues, ideally with a capture.

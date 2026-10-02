@@ -1,184 +1,76 @@
----
-name: MockTab — Mac tablet driver for older Wacom tablets
-description: Swift/SwiftUI driver supporting USB and Bluetooth
-type: project
----
+# Developer Notes
 
-A macOS app that revives drawing tablets that Wacom no longer supports.
+A few things about MockTab that the code doesn't make obvious: one easy-to-miss setup rule, how settings are stored, the hidden tuning settings, and how the app is built.
 
-- **Hardware:** ~190 registered models (primarily Wacom — Intuos all
-  generations, Cintiq, Bamboo), plus HID-descriptor auto-detection for
-  unregistered ones. Decoders live in the **TabletKit** SwiftPM package
-  (submodule at `TabletKit/`).
-- **Constraint:** Wacom's official system extension must be absent —
-  IOHIDManager returns `kIOReturnExclusiveAccess` otherwise.
+For the rest, start here:
 
-`Architecture.md` is the authoritative architecture reference. This file
-carries the CGEvent-injection field knowledge and the small set of tuning
-constants and gotchas that aren't obvious from the code.
+- `Architecture.md` explains the two threads, follows a pen report from tablet to app, and shows where things live.
+- `Notes/macOS-Tablet-Event-Synthesis.md` lists the event fields apps need to see pressure, tilt, and the pen's identity.
+- The `Notes/Wacom-*-Protocol.md` pages and `Notes/Xencelabs-Protocol.md` describe each tablet's reports.
 
----
+## Uninstall Wacom's Driver First
 
-## Threading
+MockTab and Wacom's driver can't share a tablet. While Wacom's system extension is installed, macOS refuses MockTab's request to open the tablet, with the error `kIOReturnExclusiveAccess`.
 
-Two threads carry live work (see `Architecture.md` for the full pipeline):
+## Listen in Every Run-Loop Mode
 
-- **HIDThread** (`MockTab/Driver/HID/HIDThread.swift`) — a dedicated
-  background `CFRunLoop` owning the IOHIDManager and every `handleReport`
-  callback, so a busy main thread can't delay a pen sample. Hand-off:
-  `CFRunLoopPerformBlock(HIDThread.shared.runLoop, …)` for state the hot path
-  reads back, `Task { @MainActor }` for UI.
-- **Main** — AppKit, SwiftUI, settings storage, most CGEvent posts.
+MockTab receives tablet reports through callbacks on a run loop. Schedule them in the common modes, never the default mode alone. This applies to `IOHIDManagerScheduleWithRunLoop` and to every `IOHIDDeviceScheduleWithRunLoop` call.
 
-### IOHIDManager run-loop mode (load-bearing)
+The reason: while you drag something, AppKit switches to a tracking mode, and default-mode callbacks stop. The report that says the pen lifted never arrives, so the mouse button stays down.
 
-Schedule with `kCFRunLoopCommonModes`, **not** `kCFRunLoopDefaultMode`. AppKit
-drag-tracking enters `NSEventTrackingRunLoopMode`, which silences
-default-mode callbacks → pen-lift never fires → mouse stuck down. Same for
-`IOHIDDeviceScheduleWithRunLoop`.
+## How Settings Are Stored
 
----
+`TabletSettings` reads and writes `UserDefaults.standard` itself, rather than through `@AppStorage`.
 
-## CGEvent injection — field reference
+A setting can be stored at several levels, and the most specific one wins:
 
-The knowledge here is "omit this field and pressure is silently 0 in app X."
-Post target is always `.cghidEventTap`.
+1. For one app on one tablet, while that app is in front
+2. For a saved profile
+3. For one pen, by its serial number
+4. For one tablet, under keys like `device-0x0357.smoothingStrength`
+5. For every tablet, under the plain key
 
-### Every mouse event (down / drag / up / move)
+The diagram at the top of `TabletSettings.swift` shows the key for each level.
 
-```swift
-e.setDoubleValueField(.mouseEventPressure, value: pressure)   // field 6 → NSEvent.pressure; wrong field = always 0
-e.setIntegerValueField(.mouseEventSubtype, value: 1)          // tabletPoint; without it AppKit/Qt/GTK ignore pressure
-e.setIntegerValueField(.mouseEventClickState, value: count)   // 1/2/3; without it every click is #1, no double-click
-// Tablet union — required for Photoshop / Affinity / Illustrator (they read it in mouse events):
-e.setIntegerValueField(.tabletEventDeviceID, value: 1)
-e.setDoubleValueField(.tabletEventPointPressure, value: pressure)
-e.setIntegerValueField(.tabletEventPointButtons, value: buttons)
+Each setting saves itself whenever it changes. While `reloadAll()` loads settings, it sets `isLoading`, so those loads aren't written straight back.
+
+### Hidden Settings
+
+A few settings have no control in the app. Set them in Terminal:
+
+```
+defaults write com.cyzor.mocktab touchOnsetDelayMs 20
 ```
 
-### tabletPointer event
+This sets the plain key, so a value saved for a particular tablet, profile, or app still takes priority.
 
-Required for Qt (Krita) and GTK (GIMP), which handle `NSEventTypeTabletPoint`
-separately.
+| Setting | Type | Default | What it does |
+|---------|------|---------|--------------|
+| `touchOnsetDelayMs` | Number, 0–500 | `40` | How long, in milliseconds, a finger rests before the cursor responds. Lower it for a quicker start. Raise it if a resting palm nudges the cursor. Even `0` waits about two reports. |
+| `touchTapStabilizationPt` | Number, 0–4 | `1.5` | How far, in points, a finger can drift before the cursor follows. It soaks up the wobble when you lift from a tap and the first bit of a slow drag, without a jump when tracking starts. Above about 2 it feels sticky. `0` turns it off. Relative touch mode only. |
+| `dropPhysicalModifiersFromMoveEvents` | Yes/No | `NO` | Leaves held keys (⇧ ⌘ ⌥ ⌃) off every pen movement, not just when MockTab's record of the keyboard may be out of date. A last resort if held keys stop registering. It costs Shift-to-constrain in Illustrator, Keynote, and Pages. Applies to all tablets. Relaunch after changing it. |
+| `useRotationAsTilt` | Yes/No | `NO` | An old Photoshop workaround that sends an Art Pen's barrel rotation as tilt, in place of real tilt. Photoshop now reads rotation directly, so this should no longer be needed. Plain key only. Relaunch after changing it. |
+| `rotationTiltOffsetDegrees` | Number | `0` | With `useRotationAsTilt`, degrees added to the rotation first. |
+| `rotationTiltMagnitude` | Number, 0.1–1 | `0.8` | With `useRotationAsTilt`, how strong the resulting tilt is. |
 
-```swift
-e.type = .tabletPointer
-e.setIntegerValueField(.tabletEventDeviceID, value: 1)        // must match the proximity deviceID
-e.setDoubleValueField(.tabletEventPointPressure, value: p)
-e.setDoubleValueField(.tabletEventTiltX, value: tiltX)
-e.setDoubleValueField(.tabletEventTiltY, value: tiltY)
-e.setIntegerValueField(.tabletEventPointX, value: Int64(rawX))
-e.setIntegerValueField(.tabletEventPointY, value: Int64(rawY))
-e.setIntegerValueField(.tabletEventPointButtons, value: buttons)
-```
+To add a hidden setting:
 
-### tabletProximity event — every field required
+1. Add a `@Published` property to `TabletSettings` that saves itself in `didSet`.
+2. Load it in `reloadAll()` between `isLoading = true` and `isLoading = false`, and clamp it with `Swift.min` and `Swift.max`. If it loads outside that window, the first launch after a `defaults write` saves a copy for the current tablet, and that copy hides the plain key from then on.
+3. If the pen thread reads it, add it to `InjectionSnapshot` and fill it in `makeInjectionSnapshot()`. Convert units there, such as milliseconds to seconds.
+4. Add a row to the table above and mention it in the release notes. Nobody will find it otherwise.
 
-Apps register a virtual tablet on proximity enter. Miss any identity field and
-pressure is silently ignored in Photoshop, Krita, GIMP, Affinity, Illustrator.
+## Pressure Curve
 
-```swift
-e.type = .tabletProximity
-e.setIntegerValueField(.tabletProximityEventVendorID,          value: 0x056A)
-e.setIntegerValueField(.tabletProximityEventTabletID,          value: Int64(productID))
-e.setIntegerValueField(.tabletProximityEventPointerID,         value: 1)
-e.setIntegerValueField(.tabletProximityEventDeviceID,          value: 1)   // non-zero
-e.setIntegerValueField(.tabletProximityEventSystemTabletID,    value: 0)
-e.setIntegerValueField(.tabletProximityEventPointerType,       value: 1)   // 1 = pen, 3 = eraser
-e.setIntegerValueField(.tabletProximityEventVendorPointerType, value: 0x0802) // 0x080A = eraser
-e.setIntegerValueField(.tabletProximityEventCapabilityMask,    value: 0x05C7)
-// 0x05C7 = buttons | pressure | proximity | tiltX | tiltY | hoverZ
-e.setIntegerValueField(.tabletProximityEventEnterProximity,    value: entering ? 1 : 0)
-```
+The pressure curve is a cubic Bézier (`BezierCurve`), inverted by bisection to find the output for each pressure.
 
-`tabletProximityEventPointerSerialNumber` does not exist as a Swift
-`CGEventField` — don't reach for it.
+When clamping values, write `Swift.min(Swift.max(…))`. Don't add a `clamped(to:)` extension: the name collides with one elsewhere in the package.
 
----
+## Build Settings
 
-## Double-click
-
-`mouseEventClickState` drives it. Two parts in `InputInjector.resolveClick()`:
-
-1. **Counting** — within `NSEvent.doubleClickInterval` and ≤ threshold:
-   `clickCount++`, set on the mouseDown and its matching mouseUp. Falls back to
-   an 8 pt distance threshold (macOS default) when position snapping is off.
-2. **Snapping** — within the user's `doubleClickDistance` setting, snap the
-   later tap's position onto the first. Chains for triple-click.
-
----
-
-## HID report formats
-
-Representative decoders; the registry and HID-descriptor auto-detection cover
-the rest.
-
-### IntuosV1 (PTH-851 family) — 10-byte, report ID 0x02
-
-- Feature init on open: `[0x02, 0x02]`
-- Proximity `report[1] & 0x20`; high-confidence `report[1] & 0x40` — do **not**
-  filter when confidence drops, pen-lift arrives as low-confidence reports
-- X/Y 11-bit (LSBs from `report[9]`); pressure 11-bit (2047 max on PTH-851)
-- Tilt signed 6-bit; digitizer 44704 × 27940
-
-### IntuosV2 (PTH-660 / 860) — 192-byte USB / 361-byte BT
-
-- Report IDs: 0x10 pen, 0x11 express keys / touch ring, 0x21 touch
-- X/Y 24-bit LE; pressure 13-bit (8191 max); tilt/rotation signed bytes
-- Digitizer 62200 × 43200
-
-### IntuosV2 Bluetooth Classic (PTH-860) — 99-byte, report ID 0x80
-
-- 7 frames × 14 bytes packed per report; otherwise same specs as USB
-
----
-
-## Settings persistence
-
-Custom load chain in `TabletSettings` reading `UserDefaults.standard` (not
-`@AppStorage`). Per-device keys are namespaced `device-0x{PID_HEX}.{key}`;
-`reloadAll()` applies them between `isLoading = true/false` so the
-`didSet → persist` echo is suppressed during load. A bare unprefixed key is
-the lowest override layer.
-
-Selected defaults: active area 0,0,1,1 (full); `targetDisplayIndex` 0;
-`smoothingStrength` 0.0; `doubleClickDistance` 10 pt; pen buttons 2
-(right-click) / 3 (middle-click); pressure curve `.linear`.
-
-### Advanced defaults keys (no UI)
-
-Same device / profile / app-override layering as everything else — a bare
-`defaults write com.cyzor.mocktab <key> <value>` is the lowest layer. See
-`reference_advanced_defaults_keys` (memory) for the procedure to add one.
-
-| Key | Type | Default | Effect |
-|-----|------|---------|--------|
-| `touchOnsetDelayMs` | Double, 0–500 | `40` | ms a finger touch emits nothing after landing (`TouchStateTracker.onsetDelay`). Lower for a snappier start; raise if a resting palm nudges the cursor. `0` still leaves a ~2-frame floor. |
-| `touchTapStabilizationPt` | Double, 0–4 | `1.5` | Points a single-finger touch may drift before it starts moving the cursor — absorbs lift-off skitter on a tap and the first point or two of a slow drag from rest, then tracks with no catch-up jump. Past ~2 it feels sticky; `0` disables. Relative touch mode only. |
-| `dropPhysicalModifiersFromMoveEvents` | Bool | `NO` | Omit keyboard modifier bits (⇧⌘⌥⌃) from every pen move/drag event instead of only when the cached keyboard state is stale. Last resort for a machine where held modifiers still stop registering; the staleness gate in `moveSafeEventFlags` should make it unnecessary. Costs constraint-snapping in Illustrator, Keynote, and Pages, which read modifiers from drag events. Global (not per-device); read once at launch, so relaunch to apply. |
-| `useRotationAsTilt` | Bool | `NO` | Old Photoshop workaround: send Art Pen barrel rotation as fake tilt, suppressing real tilt. Obsolete now that Art Pens advertise rotation in their proximity events; kept until that proves out broadly. Bare key only; per-device values from the old Pen Feel toggle are ignored. Read at settings load, so relaunch to apply. |
-| `rotationTiltOffsetDegrees` | Double | `0` | With `useRotationAsTilt`: degrees added to rotation before mapping. |
-| `rotationTiltMagnitude` | Double, 0.1–1 | `0.8` | With `useRotationAsTilt`: length of the fake tilt vector. |
-
----
-
-## Pressure curve
-
-Cubic Bézier (p1, p2 control points), bisection inversion for `evaluate(t)`.
-Clamp with `Swift.min(Swift.max(...))` — never define a `clamped(to:)`
-extension (package-level name conflict).
-
----
-
-## Build config
-
-- Bundle ID `com.cyzor.mocktab`; deployment target macOS 13.0;
-  `ARCHS = $(ARCHS_STANDARD)` (arm64 + x86_64)
-- Signing: `Developer ID Application`, team `3R62GZR6Q2`, hardened runtime
-  (generic `CODE_SIGN_IDENTITY = "MockTab Dev"` is the non-macOS fallback and
-  unused)
-- `LSUIElement = YES`; `app-sandbox = false` (required for IOHIDManager +
-  CGEvent)
-- Info.plist: `NSInputMonitoringUsageDescription`,
-  `NSAccessibilityUsageDescription`
-- Build with `xcodebuild -scheme MockTab` (not `-target`)
+- Bundle ID `com.cyzor.mocktab`, for macOS 13 and later, on Apple silicon and Intel
+- Signed with Developer ID (team `3R62GZR6Q2`) and the hardened runtime
+- Runs from the menu bar without a Dock icon (`LSUIElement`)
+- Not sandboxed, because reading tablets and posting events both need access a sandbox doesn't allow
+- Asks for Input Monitoring, to read the tablet, and Accessibility, to post events
+- Build with `xcodebuild -scheme MockTab`, not `-target`
