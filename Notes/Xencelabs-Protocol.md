@@ -60,9 +60,9 @@ vs. `0x20` hovering).
 The Pen Display 24's X range is 0–105000 (about 200 units/mm), so reading
 only `[2]`–`[3]` wraps mid-screen. Tilt follows the HID convention: +X
 right, +Y toward the user. Neither pen sends a serial or tool code,
-but bit `0x80` tells them apart. Xencelabs' own driver does the same, in
-`CTablet::OnEventCallBackEx`. The out-of-range tag `0xC0` has the bit set
-for both pens, so the driver keeps the last pen through it.
+but bit `0x80` tells them apart: a capture with both pens in one session
+shows it tracking the pen and nothing else. The out-of-range tag `0xC0`
+has the bit set for both pens, so keep the last pen through it.
 
 ## Quick Keys frame (`[1]` = `0xF0`)
 
