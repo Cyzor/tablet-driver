@@ -1,11 +1,11 @@
 #!/usr/sbin/dtrace -s
 /*
- * wacom_capture.d — capture SetReport/GetReport traffic during live use.
+ * hid_traffic_capture.d — capture SetReport/GetReport traffic during live use.
  *
- * Companion to wacom_init.d: that script captures the driver's init sequence
+ * Companion to hid_connect_capture.d: that script captures the driver's init sequence
  * on device connect; this one is meant to stay attached afterward and catch
  * reports triggered by interacting with the device (e.g. pressing a
- * ring-mode button), without the timestamp/lifecycle bookkeeping wacom_init.d
+ * button), without the timestamp/lifecycle bookkeeping hid_connect_capture.d
  * adds for the connect sequence.
  *
  * Requires SIP disabled (pid$target provider). Superseded for most read-only
@@ -15,14 +15,14 @@
  * inbound reports.
  *
  * Usage:
- *   sudo dtrace -s tools/capture/wacom_capture.d -p $(pgrep WacomTabletDriver)
+ *   sudo dtrace -s tools/capture/hid_traffic_capture.d -p <driver-pid>
  *   Then trigger the button/action you want to observe.
  */
 
 #pragma D option quiet
 #pragma D option switchrate=10hz
 
-BEGIN { printf("=== wacom_capture running — trigger ring-mode button now ===\n"); }
+BEGIN { printf("=== hid_traffic_capture running — trigger the action now ===\n"); }
 
 pid$target:IOKit:IOHIDDeviceSetReport:entry
 {

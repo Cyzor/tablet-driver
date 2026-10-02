@@ -87,10 +87,11 @@ issues.
 
 ## HID capture (legacy / dev-only)
 
-### `wacom_capture.d`, `wacom_init.d`
-DTrace scripts for capturing USB IOKit traffic against Wacom devices.  macOS
-only.  Used during the initial reverse-engineering of PTH-660 and PTH-860 BT
-behavior.  Superseded by the in-app capture flow for most cases.
+### `hid_traffic_capture.d`, `hid_connect_capture.d`
+DTrace scripts that log the setup commands a driver process sends to a tablet
+through IOKit, during use and on connect. They work with any driver and need
+System Integrity Protection off. Superseded by the in-app capture flow for most
+cases.
 
 ### `touch_capture.c`
 Standalone C utility that opens a HID device and dumps reports.  Pre-existing,

@@ -1,10 +1,10 @@
 #!/usr/sbin/dtrace -s
 /*
- * wacom_init.d — capture full Wacom driver init sequence on device connect.
+ * hid_connect_capture.d — capture a driver's full setup sequence on device connect.
  *
  * Usage:
- *   sudo dtrace -s /tmp/wacom_init.d -p $(pgrep WacomTabletDriver) \
- *       > /tmp/wacom_init.log 2>&1
+ *   sudo dtrace -s tools/capture/hid_connect_capture.d -p <driver-pid> \
+ *       > /tmp/hid_connect_capture.log 2>&1
  *   Then unplug and replug the device USB cable.
  *   Wait ~5 s after replug, then Ctrl-C.
  *
@@ -19,7 +19,7 @@
 #pragma D option bufsize=16m
 
 BEGIN {
-    printf("=== wacom_init — unplug then replug device now ===\n\n");
+    printf("=== hid_connect_capture — unplug then replug device now ===\n\n");
 }
 
 /* ── Device lifecycle ─────────────────────────────────────────────────── */

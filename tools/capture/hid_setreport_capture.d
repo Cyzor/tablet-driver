@@ -4,9 +4,8 @@
 
 /*
  * Traces IOHIDDeviceSetReport / SetReportWithCallback / GetReport calls made
- * by a target process. Vendor-agnostic — point -p/-c at any driver process
- * (Wacom Desktop Center, Xencelabs's driver, etc.) to see exactly what it
- * sends to the tablet at enumeration and during use. Requires SIP disabled;
+ * by a target process. Point -p/-c at any driver process to see exactly
+ * what it sends to the tablet at enumeration and during use. Requires SIP disabled;
  * dtrace's pid$target provider is blocked otherwise.
  *
  * Usage: sudo dtrace -s tools/capture/hid_setreport_capture.d -p <pid>
