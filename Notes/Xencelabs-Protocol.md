@@ -43,9 +43,9 @@ Reading echoes or status frames as key frames produces phantom key presses
 that never release.
 
 **Pen bits:** `0x01` tip, `0x02`/`0x04`/`0x08` barrel buttons 1–3 (the
-three-button pen uses all three, the slim pen 2 and 3), `0x40` eraser end
-in range, `0x80` set once the device has been initialized (`0xA0` hover vs.
-`0x20` before setup).
+3 Button Pen uses all three, the Thin Pen 2 and 3), `0x40` eraser end in
+range, `0x80` set for the 3 Button Pen and clear for the Thin Pen (`0xA0`
+vs. `0x20` hovering).
 
 ## Pen frame
 
@@ -59,8 +59,10 @@ in range, `0x80` set once the device has been initialized (`0xA0` hover vs.
 
 The Pen Display 24's X range is 0–105000 (about 200 units/mm), so reading
 only `[2]`–`[3]` wraps mid-screen. Tilt follows the HID convention: +X
-right, +Y toward the user. The two pens report identical frames, with no
-serial or tool code, so only pen vs. eraser can be told apart.
+right, +Y toward the user. Neither pen sends a serial or tool code,
+but bit `0x80` tells them apart. Xencelabs' own driver does the same, in
+`CTablet::OnEventCallBackEx`. The out-of-range tag `0xC0` has the bit set
+for both pens, so the driver keeps the last pen through it.
 
 ## Quick Keys frame (`[1]` = `0xF0`)
 
