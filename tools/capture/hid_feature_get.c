@@ -5,8 +5,8 @@
 // GET_REPORTs one or more feature report IDs from a HID device and prints
 // the bytes returned. Companion to hid_init_probe.c (which only SETs);
 // built to check whether the PTK-870's opaque feature reports 0x37/0x38/0x39
-// carry per-pen identity that Wacom's own driver reads on connect instead
-// of waiting on the BLE input-report tool-announcement frame. No SIP or
+// carry per-pen identity that could be read on connect instead of
+// waiting on the BLE input-report tool-announcement frame. No SIP or
 // dtrace needed.
 //
 // Build:  clang -framework IOKit -framework CoreFoundation tools/capture/hid_feature_get.c -o hid_feature_get

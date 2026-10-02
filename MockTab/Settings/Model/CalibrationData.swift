@@ -185,7 +185,7 @@ extension CalibrationEntry {
 
     /// Sane range for a per-axis calibration scale factor. A factor outside this
     /// band means the taps were too noisy to trust; the axis falls back to unit
-    /// scale (translation only). Mirrors the vendor driver's outlier guard.
+    /// scale (translation only).
     static let scaleBounds = 0.5...2.0
 
     /// Fit a per-axis scale + translation transform from calibration samples.

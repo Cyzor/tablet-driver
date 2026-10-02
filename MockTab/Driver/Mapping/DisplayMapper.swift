@@ -549,14 +549,13 @@ struct DisplayMapper {
     // ── Screen-edge pinning (Dock reveal / hot corners) ─────────────────────
     // A hidden Dock and hot corners never trigger from injected moves that
     // stop at the integer bounds edge; the OS detector wants the pointer
-    // fractionally *at* the edge. Xencelabs' own driver works around this the
-    // same way (PostTabletDockMove posts a sub-pixel Y pinned against the
-    // display-bounds bottom), which is where these constants come from.
+    // fractionally *at* the edge, so positions near an edge are pinned a
+    // sub-pixel inside it.
 
     /// How close (points) a mapped position must get to a bounds edge
     /// before it is pinned onto that edge.
     static let edgePinThreshold: CGFloat = 2.0
-    /// Sub-pixel inset from the exact edge, matching the vendor driver.
+    /// Sub-pixel inset from the exact edge.
     static let edgePinInset: CGFloat = 0.1196
 
     /// Pins `p` against the edges of the display it lands on. Across several

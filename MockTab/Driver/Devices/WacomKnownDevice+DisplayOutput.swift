@@ -203,9 +203,9 @@ extension WacomKnownDevice {
             //
             // Dongle-relayed dongle/puck traffic must carry the puck's 6-byte
             // identity in the address field or the dongle has nothing to
-            // route the write to — confirmed 2026-07-07 via dtrace on
-            // XencelabsDriver: every 0xB4/0xB1 write it sends over the dongle
-            // carries the identity, none carry an all-zero address.
+            // route the write to — confirmed 2026-07-07 from captured
+            // traffic: every 0xB4/0xB1 write sent over the dongle carries the
+            // identity, none carry an all-zero address.
             let address = xencelabsDongleIdentity ?? []
             // Reassert screen orientation, as the vendor stack does during
             // its own reconnect init — omitting this write entirely lets the

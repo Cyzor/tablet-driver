@@ -253,7 +253,7 @@ extension WacomKnownDevice {
         // The three extra opcodes in every native resync capture turned
         // out to be status GET polls (0xB4 0x08 sleep time, 0xB4 0x10
         // battery, 0xB1 0x0A OLED brightness; byte 3 = 0x01 set / 0x00
-        // get) — decoded 2026-07-10 from the vendor agent's disassembly.
+        // get), decoded 2026-07-10.
         // Replaying them is kept: they're cheap, present in every native
         // capture, and may double as wake pokes during the reconnect
         // window.
@@ -297,11 +297,7 @@ extension WacomKnownDevice {
         xencelabsBatteryPollTimer = timer
     }
 
-    /// Space vendor writes at least 3 ms apart. The vendor stack sleeps
-    /// after every frame it sends (3 ms in its driver's color path, 1.3 ms
-    /// between OLED label chunks, 10 ms between the color/sensitivity/label
-    /// blocks on an app change — confirmed 2026-07-10 by disassembling
-    /// XencelabsAgent/XencelabsDriver). The firmware silently drops output
+    /// Space vendor writes at least 3 ms apart. The firmware silently drops output
     /// reports that arrive while it is busy repainting, and the transport
     /// still returns success, so back-to-back writes "succeed" without ever
     /// reaching the display.
