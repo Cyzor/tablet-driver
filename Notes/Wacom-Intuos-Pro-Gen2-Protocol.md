@@ -67,7 +67,7 @@ common "tool code `& 0x08` means eraser" rule misfires on it. (observed)
 **Cordless mouse (KC-100).** Tool codes with low nibble `0x6` (`0x0806`) are
 the mouse; test `(code & 0x000F) == 0x0006`, since `0x0806` also has bit
 `0x0800` set. Its buttons never appear in report `0x10`: status stays `0x60`
-whatever is pressed. Left, right and middle arrive on the tablet's separate
+whatever is pressed. Left, right, and middle arrive on the tablet's separate
 mouse interface as report `0x01` (4 bytes, `[1]` bit 0 left, 1 right, 2
 middle). The wheel is an 8-bit counter in `[16]`; take the signed difference
 from the previous report. (observed)
@@ -132,8 +132,8 @@ These tablets pair as `BT IntuosPro …` over Bluetooth Classic. The
 a tablet. (kernel)
 
 Report `0x80` is also the ACK-40401 wireless status report when `[1]` is
-`0x02`, `0x05` or `0x06`. Otherwise, length decides the shape: 99 bytes is
-pen only; 361 bytes adds touch, pad and battery. Either tablet can send either
+`0x02`, `0x05`, or `0x06`. Otherwise, length decides the shape: 99 bytes is
+pen only; 361 bytes adds touch, pad, and battery. Either tablet can send either
 form.
 
 **Pen frames**: up to seven 14-byte frames at `[1]`, `[15]`, … `[85]`, oldest
@@ -178,8 +178,9 @@ hardware.
 
 Each touch frame: `[0]` bit 7 valid with the contact count in bits 0–6, then
 five 8-byte contacts in the same layout as USB `0x21`, then a 16-bit device
-clock at `[41]`–`[42]`. The clock ticks every 0.225 ms, frames sit 100 ticks
-(22.5 ms) apart, and it wraps every 14.75 s. The kernel ignores it. (observed,
+clock at `[41]`–`[42]`. The clock ticks every 0.1 ms, frames sit 100 ticks
+(10 ms) apart, and it wraps every 6.55 s. Reports arrive about every 22.5 ms,
+carrying two or three frames each. The kernel ignores it. (observed,
 PTH-660)
 
 ## Bluetooth `0x81` (CTL-4100WL, CTL-6100WL)

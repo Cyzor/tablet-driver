@@ -1756,7 +1756,7 @@ final class WacomKnownDevice: TabletDevice {
         // the guess for touch with the tablet's measurement.
         //
         // Only differences *within* this container are used, anchored to the
-        // newest stamped frame, so the 14.75 s wrap can't be reached: the
+        // newest stamped frame, so the 6.55 s wrap can't be reached: the
         // whole container spans a few hundred counts. A frame whose stamp is
         // missing, or which reads as older than the anchor by more than the
         // batch could plausibly span, falls back to interpolation.
