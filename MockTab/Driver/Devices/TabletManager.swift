@@ -946,7 +946,10 @@ final class TabletManager: ObservableObject {
             CaptureEngine.updateToolCode(identity.toolCode, device: device)
             let toolID = DeviceRegistry.shared.recordTool(
                 identity: identity, forDevice: context.instanceKey)
-            let toolSets = context.settings.toolSettings(forID: toolID, isMouse: identity.isMouse)
+            // An eraser end uses its pen's settings, so flipping the pen over
+            // doesn't swap the settings panes to a second copy of the pen.
+            let settingsID = DeviceRegistry.tipSiblingID(of: toolID) ?? toolID
+            let toolSets = context.settings.toolSettings(forID: settingsID, isMouse: identity.isMouse)
             context.activeTool = toolSets
             context.settings.activeTool = toolSets
             // Settings must resolve here — the lookup needs the registry and

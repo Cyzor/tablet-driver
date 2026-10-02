@@ -373,22 +373,9 @@ struct DevicesView: View {
 
     // MARK: - Tools
 
-    /// The eraser-end entry paired with a tip entry's id, or nil for ids
-    /// that can't have one. Generic serial-less entries with a counter
-    /// suffix ("stylus-1") stay unpaired — with no serial there's no way
-    /// to know which eraser belongs to which pen body.
-    static func eraserSiblingID(of id: String) -> String? {
-        if id == "stylus" { return "eraser" }
-        if id.hasPrefix("0x") { return "eraser-" + id }
-        return nil
-    }
+    static func eraserSiblingID(of id: String) -> String? { DeviceRegistry.eraserSiblingID(of: id) }
 
-    /// Inverse of `eraserSiblingID(of:)`.
-    static func tipSiblingID(of id: String) -> String? {
-        if id == "eraser" { return "stylus" }
-        if id.hasPrefix("eraser-0x") { return String(id.dropFirst("eraser-".count)) }
-        return nil
-    }
+    static func tipSiblingID(of id: String) -> String? { DeviceRegistry.tipSiblingID(of: id) }
 
     /// Hides eraser entries whose pen tip is also in the list, so each
     /// physical pen gets one row. An orphaned eraser (tip never seen)

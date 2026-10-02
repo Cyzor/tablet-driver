@@ -754,6 +754,38 @@ final class DeviceRegistry: ObservableObject {
     /// single "stylus"/"eraser" entry. Two physically different but
     /// identical-model pens still collide — BT Classic has no signal that
     /// distinguishes those — but that's a hardware ceiling, not this bug.
+    /// The eraser-end entry paired with a tip entry's id, or nil for ids
+    /// that can't have one. Generic serial-less entries with a counter
+    /// suffix ("stylus-1") stay unpaired — with no serial there's no way
+    /// to know which eraser belongs to which pen body. Pens known only by
+    /// tool code ("stylus-tc0xE802") pair through the catalog's eraser code.
+    static func eraserSiblingID(of id: String) -> String? {
+        if id == "stylus" { return "eraser" }
+        if id.hasPrefix("0x") { return "eraser-" + id }
+        if let code = toolCode(in: id, prefix: "stylus-tc0x"),
+            let eraser = WacomToolCatalog.spec(forToolCode: code)?.eraserToolCode
+        {
+            return String(format: "eraser-tc0x%04X", eraser)
+        }
+        return nil
+    }
+
+    /// Inverse of `eraserSiblingID(of:)`.
+    static func tipSiblingID(of id: String) -> String? {
+        if id == "eraser" { return "stylus" }
+        if id.hasPrefix("eraser-0x") { return String(id.dropFirst("eraser-".count)) }
+        if let code = toolCode(in: id, prefix: "eraser-tc0x"),
+            let tip = WacomToolCatalog.allTools.values.first(where: { $0.eraserToolCode == code })
+        {
+            return String(format: "stylus-tc0x%04X", tip.toolCode)
+        }
+        return nil
+    }
+
+    private static func toolCode(in id: String, prefix: String) -> UInt16? {
+        id.hasPrefix(prefix) ? UInt16(id.dropFirst(prefix.count), radix: 16) : nil
+    }
+
     static func toolID(for identity: ToolIdentity) -> String {
         if identity.serial == 0 {
             if identity.isMouse { return "mouse" }
