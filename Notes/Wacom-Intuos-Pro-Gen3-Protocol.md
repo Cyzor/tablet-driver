@@ -85,6 +85,7 @@ Observed, and backed by the tablet's HID descriptor. One full turn of
 either dial is 24 steps; the dials' raised ridges are grip texture, not
 detents. The dials only turn: they have no push switch, and the center key
 between each cluster is an ordinary key.
+[Evidence: one turn, frame by frame](Evidence/PTK-870-Dial-Steps.md).
 
 ## Bluetooth LE report `0x1A`
 
@@ -111,7 +112,8 @@ later field along by a byte.
 All observed. X really is 20 bits: read as 16, it wraps at 65536 (the
 rightmost 21 mm of a PTK-870) and the cursor jumps to the far edge. Pressure
 needs both bytes: `[10]` alone, which peaks at 31, reads every stroke at
-1/256 of its force.
+1/256 of its force. [Evidence: tilt range and
+direction](Evidence/PTK-870-Tilt.md).
 
 **Status `[3]`:** `0x80` proximity, `0x40` close tip fix (tilt and pressure
 valid), `0x20` eraser end in range, `0x10` eraser pressed, `0x04`/`0x02`
@@ -145,12 +147,13 @@ Charging readings of `0xCC` and `0xE4` (76% and 100%) settle the bit split.
 ## Edge behavior
 
 These tablets keep reporting after the tip leaves the drawable area. Both
-transports do it, so it is the digitizer, not the link. (observed, PTK-870)
+transports do it, so it is the digitizer, not the link. (observed, PTK-870;
+[evidence](Evidence/PTK-870-Edge-and-Groove.md))
 
 - **Groove fold-back.** A pen in the molded groove past an edge is reported
-  about 800–850 units *inside* the edge, so no inset or clamp can catch it.
-  The tablet does flag it: the close-tip-fix bit is set on 99.8% of samples
-  along the real border and on 0–4% in the groove. Combine that bit, or a
+  about 600–900 units *inside* the edge, so no inset or clamp can catch it.
+  The tablet does flag it: the close-tip-fix bit is set on 99% or more of
+  samples along the real border and on 0–4% in the groove. Combine that bit, or a
   railed hover reading, with a band near the edge; high hover mid-tablet
   also clears the bit and also reads 255.
 - **Barrel takeover.** Past the edge the position starts coming from the

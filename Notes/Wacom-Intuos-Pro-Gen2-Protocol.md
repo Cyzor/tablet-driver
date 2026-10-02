@@ -180,8 +180,8 @@ Each touch frame: `[0]` bit 7 valid with the contact count in bits 0–6, then
 five 8-byte contacts in the same layout as USB `0x21`, then a 16-bit device
 clock at `[41]`–`[42]`. The clock ticks every 0.1 ms, frames sit 100 ticks
 (10 ms) apart, and it wraps every 6.55 s. Reports arrive about every 22.5 ms,
-carrying two or three frames each. The kernel ignores it. (observed,
-PTH-660)
+carrying two or three frames each. The kernel ignores the clock. (observed,
+PTH-660; [evidence](Evidence/Intuos-Pro-Bluetooth-Touch-Clock.md))
 
 ## Bluetooth `0x81` (CTL-4100WL, CTL-6100WL)
 

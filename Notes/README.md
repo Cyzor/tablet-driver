@@ -44,6 +44,7 @@ are made.
 | --- | --- |
 | [Xencelabs](Xencelabs-Protocol.md) | Pen Tablet, Pen Display, Quick Keys: input and host writes |
 | [macOS tablet event synthesis](macOS-Tablet-Event-Synthesis.md) | Proximity, pen, click, and scroll fields that apps check |
+| [Evidence](Evidence/README.md) | Annotated excerpts from captures that back key claims |
 | [Measurement methods](Measurement-Methods.md) | Captures, edge sweeps, dial turns, and judging tilt with a brush |
 | [Developer notes](Project-Description.md) | Gotchas, advanced defaults keys, and build settings |
 

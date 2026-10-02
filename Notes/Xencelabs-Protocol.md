@@ -65,6 +65,7 @@ right, +Y toward the user. Neither pen sends a serial or tool code,
 but bit `0x80` tells them apart: a capture with both pens in one session
 shows it tracking the pen and nothing else. The out-of-range tag `0xC0`
 has the bit set for both pens, so keep the last pen through it.
+[Evidence](Evidence/Xencelabs-Pen-Bit.md).
 
 ## Quick Keys frame (`[1]` = `0xF0`)
 
