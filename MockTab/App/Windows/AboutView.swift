@@ -33,7 +33,7 @@ struct AboutView: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             // Mock Turtle Image with border
             Image("Mock-Turtle-Tenniel-1865")
                 .resizable()
@@ -88,7 +88,7 @@ struct AboutView: View {
             HStack(spacing: 12) {
                  Image(nsImage: NSApp.applicationIconImage)
                     .resizable()
-                    .frame(width: 128, height: 128)
+                    .frame(width: 64, height: 64)
                     .accessibilityHidden(true)
 
                 Text(String(localized: "MockTab", comment: "Application name"))
