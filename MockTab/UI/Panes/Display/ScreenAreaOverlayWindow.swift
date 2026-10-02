@@ -25,7 +25,7 @@ final class ScreenAreaOverlayWindow: NSWindow {
     ) {
         self.onFinish = onFinish
         super.init(
-            contentRect: displayBounds,
+            contentRect: displayBounds.quartzToAppKit,
             styleMask: .borderless,
             backing: .buffered,
             defer: false)

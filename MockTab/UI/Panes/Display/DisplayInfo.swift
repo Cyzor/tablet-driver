@@ -8,6 +8,18 @@ import ImageIO
 import SwiftUI
 import TabletKit
 
+// MARK: - Coordinate conversion
+
+extension CGRect {
+    /// Converts a `CGDisplayBounds` rect, measured down from the top of the
+    /// main display, into an `NSWindow` frame, measured up from its bottom.
+    /// Without it, windows on other displays land out of place.
+    var quartzToAppKit: CGRect {
+        let mainHeight = CGDisplayBounds(CGMainDisplayID()).height
+        return CGRect(x: minX, y: mainHeight - maxY, width: width, height: height)
+    }
+}
+
 // MARK: - DisplayInfo
 
 struct DisplayInfo {

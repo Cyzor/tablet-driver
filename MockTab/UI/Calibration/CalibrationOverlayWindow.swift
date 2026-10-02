@@ -30,7 +30,7 @@ final class CalibrationOverlayWindow: NSWindow {
     init(session: CalibrationSession) {
         self.session = session
         super.init(
-            contentRect: session.displayBounds,
+            contentRect: session.displayBounds.quartzToAppKit,
             styleMask: .borderless,
             backing: .buffered,
             defer: false)
