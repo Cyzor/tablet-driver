@@ -26,7 +26,7 @@ under GPL-3.0-or-later.
    Each harness in `tools/tests/` also runs alone, e.g.
    `tools/tests/calibration-tests/run.sh`.
 
-3. **Read the "Four paths" section of [`Architecture.md`](Architecture.md).**
+3. **Read the "Following a…" sections of [`Architecture.md`](Architecture.md).**
    It follows a pen sample, a settings change, a device plugging in, and
    touch, file by file.
 
@@ -112,10 +112,7 @@ three languages filled in.
 - macOS version and hardware tested on.
 - Steps to verify the change.
 
-**Feature requests as standalone issues aren't tracked** — issues here are for
-confirmed work (bugs, device support, translations), so an untracked feature
-request may remain unaddressed for a while. The most direct path would be to
-propose a new feature alongside a willingness to help build it.
+Have an idea? Use the [feature request form](https://github.com/Cyzor/tablet-driver/issues/new?template=feature-request.yml). Suggestions that come with an offer to help build them usually move fastest.
 
 ## Forking
 

@@ -110,27 +110,7 @@ swift test
 
 MockTab relies on [TabletKit](https://github.com/Cyzor/TabletKit), a Swift package that decodes raw HID reports into pen coordinates, pressure, tilt, rotation, and touch events. `MockTab/Driver/` contains the app-specific glue, including IOKit transport, event injection, and device routing.
 
-```swift
-// Package.swift of a consumer project
-dependencies: [
-    .package(url: "https://github.com/Cyzor/TabletKit", from: "0.4.0"),
-],
-targets: [
-    .target(name: "MyApp", dependencies: [
-        .product(name: "TabletKit", package: "TabletKit"),
-    ]),
-]
-```
-
-```swift
-import TabletKit
-
-var state = DecoderState()
-var decoder: any TabletReportDecoder = IntuosV2Decoder()
-let results = decoder.decode(report: ptr, length: len, spec: spec, state: &state, deviceFamily: .intuosProGen2)
-```
-
-TabletKit has no AppKit or system-event dependencies of its own. It uses a registry of known devices, so it can run in any Swift context.
+TabletKit has no AppKit or system-event dependencies of its own. It uses a registry of known devices, so it can run in any Swift context. To use it in your own project, see [Adding to your project](https://github.com/Cyzor/TabletKit#adding-to-your-project) and [Usage](https://github.com/Cyzor/TabletKit#usage) in its README.
 
 TabletKit lives in this repository as a git submodule at `TabletKit/`, pinned to the commit MockTab builds against.
 
@@ -169,7 +149,7 @@ MockTab’s protocol knowledge and device data draw from several open-source pro
 
 Bug reports, device-support requests, translation corrections, and decoder work are all in scope. See [`Contributing.md`](Contributing.md) for details. Decoder PRs belong on [TabletKit](https://github.com/Cyzor/TabletKit). Forking is another option for consideration.
 
-For decoder analysis, `tools/capture/wacom_capture.d` records raw USB traffic before any decoder interprets it. It provides higher fidelity than the in-app capture flow, but it requires disabling System Integrity Protection. See [TabletKit’s CONTRIBUTING](https://github.com/Cyzor/TabletKit/blob/main/Contributing.md#data-sources-in-order-of-confidence) for the data-source hierarchy.
+For decoder analysis, `tools/capture/wacom_capture.d` records raw USB traffic before any decoder interprets it. It provides higher fidelity than the in-app capture flow, but it requires disabling System Integrity Protection. See [TabletKit’s CONTRIBUTING](https://github.com/Cyzor/TabletKit/blob/main/Contributing.md#work-out-a-new-format) for this and the other capture tools.
 
 ***
 
