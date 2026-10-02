@@ -99,3 +99,10 @@ Intuos5 and Intuos Pro have no key displays.
 
 The ExpressKey Remote lights its own ring-mode LEDs; the host can only read
 which mode is active (see [pen displays](Wacom-Pen-Display-Protocols.md#expresskey-remote-ekr-100)). (observed)
+
+## Tests
+
+These TabletKit tests check the layouts above, many with frames from real captures:
+
+- [`WacomOutputProtocolTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/WacomOutputProtocolTests.swift)
+- [`IntuosOLEDImageEncoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosOLEDImageEncoderTests.swift)

@@ -210,3 +210,12 @@ misses were the opening reports, which have no earlier position to hold.
 - **Pad data in the 99-byte container**: offset unknown.
 - **Touch report range on the PTH-860**: observed values reach
   12439 × 8639; the descriptor has not been read.
+
+## Tests
+
+These TabletKit tests check the layouts above, many with frames from real captures:
+
+- [`IntuosV2USBDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV2USBDecoderTests.swift)
+- [`IntuosV2BTDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV2BTDecoderTests.swift)
+- [`IntuosV2TouchDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV2TouchDecoderTests.swift)
+- [`IntuosV2BTTouchDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV2BTTouchDecoderTests.swift)

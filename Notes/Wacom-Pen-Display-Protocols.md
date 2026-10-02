@@ -115,3 +115,16 @@ the named function in `drivers/hid/wacom_wac.c`.
 - Touch on the DTH-2400 and DTH-2200: separate interface, format unknown.
 - Which ExpressKey Remote bit belongs to which physical key.
 - Cintiq Pro 16 (DTH-167) touch sensor: wired up, no capture yet.
+
+## Tests
+
+These TabletKit tests check the layouts above, many with frames from real captures:
+
+- [`CintiqV1DecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/CintiqV1DecoderTests.swift)
+- [`CintiqV1Decoder+PressureDepthTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/CintiqV1Decoder+PressureDepthTests.swift)
+- [`DTUDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/DTUDecoderTests.swift)
+- [`DTUSDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/DTUSDecoderTests.swift)
+- [`WacomPLDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/WacomPLDecoderTests.swift)
+- [`Wacom24HDTDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/Wacom24HDTDecoderTests.swift)
+- [`Wacom27QHDTDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/Wacom27QHDTDecoderTests.swift)
+- [`ExpressKeyRemoteDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/ExpressKeyRemoteDecoderTests.swift)

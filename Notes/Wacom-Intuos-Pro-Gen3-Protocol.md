@@ -147,7 +147,7 @@ Charging readings of `0xCC` and `0xE4` (76% and 100%) settle the bit split.
 These tablets keep reporting after the tip leaves the drawable area. Both
 transports do it, so it is the digitizer, not the link. (observed, PTK-870)
 
-- **Groove fold-back.** A pen in the moulded groove past an edge is reported
+- **Groove fold-back.** A pen in the molded groove past an edge is reported
   about 800–850 units *inside* the edge, so no inset or clamp can catch it.
   The tablet does flag it: the close-tip-fix bit is set on 99.8% of samples
   along the real border and on 0–4% in the groove. Combine that bit, or a
@@ -167,3 +167,9 @@ transports do it, so it is the digitizer, not the link. (observed, PTK-870)
 - **Bluetooth barrel button 1**: never pressed in a capture.
 - **Bluetooth byte `[2]`** loosely tracks the status; meaning unknown.
 - **USB status bit 6**: tip switch or range; see above.
+
+## Tests
+
+These TabletKit tests check the layouts above, many with frames from real captures:
+
+- [`IntuosV3DecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV3DecoderTests.swift)

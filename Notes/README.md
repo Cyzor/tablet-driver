@@ -8,13 +8,16 @@ pointer to its source rather than a copy.
 Each claim carries one of three labels:
 
 - **observed**: seen on hardware, in the device's own HID descriptor, or
-  in the traffic the vendor's driver sends;
+  in observations of the behavior of the vendor's driver;
 - **kernel**: from the Linux driver (`drivers/hid/wacom_wac.c`,
   `wacom_sys.c`) only;
 - **unverified**: neither, kept because it's the best lead available.
 
 TabletKit, the decoder library in `TabletKit/`, implements these
-formats; its decoder for each is named on the page.
+formats; its decoder for each is named on the page, and each protocol
+page ends with links to the tests that check it.
+[Measurement methods](Measurement-Methods.md) describes how the observations
+are made.
 
 ## Wacom pen protocols
 
@@ -41,6 +44,7 @@ formats; its decoder for each is named on the page.
 | --- | --- |
 | [Xencelabs](Xencelabs-Protocol.md) | Pen Tablet, Pen Display, Quick Keys: input and host writes |
 | [macOS tablet event synthesis](macOS-Tablet-Event-Synthesis.md) | Proximity, pen, click and scroll fields that apps check |
+| [Measurement methods](Measurement-Methods.md) | Captures, edge sweeps, dial turns, and judging tilt with a brush |
 | [Developer notes](Project-Description.md) | Gotchas, advanced defaults keys, and build settings |
 
 Corrections are welcome as issues, ideally with a capture.

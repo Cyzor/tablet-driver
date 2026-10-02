@@ -194,3 +194,11 @@ Kernel only (`wacom_intuos_pad()`); no capture exists.
 
 - 4D mouse, lens cursor and airbrush: no hardware on hand.
 - Intuos4 and CTL/CTH-x90 rows: mapped from the kernel, no captures.
+
+## Tests
+
+These TabletKit tests check the layouts above, many with frames from real captures:
+
+- [`IntuosV1DecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV1DecoderTests.swift)
+- [`IntuosV1Decoder+ExtendedTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV1Decoder+ExtendedTests.swift)
+- [`Intuos3DecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/Intuos3DecoderTests.swift)

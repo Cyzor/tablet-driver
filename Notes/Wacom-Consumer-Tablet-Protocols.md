@@ -103,3 +103,13 @@ coordinates in a 480 × 320 space, and the four ExpressKeys in `[1]`
 - Graphire, Volito and Graphire 4 beyond the CTE-650: kernel only.
 - 20-byte Bamboo touch report: no capture.
 - ExpressKey order in the 64-byte container.
+
+## Tests
+
+These TabletKit tests check the layouts above, many with frames from real captures:
+
+- [`GraphireDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/GraphireDecoderTests.swift)
+- [`BambooDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/BambooDecoderTests.swift)
+- [`IntuosV1Decoder+BPT3TouchTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV1Decoder+BPT3TouchTests.swift)
+- [`IntuosHT3BTDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosHT3BTDecoderTests.swift)
+- [`IntuosHTGenerationTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosHTGenerationTests.swift)

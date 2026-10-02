@@ -53,3 +53,12 @@ unverified.
 
 - ACK-40401 status report: no capture; everything above is from the kernel.
 - Intuos4 Wireless and the Graphire Bluetooth: kernel only.
+
+## Tests
+
+These TabletKit tests check the layouts above, many with frames from real captures:
+
+- [`BLEReportDecodingTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/BLEReportDecodingTests.swift)
+- [`IntuosV2BTDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV2BTDecoderTests.swift)
+- [`IntuosV3DecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV3DecoderTests.swift)
+- [`ExpressKeyRemoteDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/ExpressKeyRemoteDecoderTests.swift)

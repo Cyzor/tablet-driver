@@ -13,8 +13,10 @@ builds the host-to-device writes in `XencelabsOutputProtocol`.
 | Pen Display 16 | `0x520B` |
 | Pen Display 24 | `0x520D` |
 
-Everything below was observed on a Pen Display 24 and a Quick Keys, wired
-and through the dongle, unless marked otherwise.
+Everything below is **observed**, on a Pen Display 24 and a Quick Keys,
+wired and through the dongle, unless listed under Unverified. The labels
+are explained in [the README](README.md). There is no Linux kernel driver
+for these devices to cross-check against.
 
 ## The vendor tunnel, report `0x02`
 
@@ -107,3 +109,10 @@ palette is calibrated to the LEDs (its "white" is warm, not `FFFFFF`).
 - Pen Tablet Small and Medium, and the Pen Display 16: same family, not on
   hand.
 - Other Pen Display panel controls in the `0xB5` family.
+
+## Tests
+
+These TabletKit tests check the layouts above, many with frames from real captures:
+
+- [`XencelabsDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/XencelabsDecoderTests.swift)
+- [`XencelabsOutputProtocolTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/XencelabsOutputProtocolTests.swift)
