@@ -3,7 +3,7 @@
 Most Wacom tablets start up as a plain relative mouse or send an idle
 report, and only produce pen data after the host writes a feature report.
 A host that only listens sees a reduced or empty stream and can wrongly
-conclude that the tablet lacks tilt, pressure or buttons. The write never
+conclude that the tablet lacks tilt, pressure, or buttons. The write never
 changes the product ID.
 
 Confidence labels: **observed** · **kernel**, as on the protocol pages.
@@ -12,7 +12,7 @@ Confidence labels: **observed** · **kernel**, as on the protocol pages.
 
 A HID SET_REPORT of type Feature: the report ID, then a mode value. For
 almost every pen tablet and pen display this is `[0x02, 0x02]`, report 2,
-value 2. (observed on the CTL-460, PTH-850, PL-800 and PTK-870)
+value 2. (observed on the CTL-460, PTH-850, PL-800, and PTK-870)
 
 Before it: the Bamboos and consumer Intuos send 4-byte relative mouse
 packets on report `0x01`; the PTK-x70 sends idle report `0x06`; touch

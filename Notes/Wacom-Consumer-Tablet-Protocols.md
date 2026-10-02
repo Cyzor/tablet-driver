@@ -4,7 +4,7 @@ Wacom's consumer line changed pen formats several times while keeping a
 shared 64-byte container for touch and ExpressKeys. This page covers the
 formats used by these tablets; the 2015–2018 generation's pen report is the
 [Intuos 10-byte format](Wacom-Intuos-10-Byte-Protocol.md). TabletKit decodes
-them in `GraphireDecoder`, `BambooDecoder` and `BPT3ContainerDecoder`.
+them in `GraphireDecoder`, `BambooDecoder`, and `BPT3ContainerDecoder`.
 
 Confidence labels: **observed** · **kernel** · **unverified**, as in
 [the gen 2 page](Wacom-Intuos-Pro-Gen2-Protocol.md). Offsets include the
@@ -55,7 +55,7 @@ pad bit belongs to which key, and everything for other models, is kernel.
 | 8 | Hover distance |
 
 Observed on a CTL-460 (PID `0x00D4`, labeled CTL-460/K) across hover,
-contact, both buttons, the eraser and exit. Bit `0x10` also toggles; its
+contact, both buttons, the eraser, and exit. Bit `0x10` also toggles; its
 meaning is unknown. The CTL-460 has no ExpressKeys. Its descriptor declares
 480 × 320, which is not the pen's coordinate range.
 
@@ -100,7 +100,7 @@ coordinates in a 480 × 320 space, and the four ExpressKeys in `[1]`
 
 ## Unverified
 
-- Graphire, Volito and Graphire 4 beyond the CTE-650: kernel only.
+- Graphire, Volito, and Graphire 4 beyond the CTE-650: kernel only.
 - 20-byte Bamboo touch report: no capture.
 - ExpressKey order in the 64-byte container.
 

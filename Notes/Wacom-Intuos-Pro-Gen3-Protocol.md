@@ -1,6 +1,6 @@
 # Wacom Intuos Pro gen 3 protocol (PTK-x70)
 
-The Intuos Pro released in 2025: PTK-470, PTK-670 and PTK-870 (USB PIDs
+The Intuos Pro released in 2025: PTK-470, PTK-670, and PTK-870 (USB PIDs
 `0x03F5`, `0x03F7`, `0x03F9`), over USB and Bluetooth LE. The Movink 13
 (DTH-135) shares the USB pen report. TabletKit decodes it in
 `IntuosV3Decoder`. The Linux driver we checked (input-wacom 4.18) has no
@@ -32,7 +32,7 @@ declares feature report `0x02`. (observed)
 | --- | --- | --- | --- |
 | `0x1E` | USB | Pen, 24-bit coordinates | observed |
 | `0x11` | USB | ExpressKeys and dials | observed |
-| `0x1A` | Bluetooth LE | Pen, keys and dials on one interface | observed |
+| `0x1A` | Bluetooth LE | Pen, keys, and dials on one interface | observed |
 | `0x1B` | Bluetooth LE | Battery, once per second | observed |
 | `0x06` | both | Idle, before setup | observed |
 | `0x1F` | USB | Pen, 16-bit coordinates | unverified |

@@ -25,7 +25,7 @@ are made.
 | --- | --- |
 | [Intuos Pro gen 3](Wacom-Intuos-Pro-Gen3-Protocol.md) | PTK-470/670/870 (2025), USB and Bluetooth LE; Movink 13 |
 | [Intuos Pro gen 2](Wacom-Intuos-Pro-Gen2-Protocol.md) | PTH-460/660/860, CTL-4100/6100, and many pen displays; USB and Bluetooth |
-| [Intuos 10-byte format](Wacom-Intuos-10-Byte-Protocol.md) | Intuos 1–5, Intuos Pro gen 1, Intuos3, CTL/CTH-x90 and x72 |
+| [Intuos 10-byte format](Wacom-Intuos-10-Byte-Protocol.md) | Intuos 1–5, Intuos Pro gen 1, Intuos3, CTL/CTH-x90, and x72 |
 | [Consumer tablets](Wacom-Consumer-Tablet-Protocols.md) | Graphire, Bamboo, Intuos 2013; the shared touch and key container |
 | [Pen displays](Wacom-Pen-Display-Protocols.md) | Cintiq, DTU, PL; Cintiq touch; ExpressKey Remote |
 
@@ -34,7 +34,7 @@ are made.
 | Page | Covers |
 | --- | --- |
 | [Switching into full-data mode](Wacom-Mode-Switching.md) | The feature report every tablet needs, and where to send it |
-| [Pen tool codes](Wacom-Pen-Tool-Codes.md) | Codes seen on hardware; eraser, Art Pen and rotation rules |
+| [Pen tool codes](Wacom-Pen-Tool-Codes.md) | Codes seen on hardware; eraser, Art Pen, and rotation rules |
 | [Wireless and battery](Wacom-Wireless-and-Battery.md) | Transports by model; battery encodings; the ACK-40401 dongle |
 | [LEDs and OLEDs](Wacom-LED-and-OLED-Control.md) | Ring LEDs, ruled-out reports, Intuos4 key displays |
 
@@ -43,7 +43,7 @@ are made.
 | Page | Covers |
 | --- | --- |
 | [Xencelabs](Xencelabs-Protocol.md) | Pen Tablet, Pen Display, Quick Keys: input and host writes |
-| [macOS tablet event synthesis](macOS-Tablet-Event-Synthesis.md) | Proximity, pen, click and scroll fields that apps check |
+| [macOS tablet event synthesis](macOS-Tablet-Event-Synthesis.md) | Proximity, pen, click, and scroll fields that apps check |
 | [Measurement methods](Measurement-Methods.md) | Captures, edge sweeps, dial turns, and judging tilt with a brush |
 | [Developer notes](Project-Description.md) | Gotchas, advanced defaults keys, and build settings |
 

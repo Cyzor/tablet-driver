@@ -4,7 +4,7 @@ Pen displays reuse the tablet formats more than they invent their own:
 
 - The Cintiq 12WX through 27QHD send the
   [Intuos 10-byte pen report](Wacom-Intuos-10-Byte-Protocol.md).
-- The Cintiq 16/22/24, Cintiq Pro, Wacom One and MobileStudio Pro send the
+- The Cintiq 16/22/24, Cintiq Pro, Wacom One, and MobileStudio Pro send the
   [Intuos Pro gen 2 192-byte report](Wacom-Intuos-Pro-Gen2-Protocol.md),
   some in its `0x1E` form.
 - The Movink 13 sends the [gen 3 `0x1E` report](Wacom-Intuos-Pro-Gen3-Protocol.md).
@@ -50,7 +50,7 @@ bits; the kernel's approach of OR-ing whole regions misfires during swipes.
 (observed, DTK-2400)
 
 **27QHD panel buttons, report `0x11`.** `[2]` bits 0–2 are the three buttons
-on the display's own panel. Bytes 5, 7 and 9 drift slowly whether or not a
+on the display's own panel. Bytes 5, 7, and 9 drift slowly whether or not a
 button is pressed, possibly an ambient light sensor. (observed, DTH-2700)
 
 ## Cintiq touch
@@ -68,7 +68,7 @@ sends. (observed)
 declares a tip switch and no contact identifier, so use the slot position
 as the contact ID. (observed, descriptor)
 
-**Cintiq 13HD, 22HD and 24HD Touch.** The kernel's `wacom_24hdt_irq()`:
+**Cintiq 13HD, 22HD, and 24HD Touch.** The kernel's `wacom_24hdt_irq()`:
 report `0x01`, four 14-byte contact records, and a frame-wide contact count
 in `[61]`, so frames can span several reports. (kernel)
 
@@ -107,7 +107,7 @@ the named function in `drivers/hid/wacom_wac.c`.
 | PL-400 to PL-800 (Cintiq 15X, 18SX) | `wacom_pl_irq()` | Report `0x02`, 8 bytes. Eraser vs. second button is decided once, on entering proximity. Feature report `[0x02, 0x02]` confirmed on a PL-800. |
 | DTU-2231, DTU-1631 | `wacom_dtu_irq()` | 8 bytes, little-endian, 9-bit pressure |
 | DTU-1031, DTU-1141, DTK-1651 | `wacom_dtus_irq()` | Pen on `0x11`, big-endian; four keys on `0x15` |
-| Cintiq 13HD, 22HD and 24HD Touch | `wacom_24hdt_irq()` | See Cintiq touch above |
+| Cintiq 13HD, 22HD, and 24HD Touch | `wacom_24hdt_irq()` | See Cintiq touch above |
 | ExpressKey Remote | `wacom_remote_irq()`, `wacom_remote_status_irq()` | See above |
 
 ## Unverified

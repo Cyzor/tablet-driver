@@ -65,7 +65,7 @@ Each pen sample is a mouse event (`mouseMoved` or `leftMouseDragged`) with
 - Set both `tabletEventPointPressure` and `mouseEventPressure`. Photoshop
   reads the first.
 - Set `tabletEventPointX` and `Y` in tablet coordinates, along with tilt,
-  rotation and the device ID.
+  rotation, and the device ID.
 - Give each event the time the tablet reported the sample, not the time it
   was posted. Brush engines work out speed from timestamps.
 - Add `maskNonCoalesced` to every event. Wacom does, and without it the
@@ -84,13 +84,13 @@ Synthetic events leave both at zero, so set them:
   The release repeats the press's value, or uses 0 if the pointer moved
   more than a few points in between.
 
-Without these fields, Pages, Keynote and Numbers wouldn't take
+Without these fields, Pages, Keynote, and Numbers wouldn't take
 double-clicks in headers and footers, and fought drag selection. With
 them, no app needed special handling.
 
 ## Scrolling
 
-Smooth scrolling from a pen, ring or touch posts a continuous series of
+Smooth scrolling from a pen, ring, or touch posts a continuous series of
 `scrollWheel` events with scroll phases. `CGEventCreateScrollWheelEvent2`
 leaves the deltas that apps read through `NSEvent` at zero, so fill them in:
 

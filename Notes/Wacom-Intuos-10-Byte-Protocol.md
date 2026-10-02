@@ -1,13 +1,13 @@
 # Wacom Intuos 10-byte protocol (Intuos 1/2/4/5, Intuos Pro gen 1)
 
 The 10-byte pen report the Linux driver handles in `wacom_intuos_irq()`. It is
-used by the Intuos and Intuos2 (GD/XD), Intuos4 (PTK-x40), Intuos5 (PTH/PTK-x50)
+used by the Intuos and Intuos2 (GD/XD), Intuos4 (PTK-x40), Intuos5 (PTH/PTK-x50),
 and Intuos Pro gen 1 (PTH-x51), by the 2015–2018 consumer Intuos (CTL/CTH-x90,
 CTL-x72), by the Intuos3 (PTZ) with differences noted below, and by the
 older Cintiqs. TabletKit decodes it in `IntuosV1Decoder`; device
 coverage lives in `TabletKit/registry.json` (`"parser": "intuosV1"`).
 
-Hardware evidence comes from the Intuos5 L (PTH-850), Intuos Pro L (PTH-851)
+Hardware evidence comes from the Intuos5 L (PTH-850), Intuos Pro L (PTH-851),
 and a first-generation Intuos 6×8 (GD-0608-U). Other models are mapped from
 the kernel and OpenTabletDriver, which agree.
 
@@ -177,7 +177,7 @@ the kernel once read past short reports here (GHSA-4mjh-m2x6-5qg4). (kernel)
 
 ## Intuos3 (PTZ-x30, PTZ-x31)
 
-Same pen packet, tool enter packet and status tests. TabletKit decodes it
+Same pen packet, tool enter packet, and status tests. TabletKit decodes it
 separately (`Intuos3Decoder`) because it reads proximity from bit 6 (`0x40`),
 with no separate confidence bit, and because the pad differs:
 
@@ -192,7 +192,7 @@ Kernel only (`wacom_intuos_pad()`); no capture exists.
 
 ## Unverified
 
-- 4D mouse, lens cursor and airbrush: no hardware on hand.
+- 4D mouse, lens cursor, and airbrush: no hardware on hand.
 - Intuos4 and CTL/CTH-x90 rows: mapped from the kernel, no captures.
 
 ## Tests
