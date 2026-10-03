@@ -1,43 +1,38 @@
 # tools/
 
-Project-side scripts that aren't part of the app build but are used to maintain
-the registry, audit it against upstream sources, triage submitted captures, and
-capture HID traffic.
+Scripts for maintaining the registry, triaging submitted captures, capturing
+tablet traffic, and releasing the app. None run as part of the build. Run them
+by hand from the repo root.
 
 ```
 tools/
-  tests/     standalone test harnesses (no XCTest target) — see Contributing.md
+  tests/     standalone test harnesses (no XCTest target); see Contributing.md
   release/   build, sign, notarize, publish
-  capture/   HID capture probes + unwired app source
-  latency/   latency measurement suite
-  registry/  upstream cross-check + dimension backfill (non-Wacom)
+  capture/   capture probes and unused app source
+  latency/   latency measurement
+  registry/  upstream cross-checks and dimension backfill
 ```
 
 The registry lives at `TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift`.
-Most scripts read it (a few edit it in place) or produce Swift that gets pasted
-in.  None are wired into a build step — run them from the repo root by hand,
-occasionally, when refreshing against newer upstream data or handling a
-submission.
+Most scripts read it. A few edit it in place or print Swift to paste in.
 
-**Registry parsing, import, and audit scripts now live in
-[`TabletKit/tools/`](../TabletKit/tools/)**, next to the data they validate,
-so a TabletKit-only contributor has the same guardrails without needing the
-app repo: `registry_lib.py` (shared parser), `import_otd_configs.py`,
-`audit_wacom_hid_descriptors.py`, `audit_registry.py`,
+**Registry parsing, import, and audit scripts live in
+[`TabletKit/tools/`](../TabletKit/tools/)**, next to the data they check, so
+TabletKit contributors don't need this repo: `registry_lib.py`,
+`import_otd_configs.py`, `audit_wacom_hid_descriptors.py`, `audit_registry.py`,
 `audit_kernel_registry.py`, `verify_registry.py`, and `triage_discovery.py`.
-What remains below is app-repo-specific: release/snapshot tooling, legacy
-capture utilities, and the non-Wacom vendor import (which isn't registry data
-in the same sense — see below).
+This folder keeps the app-only tools.
+
+## Registry
 
 ### `backfill_libwacom_dimensions.py`
-**libwacom `.tablet` files → `activeWidthMM` / `activeHeightMM` fields.**
+**Fills `activeWidthMM` / `activeHeightMM` from libwacom.**
 
-Walks a libwacom data directory (https://github.com/linuxwacom/libwacom), builds
-a `{PID: (widthMM, heightMM)}` map, and edits `WacomDeviceRegistry.swift`
-in place to fill the dimensions on entries missing them.  Hand-measured
-`.verified` entries are preserved untouched.  An LPI-consistency guard
-rejects pairings whose implied per-axis LPI disagrees by more than 8% — the
-signature of a stale libwacom row or a cross-product PID collision.
+Reads a [libwacom](https://github.com/linuxwacom/libwacom) data directory and
+fills in missing dimensions in `WacomDeviceRegistry.swift`. It leaves
+hand-measured `.verified` entries alone, and skips any match whose implied
+resolution differs by more than 8% between axes, a sign of a stale libwacom
+row or two products sharing an ID.
 
 ```
 python3 tools/registry/backfill_libwacom_dimensions.py \
@@ -46,14 +41,9 @@ python3 tools/registry/backfill_libwacom_dimensions.py \
     --dry-run
 ```
 
-## Registry maintenance (non-Wacom)
-
 ### `import_vendor_configs.py`
-**OTD → `VendorDeviceProfile` Swift entries** for non-Wacom vendors.
-
-Sibling of `import_otd_configs.py`, but produces the recognition-only shape
-used by `VendorDeviceRegistry` for devices the registry *names* but doesn't
-yet decode.
+**Turns OpenTabletDriver configs into `VendorDeviceProfile` entries** for other
+makers' tablets that MockTab recognizes but doesn't decode yet.
 
 ```
 python3 tools/registry/import_vendor_configs.py \
@@ -61,67 +51,51 @@ python3 tools/registry/import_vendor_configs.py \
     --vendors Huion Xencelabs XP-Pen
 ```
 
-## Unwired app source (not in the Xcode target)
+## Unused app source
 
 ### `OTDImporter.swift`
-**Swift-native OTD JSON → registry entry converter — unused.**
+A Swift version of `import_otd_configs.py`. Nothing calls it, and it was never
+in the Xcode project. It depends only on Foundation and TabletKit, so it's easy
+to revive.
 
-Parses the same OTD configuration JSON as `import_otd_configs.py`, but in
-Swift, emitting `WacomDeviceSpec`/`VendorDeviceProfile`-shaped entries.
-Nothing calls it and it was never wired into the pbxproj; it depends only on
-`Foundation` and `TabletKit`, so it's portable if it's ever picked back up.
-Moved here from `MockTab/Driver/` rather than deleted, since it's real,
-working-looking logic, not a stub.
+## Submitted captures
 
-## Processing submitted captures
+`triage_discovery.py` lives in [`TabletKit/tools/`](../TabletKit/tools/).
 
-Submitted-capture triage (`triage_discovery.py`) now lives in
-[`TabletKit/tools/`](../TabletKit/tools/) alongside the registry it
-cross-references.
+Current builds leave the device serial number out of capture files. Older files
+may still have a `serialNumber`, which the triage tool flags. Remove it before
+committing a capture, since captures end up in public issues.
 
-**Serials in older captures.** Current app builds no longer write the device
-serial into capture files.  Files produced before that change may still contain
-a `serialNumber`; the triage tool flags it in its validation section.  Scrub any
-serial before committing a capture into the repo — these files end up in public
-issues.
-
-## HID capture (legacy / dev-only)
+## Capture (developer only)
 
 ### `hid_traffic_capture.d`, `hid_connect_capture.d`
-DTrace scripts that log the setup commands a driver process sends to a tablet
-through IOKit, during use and on connect. They work with any driver and need
-System Integrity Protection off. Superseded by the in-app capture flow for most
-cases.
+DTrace scripts that log the setup commands any driver sends a tablet, during
+use and on connect. They need System Integrity Protection off. In-app capture
+covers most other needs.
 
 ### `touch_capture.c`
-Standalone C utility that opens a HID device and dumps reports.  Pre-existing,
-used during the PTH-860 touch decoder work.
+A small C tool that opens a HID device and prints its reports. Written for the
+PTH-860 touch work.
 
 ### `WacomProbeDevice.swift`
-A `TabletDevice` shim you temporarily copy into `MockTab/Driver/Devices/` and
-wire into `TabletManager.deviceConnected(_:)` when researching an unrecognized
-Wacom device that speaks the 10-byte IntuosV1 wire format: it logs running
-coordinate/pressure maxima to Console so you can read off real ranges before
-writing a proper registry entry. See the file header for the exact steps.
-Not part of the Xcode target — it depends on app-internal helpers that only
-resolve once it's copied into `Devices/`.
+A stand-in driver for an unknown Wacom tablet that uses the 10-byte IntuosV1
+format. Copy it into `MockTab/Driver/Devices/` and hook it into
+`TabletManager.deviceConnected(_:)`. It logs the highest coordinates and
+pressure it sees, so you can read off real ranges before writing a registry
+entry. The file header has the steps. It only builds once copied into the app.
 
-## Build / release
+## Release
 
 ### `ExportOptions.plist`
-Xcode archive export config — referenced by `release-and-publish.sh`.
+Archive export settings for `release-and-publish.sh`.
 
 ### `release.sh`, `release-and-publish.sh`
-App-side release scripts for a numbered version.  `release.sh` builds, signs,
-notarizes, and packages; `release-and-publish.sh` wraps it with the tag +
-draft-GitHub-release work.  Out of scope for TabletKit (the package has no
-release process yet).
+`release.sh` builds, signs, notarizes, and packages a numbered release.
+`release-and-publish.sh` adds the tag and a draft GitHub release.
 
 ### `build-snapshot.sh`, `snapshot-and-publish.sh`
-Same shape as `release.sh` / `release-and-publish.sh`, but for the rolling,
-unversioned "snapshot" pre-release (`dist/MockTab-snapshot.dmg`, no
-`MARKETING_VERSION` bump, no version tag) — for sharing where `main` stands
-between formal releases. `snapshot-and-publish.sh` also replaces the single
-`snapshot` tag/pre-release as a **draft**; nothing is public until you click
-Publish on GitHub. Mirrors `.github/workflows/snapshot.yml`, which does the
-same thing on manual dispatch — use one path per snapshot.
+The same, for the rolling, unnumbered snapshot (`dist/MockTab-snapshot.dmg`),
+which shares `main` between releases. `snapshot-and-publish.sh` replaces the
+`snapshot` pre-release as a **draft**. Nothing goes public until you click
+Publish on GitHub. `.github/workflows/snapshot.yml` does the same on manual
+dispatch. Use one path per snapshot.

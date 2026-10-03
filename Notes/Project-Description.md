@@ -18,7 +18,7 @@ MockTab receives tablet reports through callbacks on a run loop. Schedule them i
 
 The reason: while you drag something, AppKit switches to a tracking mode, and default-mode callbacks stop. The report that says the pen lifted never arrives, so the mouse button stays down.
 
-## How Settings Are Stored
+## Settings Storage
 
 `TabletSettings` reads and writes `UserDefaults.standard` itself, rather than through `@AppStorage`.
 

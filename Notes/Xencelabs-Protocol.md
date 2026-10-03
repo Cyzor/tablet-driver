@@ -1,8 +1,8 @@
 # Xencelabs protocol (Pen Tablet, Pen Display, Quick Keys)
 
-Xencelabs hardware uses vendor ID `0x28BD`, which is UGEE's; the devices
-identify as "HANVON UGEE". TabletKit decodes them in `XencelabsDecoder` and
-builds the host-to-device writes in `XencelabsOutputProtocol`.
+Xencelabs hardware uses UGEE's vendor ID, `0x28BD`, and names itself
+"HANVON UGEE". TabletKit decodes it in `XencelabsDecoder` and builds writes
+to it in `XencelabsOutputProtocol`.
 
 | Device | PID |
 | --- | --- |
@@ -13,22 +13,21 @@ builds the host-to-device writes in `XencelabsOutputProtocol`.
 | Pen Display 16 | `0x520B` |
 | Pen Display 24 | `0x520D` |
 
-Everything below is **observed**, on a Pen Display 24 and a Quick Keys,
-wired and through the dongle, unless listed under Unverified. The labels
-are explained in [the README](README.md). There is no Linux kernel driver
-for these devices to cross-check against.
+Everything below comes from a Pen Display 24 and a Quick Keys, wired and
+through the dongle, except what's under Unverified. [The README](README.md)
+explains the labels. No Linux kernel driver exists to check against.
 
 ## The vendor tunnel, report `0x02`
 
-All live data in both directions uses report `0x02` on a vendor collection
-(usage page `0xFF0A`): input reports from the device and **output** reports
-from the host. The descriptor also declares a standard digitizer collection
-on report `0x07`, but it never carries data. Report sizes differ by device:
-the wired Quick Keys sends 10 bytes, the dongle and Pen Display 32. Pad
-host writes to the device's maximum output report size.
+All live data, in both directions, travels in report `0x02` on a vendor
+collection (usage page `0xFF0A`): input from the device and **output** from
+the host. The descriptor also declares a standard digitizer on report `0x07`,
+but it never carries data. Sizes vary: the wired Quick Keys sends 10 bytes,
+the dongle and Pen Display 32. Pad each write to the device's largest output
+report size.
 
-**Setup:** output report `[0x02, 0xB0, 0x04]`, zero-padded. Until then the
-device acts as a mouse.
+**Setup:** send output report `[0x02, 0xB0, 0x04]`, zero-padded. Until
+then the device acts as a mouse.
 
 ## Input: byte `[1]` decides the frame
 
@@ -41,7 +40,7 @@ device acts as a mouse.
 | `0xF2`, `0xF8` otherwise | Dongle status around connection; not input |
 | top nibble `0xB_` | Echo of a host write (`0xB0`, `0xB4`, `0xB5`, `0xB8`); not input |
 
-Reading echoes or status frames as key frames produces phantom key presses
+Reading an echo or status frame as a key frame causes phantom key presses
 that never release.
 
 **Pen bits:** `0x01` tip, `0x02`/`0x04`/`0x08` barrel buttons 1–3 (the
@@ -61,10 +60,10 @@ vs. `0x20` hovering).
 
 The Pen Display 24's X range is 0–105000 (about 200 units/mm), so reading
 only `[2]`–`[3]` wraps mid-screen. Tilt follows the HID convention: +X
-right, +Y toward the user. Neither pen sends a serial or tool code,
-but bit `0x80` tells them apart: a capture with both pens in one session
-shows it tracking the pen and nothing else. The out-of-range tag `0xC0`
-has the bit set for both pens, so keep the last pen through it.
+right, +Y toward the user. Neither pen sends a serial or tool code, but bit
+`0x80` tells them apart. In a capture with both pens, it tracks the pen and
+nothing else. The out-of-range tag `0xC0` sets the bit for both pens, so
+carry the last pen through it.
 [Evidence](Evidence/Xencelabs-Pen-Bit.md).
 
 ## Quick Keys frame (`[1]` = `0xF0`)
@@ -75,16 +74,16 @@ has the bit set for both pens, so keep the last pen through it.
 | 3 | Bit 0 mode button, bit 1 dial center click |
 | 7 | Dial step: 1 counterclockwise, 2 clockwise |
 
-Key numbering follows Xencelabs': hold the puck in landscape with the dial
-on the right; keys 1–4 are the top row and 5–8 the bottom row, left to
-right. Confirmed with single-key presses (key 1 alone gives `0x01`, key 8
-alone `0x80`); a sweep can't distinguish the two orders.
+Key numbers match Xencelabs': with the dial on the right, keys 1–4 form the
+top row and 5–8 the bottom, left to right. Single presses confirm it (key 1
+gives `0x01`, key 8 `0x80`). A sweep across all keys can't tell the two
+orders apart.
 
 ## Host writes
 
-Output reports on `0x02`. Bytes 10–15 carry a 6-byte device address. Through
-the dongle, which serves up to two paired devices, the address is required:
-an all-zero address has no effect. Over USB it's optional.
+Output reports on `0x02`. Bytes 10–15 hold a 6-byte device address. The
+dongle serves up to two paired devices and ignores a write with an all-zero
+address. Over USB the address is optional.
 
 | Write | Frame |
 | --- | --- |
@@ -96,24 +95,23 @@ an all-zero address has no effect. Over USB it's optional.
 | Quick Keys sleep timer | `02 B4 08 01 <minutes, 0 = never> … <addr>`; survives power cycles |
 | Pen Display brightness | `02 B5 01 03 00 00 <0–100> 00` |
 
-Label text over 8 UTF-16 code units is split into 8-unit chunks, with the
-chunk count counting down to 0; an empty string clears the field. In the
-sleep-timer and OLED-brightness frames, byte 3 = `0x01` sets the value and
+Send label text longer than 8 UTF-16 code units in 8-unit chunks, with the
+chunks-left count running down to 0. An empty string clears the field. In
+the sleep-timer and OLED-brightness frames, byte 3 `0x01` sets the value and
 `0x00` reads it back.
 
-The Pen Display's bezel-button backlight answers to the dial LED color
-frame. The vendor driver pre-scales brightness into the RGB values, and its
-palette is calibrated to the LEDs (its "white" is warm, not `FFFFFF`).
+The dial LED color frame also sets the Pen Display's bezel-button
+backlight. The vendor driver folds brightness into the RGB values and tunes
+its palette to the LEDs (its "white" is warm, not `FFFFFF`).
 
 ## Unverified
 
-- Pen Tablet Small and Medium, and the Pen Display 16: same family, not on
-  hand.
+- Pen Tablet Small and Medium, and the Pen Display 16: same family, untested.
 - Other Pen Display panel controls in the `0xB5` family.
 
 ## Tests
 
-These TabletKit tests check the layouts above, many with frames from real captures:
+These TabletKit tests check the layouts above, many against real captures:
 
 - [`XencelabsDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/XencelabsDecoderTests.swift)
 - [`XencelabsOutputProtocolTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/XencelabsOutputProtocolTests.swift)
