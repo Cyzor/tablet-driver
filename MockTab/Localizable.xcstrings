@@ -3561,24 +3561,24 @@
         }
       }
     },
-    "Changes the panel's own image controls, like the buttons on the display bezel." : {
+    "Changes the display's appearance. Feature support may vary." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ändert die Bildeinstellungen des Panels selbst, wie die Tasten am Displayrahmen."
+            "value" : "Ändert die Bilddarstellung des Displays. Nicht jedes Display unterstützt alle Funktionen."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cambia los controles de imagen del propio panel, igual que los botones del marco de la pantalla."
+            "value" : "Cambia la imagen de la pantalla. Las funciones disponibles dependen del modelo."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ディスプレイ枠のボタンと同様に、パネル自体の画質設定を変更します。"
+            "value" : "ディスプレイの表示を調整します。対応機能は機種によって異なります。"
           }
         }
       }
@@ -13425,6 +13425,29 @@
         }
       }
     },
+    "Press %@ to switch displays" : {
+      "comment" : "Label naming the buttons that switch the display toggle; %@ is an or-list of button names",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ drücken, um das Display zu wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsa %@ para cambiar de pantalla"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ を押すとディスプレイを切り替えます"
+          }
+        }
+      }
+    },
     "Press each button on the tablet" : {
       "comment" : "Device data collection instruction: tablet buttons",
       "localizations" : {
@@ -19645,29 +19668,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "接続方式 : %@"
-          }
-        }
-      }
-    },
-    "Triggered by %@" : {
-      "comment" : "Label showing which button triggers the display toggle",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausgelöst durch %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activado por %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ でトリガー"
           }
         }
       }

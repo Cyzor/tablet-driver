@@ -249,7 +249,7 @@ struct DisplayMappingView: View {
             Text("Built-in Display").appFont(.headline)
         } footer: {
             Text(brightnessDeviceConnected
-                ? "Changes the panel's own image controls, like the buttons on the display bezel."
+                ? "Changes the display's appearance. Feature support may vary."
                 : "Available when the display is connected.")
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -586,8 +586,8 @@ struct DisplayMappingView: View {
         .disabled(displays.count <= 1)
     }
 
-    /// Returns the names of buttons currently bound to displayToggle, or nil if none.
-    private var displayToggleAssignedLabel: String? {
+    /// Names of the buttons currently bound to displayToggle.
+    private var displayToggleButtonNames: [String] {
         var names: [String] = []
         if settings.activeTool.penButton1Binding.kind == .displayToggle { names.append("Pen Button 1") }
         if settings.activeTool.penButton2Binding.kind == .displayToggle { names.append("Pen Button 2") }
@@ -595,12 +595,37 @@ struct DisplayMappingView: View {
             .filter { $0.element.kind == .displayToggle }
             .map { "Key \($0.offset + 1)" }
         names += ekNames
+        names += settings.bezelButtonBindings.enumerated()
+            .filter { $0.element.kind == .displayToggle }
+            .map { "Bezel Button \($0.offset + 1)" }
         if settings.touchRingButtonBinding.kind == .displayToggle { names.append("Ring Button") }
-        return names.isEmpty ? nil : names.joined(separator: ", ")
+        // Same-brand aux-only accessories (Quick Keys, ExpressKey Remote)
+        // forward their toggle to this tablet; see toggleDisplayOnPenTablet.
+        if let ctx = tabletManager.context(forKey: instanceKey), ctx.tabletDevice.map({ $0.spec.maxX > 0 }) ?? false {
+            // Sorted so the first-named button doesn't shift between redraws.
+            for aux in tabletManager.deviceContexts.values.sorted(by: { $0.productID < $1.productID })
+            where aux.isConnected && aux.vendorID == ctx.vendorID && aux.tabletDevice?.spec.maxX == 0 {
+                let isRemote = WacomDeviceRegistry.spec(for: aux.productID)?.parser == .expressKeyRemote
+                let device = registry.row(forKey: aux.instanceKey)?.nickname ?? (isRemote ? "Remote" : "Quick Keys")
+                names += aux.settings.expressKeyBindings.enumerated()
+                    .filter { $0.element.kind == .displayToggle }
+                    .map { "\(device) Key \($0.offset + 1)" }
+                // The remote's center button belongs to its firmware.
+                if !isRemote, aux.settings.touchRingButtonBinding.kind == .displayToggle {
+                    names.append("\(device) Dial Button")
+                }
+            }
+        }
+        return names
     }
 
     private var displayToggleHintRow: some View {
-        let assignedLabel = displayToggleAssignedLabel
+        let names = displayToggleButtonNames
+        // Name one button inline so the row stays one line; the tooltip lists all.
+        let assignedLabel = names.first
+        let pressLabel = { (buttons: String) in
+            String(localized: "Press \(buttons) to switch displays", comment: "Label naming the buttons that switch the display toggle; %@ is an or-list of button names")
+        }
         return HStack(spacing: 8) {
             if assignedLabel != nil {
                 Image(systemName: "checkmark.circle.fill")
@@ -611,8 +636,9 @@ struct DisplayMappingView: View {
                     .foregroundStyle(.primary)
                     .accessibilityHidden(true)
             }
-            Text(assignedLabel.map { String(localized: "Triggered by \($0)", comment: "Label showing which button triggers the display toggle") } ?? String(localized: "No button assigned to toggle", comment: "Label when no button is assigned to display toggle"))
+            Text(assignedLabel.map(pressLabel) ?? String(localized: "No button assigned to toggle", comment: "Label when no button is assigned to display toggle"))
                 .foregroundStyle(assignedLabel != nil ? .secondary : .primary)
+                .help(names.count > 1 ? pressLabel(names.formatted(.list(type: .or))) : "")
             Spacer()
             if assignedLabel == nil {
                 Button("Set Up") {
