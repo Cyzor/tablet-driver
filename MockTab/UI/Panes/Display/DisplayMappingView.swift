@@ -591,6 +591,10 @@ struct DisplayMappingView: View {
         var names: [String] = []
         if settings.activeTool.penButton1Binding.kind == .displayToggle { names.append("Pen Button 1") }
         if settings.activeTool.penButton2Binding.kind == .displayToggle { names.append("Pen Button 2") }
+        if settings.activeTool.penButton3Binding.kind == .displayToggle { names.append("Pen Button 3") }
+        if settings.activeTool.penButton4Binding.kind == .displayToggle { names.append("Pen Button 4") }
+        if settings.activeTool.penButton5Binding.kind == .displayToggle { names.append("Pen Button 5") }
+        if settings.activeTool.wheelBinding.kind == .displayToggle { names.append("Wheel Button") }
         let ekNames = settings.expressKeyBindings.enumerated()
             .filter { $0.element.kind == .displayToggle }
             .map { "Key \($0.offset + 1)" }
@@ -599,6 +603,7 @@ struct DisplayMappingView: View {
             .filter { $0.element.kind == .displayToggle }
             .map { "Bezel Button \($0.offset + 1)" }
         if settings.touchRingButtonBinding.kind == .displayToggle { names.append("Ring Button") }
+        if settings.touchRingButtonBinding2.kind == .displayToggle { names.append("Dial 2 Button") }
         // Same-brand aux-only accessories (Quick Keys, ExpressKey Remote)
         // forward their toggle to this tablet; see toggleDisplayOnPenTablet.
         if let ctx = tabletManager.context(forKey: instanceKey), ctx.tabletDevice.map({ $0.spec.maxX > 0 }) ?? false {
