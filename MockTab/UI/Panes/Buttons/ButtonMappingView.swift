@@ -40,22 +40,7 @@ struct ButtonMappingView: View {
 
     private var spec: WacomDeviceSpec? {
         guard let pid = productID else { return nil }
-        // Most devices are in the registry keyed by their own PID.
-        // The ACK-40401 wireless dongle's own registry entry is a
-        // name-only placeholder (maxX/maxY/buttonCount all 0) — skip it
-        // and fall back to the paired tablet's PID reported over the RF
-        // link instead of showing an empty Buttons pane.
-        if let s = WacomDeviceRegistry.spec(for: pid), s.maxX > 0 || s.isAuxOnly { return s }
-        if let ctx = tabletManager.context(forKey: instanceKey), ctx.pairedProductID > 0 {
-            return WacomDeviceRegistry.spec(for: ctx.pairedProductID)
-        }
-        // Non-Wacom drivable devices (Xencelabs) aren't in WacomDeviceRegistry
-        // at all — synthesize the same spec shape TabletManager attached the
-        // live driver with.
-        if let ctx = tabletManager.context(forKey: instanceKey) {
-            return TabletManager.vendorDeviceSpec(forVendorID: ctx.vendorID, productID: pid)
-        }
-        return nil
+        return Self.layoutSpec(productID: pid, context: tabletManager.context(forKey: instanceKey))
     }
 
     private var activeToolSpec: WacomToolSpec? {
@@ -86,9 +71,7 @@ struct ButtonMappingView: View {
     /// Keyed on the family rather than `buttonCount`, since the Cintiq itself
     /// declares `buttonCount: 8` while filling all sixteen slots — the
     /// dual-sided layout has never respected that field for anyone.
-    private var hasSplitPadLayout: Bool {
-        hasDualRings && spec?.parser == .cintiqV1
-    }
+    private var hasSplitPadLayout: Bool { Self.hasSplitPadLayout(spec) }
     private var bezelButtonCount: Int { spec?.bezelButtonCount ?? 0 }
     /// ExpressKey Remote: keys and a ring, no pen. Its firmware owns the
     /// ring's mode button, so that row is omitted.
@@ -308,17 +291,7 @@ struct ButtonMappingView: View {
     private func penButtonsSection(lb: LiveButtonState) -> some View {
         let toolSpec = activeToolSpec
         let isMouse = toolSpec?.toolType == .mouse
-        // For mice, show all 5 HID-path button slots regardless of spec.buttonCount
-        // (spec.buttonCount describes only the digitizer path, not the full HID mouse report)
-        //
-        // toolSpec is nil only before any pen has ever reported in on this
-        // device (activeToolSpec reads lastKnownToolCode, which survives
-        // proximity exits). Xencelabs pens share one spec regardless
-        // (buttonCount: 3, see WacomToolSpec's Xencelabs section) since the
-        // wire protocol can't tell them apart, so defaulting to 3 here is
-        // correct for either pen; a genuine 2-button pen just leaves the 3rd
-        // slot unused.
-        let btnCount = isMouse ? 5 : (toolSpec?.buttonCount ?? (spec?.parser == .xencelabs ? 3 : 2))
+        let btnCount = Self.penButtonCount(tool: toolSpec, device: spec)
         let hasWheel = toolSpec?.hasWheel == true
 
         Section {
@@ -345,11 +318,7 @@ struct ButtonMappingView: View {
             // Button 1
             if btnCount >= 1 {
                 buttonRow(
-                    isMouse
-                        ? String(localized: "Button 1", comment: "Pen button row label: mouse button 1")
-                        : (btnCount == 1
-                            ? String(localized: "Side button", comment: "Pen button row label: single side button")
-                            : String(localized: "Side button 1", comment: "Pen button row label: first side button")),
+                    Self.penButtonLabel(1, count: btnCount, isMouse: isMouse),
                     isActive: lb.button1Down,
                     binding: pen1Binding,
                     isMechanicalDialHardware: hasMechanicalDial,
@@ -358,9 +327,7 @@ struct ButtonMappingView: View {
             // Button 2
             if btnCount >= 2 {
                 buttonRow(
-                    isMouse
-                        ? String(localized: "Button 2", comment: "Pen button row label: mouse button 2")
-                        : String(localized: "Side button 2", comment: "Pen button row label: second side button"),
+                    Self.penButtonLabel(2, count: btnCount, isMouse: isMouse),
                     isActive: lb.button2Down,
                     binding: pen2Binding,
                     isMechanicalDialHardware: hasMechanicalDial,
@@ -369,9 +336,7 @@ struct ButtonMappingView: View {
             // Button 3
             if btnCount >= 3 {
                 buttonRow(
-                    isMouse
-                        ? String(localized: "Button 3", comment: "Pen button row label: mouse button 3")
-                        : String(localized: "Side button 3", comment: "Pen button row label: third side button"),
+                    Self.penButtonLabel(3, count: btnCount, isMouse: isMouse),
                     isActive: lb.button3Down,
                     binding: pen3Binding,
                     isMechanicalDialHardware: hasMechanicalDial,
@@ -380,9 +345,7 @@ struct ButtonMappingView: View {
             // Button 4
             if btnCount >= 4 {
                 buttonRow(
-                    isMouse
-                        ? String(localized: "Button 4", comment: "Pen button row label: mouse button 4")
-                        : String(localized: "Side button 4", comment: "Pen button row label: fourth side button"),
+                    Self.penButtonLabel(4, count: btnCount, isMouse: isMouse),
                     isActive: lb.button4Down,
                     binding: pen4Binding,
                     isMechanicalDialHardware: hasMechanicalDial)
@@ -390,9 +353,7 @@ struct ButtonMappingView: View {
             // Button 5
             if btnCount >= 5 {
                 buttonRow(
-                    isMouse
-                        ? String(localized: "Button 5", comment: "Pen button row label: mouse button 5")
-                        : String(localized: "Side button 5", comment: "Pen button row label: fifth side button"),
+                    Self.penButtonLabel(5, count: btnCount, isMouse: isMouse),
                     isActive: lb.button5Down,
                     binding: pen5Binding,
                     isMechanicalDialHardware: hasMechanicalDial)
@@ -400,11 +361,7 @@ struct ButtonMappingView: View {
 
             // Wheel row — airbrush fingerwheel or scroll wheel
             if hasWheel {
-                let wheelLabel =
-                    toolSpec?.toolType == .airbrush
-                    ? String(localized: "Fingerwheel", comment: "Airbrush fingerwheel row label")
-                    : String(localized: "Scroll Wheel", comment: "Mouse scroll wheel row label")
-                buttonRow(wheelLabel, isActive: false, binding: wheelBinding, isMechanicalDialHardware: hasMechanicalDial)
+                buttonRow(Self.wheelLabel(tool: toolSpec), isActive: false, binding: wheelBinding, isMechanicalDialHardware: hasMechanicalDial)
             }
 
             // Diagram row: no label column; transparent so the section
@@ -517,41 +474,28 @@ struct ButtonMappingView: View {
     }
 
     /// ExpressKey Remote keys, grouped and ordered as on the hardware.
-    /// Indices follow libwacom's layout (wire bit N+1 → key N; bit 0 is
-    /// the ring toggle): ring keys 0–4, outer 5, 7, 8, 10, 11, 13, 15, 16,
-    /// inner 6, 9, 12, 14.
     @ViewBuilder
     private func remoteKeySections(lb: LiveButtonState) -> some View {
         Section {
-            remoteKeyRow(1, String(localized: "Top Left", comment: "ExpressKey Remote key position"), lb: lb)
-            remoteKeyRow(2, String(localized: "Top Right", comment: "ExpressKey Remote key position"), lb: lb)
-            remoteKeyRow(0, String(localized: "Left", comment: "Left touch strip row label"), lb: lb)
-            remoteKeyRow(3, String(localized: "Right", comment: "Right touch strip row label"), lb: lb)
-            remoteKeyRow(4, String(localized: "Bottom", comment: "ExpressKey Remote key position"), lb: lb)
+            ForEach(Self.remoteRingKeySlots, id: \.self) { remoteKeyRow($0, lb: lb) }
         } header: {
             PaneSectionHeader("Ring Keys") {
                 DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
             }
         }
         Section("Outer Keys") {
-            ForEach(Array([5, 8, 11, 15].enumerated()), id: \.offset) { n, index in
-                remoteKeyRow(index, String(localized: "Left \(n + 1)", comment: "ExpressKey Remote outer key, left column, top to bottom"), lb: lb)
-            }
-            ForEach(Array([7, 10, 13, 16].enumerated()), id: \.offset) { n, index in
-                remoteKeyRow(index, String(localized: "Right \(n + 1)", comment: "ExpressKey Remote outer key, right column, top to bottom"), lb: lb)
-            }
+            ForEach(Self.remoteOuterLeftSlots + Self.remoteOuterRightSlots, id: \.self) { remoteKeyRow($0, lb: lb) }
         }
         Section("Inner Keys") {
-            ForEach(Array([6, 9, 12, 14].enumerated()), id: \.offset) { n, index in
-                remoteKeyRow(index, String(localized: "Key \(n + 1)", comment: "Express key N label, e.g. 'Key 1'"), lb: lb)
-            }
+            ForEach(Self.remoteInnerSlots, id: \.self) { remoteKeyRow($0, lb: lb) }
         }
     }
 
     /// Key 17 arrives past the 16 express-key slots, where the injector
     /// reads bezel binding 0; the remote has no bezel.
     @ViewBuilder
-    private func remoteKeyRow(_ index: Int, _ label: String, lb: LiveButtonState) -> some View {
+    private func remoteKeyRow(_ index: Int, lb: LiveButtonState) -> some View {
+        let label = Self.remoteKeyLabel(slot: index)
         if index < 16 {
             expressKeyRow(index: index, label: label, lb: lb)
         } else {
@@ -739,11 +683,7 @@ struct ButtonMappingView: View {
     private func dualSidedSection(lb: LiveButtonState) -> some View {
         Section {
             ForEach(0..<3, id: \.self) { i in
-                expressKeyRow(
-                    index: i,
-                    label: String(
-                        localized: "Button \(i + 1)",
-                        comment: "Toggle button N label, e.g. 'Button 1'"), lb: lb)
+                expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
             }
         } header: {
             PaneSectionHeader("Toggle Buttons — Left") {
@@ -753,10 +693,7 @@ struct ButtonMappingView: View {
 
         Section("Express Keys — Left") {
             ForEach(3..<8, id: \.self) { i in
-                expressKeyRow(
-                    index: i,
-                    label: String(localized: "Key \(i - 2)", comment: "Express key N label, e.g. 'Key 1'"),
-                    lb: lb)
+                expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
             }
         }
 
@@ -769,20 +706,13 @@ struct ButtonMappingView: View {
 
         Section("Toggle Buttons — Right") {
             ForEach(8..<11, id: \.self) { i in
-                expressKeyRow(
-                    index: i,
-                    label: String(
-                        localized: "Button \(i - 7)",
-                        comment: "Toggle button N label, e.g. 'Button 1'"), lb: lb)
+                expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
             }
         }
 
         Section("Express Keys — Right") {
             ForEach(11..<16, id: \.self) { i in
-                expressKeyRow(
-                    index: i,
-                    label: String(localized: "Key \(i - 10)", comment: "Express key N label, e.g. 'Key 1'"),
-                    lb: lb)
+                expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
             }
         }
 
@@ -963,4 +893,102 @@ struct ButtonMappingView: View {
         settings: TabletSettings(instanceKey: key), tabletManager: .shared,
         registry: .shared, instanceKey: key)
         .frame(width: 620, height: 900)
+}
+
+// MARK: - Shared row labels
+
+/// Static so the Display pane's toggle hint names each button as this pane does.
+extension ButtonMappingView {
+    /// The spec that decides this pane's layout.
+    static func layoutSpec(productID pid: Int, context ctx: DeviceContext?) -> WacomDeviceSpec? {
+        // Most devices are in the registry keyed by their own PID.
+        // The ACK-40401 wireless dongle's own registry entry is a
+        // name-only placeholder (maxX/maxY/buttonCount all 0) — skip it
+        // and fall back to the paired tablet's PID reported over the RF
+        // link instead of showing an empty Buttons pane.
+        if let s = WacomDeviceRegistry.spec(for: pid), s.maxX > 0 || s.isAuxOnly { return s }
+        guard let ctx else { return nil }
+        if ctx.pairedProductID > 0 { return WacomDeviceRegistry.spec(for: ctx.pairedProductID) }
+        // Non-Wacom drivable devices (Xencelabs) aren't in WacomDeviceRegistry
+        // at all — synthesize the same spec shape TabletManager attached the
+        // live driver with.
+        return TabletManager.vendorDeviceSpec(forVendorID: ctx.vendorID, productID: pid)
+    }
+
+    static func hasSplitPadLayout(_ spec: WacomDeviceSpec?) -> Bool {
+        spec?.hasDualRings == true && spec?.parser == .cintiqV1
+    }
+
+    /// Mice show all 5 HID-path button slots: `buttonCount` describes only
+    /// the digitizer path. `tool` is nil until a pen first reports in; 3
+    /// covers the Xencelabs 3 Button Pen until then.
+    static func penButtonCount(tool: WacomToolSpec?, device: WacomDeviceSpec?) -> Int {
+        tool?.toolType == .mouse ? 5 : (tool?.buttonCount ?? (device?.parser == .xencelabs ? 3 : 2))
+    }
+
+    /// Label for pen or mouse button `n`, counting from 1.
+    static func penButtonLabel(_ n: Int, count: Int, isMouse: Bool) -> String {
+        if isMouse {
+            switch n {
+            case 1: return String(localized: "Button 1", comment: "Pen button row label: mouse button 1")
+            case 2: return String(localized: "Button 2", comment: "Pen button row label: mouse button 2")
+            case 3: return String(localized: "Button 3", comment: "Pen button row label: mouse button 3")
+            case 4: return String(localized: "Button 4", comment: "Pen button row label: mouse button 4")
+            default: return String(localized: "Button 5", comment: "Pen button row label: mouse button 5")
+            }
+        }
+        switch n {
+        case 1 where count == 1: return String(localized: "Side button", comment: "Pen button row label: single side button")
+        case 1: return String(localized: "Side button 1", comment: "Pen button row label: first side button")
+        case 2: return String(localized: "Side button 2", comment: "Pen button row label: second side button")
+        case 3: return String(localized: "Side button 3", comment: "Pen button row label: third side button")
+        case 4: return String(localized: "Side button 4", comment: "Pen button row label: fourth side button")
+        default: return String(localized: "Side button 5", comment: "Pen button row label: fifth side button")
+        }
+    }
+
+    static func wheelLabel(tool: WacomToolSpec?) -> String {
+        tool?.toolType == .airbrush
+            ? String(localized: "Fingerwheel", comment: "Airbrush fingerwheel row label")
+            : String(localized: "Scroll Wheel", comment: "Mouse scroll wheel row label")
+    }
+
+    /// Split-pad slots per side: three toggle buttons, then five express keys.
+    static func splitPadKeyLabel(slot: Int) -> (side: String, label: String) {
+        let side = slot < 8
+            ? String(localized: "Left", comment: "Left touch strip row label")
+            : String(localized: "Right", comment: "Right touch strip row label")
+        let i = slot % 8
+        let label = i < 3
+            ? String(localized: "Button \(i + 1)", comment: "Toggle button N label, e.g. 'Button 1'")
+            : String(localized: "Key \(i - 2)", comment: "Express key N label, e.g. 'Key 1'")
+        return (side, label)
+    }
+
+    // ExpressKey Remote slots in hardware order. Indices follow libwacom's
+    // layout (wire bit N+1 → key N; bit 0 is the ring toggle). Slot 16
+    // arrives past the 16 express-key slots, in bezel binding 0.
+    static let remoteRingKeySlots = [1, 2, 0, 3, 4]
+    static let remoteOuterLeftSlots = [5, 8, 11, 15]
+    static let remoteOuterRightSlots = [7, 10, 13, 16]
+    static let remoteInnerSlots = [6, 9, 12, 14]
+
+    static func remoteKeyLabel(slot: Int) -> String {
+        switch slot {
+        case 0: return String(localized: "Left", comment: "Left touch strip row label")
+        case 1: return String(localized: "Top Left", comment: "ExpressKey Remote key position")
+        case 2: return String(localized: "Top Right", comment: "ExpressKey Remote key position")
+        case 3: return String(localized: "Right", comment: "Right touch strip row label")
+        case 4: return String(localized: "Bottom", comment: "ExpressKey Remote key position")
+        default: break
+        }
+        if let n = remoteOuterLeftSlots.firstIndex(of: slot) {
+            return String(localized: "Left \(n + 1)", comment: "ExpressKey Remote outer key, left column, top to bottom")
+        }
+        if let n = remoteOuterRightSlots.firstIndex(of: slot) {
+            return String(localized: "Right \(n + 1)", comment: "ExpressKey Remote outer key, right column, top to bottom")
+        }
+        let n = remoteInnerSlots.firstIndex(of: slot) ?? 0
+        return String(localized: "Key \(n + 1)", comment: "Express key N label, e.g. 'Key 1'")
+    }
 }

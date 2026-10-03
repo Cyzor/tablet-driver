@@ -586,43 +586,88 @@ struct DisplayMappingView: View {
         .disabled(displays.count <= 1)
     }
 
-    /// Names of the buttons currently bound to displayToggle.
+    /// Buttons bound to displayToggle, named as the Buttons pane names them.
     private var displayToggleButtonNames: [String] {
-        let tool = settings.activeTool
-        let single: (ButtonBinding, String) -> [String] = { $0.kind == .displayToggle ? [$1] : [] }
-        let numbered: ([ButtonBinding], String) -> [String] = { bindings, prefix in
-            bindings.enumerated()
-                .filter { $0.element.kind == .displayToggle }
-                .map { "\(prefix) \($0.offset + 1)" }
+        let ctx = tabletManager.context(forKey: instanceKey)
+        let spec = productID.flatMap { ButtonMappingView.layoutSpec(productID: $0, context: ctx) }
+        let tool = ctx.flatMap { WacomToolCatalog.spec(forToolCode: $0.lastKnownToolCode) }
+        let isMouse = tool?.toolType == .mouse
+        // A device or side ahead of a row label, e.g. "Pucky-Puck Key 1".
+        let qualified: (String, String) -> String = { owner, label in
+            String(localized: "\(owner) \(label)", comment: "Button name qualified by its device or side, e.g. 'Pucky-Puck Key 1' or 'Left Key 1'")
         }
-        var names = [
-            (tool.penButton1Binding, "Pen Button 1"),
-            (tool.penButton2Binding, "Pen Button 2"),
-            (tool.penButton3Binding, "Pen Button 3"),
-            (tool.penButton4Binding, "Pen Button 4"),
-            (tool.penButton5Binding, "Pen Button 5"),
-            (tool.wheelBinding, "Wheel Button"),
-        ].flatMap(single)
-        names += numbered(settings.expressKeyBindings, "Key")
-        names += numbered(settings.bezelButtonBindings, "Bezel Button")
-        names += [
-            (settings.touchRingButtonBinding, "Ring Button"),
-            (settings.touchRingButtonBinding2, "Dial 2 Button"),
-        ].flatMap(single)
+        // Names resolve only for the rows that match.
+        var rows: [(binding: ButtonBinding, name: () -> String)] = []
+
+        let t = settings.activeTool
+        if !isMouse {
+            rows.append((t.tipBinding, { String(localized: "Tip", comment: "Pen tip button row label in Buttons tab") }))
+            rows.append((t.eraserBinding, { String(localized: "Eraser", comment: "Eraser button row label in Buttons tab") }))
+        }
+        let penCount = ButtonMappingView.penButtonCount(tool: tool, device: spec)
+        let penButtons = [t.penButton1Binding, t.penButton2Binding, t.penButton3Binding, t.penButton4Binding, t.penButton5Binding]
+        rows += penButtons.prefix(penCount).enumerated().map { i, binding in
+            (binding, { ButtonMappingView.penButtonLabel(i + 1, count: penCount, isMouse: isMouse) })
+        }
+        if tool?.hasWheel == true {
+            rows.append((t.wheelBinding, { ButtonMappingView.wheelLabel(tool: tool) }))
+        }
+
+        let keys = settings.expressKeyBindings
+        if ButtonMappingView.hasSplitPadLayout(spec) {
+            rows += keys.enumerated().map { slot, binding in
+                (binding, {
+                    let key = ButtonMappingView.splitPadKeyLabel(slot: slot)
+                    return qualified(key.side, key.label)
+                })
+            }
+        } else {
+            rows += keys.prefix(max(spec?.buttonCount ?? 8, 0)).enumerated().map { i, binding in
+                (binding, { String(localized: "Key \(i + 1)", comment: "Express key N label, e.g. 'Key 1'") })
+            }
+        }
+        rows += settings.bezelButtonBindings.prefix(max(spec?.bezelButtonCount ?? 0, 0)).enumerated().map { i, binding in
+            (binding, { String(localized: "Bezel Button \(i + 1)", comment: "Bezel button N label, e.g. 'Bezel Button 1'") })
+        }
+        if spec?.hasMechanicalDial == true {
+            rows.append((settings.touchRingButtonBinding, {
+                String(localized: "Dial Toggle", comment: "Row label for the ExpressKey that cycles a mechanical dial's modes")
+            }))
+            if spec?.hasDualRings == true {
+                rows.append((settings.touchRingButtonBinding2, {
+                    String(localized: "Dial 2 Toggle", comment: "Undo action name: second dial toggle key binding in the Buttons pane")
+                }))
+            }
+        } else if spec?.hasTouchRing == true {
+            rows.append((settings.touchRingButtonBinding, {
+                String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane")
+            }))
+        }
+
         // Same-brand aux-only accessories (Quick Keys, ExpressKey Remote)
         // forward their toggle to this tablet; see toggleDisplayOnPenTablet.
-        if let ctx = tabletManager.context(forKey: instanceKey), ctx.tabletDevice.map({ $0.spec.maxX > 0 }) ?? false {
+        if let ctx, ctx.tabletDevice.map({ $0.spec.maxX > 0 }) ?? false {
             // Sorted so the first-named button doesn't shift between redraws.
             for aux in tabletManager.deviceContexts.values.sorted(by: { $0.productID < $1.productID })
             where aux.isConnected && aux.vendorID == ctx.vendorID && aux.tabletDevice?.spec.maxX == 0 {
-                let isRemote = WacomDeviceRegistry.spec(for: aux.productID)?.parser == .expressKeyRemote
-                let device = registry.row(forKey: aux.instanceKey)?.nickname ?? (isRemote ? "Remote" : "Quick Keys")
-                names += numbered(aux.settings.expressKeyBindings, "\(device) Key")
-                // The remote's center button belongs to its firmware.
-                if !isRemote { names += single(aux.settings.touchRingButtonBinding, "\(device) Dial Button") }
+                let auxSpec = TabletManager.staticSpec(forProductID: aux.productID)
+                let device = registry.row(forKey: aux.instanceKey)?.nickname ?? auxSpec?.name ?? ""
+                let auxKeys = aux.settings.expressKeyBindings
+                if auxSpec?.parser == .expressKeyRemote {
+                    // Its firmware owns the ring button, so only keys count.
+                    rows += (auxKeys + aux.settings.bezelButtonBindings.prefix(1)).enumerated().map { slot, binding in
+                        (binding, { qualified(device, ButtonMappingView.remoteKeyLabel(slot: slot)) })
+                    }
+                } else {
+                    let keyCount = QuickKeysSectionView.keyCount(auxSpec)
+                    rows += auxKeys.prefix(keyCount + 1).enumerated().map { slot, binding in
+                        (binding, { qualified(device, QuickKeysSectionView.keyLabel(slot: slot, keyCount: keyCount)) })
+                    }
+                    rows.append((aux.settings.touchRingButtonBinding, { qualified(device, QuickKeysSectionView.dialLabel) }))
+                }
             }
         }
-        return names
+        return rows.filter { $0.binding.kind == .displayToggle }.map { $0.name() }
     }
 
     private var displayToggleHintRow: some View {

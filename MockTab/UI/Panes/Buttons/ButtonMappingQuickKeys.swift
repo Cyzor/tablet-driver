@@ -56,12 +56,12 @@ struct QuickKeysSectionView: View {
 
     private var bindingsSection: some View {
         let lb = liveButtons
-        let keyCount = min(max(spec?.buttonCount ?? 8, 0) - 1, 16)
+        let keyCount = Self.keyCount(spec)
 
         return Section {
             ForEach(0..<max(keyCount, 0), id: \.self) { i in
                 buttonRow(
-                    String(localized: "Key \(i + 1)", comment: "Quick Keys express key N label"),
+                    Self.keyLabel(slot: i, keyCount: keyCount),
                     isActive: lb.expressKeys[i],
                     binding: settings.recordingBinding(
                         String(localized: "Quick Keys Key \(i + 1)", comment: "Undo action name: Quick Keys binding in the Buttons pane"),
@@ -77,7 +77,7 @@ struct QuickKeysSectionView: View {
             // array as the last slot (buttons[8] in AuxButtons — see
             // XencelabsDecoder.decodeAux).
             buttonRow(
-                String(localized: "Mode", comment: "Quick Keys bottom mode button label"),
+                Self.keyLabel(slot: keyCount, keyCount: keyCount),
                 isActive: lb.expressKeys[keyCount],
                 binding: settings.recordingBinding(
                     String(localized: "Quick Keys Mode Button", comment: "Undo action name: Quick Keys binding in the Buttons pane"),
@@ -92,7 +92,7 @@ struct QuickKeysSectionView: View {
             // slot, mirroring how XencelabsDecoder reports it via
             // AuxButtons.touchRingButtonDown rather than an indexed key.
             buttonRow(
-                String(localized: "Dial", comment: "Quick Keys dial center-click row label"),
+                Self.dialLabel,
                 isActive: lb.touchRingButtonDown,
                 binding: settings.recordingBinding(
                     String(localized: "Quick Keys Dial Button", comment: "Undo action name: Quick Keys binding in the Buttons pane"),
@@ -356,5 +356,26 @@ struct QuickKeysSectionView: View {
             defaultWire: d,
             undoLabel: "Dial Color",
             settings: settings)
+    }
+}
+
+// MARK: - Shared row labels
+
+/// Static so the Display pane's toggle hint names each key as this section does.
+extension QuickKeysSectionView {
+    /// Numbered keys ahead of the Mode button, which rides the last
+    /// express-key slot (buttons[8] in AuxButtons; see XencelabsDecoder.decodeAux).
+    static func keyCount(_ spec: WacomDeviceSpec?) -> Int {
+        min(max(spec?.buttonCount ?? 8, 0) - 1, 16)
+    }
+
+    static func keyLabel(slot: Int, keyCount: Int) -> String {
+        slot < keyCount
+            ? String(localized: "Key \(slot + 1)", comment: "Quick Keys express key N label")
+            : String(localized: "Mode", comment: "Quick Keys bottom mode button label")
+    }
+
+    static var dialLabel: String {
+        String(localized: "Dial", comment: "Quick Keys dial center-click row label")
     }
 }

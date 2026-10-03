@@ -1496,11 +1496,11 @@ final class TabletManager: ObservableObject {
                 // fired while it was still a losing slot.
                 context.resyncActiveDriverDisplayState()
             }
-            // Aux-only accessories (Xencelabs Quick Keys puck/dongle,
-            // spec.maxX == 0) move no pointer, so a display-toggle press on
-            // them must steer the tablet driving the cursor, not the
-            // accessory's own — invisible — mapping. Pen-bearing devices
-            // (all Wacom hardware) never get a forwarder.
+            // Aux-only accessories (Quick Keys puck/dongle, ExpressKey
+            // Remote; spec.maxX == 0) move no pointer, so a display-toggle
+            // press on them must steer the tablet driving the cursor, not
+            // the accessory's own — invisible — mapping. Pen-bearing
+            // devices never get a forwarder.
             if wacomDevice.spec.maxX == 0 {
                 let accessoryVendor = context.vendorID
                 context.injector.displayToggleForwarder = { [weak self] in
@@ -1644,11 +1644,6 @@ final class TabletManager: ObservableObject {
         }
     }
 
-    /// Performs a display toggle on behalf of an aux-only accessory (Quick
-    /// Keys): targets the pen-bearing context currently driving the cursor,
-    /// falling back to any connected pen-bearing tablet. Mirrors the two
-    /// steps of the injector's own `.displayToggle` handling — cycle the
-    /// target's mapper on HIDThread, persist the mode on main.
     /// The pen tablet an accessory's toggle should steer: the active one if
     /// it's the accessory's own brand, else any connected one that is. Never
     /// another vendor's — a Quick Keys press once flipped a Wacom tablet into
@@ -1662,6 +1657,10 @@ final class TabletManager: ObservableObject {
         return deviceContexts.values.first(where: isTarget)
     }
 
+    /// `.displayToggle` from an aux-only accessory (Quick Keys, ExpressKey
+    /// Remote). Target as in `penTablet(forAccessoryVendor:)`. Mirrors the
+    /// injector's own handling: cycle the target's mapper on HIDThread,
+    /// persist the mode on main.
     private func toggleDisplayOnPenTablet(vendorID: Int) {
         guard let target = penTablet(forAccessoryVendor: vendorID) else { return }
         let injector = target.injector
@@ -1674,8 +1673,9 @@ final class TabletManager: ObservableObject {
         target.settings.targetDisplayIndex = TabletSettings.displayModeToggle
     }
 
-    /// `.relativeModeToggle` from an aux-only accessory (Quick Keys), which
-    /// has no cursor of its own. Target as in `penTablet(forAccessoryVendor:)`.
+    /// `.relativeModeToggle` from an aux-only accessory (Quick Keys,
+    /// ExpressKey Remote), which has no cursor of its own. Target as in
+    /// `penTablet(forAccessoryVendor:)`.
     private func toggleRelativeModeOnPenTablet(vendorID: Int) {
         guard let target = penTablet(forAccessoryVendor: vendorID) else { return }
         let injector = target.injector
