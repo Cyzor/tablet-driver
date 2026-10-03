@@ -4,7 +4,7 @@ Full details for each release live in [`release-notes/`](release-notes/). This
 file is a one-line index. Keep the Unreleased line current; it becomes the
 snapshot's notes on the Check for Updates page, then the next release's line.
 
-- Unreleased — pen settings survive flipping to the eraser; Xencelabs Thin Pen told apart from the 3 Button Pen; calibration and screen-area overlays on any display; correct pen range for Bamboo One M (CTL-671); display toggle hint names Quick Keys and ExpressKey Remote buttons.
+- Unreleased — pen settings survive flipping to the eraser; Xencelabs Thin Pen told apart from the 3 Button Pen; calibration and screen-area overlays on any display; correct pen range for Bamboo One M (CTL-671); display toggle hint names Quick Keys and ExpressKey Remote buttons; Cintiq Pro 16 (DTH-167) pen startup corrected.
 - [v0.5.1](release-notes/v0.5.1.md) — tilt and Art Pen rotation in apps again; Art Pen on Intuos4, Intuos5, and Intuos Pro gen 1; hovering eraser on Intuos Pro gen 2 over Bluetooth; tilt scale fixes.
 - [v0.5.0](release-notes/v0.5.0.md) — fuller pen input in Pages, Keynote, Numbers, and Photoshop; a working Intuos Pro eraser and full pressure resolution; smoother scrolling and touch; new display-mapping controls; broader PTK, Cintiq, and MobileStudio Pro support; less wireless jitter; diagnostics sendable by email; Check for Updates command.
 - [v0.4.2](release-notes/v0.4.2.md) — multitouch gesture behavior; Bluetooth pen and touch reliability on macOS 27; Intuos Pro M (PTH-651) touch support.
