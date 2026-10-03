@@ -588,22 +588,27 @@ struct DisplayMappingView: View {
 
     /// Names of the buttons currently bound to displayToggle.
     private var displayToggleButtonNames: [String] {
-        var names: [String] = []
-        if settings.activeTool.penButton1Binding.kind == .displayToggle { names.append("Pen Button 1") }
-        if settings.activeTool.penButton2Binding.kind == .displayToggle { names.append("Pen Button 2") }
-        if settings.activeTool.penButton3Binding.kind == .displayToggle { names.append("Pen Button 3") }
-        if settings.activeTool.penButton4Binding.kind == .displayToggle { names.append("Pen Button 4") }
-        if settings.activeTool.penButton5Binding.kind == .displayToggle { names.append("Pen Button 5") }
-        if settings.activeTool.wheelBinding.kind == .displayToggle { names.append("Wheel Button") }
-        let ekNames = settings.expressKeyBindings.enumerated()
-            .filter { $0.element.kind == .displayToggle }
-            .map { "Key \($0.offset + 1)" }
-        names += ekNames
-        names += settings.bezelButtonBindings.enumerated()
-            .filter { $0.element.kind == .displayToggle }
-            .map { "Bezel Button \($0.offset + 1)" }
-        if settings.touchRingButtonBinding.kind == .displayToggle { names.append("Ring Button") }
-        if settings.touchRingButtonBinding2.kind == .displayToggle { names.append("Dial 2 Button") }
+        let tool = settings.activeTool
+        let single: (ButtonBinding, String) -> [String] = { $0.kind == .displayToggle ? [$1] : [] }
+        let numbered: ([ButtonBinding], String) -> [String] = { bindings, prefix in
+            bindings.enumerated()
+                .filter { $0.element.kind == .displayToggle }
+                .map { "\(prefix) \($0.offset + 1)" }
+        }
+        var names = [
+            (tool.penButton1Binding, "Pen Button 1"),
+            (tool.penButton2Binding, "Pen Button 2"),
+            (tool.penButton3Binding, "Pen Button 3"),
+            (tool.penButton4Binding, "Pen Button 4"),
+            (tool.penButton5Binding, "Pen Button 5"),
+            (tool.wheelBinding, "Wheel Button"),
+        ].flatMap(single)
+        names += numbered(settings.expressKeyBindings, "Key")
+        names += numbered(settings.bezelButtonBindings, "Bezel Button")
+        names += [
+            (settings.touchRingButtonBinding, "Ring Button"),
+            (settings.touchRingButtonBinding2, "Dial 2 Button"),
+        ].flatMap(single)
         // Same-brand aux-only accessories (Quick Keys, ExpressKey Remote)
         // forward their toggle to this tablet; see toggleDisplayOnPenTablet.
         if let ctx = tabletManager.context(forKey: instanceKey), ctx.tabletDevice.map({ $0.spec.maxX > 0 }) ?? false {
@@ -612,13 +617,9 @@ struct DisplayMappingView: View {
             where aux.isConnected && aux.vendorID == ctx.vendorID && aux.tabletDevice?.spec.maxX == 0 {
                 let isRemote = WacomDeviceRegistry.spec(for: aux.productID)?.parser == .expressKeyRemote
                 let device = registry.row(forKey: aux.instanceKey)?.nickname ?? (isRemote ? "Remote" : "Quick Keys")
-                names += aux.settings.expressKeyBindings.enumerated()
-                    .filter { $0.element.kind == .displayToggle }
-                    .map { "\(device) Key \($0.offset + 1)" }
+                names += numbered(aux.settings.expressKeyBindings, "\(device) Key")
                 // The remote's center button belongs to its firmware.
-                if !isRemote, aux.settings.touchRingButtonBinding.kind == .displayToggle {
-                    names.append("\(device) Dial Button")
-                }
+                if !isRemote { names += single(aux.settings.touchRingButtonBinding, "\(device) Dial Button") }
             }
         }
         return names
