@@ -95,6 +95,19 @@ enum DeviceRouter {
     ///   (drivable non-Wacom devices, e.g. Xencelabs). When non-nil it takes
     ///   the place of the `WacomDeviceRegistry` lookup; all interface-routing
     ///   logic downstream is identical.
+    /// True if any top-level collection is a digitizer pen (0x0D/0x02).
+    static func declaresPenCollection(_ device: IOHIDDevice) -> Bool {
+        let pairs = IOHIDDeviceGetProperty(device, kIOHIDDeviceUsagePairsKey as CFString)
+            as? [[String: Any]] ?? []
+        return isPenCollection(in: pairs.map {
+            (page: $0[kIOHIDDeviceUsagePageKey] as? Int ?? 0, usage: $0[kIOHIDDeviceUsageKey] as? Int ?? 0)
+        })
+    }
+
+    static func isPenCollection(in pairs: [(page: Int, usage: Int)]) -> Bool {
+        pairs.contains { $0.page == 0x0D && $0.usage == 0x02 }
+    }
+
     static func route(
         device: IOHIDDevice,
         productID: Int,
@@ -191,7 +204,12 @@ enum DeviceRouter {
             //   the periodic 0x80 status report; defer until 0x01 has the driver.
             let isCintiqV1 = deviceSpec.parser == .cintiqV1
             let deferrablePage: Int = isCintiqV1 ? 0xFF00 : 0x01
+            // Pen displays like the DTH-167 have no 0xFF00 sibling: their one
+            // interface leads with page 0x01 but also declares the pen
+            // collection. Deferring it waited for a sibling that never comes.
+            let isPenInterface = !isCintiqV1 && declaresPenCollection(device)
             let shouldDefer = !isBLE && deviceSpec.seizeUSB && usagePage == deferrablePage
+                && !isPenInterface
             if shouldDefer {
                 routerLog.info("\(deviceSpec.name, privacy: .public) — deferring 0x\(String(usagePage, radix: 16), privacy: .public) interface")
                 return .deferred
