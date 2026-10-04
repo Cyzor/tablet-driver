@@ -358,6 +358,23 @@ final class DeviceRegistry: ObservableObject {
             kind = Self.penName(forProductID: deviceID, isEraser: identity.isEraser)
         }
 
+        // Migration: when the real serial arrives, remove the old generic entry,
+        // and the tool-code entry Bluetooth recorded before it read serials.
+        // Runs before the existing-entry check: the serial entry often exists
+        // already, from USB.
+        if identity.serial != 0 {
+            let genericID = identity.isEraser ? "eraser" : "stylus"
+            let codeID = Self.toolID(for: ToolIdentity(
+                serial: 0, toolCode: identity.toolCode,
+                isEraser: identity.isEraser, isMouse: identity.isMouse))
+            let before = knownTools.count
+            knownTools.removeAll { $0.id == genericID || $0.id == codeID }
+            if knownTools.count != before {
+                saveTools(for: key)
+                rebuildAllTools()
+            }
+        }
+
         // Refresh kind on existing entry (model name table may have improved).
         if let idx = knownTools.firstIndex(where: { $0.id == toolID }) {
             if knownTools[idx].kind != kind {
@@ -374,14 +391,6 @@ final class DeviceRegistry: ObservableObject {
                 saveTools(for: key)
             }
             return toolID
-        }
-
-        // Migration: when the real serial arrives, remove the old generic entry.
-        if identity.serial != 0 {
-            let genericID = identity.isEraser ? "eraser" : "stylus"
-            if let oldIdx = knownTools.firstIndex(where: { $0.id == genericID }) {
-                knownTools.remove(at: oldIdx)
-            }
         }
 
         // For serial=0 (IntuosV1) devices: if multiple pens with the same toolCode are recorded,
