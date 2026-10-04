@@ -442,7 +442,7 @@ extension TabletSettings {
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
         for (i, id) in ids.enumerated()
         where CGDisplayPixelsWide(id) == width && CGDisplayPixelsHigh(id) == height {
-            targetDisplayIndex = i + 1
+            selectDisplay(index: i + 1)
             return
         }
     }

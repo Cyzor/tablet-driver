@@ -321,7 +321,7 @@ struct DisplayMappingView: View {
     /// whole section is hidden rather than shown disabled, since there's no
     /// one display thumbnail to draw the picker over.
     private var targetedDisplay: DisplayInfo? {
-        DisplayInfo.targeted(by: settings.targetDisplayIndex, in: displays)
+        DisplayInfo.targeted(by: settings.displayIndex, in: displays)
     }
 
     /// Single rect binding over the four `displayRegion*` settings, the form
@@ -548,13 +548,13 @@ struct DisplayMappingView: View {
     @ViewBuilder
     private func radioRowContent(_ labelView: Text, tag: Int, disabled: Bool) -> some View {
         Button {
-            let old = settings.targetDisplayIndex
-            guard old != tag else { return }
-            settings.targetDisplayIndex = tag
-            settings.recordToggle(String(localized: "Display Mapping"), from: old, to: tag) { self.settings.targetDisplayIndex = $0 }
+            let old = settings.displayTarget
+            guard settings.displayIndex != tag else { return }
+            settings.selectDisplay(index: tag)
+            settings.recordToggle(String(localized: "Display Mapping"), from: old, to: settings.displayTarget) { self.settings.displayTarget = $0 }
         } label: {
             HStack(spacing: 8) {
-                NativeRadioIndicator(isSelected: settings.targetDisplayIndex == tag)
+                NativeRadioIndicator(isSelected: settings.displayIndex == tag)
                     .frame(width: 18, height: 18)
                     .allowsHitTesting(false)
                 labelView
@@ -845,7 +845,7 @@ struct DisplayMappingView: View {
     /// only when already in Toggle/Span (where an empty `toggleDisplayIDSet`
     /// already means "all" and should keep meaning that).
     private func seedIDsForNewSelection() -> Set<CGDirectDisplayID> {
-        let idx = settings.targetDisplayIndex
+        let idx = settings.displayIndex
         if idx == modeToggle || idx == modeSpan {
             let ids = settings.toggleDisplayIDSet
             return ids.isEmpty ? Set(displays.map(\.id)) : ids
@@ -926,7 +926,7 @@ struct DisplayMappingView: View {
     // MARK: - Canvas layout
 
     private var displayCanvas: some View {
-        let idx = settings.targetDisplayIndex
+        let idx = settings.displayIndex
         let toggleIDSet = settings.toggleDisplayIDSet
         return DisplayArrangementView(
             displays: displays,
@@ -947,11 +947,11 @@ struct DisplayMappingView: View {
                     canvasCmdClick(at: i)
                 } else {
                     // Plain click → select that specific display
-                    let old = settings.targetDisplayIndex
+                    let old = settings.displayTarget
                     let newVal = displays[i].listIndex
-                    guard old != newVal else { return }
-                    settings.targetDisplayIndex = newVal
-                    settings.recordToggle(String(localized: "Display Mapping"), from: old, to: newVal) { self.settings.targetDisplayIndex = $0 }
+                    guard settings.displayIndex != newVal else { return }
+                    settings.selectDisplay(index: newVal)
+                    settings.recordToggle(String(localized: "Display Mapping"), from: old, to: settings.displayTarget) { self.settings.displayTarget = $0 }
                 }
             })
         .editMappingMenu { presentMappingSheet() }

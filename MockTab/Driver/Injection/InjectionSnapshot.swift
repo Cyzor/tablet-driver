@@ -28,6 +28,7 @@ struct InjectionSnapshot: Sendable, Equatable {
     // MARK: - Display targeting
 
     var targetDisplayIndex: Int
+    var targetDisplayUUID: String
     var toggleDisplayIDs: Set<CGDirectDisplayID>
     var displayRegionX: Double
     var displayRegionY: Double
@@ -169,6 +170,7 @@ extension TabletSettings {
             activeAreaHeight: activeAreaHeight,
             proportionalMapping: proportionalMapping,
             targetDisplayIndex: targetDisplayIndex,
+            targetDisplayUUID: targetDisplayUUID,
             toggleDisplayIDs: toggleDisplayIDSet,
             displayRegionX: displayRegionX,
             displayRegionY: displayRegionY,

@@ -237,6 +237,13 @@ final class TabletSettings: ObservableObject {
         didSet { persist("targetDisplayIndex", targetDisplayIndex) }
     }
 
+    /// Which display a positive `targetDisplayIndex` means, by stable UUID.
+    /// The index is a display-list position that shifts when the main display
+    /// changes; the UUID doesn't. Empty means not yet recorded.
+    @Published var targetDisplayUUID: String = "" {
+        didSet { persist("targetDisplayUUID", targetDisplayUUID) }
+    }
+
     // MARK: - Display region (fractions of the target display's bounds, 0.0..1.0)
 
     /// Where on the target display the tablet's active area is mapped. Defaults to
@@ -389,16 +396,10 @@ final class TabletSettings: ObservableObject {
         set {
             let uuids = newValue.compactMap { id -> String? in
                 let uuid = CalibrationKey.uuidString(for: id)
-                return Self.isReliableDisplayUUID(uuid) ? uuid : nil
+                return CalibrationKey.isReliable(uuid) ? uuid : nil
             }
             toggleDisplayIDs = uuids.sorted().joined(separator: ",")
         }
-    }
-
-    /// "0-0-0" (all-zero vendor/model/serial, seen on some no-EDID adapters)
-    /// isn't unique per display — treat it as unreliable like the empty string.
-    private static func isReliableDisplayUUID(_ uuid: String) -> Bool {
-        !uuid.isEmpty && uuid != "0-0-0"
     }
 
     /// Resolves stored stable display UUIDs back to the current session's live
@@ -411,8 +412,66 @@ final class TabletSettings: ObservableObject {
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return [] }
         return Set(ids.filter { id in
             let uuid = CalibrationKey.uuidString(for: id)
-            return isReliableDisplayUUID(uuid) && uuids.contains(uuid)
+            return CalibrationKey.isReliable(uuid) && uuids.contains(uuid)
         })
+    }
+
+    /// Mode and recorded display together, for undo.
+    struct DisplayTarget: Equatable {
+        var index: Int
+        var uuid: String
+    }
+
+    var displayTarget: DisplayTarget {
+        get { DisplayTarget(index: targetDisplayIndex, uuid: targetDisplayUUID) }
+        set {
+            targetDisplayIndex = newValue.index
+            targetDisplayUUID = newValue.uuid
+        }
+    }
+
+    /// `targetDisplayIndex` with a recorded display read at its current
+    /// list position, for comparing against `DisplayInfo.listIndex`.
+    var displayIndex: Int {
+        guard targetDisplayIndex > 0 else { return targetDisplayIndex }
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return targetDisplayIndex }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return targetDisplayIndex }
+        let id = DisplayMapper.specificDisplay(index: targetDisplayIndex, uuid: targetDisplayUUID, in: ids)
+        return ids.firstIndex(of: id).map { $0 + 1 } ?? targetDisplayIndex
+    }
+
+    /// Selects a mode, or a display by list position, recording a display's UUID.
+    func selectDisplay(index: Int) {
+        if index > 0 {
+            var count: UInt32 = 0
+            var ids = [CGDirectDisplayID]()
+            if CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 {
+                ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+                if CGGetActiveDisplayList(count, &ids, &count) != .success { ids = [] }
+            }
+            let uuid = index <= ids.count ? CalibrationKey.uuidString(for: ids[index - 1]) : ""
+            targetDisplayUUID = CalibrationKey.isReliable(uuid) ? uuid : ""
+        }
+        targetDisplayIndex = index
+    }
+
+    /// Records the UUID for a specific-display mapping saved before UUIDs
+    /// were. A pen display maps to its own screen when found; anything else
+    /// keeps the display at its saved position, which is where it maps today.
+    func migrateTargetDisplayUUID(penDisplay: CGDirectDisplayID?) {
+        guard targetDisplayIndex > 0, targetDisplayUUID.isEmpty else { return }
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
+        let id = penDisplay ?? (targetDisplayIndex <= ids.count ? ids[targetDisplayIndex - 1] : nil)
+        guard let id else { return }
+        let uuid = CalibrationKey.uuidString(for: id)
+        guard CalibrationKey.isReliable(uuid) else { return }
+        targetDisplayUUID = uuid
+        if let i = ids.firstIndex(of: id) { targetDisplayIndex = i + 1 }
     }
 
     // MARK: - Pressure curve

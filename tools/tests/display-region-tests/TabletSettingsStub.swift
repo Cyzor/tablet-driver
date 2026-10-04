@@ -46,6 +46,7 @@ struct InjectionSnapshot {
     var proportionalMapping: Bool
 
     var targetDisplayIndex: Int
+    var targetDisplayUUID: String
     var toggleDisplayIDs: Set<CGDirectDisplayID>
     var displayRegionX: Double
     var displayRegionY: Double
@@ -74,6 +75,7 @@ extension InjectionSnapshot {
         activeAreaWidth: Double = 1, activeAreaHeight: Double = 1,
         proportionalMapping: Bool = false,
         targetDisplayIndex: Int = 0,
+        targetDisplayUUID: String = "",
         toggleDisplayIDs: Set<CGDirectDisplayID> = [],
         displayRegionX: Double = 0, displayRegionY: Double = 0,
         displayRegionWidth: Double = 1, displayRegionHeight: Double = 1,
@@ -86,6 +88,7 @@ extension InjectionSnapshot {
             activeAreaWidth: activeAreaWidth, activeAreaHeight: activeAreaHeight,
             proportionalMapping: proportionalMapping,
             targetDisplayIndex: targetDisplayIndex,
+            targetDisplayUUID: targetDisplayUUID,
             toggleDisplayIDs: toggleDisplayIDs,
             displayRegionX: displayRegionX, displayRegionY: displayRegionY,
             displayRegionWidth: displayRegionWidth, displayRegionHeight: displayRegionHeight,

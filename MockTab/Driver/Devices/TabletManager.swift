@@ -143,6 +143,21 @@ final class TabletManager: ObservableObject {
     /// Context for a window/pane identity. An exact instance matches its own
     /// unit; the legacy empty-instance identity resolves the way PID keying
     /// did — to the unit holding the model's claimed namespace.
+    /// The screen a pen display draws on, matched by physical size; nil for
+    /// pen tablets and for models with no registered size.
+    static func penDisplayID(forProductID pid: Int) -> CGDirectDisplayID? {
+        let mm: (Double?, Double?)
+        if let p = VendorDeviceRegistry.profile(forProductID: pid), p.isPenDisplay {
+            mm = (p.activeWidthMM, p.activeHeightMM)
+        } else if let s = WacomDeviceRegistry.spec(for: pid), s.isPenDisplay {
+            mm = (s.activeWidthMM, s.activeHeightMM)
+        } else {
+            return nil
+        }
+        guard let w = mm.0, w > 0, let h = mm.1, h > 0 else { return nil }
+        return DisplayMapper.penDisplayID(widthMM: w, heightMM: h)
+    }
+
     /// Physical width ÷ height of a tablet's whole surface, before rotation.
     /// Vendor millimetres where registered: raw units aren't square on every
     /// tablet (Xencelabs' Pen Display differs per axis), so maxX ÷ maxY alone
@@ -1512,6 +1527,8 @@ final class TabletManager: ObservableObject {
             }
             context.settings.applyExpressKeyDefaults(vendorID: context.vendorID)
             refreshConnectedIDs(mostRecent: productID)
+
+            context.settings.migrateTargetDisplayUUID(penDisplay: Self.penDisplayID(forProductID: productID))
 
             if productID == 0x00F4 {
                 let prefix = "device-0x\(String(productID, radix: 16, uppercase: true))."

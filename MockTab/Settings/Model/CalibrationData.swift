@@ -60,6 +60,12 @@ struct CalibrationKey: Codable, Hashable, Equatable {
         let serial = CGDisplaySerialNumber(displayID)
         return "\(vendor)-\(model)-\(serial)"
     }
+
+    /// "0-0-0" (all-zero vendor/model/serial, seen on some no-EDID adapters)
+    /// isn't unique per display — treat it as unreliable like the empty string.
+    nonisolated static func isReliable(_ uuid: String) -> Bool {
+        !uuid.isEmpty && uuid != "0-0-0"
+    }
 }
 
 /// A single calibration observation: where the crosshair was shown vs. where the pen actually tapped.

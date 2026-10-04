@@ -196,6 +196,24 @@ enum DisplayRegionTestRunner {
         expect(mid == CGPoint(x: 900, y: 500), "single display: interior untouched")
     }
 
+    /// A recorded UUID outranks list position; without one, the index decides.
+    static func testSpecificDisplayResolution() {
+        let main = CGMainDisplayID()
+        expect(DisplayMapper.specificDisplay(index: 2, uuid: "", in: [11, 22]) == 22,
+               "no UUID: index picks by list position")
+        expect(DisplayMapper.specificDisplay(index: 1, uuid: "0-0-0", in: [11, 22]) == 11,
+               "unreliable UUID: index picks by list position")
+        expect(DisplayMapper.specificDisplay(index: 5, uuid: "", in: [11, 22]) == main,
+               "index past the list: main display")
+        expect(DisplayMapper.specificDisplay(index: 1, uuid: "5-6-7", in: [11, 22]) == main,
+               "recorded display unplugged: main display, not the index")
+        let mainUUID = CalibrationKey.uuidString(for: main)
+        if CalibrationKey.isReliable(mainUUID) {
+            expect(DisplayMapper.specificDisplay(index: 1, uuid: mainUUID, in: [11, main]) == main,
+                   "recorded display found at a new list position")
+        }
+    }
+
     static func main() {
         testDefaultRegionIsWholeDisplay()
         testPartialRegionNarrowsIntoSubRect()
@@ -205,6 +223,7 @@ enum DisplayRegionTestRunner {
         testTouchAspectFollowsOrientation()
         testTouchAspectFollowsCrop()
         testEdgePinningFollowsEachDisplay()
+        testSpecificDisplayResolution()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

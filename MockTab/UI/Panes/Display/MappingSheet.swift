@@ -340,7 +340,7 @@ struct MappingDestination {
 
     @MainActor
     static func current(for settings: TabletSettings, displays: [DisplayInfo] = DisplayInfo.all()) -> Self {
-        let idx = settings.targetDisplayIndex
+        let idx = settings.displayIndex
         let ids = settings.toggleDisplayIDSet
         let chosen = ids.isEmpty ? displays : displays.filter { ids.contains($0.id) }
         func aspect(_ r: CGRect) -> Double? { r.height > 0 ? Double(r.width / r.height) : nil }

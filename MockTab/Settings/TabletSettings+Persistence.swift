@@ -31,6 +31,7 @@ extension TabletSettings {
         tabletOrientation =
             TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape
         targetDisplayIndex = loadInt("targetDisplayIndex", default: 0)
+        targetDisplayUUID = loadString("targetDisplayUUID", default: "")
         displayRegionX      = Swift.max(0.0,  Swift.min(loadDouble("displayRegionX",      default: 0.0), 1.0))
         displayRegionY      = Swift.max(0.0,  Swift.min(loadDouble("displayRegionY",      default: 0.0), 1.0))
         displayRegionWidth  = Swift.max(0.01, Swift.min(loadDouble("displayRegionWidth",  default: 1.0), 1.0))
@@ -440,6 +441,7 @@ extension TabletSettings {
         calibrationJSON = ""
         tabletOrientation = .landscape
         targetDisplayIndex = 0
+        targetDisplayUUID = ""
         displayRegionX = 0
         displayRegionY = 0
         displayRegionWidth = 1

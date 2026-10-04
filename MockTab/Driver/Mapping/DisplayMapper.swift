@@ -74,6 +74,7 @@ struct DisplayMapper {
     /// Toggle/Span wouldn't invalidate the cache.
     private var cachedToggleDisplayIDs: Set<CGDirectDisplayID> = []
     private var cachedDisplayUUID: String = ""
+    private var cachedTargetUUID: String = ""
     /// Bounds of every display inside the Span/All union (selected or not);
     /// empty for a single display. Edge pinning works per display, not on
     /// the union.
@@ -476,7 +477,9 @@ struct DisplayMapper {
             snapshot.displayRegionWidth, snapshot.displayRegionHeight
         )
         let toggleIDs = snapshot.toggleDisplayIDs
-        if cachedDisplayIndex != idx || cachedDisplayRegion != region || cachedToggleDisplayIDs != toggleIDs {
+        if cachedDisplayIndex != idx || cachedDisplayRegion != region || cachedToggleDisplayIDs != toggleIDs
+            || cachedTargetUUID != snapshot.targetDisplayUUID
+        {
             let (bounds, displayID, members) = resolveDisplayBoundsAndID(snapshot: snapshot)
             cachedDisplayBounds = bounds
             cachedMemberRects = members.count > 1 ? members.map { CGDisplayBounds($0) } : []
@@ -484,6 +487,7 @@ struct DisplayMapper {
             cachedDisplayIndex = idx
             cachedDisplayRegion = region
             cachedToggleDisplayIDs = toggleIDs
+            cachedTargetUUID = snapshot.targetDisplayUUID
             // Invalidate calibration cache when display changes.
             cachedCalibrationOrientation = -1
         }
@@ -536,12 +540,7 @@ struct DisplayMapper {
         // vestigial sentinel) and for any out-of-range index. The sub-region
         // narrowing applies uniformly across this whole branch, since all of
         // it resolves to a single display's bounds.
-        let targetID: CGDirectDisplayID
-        if idx > 0, idx <= ids.count {
-            targetID = ids[idx - 1]
-        } else {
-            targetID = mainID
-        }
+        let targetID = Self.specificDisplay(index: idx, uuid: snapshot.targetDisplayUUID, in: ids)
         return (Self.applyDisplayRegion(CGDisplayBounds(targetID), snapshot: snapshot), targetID, [])
     }
 
@@ -604,6 +603,18 @@ struct DisplayMapper {
     /// Union bounding rect over the given display IDs. Empty input returns `.null`.
     private static func unionBounds(of ids: [CGDirectDisplayID]) -> CGRect {
         ids.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }
+    }
+
+    /// The display a single-display mapping targets. A recorded UUID wins;
+    /// while that display is unplugged the pen falls back to the main
+    /// display. Without a usable UUID, the index picks by list position.
+    nonisolated static func specificDisplay(
+        index: Int, uuid: String, in ids: [CGDirectDisplayID]
+    ) -> CGDirectDisplayID {
+        if index > 0, CalibrationKey.isReliable(uuid) {
+            return ids.first { CalibrationKey.uuidString(for: $0) == uuid } ?? CGMainDisplayID()
+        }
+        return index > 0 && index <= ids.count ? ids[index - 1] : CGMainDisplayID()
     }
 
     /// The external display whose physical size matches a pen display's

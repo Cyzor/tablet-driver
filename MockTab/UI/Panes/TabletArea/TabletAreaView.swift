@@ -425,14 +425,7 @@ struct TabletAreaView: View {
     /// mapped to it alone or included in Toggle. All Displays and Span are
     /// excluded because calibration applies per display.
     private var calibrationDisplayID: CGDirectDisplayID? {
-        guard let pid = boundProductID else { return nil }
-        let mm: (Double?, Double?) =
-            if let p = VendorDeviceRegistry.profile(forProductID: pid) { (p.activeWidthMM, p.activeHeightMM) }
-            else if let s = WacomDeviceRegistry.spec(for: pid) { (s.activeWidthMM, s.activeHeightMM) }
-            else { (nil, nil) }
-        guard let w = mm.0, w > 0, let h = mm.1, h > 0,
-            let id = DisplayMapper.penDisplayID(widthMM: w, heightMM: h)
-        else { return nil }
+        guard let pid = boundProductID, let id = TabletManager.penDisplayID(forProductID: pid) else { return nil }
         switch settings.targetDisplayIndex {
         case TabletSettings.displayModeAll, TabletSettings.displayModeSpan:
             return nil
@@ -446,14 +439,12 @@ struct TabletAreaView: View {
 
     /// The single display the mapping targets, resolved as DisplayMapper does.
     private var mappedDisplayID: CGDirectDisplayID {
-        let idx = settings.targetDisplayIndex
         var count: UInt32 = 0
-        guard idx > 0, CGGetActiveDisplayList(0, nil, &count) == .success, idx <= count else {
-            return CGMainDisplayID()
-        }
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return CGMainDisplayID() }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
         guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return CGMainDisplayID() }
-        return ids[idx - 1]
+        return DisplayMapper.specificDisplay(
+            index: settings.targetDisplayIndex, uuid: settings.targetDisplayUUID, in: ids)
     }
 
     /// Persistent UUID of the display calibration applies to, or "" when none.
