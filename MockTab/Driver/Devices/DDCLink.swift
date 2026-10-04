@@ -147,8 +147,29 @@ final class DDCLink: @unchecked Sendable {
         checksum == .spec ? [.spec, .short] : [.short, .spec]
     }
 
-    /// Writes one request, waits the 50 ms MCCS asks for, reads the reply.
+    /// Writes one request and reads the reply, retrying when the reply's
+    /// checksum fails. Some routes overwrite a reply byte with 0x51, which
+    /// once read a brightness maximum of 100 as 20836.
     private func transact(_ body: [UInt8], checksum variant: Checksum, replyLength: Int) -> [UInt8]? {
+        for _ in 0..<3 {
+            if let reply = transactOnce(body, checksum: variant, replyLength: replyLength),
+               Self.replyChecksumMatches(reply) {
+                return reply
+            }
+        }
+        return nil
+    }
+
+    /// MCCS replies end with the XOR of 0x50 and every byte before it.
+    static func replyChecksumMatches(_ reply: [UInt8]) -> Bool {
+        guard reply.count >= 3 else { return false }
+        let end = 2 + Int(reply[1] & 0x7F)
+        guard end < reply.count else { return false }
+        return reply[..<end].reduce(0x50, ^) == reply[end]
+    }
+
+    /// Writes one request, waits the 50 ms MCCS asks for, reads the reply.
+    private func transactOnce(_ body: [UInt8], checksum variant: Checksum, replyLength: Int) -> [UInt8]? {
         var packet = body
         var sum: UInt8 = variant == .spec ? 0x6E ^ 0x51 : 0x6E
         for byte in body { sum ^= byte }
