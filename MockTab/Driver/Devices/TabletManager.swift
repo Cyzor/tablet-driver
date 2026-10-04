@@ -1528,7 +1528,8 @@ final class TabletManager: ObservableObject {
             context.settings.applyExpressKeyDefaults(vendorID: context.vendorID)
             refreshConnectedIDs(mostRecent: productID)
 
-            context.settings.migrateTargetDisplayUUID(penDisplay: Self.penDisplayID(forProductID: productID))
+            context.settings.penDisplayLocator = { Self.penDisplayID(forProductID: productID) }
+            context.settings.migrateTargetDisplayUUID()
 
             if productID == 0x00F4 {
                 let prefix = "device-0x\(String(productID, radix: 16, uppercase: true))."

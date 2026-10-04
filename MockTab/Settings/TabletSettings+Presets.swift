@@ -42,6 +42,7 @@ extension TabletSettings {
         ud.set(activeAreaHeight, forKey: prefix + "activeAreaHeight")
         ud.set(proportionalMapping, forKey: prefix + "proportionalMapping")
         ud.set(targetDisplayIndex, forKey: prefix + "targetDisplayIndex")
+        ud.set(targetDisplayUUID, forKey: prefix + "targetDisplayUUID")
         ud.set(toggleDisplayIDs, forKey: prefix + "toggleDisplayIDs")
         ud.set(smoothingStrength, forKey: prefix + "smoothingStrength")
         ud.set(doubleClickDistance, forKey: prefix + "doubleClickDistance")
@@ -66,7 +67,7 @@ extension TabletSettings {
 
         profile.overriddenKeys = [
             "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
-            "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
+            "proportionalMapping", "targetDisplayIndex", "targetDisplayUUID", "toggleDisplayIDs",
             "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
             "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding",
             "touchRingButtonBinding2", "touchRingSlotsJSON",
@@ -202,7 +203,7 @@ extension TabletSettings {
     /// (what to erase) and `deletePresetRecordingUndo` (what to snapshot).
     static let presetKeys = [
         "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
-        "proportionalMapping", "targetDisplayIndex", "toggleDisplayIDs",
+        "proportionalMapping", "targetDisplayIndex", "targetDisplayUUID", "toggleDisplayIDs",
         "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
         "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding",
         "touchRingButtonBinding2", "touchRingSlotsJSON",
@@ -336,6 +337,7 @@ extension TabletSettings {
         var calibrationJSON: String
         var tabletOrientation: TabletOrientation
         var targetDisplayIndex: Int
+        var targetDisplayUUID: String
         var toggleDisplayIDs: String
         var smoothingStrength: Double
         var doubleClickDistance: Double
@@ -366,6 +368,7 @@ extension TabletSettings {
             calibrationJSON: calibrationJSON,
             tabletOrientation: tabletOrientation,
             targetDisplayIndex: targetDisplayIndex,
+            targetDisplayUUID: targetDisplayUUID,
             toggleDisplayIDs: toggleDisplayIDs,
             smoothingStrength: smoothingStrength,
             doubleClickDistance: doubleClickDistance,
@@ -407,6 +410,7 @@ extension TabletSettings {
         calibrationJSON = snap.calibrationJSON
         tabletOrientation = snap.tabletOrientation
         targetDisplayIndex = snap.targetDisplayIndex
+        targetDisplayUUID = snap.targetDisplayUUID
         toggleDisplayIDs = snap.toggleDisplayIDs
         smoothingStrength = snap.smoothingStrength
         doubleClickDistance = snap.doubleClickDistance

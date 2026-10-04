@@ -46,7 +46,7 @@ struct AppOverrideBar: View {
         "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
         "proportionalMapping", "parallaxOffsetX", "parallaxOffsetY",
         "tabletOrientation",
-        "targetDisplayIndex", "toggleDisplayIDs",
+        "targetDisplayIndex", "targetDisplayUUID", "toggleDisplayIDs",
         "displayRegionX", "displayRegionY", "displayRegionWidth", "displayRegionHeight",
     ]
 

@@ -457,22 +457,8 @@ final class TabletSettings: ObservableObject {
         targetDisplayIndex = index
     }
 
-    /// Records the UUID for a specific-display mapping saved before UUIDs
-    /// were. A pen display maps to its own screen when found; anything else
-    /// keeps the display at its saved position, which is where it maps today.
-    func migrateTargetDisplayUUID(penDisplay: CGDirectDisplayID?) {
-        guard targetDisplayIndex > 0, targetDisplayUUID.isEmpty else { return }
-        var count: UInt32 = 0
-        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
-        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
-        let id = penDisplay ?? (targetDisplayIndex <= ids.count ? ids[targetDisplayIndex - 1] : nil)
-        guard let id else { return }
-        let uuid = CalibrationKey.uuidString(for: id)
-        guard CalibrationKey.isReliable(uuid) else { return }
-        targetDisplayUUID = uuid
-        if let i = ids.firstIndex(of: id) { targetDisplayIndex = i + 1 }
-    }
+    /// Finds this tablet's own screen when it's a pen display; set on connect.
+    var penDisplayLocator: (() -> CGDirectDisplayID?)?
 
     // MARK: - Pressure curve
 

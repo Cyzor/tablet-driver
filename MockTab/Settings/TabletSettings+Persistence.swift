@@ -31,7 +31,10 @@ extension TabletSettings {
         tabletOrientation =
             TabletOrientation(rawValue: loadInt("tabletOrientation", default: 0)) ?? .landscape
         targetDisplayIndex = loadInt("targetDisplayIndex", default: 0)
-        targetDisplayUUID = loadString("targetDisplayUUID", default: "")
+        // A UUID from a lower layer names some other setting's display, so
+        // an index without its own UUID falls back to list position.
+        targetDisplayUUID = resolveLayer(for: "targetDisplayUUID") == resolveLayer(for: "targetDisplayIndex")
+            ? loadString("targetDisplayUUID", default: "") : ""
         displayRegionX      = Swift.max(0.0,  Swift.min(loadDouble("displayRegionX",      default: 0.0), 1.0))
         displayRegionY      = Swift.max(0.0,  Swift.min(loadDouble("displayRegionY",      default: 0.0), 1.0))
         displayRegionWidth  = Swift.max(0.01, Swift.min(loadDouble("displayRegionWidth",  default: 1.0), 1.0))
@@ -106,6 +109,33 @@ extension TabletSettings {
                 pressureCurve: pressureCurve, smoothingStrength: smoothingStrength,
                 pressureSmoothingStrength: pressureSmoothingStrength)
         }
+        isLoading = false
+        migrateTargetDisplayUUID()
+    }
+
+    /// Records the UUID for a specific-display mapping saved before UUIDs
+    /// were. A pen display maps to its own screen when found; anything else
+    /// keeps the display at its saved position, which is where it maps today.
+    func migrateTargetDisplayUUID() {
+        guard targetDisplayIndex > 0, targetDisplayUUID.isEmpty else { return }
+        let penDisplay = penDisplayLocator?()
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
+        let id = penDisplay ?? (targetDisplayIndex <= ids.count ? ids[targetDisplayIndex - 1] : nil)
+        guard let id else { return }
+        let uuid = CalibrationKey.uuidString(for: id)
+        guard CalibrationKey.isReliable(uuid) else { return }
+        let index = ids.firstIndex(of: id).map { $0 + 1 } ?? targetDisplayIndex
+        // Saved only where the index itself lives on the device; a preset's
+        // or override's index is matched afresh on each load instead.
+        if resolveLayer(for: "targetDisplayIndex") == devicePrefix {
+            ud.set(uuid, forKey: devicePrefix + "targetDisplayUUID")
+            ud.set(index, forKey: devicePrefix + "targetDisplayIndex")
+        }
+        isLoading = true
+        (targetDisplayUUID, targetDisplayIndex) = (uuid, index)
         isLoading = false
     }
 
