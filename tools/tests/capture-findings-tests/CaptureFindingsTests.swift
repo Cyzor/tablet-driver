@@ -279,6 +279,16 @@ do {
 }
 
 do {
+    var touch = DiscoveryTouchPipeline()
+    check(touch.palmNeighborSpacingMM == nil, "no palm figures until a palm is seen")
+    touch.notePalmNeighbor(mm: 3, size: 2)
+    touch.notePalmNeighbor(mm: 22, size: nil)
+    touch.notePalmNeighbor(mm: 400, size: 9)
+    check(touch.palmNeighborSpacingMM == [1, 0, 0, 1, 0, 1], "palm neighbors bucket by mm")
+    check(touch.palmNeighborSize == [0, 0, 1, 0, 0, 1], "sizes bucket, capped at 5, unsized skipped")
+}
+
+do {
     // Touch 0x88 goes quiet once the 0x83 mode switch lands.
     var result = makeResult(declaredInput: ["0x88"], observed: [])
     result.interfaces = [

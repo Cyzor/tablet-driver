@@ -1296,6 +1296,10 @@ final class InputInjector: @unchecked Sendable {
     /// dropped a ≥2-contact frame below two" condition, so
     /// `palmRejectionBrokeTwoFingerFrames` counts entries, not every held frame.
     var palmRejectionBrokeTwoFingerActive = false
+    /// The current touch sequence has had a rejected palm in it, and the
+    /// contacts already measured against it, for the palm diagnostics.
+    var touchSequenceSawPalm = false
+    var palmNeighborMeasuredIDs: Set<Int> = []
     /// `touchTracker.mode` as of the previous `injectTouch` frame, for spotting
     /// `.idle` → `.pending` transitions (onset windows) without the tracker
     /// having to report them. `.idle` initially.

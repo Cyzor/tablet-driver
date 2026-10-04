@@ -175,6 +175,7 @@ extension InputInjector {
             TouchPipelineProbe.note { $0.palmRejectionBrokeTwoFingerFrames += 1 }
         }
         palmRejectionBrokeTwoFingerActive = brokeTwoFingerNow
+        notePalmNeighbors(contacts: contacts, acceptedIDs: filtered.acceptedIDs)
         if !filtered.newlyRejectedIDs.isEmpty || !filtered.newlyAcceptedIDs.isEmpty {
             let rejected = contacts
                 .filter { filtered.newlyRejectedIDs.contains($0.id) }
@@ -454,6 +455,20 @@ extension InputInjector {
         // that reaches here and commits to a mode is working as far as this
         // diagnostic is concerned, and the post helpers below have their
         // own failure paths.
+        if touchSequenceSawPalm {
+            TouchPipelineProbe.note {
+                switch intent {
+                case .pointerMove, .pointerWarp:
+                    $0.palmSequencePointerMoves = ($0.palmSequencePointerMoves ?? 0) + 1
+                case .tapClick, .secondaryClick:
+                    $0.palmSequenceClicks = ($0.palmSequenceClicks ?? 0) + 1
+                case .scrollDelta(_, _, .began):
+                    $0.palmSequenceGestures = ($0.palmSequenceGestures ?? 0) + 1
+                default:
+                    break
+                }
+            }
+        }
         switch intent {
         case .none:
             return
@@ -513,6 +528,10 @@ extension InputInjector {
                 }
             }
         case .twoFingerGesture(let magnify, let rotateGesture):
+            if touchSequenceSawPalm,
+               magnify?.phase == .began || rotateGesture?.phase == .began {
+                TouchPipelineProbe.note { $0.palmSequenceGestures = ($0.palmSequenceGestures ?? 0) + 1 }
+            }
             // Independent components, either or both present this frame —
             // a real trackpad can magnify and rotate at once (see
             // `TouchStateTracker.TwoFingerKind`'s doc comment), so this
@@ -767,6 +786,36 @@ extension InputInjector {
         postMouseDown(
             button: .left, at: clickPt, pressure: 1.0, clickCount: count, snapshot: snapshot)
         postMouseUp(button: .left, at: clickPt, clickCount: count, snapshot: snapshot)
+    }
+
+    /// Palm diagnostics: once per contact, how far a contact that got past
+    /// palm rejection sat from the nearest rejected one. Cleared when the
+    /// next sequence starts, not at lift, so the lift's own tap still counts.
+    func notePalmNeighbors(
+        contacts: [TouchContact], acceptedIDs: Set<Int>
+    ) {
+        guard !contacts.isEmpty else { return }
+        if touchTracker.mode == .idle {
+            touchSequenceSawPalm = false
+            palmNeighborMeasuredIDs.removeAll(keepingCapacity: true)
+        }
+        let palms = contacts.filter { !acceptedIDs.contains($0.id) }
+        guard !palms.isEmpty else { return }
+        if !touchSequenceSawPalm {
+            touchSequenceSawPalm = true
+            TouchPipelineProbe.note { $0.palmSequences = ($0.palmSequences ?? 0) + 1 }
+        }
+        guard cachedTouchMaxX > 0, cachedTouchMaxY > 0, cachedTouchWidthMM > 0 else { return }
+        let mmX = cachedTouchWidthMM / Double(cachedTouchMaxX)
+        let mmY = cachedTouchHeightMM / Double(cachedTouchMaxY)
+        for c in contacts where acceptedIDs.contains(c.id) && !palmNeighborMeasuredIDs.contains(c.id) {
+            palmNeighborMeasuredIDs.insert(c.id)
+            let nearest = palms.map {
+                hypot(Double(c.x - $0.x) * mmX, Double(c.y - $0.y) * mmY)
+            }.min() ?? .infinity
+            let size = [c.contactArea, c.contactMinor].compactMap { $0 }.max()
+            TouchPipelineProbe.note { $0.notePalmNeighbor(mm: nearest, size: size) }
+        }
     }
 
     private func postTouchSecondaryClick(snapshot: InjectionSnapshot) {

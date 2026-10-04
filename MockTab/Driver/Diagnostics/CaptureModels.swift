@@ -175,7 +175,12 @@ struct DiscoveryResult: Codable {
     /// seem lost between launches, and touch-pipeline contact counts, contact
     /// size presence, and the screen direct touch maps to. Optional, so v20
     /// readers and files still decode.
-    var captureVersion: Int = 21
+    ///
+    /// v22 adds palm diagnostics to the touch pipeline: how far contacts
+    /// that got past palm rejection sat from the palm, their sizes, and what
+    /// touch sequences with a palm in them did. Optional, so v21 readers and
+    /// files still decode.
+    var captureVersion: Int = 22
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -913,6 +918,31 @@ struct DiscoveryTouchPipeline: Codable {
     /// that report no size, so this is what a palm rule would be tuned from.
     var closestContactSpacingMM: [Int] = []
     var minContactSpacingMM: Double?
+
+    /// Contacts that got past palm rejection while a palm was down, counted
+    /// once each, by distance to the nearest palm contact: under 5, 5–10,
+    /// 10–20, 20–30, 30–50, and 50+ mm. Fragments of the palm land low, a
+    /// separate finger high; a group-rejection radius is tuned from this.
+    var palmNeighborSpacingMM: [Int]?
+    /// The same contacts by their own size (larger axis), index n for size
+    /// n and the last for 5 and up. Contacts without a size aren't counted.
+    var palmNeighborSize: [Int]?
+    /// Touch sequences with a rejected palm in them, and what they did:
+    /// cursor moves, clicks (taps and right-clicks), and scroll or gesture
+    /// starts. Any of these is a palm reaching the screen.
+    var palmSequences: Int?
+    var palmSequencePointerMoves: Int?
+    var palmSequenceClicks: Int?
+    var palmSequenceGestures: Int?
+
+    mutating func notePalmNeighbor(mm: Double, size: Int?) {
+        let bucket = [5.0, 10, 20, 30, 50].firstIndex { mm < $0 } ?? 5
+        if palmNeighborSpacingMM == nil { palmNeighborSpacingMM = [0, 0, 0, 0, 0, 0] }
+        palmNeighborSpacingMM![bucket] += 1
+        guard let size else { return }
+        if palmNeighborSize == nil { palmNeighborSize = [0, 0, 0, 0, 0, 0] }
+        palmNeighborSize![Swift.min(Swift.max(size, 0), 5)] += 1
+    }
 
     mutating func noteContactSpacing(mm: Double) {
         let bucket = [10.0, 20, 30, 50].firstIndex { mm < $0 } ?? 4
