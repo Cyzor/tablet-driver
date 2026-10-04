@@ -68,6 +68,8 @@ if [[ ! -d "$APP_PATH" ]]; then
     exit 1
 fi
 
+tools/release/size-watch.sh "$APP_PATH"
+
 # Build stamp for the snapshot tag message; the update page matches on it.
 STAMP_PATH="$DIST_DIR/MockTab-snapshot.stamp"
 /usr/libexec/PlistBuddy -c "Print :MockTabBuildStamp" "$APP_PATH/Contents/Info.plist" >"$STAMP_PATH"

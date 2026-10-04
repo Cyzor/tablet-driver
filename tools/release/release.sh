@@ -77,6 +77,8 @@ if [[ ! -d "$APP_PATH" ]]; then
     exit 1
 fi
 
+tools/release/size-watch.sh "$APP_PATH"
+
 echo "==> Notarizing .app"
 # Notarize and staple the .app *before* packaging it. A ticket stapled to
 # the .app travels with it when users drag it out of the DMG, so first-launch
