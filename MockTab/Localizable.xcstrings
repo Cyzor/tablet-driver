@@ -10842,7 +10842,26 @@
       }
     },
     "Map the pen to its own display, or include that display in Toggle, to calibrate." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Kalibrieren den Stift seinem eigenen Display zuordnen oder das Display in „Zwischen Displays wechseln“ aufnehmen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para calibrar, asigna el lápiz a su propia pantalla o incluye esa pantalla en «Alternar entre pantallas»."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャリブレーションするには、ペンを専用のディスプレイに割り当てるか、そのディスプレイを「ディスプレイ間を切り替え」に含めてください。"
+          }
+        }
+      }
     },
     "Map the tablet across all displays as one continuous surface." : {
       "comment" : "A radio button label that allows mapping the tablet across all displays.",
