@@ -95,6 +95,7 @@ struct InjectionSnapshot: Sendable, Equatable {
     var touchAbsoluteMode: Bool
     var tapToClick: Bool
     var twoFingerRightClick: Bool
+    var threeFingerDrag: Bool
     var twoFingerScroll: Bool
     var reverseScrollDirection: Bool
     var twoFingerScrollMomentum: Bool
@@ -204,6 +205,7 @@ extension TabletSettings {
             touchAbsoluteMode: Self.touchAbsoluteMode,
             tapToClick: tapToClick,
             twoFingerRightClick: twoFingerRightClick,
+            threeFingerDrag: threeFingerDrag,
             twoFingerScroll: twoFingerScroll,
             reverseScrollDirection: reverseScrollDirection,
             twoFingerScrollMomentum: twoFingerScrollMomentum,

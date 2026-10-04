@@ -737,6 +737,7 @@ struct DiscoveryTouchSettings: Codable {
     var rotateEnabled: Bool?
     var smartZoom: Bool?
     var twoFingerRightClick: Bool?
+    var threeFingerDrag: Bool?
     /// Milliseconds a touch sequence emits nothing after landing
     /// (`TabletSettings.touchOnsetDelayMs`, default 40). User-settable via a
     /// `defaults` key with no UI, so it is invisible in a report stream: a
@@ -937,6 +938,12 @@ struct DiscoveryTouchPipeline: Codable {
     /// Clicks and cursor moves dropped because their touch included a palm
     /// or a pen-held contact, or began with the pen in hand.
     var taintedActionsDropped: Int?
+    /// Three-finger drags started.
+    var threeFingerDrags: Int?
+    /// Three-finger touches that didn't arm a drag, by reason: landedApart,
+    /// tooClose, moved, tooLong, moreThanThree, or blocked (typing, pen in
+    /// hand, or palm).
+    var threeFingerTapMisses: [String: Int]?
 
     mutating func notePalmNeighbor(mm: Double, size: Int?) {
         let bucket = [5.0, 10, 20, 30, 50].firstIndex { mm < $0 } ?? 5

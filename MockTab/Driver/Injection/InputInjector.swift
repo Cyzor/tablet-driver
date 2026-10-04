@@ -131,6 +131,7 @@ final class SharedPanScrollState {
 /// | `lastProximity` | pen in range | proximity exit; 1Hz watchdog forces exit after `stuckProximityTimeout` | Touch gated off as "pen busy" |
 /// | `lastAuxButtons`, `lastRingButtonDown` | express key / ring center down | matching up edge in `injectAux`; 0.4s `watchdogTimer` for modifier flags | Express-key binding stuck held |
 /// | `panMomentumTail`, `touchMomentumTail` | flick release with velocity | decay to zero, new gesture start (`cancel()` — the new gesture's own `.began` phase is itself a valid terminal signal), tool change / disconnect / proximity exit / app switch / sleep / quit (all `stop()` — posts a terminal event; added for macOS 27's stuck-gesture auto-cancel timer, which can now force-cancel a tail an app never received a terminal event for), `cancel()` in deinit | Scrolling continues after release pre-27; force-cancelled mid-stream by the receiving app on 27+ if left non-terminal |
+/// | `touchDragPosition` | three-finger tap, then the next touch | `releaseTouchDrag` via lift (`.dragUp`), pen-busy wind-down, touch turned off, tool change/disconnect, 1Hz `leakWatchdogTimer` after 1s without touch frames | Left button stuck down |
 /// | `mechanicalDialGestureOpen`, `ring1/2GestureOpen` | `.zoom`/`.rotate` ring slot engaged (dial click or ring contact) | 0.4s `mechanicalDialGestureIdleTimer` after the last click (dial) or ring contact lift (capacitive); explicit `closeRingGestureEnvelopes()` on ring-mode-cycle/select-slot bindings and the modifier-held zoom fallback; **`deinit` closes silently** (timer invalidated, no `.ended` posted — see below) | Frontmost app stuck mid-pinch/-rotate |
 ///
 /// On disconnect: `releaseHeldStateForToolChange` releases held buttons but
@@ -1075,6 +1076,15 @@ final class InputInjector: @unchecked Sendable {
                 self.commitProximityExit(snap: snap)
             }
 
+            // Touch streams while a finger is down, so a held drag with no
+            // frames for a second lost its lift.
+            if self.touchDragPosition != nil,
+               CFAbsoluteTimeGetCurrent() - self.lastTouchFrameTime > 1.0,
+               let snap = self.injectionSnapshot {
+                injectLog.notice("leak-watchdog: releasing stranded touch drag")
+                self.releaseTouchDrag(snapshot: snap)
+            }
+
             if !self.groundTruthSyntheticFlags.isEmpty {
                 let heldInterval = Date().timeIntervalSince(self.lastSyntheticFlagChangeAt)
                 // As with the idle watchdog above, a device that only reports on state
@@ -1333,6 +1343,16 @@ final class InputInjector: @unchecked Sendable {
     /// began with the pen in hand. Until every contact lifts, it may scroll,
     /// zoom, or rotate, but its clicks and cursor moves are dropped.
     var touchSequenceTainted = false
+    /// Last physical key press, from the flagsChanged tap on HIDThread.
+    var lastPhysicalKeyDownTime: CFAbsoluteTime = 0
+    /// Where a three-finger drag holds the left button; nil when none is
+    /// held. See the `touchDragPosition` row in the latch table above.
+    var touchDragPosition: CGPoint?
+    /// Touch while typing is a resting hand: for this long after a key
+    /// press, touch can scroll, zoom, or rotate, but not click or move the
+    /// cursor. Same idea as a Mac trackpad's typing guard. Reasoned, not
+    /// measured.
+    static let typingHoldOff: CFAbsoluteTime = 0.5
     /// True once the current proximity session has either produced tip
     /// contact or persisted past `touchBusyHoldOff` — the confirmed signal
     /// `injectTouch`'s pen-priority arbitration gates on, instead of raw

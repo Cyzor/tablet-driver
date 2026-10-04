@@ -611,6 +611,7 @@ extension InputInjector {
         let loc = currentCursorPosition()
         releaseHeldPointerButtons(at: loc, snapshot: snap)
         releaseBindingHeldButton(at: loc, snapshot: snap)
+        releaseTouchDrag(snapshot: snap)
         // macOS 27 auto-cancels a gesture recognizer left non-terminal a few
         // seconds after input stops (AppKit's new stuck-gesture timer) — a
         // tail merely `cancel()`-ed here would idle harmlessly pre-27 but can

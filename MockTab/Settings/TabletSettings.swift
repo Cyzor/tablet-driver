@@ -536,6 +536,11 @@ final class TabletSettings: ObservableObject {
     @Published var twoFingerRightClick: Bool = false {
         didSet { persist("twoFingerRightClick", twoFingerRightClick) }
     }
+    /// When true, a three-finger tap makes the next touch drag with the left
+    /// button held. Off by default.
+    @Published var threeFingerDrag: Bool = false {
+        didSet { persist("threeFingerDrag", threeFingerDrag) }
+    }
     /// Milliseconds a touch sequence emits nothing after landing — see
     /// `TouchStateTracker.onsetDelay`.  Default 40.  No UI: an advanced
     /// `defaults`-only knob for users who find the onset pause too long (set

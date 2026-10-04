@@ -435,6 +435,97 @@ private func testTwoFingerScrollDoesNotRightClick() {
     expectEqual(lift == .secondaryClick, false, "a quick two-finger scroll must not right-click")
 }
 
+/// Three-finger drag on. Contacts sit `spacingMM` apart in raw millimeters.
+private func dprocess(
+    _ tracker: inout TouchStateTracker,
+    _ contacts: [(id: Int, screen: CGPoint)],
+    spacingMM: Double = 18,
+    at time: CFAbsoluteTime
+) -> TouchStateTracker.Intent {
+    var raw: [Int: CGPoint] = [:]
+    for (i, c) in contacts.enumerated() { raw[c.id] = CGPoint(x: Double(i) * spacingMM, y: 0) }
+    return tracker.process(
+        contacts: contacts,
+        tapToClick: true,
+        twoFingerScroll: true,
+        reverseScrollDirection: false,
+        sensitivity: 1,
+        twoFingerRightClick: true,
+        threeFingerDrag: true,
+        rawPositions: raw,
+        now: time
+    )
+}
+
+private let threeFingers: [(id: Int, screen: CGPoint)] = [
+    (id: 1, screen: CGPoint(x: 0, y: 0)), (id: 2, screen: CGPoint(x: 20, y: 0)),
+    (id: 3, screen: CGPoint(x: 40, y: 0))]
+
+private func testThreeFingersLandingTogetherDrag() {
+    var tracker = TouchStateTracker()
+    _ = dprocess(&tracker, [threeFingers[0]], at: 0)
+    _ = dprocess(&tracker, Array(threeFingers.prefix(2)), at: 0.02)
+    expectEqual(dprocess(&tracker, threeFingers, at: 0.04), .dragDown(at: nil),
+                "three fingers landing together must press")
+    let moved = threeFingers.map { (id: $0.id, screen: CGPoint(x: $0.screen.x + 10, y: $0.screen.y)) }
+    expectEqual(dprocess(&tracker, moved, at: 0.06), .dragMove(dx: 10, dy: 0),
+                "moving the fingers must drag")
+    expectEqual(dprocess(&tracker, [], at: 0.20), .dragUp, "lifting must release")
+}
+
+private func testLeadFingerLiftingHandsOffWithoutJump() {
+    var tracker = TouchStateTracker()
+    _ = dprocess(&tracker, [threeFingers[0]], at: 0)
+    _ = dprocess(&tracker, threeFingers, at: 0.03)
+    expectEqual(dprocess(&tracker, Array(threeFingers.dropFirst()), at: 0.05), .none,
+                "the lead lifting must hand off, not jump")
+    let moved = threeFingers.dropFirst().map { (id: $0.id, screen: CGPoint(x: $0.screen.x, y: 5)) }
+    expectEqual(dprocess(&tracker, moved, at: 0.07), .dragMove(dx: 0, dy: 5),
+                "the new lead must keep dragging")
+}
+
+private func testLateThirdFingerDoesNotDrag() {
+    var tracker = TouchStateTracker()
+    _ = dprocess(&tracker, [threeFingers[0]], at: 0)
+    _ = dprocess(&tracker, Array(threeFingers.prefix(2)), at: 0.02)
+    let late = dprocess(&tracker, threeFingers, at: 0.30)
+    expectEqual(late == .dragDown(at: nil), false, "a third finger after the landing window must not press")
+    _ = dprocess(&tracker, [], at: 0.40)
+    expectEqual(tracker.threeFingerTapMiss, "landedApart", "the miss must be recorded")
+}
+
+private func testCrampedThreeFingersDoNotDrag() {
+    var tracker = TouchStateTracker()
+    _ = dprocess(&tracker, [threeFingers[0]], spacingMM: 2, at: 0)
+    let cramped = dprocess(&tracker, threeFingers, spacingMM: 2, at: 0.03)
+    expectEqual(cramped == .dragDown(at: nil), false, "palm-close contacts must not press")
+}
+
+private func testThreeFingerDragOffWithoutSetting() {
+    var tracker = TouchStateTracker()
+    _ = rcprocess(&tracker, [threeFingers[0]], at: 0)
+    let three = rcprocess(&tracker, threeFingers, at: 0.03)
+    expectEqual(three == .dragDown(at: nil), false, "drag must stay off unless enabled")
+    expectEqual(rcprocess(&tracker, [], at: 0.15), .none, "three fingers must not right-click")
+}
+
+private func testAbsoluteDragPressesUnderFinger() {
+    var tracker = TouchStateTracker()
+    let abs: (inout TouchStateTracker, [(id: Int, screen: CGPoint)], CFAbsoluteTime) -> TouchStateTracker.Intent = {
+        var raw: [Int: CGPoint] = [:]
+        for (i, c) in $1.enumerated() { raw[c.id] = CGPoint(x: Double(i) * 18, y: 0) }
+        return $0.process(contacts: $1, tapToClick: false, twoFingerScroll: true,
+                          reverseScrollDirection: false, sensitivity: 1, threeFingerDrag: true,
+                          rawPositions: raw, absoluteTouch: true, now: $2)
+    }
+    _ = abs(&tracker, [threeFingers[0]], 0)
+    expectEqual(abs(&tracker, threeFingers, 0.03), .dragDown(at: threeFingers[0].screen),
+                "on a pen display the press lands under the lead finger")
+    let moved = threeFingers.map { (id: $0.id, screen: CGPoint(x: $0.screen.x + 10, y: 0)) }
+    expectEqual(abs(&tracker, moved, 0.05), .dragWarp(to: CGPoint(x: 10, y: 0)),
+                "and the drag follows it")
+}
+
 /// A brief, stationary two-finger touch counts as one Smart Zoom tap; two of
 /// them close together in time trigger the double-tap.
 private func testSmartZoomDoubleTap() {
@@ -1754,6 +1845,12 @@ enum TouchStateTrackerTestRunner {
         testLateSecondFingerDoesNotRightClick()
         testLongTwoFingerRestDoesNotRightClick()
         testTwoFingerScrollDoesNotRightClick()
+        testThreeFingersLandingTogetherDrag()
+        testLeadFingerLiftingHandsOffWithoutJump()
+        testLateThirdFingerDoesNotDrag()
+        testCrampedThreeFingersDoNotDrag()
+        testThreeFingerDragOffWithoutSetting()
+        testAbsoluteDragPressesUnderFinger()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

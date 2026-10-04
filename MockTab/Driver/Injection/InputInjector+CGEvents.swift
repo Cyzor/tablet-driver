@@ -347,7 +347,8 @@ extension InputInjector {
             tap: .cgSessionEventTap,
             place: .tailAppendEventTap,
             options: .listenOnly,
-            eventsOfInterest: CGEventMask(1 << CGEventType.flagsChanged.rawValue),
+            eventsOfInterest: CGEventMask(1 << CGEventType.flagsChanged.rawValue)
+                | CGEventMask(1 << CGEventType.keyDown.rawValue),
             callback: { _, _, event, userInfo -> Unmanaged<CGEvent>? in
                 guard let userInfo else { return Unmanaged.passRetained(event) }
                 let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
@@ -361,6 +362,11 @@ extension InputInjector {
                 let stateID = Int32(truncatingIfNeeded:
                     event.getIntegerValueField(.eventSourceStateID))
                 guard ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) else {
+                    return Unmanaged.passRetained(event)
+                }
+                // A real keystroke, for touch's typing hold-off.
+                if event.type == .keyDown {
+                    injector.lastPhysicalKeyDownTime = CFAbsoluteTimeGetCurrent()
                     return Unmanaged.passRetained(event)
                 }
                 injector.tapLastPhysicalFlags =

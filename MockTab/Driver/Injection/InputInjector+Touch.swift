@@ -39,6 +39,7 @@ extension InputInjector {
         }
         guard snap.touchEnabled else {
             TouchPipelineProbe.note { $0.framesTouchDisabled += 1 }
+            releaseTouchDrag(snapshot: snap)
             return
         }
 
@@ -138,6 +139,7 @@ extension InputInjector {
                     pinchZoom: snap.pinchZoomEnabled,
                     smartZoom: snap.smartZoomEnabled,
                     twoFingerRightClick: false,
+                    threeFingerDrag: false,
                     rotate: snap.rotateEnabled,
                     absoluteTouch: snap.touchAbsoluteMode || cachedTouchIsDirect,
                     onsetDelay: snap.touchOnsetDelay,
@@ -169,6 +171,9 @@ extension InputInjector {
             touchSequenceTainted = true
         }
         if acceptedIDs.count < contacts.count { touchSequenceTainted = true }
+        if !contacts.isEmpty, now - lastPhysicalKeyDownTime < Self.typingHoldOff {
+            touchSequenceTainted = true
+        }
         let filteredContacts = contacts.filter { acceptedIDs.contains($0.id) }
         if filteredContacts.count < contacts.count {
             let dropped = contacts.count - filteredContacts.count
@@ -342,7 +347,7 @@ extension InputInjector {
         // size. mm is the only unit where "how far apart are the fingers,
         // physically" means the same thing regardless of axis.
         var rawTouchPositionsMM: [Int: CGPoint] = [:]
-        if snap.rotateEnabled || snap.twoFingerRightClick {
+        if snap.rotateEnabled || snap.twoFingerRightClick || snap.threeFingerDrag {
             rawTouchPositionsMM.reserveCapacity(filteredContacts.count)
             let mmPerUnitX = cachedTouchWidthMM / Double(cachedTouchMaxX)
             let mmPerUnitY = cachedTouchHeightMM / Double(cachedTouchMaxY)
@@ -360,6 +365,7 @@ extension InputInjector {
             pinchZoom: snap.pinchZoomEnabled,
             smartZoom: snap.smartZoomEnabled,
             twoFingerRightClick: snap.twoFingerRightClick,
+            threeFingerDrag: snap.threeFingerDrag && !touchSequenceTainted,
             rotate: snap.rotateEnabled,
             rawPositions: rawTouchPositionsMM,
             touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
@@ -375,7 +381,13 @@ extension InputInjector {
 
         noteOnsetLifecycle(now: now)
         handleTouchIntent(intent, snap: snap, settings: settings)
-        if contacts.isEmpty { touchSequenceTainted = false }
+        if contacts.isEmpty {
+            if let miss = touchTracker.threeFingerTapMiss {
+                let reason = touchSequenceTainted ? "blocked" : miss
+                TouchPipelineProbe.note { $0.threeFingerTapMisses = ($0.threeFingerTapMisses ?? [:]).merging([reason: 1], uniquingKeysWith: +) }
+            }
+            touchSequenceTainted = false
+        }
     }
 
     /// Record that a pinch or rotate component opened its envelope this frame.
@@ -585,6 +597,20 @@ extension InputInjector {
             touchOwnedPointerPosition = nil
             TouchPipelineProbe.note { $0.taps += 1 }
             postTouchSecondaryClick(snapshot: snap)
+        case .dragDown(let at):
+            touchOwnedPointerPosition = nil
+            let loc = at.map { displayMapper.pinNearEdges($0, snapshot: snap) } ?? currentCursorPosition()
+            TouchPipelineProbe.note { $0.threeFingerDrags = ($0.threeFingerDrags ?? 0) + 1 }
+            postMouseDown(button: .left, at: loc, pressure: 1.0, clickCount: 1, snapshot: snap)
+            touchDragPosition = loc
+        case .dragMove(let dx, let dy):
+            guard let base = touchDragPosition else { return }
+            postTouchDrag(to: CGPoint(x: base.x + dx, y: base.y + dy), snapshot: snap)
+        case .dragWarp(let target):
+            guard touchDragPosition != nil else { return }
+            postTouchDrag(to: target, snapshot: snap)
+        case .dragUp:
+            releaseTouchDrag(snapshot: snap)
         }
     }
 
@@ -837,6 +863,21 @@ extension InputInjector {
             let size = [c.contactArea, c.contactMinor].compactMap { $0 }.max()
             TouchPipelineProbe.note { $0.notePalmNeighbor(mm: nearest, size: size) }
         }
+    }
+
+    private func postTouchDrag(to point: CGPoint, snapshot: InjectionSnapshot) {
+        let target = displayMapper.pinNearEdges(point, snapshot: snapshot)
+        postMouseDrag(button: .left, at: target, pressure: 1.0, pose: (0, 0, 0), snapshot: snapshot)
+        touchDragPosition = target
+    }
+
+    /// Ends a three-finger drag. Every path that can strand the held button
+    /// calls this: the lift, the pen arriving, touch turned off, tool change
+    /// or disconnect, and the leak watchdog.
+    func releaseTouchDrag(snapshot: InjectionSnapshot) {
+        guard let loc = touchDragPosition else { return }
+        touchDragPosition = nil
+        postMouseUp(button: .left, at: loc, clickCount: 1, snapshot: snapshot)
     }
 
     private func postTouchSecondaryClick(snapshot: InjectionSnapshot) {

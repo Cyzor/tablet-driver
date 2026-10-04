@@ -226,6 +226,28 @@
         }
       }
     },
+    "Three fingers landing together hold the mouse button down. Move them to drag, and lift to let go." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drei gleichzeitig aufgesetzte Finger halten die Maustaste gedrückt. Bewegen, um zu ziehen, abheben zum Loslassen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tres dedos que se apoyan a la vez mantienen pulsado el botón del ratón. Muévelos para arrastrar y levántalos para soltar."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3本の指を同時に置くとマウスボタンを押したままにします。動かしてドラッグし、離すと放します。"
+          }
+        }
+      }
+    },
     "Briefly touch with two fingers to right-click." : {
       "localizations" : {
         "de" : {
@@ -244,6 +266,51 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "2本指で軽くタップすると右クリックします。"
+          }
+        }
+      }
+    },
+    "Move three fingers together to drag." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drei Finger gemeinsam bewegen, um zu ziehen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mueve tres dedos juntos para arrastrar."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3本指を一緒に動かすとドラッグします。"
+          }
+        }
+      }
+    },
+    "Three-Finger Drag" : {
+      "comment" : "Undo action name: three-finger drag toggle in the Touch pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit drei Fingern ziehen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastrar con tres dedos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3本指でドラッグ"
           }
         }
       }

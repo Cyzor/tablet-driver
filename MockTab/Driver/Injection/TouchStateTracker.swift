@@ -106,6 +106,7 @@ struct TouchStateTracker {
         case pending        // contact(s) down, gesture not yet committed
         case pointer        // single contact moving the cursor
         case scroll         // two contacts: pan scroll and/or pinch-zoom
+        case drag           // three fingers landed together: left button held, follows one finger
     }
 
     /// Sticky two-finger sub-mode once significant motion is seen. `.pan` vs
@@ -151,6 +152,13 @@ struct TouchStateTracker {
         /// Two fingers landed together, stayed put, and lifted within
         /// `twoFingerTapMaxDuration`. Posted as a single right click.
         case secondaryClick
+        /// Three-finger drag: press the left button, at this point when the
+        /// cursor follows the finger, else where the cursor is. Released when
+        /// every finger lifts.
+        case dragDown(at: CGPoint?)
+        case dragMove(dx: Double, dy: Double)
+        case dragWarp(to: CGPoint)
+        case dragUp
         /// Two-finger scroll delta in screen points + the scroll phase
         /// (CG `kCGScrollWheelEventScrollPhase` values: 1=Began, 2=Changed,
         /// 4=Ended).  Sign convention follows the natural-scrolling setting.
@@ -444,6 +452,15 @@ struct TouchStateTracker {
     /// patchy outline. Gates `.secondaryClick`.
     private var twoFingerTapEligible = false
 
+    /// Most contacts seen this sequence, and whether a third finger came
+    /// too late or too close to start a drag. For the miss diagnostic.
+    private var maxContactsThisSequence = 0
+    private var threeFingerMissReason: String?
+    /// Diagnostic: why the last touch with three or more fingers didn't
+    /// drag, set at its lift. Nil when it dragged or had fewer fingers.
+    private(set) var threeFingerTapMiss: String?
+    private var dragPrimaryID: Int?
+
     // MARK: - Tunables
 
     /// Maximum drift (in screen points) that still counts as a tap.
@@ -647,6 +664,13 @@ struct TouchStateTracker {
     /// a palm's stray contacts can land a fraction of a millimeter apart.
     /// Reasoned, not measured.
     static let secondaryClickMinSpacingMM: Double = 10.0
+    /// Three fingers landing within this long of the first count as landing
+    /// together. Longer than the onset window, since three fingers spread
+    /// out more than two. Reasoned, not measured.
+    static let threeFingerLandingWindow: CFAbsoluteTime = 0.10
+    /// Three fingertips bunch closer than two: a PTH-660 capture put most
+    /// three-finger frames' closest pair 5–10 mm apart.
+    static let threeFingerMinSpacingMM: Double = 5.0
     /// Minimum finger separation, as a fraction of the touch surface's
     /// physical diagonal (millimeters — see `process`'s `rawPositions` doc
     /// comment for why raw device units would distort this), for rotate to
@@ -769,6 +793,7 @@ struct TouchStateTracker {
         pinchZoom: Bool = false,
         smartZoom: Bool = false,
         twoFingerRightClick: Bool = false,
+        threeFingerDrag: Bool = false,
         rotate: Bool = false,
         rawPositions: [Int: CGPoint] = [:],
         touchDiagonal: Double = 0,
@@ -863,8 +888,11 @@ struct TouchStateTracker {
             let twoFingerTap = smartZoom && priorMode == .scroll && priorKind == .undecided
                 && now - tapStart <= Self.twoFingerTapMaxDuration
             let secondaryTap = twoFingerRightClick && twoFingerTapEligible
+                && maxContactsThisSequence == 2
                 && priorMode == .scroll && priorKind == .undecided
                 && now - tapStart <= Self.twoFingerTapMaxDuration
+            threeFingerTapMiss = threeFingerDrag && maxContactsThisSequence >= 3
+                && priorMode != .drag ? (threeFingerMissReason ?? "other") : nil
             let thisTapStart = tapStart
             if scrollDroppedToOneContactAt != 0 {
                 // The gesture already dropped to one contact and everything was
@@ -888,6 +916,7 @@ struct TouchStateTracker {
                 releaseSuppressedByRecency = k.suppressedByRecency
             }
             reset()
+            if priorMode == .drag { return .dragUp }
             switch priorMode {
             // Must precede the generic pan-ended case below: pinch/rotate
             // also leave `lastScrollPhase` untouched (they track their own
@@ -920,6 +949,37 @@ struct TouchStateTracker {
         // First contact — hold in pending until the onset delay elapses, so
         // the opening frames of a sequence (where a palm smush or the second
         // scroll finger is still arriving) never move anything.
+        maxContactsThisSequence = Swift.max(maxContactsThisSequence, contacts.count)
+        // Three fingers landing together start a drag, as long as no scroll,
+        // zoom, or rotate has begun. The first finger leads.
+        if threeFingerDrag, contacts.count == 3, mode == .pending || mode == .scroll,
+           threeFingerMissReason == nil {
+            let mm = contacts.compactMap { rawPositions[$0.id] }
+            var closest = Double.infinity
+            for i in mm.indices {
+                for j in mm.indices where j > i {
+                    closest = Swift.min(closest, hypot(mm[i].x - mm[j].x, mm[i].y - mm[j].y))
+                }
+            }
+            let gestureBegan = mode == .scroll
+                && (twoFingerKind != .undecided || lastScrollPhase != .ended)
+            if now - tapStart > Self.threeFingerLandingWindow {
+                threeFingerMissReason = "landedApart"
+            } else if mm.count < 3 || closest < Self.threeFingerMinSpacingMM {
+                threeFingerMissReason = "tooClose"
+            } else if gestureBegan {
+                threeFingerMissReason = "moved"
+            } else {
+                let lead = contacts[0]
+                mode = .drag
+                dragPrimaryID = lead.id
+                lastPositions = [lead.id: lead.screen]
+                return .dragDown(at: absoluteTouch ? lead.screen : nil)
+            }
+        }
+        if threeFingerDrag, contacts.count > 3, mode != .drag, threeFingerMissReason == nil {
+            threeFingerMissReason = "moreThanThree"
+        }
         if mode == .idle, let first = contacts.first {
             mode = .pending
             lastPositions = [first.id: first.screen]
@@ -948,7 +1008,7 @@ struct TouchStateTracker {
         // start tracking; which one(s) can actually win is decided per-frame
         // below via each flag independently.
         let anyTwoFingerGesture = twoFingerScroll || pinchZoom || rotate || smartZoom
-            || twoFingerRightClick
+            || twoFingerRightClick || threeFingerDrag
         if mode == .pending || mode == .pointer, contacts.count >= 2 {
             if anyTwoFingerGesture {
                 // Pending can outlast the onset window while a finger rests
@@ -960,8 +1020,8 @@ struct TouchStateTracker {
                     pair.map { ($0.id, $0.screen) },
                     uniquingKeysWith: { first, _ in first })
                 tapAnchor = nil  // tap is off the table once we go to two fingers
-                twoFingerKind = (pinchZoom || rotate || smartZoom || twoFingerRightClick)
-                    ? .undecided : .pan
+                twoFingerKind = (pinchZoom || rotate || smartZoom || twoFingerRightClick
+                    || threeFingerDrag) ? .undecided : .pan
                 twoFingerTapEligible = false
                 if twoFingerRightClick, landedTogether,
                    let posA = rawPositions[pair[0].id], let posB = rawPositions[pair[1].id] {
@@ -1010,6 +1070,21 @@ struct TouchStateTracker {
         }
 
         switch mode {
+        case .drag:
+            // The lead finger lifting hands the drag to another without a jump.
+            if dragPrimaryID.map({ id in !contacts.contains { $0.id == id } }) ?? true,
+               let next = contacts.first {
+                dragPrimaryID = next.id
+                lastPositions = [next.id: next.screen]
+                return .none
+            }
+            guard let id = dragPrimaryID,
+                  let p = contacts.first(where: { $0.id == id })?.screen,
+                  let prev = lastPositions[id], p != prev
+            else { return .none }
+            lastPositions[id] = p
+            if absoluteTouch { return .dragWarp(to: p) }
+            return .dragMove(dx: (p.x - prev.x) * sensitivity, dy: (p.y - prev.y) * sensitivity)
         case .pending:
             // Track motion for tap detection. Relative mode emits nothing
             // here and anchors at commit instead, so motion accumulated
@@ -1575,6 +1650,9 @@ struct TouchStateTracker {
     mutating func reset() {
         mode = .idle
         twoFingerTapEligible = false
+        threeFingerMissReason = nil
+        maxContactsThisSequence = 0
+        dragPrimaryID = nil
         lastPositions.removeAll(keepingCapacity: true)
         pointerSpeed = -1
         lastPointerSampleTime = 0
