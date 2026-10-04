@@ -1321,6 +1321,18 @@ final class InputInjector: @unchecked Sendable {
     var penProximityExitTime: CFAbsoluteTime = 0
     /// Per-Wacom-driver convention; tunable if reports show false positives.
     static let touchArbitrationGrace: CFAbsoluteTime = 0.08
+    /// After the pen leaves proximity, the hand most likely still holds it:
+    /// a touch starting this soon can scroll, zoom, or rotate, but not click
+    /// or move the cursor. Reasoned, not measured.
+    static let penInHandWindow: CFAbsoluteTime = 3.0
+    /// Contacts already down while the pen was busy: the hand that held the
+    /// pen. Ignored until they lift, so a resting hand never turns into
+    /// fingers when the pen leaves.
+    var touchPenHeldIDs: Set<Int> = []
+    /// The current touch sequence included a palm, a pen-held contact, or
+    /// began with the pen in hand. Until every contact lifts, it may scroll,
+    /// zoom, or rotate, but its clicks and cursor moves are dropped.
+    var touchSequenceTainted = false
     /// True once the current proximity session has either produced tip
     /// contact or persisted past `touchBusyHoldOff` — the confirmed signal
     /// `injectTouch`'s pen-priority arbitration gates on, instead of raw

@@ -13,9 +13,9 @@ import TabletKit
 /// both share the same 0x21 report layout) reports the contact major and
 /// minor axes for every touch slot. The units are device-specific, so this
 /// filter is deliberately limited to that calibrated family rather than
-/// applying an unsafe global threshold. A rejected slot remains rejected
-/// until it falls below a lower threshold or lifts, which keeps a noisy palm
-/// footprint from flapping into a finger gesture.
+/// applying an unsafe global threshold. A rejected slot stays rejected until
+/// it lifts: a palm shrinks through finger sizes as it peels away, and
+/// letting it back in then clicked wherever the palm left.
 struct TouchPalmRejector {
 
     struct Result {
@@ -34,9 +34,6 @@ struct TouchPalmRejector {
     /// logical maxima (41 × 31) are not physical millimetres, so a threshold
     /// inferred from those maxima was invalid; use both observed raw axes.
     private static let rejectAxisAtOrAbove = 5
-    /// A rejected contact only returns once both axes shrink below the
-    /// threshold, avoiding size-noise flapping during a palm contact.
-    private static let acceptAxisAtOrBelow = 3
 
     private var rejectedIDs: Set<Int> = []
 
@@ -48,10 +45,6 @@ struct TouchPalmRejector {
         [major, minor].compactMap { $0 }.contains { $0 >= rejectAxisAtOrAbove }
     }
 
-    private static func isFingerSized(major: Int?, minor: Int?) -> Bool {
-        let axes = [major, minor].compactMap { $0 }
-        return !axes.isEmpty && axes.allSatisfy { $0 <= acceptAxisAtOrBelow }
-    }
 
     mutating func filter(
         contacts: [(id: Int, major: Int?, minor: Int?)],
@@ -69,21 +62,11 @@ struct TouchPalmRejector {
 
         var acceptedIDs: Set<Int> = []
         var newlyRejectedIDs: [Int] = []
-        var newlyAcceptedIDs: [Int] = []
+        let newlyAcceptedIDs: [Int] = []
         acceptedIDs.reserveCapacity(contacts.count)
 
         for contact in contacts {
-            if rejectedIDs.contains(contact.id) {
-                // A report missing its footprint must not let a previously
-                // classified palm back into an active gesture.
-                guard Self.isFingerSized(major: contact.major, minor: contact.minor) else {
-                    continue
-                }
-                rejectedIDs.remove(contact.id)
-                newlyAcceptedIDs.append(contact.id)
-                acceptedIDs.insert(contact.id)
-                continue
-            }
+            if rejectedIDs.contains(contact.id) { continue }
 
             guard Self.isPalm(major: contact.major, minor: contact.minor) else {
                 acceptedIDs.insert(contact.id)

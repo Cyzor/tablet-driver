@@ -107,6 +107,8 @@ extension InputInjector {
         if penBusy {
             TouchPipelineProbe.note { $0.noteTouchPenBusy() }
             touchPalmRejector.reset()
+            touchPenHeldIDs.formUnion(contacts.map(\.id))
+            touchSequenceTainted = !contacts.isEmpty
             touchOwnedPointerPosition = nil
             // Wind down whenever a gesture is live, regardless of whether this
             // particular frame carried contacts. The empty-contacts frame *is*
@@ -126,15 +128,16 @@ extension InputInjector {
                 // Wind down through the same path a real all-fingers-lifted
                 // frame would take, so any open magnify/rotate/scroll phase
                 // closes properly before the state is dropped.
+                // The pen arriving ends the touch; it never clicks.
                 let windDown = touchTracker.process(
                     contacts: [],
-                    tapToClick: snap.tapToClick,
+                    tapToClick: false,
                     twoFingerScroll: snap.twoFingerScroll,
                     reverseScrollDirection: snap.reverseScrollDirection,
                     sensitivity: snap.touchSensitivity,
                     pinchZoom: snap.pinchZoomEnabled,
                     smartZoom: snap.smartZoomEnabled,
-                    twoFingerRightClick: snap.twoFingerRightClick,
+                    twoFingerRightClick: false,
                     rotate: snap.rotateEnabled,
                     absoluteTouch: snap.touchAbsoluteMode || cachedTouchIsDirect,
                     onsetDelay: snap.touchOnsetDelay,
@@ -158,7 +161,15 @@ extension InputInjector {
                 (id: $0.id, major: $0.contactArea, minor: $0.contactMinor)
             },
             productID: deviceProductID)
-        let filteredContacts = contacts.filter { filtered.acceptedIDs.contains($0.id) }
+        let presentIDs = Set(contacts.map(\.id))
+        touchPenHeldIDs.formIntersection(presentIDs)
+        let acceptedIDs = filtered.acceptedIDs.subtracting(touchPenHeldIDs)
+        if touchTracker.mode == .idle, !contacts.isEmpty,
+           now - penProximityExitTime < Self.penInHandWindow {
+            touchSequenceTainted = true
+        }
+        if acceptedIDs.count < contacts.count { touchSequenceTainted = true }
+        let filteredContacts = contacts.filter { acceptedIDs.contains($0.id) }
         if filteredContacts.count < contacts.count {
             let dropped = contacts.count - filteredContacts.count
             TouchPipelineProbe.note { $0.contactsPalmRejected += dropped }
@@ -364,6 +375,7 @@ extension InputInjector {
 
         noteOnsetLifecycle(now: now)
         handleTouchIntent(intent, snap: snap, settings: settings)
+        if contacts.isEmpty { touchSequenceTainted = false }
     }
 
     /// Record that a pinch or rotate component opened its envelope this frame.
@@ -455,6 +467,15 @@ extension InputInjector {
         // that reaches here and commits to a mode is working as far as this
         // diagnostic is concerned, and the post helpers below have their
         // own failure paths.
+        if touchSequenceTainted {
+            switch intent {
+            case .tapClick, .secondaryClick, .pointerMove, .pointerWarp:
+                TouchPipelineProbe.note { $0.taintedActionsDropped = ($0.taintedActionsDropped ?? 0) + 1 }
+                return
+            default:
+                break
+            }
+        }
         if touchSequenceSawPalm {
             TouchPipelineProbe.note {
                 switch intent {

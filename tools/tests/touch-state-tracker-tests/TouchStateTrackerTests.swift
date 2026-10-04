@@ -331,18 +331,17 @@ private func testPalmRejectionOnCalibratedFamily() {
         expectEqual(initial.newlyRejectedIDs, [1],
                     "the live palm-sized contact must be classified as a palm")
 
-        let stillRejected = rejector.filter(
-            contacts: [rawContact(id: 1, major: 4, minor: 4), rawContact(id: 2, major: 2, minor: 3)],
+        let peeling = rejector.filter(
+            contacts: [rawContact(id: 1, major: 1, minor: 1), rawContact(id: 2, major: 2, minor: 3)],
             productID: productID)
-        expectEqual(stillRejected.acceptedIDs, Set([2]),
-                    "hysteresis must keep a palm rejected between thresholds")
+        expectEqual(peeling.acceptedIDs, Set([2]),
+                    "a palm shrinking as it lifts must stay rejected")
 
-        let accepted = rejector.filter(
-            contacts: [rawContact(id: 1, major: 3, minor: 3)], productID: productID)
-        expectEqual(accepted.acceptedIDs, Set([1]),
-                    "a contact below the lower threshold can return as a finger")
-        expectEqual(accepted.newlyAcceptedIDs, [1],
-                    "the hysteresis release must be observable for logging")
+        _ = rejector.filter(contacts: [], productID: productID)
+        let fresh = rejector.filter(
+            contacts: [rawContact(id: 1, major: 2, minor: 2)], productID: productID)
+        expectEqual(fresh.acceptedIDs, Set([1]),
+                    "a new finger in the palm's old slot is a finger")
     }
 }
 

@@ -934,6 +934,9 @@ struct DiscoveryTouchPipeline: Codable {
     var palmSequencePointerMoves: Int?
     var palmSequenceClicks: Int?
     var palmSequenceGestures: Int?
+    /// Clicks and cursor moves dropped because their touch included a palm
+    /// or a pen-held contact, or began with the pen in hand.
+    var taintedActionsDropped: Int?
 
     mutating func notePalmNeighbor(mm: Double, size: Int?) {
         let bucket = [5.0, 10, 20, 30, 50].firstIndex { mm < $0 } ?? 5
