@@ -118,9 +118,30 @@ private func testDecodeDisplayToggleUnaffectedBySpanAddition() {
            "{mode: toggle} must still decode to displayModeToggle, never Span")
 }
 
+private func testDecodeSpecificDisplayByUUID() {
+    let v: [String: Any] = ["mode": "display", "index": 2, "uuid": "1552-41055-0", "name": "Studio"]
+    expect(PresetImporter.decodeDisplay(v) == 2, "display dict: index kept as fallback")
+    expect(PresetImporter.decodeDisplayUUID(v) == "1552-41055-0", "display dict: UUID decoded")
+}
+
+private func testDecodeLegacyDisplayHasNoUUID() {
+    expect(PresetImporter.decodeDisplay("display-2") == 2, "legacy display-N still decodes")
+    expect(PresetImporter.decodeDisplayUUID("display-2") == "", "legacy display-N: no UUID")
+}
+
+private func testDecodeDisplaySetSkipsSessionNumbers() {
+    expect(PresetImporter.decodeDisplaySet(["mode": "toggle", "displays": ["1", "2"]]) == nil,
+           "old session display numbers are skipped")
+    expect(PresetImporter.decodeDisplaySet(["mode": "span", "displays": ["1-2-3", "4-5-6"]]) == "1-2-3,4-5-6",
+           "UUIDs carry through")
+}
+
 @main
 enum PresetDisplayRegionTestRunner {
     static func main() {
+        testDecodeSpecificDisplayByUUID()
+        testDecodeLegacyDisplayHasNoUUID()
+        testDecodeDisplaySetSkipsSessionNumbers()
         testDeviceSettingsMissingDisplayRegionStaysUnset()
         testDeviceSettingsDecodesDisplayRegion()
         testDeviceSettingsRejectsInvalidDisplayRegion()

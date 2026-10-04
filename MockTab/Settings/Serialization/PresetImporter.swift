@@ -125,7 +125,11 @@ struct PresetImporter {
                 values["tabletOrientation"] = decodeOrientation(v)
             }
         }
-        if let v = s["display"] { values["targetDisplayIndex"] = decodeDisplay(v) }
+        if let v = s["display"] {
+            values["targetDisplayIndex"] = decodeDisplay(v)
+            values["targetDisplayUUID"] = decodeDisplayUUID(v)
+            if let ids = decodeDisplaySet(v) { values["toggleDisplayIDs"] = ids }
+        }
         // Absent in files exported before tablet-driver#15 — leaving these
         // unset here means TabletSettings.reloadAll()'s defaults (0,0,1,1,
         // i.e. full display) apply, which matches every build's behavior
@@ -219,6 +223,9 @@ struct PresetImporter {
             case "targetDisplayIndex":
                 values[key] = decodeDisplay(rawValue)
 
+            case "targetDisplayUUID":
+                if let v = rawValue as? String { values[key] = v }
+
             case "toggleDisplayIDs":
                 if let arr = rawValue as? [String] { values[key] = arr.joined(separator: ",") }
 
@@ -303,8 +310,26 @@ struct PresetImporter {
         if let d = value as? [String: Any], let mode = d["mode"] as? String {
             if mode == "toggle" { return TabletSettings.displayModeToggle }
             if mode == "span" { return TabletSettings.displayModeSpan }
+            if mode == "display", let n = d["index"] as? Int, n > 0 { return n }
         }
         return 0
+    }
+
+    /// The recorded display of a `{"mode": "display"}` value; "" otherwise,
+    /// so an older `display-N` import falls back to list position.
+    static func decodeDisplayUUID(_ value: Any) -> String {
+        guard let d = value as? [String: Any], d["mode"] as? String == "display",
+            let uuid = d["uuid"] as? String
+        else { return "" }
+        return uuid
+    }
+
+    /// Toggle or Span displays as stored UUIDs. Older exports wrote
+    /// session-only display numbers, which can't be matched and are skipped.
+    static func decodeDisplaySet(_ value: Any) -> String? {
+        guard let d = value as? [String: Any], let arr = d["displays"] as? [String] else { return nil }
+        let uuids = arr.filter { $0.contains("-") }
+        return uuids.isEmpty ? nil : uuids.joined(separator: ",")
     }
 
     /// English-only, label-based decode — kept for files exported before

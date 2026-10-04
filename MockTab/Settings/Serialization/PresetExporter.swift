@@ -88,7 +88,7 @@ final class PresetExporter {
             "orientation": s.tabletOrientation.label,
             "orientationKey": s.tabletOrientation.rawValue
         ] as [String: Any]
-        d["display"] = exportDisplay(s.targetDisplayIndex, toggleIDs: s.toggleDisplayIDSet)
+        d["display"] = exportDisplay(s.targetDisplayIndex, uuid: s.targetDisplayUUID, toggleUUIDs: s.toggleDisplayIDs)
         // Where on the target display the tablet area is mapped (tablet-driver#15).
         // Always written, even at the default full-display (0,0,1,1): PresetImporter
         // must default these to full-display anyway for files from older exports, so
@@ -235,6 +235,10 @@ final class PresetExporter {
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (exportDisplayIndex(ud.integer(forKey: prefix + key)), nil)
 
+        case "targetDisplayUUID":
+            guard let raw = ud.string(forKey: prefix + key), !raw.isEmpty else { return nil }
+            return (raw, nil)
+
         case "toggleDisplayIDs":
             // Persisted as UUID strings ("vendor-model-serial"), not numeric IDs.
             guard let raw = ud.string(forKey: prefix + key), !raw.isEmpty else { return nil }
@@ -298,17 +302,26 @@ final class PresetExporter {
         ]
     }
 
-    private func exportDisplay(_ idx: Int, toggleIDs: Set<CGDirectDisplayID>) -> Any {
+    /// Displays are written by UUID, which names the same monitor on any Mac;
+    /// the display name is only for people reading the file.
+    private func exportDisplay(_ idx: Int, uuid: String, toggleUUIDs: String) -> Any {
+        let toggle = toggleUUIDs.split(separator: ",").map(String.init)
         switch idx {
         case 0: return "primary"
         case TabletSettings.displayModeAll: return "all"
         case TabletSettings.displayModeToggle:
-            guard !toggleIDs.isEmpty else { return "toggle" }
-            return ["mode": "toggle", "displays": toggleIDs.sorted().map { String($0) }] as [String: Any]
+            guard !toggle.isEmpty else { return "toggle" }
+            return ["mode": "toggle", "displays": toggle] as [String: Any]
         case TabletSettings.displayModeSpan:
-            guard !toggleIDs.isEmpty else { return "span" }
-            return ["mode": "span", "displays": toggleIDs.sorted().map { String($0) }] as [String: Any]
-        default: return "display-\(idx)"
+            guard !toggle.isEmpty else { return "span" }
+            return ["mode": "span", "displays": toggle] as [String: Any]
+        default:
+            guard !uuid.isEmpty else { return "display-\(idx)" }
+            var d: [String: Any] = ["mode": "display", "index": idx, "uuid": uuid]
+            if let name = DisplayInfo.all().first(where: { CalibrationKey.uuidString(for: $0.id) == uuid })?.name {
+                d["name"] = name
+            }
+            return d
         }
     }
 
