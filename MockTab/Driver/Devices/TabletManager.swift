@@ -1531,11 +1531,12 @@ final class TabletManager: ObservableObject {
             context.settings.penDisplayLocator = { Self.penDisplayID(forProductID: productID) }
             context.settings.migrateTargetDisplayUUID()
 
-            if productID == 0x00F4 {
-                let prefix = "device-0x\(String(productID, radix: 16, uppercase: true))."
-                if UserDefaults.standard.object(forKey: prefix + "proportionalMapping") == nil {
-                    context.settings.applyPenDisplayDefaults(width: 1920, height: 1200)
-                }
+            // First connection of a pen display: map it to its own screen.
+            let prefix = "device-0x\(String(productID, radix: 16, uppercase: true))."
+            if UserDefaults.standard.object(forKey: prefix + "proportionalMapping") == nil,
+                let screen = Self.penDisplayID(forProductID: productID)
+            {
+                context.settings.applyPenDisplayDefaults(display: screen)
             }
 
             // A bare/still-pairing dongle must never become the active

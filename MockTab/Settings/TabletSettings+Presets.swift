@@ -430,24 +430,17 @@ extension TabletSettings {
 
     // MARK: - Profile import / export
 
-    /// Applies pen-display defaults for the first connection of a Cintiq-class device.
-    ///
-    /// Locates the display matching `width × height` in the active display list
-    /// (CGGetActiveDisplayList order, 1-based index) and sets `targetDisplayIndex`
-    /// to it.  Disables `proportionalMapping` because the digitizer covers the
-    /// exact screen surface — proportional correction would introduce edge dead zones.
-    ///
-    /// Call only when the device has no stored settings yet (first-ever connection).
-    func applyPenDisplayDefaults(width: Int, height: Int) {
+    /// Applies pen-display defaults for the first connection of a pen display:
+    /// map to its own screen, with proportional mapping off because the
+    /// digitizer covers the screen exactly and correction would add dead zones.
+    func applyPenDisplayDefaults(display: CGDirectDisplayID) {
         proportionalMapping = false
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
-        for (i, id) in ids.enumerated()
-        where CGDisplayPixelsWide(id) == width && CGDisplayPixelsHigh(id) == height {
-            selectDisplay(index: i + 1)
-            return
-        }
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success,
+            let i = ids.firstIndex(of: display)
+        else { return }
+        selectDisplay(index: i + 1)
     }
 }
