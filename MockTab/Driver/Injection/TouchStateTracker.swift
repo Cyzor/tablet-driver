@@ -165,6 +165,9 @@ struct TouchStateTracker {
         /// Tap-to-click: a touch sequence that began and ended on roughly the
         /// same point within `tapMaxDuration`.  Posted as a single left click.
         case tapClick
+        /// Two fingers landed together, stayed put, and lifted within
+        /// `twoFingerTapMaxDuration`. Posted as a single right click.
+        case secondaryClick
         /// Two-finger scroll delta in screen points + the scroll phase
         /// (CG `kCGScrollWheelEventScrollPhase` values: 1=Began, 2=Changed,
         /// 4=Ended).  Sign convention follows the natural-scrolling setting.
@@ -453,6 +456,11 @@ struct TouchStateTracker {
     /// the first.
     private var lastTwoFingerTapEndTime: CFAbsoluteTime?
 
+    /// Both fingers of the current two-finger sequence landed inside the
+    /// onset window, and far enough apart to be fingertips, not a palm's
+    /// patchy outline. Gates `.secondaryClick`.
+    private var twoFingerTapEligible = false
+
     // MARK: - Tunables
 
     /// Maximum drift (in screen points) that still counts as a tap.
@@ -651,6 +659,11 @@ struct TouchStateTracker {
     /// down to count as a double-tap. Not derived from any real trackpad
     /// measurement — a tunable to revisit after hardware testing.
     static let twoFingerTapMaxGap: CFAbsoluteTime = 0.35
+    /// Minimum center-to-center spacing (millimeters) for a two-finger tap
+    /// to right-click. Two fingertips side by side sit about 15 mm apart;
+    /// a palm's stray contacts can land a fraction of a millimeter apart.
+    /// Reasoned, not measured.
+    static let secondaryClickMinSpacingMM: Double = 10.0
     /// Minimum finger separation, as a fraction of the touch surface's
     /// physical diagonal (millimeters — see `process`'s `rawPositions` doc
     /// comment for why raw device units would distort this), for rotate to
@@ -772,6 +785,7 @@ struct TouchStateTracker {
         sensitivity: Double,
         pinchZoom: Bool = false,
         smartZoom: Bool = false,
+        twoFingerRightClick: Bool = false,
         rotate: Bool = false,
         rawPositions: [Int: CGPoint] = [:],
         touchDiagonal: Double = 0,
@@ -865,6 +879,9 @@ struct TouchStateTracker {
             // `twoFingerDecideDistance` (see the tunable's doc comment).
             let twoFingerTap = smartZoom && priorMode == .scroll && priorKind == .undecided
                 && now - tapStart <= Self.twoFingerTapMaxDuration
+            let secondaryTap = twoFingerRightClick && twoFingerTapEligible
+                && priorMode == .scroll && priorKind == .undecided
+                && now - tapStart <= Self.twoFingerTapMaxDuration
             let thisTapStart = tapStart
             if scrollDroppedToOneContactAt != 0 {
                 // The gesture already dropped to one contact and everything was
@@ -901,6 +918,8 @@ struct TouchStateTracker {
                     rotate: priorRotatePhase != .ended ? GestureDelta(value: 0, phase: .ended) : nil)
             case .scroll where priorPhase != .ended:
                 return .scrollDelta(dx: 0, dy: 0, phase: .ended)
+            case .scroll where secondaryTap:
+                return .secondaryClick
             case .scroll where twoFingerTap:
                 if let last = lastTwoFingerTapEndTime, thisTapStart - last <= Self.twoFingerTapMaxGap {
                     lastTwoFingerTapEndTime = nil
@@ -946,15 +965,26 @@ struct TouchStateTracker {
         // start tracking; which one(s) can actually win is decided per-frame
         // below via each flag independently.
         let anyTwoFingerGesture = twoFingerScroll || pinchZoom || rotate || smartZoom
+            || twoFingerRightClick
         if mode == .pending || mode == .pointer, contacts.count >= 2 {
             if anyTwoFingerGesture {
+                // Pending can outlast the onset window while a finger rests
+                // still, so time it directly.
+                let landedTogether = mode == .pending && now - tapStart <= onsetDelay
                 mode = .scroll
                 let pair = Array(contacts.prefix(2))
                 lastPositions = Dictionary(
                     pair.map { ($0.id, $0.screen) },
                     uniquingKeysWith: { first, _ in first })
                 tapAnchor = nil  // tap is off the table once we go to two fingers
-                twoFingerKind = (pinchZoom || rotate || smartZoom) ? .undecided : .pan
+                twoFingerKind = (pinchZoom || rotate || smartZoom || twoFingerRightClick)
+                    ? .undecided : .pan
+                twoFingerTapEligible = false
+                if twoFingerRightClick, landedTogether,
+                   let posA = rawPositions[pair[0].id], let posB = rawPositions[pair[1].id] {
+                    twoFingerTapEligible =
+                        hypot(posA.x - posB.x, posA.y - posB.y) >= Self.secondaryClickMinSpacingMM
+                }
                 lastPinchDistance = Self.distance(between: pair)
                 undecidedOriginCentroid = centroid(of: pair.map(\.screen))
                 undecidedOriginDistance = lastPinchDistance
@@ -1561,6 +1591,7 @@ struct TouchStateTracker {
     /// through the normal wind-down path instead of vanishing.
     mutating func reset() {
         mode = .idle
+        twoFingerTapEligible = false
         lastPositions.removeAll(keepingCapacity: true)
         pointerSpeed = -1
         lastPointerSampleTime = 0

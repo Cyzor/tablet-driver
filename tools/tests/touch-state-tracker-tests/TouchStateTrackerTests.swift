@@ -354,6 +354,88 @@ private func testPalmFilteringIsFamilySpecific() {
                 "un-calibrated tablet families must keep their contacts unchanged")
 }
 
+/// Two-finger right-click on, Smart Zoom off. Contacts sit `spacingMM`
+/// apart in raw millimeters.
+private func rcprocess(
+    _ tracker: inout TouchStateTracker,
+    _ contacts: [(id: Int, screen: CGPoint)],
+    spacingMM: Double = 18,
+    at time: CFAbsoluteTime
+) -> TouchStateTracker.Intent {
+    var raw: [Int: CGPoint] = [:]
+    for (i, c) in contacts.enumerated() { raw[c.id] = CGPoint(x: Double(i) * spacingMM, y: 0) }
+    return tracker.process(
+        contacts: contacts,
+        tapToClick: false,
+        twoFingerScroll: true,
+        reverseScrollDirection: false,
+        sensitivity: 1,
+        twoFingerRightClick: true,
+        rawPositions: raw,
+        now: time
+    )
+}
+
+private func testTwoFingerTapRightClicks() {
+    var tracker = TouchStateTracker()
+    _ = rcprocess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = rcprocess(&tracker, contacts(distance: 20), at: 0.02)
+    expectEqual(rcprocess(&tracker, [], at: 0.15), .secondaryClick,
+                "a brief, still two-finger touch must right-click")
+}
+
+private func testTwoFingerRightClickOffByDefault() {
+    var tracker = TouchStateTracker()
+    _ = tracker.process(contacts: [(id: 1, screen: .zero)], tapToClick: false, twoFingerScroll: true,
+                        reverseScrollDirection: false, sensitivity: 1, now: 0)
+    _ = tracker.process(contacts: contacts(distance: 20), tapToClick: false, twoFingerScroll: true,
+                        reverseScrollDirection: false, sensitivity: 1, now: 0.02)
+    let lift = tracker.process(contacts: [], tapToClick: false, twoFingerScroll: true,
+                               reverseScrollDirection: false, sensitivity: 1, now: 0.15)
+    expectEqual(lift == .secondaryClick, false, "right-click must stay off unless enabled")
+}
+
+private func testCloseContactsDoNotRightClick() {
+    var tracker = TouchStateTracker()
+    _ = rcprocess(&tracker, [(id: 1, screen: .zero)], spacingMM: 3, at: 0)
+    _ = rcprocess(&tracker, contacts(distance: 20), spacingMM: 3, at: 0.02)
+    expectEqual(rcprocess(&tracker, [], spacingMM: 3, at: 0.15), .none,
+                "contacts a palm's width apart must not right-click")
+}
+
+private func testLateSecondFingerDoesNotRightClick() {
+    var tracker = TouchStateTracker()
+    _ = rcprocess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = rcprocess(&tracker, [(id: 1, screen: .zero)], at: 0.10)
+    _ = rcprocess(&tracker, contacts(distance: 20), at: 0.12)
+    expectEqual(rcprocess(&tracker, [], at: 0.20), .none,
+                "a second finger after the onset window must not right-click")
+}
+
+private func testLongTwoFingerRestDoesNotRightClick() {
+    var tracker = TouchStateTracker()
+    _ = rcprocess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = rcprocess(&tracker, contacts(distance: 20), at: 0.02)
+    _ = rcprocess(&tracker, contacts(distance: 20), at: 0.30)
+    expectEqual(rcprocess(&tracker, [], at: 0.50), .none,
+                "two fingers resting past the tap window must not right-click")
+}
+
+private func testTwoFingerScrollDoesNotRightClick() {
+    var tracker = TouchStateTracker()
+    _ = rcprocess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    _ = rcprocess(&tracker, contacts(distance: 20), at: 0.02)
+    var t = 0.03
+    for step in 1...10 {
+        let dy = Double(step) * 4
+        _ = rcprocess(&tracker, [(id: 1, screen: CGPoint(x: -10, y: dy)),
+                                 (id: 2, screen: CGPoint(x: 10, y: dy))], at: t)
+        t += 0.01
+    }
+    let lift = rcprocess(&tracker, [], at: t)
+    expectEqual(lift == .secondaryClick, false, "a quick two-finger scroll must not right-click")
+}
+
 /// A brief, stationary two-finger touch counts as one Smart Zoom tap; two of
 /// them close together in time trigger the double-tap.
 private func testSmartZoomDoubleTap() {
@@ -1667,6 +1749,12 @@ enum TouchStateTrackerTestRunner {
         testAbsoluteTapClicksAtTapPosition()
         testAbsoluteTouchDoesNotRewarpAMotionlessFinger()
         testAbsoluteTouchIgnoresContactAfterPrimaryLifts()
+        testTwoFingerTapRightClicks()
+        testTwoFingerRightClickOffByDefault()
+        testCloseContactsDoNotRightClick()
+        testLateSecondFingerDoesNotRightClick()
+        testLongTwoFingerRestDoesNotRightClick()
+        testTwoFingerScrollDoesNotRightClick()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

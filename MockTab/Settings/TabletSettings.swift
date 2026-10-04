@@ -531,6 +531,11 @@ final class TabletSettings: ObservableObject {
     @Published var tapToClick: Bool = false {
         didSet { persist("tapToClick", tapToClick) }
     }
+    /// When true, a brief two-finger touch posts a right click. Off by
+    /// default for the same reason as `tapToClick`.
+    @Published var twoFingerRightClick: Bool = false {
+        didSet { persist("twoFingerRightClick", twoFingerRightClick) }
+    }
     /// Milliseconds a touch sequence emits nothing after landing — see
     /// `TouchStateTracker.onsetDelay`.  Default 40.  No UI: an advanced
     /// `defaults`-only knob for users who find the onset pause too long (set

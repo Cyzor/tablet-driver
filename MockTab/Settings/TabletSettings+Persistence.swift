@@ -74,6 +74,7 @@ extension TabletSettings {
         touchEnabled = loadBool("touchEnabled", default: false)
         touchSensitivity = Swift.max(0.25, Swift.min(loadDouble("touchSensitivity", default: 1.25), 4.0))
         tapToClick = loadBool("tapToClick", default: false)
+        twoFingerRightClick = loadBool("twoFingerRightClick", default: false)
         touchOnsetDelayMs = Swift.max(0.0, Swift.min(loadDouble("touchOnsetDelayMs", default: 40.0), 500.0))
         touchTapStabilizationPt = Swift.max(0.0, Swift.min(loadDouble("touchTapStabilizationPt", default: 1.5), 4.0))
         // touchAbsoluteMode is deliberately global — see its doc comment —

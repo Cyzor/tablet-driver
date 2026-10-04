@@ -731,6 +731,7 @@ struct DiscoveryTouchSettings: Codable {
     var reverseScrollDirection: Bool?
     var rotateEnabled: Bool?
     var smartZoom: Bool?
+    var twoFingerRightClick: Bool?
     /// Milliseconds a touch sequence emits nothing after landing
     /// (`TabletSettings.touchOnsetDelayMs`, default 40). User-settable via a
     /// `defaults` key with no UI, so it is invisible in a report stream: a

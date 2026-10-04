@@ -498,6 +498,7 @@ struct CaptureGuideView: View {
             reverseScrollDirection: settings.reverseScrollDirection,
             rotateEnabled: settings.rotateEnabled,
             smartZoom: settings.smartZoomEnabled,
+            twoFingerRightClick: settings.twoFingerRightClick,
             touchOnsetDelayMs: settings.touchOnsetDelayMs,
             sensitivity: settings.touchSensitivity,
             areaX: settings.touchAreaX,

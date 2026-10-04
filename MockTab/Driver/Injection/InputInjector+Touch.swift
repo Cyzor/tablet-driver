@@ -134,6 +134,7 @@ extension InputInjector {
                     sensitivity: snap.touchSensitivity,
                     pinchZoom: snap.pinchZoomEnabled,
                     smartZoom: snap.smartZoomEnabled,
+                    twoFingerRightClick: snap.twoFingerRightClick,
                     rotate: snap.rotateEnabled,
                     absoluteTouch: snap.touchAbsoluteMode || cachedTouchIsDirect,
                     onsetDelay: snap.touchOnsetDelay,
@@ -329,7 +330,7 @@ extension InputInjector {
         // size. mm is the only unit where "how far apart are the fingers,
         // physically" means the same thing regardless of axis.
         var rawTouchPositionsMM: [Int: CGPoint] = [:]
-        if snap.rotateEnabled {
+        if snap.rotateEnabled || snap.twoFingerRightClick {
             rawTouchPositionsMM.reserveCapacity(filteredContacts.count)
             let mmPerUnitX = cachedTouchWidthMM / Double(cachedTouchMaxX)
             let mmPerUnitY = cachedTouchHeightMM / Double(cachedTouchMaxY)
@@ -346,6 +347,7 @@ extension InputInjector {
             sensitivity: snap.touchSensitivity,
             pinchZoom: snap.pinchZoomEnabled,
             smartZoom: snap.smartZoomEnabled,
+            twoFingerRightClick: snap.twoFingerRightClick,
             rotate: snap.rotateEnabled,
             rawPositions: rawTouchPositionsMM,
             touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
@@ -539,6 +541,10 @@ extension InputInjector {
             touchOwnedPointerPosition = nil
             TouchPipelineProbe.note { $0.taps += 1 }
             postTouchTapClick(snapshot: snap, settings: settings)
+        case .secondaryClick:
+            touchOwnedPointerPosition = nil
+            TouchPipelineProbe.note { $0.taps += 1 }
+            postTouchSecondaryClick(snapshot: snap)
         }
     }
 
@@ -761,6 +767,12 @@ extension InputInjector {
         postMouseDown(
             button: .left, at: clickPt, pressure: 1.0, clickCount: count, snapshot: snapshot)
         postMouseUp(button: .left, at: clickPt, clickCount: count, snapshot: snapshot)
+    }
+
+    private func postTouchSecondaryClick(snapshot: InjectionSnapshot) {
+        let loc = currentCursorPosition()
+        postMouseDown(button: .right, at: loc, pressure: 1.0, clickCount: 1, snapshot: snapshot)
+        postMouseUp(button: .right, at: loc, clickCount: 1, snapshot: snapshot)
     }
 
     // MARK: - Touch scroll momentum tail

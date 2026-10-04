@@ -226,6 +226,73 @@
         }
       }
     },
+    "Briefly touch with two fingers to right-click." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurz mit zwei Fingern tippen für einen Rechtsklick."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca brevemente con dos dedos para hacer clic derecho."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2本指で軽くタップすると右クリックします。"
+          }
+        }
+      }
+    },
+    "Two fingers landing together, a fingertip's width apart, and lifting without moving post a right click. Fingers that move scroll, zoom, or rotate instead." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwei Finger, die gleichzeitig etwa eine Fingerbreite auseinander aufsetzen und ohne Bewegung abheben, lösen einen Rechtsklick aus. Bewegte Finger scrollen, zoomen oder drehen stattdessen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dos dedos que se apoyan a la vez, separados el ancho de una yema, y se levantan sin moverse hacen clic derecho. Si se mueven, desplazan, hacen zoom o giran."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2本の指を指先1本分ほど離して同時に置き、動かさずに離すと右クリックします。指を動かすとスクロール、ズーム、回転になります。"
+          }
+        }
+      }
+    },
+    "Two-Finger Right-Click" : {
+      "comment" : "Undo action name: two-finger right-click toggle in the Touch pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechtsklick mit zwei Fingern"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clic derecho con dos dedos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2本指で右クリック"
+          }
+        }
+      }
+    },
     "—" : {
       "localizations" : {
         "de" : {

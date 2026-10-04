@@ -114,6 +114,18 @@ struct TouchView: View {
             .opacity(settings.touchEnabled ? 1 : 0.5)
             .help("A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks.")
 
+            DescribedToggle(
+                "Two-Finger Right-Click",
+                isOn: settings.recordingBinding(
+                    String(localized: "Two-Finger Right-Click", comment: "Undo action name: two-finger right-click toggle in the Touch pane"),
+                    get: { settings.twoFingerRightClick },
+                    set: { settings.twoFingerRightClick = $0 }),
+                description: "Briefly touch with two fingers to right-click."
+            )
+            .disabled(!settings.touchEnabled)
+            .opacity(settings.touchEnabled ? 1 : 0.5)
+            .help("Two fingers landing together, a fingertip's width apart, and lifting without moving post a right click. Fingers that move scroll, zoom, or rotate instead.")
+
             SettingSliderRow(
                 "Cursor Speed",
                 value: settings.recordingBinding(
@@ -354,7 +366,7 @@ struct TouchView: View {
     }
 
     private typealias TouchState = (
-        enabled: Bool, tapToClick: Bool, sensitivity: Double,
+        enabled: Bool, tapToClick: Bool, twoFingerRightClick: Bool, sensitivity: Double,
         twoFingerScroll: Bool, reverseScroll: Bool, twoFingerScrollMomentum: Bool,
         pinchZoom: Bool, smartZoom: Bool, rotate: Bool,
         areaX: Double, areaY: Double, areaW: Double, areaH: Double
@@ -362,13 +374,13 @@ struct TouchView: View {
 
     private func resetToDefaults() {
         let old: TouchState = (
-            settings.touchEnabled, settings.tapToClick, settings.touchSensitivity,
+            settings.touchEnabled, settings.tapToClick, settings.twoFingerRightClick, settings.touchSensitivity,
             settings.twoFingerScroll, settings.reverseScrollDirection, settings.twoFingerScrollMomentum,
             settings.pinchZoomEnabled, settings.smartZoomEnabled, settings.rotateEnabled,
             settings.touchAreaX, settings.touchAreaY,
             settings.touchAreaWidth, settings.touchAreaHeight
         )
-        let defaults: TouchState = (false, false, 1.0, true, false, true, false, false, false, 0, 0, 1, 1)
+        let defaults: TouchState = (false, false, false, 1.0, true, false, true, false, false, false, 0, 0, 1, 1)
         applyTouchState(defaults, undoTo: old)
     }
 
@@ -376,7 +388,7 @@ struct TouchView: View {
     /// `TabletAreaView.applyAreaState` for the same pattern.
     private func applyTouchState(_ new: TouchState, undoTo old: TouchState) {
         settings.undoManager?.beginUndoGrouping()
-        (settings.touchEnabled, settings.tapToClick, settings.touchSensitivity,
+        (settings.touchEnabled, settings.tapToClick, settings.twoFingerRightClick, settings.touchSensitivity,
          settings.twoFingerScroll, settings.reverseScrollDirection, settings.twoFingerScrollMomentum,
          settings.pinchZoomEnabled, settings.smartZoomEnabled, settings.rotateEnabled,
          settings.touchAreaX, settings.touchAreaY,
