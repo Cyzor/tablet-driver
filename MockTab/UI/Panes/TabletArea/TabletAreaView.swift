@@ -267,8 +267,10 @@ struct TabletAreaView: View {
                                 startCalibration()
                             }
                             .buttonStyle(.bordered)
-                            .disabled(!activeDeviceIsConnected || settings.targetDisplayIndex == TabletSettings.displayModeAll || settings.targetDisplayIndex == TabletSettings.displayModeSpan)
-                            .help("Open the calibration overlay to tap crosshair targets on your pen display.")
+                            .disabled(!activeDeviceIsConnected || calibrationDisplayID == nil)
+                            .help(calibrationDisplayID == nil && activeDeviceIsConnected
+                                ? "Map the pen to its own display, or include that display in Toggle, to calibrate."
+                                : "Open the calibration overlay to tap crosshair targets on your pen display.")
                             if activeCalibration != nil {
                                 Button("Reset") {
                                     resetCalibration()
@@ -419,21 +421,44 @@ struct TabletAreaView: View {
         return settings.calibration(for: settings.tabletOrientation, displayUUID: uuid)
     }
 
-    /// Resolve the persistent UUID string for the current target display.
-    /// Returns "" for the "All Displays"/"Span" modes or when resolution fails.
-    private func resolveCurrentDisplayUUID() -> String {
+    /// The pen display this tablet draws on, when the mapping can reach it:
+    /// mapped to it alone or included in Toggle. All Displays and Span are
+    /// excluded because calibration applies per display.
+    private var calibrationDisplayID: CGDirectDisplayID? {
+        guard let pid = boundProductID else { return nil }
+        let mm: (Double?, Double?) =
+            if let p = VendorDeviceRegistry.profile(forProductID: pid) { (p.activeWidthMM, p.activeHeightMM) }
+            else if let s = WacomDeviceRegistry.spec(for: pid) { (s.activeWidthMM, s.activeHeightMM) }
+            else { (nil, nil) }
+        guard let w = mm.0, w > 0, let h = mm.1, h > 0,
+            let id = DisplayMapper.penDisplayID(widthMM: w, heightMM: h)
+        else { return nil }
+        switch settings.targetDisplayIndex {
+        case TabletSettings.displayModeAll, TabletSettings.displayModeSpan:
+            return nil
+        case TabletSettings.displayModeToggle:
+            let rotation = settings.toggleDisplayIDSet
+            return rotation.isEmpty || rotation.contains(id) ? id : nil
+        default:
+            return mappedDisplayID == id ? id : nil
+        }
+    }
+
+    /// The single display the mapping targets, resolved as DisplayMapper does.
+    private var mappedDisplayID: CGDirectDisplayID {
         let idx = settings.targetDisplayIndex
-        if idx == TabletSettings.displayModeAll || idx == TabletSettings.displayModeSpan { return "" }
         var count: UInt32 = 0
-        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
-            return CalibrationKey.uuidString(for: CGMainDisplayID())
+        guard idx > 0, CGGetActiveDisplayList(0, nil, &count) == .success, idx <= count else {
+            return CGMainDisplayID()
         }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        guard CGGetActiveDisplayList(count, &ids, &count) == .success else {
-            return CalibrationKey.uuidString(for: CGMainDisplayID())
-        }
-        if idx > 0, idx <= ids.count { return CalibrationKey.uuidString(for: ids[idx - 1]) }
-        return CalibrationKey.uuidString(for: CGMainDisplayID())
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return CGMainDisplayID() }
+        return ids[idx - 1]
+    }
+
+    /// Persistent UUID of the display calibration applies to, or "" when none.
+    private func resolveCurrentDisplayUUID() -> String {
+        calibrationDisplayID.map(CalibrationKey.uuidString(for:)) ?? ""
     }
 
     /// Insets `rect` (the active area, in the same [0,1] fraction space as
@@ -472,32 +497,15 @@ struct TabletAreaView: View {
 
     /// Launch the calibration overlay on the target display.
     private func startCalibration() {
-        let idx = settings.targetDisplayIndex
-        guard idx != TabletSettings.displayModeAll, idx != TabletSettings.displayModeSpan else { return }
-        var count: UInt32 = 0
-        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
-        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return }
-        let displayID: CGDirectDisplayID
-        if idx > 0, idx <= ids.count {
-            displayID = ids[idx - 1]
-        } else {
-            displayID = CGMainDisplayID()
-        }
+        guard let displayID = calibrationDisplayID else { return }
         let displayUUID = CalibrationKey.uuidString(for: displayID)
         guard !displayUUID.isEmpty else { return }
 
-        // Narrow to the configured display region so the calibration targets
-        // — and the transform fit against them — agree with where
-        // mapToScreen actually maps the pen at runtime. Without this, once a
-        // sub-region is set, calibration would present crosshairs across the
-        // whole screen and fit against the wrong bounds/aspect ratio. Applies
-        // whenever a single specific display is targeted — idx==0 ("Primary
-        // display") included, same scope as DisplayMapper.resolveDisplayBoundsAndID;
-        // only "All Displays" is excluded above and "Toggle" resolves to one
-        // specific display too, so it's covered here as well.
-        let calibrationBounds = DisplayMapper.applyDisplayRegion(
-            CGDisplayBounds(displayID), snapshot: settings.makeInjectionSnapshot())
+        // Fit against the configured screen area so calibration agrees with
+        // mapToScreen. Toggle ignores the area, as DisplayMapper does.
+        let bounds = CGDisplayBounds(displayID)
+        let calibrationBounds = settings.targetDisplayIndex == TabletSettings.displayModeToggle
+            ? bounds : DisplayMapper.applyDisplayRegion(bounds, snapshot: settings.makeInjectionSnapshot())
 
         let session = CalibrationSession(
             settings: settings,

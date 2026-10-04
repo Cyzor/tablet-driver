@@ -606,6 +606,27 @@ struct DisplayMapper {
         ids.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }
     }
 
+    /// The external display whose physical size matches a pen display's
+    /// active area, within 10% on each axis. Matching on millimeters rather
+    /// than pixels survives scaled modes and display-list reordering.
+    static func penDisplayID(widthMM: Double, heightMM: Double) -> CGDirectDisplayID? {
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return nil }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return nil }
+        func error(_ id: CGDirectDisplayID) -> Double {
+            // Either way around, so a display rotated in System Settings still matches.
+            let s = CGDisplayScreenSize(id)
+            let upright = max(abs(s.width - widthMM) / widthMM, abs(s.height - heightMM) / heightMM)
+            let rotated = max(abs(s.height - widthMM) / widthMM, abs(s.width - heightMM) / heightMM)
+            return min(upright, rotated)
+        }
+        return ids
+            .filter { CGDisplayIsBuiltin($0) == 0 && CGDisplayMirrorsDisplay($0) == kCGNullDirectDisplay }
+            .filter { error($0) < 0.1 }
+            .min { error($0) < error($1) }
+    }
+
     /// Narrows a whole-display rect to the user-configured target sub-region
     /// (fractions of the display's bounds; default 0,0,1,1 = unchanged). Only
     /// called for a single specific display — "All Displays", "Toggle", and
