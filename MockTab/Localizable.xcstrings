@@ -226,6 +226,29 @@
         }
       }
     },
+    "Show in New Window" : {
+      "comment" : "Devices pane context menu: open a settings window for this device, or another one if it has one",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In neuem Fenster zeigen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar en una ventana nueva"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新規ウインドウで表示"
+          }
+        }
+      }
+    },
     "Three fingers landing together hold the mouse button down. Move them to drag, and lift to let go." : {
       "localizations" : {
         "de" : {

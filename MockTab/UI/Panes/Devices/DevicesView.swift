@@ -318,6 +318,11 @@ struct DevicesView: View {
     @ViewBuilder
     private func tabletMenuEntries(_ tablet: DeviceRegistry.KnownTablet, isActive: Bool) -> some View {
         Button("Rename…") { beginTabletEdit(tablet) }
+        Button("Show in New Window") {
+            SettingsWindowManager.shared.openNewWindow(forInstanceKey: tablet.instanceKey)
+        }
+        // The dongle relays a tablet and has no window of its own.
+        .disabled(TabletManager.shared.isDongleRawProductID(tablet.productID))
         Divider()
         Button("Remove from List…", role: .destructive) {
             pendingRemoveTablet = tablet

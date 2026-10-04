@@ -307,6 +307,25 @@ final class SettingsWindowManager: ObservableObject {
         return wc
     }
 
+    /// "Show in New Window": opens a window for the device, or a second one
+    /// if it already has one. A folded-in companion opens its owner's.
+    @discardableResult
+    func openNewWindow(forInstanceKey key: DeviceInstanceKey) -> SettingsWindowController? {
+        if let ownerPID = DeviceCompanions.connectedCompanionOwner(
+            forProductID: key.productID,
+            connectedProductIDs: TabletManager.shared.connectedProductIDs)
+        {
+            return openNewWindow(forInstanceKey: resolveKey(forProductID: ownerPID))
+        }
+        guard window(for: key) != nil, !TabletManager.shared.isDongleRawProductID(key.productID)
+        else { return openWindow(forInstanceKey: key) }
+        let wc = makeWindow(instanceKey: key, tabIndex: 0, frame: nil)
+        NSApp.activate(ignoringOtherApps: true)
+        wc.show()
+        saveWindowState()
+        return wc
+    }
+
     func replaceWindow(_ old: SettingsWindowController, withDeviceID pid: Int) {
         // The dongle is a relay, never a window subject — see `openWindow`.
         guard !TabletManager.shared.isDongleRawProductID(pid) else { return }
