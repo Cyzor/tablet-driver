@@ -179,7 +179,7 @@ struct InfoView: View {
     /// `ButtonMappingView` use for their own companion sections.
     private var companionContext: DeviceContext? {
         guard let productID else { return nil }
-        let companionPID = VendorDeviceRegistry.connectedCompanion(
+        let companionPID = DeviceCompanions.connectedCompanion(
             forProductID: productID, connectedProductIDs: tabletManager.connectedProductIDs)
         return companionPID.flatMap { tabletManager.contexts[$0] }
     }

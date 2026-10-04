@@ -13,6 +13,8 @@ struct ButtonMappingView: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
     let instanceKey: DeviceInstanceKey?
+    /// Sections only, for an ExpressKey Remote folded into its tablet's pane.
+    var isEmbeddedRemote = false
     /// Model axis of the bound unit — spec/catalog lookups key on this.
     private var productID: Int? { instanceKey?.productID }
 
@@ -79,16 +81,16 @@ struct ButtonMappingView: View {
 
     // MARK: - Companion peripheral (e.g. Xencelabs Quick Keys puck/dongle)
 
-    /// PID of an aux-only companion peripheral for this tablet (currently
-    /// only the Xencelabs Quick Keys puck/dongle). A live connection wins
-    /// (`VendorDeviceRegistry.connectedCompanion`); failing that, a
+    /// PID of an aux-only companion peripheral for this tablet: the Quick
+    /// Keys puck/dongle or an ExpressKey Remote. A live connection wins
+    /// (`DeviceCompanions.connectedCompanion`); failing that, a
     /// companion seen earlier this session still resolves so its section
     /// stays visible — greyed via `companionIsConnected` — instead of
     /// vanishing while the accessory is detached (disable-vs-hide rule:
     /// disconnection is temporary state, not a capability change).
     private var companionProductID: Int? {
         guard let pid = productID else { return nil }
-        if let live = VendorDeviceRegistry.connectedCompanion(
+        if let live = DeviceCompanions.connectedCompanion(
             forProductID: pid, connectedProductIDs: tabletManager.connectedProductIDs)
         {
             return live
@@ -138,7 +140,16 @@ struct ButtonMappingView: View {
 
     // MARK: - Body
 
+    @ViewBuilder
     var body: some View {
+        if isEmbeddedRemote {
+            singleSidedSection(lb: liveButtons)
+        } else {
+            pane
+        }
+    }
+
+    private var pane: some View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: instanceKey, overrideKeys: AppOverrideBar.buttonKeys,
@@ -647,7 +658,13 @@ struct ButtonMappingView: View {
     /// its own pane; only the window is merged.
     @ViewBuilder
     private var quickKeysSection: some View {
-        if let companionSettings = companionContext?.settings {
+        if companionProductID == DeviceCompanions.expressKeyRemoteProductID,
+           let companion = companionContext {
+            let _ = (companion.settings.undoManager = settings.undoManager)
+            ButtonMappingView(
+                settings: companion.settings, tabletManager: tabletManager, registry: registry,
+                instanceKey: companion.instanceKey, isEmbeddedRemote: true)
+        } else if let companionSettings = companionContext?.settings {
             // The companion's settings instance never passes through this
             // window's controller, which wires only its own settings to the
             // window undo manager — the companion borrows it here or its

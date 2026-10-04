@@ -242,7 +242,7 @@ struct DeviceStatusBar: View {
     /// shared, since this view has no other companion state to coordinate.
     private var companionProductID: Int? {
         guard let key = instanceKey else { return nil }
-        return VendorDeviceRegistry.connectedCompanion(
+        return DeviceCompanions.connectedCompanion(
             forProductID: key.productID, connectedProductIDs: tabletManager.connectedProductIDs)
     }
 

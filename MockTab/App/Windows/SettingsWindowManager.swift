@@ -110,7 +110,7 @@ final class SettingsWindowManager: ObservableObject {
                 // saved state) is closed outright.
                 for wc in self.windows {
                     if let pid = wc.productID,
-                        VendorDeviceRegistry.isConnectedCompanion(
+                        DeviceCompanions.isConnectedCompanion(
                             productID: pid, connectedProductIDs: ids)
                         || TabletManager.shared.isDongleRawProductID(pid)
                     {
@@ -125,7 +125,7 @@ final class SettingsWindowManager: ObservableObject {
                    dw.instanceKey == nil,
                    let pid = ids.first(where: { id in
                        !self.windows.contains(where: { $0.productID == id })
-                           && !VendorDeviceRegistry.isConnectedCompanion(
+                           && !DeviceCompanions.isConnectedCompanion(
                                productID: id, connectedProductIDs: ids)
                            && !TabletManager.shared.isDongleRawProductID(id)
                    }) {
@@ -146,7 +146,7 @@ final class SettingsWindowManager: ObservableObject {
                 let arrived = current.subtracting(self.lastConnectedIDs)
                 self.lastConnectedIDs = current
                 for pid in arrived
-                where !VendorDeviceRegistry.isConnectedCompanion(
+                where !DeviceCompanions.isConnectedCompanion(
                     productID: pid, connectedProductIDs: ids)
                     && !TabletManager.shared.isDongleRawProductID(pid)
                 {
@@ -170,7 +170,7 @@ final class SettingsWindowManager: ObservableObject {
                 // getting one of their own — a Quick Keys puck arriving with
                 // its tablet must not open a second window. The dongle
                 // never gets one at all.
-                if VendorDeviceRegistry.isConnectedCompanion(
+                if DeviceCompanions.isConnectedCompanion(
                     productID: key.productID,
                     connectedProductIDs: TabletManager.shared.connectedProductIDs)
                     || TabletManager.shared.isDongleRawProductID(key.productID)
@@ -263,7 +263,7 @@ final class SettingsWindowManager: ObservableObject {
         // redirect to the owner instead. Covers every caller (menus, status
         // item, "Detect Tablet"), not just the auto-open sink. Ownership is
         // a model-level relation; the owner resolves to its connected unit.
-        if let ownerPID = VendorDeviceRegistry.connectedCompanionOwner(
+        if let ownerPID = DeviceCompanions.connectedCompanionOwner(
             forProductID: key.productID,
             connectedProductIDs: TabletManager.shared.connectedProductIDs)
         {
@@ -401,7 +401,7 @@ final class SettingsWindowManager: ObservableObject {
             if let key = instanceKey {
                 let normalized = DeviceRegistry.shared.normalizedKey(key)
                 if restoredKeys.contains(normalized) { continue }
-                if VendorDeviceRegistry.isConnectedCompanion(
+                if DeviceCompanions.isConnectedCompanion(
                     productID: key.productID, connectedProductIDs: savedProductIDs)
                     || TabletManager.shared.isDongleRawProductID(key.productID)
                 {
@@ -573,7 +573,7 @@ final class SettingsWindowManager: ObservableObject {
         }
             ?? tm.deviceContexts.values.first(where: {
                 $0.isConnected
-                    && !VendorDeviceRegistry.isConnectedCompanion(
+                    && !DeviceCompanions.isConnectedCompanion(
                         productID: $0.productID, connectedProductIDs: connected)
                     && !tm.isDongleRawProductID($0.productID)
             })?.instanceKey

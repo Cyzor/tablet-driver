@@ -646,7 +646,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
                 // A companion peripheral (Xencelabs Quick Keys puck/dongle)
                 // is folded into its owning tablet's window while connected —
                 // don't list it as its own selectable device.
-                if VendorDeviceRegistry.isConnectedCompanion(
+                if DeviceCompanions.isConnectedCompanion(
                     productID: tablet.productID, connectedProductIDs: tm.connectedProductIDs)
                 {
                     continue

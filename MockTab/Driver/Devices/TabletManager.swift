@@ -1936,6 +1936,43 @@ extension WacomDeviceSpec {
     }
 }
 
+/// Accessories folded into a pen tablet's window while both are connected:
+/// the vendor companions `VendorDeviceRegistry` knows (Quick Keys), plus the
+/// ExpressKey Remote, which works with any Wacom pen tablet. With several,
+/// the remote joins the lowest product ID so its home doesn't move.
+enum DeviceCompanions {
+    static let expressKeyRemoteProductID = 0x0331
+
+    static func connectedCompanion(forProductID productID: Int, connectedProductIDs: [Int]) -> Int? {
+        if let vendor = VendorDeviceRegistry.connectedCompanion(
+            forProductID: productID, connectedProductIDs: connectedProductIDs) {
+            return vendor
+        }
+        guard connectedProductIDs.contains(expressKeyRemoteProductID),
+              remoteOwner(connectedProductIDs) == productID
+        else { return nil }
+        return expressKeyRemoteProductID
+    }
+
+    static func isConnectedCompanion(productID: Int, connectedProductIDs: [Int]) -> Bool {
+        connectedCompanionOwner(forProductID: productID, connectedProductIDs: connectedProductIDs) != nil
+    }
+
+    static func connectedCompanionOwner(forProductID productID: Int, connectedProductIDs: [Int]) -> Int? {
+        if productID == expressKeyRemoteProductID {
+            return remoteOwner(connectedProductIDs)
+        }
+        return VendorDeviceRegistry.connectedCompanionOwner(
+            forProductID: productID, connectedProductIDs: connectedProductIDs)
+    }
+
+    private static func remoteOwner(_ connectedProductIDs: [Int]) -> Int? {
+        connectedProductIDs
+            .filter { (WacomDeviceRegistry.spec(for: $0)?.maxX ?? 0) > 0 }
+            .min()
+    }
+}
+
 /// The context a driver's HIDThread callbacks deliver into. Retargeted only
 /// on HIDThread, the same thread that reads it, so a report is never decoded
 /// into one context and delivered to another.
