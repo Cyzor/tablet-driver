@@ -194,6 +194,20 @@ enum DisplayRegionTestRunner {
         expectClose(p.y, 1080 - inset, 1e-9, "single display: bottom edge pins")
         let mid = DisplayMapper.pinNearEdges(CGPoint(x: 900, y: 500), in: single, members: [])
         expect(mid == CGPoint(x: 900, y: 500), "single display: interior untouched")
+
+        // A hidden Dock widens the band on its own edge only.
+        let nearBottom = CGPoint(x: 900, y: 1073)
+        expectClose(DisplayMapper.pinNearEdges(nearBottom, in: single, members: []).y,
+                    1073, 1e-9, "Dock shown: 7 pt above the bottom stays put")
+        expectClose(DisplayMapper.pinNearEdges(nearBottom, in: single, members: [], dockEdge: .bottom).y,
+                    1080 - inset, 1e-9, "Dock hidden at the bottom: 7 pt above pins")
+        expectClose(DisplayMapper.pinNearEdges(nearBottom, in: single, members: [], dockEdge: .left).y,
+                    1073, 1e-9, "Dock hidden at the left: bottom band unchanged")
+        expectClose(DisplayMapper.pinNearEdges(CGPoint(x: 6, y: 500), in: single, members: [], dockEdge: .left).x,
+                    inset, 1e-9, "Dock hidden at the left: left band widens")
+        expectClose(DisplayMapper.pinNearEdges(CGPoint(x: 2600, y: 1273), in: union, members: members,
+                                               dockEdge: .bottom).y,
+                    1280 - inset, 1e-9, "span: the wider band follows each display's own bottom")
     }
 
     /// A recorded UUID outranks list position; without one, the index decides.

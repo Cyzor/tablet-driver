@@ -79,6 +79,9 @@ struct DisplayMapper {
     /// empty for a single display. Edge pinning works per display, not on
     /// the union.
     private var cachedMemberRects: [CGRect] = []
+    /// Hidden Dock's edge, re-read every `dockEdgeRefreshInterval`.
+    private var cachedDockEdge: DockEdge?
+    private var dockEdgeCheckedAt: CFAbsoluteTime = -.infinity
     private var cachedCalibration: CalibrationEntry?
     private var cachedCalibrationOrientation: Int = -1
     private var currentToggleIndex: Int = 0
@@ -555,6 +558,25 @@ struct DisplayMapper {
     static let edgePinThreshold: CGFloat = 2.0
     /// Sub-pixel inset from the exact edge.
     static let edgePinInset: CGFloat = 0.1196
+    /// Wider band on a hidden Dock's edge, so revealing it and sweeping
+    /// along it don't depend on riding the tablet's last fraction of a
+    /// millimeter. Applies only while the Dock hides; reasoned, not measured.
+    static let dockEdgePinThreshold: CGFloat = 10.0
+    static let dockEdgeRefreshInterval: CFAbsoluteTime = 2.0
+
+    enum DockEdge { case bottom, left, right }
+
+    /// The Dock's edge when it hides automatically, nil when it stays shown.
+    static func hiddenDockEdge() -> DockEdge? {
+        let domain = "com.apple.dock" as CFString
+        CFPreferencesAppSynchronize(domain)
+        guard CFPreferencesGetAppBooleanValue("autohide" as CFString, domain, nil) else { return nil }
+        switch CFPreferencesCopyAppValue("orientation" as CFString, domain) as? String {
+        case "left": return .left
+        case "right": return .right
+        default: return .bottom
+        }
+    }
 
     /// Pins `p` against the edges of the display it lands on. Across several
     /// displays that's the display under the point (or the closest one, when
@@ -562,11 +584,22 @@ struct DisplayMapper {
     /// member display beyond them pin, so crossing between displays stays free.
     mutating func pinNearEdges(_ p: CGPoint, snapshot: InjectionSnapshot) -> CGPoint {
         let bounds = displayBounds(for: snapshot)
-        return Self.pinNearEdges(p, in: bounds, members: cachedMemberRects)
+        return Self.pinNearEdges(p, in: bounds, members: cachedMemberRects, dockEdge: refreshDockEdge())
     }
 
-    static func pinNearEdges(_ p: CGPoint, in bounds: CGRect, members: [CGRect]) -> CGPoint {
-        guard members.count > 1 else { return pin(p, in: bounds) { _ in true } }
+    private mutating func refreshDockEdge() -> DockEdge? {
+        let now = CFAbsoluteTimeGetCurrent()
+        if now - dockEdgeCheckedAt >= Self.dockEdgeRefreshInterval {
+            cachedDockEdge = Self.hiddenDockEdge()
+            dockEdgeCheckedAt = now
+        }
+        return cachedDockEdge
+    }
+
+    static func pinNearEdges(
+        _ p: CGPoint, in bounds: CGRect, members: [CGRect], dockEdge: DockEdge? = nil
+    ) -> CGPoint {
+        guard members.count > 1 else { return pin(p, in: bounds, dockEdge: dockEdge) { _ in true } }
         func distance(_ r: CGRect) -> CGFloat {
             hypot(Swift.max(r.minX - p.x, 0, p.x - r.maxX), Swift.max(r.minY - p.y, 0, p.y - r.maxY))
         }
@@ -580,21 +613,24 @@ struct DisplayMapper {
         let clamped = CGPoint(
             x: Swift.min(Swift.max(p.x, screen.minX), screen.maxX),
             y: Swift.min(Swift.max(p.y, screen.minY), screen.maxY))
-        return pin(clamped, in: screen) { beyond in !members.contains { $0.contains(beyond) } }
+        return pin(clamped, in: screen, dockEdge: dockEdge) { beyond in !members.contains { $0.contains(beyond) } }
     }
 
     /// `isOuter` gets a point just past the candidate edge and says whether
     /// that edge may pin.
-    private static func pin(_ p: CGPoint, in r: CGRect, isOuter: (CGPoint) -> Bool) -> CGPoint {
+    private static func pin(
+        _ p: CGPoint, in r: CGRect, dockEdge: DockEdge?, isOuter: (CGPoint) -> Bool
+    ) -> CGPoint {
+        func band(_ edge: DockEdge) -> CGFloat { dockEdge == edge ? dockEdgePinThreshold : edgePinThreshold }
         var q = p
-        if p.x - r.minX < edgePinThreshold, isOuter(CGPoint(x: r.minX - 1, y: p.y)) {
+        if p.x - r.minX < band(.left), isOuter(CGPoint(x: r.minX - 1, y: p.y)) {
             q.x = r.minX + edgePinInset
-        } else if r.maxX - p.x < edgePinThreshold, isOuter(CGPoint(x: r.maxX + 1, y: p.y)) {
+        } else if r.maxX - p.x < band(.right), isOuter(CGPoint(x: r.maxX + 1, y: p.y)) {
             q.x = r.maxX - edgePinInset
         }
         if p.y - r.minY < edgePinThreshold, isOuter(CGPoint(x: p.x, y: r.minY - 1)) {
             q.y = r.minY + edgePinInset
-        } else if r.maxY - p.y < edgePinThreshold, isOuter(CGPoint(x: p.x, y: r.maxY + 1)) {
+        } else if r.maxY - p.y < band(.bottom), isOuter(CGPoint(x: p.x, y: r.maxY + 1)) {
             q.y = r.maxY - edgePinInset
         }
         return q
