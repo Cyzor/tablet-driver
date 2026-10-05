@@ -182,13 +182,6 @@ struct TouchView: View {
             .opacity(settings.touchEnabled ? 1 : 0.5)
             .help("Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch — works anywhere a trackpad pinch would, including Safari, Preview, and Photoshop. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own.")
 
-            // Smart Zoom's toggle is deliberately not shown: hardware testing
-            // 2026-08-08 found the double-tap detection unreliable (~70% of
-            // taps produced no or an unpredictable response). Detection and
-            // event-posting stay in place — `settings.smartZoomEnabled`
-            // simply has no UI path to becoming true — so the work isn't
-            // lost, but nothing exposes it until that reliability improves.
-
             DescribedToggle(
                 "Rotate",
                 isOn: settings.recordingBinding(
@@ -380,7 +373,7 @@ struct TouchView: View {
     private typealias TouchState = (
         enabled: Bool, tapToClick: Bool, twoFingerRightClick: Bool, threeFingerDrag: Bool, sensitivity: Double,
         twoFingerScroll: Bool, reverseScroll: Bool, twoFingerScrollMomentum: Bool,
-        pinchZoom: Bool, smartZoom: Bool, rotate: Bool,
+        pinchZoom: Bool, rotate: Bool,
         areaX: Double, areaY: Double, areaW: Double, areaH: Double
     )
 
@@ -388,11 +381,11 @@ struct TouchView: View {
         let old: TouchState = (
             settings.touchEnabled, settings.tapToClick, settings.twoFingerRightClick, settings.threeFingerDrag, settings.touchSensitivity,
             settings.twoFingerScroll, settings.reverseScrollDirection, settings.twoFingerScrollMomentum,
-            settings.pinchZoomEnabled, settings.smartZoomEnabled, settings.rotateEnabled,
+            settings.pinchZoomEnabled, settings.rotateEnabled,
             settings.touchAreaX, settings.touchAreaY,
             settings.touchAreaWidth, settings.touchAreaHeight
         )
-        let defaults: TouchState = (false, false, false, false, 1.0, true, false, true, false, false, false, 0, 0, 1, 1)
+        let defaults: TouchState = (false, false, false, false, 1.0, true, false, true, false, false, 0, 0, 1, 1)
         applyTouchState(defaults, undoTo: old)
     }
 
@@ -402,7 +395,7 @@ struct TouchView: View {
         settings.undoManager?.beginUndoGrouping()
         (settings.touchEnabled, settings.tapToClick, settings.twoFingerRightClick, settings.threeFingerDrag, settings.touchSensitivity,
          settings.twoFingerScroll, settings.reverseScrollDirection, settings.twoFingerScrollMomentum,
-         settings.pinchZoomEnabled, settings.smartZoomEnabled, settings.rotateEnabled,
+         settings.pinchZoomEnabled, settings.rotateEnabled,
          settings.touchAreaX, settings.touchAreaY,
          settings.touchAreaWidth, settings.touchAreaHeight) = new
         settings.record(String(localized: "Reset Pane to Defaults")) {

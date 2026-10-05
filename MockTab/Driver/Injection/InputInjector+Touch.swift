@@ -137,7 +137,6 @@ extension InputInjector {
                     reverseScrollDirection: snap.reverseScrollDirection,
                     sensitivity: snap.touchSensitivity,
                     pinchZoom: snap.pinchZoomEnabled,
-                    smartZoom: snap.smartZoomEnabled,
                     twoFingerRightClick: false,
                     threeFingerDrag: false,
                     rotate: snap.rotateEnabled,
@@ -363,7 +362,6 @@ extension InputInjector {
             reverseScrollDirection: snap.reverseScrollDirection,
             sensitivity: snap.touchSensitivity,
             pinchZoom: snap.pinchZoomEnabled,
-            smartZoom: snap.smartZoomEnabled,
             twoFingerRightClick: snap.twoFingerRightClick,
             threeFingerDrag: snap.threeFingerDrag && !touchSequenceTainted,
             rotate: snap.rotateEnabled,
@@ -586,9 +584,6 @@ extension InputInjector {
                 }
                 postTouchRotate(rotation: rotateGesture.value, phase: rotateGesture.phase)
             }
-        case .smartZoom:
-            TouchPipelineProbe.note { $0.zooms += 1 }
-            postTouchSmartZoom()
         case .tapClick:
             touchOwnedPointerPosition = nil
             TouchPipelineProbe.note { $0.taps += 1 }
@@ -759,19 +754,6 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Smart Zoom: two-finger double-tap, posted as a single one-shot event —
-    /// no phase envelope, unlike `postTouchMagnify`. Same technique and
-    /// provenance (see that function's doc comment); subtype sourced from
-    /// Mac Mouse Fix's `postSmartZoomEvent` (`TouchSimulator.m`), which sets
-    /// no fields beyond type and subtype.
-    private func postTouchSmartZoom() {
-        guard let e = CGEvent(source: nil) else { return }
-        e.type = Self.nsEventTypeGesture
-        e.location = currentCursorPosition()
-        e.setIntegerValueField(Self.fieldIOHIDEventSubtype, value: Self.iohidEventTypeZoomToggle)
-        finalizeAndPost(e)
-    }
-
     /// Rotate: a synthesized rotation gesture, phase-bracketed like
     /// `postTouchMagnify`. Same technique and provenance (see that
     /// function's doc comment); subtype and rotation field sourced from Mac
@@ -825,7 +807,6 @@ extension InputInjector {
     private static let iohidEventTypeRotation: Int64 = 5
     private static let iohidEventTypeScroll: Int64 = 6
     private static let iohidEventTypeZoom: Int64 = 8
-    private static let iohidEventTypeZoomToggle: Int64 = 22
 
     private func postTouchTapClick(snapshot: InjectionSnapshot, settings: TabletSettings?) {
         let loc = currentCursorPosition()

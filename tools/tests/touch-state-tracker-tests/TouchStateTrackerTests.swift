@@ -45,7 +45,6 @@ private func process(
         reverseScrollDirection: false,
         sensitivity: 1,
         pinchZoom: true,
-        smartZoom: true,
         now: time
     )
 }
@@ -63,7 +62,6 @@ private func processAbsolute(
         reverseScrollDirection: false,
         sensitivity: 1,
         pinchZoom: true,
-        smartZoom: true,
         absoluteTouch: true,
         now: time
     )
@@ -353,7 +351,7 @@ private func testPalmFilteringIsFamilySpecific() {
                 "un-calibrated tablet families must keep their contacts unchanged")
 }
 
-/// Two-finger right-click on, Smart Zoom off. Contacts sit `spacingMM`
+/// Two-finger right-click on. Contacts sit `spacingMM`
 /// apart in raw millimeters.
 private func rcprocess(
     _ tracker: inout TouchStateTracker,
@@ -526,43 +524,6 @@ private func testAbsoluteDragPressesUnderFinger() {
                 "and the drag follows it")
 }
 
-/// A brief, stationary two-finger touch counts as one Smart Zoom tap; two of
-/// them close together in time trigger the double-tap.
-private func testSmartZoomDoubleTap() {
-    var tracker = TouchStateTracker()
-    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
-    _ = process(&tracker, contacts(distance: 20), at: 0.02)
-    expectEqual(process(&tracker, [], at: 0.10), .none,
-                "a lone two-finger tap must not fire Smart Zoom by itself")
-    _ = process(&tracker, [(id: 3, screen: .zero)], at: 0.20)
-    _ = process(&tracker, contacts(distance: 20), at: 0.22)
-    expectEqual(process(&tracker, [], at: 0.28), .smartZoom,
-                "a second two-finger tap within the gap must fire Smart Zoom")
-}
-
-private func testSmartZoomRequiresGap() {
-    var tracker = TouchStateTracker()
-    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
-    _ = process(&tracker, contacts(distance: 20), at: 0.02)
-    _ = process(&tracker, [], at: 0.10)
-    _ = process(&tracker, [(id: 3, screen: .zero)], at: 1.0)
-    _ = process(&tracker, contacts(distance: 20), at: 1.02)
-    expectEqual(process(&tracker, [], at: 1.08), .none,
-                "a second tap outside the gap must not fire Smart Zoom")
-}
-
-private func testSmartZoomRequiresBriefHold() {
-    var tracker = TouchStateTracker()
-    _ = process(&tracker, [(id: 1, screen: .zero)], at: 0)
-    _ = process(&tracker, contacts(distance: 20), at: 0.02)
-    expectEqual(process(&tracker, [], at: 1.0), .none,
-                "a held two-finger contact must not count as a Smart Zoom tap")
-    _ = process(&tracker, [(id: 3, screen: .zero)], at: 1.10)
-    _ = process(&tracker, contacts(distance: 20), at: 1.12)
-    expectEqual(process(&tracker, [], at: 1.18), .none,
-                "a held contact followed by a real tap must not retroactively pair into Smart Zoom")
-}
-
 /// Wide-apart two fingers swiveling about their centroid, with raw
 /// separation clearing the eligibility gate, must resolve `.rotate` — the
 /// full envelope: a dwell-gated silent commit, a nonzero `.changed` with the
@@ -720,7 +681,7 @@ private func testRotateAnchoredArcResolvesPan() {
         "an anchored-finger arc must resolve pan — translation and rotation are too close to call")
 }
 
-/// A plain pan (no pinch/rotate/smartZoom, so `twoFingerKind` commits to
+/// A plain pan (no pinch/rotate, so `twoFingerKind` commits to
 /// `.pan` immediately) that drops to one contact keeps scrolling only until
 /// `scrollSingleContactGrace` elapses, then emits a single `.ended` and goes
 /// quiet — a lingering single finger, or a later unrelated one-finger touch,
@@ -1811,9 +1772,6 @@ enum TouchStateTrackerTestRunner {
         testRotateCommitsWithTwoFingerScrollDisabled()
         testPalmRejectionOnCalibratedFamily()
         testPalmFilteringIsFamilySpecific()
-        testSmartZoomDoubleTap()
-        testSmartZoomRequiresGap()
-        testSmartZoomRequiresBriefHold()
         testRotateWideSwivelResolvesRotate()
         testRotateCloseTogetherSweepResolvesPan()
         testRotateAnchoredArcResolvesPan()

@@ -163,9 +163,6 @@ struct TouchStateTracker {
         /// (CG `kCGScrollWheelEventScrollPhase` values: 1=Began, 2=Changed,
         /// 4=Ended).  Sign convention follows the natural-scrolling setting.
         case scrollDelta(dx: Double, dy: Double, phase: ScrollPhase)
-        /// Smart Zoom: two-finger double-tap, posted as a single one-shot
-        /// zoom-to-fit event — no phase envelope, unlike `twoFingerGesture`.
-        case smartZoom
         /// Pinch-zoom and/or two-finger rotate, independently — a real
         /// trackpad can magnify and rotate at once (see `TwoFingerKind`'s
         /// doc comment), so this carries one optional, independently
@@ -440,13 +437,6 @@ struct TouchStateTracker {
     private(set) var releaseFrameGap: CFAbsoluteTime = -1
     private(set) var releaseMotionGap: CFAbsoluteTime = -1
 
-    /// End time of the most recent qualifying two-finger tap, for Smart Zoom
-    /// double-tap detection. Deliberately *not* cleared by `reset()` — every
-    /// lift calls `reset()`, including the lift between the two taps of a
-    /// double-tap, so this must survive it or the second tap could never see
-    /// the first.
-    private var lastTwoFingerTapEndTime: CFAbsoluteTime?
-
     /// Both fingers of the current two-finger sequence landed inside the
     /// onset window, and far enough apart to be fingertips, not a palm's
     /// patchy outline. Gates `.secondaryClick`.
@@ -648,17 +638,13 @@ struct TouchStateTracker {
     /// stall. See `releaseKinematics`.
     static let deliveryGapBrakeSlack: CFAbsoluteTime = 0.030
     /// Maximum hold duration for a two-finger contact to still count as a
-    /// Smart Zoom tap rather than a rest. Deliberately does *not* need a
+    /// tap rather than a rest. Deliberately does *not* need a
     /// separate max-deviation check: a still-`.undecided` teardown already
     /// guarantees both total centroid translation and total inter-finger
     /// distance change stayed under `twoFingerDecideDistance` — that's the
     /// same guard that keeps `.undecided` from ever committing to pan or
     /// pinch in the first place. See the `.undecided` branch in `process`.
     static let twoFingerTapMaxDuration: CFAbsoluteTime = 0.30
-    /// Maximum gap between the first tap's lift and the second tap's touch-
-    /// down to count as a double-tap. Not derived from any real trackpad
-    /// measurement — a tunable to revisit after hardware testing.
-    static let twoFingerTapMaxGap: CFAbsoluteTime = 0.35
     /// Minimum center-to-center spacing (millimeters) for a two-finger tap
     /// to right-click. Two fingertips side by side sit about 15 mm apart;
     /// a palm's stray contacts can land a fraction of a millimeter apart.
@@ -769,7 +755,6 @@ struct TouchStateTracker {
     /// `reverseScrollDirection` flips the sign of the scroll delta.
     /// `sensitivity` multiplies pointer-mode movement (1.0 = identity).
     /// `pinchZoom` enables sticky pinch → synthesized magnify-gesture zoom (vs pan scroll).
-    /// `smartZoom` enables two-finger double-tap → one-shot Smart Zoom.
     /// `rotate` enables sticky rotate (vs pan/pinch), gated additionally by
     /// `rotateEligible` (see that field). `rawPositions` are unprojected
     /// contact positions keyed by contact id, in physical millimeters (not
@@ -791,7 +776,6 @@ struct TouchStateTracker {
         reverseScrollDirection: Bool,
         sensitivity: Double,
         pinchZoom: Bool = false,
-        smartZoom: Bool = false,
         twoFingerRightClick: Bool = false,
         threeFingerDrag: Bool = false,
         rotate: Bool = false,
@@ -885,15 +869,12 @@ struct TouchStateTracker {
             // half of "was this a tap" is implicit: still being `.undecided`
             // at teardown already proves motion stayed under
             // `twoFingerDecideDistance` (see the tunable's doc comment).
-            let twoFingerTap = smartZoom && priorMode == .scroll && priorKind == .undecided
-                && now - tapStart <= Self.twoFingerTapMaxDuration
             let secondaryTap = twoFingerRightClick && twoFingerTapEligible
                 && maxContactsThisSequence == 2
                 && priorMode == .scroll && priorKind == .undecided
                 && now - tapStart <= Self.twoFingerTapMaxDuration
             threeFingerTapMiss = threeFingerDrag && maxContactsThisSequence >= 3
                 && priorMode != .drag ? (threeFingerMissReason ?? "other") : nil
-            let thisTapStart = tapStart
             if scrollDroppedToOneContactAt != 0 {
                 // The gesture already dropped to one contact and everything was
                 // snapshotted then, while samples were fresh. Recomputing here
@@ -932,13 +913,6 @@ struct TouchStateTracker {
                 return .scrollDelta(dx: 0, dy: 0, phase: .ended)
             case .scroll where secondaryTap:
                 return .secondaryClick
-            case .scroll where twoFingerTap:
-                if let last = lastTwoFingerTapEndTime, thisTapStart - last <= Self.twoFingerTapMaxGap {
-                    lastTwoFingerTapEndTime = nil
-                    return .smartZoom
-                }
-                lastTwoFingerTapEndTime = now
-                return .none
             case .pointer where tap, .pending where tap:
                 return .tapClick
             default:
@@ -1007,7 +981,7 @@ struct TouchStateTracker {
         // specifically. Any one of the three being enabled is enough to
         // start tracking; which one(s) can actually win is decided per-frame
         // below via each flag independently.
-        let anyTwoFingerGesture = twoFingerScroll || pinchZoom || rotate || smartZoom
+        let anyTwoFingerGesture = twoFingerScroll || pinchZoom || rotate
             || twoFingerRightClick || threeFingerDrag
         if mode == .pending || mode == .pointer, contacts.count >= 2 {
             if anyTwoFingerGesture {
@@ -1020,7 +994,7 @@ struct TouchStateTracker {
                     pair.map { ($0.id, $0.screen) },
                     uniquingKeysWith: { first, _ in first })
                 tapAnchor = nil  // tap is off the table once we go to two fingers
-                twoFingerKind = (pinchZoom || rotate || smartZoom || twoFingerRightClick
+                twoFingerKind = (pinchZoom || rotate || twoFingerRightClick
                     || threeFingerDrag) ? .undecided : .pan
                 twoFingerTapEligible = false
                 if twoFingerRightClick, landedTogether,
@@ -1055,8 +1029,8 @@ struct TouchStateTracker {
                 if twoFingerKind == .undecided {
                     return .none
                 }
-                // Only reachable with twoFingerScroll on and pinchZoom/rotate/
-                // smartZoom all off — the one case where pan is decided
+                // Only reachable with twoFingerScroll on and every other
+                // two-finger action off — the one case where pan is decided
                 // immediately rather than discriminated.
                 lastScrollPhase = .began
                 return .scrollDelta(dx: 0, dy: 0, phase: .began)

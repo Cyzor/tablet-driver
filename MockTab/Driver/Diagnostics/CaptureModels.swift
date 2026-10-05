@@ -735,7 +735,6 @@ struct DiscoveryTouchSettings: Codable {
     var twoFingerScrollMomentum: Bool?
     var reverseScrollDirection: Bool?
     var rotateEnabled: Bool?
-    var smartZoom: Bool?
     var twoFingerRightClick: Bool?
     var threeFingerDrag: Bool?
     /// Milliseconds a touch sequence emits nothing after landing

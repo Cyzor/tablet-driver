@@ -620,19 +620,10 @@ final class TabletSettings: ObservableObject {
     @Published var pinchZoomEnabled: Bool = false {
         didSet { persist("pinchZoomEnabled", pinchZoomEnabled) }
     }
-    /// When true (and two-finger scroll is on), a two-finger double-tap posts
-    /// a one-shot Smart Zoom (zoom-to-fit) event — the same undocumented-
-    /// but-public gesture technique as `pinchZoomEnabled`, no phase envelope.
-    /// Off by default. Requires `twoFingerScroll`, same as pinch-zoom, since
-    /// both need `.scroll` mode to exist at all.
-    @Published var smartZoomEnabled: Bool = false {
-        didSet { persist("smartZoomEnabled", smartZoomEnabled) }
-    }
     /// When true (and two-finger scroll is on), two fingers swiveling about
     /// their centroid, wide enough apart to clear
     /// `TouchStateTracker.rotateMinSeparationFraction`, post a synthesized
-    /// rotate gesture — same technique as `pinchZoomEnabled`/
-    /// `smartZoomEnabled`. Two close-together fingers keep panning
+    /// rotate gesture — same technique as `pinchZoomEnabled`. Two close-together fingers keep panning
     /// regardless; on any ambiguity, pan wins over rotate by design. Off by
     /// default. Requires `twoFingerScroll`.
     @Published var rotateEnabled: Bool = false {
