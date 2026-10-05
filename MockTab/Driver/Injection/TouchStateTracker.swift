@@ -654,6 +654,10 @@ struct TouchStateTracker {
     /// same guard that keeps `.undecided` from ever committing to pan or
     /// pinch in the first place. See the `.undecided` branch in `process`.
     static let twoFingerTapMaxDuration: CFAbsoluteTime = 0.30
+    /// How far apart two fingers may land and still right-click. Separate
+    /// from the onset delay, which users shorten: Bluetooth delivers touch
+    /// every 20–50 ms, so fingers landing together still arrive a frame apart.
+    static let twoFingerLandWindow: CFAbsoluteTime = 0.06
     /// Minimum center-to-center spacing (millimeters) for a two-finger tap
     /// to right-click. Two fingertips side by side sit about 15 mm apart;
     /// a palm's stray contacts can land a fraction of a millimeter apart.
@@ -999,7 +1003,10 @@ struct TouchStateTracker {
             if anyTwoFingerGesture {
                 // Pending can outlast the onset window while a finger rests
                 // still, so time it directly.
-                let landedTogether = mode == .pending && now - tapStart <= onsetDelay
+                let firstFingerStill = mode == .pending
+                    || (mode == .pointer && tapMaxDelta < Self.tapMaxDistance)
+                let landedTogether = firstFingerStill
+                    && now - tapStart <= Swift.max(onsetDelay, Self.twoFingerLandWindow)
                 mode = .scroll
                 let pair = Array(contacts.prefix(2))
                 lastPositions = Dictionary(

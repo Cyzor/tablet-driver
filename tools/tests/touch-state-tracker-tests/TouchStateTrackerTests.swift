@@ -366,6 +366,7 @@ private func rcprocess(
     _ tracker: inout TouchStateTracker,
     _ contacts: [(id: Int, screen: CGPoint)],
     spacingMM: Double = 18,
+    onsetDelay: CFAbsoluteTime = TouchStateTracker.onsetDelay,
     at time: CFAbsoluteTime
 ) -> TouchStateTracker.Intent {
     var raw: [Int: CGPoint] = [:]
@@ -378,8 +379,27 @@ private func rcprocess(
         sensitivity: 1,
         twoFingerRightClick: true,
         rawPositions: raw,
+        onsetDelay: onsetDelay,
         now: time
     )
+}
+
+private func testBluetoothCadenceRightClicksWithShortOnset() {
+    var tracker = TouchStateTracker()
+    _ = rcprocess(&tracker, [(id: 1, screen: .zero)], onsetDelay: 0.01, at: 0)
+    _ = rcprocess(&tracker, contacts(distance: 20), onsetDelay: 0.01, at: 0.035)
+    expectEqual(rcprocess(&tracker, [], onsetDelay: 0.01, at: 0.15), .secondaryClick,
+                "fingers a Bluetooth frame apart must right-click under a short onset delay")
+}
+
+private func testMovedFirstFingerDoesNotRightClick() {
+    var tracker = TouchStateTracker()
+    _ = rcprocess(&tracker, [(id: 1, screen: .zero)], onsetDelay: 0.01, at: 0)
+    _ = rcprocess(&tracker, [(id: 1, screen: CGPoint(x: 40, y: 0))], onsetDelay: 0.01, at: 0.02)
+    _ = rcprocess(&tracker, [(id: 1, screen: CGPoint(x: 40, y: 0)), (id: 2, screen: CGPoint(x: 60, y: 0))],
+                  onsetDelay: 0.01, at: 0.04)
+    expectEqual(rcprocess(&tracker, [], onsetDelay: 0.01, at: 0.15), .none,
+                "a second finger joining a moving pointer must not right-click")
 }
 
 private func testTwoFingerTapRightClicks() {
@@ -1820,6 +1840,8 @@ enum TouchStateTrackerTestRunner {
         testAbsoluteTouchIgnoresContactAfterPrimaryLifts()
         testTwoFingerTapRightClicks()
         testTwoFingerRightClickOffByDefault()
+        testBluetoothCadenceRightClicksWithShortOnset()
+        testMovedFirstFingerDoesNotRightClick()
         testCloseContactsDoNotRightClick()
         testLateSecondFingerDoesNotRightClick()
         testLongTwoFingerRestDoesNotRightClick()
