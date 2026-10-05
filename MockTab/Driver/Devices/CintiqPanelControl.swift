@@ -8,8 +8,10 @@ import Foundation
 /// DDC/CI on its video cable (MCCS VCP 0x10/0x12, which public ddcutil logs
 /// show the Cintiq 27QHD accepting).
 ///
-/// Nothing is persisted: the panel keeps its own values, so the controls
-/// start from a live read and only a read that answers enables them. Never
+/// The panel keeps its own values, so the controls start from a live read.
+/// A panel that takes writes but won't answer reads (MonitorControl drives
+/// such a 27QHD) gets write-only controls on 0–100, starting from the last
+/// value set here; HDMI is left out, since Macs rarely carry DDC on it. Never
 /// used for Xencelabs panels, whose vendor-HID brightness is the same
 /// register — two writers would race.
 @MainActor
@@ -34,6 +36,8 @@ final class CintiqPanelControl: ObservableObject {
     @Published private(set) var state: State = .probing
     @Published private(set) var brightness: Value?
     @Published private(set) var contrast: Value?
+    /// True when the panel didn't answer and the sliders only send.
+    @Published private(set) var writeOnly = false
 
     private let modelName: String
     /// DDC transactions sleep tens of milliseconds each; keep them serial
@@ -67,15 +71,26 @@ final class CintiqPanelControl: ObservableObject {
         let model = modelName
         let (bCode, cCode) = (Self.brightnessCode, Self.contrastCode)
         queue.async { [weak self] in
-            let link = DDCLink.wacomPanel(modelName: model)
+            let display = DDCLink.wacomPanelDisplay(modelName: model)
+            let link = display.flatMap { DDCLink(displayLocation: $0.location) }
             let b = link?.readVCP(bCode)
             let c = link?.readVCP(cCode)
+            let hdmi = display.flatMap {
+                HardwareSurveyProbe.coreDisplayInfo($0.id)?["IODisplayIsHDMISink"] as? Bool
+            } ?? false
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.link = link
-                self.brightness = b.map { Value(current: $0.current, max: $0.max) }
-                self.contrast = c.map { Value(current: $0.current, max: $0.max) }
-                self.state = link == nil ? .noDisplay : (b == nil && c == nil ? .noReply : .ready)
+                self.writeOnly = link != nil && b == nil && c == nil && !hdmi
+                if self.writeOnly {
+                    self.brightness = Value(current: self.remembered(bCode), max: 100)
+                    self.contrast = Value(current: self.remembered(cCode), max: 100)
+                } else {
+                    self.brightness = b.map { Value(current: $0.current, max: $0.max) }
+                    self.contrast = c.map { Value(current: $0.current, max: $0.max) }
+                }
+                self.state = link == nil ? .noDisplay
+                    : (self.brightness == nil && self.contrast == nil ? .noReply : .ready)
             }
         }
     }
@@ -92,7 +107,16 @@ final class CintiqPanelControl: ObservableObject {
         enqueue(Self.contrastCode, value)
     }
 
+    private func defaultsKey(_ code: UInt8) -> String {
+        String(format: "CintiqPanel.%@.0x%02X", modelName, code)
+    }
+
+    private func remembered(_ code: UInt8) -> Int {
+        UserDefaults.standard.object(forKey: defaultsKey(code)) as? Int ?? 50
+    }
+
     private func enqueue(_ code: UInt8, _ value: Int) {
+        if writeOnly { UserDefaults.standard.set(value, forKey: defaultsKey(code)) }
         pending[code] = value
         guard !writing, let link else { return }
         writing = true

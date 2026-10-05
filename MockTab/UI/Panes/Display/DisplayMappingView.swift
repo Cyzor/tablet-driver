@@ -1048,6 +1048,8 @@ private struct CintiqPanelSection: View {
             String(localized: "Available when the display is connected to this Mac's video output.")
         case .noReply:
             String(localized: "Not available for this display.")
+        case .ready where panel.writeOnly:
+            String(localized: "Experimental. This display doesn't report its settings, so the sliders start where you last set them.")
         case .ready:
             String(localized: "Experimental. Changes the panel's own settings over its video cable.")
         }
