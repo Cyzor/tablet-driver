@@ -1524,6 +1524,9 @@ final class InputInjector: @unchecked Sendable {
     /// `displayToggleForwarder` above; called on HIDThread.
     var relativeModeToggleForwarder: (() -> Void)?
 
+    /// `.spanDisplaysToggle` counterpart of `displayToggleForwarder`.
+    var spanDisplaysForwarder: (() -> Void)?
+
     /// Advances the toggle rotation to the next display in the sequence.
     /// Called from fireButtonAction (HIDThread) when a `.displayToggle` binding fires.
     func cycleToggleDisplay(snapshot: InjectionSnapshot) {

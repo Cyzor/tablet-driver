@@ -32,6 +32,7 @@ let sampleBindings: [ButtonBinding] = [
     ButtonBinding(kind: .ringSelectSlot, keyCode: 2),
     .scrollDrag,
     ButtonBinding(kind: .relativeModeToggle),
+    ButtonBinding(kind: .spanDisplaysToggle),
     ButtonBinding(kind: .keyCombo, keyCode: 6, modifierFlags: CGEventFlags.maskCommand.rawValue, keyLabel: "Z"),
 ]
 

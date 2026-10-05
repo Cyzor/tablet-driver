@@ -226,6 +226,29 @@
         }
       }
     },
+    "Press %@ to restore the previous setting" : {
+      "comment" : "Label naming the buttons that end a temporary span; %@ is an or-list of button names",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ drücken, um die vorherige Einstellung wiederherzustellen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsa %@ para volver al ajuste anterior"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ を押すと前の設定に戻ります"
+          }
+        }
+      }
+    },
     "Show in New Window" : {
       "comment" : "Devices pane context menu: open a settings window for this device, or another one if it has one",
       "localizations" : {
@@ -245,6 +268,74 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "新規ウインドウで表示"
+          }
+        }
+      }
+    },
+    "Span Displays" : {
+      "comment" : "Button action: span the selected displays, press again to restore the previous display mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Displays verteilen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distribuir en pantallas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイに広げる"
+          }
+        }
+      }
+    },
+    "Spanned until the button is pressed again" : {
+      "comment" : "Label while a temporary span is active and its button can't be named",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verteilt, bis die Taste erneut gedrückt wird"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distribuido hasta que se vuelva a pulsar el botón"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ボタンをもう一度押すまで広がったままです"
+          }
+        }
+      }
+    },
+    "Spread the tablet across the displays selected in the Display pane. Press again to return to the previous display setting." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verteilt das Grafiktablett auf die im Bereich „Display“ ausgewählten Displays. Erneut drücken, um zur vorherigen Einstellung zurückzukehren."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distribuye la tableta en las pantallas seleccionadas en el panel Pantalla. Pulsa de nuevo para volver al ajuste anterior."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「ディスプレイ」パネルで選択したディスプレイにタブレットを広げます。もう一度押すと前の設定に戻ります。"
           }
         }
       }

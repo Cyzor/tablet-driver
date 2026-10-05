@@ -1524,6 +1524,9 @@ final class TabletManager: ObservableObject {
                 context.injector.relativeModeToggleForwarder = { [weak self] in
                     Task { @MainActor in self?.toggleRelativeModeOnPenTablet(vendorID: accessoryVendor) }
                 }
+                context.injector.spanDisplaysForwarder = { [weak self] in
+                    Task { @MainActor in self?.toggleSpanOnPenTablet(vendorID: accessoryVendor) }
+                }
             }
             context.settings.applyExpressKeyDefaults(vendorID: context.vendorID)
             refreshConnectedIDs(mostRecent: productID)
@@ -1690,6 +1693,12 @@ final class TabletManager: ObservableObject {
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
         target.settings.targetDisplayIndex = TabletSettings.displayModeToggle
+    }
+
+    /// `.spanDisplaysToggle` from an aux-only accessory. Target as in
+    /// `penTablet(forAccessoryVendor:)`.
+    private func toggleSpanOnPenTablet(vendorID: Int) {
+        penTablet(forAccessoryVendor: vendorID)?.settings.toggleTemporarySpan()
     }
 
     /// `.relativeModeToggle` from an aux-only accessory (Quick Keys,

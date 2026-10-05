@@ -234,7 +234,31 @@ final class TabletSettings: ObservableObject {
     /// -1 = all displays (span union rect), -2 = toggle rotation, -3 = span selected displays
     /// (union rect over `toggleDisplayIDs`).
     @Published var targetDisplayIndex: Int = 0 {
-        didSet { persist("targetDisplayIndex", targetDisplayIndex) }
+        didSet {
+            guard !applyingTemporarySpan else { return }
+            // Any other change, from the Displays pane or a profile switch,
+            // replaces the mode a temporary span would have restored.
+            spanRestoreIndex = nil
+            persist("targetDisplayIndex", targetDisplayIndex)
+        }
+    }
+
+    /// The mode a Span Displays press restores, while its span is active.
+    /// Never persisted, so a relaunch comes back in the normal mode.
+    private(set) var spanRestoreIndex: Int?
+    private var applyingTemporarySpan = false
+
+    /// Spans the selected displays, or restores the mode in effect before.
+    func toggleTemporarySpan() {
+        applyingTemporarySpan = true
+        defer { applyingTemporarySpan = false }
+        if let saved = spanRestoreIndex {
+            spanRestoreIndex = nil
+            targetDisplayIndex = saved
+        } else {
+            spanRestoreIndex = targetDisplayIndex
+            targetDisplayIndex = Self.displayModeSpan
+        }
     }
 
     /// Which display a positive `targetDisplayIndex` means, by stable UUID.

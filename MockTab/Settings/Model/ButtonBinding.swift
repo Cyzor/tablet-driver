@@ -14,7 +14,7 @@ struct ButtonBinding: Codable, Equatable {
     enum Kind: String, Codable {
         case none, leftClick, rightClick, middleClick, middleClickWithTip, eraser, keyCombo,
             displayToggle, doubleClick, spacebar, ringCycle, ringSelectSlot, scrollDrag,
-            relativeModeToggle,
+            relativeModeToggle, spanDisplaysToggle,
             // Second ring/dial's own mode-cycle actions (PTK-670/870's two
             // independent mechanical dials) — see touchRingActiveSlotIndex2.
             ringCycle2, ringSelectSlot2
@@ -183,6 +183,10 @@ struct ButtonBinding: Codable, Equatable {
             return String(
                 localized: "Pan View",
                 comment: "Button action: hold to pan/scroll with pen motion")
+        case .spanDisplaysToggle:
+            return String(
+                localized: "Span Displays",
+                comment: "Button action: span the selected displays, press again to restore the previous display mode")
         case .relativeModeToggle:
             return String(
                 localized: "Toggle Relative Mode",
@@ -228,6 +232,7 @@ struct ButtonBinding: Codable, Equatable {
         case "Scroll Drag": return .scrollDrag  // pre-rename label; keeps older exported profiles importable
         case "Toggle Display": return ButtonBinding(kind: .displayToggle)
         case "Toggle Relative Mode": return ButtonBinding(kind: .relativeModeToggle)
+        case "Span Displays": return ButtonBinding(kind: .spanDisplaysToggle)
         case "Ring: Cycle": return ButtonBinding(kind: .ringCycle)
         case "Dial 2: Cycle": return ButtonBinding(kind: .ringCycle2)
         default:

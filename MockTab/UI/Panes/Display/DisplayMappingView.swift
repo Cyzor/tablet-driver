@@ -303,6 +303,8 @@ struct DisplayMappingView: View {
                 toggleSection
                 if settings.targetDisplayIndex == modeToggle {
                     displayToggleHintRow
+                } else if settings.spanRestoreIndex != nil {
+                    spanRestoreHintRow
                 }
             }
         } header: {
@@ -586,8 +588,8 @@ struct DisplayMappingView: View {
         .disabled(displays.count <= 1)
     }
 
-    /// Buttons bound to displayToggle, named as the Buttons pane names them.
-    private var displayToggleButtonNames: [String] {
+    /// Buttons bound to `kind`, named as the Buttons pane names them.
+    private func buttonNames(boundTo kind: ButtonBinding.Kind) -> [String] {
         let ctx = tabletManager.context(forKey: instanceKey)
         let spec = productID.flatMap { ButtonMappingView.layoutSpec(productID: $0, context: ctx) }
         let tool = ctx.flatMap { WacomToolCatalog.spec(forToolCode: $0.lastKnownToolCode) }
@@ -667,11 +669,11 @@ struct DisplayMappingView: View {
                 }
             }
         }
-        return rows.filter { $0.binding.kind == .displayToggle }.map { $0.name() }
+        return rows.filter { $0.binding.kind == kind }.map { $0.name() }
     }
 
     private var displayToggleHintRow: some View {
-        let names = displayToggleButtonNames
+        let names = buttonNames(boundTo: .displayToggle)
         // Name one button inline so the row stays one line; the tooltip lists all.
         let assignedLabel = names.first
         let pressLabel = { (buttons: String) in
@@ -703,6 +705,24 @@ struct DisplayMappingView: View {
                 .controlSize(.small)
                 .help("Go to the Buttons tab to assign a button that triggers the display toggle.")
             }
+        }
+        .padding(.vertical, 2)
+    }
+
+    /// Shown while a Span Displays press is in effect.
+    private var spanRestoreHintRow: some View {
+        let names = buttonNames(boundTo: .spanDisplaysToggle)
+        let pressLabel = { (buttons: String) in
+            String(localized: "Press \(buttons) to restore the previous setting", comment: "Label naming the buttons that end a temporary span; %@ is an or-list of button names")
+        }
+        return HStack(spacing: 8) {
+            Image(systemName: "arrow.uturn.backward.circle.fill")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            Text(names.first.map(pressLabel) ?? String(localized: "Spanned until the button is pressed again", comment: "Label while a temporary span is active and its button can't be named"))
+                .foregroundStyle(.secondary)
+                .help(names.count > 1 ? pressLabel(names.formatted(.list(type: .or))) : "")
+            Spacer()
         }
         .padding(.vertical, 2)
     }

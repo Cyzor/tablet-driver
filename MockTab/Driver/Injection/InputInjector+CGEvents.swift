@@ -1027,6 +1027,16 @@ extension InputInjector {
                 e.flags = currentEventFlags
                 finalizeAndPost(e)
             }
+        case .spanDisplaysToggle:
+            guard down else { break }
+            // Aux-only accessories steer the pen tablet, as with displayToggle.
+            if let forward = spanDisplaysForwarder {
+                forward()
+                break
+            }
+            if let s = settings {
+                Task { @MainActor in s.toggleTemporarySpan() }
+            }
         case .relativeModeToggle:
             guard down else { break }
             // Aux-only accessories (Xencelabs Quick Keys) have no cursor of

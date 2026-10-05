@@ -132,6 +132,8 @@ struct ButtonBindingControl: View, Equatable {
             .help("Escape key")
             Button("Toggle Display") { binding = ButtonBinding(kind: .displayToggle) }
                 .help("Switch tablet mapping between displays")
+            Button("Span Displays") { binding = ButtonBinding(kind: .spanDisplaysToggle) }
+                .help("Spread the tablet across the displays selected in the Display pane. Press again to return to the previous display setting.")
             Button("Toggle Relative Mode") { binding = ButtonBinding(kind: .relativeModeToggle) }
                 .help("Switch between absolute (stylus) and relative (mouse) cursor movement")
             if let control = dialToggleControl {
