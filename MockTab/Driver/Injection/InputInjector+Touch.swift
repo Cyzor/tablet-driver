@@ -594,7 +594,7 @@ extension InputInjector {
             postTouchSecondaryClick(snapshot: snap)
         case .dragDown(let at):
             touchOwnedPointerPosition = nil
-            let loc = at.map { displayMapper.pinNearEdges($0, snapshot: snap) } ?? currentCursorPosition()
+            let loc = at.map { pinTouchPoint($0, snapshot: snap) } ?? currentCursorPosition()
             TouchPipelineProbe.note { $0.threeFingerDrags = ($0.threeFingerDrags ?? 0) + 1 }
             postMouseDown(button: .left, at: loc, pressure: 1.0, clickCount: 1, snapshot: snap)
             touchDragPosition = loc
@@ -623,7 +623,7 @@ extension InputInjector {
         let base = touchOwnedPointerPosition ?? currentCursorPosition()
         var target = CGPoint(x: base.x + dx, y: base.y + dy)
         if let snap = injectionSnapshot {
-            target = displayMapper.pinNearEdges(target, snapshot: snap)
+            target = pinTouchPoint(target, snapshot: snap)
         }
         touchOwnedPointerPosition = target
         postTouchPointerWarp(to: target)
@@ -638,7 +638,7 @@ extension InputInjector {
     private func postTouchPointerWarp(to point: CGPoint) {
         var target = point
         if let snap = injectionSnapshot {
-            target = displayMapper.pinNearEdges(target, snapshot: snap)
+            target = pinTouchPoint(target, snapshot: snap)
         }
         guard let e = CGEvent(
             mouseEventSource: sessionSource,
@@ -846,8 +846,16 @@ extension InputInjector {
         }
     }
 
+    /// Absolute touch follows the pen's mapping; relative touch roams the
+    /// whole desktop, like a trackpad.
+    private func pinTouchPoint(_ p: CGPoint, snapshot: InjectionSnapshot) -> CGPoint {
+        snapshot.touchAbsoluteMode || cachedTouchIsDirect
+            ? displayMapper.pinNearEdges(p, snapshot: snapshot)
+            : displayMapper.pinNearDesktopEdges(p)
+    }
+
     private func postTouchDrag(to point: CGPoint, snapshot: InjectionSnapshot) {
-        let target = displayMapper.pinNearEdges(point, snapshot: snapshot)
+        let target = pinTouchPoint(point, snapshot: snapshot)
         postMouseDrag(button: .left, at: target, pressure: 1.0, pose: (0, 0, 0), snapshot: snapshot)
         touchDragPosition = target
     }

@@ -81,6 +81,9 @@ struct DisplayMapper {
     private var cachedMemberRects: [CGRect] = []
     /// Hidden Dock's edge, re-read every `dockEdgeRefreshInterval`.
     private var cachedDockEdge: DockEdge?
+    /// Every active display, for relative touch, which roams the whole
+    /// desktop. Cleared with the display cache.
+    private var cachedDesktopRects: [CGRect]?
     private var dockEdgeCheckedAt: CFAbsoluteTime = -.infinity
     private var cachedCalibration: CalibrationEntry?
     private var cachedCalibrationOrientation: Int = -1
@@ -150,6 +153,7 @@ struct DisplayMapper {
     mutating func invalidateDisplayCache() {
         cachedDisplayIndex = Int.min
         cachedCalibrationOrientation = -1
+        cachedDesktopRects = nil
     }
 
     /// Force re-read of calibration data on next inject.
@@ -585,6 +589,22 @@ struct DisplayMapper {
     mutating func pinNearEdges(_ p: CGPoint, snapshot: InjectionSnapshot) -> CGPoint {
         let bounds = displayBounds(for: snapshot)
         return Self.pinNearEdges(p, in: bounds, members: cachedMemberRects, dockEdge: refreshDockEdge())
+    }
+
+    /// `pinNearEdges` across every display rather than the pen's mapping.
+    mutating func pinNearDesktopEdges(_ p: CGPoint) -> CGPoint {
+        _ = refreshDockEdge()
+        let rects = cachedDesktopRects ?? {
+            var count: UInt32 = 0
+            CGGetActiveDisplayList(0, nil, &count)
+            var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+            CGGetActiveDisplayList(count, &ids, &count)
+            let rects = ids.prefix(Int(count)).map { CGDisplayBounds($0) }
+            cachedDesktopRects = rects
+            return rects
+        }()
+        guard let union = rects.first.map({ rects.dropFirst().reduce($0) { $0.union($1) } }) else { return p }
+        return Self.pinNearEdges(p, in: union, members: rects, dockEdge: cachedDockEdge)
     }
 
     private mutating func refreshDockEdge() -> DockEdge? {
