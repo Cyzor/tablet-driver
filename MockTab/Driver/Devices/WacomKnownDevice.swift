@@ -732,25 +732,29 @@ final class WacomKnownDevice: TabletDevice {
         return required.isSubset(of: declared)
     }
 
-    /// Used for multi-interface devices (e.g. ACK-40401 wireless dongle) that
-    /// enumerate separate IOHIDDevices for each interface (digitizer, wireless status, etc).
     /// Registers a touch sensor that arrives as its own USB device. On
-    /// CintiqV1, where seizing the pen interface is proven safe, it's seized
-    /// too: its standard touchscreen collection otherwise also reaches macOS,
-    /// which on Sequoia held the left button while a hand rested on a 27QHD.
+    /// CintiqV1 it's seized too: its standard touchscreen collection
+    /// otherwise also reaches macOS, which on Sequoia held the left button
+    /// while a hand rested on a 27QHD.
     func attachTouchSensor(_ device: IOHIDDevice) {
         if deviceSpec.parser == .cintiqV1 {
+            // The HID manager already opened it without options, and IOKit
+            // ignores a second open from the same client, seize included.
+            IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
             let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeSeizeDevice))
             let name = deviceSpec.name
             if ret == kIOReturnSuccess {
                 logger.info("\(name, privacy: .public): seized touch sensor")
             } else {
                 logger.error("\(name, privacy: .public): failed to seize touch sensor — \(ret, privacy: .public)")
+                IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
             }
         }
         registerDevice(device)
     }
 
+    /// Used for multi-interface devices (e.g. ACK-40401 wireless dongle) that
+    /// enumerate separate IOHIDDevices for each interface (digitizer, wireless status, etc).
     func registerDevice(_ device: IOHIDDevice) {
         registeredInterfaces.append(device)
         deriveTouchDecoders(from: device)
