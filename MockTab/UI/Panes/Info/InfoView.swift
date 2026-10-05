@@ -213,7 +213,7 @@ struct InfoView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text(String(localized: "MockTab is running its generic driver, so basic pen input may work. Full support needs a short recording of what your tablet sends.", comment: "Body of the unknown-device banner"))
+                Text(String(localized: "Full support needs a recording.", comment: "Body of the unknown-device banner"))
                     .appFont(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

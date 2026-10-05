@@ -276,7 +276,7 @@ struct DisplayMappingView: View {
                         Text(String(localized: "Display Rotation Detected", comment: "Warning title for rotated display"))
                             .appFont(.subheadline)
                             .fontWeight(.semibold)
-                        Text(String(localized: "Your display is rotated. Combined with a rotated tablet, this may require adjustment. Test your pen input to verify the mapping is correct.", comment: "Warning message for rotated display"))
+                        Text(String(localized: "Rotated display. Check where the pen lands.", comment: "Warning message for rotated display"))
                             .appFont(.settingsLabel)
                             .foregroundStyle(.secondary)
                     }
@@ -1033,6 +1033,7 @@ private struct CintiqPanelSection: View {
             Text(footer)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .help(footerHelp)
         }
         .disabled(panel.state != .ready)
         .onAppear { panel.probe() }
@@ -1048,11 +1049,16 @@ private struct CintiqPanelSection: View {
             String(localized: "Available when the display is connected to this Mac's video output.")
         case .noReply:
             String(localized: "Not available for this display.")
-        case .ready where panel.writeOnly:
-            String(localized: "Experimental. This display doesn't report its settings, so the sliders start where you last set them.")
         case .ready:
-            String(localized: "Experimental. Changes the panel's own settings over its video cable.")
+            String(localized: "Experimental.", comment: "Footer under the Built-in Display controls")
         }
+    }
+
+    private var footerHelp: String {
+        guard panel.state == .ready else { return "" }
+        return panel.writeOnly
+            ? String(localized: "Changes the display's own settings over its video cable. This display doesn't report its settings, so the sliders start where you last set them.")
+            : String(localized: "Changes the display's own settings over its video cable.")
     }
 
     private func row(_ title: String, symbol: String,

@@ -245,7 +245,7 @@ struct ProfilesView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(
                         String(
-                            localized: "Drag this icon out to save a copy of your settings. Drop back in to restore prior settings.",
+                            localized: "Drag out to save. Drag in to restore.",
                             comment: "Description of export/import drag-and-drop functionality")
                     )
                     .appFont(.settingsLabel)

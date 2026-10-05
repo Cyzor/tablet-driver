@@ -228,7 +228,7 @@ struct TouchView: View {
 
     private var areaSection: some View {
         Section("Touch Area") {
-            Text("Define the active surface area for touch input.  Not available on all devices.")
+            Text("Limit touch to part of the surface.")
                 .appFont(.callout)
                 .foregroundStyle(.secondary)
                 .listRowBackground(Color.clear)

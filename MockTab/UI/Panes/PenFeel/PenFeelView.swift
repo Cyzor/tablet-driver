@@ -151,7 +151,7 @@ struct PenFeelView: View {
                             localized: "\(Int(settings.dragThreshold)) pt",
                             comment: "Distance in points, e.g. '3 pt'"),
                     caption:
-                        "Requires the pen to move this far before a tap becomes a drag."
+                        "Movement before a tap becomes a drag."
                 )
                 .help(
                     "Prevents a light tap from turning into an accidental drag due to hand tremor or pressure jitter right when the tip touches down. Drag to Off to disable.")

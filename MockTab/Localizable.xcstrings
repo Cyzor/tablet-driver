@@ -226,6 +226,143 @@
         }
       }
     },
+    "Blank rows are fine. Everything is saved." : {
+      "comment" : "Footnote under the data collection checklist explaining that unticked rows are not a failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leere Zeilen sind okay. Alles wird gespeichert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las filas vacías no son un problema. Todo se guarda."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空欄の行があっても大丈夫です。すべて保存されます。"
+          }
+        }
+      }
+    },
+    "Drag out to save. Drag in to restore." : {
+      "comment" : "Description of export/import drag-and-drop functionality",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Sichern herausziehen, zum Wiederherstellen hineinziehen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra fuera para guardar. Arrastra dentro para restaurar."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外へドラッグで保存、中へドラッグで復元。"
+          }
+        }
+      }
+    },
+    "Full support needs a recording." : {
+      "comment" : "Body of the unknown-device banner",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für vollen Support ist eine Aufnahme nötig."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para la compatibilidad completa hace falta una grabación."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完全に対応するには記録が必要です。"
+          }
+        }
+      }
+    },
+    "Limit touch to part of the surface." : {
+      "comment" : "Description of a section in the TouchView that explains that the touch area can only be set on certain devices.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touch auf einen Teil der Fläche beschränken."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limita el toque a una parte de la superficie."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タッチ操作を面の一部に限定します。"
+          }
+        }
+      }
+    },
+    "MockTab can't read some of this yet. The file helps." : {
+      "comment" : "Shown during collection when reports arrived that no decoder could read",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab versteht einiges davon noch nicht. Die Datei hilft."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab aún no entiende parte de esto. El archivo ayuda."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTabがまだ読み取れないデータがあります。このファイルが役立ちます。"
+          }
+        }
+      }
+    },
+    "Movement before a tap becomes a drag." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weg, bevor aus Tippen Ziehen wird."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento antes de que un toque se convierta en arrastre."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タップがドラッグになるまでの移動量。"
+          }
+        }
+      }
+    },
     "Press %@ to restore the previous setting" : {
       "comment" : "Label naming the buttons that end a temporary span; %@ is an or-list of button names",
       "localizations" : {
@@ -245,6 +382,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ を押すと前の設定に戻ります"
+          }
+        }
+      }
+    },
+    "Rotated display. Check where the pen lands." : {
+      "comment" : "Warning message for rotated display",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display gedreht. Prüf, wo der Stift landet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantalla girada. Comprueba dónde cae el lápiz."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイが回転しています。ペンの位置を確認してください。"
           }
         }
       }
@@ -3084,29 +3244,6 @@
         }
       }
     },
-    "Blank rows just mean MockTab didn't recognize that control — all data is saved." : {
-      "comment" : "Footnote under the data collection checklist explaining that unticked rows are not a failure",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leere Zeilen heißen nur: nicht erkannt. Aufgezeichnet wird trotzdem alles."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Las filas vacías solo significan que MockTab no reconoció ese control; se guarda todo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "空欄は認識できなかった操作というだけです。データはすべて保存されます。"
-          }
-        }
-      }
-    },
     "Blue" : {
       "comment" : "LED swatch name",
       "localizations" : {
@@ -3852,6 +3989,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ディスプレイの表示を調整します。対応機能は機種によって異なります。"
+          }
+        }
+      }
+    },
+    "Changes the display's own settings over its video cable." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ändert die Einstellungen des Displays selbst über das Videokabel."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia los ajustes de la propia pantalla por el cable de vídeo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "映像ケーブル経由でディスプレイ本体の設定を変更します。"
+          }
+        }
+      }
+    },
+    "Changes the display's own settings over its video cable. This display doesn't report its settings, so the sliders start where you last set them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ändert die Einstellungen des Displays selbst über das Videokabel. Dieses Display meldet seine Einstellungen nicht, daher starten die Regler bei deinen letzten Werten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia los ajustes de la propia pantalla por el cable de vídeo. Esta pantalla no informa de sus ajustes, así que los controles empiezan donde los dejaste."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "映像ケーブル経由でディスプレイ本体の設定を変更します。このディスプレイは設定値を返さないため、スライダーは前回設定した位置から始まります。"
           }
         }
       }
@@ -5589,30 +5770,6 @@
         }
       }
     },
-    "Define the active surface area for touch input.  Not available on all devices." : {
-      "comment" : "Description of a section in the TouchView that explains that the touch area can only be set on certain devices.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lege den aktiven Bereich für die Berührungseingabe fest. Nicht auf allen Geräten verfügbar."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Define el área activa para la entrada táctil. No disponible en todos los dispositivos."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タッチ入力のアクティブエリアを設定します。すべてのデバイスで利用できるわけではありません。"
-          }
-        }
-      }
-    },
     "Delete" : {
       "comment" : "Menu item to delete a profile — destructive",
       "localizations" : {
@@ -7033,29 +7190,6 @@
         }
       }
     },
-    "Drag this icon out to save a copy of your settings. Drop back in to restore prior settings." : {
-      "comment" : "Description of export/import drag-and-drop functionality",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zieh dieses Symbol heraus, um eine Kopie deiner Einstellungen zu speichern. Zieh sie wieder hinein, um frühere Einstellungen wiederherzustellen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arrastra este icono fuera para guardar una copia de tus ajustes. Suéltala aquí para restaurar los ajustes anteriores."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このアイコンをドラッグして設定のコピーを保存します。ここにドロップすると以前の設定に戻せます。"
-          }
-        }
-      }
-    },
     "Drag Threshold" : {
       "localizations" : {
         "de" : {
@@ -7803,24 +7937,25 @@
         }
       }
     },
-    "Experimental. Changes the panel's own settings over its video cable." : {
+    "Experimental." : {
+      "comment" : "Footer under the Built-in Display controls",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Experimentell. Ändert die Einstellungen des Displays selbst über das Videokabel."
+            "value" : "Experimentell."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Experimental. Cambia los ajustes de la propia pantalla por el cable de vídeo."
+            "value" : "Experimental."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "試験的機能。映像ケーブル経由でディスプレイ本体の設定を変更します。"
+            "value" : "試験的機能です。"
           }
         }
       }
@@ -11560,35 +11695,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MockTabヘルプ"
-          }
-        }
-      }
-    },
-    "MockTab is running its generic driver, so basic pen input may work. Full support needs a short recording of what your tablet sends." : {
-      "comment" : "Body of the unknown-device banner",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab nutzt seinen generischen Treiber, einfache Stifteingabe funktioniert also vielleicht. Für volle Unterstützung braucht es eine kurze Aufzeichnung dessen, was dein Grafiktablett sendet."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "MockTab is running its generic driver, so basic pen input may work. Full support needs a short recording of what your tablet sends."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab está usando su controlador genérico, así que la entrada básica del lápiz puede funcionar. Para el soporte completo hace falta una grabación corta de lo que envía tu tableta."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTabは汎用ドライバで動作しているため、基本的なペン入力は使えることがあります。完全に対応するには、タブレットが送信する内容を短時間記録する必要があります。"
           }
         }
       }
@@ -15441,28 +15547,6 @@
         }
       }
     },
-    "Requires the pen to move this far before a tap becomes a drag." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Stift muss sich um diesen Betrag bewegen, bevor aus einem Tippen ein Ziehen wird."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El lápiz debe moverse esta distancia antes de que un toque se convierta en un arrastre."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タップがドラッグに変わるまでにペンがこの距離だけ動く必要があります。"
-          }
-        }
-      }
-    },
     "Reset" : {
       "comment" : "Button label: confirm factory reset\nOverride banner button — removes this app's overrides for this tab",
       "localizations" : {
@@ -17948,29 +18032,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ソフト応答 — 軽圧がすぐに最大出力に達する。自由で表現的な作業に最適。"
-          }
-        }
-      }
-    },
-    "Some data isn't recognized yet — that's exactly what the file is for." : {
-      "comment" : "Shown during collection when reports arrived that no decoder could read",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manches wird noch nicht erkannt — genau dafür ist die Datei da."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Parte de los datos aún no se reconoce: justo para eso sirve el archivo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "まだ認識できないデータもあります。このファイルはまさにそのためのものです。"
           }
         }
       }
@@ -20769,35 +20830,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld 個のAppをドロップしました。すべてをオーバーライドとして追加しますか？"
-          }
-        }
-      }
-    },
-    "Your display is rotated. Combined with a rotated tablet, this may require adjustment. Test your pen input to verify the mapping is correct." : {
-      "comment" : "Warning message for rotated display",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Display ist gedreht. In Kombination mit einem gedrehten Grafiktablett kann eine Anpassung nötig sein. Teste die Stifteingabe, um die Zuordnung zu prüfen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Your display is rotated. Combined with a rotated tablet, this may require adjustment. Test your pen input to verify the mapping is correct."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Su pantalla está rotada. Combinado con una tableta rotada, esto puede requerir un ajuste. Pruebe la entrada de su lápiz para verificar que el mapeo sea correcto."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ディスプレイが回転しています。タブレットの回転と組み合わせると、調整が必要になる場合があります。ペン入力をテストして、マッピングが正しいことを確認してください。"
           }
         }
       }

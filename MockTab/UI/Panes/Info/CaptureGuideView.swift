@@ -745,10 +745,10 @@ struct CaptureGuideView: View {
     private var checklistFootnote: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(String(
-                localized: "Blank rows just mean MockTab didn't recognize that control — all data is saved.",
+                localized: "Blank rows are fine. Everything is saved.",
                 comment: "Footnote under the data collection checklist explaining that unticked rows are not a failure"))
             Text(String(
-                localized: "Some data isn't recognized yet — that's exactly what the file is for.",
+                localized: "MockTab can't read some of this yet. The file helps.",
                 comment: "Shown during collection when reports arrived that no decoder could read"))
             .foregroundStyle(hasUndecodedTraffic ? AnyShapeStyle(.secondary) : AnyShapeStyle(.clear))
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: hasUndecodedTraffic)
