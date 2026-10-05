@@ -101,6 +101,7 @@ enum HardwareSurveyProbe {
                 display.vcp = values.isEmpty ? nil : values
                 display.capabilities = capabilities
             }
+            display.ddcReadProbes = [0, 0x51].map { link.probeBrightness(readOffset: $0) }
             return display
         }
     }

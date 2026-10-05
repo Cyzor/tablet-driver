@@ -134,9 +134,8 @@ final class DDCLink: @unchecked Sendable {
     /// write left the Mac; read the value back to confirm it landed.
     @discardableResult
     func writeVCP(_ code: UInt8, _ value: Int) -> Bool {
-        var packet: [UInt8] = [0x84, 0x03, code, UInt8(value >> 8 & 0xFF), UInt8(value & 0xFF)]
-        packet.append(packet.reduce(checksum == .spec ? 0x6E ^ 0x51 : 0x6E, ^))
-        let wrote = send(packet)
+        let wrote = send(Self.packet(
+            [0x84, 0x03, code, UInt8(value >> 8 & 0xFF), UInt8(value & 0xFF)], checksum: checksum))
         usleep(50_000)
         return wrote
     }
@@ -182,21 +181,43 @@ final class DDCLink: @unchecked Sendable {
 
     /// Writes one request, waits the 50 ms MCCS asks for, reads the reply.
     private func transactOnce(_ body: [UInt8], checksum variant: Checksum, replyLength: Int) -> [UInt8]? {
-        var packet = body
-        var sum: UInt8 = variant == .spec ? 0x6E ^ 0x51 : 0x6E
-        for byte in body { sum ^= byte }
-        packet.append(sum)
-        guard send(packet) else { return nil }
+        guard send(Self.packet(body, checksum: variant)) else { return nil }
         usleep(50_000)
-        var reply = [UInt8](repeating: 0xEE, count: replyLength)
-        // Offset 0, as MonitorControl reads. With 0x51 a Cintiq 27QHD put
-        // 0x51 into byte 6 of every reply, reading a brightness maximum of
-        // 100 as 20836.
+        return readReply(length: replyLength)
+    }
+
+    private static func packet(_ body: [UInt8], checksum variant: Checksum) -> [UInt8] {
+        body + [body.reduce(variant == .spec ? 0x6E ^ 0x51 : 0x6E, ^)]
+    }
+
+    /// Offset 0, as MonitorControl reads. With 0x51 a Cintiq 27QHD put
+    /// 0x51 into byte 6 of every reply, reading a brightness maximum of
+    /// 100 as 20836.
+    private func readReply(length: Int, offset: UInt32 = 0) -> [UInt8]? {
+        var reply = [UInt8](repeating: 0xEE, count: length)
         let got = reply.withUnsafeMutableBytes {
-            read(service, address, 0, $0.baseAddress, UInt32($0.count))
+            read(service, address, offset, $0.baseAddress, UInt32($0.count))
         }
         usleep(10_000)
         return got == kIOReturnSuccess ? reply : nil
+    }
+
+    /// One brightness read at `offset`, no retries, for captures: says where
+    /// it failed and keeps the reply even when it fails.
+    func probeBrightness(readOffset offset: UInt32) -> DiscoveryDDCProbe {
+        let label = String(format: "0x%02X", offset)
+        guard send(Self.packet([0x82, 0x01, 0x10], checksum: checksum)) else {
+            return DiscoveryDDCProbe(readOffset: label, result: "writeFailed")
+        }
+        usleep(50_000)
+        guard let reply = readReply(length: 12, offset: offset) else {
+            return DiscoveryDDCProbe(readOffset: label, result: "readFailed")
+        }
+        let result = !Self.replyChecksumMatches(reply) ? "badChecksum"
+            : (reply[2] == 0x02 && reply[4] == 0x10) ? "ok" : "wrongReply"
+        return DiscoveryDDCProbe(
+            readOffset: label, result: result,
+            reply: reply.map { String(format: "%02X", $0) }.joined())
     }
 }
 

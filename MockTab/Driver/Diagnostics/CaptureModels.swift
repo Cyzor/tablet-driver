@@ -180,7 +180,11 @@ struct DiscoveryResult: Codable {
     /// that got past palm rejection sat from the palm, their sizes, and what
     /// touch sequences with a palm in them did. Optional, so v21 readers and
     /// files still decode.
-    var captureVersion: Int = 22
+    ///
+    /// v23 adds `ddcReadProbes` to each display: one brightness read at each
+    /// read offset, with where it failed and the raw reply. Optional, so v22
+    /// readers and files still decode.
+    var captureVersion: Int = 23
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -294,6 +298,18 @@ struct DiscoveryDisplay: Codable {
     var vcp: [String: DiscoveryVCPValue]?
     /// MCCS capabilities string, as far as it could be read.
     var capabilities: String?
+    /// One brightness read per read offset, no retries.
+    var ddcReadProbes: [DiscoveryDDCProbe]?
+}
+
+struct DiscoveryDDCProbe: Codable {
+    /// I2C read offset, hex.
+    let readOffset: String
+    /// `ok`, `writeFailed`, `readFailed`, `badChecksum`, or `wrongReply`
+    /// (checksum fine, but not a brightness reply).
+    let result: String
+    /// The reply as read, hex; absent when the write or read failed.
+    var reply: String?
 }
 
 struct DiscoveryVCPValue: Codable {
