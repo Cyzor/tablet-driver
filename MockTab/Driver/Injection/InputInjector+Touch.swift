@@ -161,7 +161,8 @@ extension InputInjector {
             contacts: contacts.map {
                 (id: $0.id, major: $0.contactArea, minor: $0.contactMinor)
             },
-            productID: deviceProductID)
+            productID: deviceProductID,
+            keep: touchTracker.dragFingerIDs)
         let presentIDs = Set(contacts.map(\.id))
         touchPenHeldIDs.formIntersection(presentIDs)
         let acceptedIDs = filtered.acceptedIDs.subtracting(touchPenHeldIDs)

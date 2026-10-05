@@ -46,9 +46,12 @@ struct TouchPalmRejector {
     }
 
 
+    /// `keep` are fingers already committed to a drag; pressing harder
+    /// flattens them to palm size, and rejecting one mid-drag dropped it.
     mutating func filter(
         contacts: [(id: Int, major: Int?, minor: Int?)],
-        productID: Int
+        productID: Int,
+        keep: Set<Int> = []
     ) -> Result {
         guard Self.supports(productID: productID) else {
             reset()
@@ -68,7 +71,7 @@ struct TouchPalmRejector {
         for contact in contacts {
             if rejectedIDs.contains(contact.id) { continue }
 
-            guard Self.isPalm(major: contact.major, minor: contact.minor) else {
+            guard !keep.contains(contact.id), Self.isPalm(major: contact.major, minor: contact.minor) else {
                 acceptedIDs.insert(contact.id)
                 continue
             }
@@ -449,7 +452,13 @@ struct TouchStateTracker {
     /// Diagnostic: why the last touch with three or more fingers didn't
     /// drag, set at its lift. Nil when it dragged or had fewer fingers.
     private(set) var threeFingerTapMiss: String?
+    /// Fingers that started the current drag. The palm filter leaves them be.
+    private(set) var dragFingerIDs: Set<Int> = []
     private var dragPrimaryID: Int?
+    /// Relative drag follows the fingers' centroid, re-anchored whenever
+    /// the set of fingers changes so a lift or landing doesn't jump.
+    private var dragCentroid: CGPoint?
+    private var dragCentroidIDs: Set<Int> = []
 
     // MARK: - Tunables
 
@@ -947,6 +956,9 @@ struct TouchStateTracker {
                 let lead = contacts[0]
                 mode = .drag
                 dragPrimaryID = lead.id
+                dragFingerIDs = Set(contacts.map(\.id))
+                dragCentroidIDs = dragFingerIDs
+                dragCentroid = centroid(of: contacts.map(\.screen))
                 lastPositions = [lead.id: lead.screen]
                 return .dragDown(at: absoluteTouch ? lead.screen : nil)
             }
@@ -1045,6 +1057,21 @@ struct TouchStateTracker {
 
         switch mode {
         case .drag:
+            if !absoluteTouch {
+                let ids = Set(contacts.map(\.id))
+                let c = centroid(of: contacts.map(\.screen))
+                guard let prev = dragCentroid, ids == dragCentroidIDs else {
+                    dragCentroid = c
+                    dragCentroidIDs = ids
+                    lastPointerSampleTime = 0
+                    return .none
+                }
+                dragCentroid = c
+                let rawDx = c.x - prev.x, rawDy = c.y - prev.y
+                if rawDx == 0 && rawDy == 0 { return .none }
+                let gain = adaptivePointerGain(rawDx: rawDx, rawDy: rawDy, now: now, sensitivity: sensitivity)
+                return .dragMove(dx: rawDx * gain, dy: rawDy * gain)
+            }
             // The lead finger lifting hands the drag to another without a jump.
             if dragPrimaryID.map({ id in !contacts.contains { $0.id == id } }) ?? true,
                let next = contacts.first {
@@ -1563,30 +1590,7 @@ struct TouchStateTracker {
             let rawDx = first.screen.x - prev.x
             let rawDy = first.screen.y - prev.y
 
-            let dt = lastPointerSampleTime == 0 ? 0 : now - lastPointerSampleTime
-            var gain = sensitivity
-            if lastPointerSampleTime == 0 || dt > Self.pointerVelocityStaleGap {
-                // No usable prior sample — either the first frame of a new
-                // sequence, or one after a pause long enough that the old
-                // smoothed speed no longer describes anything real. Apply
-                // flat gain for this one frame rather than assuming slow;
-                // `pointerSpeed = -1` marks "no history" so the next frame
-                // seeds directly from its own instant speed instead of
-                // EMA-ing up from 0, which would otherwise damp the first
-                // couple of frames after every pause — the same felt
-                // "hesitation" this feature exists to get away from, not
-                // reintroduce elsewhere.
-                pointerSpeed = -1
-            } else if dt >= Self.minVelocityDt {
-                let instant = hypot(rawDx, rawDy) / dt
-                if pointerSpeed < 0 {
-                    pointerSpeed = instant
-                } else {
-                    pointerSpeed += (instant - pointerSpeed) * Self.pointerSpeedEmaFactor
-                }
-                gain = sensitivity * Self.pointerGain(forSpeed: pointerSpeed)
-            }
-            lastPointerSampleTime = now
+            let gain = adaptivePointerGain(rawDx: rawDx, rawDy: rawDy, now: now, sensitivity: sensitivity)
 
             let dx = rawDx * gain
             let dy = rawDy * gain
@@ -1621,12 +1625,47 @@ struct TouchStateTracker {
     /// escape; the injector no longer calls this directly — pen arbitration
     /// now feeds `process(contacts: [])` so an open gesture phase closes
     /// through the normal wind-down path instead of vanishing.
+    /// Sensitivity times the speed-scaled gain, from a smoothed speed over
+    /// successive samples. Shared by pointer motion and relative drags.
+    private mutating func adaptivePointerGain(
+        rawDx: Double, rawDy: Double, now: CFAbsoluteTime, sensitivity: Double
+    ) -> Double {
+        let dt = lastPointerSampleTime == 0 ? 0 : now - lastPointerSampleTime
+        var gain = sensitivity
+        if lastPointerSampleTime == 0 || dt > Self.pointerVelocityStaleGap {
+            // No usable prior sample — either the first frame of a new
+            // sequence, or one after a pause long enough that the old
+            // smoothed speed no longer describes anything real. Apply
+            // flat gain for this one frame rather than assuming slow;
+            // `pointerSpeed = -1` marks "no history" so the next frame
+            // seeds directly from its own instant speed instead of
+            // EMA-ing up from 0, which would otherwise damp the first
+            // couple of frames after every pause — the same felt
+            // "hesitation" this feature exists to get away from, not
+            // reintroduce elsewhere.
+            pointerSpeed = -1
+        } else if dt >= Self.minVelocityDt {
+            let instant = hypot(rawDx, rawDy) / dt
+            if pointerSpeed < 0 {
+                pointerSpeed = instant
+            } else {
+                pointerSpeed += (instant - pointerSpeed) * Self.pointerSpeedEmaFactor
+            }
+            gain = sensitivity * Self.pointerGain(forSpeed: pointerSpeed)
+        }
+        lastPointerSampleTime = now
+        return gain
+    }
+
     mutating func reset() {
         mode = .idle
         twoFingerTapEligible = false
         threeFingerMissReason = nil
         maxContactsThisSequence = 0
         dragPrimaryID = nil
+        dragFingerIDs = []
+        dragCentroid = nil
+        dragCentroidIDs = []
         lastPositions.removeAll(keepingCapacity: true)
         pointerSpeed = -1
         lastPointerSampleTime = 0

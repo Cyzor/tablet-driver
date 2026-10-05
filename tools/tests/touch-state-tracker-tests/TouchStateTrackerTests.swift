@@ -351,6 +351,15 @@ private func testPalmFilteringIsFamilySpecific() {
                 "un-calibrated tablet families must keep their contacts unchanged")
 }
 
+private func testDragFingersSurvivePalmSize() {
+    var rejector = TouchPalmRejector()
+    let pressed = [rawContact(id: 1, major: 6, minor: 6), rawContact(id: 2, major: 2, minor: 2)]
+    expectEqual(rejector.filter(contacts: pressed, productID: 0x0357, keep: [1, 2]).acceptedIDs,
+                Set([1, 2]), "a drag finger pressed flat must stay a finger")
+    expectEqual(rejector.filter(contacts: pressed, productID: 0x0357).acceptedIDs,
+                Set([2]), "without a drag, the same contact is a palm")
+}
+
 /// Two-finger right-click on. Contacts sit `spacingMM`
 /// apart in raw millimeters.
 private func rcprocess(
@@ -480,6 +489,17 @@ private func testLeadFingerLiftingHandsOffWithoutJump() {
     let moved = threeFingers.dropFirst().map { (id: $0.id, screen: CGPoint(x: $0.screen.x, y: 5)) }
     expectEqual(dprocess(&tracker, moved, at: 0.07), .dragMove(dx: 0, dy: 5),
                 "the new lead must keep dragging")
+}
+
+private func testDragFollowsCentroid() {
+    var tracker = TouchStateTracker()
+    _ = dprocess(&tracker, [threeFingers[0]], at: 0)
+    _ = dprocess(&tracker, threeFingers, at: 0.03)
+    // One finger wobbling 9 pt moves the drag a third as far.
+    var wobble = threeFingers
+    wobble[2].screen.x += 9
+    expectEqual(dprocess(&tracker, wobble, at: 0.05), .dragMove(dx: 3, dy: 0),
+                "a single finger's wobble must be averaged with the others")
 }
 
 private func testLateThirdFingerDoesNotDrag() {
@@ -1772,6 +1792,7 @@ enum TouchStateTrackerTestRunner {
         testRotateCommitsWithTwoFingerScrollDisabled()
         testPalmRejectionOnCalibratedFamily()
         testPalmFilteringIsFamilySpecific()
+        testDragFingersSurvivePalmSize()
         testRotateWideSwivelResolvesRotate()
         testRotateCloseTogetherSweepResolvesPan()
         testRotateAnchoredArcResolvesPan()
@@ -1804,6 +1825,7 @@ enum TouchStateTrackerTestRunner {
         testLongTwoFingerRestDoesNotRightClick()
         testTwoFingerScrollDoesNotRightClick()
         testThreeFingersLandingTogetherDrag()
+        testDragFollowsCentroid()
         testLeadFingerLiftingHandsOffWithoutJump()
         testLateThirdFingerDoesNotDrag()
         testCrampedThreeFingersDoNotDrag()
