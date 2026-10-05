@@ -136,11 +136,9 @@ final class DDCLink: @unchecked Sendable {
     func writeVCP(_ code: UInt8, _ value: Int) -> Bool {
         var packet: [UInt8] = [0x84, 0x03, code, UInt8(value >> 8 & 0xFF), UInt8(value & 0xFF)]
         packet.append(packet.reduce(checksum == .spec ? 0x6E ^ 0x51 : 0x6E, ^))
-        let wrote = packet.withUnsafeMutableBytes {
-            write(service, address, 0x51, $0.baseAddress, UInt32($0.count))
-        }
+        let wrote = send(packet)
         usleep(50_000)
-        return wrote == kIOReturnSuccess
+        return wrote
     }
 
     private func orderedChecksums() -> [Checksum] {
@@ -148,16 +146,30 @@ final class DDCLink: @unchecked Sendable {
     }
 
     /// Writes one request and reads the reply, retrying when the reply's
-    /// checksum fails. Some routes overwrite a reply byte with 0x51, which
-    /// once read a brightness maximum of 100 as 20836.
+    /// checksum fails. Five tries, 20 ms apart, as MonitorControl does.
     private func transact(_ body: [UInt8], checksum variant: Checksum, replyLength: Int) -> [UInt8]? {
-        for _ in 0..<3 {
+        for attempt in 0..<5 {
+            if attempt > 0 { usleep(20_000) }
             if let reply = transactOnce(body, checksum: variant, replyLength: replyLength),
                Self.replyChecksumMatches(reply) {
                 return reply
             }
         }
         return nil
+    }
+
+    /// Sends a packet twice, 10 ms apart, as MonitorControl does; some
+    /// panels miss the first copy. True if the last send left the Mac.
+    private func send(_ packet: [UInt8]) -> Bool {
+        var packet = packet
+        var wrote = kIOReturnError
+        for _ in 0..<2 {
+            usleep(10_000)
+            wrote = packet.withUnsafeMutableBytes {
+                write(service, address, 0x51, $0.baseAddress, UInt32($0.count))
+            }
+        }
+        return wrote == kIOReturnSuccess
     }
 
     /// MCCS replies end with the XOR of 0x50 and every byte before it.
@@ -174,14 +186,14 @@ final class DDCLink: @unchecked Sendable {
         var sum: UInt8 = variant == .spec ? 0x6E ^ 0x51 : 0x6E
         for byte in body { sum ^= byte }
         packet.append(sum)
-        let wrote = packet.withUnsafeMutableBytes {
-            write(service, address, 0x51, $0.baseAddress, UInt32($0.count))
-        }
-        guard wrote == kIOReturnSuccess else { return nil }
+        guard send(packet) else { return nil }
         usleep(50_000)
         var reply = [UInt8](repeating: 0xEE, count: replyLength)
+        // Offset 0, as MonitorControl reads. With 0x51 a Cintiq 27QHD put
+        // 0x51 into byte 6 of every reply, reading a brightness maximum of
+        // 100 as 20836.
         let got = reply.withUnsafeMutableBytes {
-            read(service, address, 0x51, $0.baseAddress, UInt32($0.count))
+            read(service, address, 0, $0.baseAddress, UInt32($0.count))
         }
         usleep(10_000)
         return got == kIOReturnSuccess ? reply : nil
