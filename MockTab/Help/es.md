@@ -75,7 +75,7 @@ Pulsa cualquier botón mientras la ventana está abierta para resaltar su posici
 - **Botones del ratón** – Clic izquierdo, derecho, central o doble clic  
 - **Atajos de teclado** – Haz clic en el campo del atajo y pulsa cualquier combinación de teclas  
 - **Modificadores mantenidos** – ⌘ ⌥ ⇧ ⌃ se mantienen mientras el botón siga pulsado  
-- **Acciones especiales** – Cambiar pantalla, Borrador, selección de modo del Touch Ring  
+- **Acciones especiales** – Cambiar pantalla, Distribuir en pantallas, Borrador, selección de modo del Touch Ring  
 
 ## Touch Ring y dial
 
@@ -144,6 +144,8 @@ El mapeo de pantalla determina qué pantalla trata la tableta como activa.
 **Una sola pantalla** – Haz clic en una pantalla del diagrama para asignar el área activa solo a esa pantalla.
 
 **Cambiar pantalla** – Asigna la acción Cambiar pantalla a una tecla express o a un botón lateral para recorrer las pantallas conectadas sin abrir los ajustes.
+
+**Distribuir en pantallas** – Pulsa un botón con esta acción para distribuir el lápiz en las pantallas seleccionadas en Pantallas activas, y vuelve a pulsarlo para volver a tu ajuste habitual. Si no hay ninguna seleccionada, abarca todas las pantallas.
 
 ## Área de pantalla
 

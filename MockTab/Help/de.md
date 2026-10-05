@@ -77,7 +77,7 @@ Drücke bei geöffnetem Fenster eine beliebige Taste, um ihre Position hervorzuh
 - **Maustasten** – Links-, Rechts-, Mittelklick oder Doppelklick  
 - **Tastaturkürzel** – Klicke ins Shortcut-Feld und drücke eine beliebige Tastenkombination  
 - **Gehaltene Modifikatortasten** – ⌘ ⌥ ⇧ ⌃ bleiben gedrückt, solange die Taste gehalten wird  
-- **Spezialaktionen** – Anzeige umschalten, Radierer, Auswahl des Touch-Ring-Modus  
+- **Spezialaktionen** – Display umschalten, Auf Displays verteilen, Radierer, Auswahl des Touch-Ring-Modus  
 
 ## Berührungsring und Dial
 
@@ -145,7 +145,9 @@ Die Anzeigezuordnung legt fest, welcher Bildschirm dem Grafiktablett zugeordnet 
 
 **Einzelnes Display** – Klicke im Diagramm auf ein Display, um den aktiven Bereich genau darauf abzubilden.
 
-**Anzeige umschalten** – Weise die Aktion Anzeige umschalten einer Express-Taste oder Barrel-Taste zu, um zwischen angeschlossenen Displays zu wechseln, ohne die Einstellungen zu öffnen.
+**Display umschalten** – Weise die Aktion Display umschalten einer Express-Taste oder Barrel-Taste zu, um zwischen angeschlossenen Displays zu wechseln, ohne die Einstellungen zu öffnen.
+
+**Auf Displays verteilen** – Drück eine Taste mit dieser Aktion, um den Stift auf die unter „Aktive Displays“ ausgewählten Displays zu verteilen, und drück sie erneut, um zur gewohnten Einstellung zurückzukehren. Ist keins ausgewählt, gilt es für alle Displays.
 
 ## Bildschirmbereich
 

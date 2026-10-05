@@ -77,7 +77,7 @@ Press any button while the window is open to highlight its position; this helps 
 - **Mouse buttons** – Left, Right, Middle click, or Double-click  
 - **Keyboard shortcuts** – click the shortcut field and press any key combination  
 - **Modifier holds** – ⌘ ⌥ ⇧ ⌃ held for as long as the button remains pressed  
-- **Special actions** – Toggle Display, Eraser, Touch Ring mode selection  
+- **Special actions** – Toggle Display, Span Displays, Eraser, Touch Ring mode selection  
 
 ## Touch Ring and Dial
 
@@ -146,6 +146,8 @@ Display mapping determines which screen the tablet treats as active.
 **Single Display** – Click a display in the diagram to map the active area to just that display.
 
 **Toggle Display** – Assign the Toggle Display action to an express key or barrel button to cycle through connected displays without opening settings.
+
+**Span Displays** – Press a button assigned to Span Displays to spread the pen across the displays selected under Active Displays, and press it again to return to your usual setting. With none selected, it spans every display.
 
 ## Screen Area
 
