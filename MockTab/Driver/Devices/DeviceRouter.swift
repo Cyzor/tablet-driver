@@ -95,17 +95,19 @@ enum DeviceRouter {
     ///   (drivable non-Wacom devices, e.g. Xencelabs). When non-nil it takes
     ///   the place of the `WacomDeviceRegistry` lookup; all interface-routing
     ///   logic downstream is identical.
-    /// True if any top-level collection is a digitizer pen (0x0D/0x02).
-    static func declaresPenCollection(_ device: IOHIDDevice) -> Bool {
+    /// True if any top-level collection is a digitizer pen (0x0D/0x02), or
+    /// with `vendorPage`, Wacom's vendor pen collection (0xFF0D/0x01).
+    static func declaresPenCollection(_ device: IOHIDDevice, vendorPage: Bool = false) -> Bool {
         let pairs = IOHIDDeviceGetProperty(device, kIOHIDDeviceUsagePairsKey as CFString)
             as? [[String: Any]] ?? []
         return isPenCollection(in: pairs.map {
             (page: $0[kIOHIDDeviceUsagePageKey] as? Int ?? 0, usage: $0[kIOHIDDeviceUsageKey] as? Int ?? 0)
-        })
+        }, vendorPage: vendorPage)
     }
 
-    static func isPenCollection(in pairs: [(page: Int, usage: Int)]) -> Bool {
-        pairs.contains { $0.page == 0x0D && $0.usage == 0x02 }
+    static func isPenCollection(in pairs: [(page: Int, usage: Int)], vendorPage: Bool = false) -> Bool {
+        let pen = vendorPage ? (page: 0xFF0D, usage: 0x01) : (page: 0x0D, usage: 0x02)
+        return pairs.contains { $0.page == pen.page && $0.usage == pen.usage }
     }
 
     static func route(
@@ -207,7 +209,10 @@ enum DeviceRouter {
             // Pen displays like the DTH-167 have no 0xFF00 sibling: their one
             // interface leads with page 0x01 but also declares the pen
             // collection. Deferring it waited for a sibling that never comes.
-            let isPenInterface = !isCintiqV1 && declaresPenCollection(device)
+            // The Cintiq 13HD Touch does the same with Wacom's vendor pen
+            // page; the PTH-860 carries that page on 0x01 too but must defer.
+            let isPenInterface = !isCintiqV1 && (declaresPenCollection(device)
+                || (deviceSpec.parser == .intuosV1 && declaresPenCollection(device, vendorPage: true)))
             let shouldDefer = !isBLE && deviceSpec.seizeUSB && usagePage == deferrablePage
                 && !isPenInterface
             if shouldDefer {
