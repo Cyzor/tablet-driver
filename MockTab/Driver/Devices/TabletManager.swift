@@ -1437,6 +1437,10 @@ final class TabletManager: ObservableObject {
             // sensor is now part of that driver, and `deviceRawProductID`
             // is what teardown and driver-slot lookup both consult.
             deviceRawProductID[device] = parentCtx.productID
+            // CintiqV1 only, where seizing the pen interface is proven safe.
+            if driver.deviceSpec.parser == .cintiqV1 {
+                driver.seizeTouchSensor(device)
+            }
             driver.registerDevice(device)
             // Same reason `.driver` and the reuse path above both offer their
             // interfaces: an interface a driver reads is capturable, and the

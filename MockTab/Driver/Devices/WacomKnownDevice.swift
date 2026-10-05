@@ -734,6 +734,19 @@ final class WacomKnownDevice: TabletDevice {
 
     /// Used for multi-interface devices (e.g. ACK-40401 wireless dongle) that
     /// enumerate separate IOHIDDevices for each interface (digitizer, wireless status, etc).
+    /// Seizes a touch sensor that arrives as its own USB device. Its
+    /// standard touchscreen collection otherwise also reaches macOS, which
+    /// on Sequoia held the left button while a hand rested on a 27QHD.
+    func seizeTouchSensor(_ device: IOHIDDevice) {
+        let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeSeizeDevice))
+        let name = deviceSpec.name
+        if ret == kIOReturnSuccess {
+            logger.info("\(name, privacy: .public): seized touch sensor")
+        } else {
+            logger.error("\(name, privacy: .public): failed to seize touch sensor — \(ret, privacy: .public)")
+        }
+    }
+
     func registerDevice(_ device: IOHIDDevice) {
         registeredInterfaces.append(device)
         deriveTouchDecoders(from: device)
