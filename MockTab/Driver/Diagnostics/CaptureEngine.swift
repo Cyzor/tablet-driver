@@ -955,8 +955,11 @@ final class CaptureEngine: ObservableObject {
 
         for (reportID, stats) in reports {
             let idHex = String(format: "0x%02X", reportID)
+            let shownSample = CaptureSerialRedaction.redacted(
+                stats.firstSample, productID: productID)
             let serialBytes = Set(CaptureSerialRedaction.serialByteOffsets(
-                productID: productID, reportID: reportID))
+                productID: productID, reportID: reportID)
+                + shownSample.indices.filter { shownSample[$0] != stats.firstSample[$0] })
 
             var varyingBytes: [Int] = []
             var constantBytes: [Int] = []
@@ -971,10 +974,10 @@ final class CaptureEngine: ObservableObject {
                 switch role {
                 case .constant(let value):
                     constantBytes.append(idx)
-                    // Position still listed, value withheld: a serial sits
-                    // still for a whole session, so it lands here rather than
-                    // in the varying stats.
-                    constantValues.append(serialBytes.contains(idx) ? -1 : Int(value))
+                    // Serials land here; show their stand-ins.
+                    constantValues.append(
+                        serialBytes.contains(idx) && idx < shownSample.count
+                            ? Int(shownSample[idx]) : Int(value))
                 case .varying, .optional:
                     if role == .optional {
                         optionalBytes.append(idx)
@@ -1036,17 +1039,8 @@ final class CaptureEngine: ObservableObject {
                 varyingBytes: varyingBytes,
                 constantBytes: constantBytes,
                 optionalBytes: optionalBytes.isEmpty ? nil : optionalBytes,
-                firstSample: stats.firstSample.enumerated()
-                    .map { serialBytes.contains($0.offset) ? "--" : String(format: "%02X", $0.element) }
-                    .joined(),
+                firstSample: shownSample.map { String(format: "%02X", $0) }.joined(),
                 constantValues: constantValues.isEmpty ? nil : constantValues,
-                serialFingerprints: {
-                    guard !serialBytes.isEmpty else { return nil }
-                    let prints = CaptureSerialRedaction.serialFingerprints(
-                        productID: productID, reportID: reportID,
-                        bytes: stats.firstSample, salt: fingerprintSalt)
-                    return prints.isEmpty ? nil : prints
-                }(),
                 byteStats: byteStats.isEmpty ? nil : byteStats,
                 descriptorReadable: descriptorReadable,
                 repeatingStructure: repeatingStructure,
@@ -1057,15 +1051,6 @@ final class CaptureEngine: ObservableObject {
         }
 
         return reportSummaries
-    }
-
-    /// Per-install salt for `serialFingerprints`, created on first use.
-    private static var fingerprintSalt: Data {
-        let key = "_captureFingerprintSalt"
-        if let salt = UserDefaults.standard.data(forKey: key) { return salt }
-        let salt = Data((0..<16).map { _ in UInt8.random(in: 0...255) })
-        UserDefaults.standard.set(salt, forKey: key)
-        return salt
     }
 
     /// Values listed per byte position before the list is trimmed. See

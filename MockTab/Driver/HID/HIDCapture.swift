@@ -290,9 +290,10 @@ final class HIDCapture {
     /// Appends one report to the buffer. Called from IOHIDReportCallback on
     /// HIDThread — must stay allocation-light. `decoded` is the caller's
     /// own already-computed result, passed after its own decode call.
+    /// `productID` locates the ExpressKey Remote's serial.
     func record(
         tag: String, report: UnsafePointer<UInt8>, length: Int,
-        decoded: [DecodeResult]? = nil
+        decoded: [DecodeResult]? = nil, productID: Int? = nil
     ) {
         guard length > 0 else { return }
 
@@ -302,6 +303,14 @@ final class HIDCapture {
         guard let start = captureStart else { return }
 
         let elapsed = Date().timeIntervalSince(start)
+
+        // See `CaptureSerialRedaction`.
+        for case .toolEnter(let tool) in decoded ?? [] {
+            CaptureSerialRedaction.noteToolEnter(serial: tool.serial)
+        }
+        let shown = CaptureSerialRedaction.redacted(
+            [UInt8](UnsafeBufferPointer(start: report, count: length)),
+            productID: productID ?? 0)
 
         // Built into a single allocation rather than `length` intermediate
         // Strings + join — dominant cost while capturing at ~133 Hz.
@@ -314,7 +323,7 @@ final class HIDCapture {
                     buf[p] = 0x20  // ' '
                     p += 1
                 }
-                let b = report[i]
+                let b = shown[i]
                 buf[p] = digits[Int(b >> 4)]
                 buf[p + 1] = digits[Int(b & 0x0F)]
                 p += 2
@@ -372,7 +381,7 @@ final class HIDCapture {
                 let flagStr = flags.isEmpty ? "" : " " + flags.joined(separator: ",")
                 return "pen x=\(p.x) y=\(p.y) p=\(p.pressure) tilt=\(tilt) hover=\(p.hoverDistance)\(flagStr)"
             case .toolEnter(let t):
-                return "toolEnter serial=\(t.serial) code=0x\(String(t.toolCode, radix: 16)) eraser=\(t.isEraser) mouse=\(t.isMouse)"
+                return "toolEnter serial=\(CaptureSerialRedaction.standIn(forPenSerial: t.serial)) code=0x\(String(t.toolCode, radix: 16)) eraser=\(t.isEraser) mouse=\(t.isMouse)"
             case .aux(let a):
                 let downs = a.buttons.enumerated().filter { $0.element }.map { String($0.offset) }
                 return "aux buttons=[\(downs.joined(separator: ","))]"
@@ -804,6 +813,7 @@ final class HIDCapture {
             never silently hides a discontinuity. A run shows rot: only when
             that run carried a nonzero barrel rotation, so its absence means
             the pen reported none — not that the field went unrecorded.
+            Hardware serials are replaced by stand-ins, consistent per device.
 
             Format  : [mm:ss.ms] <device-tag>            ID=<hex> len=<n>  <hex bytes>  → <decoded>
                       A run line reads len=<range>  ×<count> steady-state  →  <value ranges> instead.

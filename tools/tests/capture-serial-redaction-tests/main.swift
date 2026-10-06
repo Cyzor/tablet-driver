@@ -1,9 +1,8 @@
-// Checks for the serial redaction applied to submitted captures.
+// Checks for the serial stand-ins applied to submitted captures.
 //
 // Compiles the real `CaptureSerialRedaction` rather than restating it. The
-// frames below follow the layout of an actual submission, a DTH-2700 desk
-// whose ExpressKey Remote reported its serial in plain bytes. The serial
-// itself is made up.
+// frames follow the layout of actual submissions: a DTH-2700 desk with an
+// ExpressKey Remote, and a Cintiq Pro 16. The serials are made up.
 import Foundation
 
 var fails = 0, checks = 0
@@ -16,93 +15,73 @@ func check(_ condition: Bool, _ label: String) {
 }
 
 let ekr = 0x0331
-
-/// Applies the mask the exporter applies, so the checks read the result
-/// rather than the offset list.
-func masked(_ bytes: [UInt8], productID: Int, reportID: UInt8) -> String {
-    let serial = Set(CaptureSerialRedaction.serialByteOffsets(
-        productID: productID, reportID: reportID))
-    return bytes.enumerated()
-        .map { serial.contains($0.offset) ? "--" : String(format: "%02X", $0.element) }
-        .joined()
+func redacted(_ bytes: [UInt8], _ productID: Int = 0) -> [UInt8] {
+    CaptureSerialRedaction.redacted(bytes, productID: productID)
 }
 
-// MARK: - The submitted frame
+// MARK: - ExpressKey Remote
 
-// Report 0x10 from an ExpressKey Remote USB capture: one remote paired in
-// slot 0, serial 0x001234 at bytes 4...6.
+// Report 0x10, the receiver's pairing table: serial 0x001234 in slot 0, slot 4
+// filled too, the rest empty.
 var pairing = [UInt8](repeating: 0, count: 32)
 pairing[0] = 0x10
 pairing[2] = 0x01
-pairing[4] = 0x34
-pairing[5] = 0x12
+pairing[4] = 0x34; pairing[5] = 0x12
+pairing[28] = 0x99; pairing[29] = 0x88; pairing[30] = 0x77
+let shownPairing = redacted(pairing, ekr)
+check(Array(shownPairing[4...6]) != [0x34, 0x12, 0x00], "slot 0's serial is swapped")
+check(Array(shownPairing[28...30]) != [0x99, 0x88, 0x77], "slot 4's serial is swapped")
+check(Array(shownPairing[10...12]) == [0, 0, 0], "an empty slot stays empty")
+check(Array(shownPairing[0...3]) == [0x10, 0x00, 0x01, 0x00], "bytes before the serial survive")
+check(redacted(pairing, ekr) == shownPairing, "the same remote gets the same stand-in")
 
-let maskedPairing = masked(pairing, productID: ekr, reportID: 0x10)
-check(!maskedPairing.contains("3412"), "the paired serial does not survive masking")
+// Report 0x11: the sending remote's serial at bytes 3–5.
+var button: [UInt8] = [0x11, 0x01, 0x00, 0x34, 0x12, 0x00, 0x00, 0x64, 0x00, 0x01]
+let shownButton = redacted(button, ekr)
+check(Array(shownButton[3...5]) == Array(shownPairing[4...6]),
+      "the sender and its pairing slot share a stand-in")
+check(Array(shownButton[6...]) == Array(button[6...]), "battery and buttons survive")
+button[3] = 0x35
+check(Array(redacted(button, ekr)[3...5]) != Array(shownButton[3...5]),
+      "a different remote gets a different stand-in")
 
-// MARK: - Fingerprints
+// Position-based swapping only applies where the layout is known.
+check(redacted(pairing, 0x032B) == pairing, "the same report ID on a tablet is untouched")
 
-let salt = Data("test-salt".utf8)
-let prints = CaptureSerialRedaction.serialFingerprints(
-    productID: ekr, reportID: 0x10, bytes: pairing, salt: salt)
-check(prints.count == 1 && prints[0].hasPrefix("slot0:"), "one occupied slot, one fingerprint")
-check(!prints.joined().lowercased().contains("3412"), "fingerprint does not carry the serial")
-check(
-    prints == CaptureSerialRedaction.serialFingerprints(
-        productID: ekr, reportID: 0x10, bytes: pairing, salt: salt),
-    "same serial and salt give the same fingerprint")
-check(
-    prints != CaptureSerialRedaction.serialFingerprints(
-        productID: ekr, reportID: 0x10, bytes: pairing, salt: Data("other".utf8)),
-    "another install's salt gives another fingerprint")
-var sender = [UInt8](repeating: 0, count: 32)
-sender[0] = 0x11
-sender[3] = 0x34
-sender[4] = 0x12
-let senderPrint = CaptureSerialRedaction.serialFingerprints(
-    productID: ekr, reportID: 0x11, bytes: sender, salt: salt)
-check(
-    senderPrint.map { $0.dropFirst("sender:".count) } == prints.map { $0.dropFirst("slot0:".count) },
-    "the sending remote matches its pairing slot")
-check(
-    CaptureSerialRedaction.serialFingerprints(
-        productID: 0x032B, reportID: 0x10, bytes: pairing, salt: salt).isEmpty,
-    "devices without serial bytes get no fingerprints")
-check(maskedPairing.hasPrefix("100001"), "bytes before the serial are untouched")
+// MARK: - Pen serials
 
-// Occupancy must still be legible: that a slot was filled is the whole
-// reason the pairing table is worth capturing.
-let slotOffsets = CaptureSerialRedaction.serialByteOffsets(productID: ekr, reportID: 0x10)
-check(!slotOffsets.contains(2), "the slot's own flag byte stays readable")
-check(slotOffsets.contains(4) && slotOffsets.contains(5) && slotOffsets.contains(6),
-      "slot 0's serial is masked")
-check(slotOffsets.contains(28) && slotOffsets.contains(30),
-      "slot 4's serial is masked, so later slots are not missed")
-check(slotOffsets.count == 15, "five slots at three bytes each")
+let proFrame: [UInt8] = [0x10, 0x60, 0x6F, 0x4F, 0x00, 0x60, 0x5E, 0x00, 0x00, 0x00,
+                         0x1E, 0x23, 0x00, 0x00, 0x00, 0x00, 0x3F,
+                         0x78, 0x56, 0x34, 0x12, 0x42, 0x08, 0x10, 0x00, 0x42, 0x08]
+check(redacted(proFrame) == proFrame, "nothing changes before a pen announces itself")
 
-// MARK: - Report 0x11
+// A Cintiq Pro repeats the serial (here 0x12345678) LE at bytes 17–20.
+CaptureSerialRedaction.noteToolEnter(serial: 0x1234_5678)
+let shownPro = redacted(proFrame)
+let standIn = CaptureSerialRedaction.standIn(forPenSerial: 0x1234_5678)
+check(Array(shownPro[17...20]) == (0..<4).map { UInt8(truncatingIfNeeded: standIn >> ($0 * 8)) },
+      "the serial's bytes carry the stand-in the decoded line prints")
+check(Array(shownPro[0...16]) == Array(proFrame[0...16])
+      && Array(shownPro[21...]) == Array(proFrame[21...]),
+      "everything else survives")
 
-// The sending remote's own serial sits at 3...5 on every button frame.
-let button: [UInt8] = [
-    0x11, 0x01, 0x00, 0x43, 0xB2, 0x01, 0x00, 0x64,
-    0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
-]
-let maskedButton = masked(button, productID: ekr, reportID: 0x11)
-check(!maskedButton.contains("43B201"), "the sending remote's serial is masked")
-check(maskedButton.hasPrefix("110100"), "the report ID and status byte survive")
-// Buttons and battery are what the frame is captured for.
-check(maskedButton.hasSuffix("00640001008000000000"), "battery and buttons survive")
+// A 27QHD announcement packs the serial big-endian from bit 28 of byte 3.
+let packed: [UInt8] = [0x10, 0xC2, 0x80, 0x20, 0x76, 0x54, 0x32, 0x11, 0x60, 0x00]
+CaptureSerialRedaction.noteToolEnter(serial: 0x0765_4321)
+let shownPacked = redacted(packed)
+check(shownPacked != packed, "a nibble-packed serial is swapped")
+check(Array(shownPacked[0...2]) == Array(packed[0...2]) && shownPacked[3] >> 4 == 0x2
+      && shownPacked[7] & 0x0F == 0x1 && Array(shownPacked[8...]) == Array(packed[8...]),
+      "the tool-code nibbles around it survive")
+check(redacted([0x10, 0x80, 0, 0, 0, 0, 0, 0, 0, 0]) == [0x10, 0x80, 0, 0, 0, 0, 0, 0, 0, 0],
+      "an unrelated pen report is untouched")
 
-// MARK: - Scope
-
-// Nothing else should lose bytes. Masking by position is only safe where the
-// layout is known, so it must not reach a device this was never derived for.
-check(CaptureSerialRedaction.serialByteOffsets(productID: ekr, reportID: 0x02).isEmpty,
-      "an unrelated report ID is untouched")
-check(CaptureSerialRedaction.serialByteOffsets(productID: 0x032B, reportID: 0x10).isEmpty,
-      "the same report ID on the tablet is untouched")
-check(CaptureSerialRedaction.serialByteOffsets(productID: 0x032B, reportID: 0x11).isEmpty,
-      "a pen report is untouched — 0x11 means something else there")
+// Serial 0 means the protocol has none, and must not swap runs of zeros.
+CaptureSerialRedaction.noteToolEnter(serial: 0)
+check(redacted([0x02, 0, 0, 0, 0, 0]) == [0x02, 0, 0, 0, 0, 0], "a zero serial changes nothing")
+check(CaptureSerialRedaction.standIn(forPenSerial: 0) == 0, "a missing serial prints as 0")
+check(standIn != 0x1234_5678 && standIn == CaptureSerialRedaction.standIn(forPenSerial: 0x1234_5678),
+      "a pen stand-in is stable and isn't the serial")
 
 if fails == 0 {
     print("ok — \(checks) checks passed")

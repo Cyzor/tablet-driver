@@ -1297,9 +1297,6 @@ struct DiscoveryReportSummary: Codable {
     var optionalBytes: [Int]?
     var firstSample: String?          // hex string of first captured sample
     var constantValues: [Int]?        // values at `constantBytes`, same order
-    /// Salted fingerprints of any serial in the first sample — see
-    /// `CaptureSerialRedaction.serialFingerprints`.
-    var serialFingerprints: [String]?
     /// Per-byte statistics, keyed by byte index. Covers every position that
     /// took more than one value, plus every optional position.
     var byteStats: [Int: DiscoveryByteStat]?

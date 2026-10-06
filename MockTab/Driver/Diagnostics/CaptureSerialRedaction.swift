@@ -5,28 +5,19 @@
 import CryptoKit
 import Foundation
 
-/// Which byte positions of a report hold a hardware serial.
+/// Swaps hardware serials in captured reports for stand-ins.
 ///
-/// A capture records report bytes verbatim, and some devices put a serial
-/// number in them. That is the one thing in a report which names the user's
-/// hardware rather than describing the model, and these files get attached to
-/// public issues.
-///
-/// Free of the capture types on purpose, so the checks can compile it rather
-/// than restate it.
+/// Captures get attached to public issues. Free of the capture types so the
+/// checks can compile it.
 enum CaptureSerialRedaction {
 
-    /// Byte positions to withhold, for one device and report ID.
+    /// Byte positions holding the remote's serial, for one device and report ID.
     ///
     /// The ExpressKey Remote puts its serial on the wire twice: report 0x11
     /// carries the sending remote's at bytes 3–5, and report 0x10 — the
     /// receiver's pairing table — repeats one per 6-byte slot at j+4...6.
     /// Both are 24-bit LE. See `ExpressKeyRemoteDecoder` for the layout.
     ///
-    /// Only what identifies a unit. Occupancy is all the serial is read for,
-    /// and the byte stays listed as present, so a masked pairing table still
-    /// answers "was a remote paired" — the question a capture exists to
-    /// settle.
     static func serialByteOffsets(productID: Int, reportID: UInt8) -> [Int] {
         guard productID == expressKeyRemoteProductID else { return [] }
         switch reportID {
@@ -46,24 +37,121 @@ enum CaptureSerialRedaction {
         }
     }
 
-    /// Salted fingerprints of the serials a report carries, labeled by where
-    /// they sit ("sender", "slot0"…), so two captures can say "same remote"
-    /// without the serial. Unsalted, a 24-bit serial falls to brute force;
-    /// the salt never leaves the Mac, so fingerprints only compare within one
-    /// install. Empty and all-FF slots are skipped.
-    static func serialFingerprints(
-        productID: Int, reportID: UInt8, bytes: [UInt8], salt: Data
-    ) -> [String] {
+    // MARK: - Stand-in serials
+
+    /// A report's bytes with every hardware serial swapped for a stand-in.
+    /// One device keeps one stand-in, matching across captures from the
+    /// same Mac.
+    static func redacted(_ bytes: [UInt8], productID: Int) -> [UInt8] {
+        guard let reportID = bytes.first else { return bytes }
+        var out = bytes
         let offsets = serialByteOffsets(productID: productID, reportID: reportID)
-        return stride(from: 0, to: offsets.count, by: 3).compactMap { start in
+        for start in stride(from: 0, to: offsets.count, by: 3) {
             let group = offsets[start..<Swift.min(start + 3, offsets.count)]
-            guard let last = group.last, last < bytes.count else { return nil }
-            let serial = group.map { bytes[$0] }
-            if serial.allSatisfy({ $0 == 0 }) || serial.allSatisfy({ $0 == 0xFF }) { return nil }
-            let digest = SHA256.hash(data: salt + Data(serial))
-            let hex = digest.prefix(4).map { String(format: "%02x", $0) }.joined()
-            let label = reportID == 0x10 ? "slot\(start / 3)" : "sender"
-            return "\(label):\(hex)"
+            guard let last = group.last, last < out.count else { continue }
+            let serial = group.enumerated().reduce(UInt32(0)) {
+                $0 | UInt32(out[$1.element]) << ($1.offset * 8)
+            }
+            // Keep empty slots readable as empty.
+            guard serial != 0, serial != 0xFF_FFFF else { continue }
+            let decoy = standIn(for: serial, bits: 24)
+            for (i, idx) in group.enumerated() {
+                out[idx] = UInt8(truncatingIfNeeded: decoy >> (i * 8))
+            }
+        }
+        for serial in seen.withLock({ $0.penSerials }) {
+            replacePenSerial(serial, in: &out)
+        }
+        return out
+    }
+
+    /// Note a pen's serial so `redacted` can find it. Its position varies by
+    /// protocol, so it's matched by value: 4-byte LE, or big-endian at any
+    /// bit offset.
+    static func noteToolEnter(serial: UInt32) {
+        guard serial != 0 else { return }
+        seen.withLock { _ = $0.penSerials.insert(serial) }
+    }
+
+    /// The stand-in a decoded log line prints for a pen serial.
+    static func standIn(forPenSerial serial: UInt32) -> UInt32 {
+        serial == 0 ? 0 : standIn(for: serial, bits: 32)
+    }
+
+    private static func replacePenSerial(_ serial: UInt32, in bytes: inout [UInt8]) {
+        let decoy = standIn(for: serial, bits: 32)
+        if bytes.count >= 5 {
+            for start in 1...(bytes.count - 4) {
+                let value = (0..<4).reduce(UInt32(0)) {
+                    $0 | UInt32(bytes[start + $1]) << ($1 * 8)
+                }
+                guard value == serial else { continue }
+                for i in 0..<4 {
+                    bytes[start + i] = UInt8(truncatingIfNeeded: decoy >> (i * 8))
+                }
+            }
+        }
+        let bitCount = bytes.count * 8
+        var bit = 8
+        while bit + 32 <= bitCount {
+            if readBits(bytes, at: bit) == serial {
+                writeBits(&bytes, decoy, at: bit)
+                bit += 32
+            } else {
+                bit += 1
+            }
+        }
+    }
+
+    private static func readBits(_ bytes: [UInt8], at bit: Int) -> UInt32 {
+        var value: UInt32 = 0
+        for b in bit..<bit + 32 {
+            value = value << 1 | UInt32(bytes[b / 8] >> (7 - b % 8) & 1)
+        }
+        return value
+    }
+
+    private static func writeBits(_ bytes: inout [UInt8], _ value: UInt32, at bit: Int) {
+        for i in 0..<32 {
+            let b = bit + i
+            let mask = UInt8(1 << (7 - b % 8))
+            if value >> (31 - i) & 1 == 1 { bytes[b / 8] |= mask } else { bytes[b / 8] &= ~mask }
+        }
+    }
+
+    /// Never 0 or all-ones, which read as an empty slot.
+    private static func standIn(for serial: UInt32, bits: Int) -> UInt32 {
+        let mask: UInt32 = bits == 32 ? .max : (1 << bits) - 1
+        let input = (0..<4).map { UInt8(truncatingIfNeeded: serial >> ($0 * 8)) } + [UInt8(bits)]
+        let digest = Array(SHA256.hash(data: installSalt + Data(input)))
+        var value = digest.prefix(4).reduce(UInt32(0)) { $0 << 8 | UInt32($1) } & mask
+        if value == 0 || value == mask { value = 1 }
+        return value
+    }
+
+    /// Created on first use.
+    private static var installSalt: Data {
+        let key = "_captureFingerprintSalt"
+        if let salt = UserDefaults.standard.data(forKey: key) { return salt }
+        let salt = Data((0..<16).map { _ in UInt8.random(in: 0...255) })
+        UserDefaults.standard.set(salt, forKey: key)
+        return salt
+    }
+
+    private struct Seen {
+        var penSerials: Set<UInt32> = []
+    }
+
+    private static let seen = Locked(Seen())
+
+    private final class Locked<Value>: @unchecked Sendable {
+        private var value: Value
+        private let lock = NSLock()
+        init(_ value: Value) { self.value = value }
+        func withLock<R>(_ body: (inout Value) -> R) -> R {
+            lock.lock()
+            defer { lock.unlock() }
+            return body(&value)
         }
     }
 
