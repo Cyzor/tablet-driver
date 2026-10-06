@@ -434,26 +434,7 @@ final class WacomKnownDevice: TabletDevice {
 
         self.spec = Self.makeDigitizerSpec(from: deviceSpec)
 
-        // Parser → decoder dispatch. Each parser family corresponds to a wire
-        // format (report ID, byte layout, coordinate encoding, pressure depth);
-        // see `ReportParser` in WacomDeviceRegistry.swift for per-family details.
-        // To add support for a new model: add an entry to `WacomDeviceRegistry`
-        // pointing at the matching parser — no change here unless the model
-        // introduces a genuinely new wire format.
-        switch deviceSpec.parser {
-        case .intuosV2:  self.decoder = IntuosV2Decoder()   // PTH-460/660/860, BLE HOGP
-        case .intuosV3:  self.decoder = IntuosV3Decoder()   // PTK-470/670/870 (experimental)
-        case .dtus:      self.decoder = DTUSDecoder()        // DTK-1651, DTU-1031/1141 (experimental)
-        case .dtu:       self.decoder = DTUDecoder()         // DTU-1631, DTU-2231 (experimental)
-        case .intuos3:   self.decoder = Intuos3Decoder()    // PTZ-xxx (2003–2006)
-        case .bamboo:    self.decoder = BambooDecoder()     // CTL/CTH-xxx (experimental)
-        case .cintiqV1:  self.decoder = CintiqV1Decoder()   // Cintiq pen-displays
-        case .graphire:  self.decoder = GraphireDecoder()   // Graphire/PenPartner (experimental)
-        case .xencelabs: self.decoder = XencelabsDecoder()  // Xencelabs Pen Tablet (experimental)
-        case .intuosV1:  self.decoder = IntuosV1Decoder()   // Intuos 1–5, PTK-xxx, PTH-851
-        case .pl:        self.decoder = WacomPLDecoder()    // PL-400–PL-800 (PL-800 cross-referenced, rest experimental)
-        case .expressKeyRemote: self.decoder = ExpressKeyRemoteDecoder()  // EKR-100 (cross-referenced against Linux kernel source)
-        }
+        self.decoder = deviceSpec.parser.makeDecoder()
 
         // Use at least 192 bytes so both IntuosV1 (10-byte pen, 64-byte BLE)
         // and IntuosV2 (192-byte) reports always fit.

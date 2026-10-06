@@ -73,6 +73,13 @@ DTrace scripts that log the setup commands any driver sends a tablet, during
 use and on connect. They need System Integrity Protection off. In-app capture
 covers most other needs.
 
+### `usb_string_probe.c`
+Reads USB string descriptors from any device through the USB device plugin,
+without opening it, so it works while MockTab or another driver has the
+tablet open. Built to check whether MockTab can read the self-descriptions
+Huion (string 200) and XP-Pen or Xencelabs (string 100) tablets give. Build
+and run instructions are in the file header.
+
 ### `touch_capture.c`
 A small C tool that opens a HID device and prints its reports. Written for the
 PTH-860 touch work.

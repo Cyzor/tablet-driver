@@ -43,6 +43,7 @@ are made.
 | Page | Covers |
 | --- | --- |
 | [Xencelabs](Xencelabs-Protocol.md) | Pen Tablet, Pen Display, Quick Keys: input and host writes |
+| [UC-Logic](UC-Logic-Protocol.md) | Huion, Gaomon, XP-Pen, UGEE: self-description, pen, and buttons |
 | [macOS tablet event synthesis](macOS-Tablet-Event-Synthesis.md) | Proximity, pen, click, and scroll fields that apps check |
 | [Evidence](Evidence/README.md) | Annotated excerpts from captures that back key claims |
 | [Measurement methods](Measurement-Methods.md) | Captures, edge sweeps, dial turns, and judging tilt with a brush |
