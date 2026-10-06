@@ -1948,9 +1948,11 @@ extension WacomDeviceSpec {
 /// Accessories folded into a pen tablet's window while both are connected:
 /// the vendor companions `VendorDeviceRegistry` knows (Quick Keys), plus the
 /// ExpressKey Remote, which works with any Wacom pen tablet. With several,
-/// the remote joins the lowest product ID so its home doesn't move.
+/// the remote joins the tablet sharing its USB hub (the Cintiq 27QHD's
+/// built-in receiver), else the lowest product ID so its home doesn't move.
+@MainActor
 enum DeviceCompanions {
-    static let expressKeyRemoteProductID = 0x0331
+    nonisolated static let expressKeyRemoteProductID = 0x0331
 
     static func connectedCompanion(forProductID productID: Int, connectedProductIDs: [Int]) -> Int? {
         if let vendor = VendorDeviceRegistry.connectedCompanion(
@@ -1976,9 +1978,27 @@ enum DeviceCompanions {
     }
 
     private static func remoteOwner(_ connectedProductIDs: [Int]) -> Int? {
-        connectedProductIDs
+        let tablets = connectedProductIDs
             .filter { (WacomDeviceRegistry.spec(for: $0)?.maxX ?? 0) > 0 }
-            .min()
+        let contexts = TabletManager.shared.contexts
+        if let hub = contexts[expressKeyRemoteProductID].flatMap({ parentHub($0.locationID) }),
+           let owner = tablets
+               .filter({ contexts[$0].flatMap { parentHub($0.locationID) } == hub })
+               .min()
+        {
+            return owner
+        }
+        return tablets.min()
+    }
+
+    /// The hub a USB location ID hangs off, or nil on a root port. Each
+    /// nibble below the bus byte is one tier; the deepest nonzero one is the
+    /// device's own port.
+    nonisolated static func parentHub(_ locationID: Int) -> Int? {
+        var shift = 0
+        while shift < 24, (locationID >> shift) & 0xF == 0 { shift += 4 }
+        guard shift < 20 else { return nil }
+        return locationID & ~(0xF << shift)
     }
 }
 
