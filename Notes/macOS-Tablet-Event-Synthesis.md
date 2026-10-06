@@ -104,9 +104,9 @@ leaves the deltas that apps read through `NSEvent` at zero, so fill them in:
   0 and use the momentum phase instead. Setting both on one event confuses
   AppKit and WebKit.
 
-**A known limit.** Some web pages, and Calendar's Month and Year views,
-reject synthesized scrolling that includes momentum, even when every field
-matches a trackpad's. The remaining differences can't be set by an
+**A known limit.** Some web pages reject synthesized scrolling that
+includes momentum, though every field that matters matches a trackpad's
+([evidence](Evidence/Scroll-Event-Parity.md)). The rest can't be set by an
 ordinary app: which process sent the event, the state of its HID source,
 and the trackpad's raw finger-contact events. Scrolling works there with
 momentum turned off.

@@ -4,8 +4,7 @@ Every Wacom pen reports a tool code (what kind of pen) and a serial (which
 pen). Where each sits in a report depends on the protocol; see the protocol
 pages. This page lists only codes seen on hardware and the rules that hold
 across them. For the full list of pens, see libwacom's stylus database
-(`data/wacom-stylus.tablet` in the libwacom repository), which Wacom
-contributes to.
+(`data/wacom-stylus.tablet` in the libwacom repository).
 
 ## Codes seen on hardware
 
@@ -73,3 +72,13 @@ Compare codes only within one convention. (kernel)
 Earlier tables in these notes listed `0x0804` as the Pro Pen 3 and
 `0x0812` as an Art Pen. On hardware, `0x0804` is the Art Pen and the Pro
 Pen 3 is `0x0200`; the Linux driver lists `0x812` as the Inking Pen.
+
+## Tests
+
+These TabletKit tests check the codes above, many with frames from real captures:
+
+- [`IntuosV2BTDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV2BTDecoderTests.swift)
+- [`IntuosV2USBDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV2USBDecoderTests.swift)
+- [`IntuosV3DecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV3DecoderTests.swift)
+- [`IntuosV1DecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV1DecoderTests.swift)
+- [`CintiqV1DecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/CintiqV1DecoderTests.swift)

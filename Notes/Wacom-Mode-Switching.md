@@ -54,3 +54,10 @@ first one with any feature report. (observed)
 
 `0xFF0D0980` (`WACOM_HID_WD_MODE_CHANGE`) is an input usage, the device
 announcing a mode change. The host does not write it. (kernel)
+
+## Tests
+
+These TabletKit tests check that the write is found in the descriptor and sent to each family:
+
+- [`HIDReportDescriptorParserTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/HIDReportDescriptorParserTests.swift)
+- [`WacomDeviceRegistryTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/WacomDeviceRegistryTests.swift)
