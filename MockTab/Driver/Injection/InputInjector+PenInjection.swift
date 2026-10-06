@@ -241,6 +241,7 @@ extension InputInjector {
                     at: screenPoint, pressure: pressure, point: point, pose: pose,
                     snapshot: snap)
             }
+            let tipKind = (activeToolIsEraser ? tool.eraserBinding : tool.tipBinding).kind
             if tipDown {
                 // Cancel any pending deferred mouseUp — tip is back down.
                 cancelPendingMouseUp()
@@ -252,7 +253,18 @@ extension InputInjector {
                     // the tip binding; the matching mouseUp below is
                     // swallowed symmetrically (lastTipDown still tracks the
                     // physical tip).
+                } else if tipKind == .clickLock && clickLocked {
+                    // Tip set to Click Lock: the next contact ends the lock.
+                    releaseClickLock(at: screenPoint, snapshot: snap)
+                    tipClickSwallowed = true
+                } else if clickLocked || tipKind == .none {
+                    // Tip set to None, or Click Lock already holds the left
+                    // button: contact moves the cursor without clicking.
+                    tipClickSwallowed = true
                 } else {
+                    // Tip set to Click Lock starts the lock with a normal
+                    // press; `releaseTip` keeps the button held on lift.
+                    if tipKind == .clickLock { clickLocked = true }
                     let tipAction = activeToolIsEraser ? tool.eraserBinding : tool.tipBinding
                     activeButton = tipAction.mouseButton ?? .left
                     let (clickPt, count) = resolveClick(screenPoint, snapshot: snap)
@@ -317,7 +329,7 @@ extension InputInjector {
 
             // USB mouse left button held (KC-100): injectMouseButtons() already sent
             // leftMouseDown; use leftMouseDragged so apps receive proper drag events.
-            let dragging = tipDown || (activeToolIsMouse && usbMouseLeftHeld)
+            let dragging = (tipDown && !tipClickSwallowed) || (activeToolIsMouse && usbMouseLeftHeld)
 
             // Stale-backlog suppression covers both cursor-moving post
             // streams, not just the plain hover move below — a report this
@@ -567,6 +579,16 @@ extension InputInjector {
         }
     }
 
+    /// End Click Lock, posting the left button's up. No-op when not locked.
+    func releaseClickLock(at location: CGPoint, snapshot: InjectionSnapshot) {
+        guard clickLocked else { return }
+        clickLocked = false
+        hoverDragButton = nil
+        // A tip still down from starting the lock must not post a second up.
+        if lastTipDown { tipClickSwallowed = true }
+        postMouseUp(button: .left, at: location, clickCount: 1, snapshot: snapshot)
+    }
+
     /// Release a button held by a click binding (`.leftClick`/`.rightClick`/
     /// `.middleClick`), posting the matching up.
     ///
@@ -581,6 +603,7 @@ extension InputInjector {
     /// middle click when App Exposé swallowed the up, 2026-08-27, PTH-850 +
     /// KC-100 puck) and a **disconnect** (no release edge will ever arrive).
     func releaseBindingHeldButton(at location: CGPoint, snapshot: InjectionSnapshot) {
+        clickLocked = false
         guard let held = hoverDragButton else { return }
         switch held {
         case .left:
@@ -655,7 +678,12 @@ extension InputInjector {
         tipUpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         tipUpDebounceTimer = nil
         let exitPoint = smoother.smoothedPoint
-        if lastTipDown {
+        // Lifting the pen away ends Click Lock, as in the Xencelabs driver.
+        releaseClickLock(at: exitPoint, snapshot: snap)
+        if lastTipDown && tipClickSwallowed {
+            tipClickSwallowed = false
+            lastTipDown = false
+        } else if lastTipDown {
             postMouseUp(
                 button: activeButton, at: exitPoint,
                 clickCount: activeClickCount,
@@ -859,6 +887,15 @@ extension InputInjector {
     private func releaseTip(
         at screenPoint: CGPoint, pressure: Double, point: TabletPoint, snap: InjectionSnapshot
     ) {
+        if tipClickSwallowed {
+            tipClickSwallowed = false
+            return
+        }
+        if clickLocked {
+            // The tip started Click Lock: the button stays down, and hover drags.
+            hoverDragButton = .left
+            return
+        }
         let btn = activeButton
         let count = activeClickCount
 

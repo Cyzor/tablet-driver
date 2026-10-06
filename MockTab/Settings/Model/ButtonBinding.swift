@@ -12,7 +12,7 @@ import Foundation
 struct ButtonBinding: Codable, Equatable {
 
     enum Kind: String, Codable {
-        case none, leftClick, rightClick, middleClick, middleClickWithTip, eraser, keyCombo,
+        case none, leftClick, clickLock, rightClick, middleClick, middleClickWithTip, eraser, keyCombo,
             displayToggle, doubleClick, spacebar, ringCycle, ringSelectSlot, scrollDrag,
             relativeModeToggle, spanDisplaysToggle,
             // Second ring/dial's own mode-cycle actions (PTK-670/870's two
@@ -150,6 +150,10 @@ struct ButtonBinding: Codable, Equatable {
         case .none: return String(localized: "None", comment: "Button action: no action")
         case .leftClick:
             return String(localized: "Left Click", comment: "Button action: left mouse click")
+        case .clickLock:
+            return String(
+                localized: "Click Lock",
+                comment: "Button action: press once to hold the left mouse button, press again to release")
         case .rightClick:
             return String(localized: "Right Click", comment: "Button action: right mouse click")
         case .middleClick:
@@ -224,6 +228,7 @@ struct ButtonBinding: Codable, Equatable {
         switch label {
         case "None": return .none
         case "Left Click": return .leftClick
+        case "Click Lock": return ButtonBinding(kind: .clickLock)
         case "Right Click": return .rightClick
         case "Middle Click": return .middleClick
         case "Middle Click + Tip": return ButtonBinding(kind: .middleClickWithTip)

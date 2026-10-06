@@ -754,6 +754,17 @@ extension InputInjector {
         switch binding.kind {
         case .none:
             break
+        case .clickLock:
+            // Toggles on press; the key's own release does nothing.
+            guard down else { break }
+            if clickLocked {
+                releaseClickLock(at: location, snapshot: snapshot)
+            } else {
+                clickLocked = true
+                fireButtonAction(
+                    .leftClick, down: true, at: location, snapshot: snapshot,
+                    settings: settings, isAux: isAux)
+            }
         case .leftClick:
             hoverDragButton = down ? .left : nil
             let type: CGEventType = down ? .leftMouseDown : .leftMouseUp

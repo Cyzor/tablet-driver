@@ -475,6 +475,12 @@ final class InputInjector: @unchecked Sendable {
     /// True after the first leftMouseDragged is posted following a tip-down.
     /// Used to guarantee Pages sees at least one drag event even when deltas are tiny.
     var didEmitDragSinceDown = false
+    /// True while the tip is down with its binding set to None: the contact
+    /// posted no mouseDown, so it must post no drag or mouseUp either.
+    var tipClickSwallowed = false
+    /// True while a Click Lock binding holds the left button. Released by the
+    /// next press, proximity exit, tool change, or disconnect.
+    var clickLocked = false
     /// Screen position at the moment the tip went down. Anchor for the drag
     /// threshold gate — see `TabletSettings.dragThreshold`.
     var tipDownOrigin: CGPoint = .zero
@@ -1189,7 +1195,7 @@ final class InputInjector: @unchecked Sendable {
         postTabletPointerEvent(
             at: shimLastScreen, pressure: shimLastPressure, point: point, pose: pose,
             snapshot: snap)
-        let dragging = lastTipDown || (activeToolIsMouse && usbMouseLeftHeld)
+        let dragging = (lastTipDown && !tipClickSwallowed) || (activeToolIsMouse && usbMouseLeftHeld)
         if dragging {
             postMouseDrag(
                 button: activeButton, at: shimLastScreen, pressure: shimLastPressure, point: point,

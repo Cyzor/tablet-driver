@@ -121,6 +121,8 @@ struct ButtonBindingControl: View, Equatable {
                 .help("Hold to pan/scroll with pen motion (Hand-tool style)")
             Button("Double Click") { binding = ButtonBinding(kind: .doubleClick) }
                 .help("Two rapid clicks in succession")
+            Button("Click Lock") { binding = ButtonBinding(kind: .clickLock) }
+                .help("Press once to hold the left button, press again or lift the pen away to release")
             Button("Eraser") { binding = ButtonBinding(kind: .eraser) }
                 .help("Eraser tool (pressure-sensitive in drawing apps)")
             Divider()

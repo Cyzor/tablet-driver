@@ -43,7 +43,9 @@ extension InputInjector {
                 lastAuxButtons[i] = down
                 fireButtonAction(bindings[i], down: down, at: cursorPos,
                                  snapshot: snap, settings: settings, isAux: true)
-            } else if down && hasMechanicalPulse {
+            } else if down && hasMechanicalPulse && bindings[i].kind != .clickLock {
+                // Click Lock skips this: a forced re-press would toggle it,
+                // and some decoders flag every held frame as a new press.
                 // Button is already tracked as down, but a new mechanical pulse arrived —
                 // the user re-pressed before the release event was seen. Force a complete
                 // up→down cycle so the key fires correctly without getting swallowed.
