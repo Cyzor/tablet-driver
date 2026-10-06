@@ -336,32 +336,12 @@ final class WacomKnownDevice: TabletDevice {
     // *and* direct USB), so we can read it off the wire instead of needing
     // any prior pairing record. One-shot per dongle connection.
     private var xencelabsDongleRelinked = false
-    /// True once the OLED/dial-LED state has been resent after confirming
-    /// the relink actually took (see the `.aux` case in `handleReport`).
+    /// True once the display push is scheduled for this relink.
     private var xencelabsPostRelinkResynced = false
-    /// Bumped whenever a fresh relink cycle starts (a restart-triggered
-    /// re-arm). The post-wake retries capture the generation live when they
-    /// were scheduled and check it before firing, so a restart mid-flight
-    /// can't leave the superseded cycle's retries armed alongside the new
-    /// cycle's — they used to check only `xencelabsPostRelinkResynced`,
-    /// which the re-arm set right back to true, so all four fired and each
-    /// redrew the OLED (reported 2026-09-09).
+    /// Bumped when the puck reconnects or goes offline, so a pending display
+    /// push from an earlier connection stands down.
     private var xencelabsRelinkGeneration = 0
-    /// Uptime of the most recent proof-of-life from the puck itself: a
-    /// decoded `.aux` (button/dial) or `.battery` (poll reply) result, both
-    /// of which only arrive over a link the puck actually received and
-    /// answered on. `resyncXencelabsOutputsAfterRelink` always sends a
-    /// battery-poll GET, so a `.battery` reply after one is direct
-    /// confirmation that resync landed. nil until the first arrives.
-    ///
-    /// Lets the post-wake retries skip themselves once they'd be redundant:
-    /// they exist only for a puck that took the relink while still booting,
-    /// and a puck that has already answered is provably not that (reported
-    /// 2026-09-09 — retries fired on their fixed schedule against a puck the
-    /// user was actively using, redrawing the OLED for no reason).
-    private var xencelabsPuckConfirmedAliveAt: UInt64?
-    /// Timestamp of the most recent parsed report of any kind (unlike
-    /// `xencelabsPuckConfirmedAliveAt`, which means only "the puck answered").
+    /// Timestamp of the most recent parsed report of any kind.
     /// Used to log a possible silent link drop; no recovery action yet.
     var xencelabsLastReportAt: UInt64?
     /// The puck's 6-byte identity read off the relink report, kept so the
@@ -830,6 +810,11 @@ final class WacomKnownDevice: TabletDevice {
             // text cache lets the next display push actually resend.
             xencelabsSentText.removeAll()
             setRingLED(index: pendingLEDIndex)
+            // Ask the receiver to report its paired pucks now rather than
+            // waiting for it to announce them, as the vendor driver does.
+            if Self.xencelabsRelayProductIDs.contains(deviceSpec.productID) {
+                sendXencelabsOutput([0x02, 0xB8, 0x01], tag: "dongle scan")
+            }
         }
 
         // Touch sensor that enumerates as its own USB product: its Device Mode
@@ -1233,28 +1218,25 @@ final class WacomKnownDevice: TabletDevice {
             }
         }
 
-        // Puck power-cycle detection: the dongle emits status frames (tags
-        // 0xF8/0xF2) only while a paired puck is present but not yet upgraded
-        // to live aux data — the state a puck lands in when its power switch
-        // is cycled while the dongle stays enumerated. Seeing one *after* a
-        // successful relink therefore means the puck restarted and lost the
-        // tablet-mode handshake (and its OLED/LED state); re-arm the one-shot
-        // latches so the block below re-sends both. Without this, only
-        // reseating the dongle (fresh WacomKnownDevice, fresh latches)
-        // recovered the puck — the power switch alone left it dead.
-        //
-        // Tag 0xF2 with byte[2] == 0x01 is also the solicited battery GET
-        // reply (see XencelabsDecoder), which now arrives every periodic
-        // poll rather than once — exclude that shape here so a routine
-        // battery reply doesn't get misread as a restart and trigger a
-        // spurious full resync.
-        if deviceSpec.parser == .xencelabs, Self.xencelabsRelayProductIDs.contains(deviceSpec.productID),
-            xencelabsDongleRelinked, length >= 3, report[0] == 0x02,
-            (report[1] == 0xF8 || report[1] == 0xF2), !(report[1] == 0xF2 && report[2] == 0x01)
-        {
-            logger.info("\(name, privacy: .public): dongle status frame after relink (tag=0x\(String(report[1], radix: 16), privacy: .public)) — puck restarted, re-arming relink")
+        // The receiver's 0xF8 status frame says whether a paired puck is
+        // online: byte 2 bit 1, slot in byte 3. Each online frame means the
+        // puck (re)connected and needs the handshake and display again; an
+        // offline frame means it left. The vendor driver acts on these alone.
+        let xencelabsStatus: Bool? = {
+            guard deviceSpec.parser == .xencelabs,
+                Self.xencelabsRelayProductIDs.contains(deviceSpec.productID),
+                length >= 4, report[0] == 0x02, report[1] == 0xF8, report[2] != 0,
+                (1...2).contains(report[3])
+            else { return nil }
+            return report[2] & 0x02 != 0
+        }()
+        if xencelabsStatus == true, xencelabsDongleRelinked {
+            logger.info("\(name, privacy: .public): puck online again, re-arming relink")
             xencelabsDongleRelinked = false
             xencelabsPostRelinkResynced = false
+            xencelabsRelinkGeneration += 1
+        } else if xencelabsStatus == false {
+            logger.info("\(name, privacy: .public): puck offline")
             xencelabsRelinkGeneration += 1
         }
 
@@ -1275,12 +1257,9 @@ final class WacomKnownDevice: TabletDevice {
         // battery (and potentially OLED/LED) only worked right after a
         // power-cycle: only the announce frame happened to use the offset
         // this code originally assumed.
-        let xencelabsIdentityOffset: Int = {
-            guard length > 3, report[1] == 0xF8, report[2] == 0x02, report[3] == 0x01 else { return 12 }
-            return 10
-        }()
+        let xencelabsIdentityOffset = xencelabsStatus == true ? 10 : 12
         if deviceSpec.parser == .xencelabs, Self.xencelabsRelayProductIDs.contains(deviceSpec.productID),
-            !xencelabsDongleRelinked, length >= xencelabsIdentityOffset + Self.xencelabsIdentityLength,
+            xencelabsStatus != false, !xencelabsDongleRelinked, length >= xencelabsIdentityOffset + Self.xencelabsIdentityLength,
             report[0] == 0x02  // XencelabsDecoder.penReportID (internal, not visible here)
         {
             let identity = (0..<Self.xencelabsIdentityLength).map {
@@ -1292,52 +1271,15 @@ final class WacomKnownDevice: TabletDevice {
                 let ret = sendXencelabsRelink(identity: identity)
                 logger.info("\(name, privacy: .public): dongle relink sent, result=0x\(String(ret, radix: 16), privacy: .public)")
                 startXencelabsBatteryPolling()
-                // Previously this waited for the first real aux frame to prove
-                // the link was live before resending OLED/LED state, because
-                // those writes went out unaddressed and had nowhere reliable
-                // to land. Now that they carry the puck's identity (see
-                // XencelabsOutputProtocol call sites above), a successful relink
-                // write is enough — resyncing here means the display is
-                // correct immediately instead of only after the user
-                // happens to press a button. Confirmed 2026-07-07: still
-                // one-shot per dongle connection via xencelabsPostRelinkResynced.
+                // The puck can answer polls before its screen accepts text,
+                // so wait for it to settle before pushing the display; an
+                // immediate push is lost and leaves "Please connect" up.
                 if ret == kIOReturnSuccess, !xencelabsPostRelinkResynced {
                     xencelabsPostRelinkResynced = true
                     let generation = xencelabsRelinkGeneration
-                    let resyncSentAt = DispatchTime.now().uptimeNanoseconds
-                    resyncXencelabsOutputsAfterRelink()
-                    // A power-cycled puck accepts the relink while its firmware
-                    // is still waking (measured ~5.25 s to logo + "Please
-                    // connect" text), so the immediate handshake and resync
-                    // above land in the void — buttons come back but the puck
-                    // still believes it's unconnected and shows a stale
-                    // display, looking like a failed handshake. Repeat the
-                    // *full* relink + display resync after the wake window
-                    // passes (all writes addressed and idempotent; at
-                    // dongle-connect time, when the puck is already awake,
-                    // the repeats are harmless).
-                    //
-                    // Two gates keep these from firing when they'd only
-                    // redraw a display that is already correct: `generation`,
-                    // so a restart that re-armed the cycle mid-flight doesn't
-                    // leave the superseded cycle's retries armed too, and
-                    // `xencelabsPuckConfirmedAliveAt`, so a puck that already
-                    // answered the immediate resync is left alone — it is
-                    // provably not the still-booting puck these exist for.
-                    for delay in [6.5, 10.0] {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                            guard let self, self.xencelabsPostRelinkResynced,
-                                self.xencelabsRelinkGeneration == generation,
-                                let identity = self.xencelabsDongleIdentity
-                            else { return }
-                            if let aliveAt = self.xencelabsPuckConfirmedAliveAt, aliveAt > resyncSentAt {
-                                logger.info("\(self.deviceSpec.name, privacy: .public): post-wake relink retry (+\(delay, privacy: .public)s) skipped — puck already answered")
-                                return
-                            }
-                            let ret = self.sendXencelabsRelink(identity: identity)
-                            logger.info("\(self.deviceSpec.name, privacy: .public): post-wake relink retry (+\(delay, privacy: .public)s), result=0x\(String(ret, radix: 16), privacy: .public)")
-                            self.resyncXencelabsOutputsAfterRelink()
-                        }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                        guard let self, self.xencelabsRelinkGeneration == generation else { return }
+                        self.resyncXencelabsOutputsAfterRelink()
                     }
                 }
             }
@@ -1527,9 +1469,6 @@ final class WacomKnownDevice: TabletDevice {
                 guard !isWireless || wirelessReady else { break }
                 onToolEnter?(identity)
             case .aux(var buttons):
-                if deviceSpec.parser == .xencelabs {
-                    xencelabsPuckConfirmedAliveAt = DispatchTime.now().uptimeNanoseconds
-                }
                 // Diagnostic from the Xencelabs stuck-Command investigation
                 // (2026-07-05): which physical device/PID produced this aux
                 // frame and the raw bytes that decoded to it, so a phantom
@@ -1598,9 +1537,6 @@ final class WacomKnownDevice: TabletDevice {
                     break
                 }
             case .battery(let pct, let chg):
-                if deviceSpec.parser == .xencelabs {
-                    xencelabsPuckConfirmedAliveAt = DispatchTime.now().uptimeNanoseconds
-                }
                 onBattery?(pct, chg)
             case .mouseButton(let mask):
                 onMouseButton?(mask)

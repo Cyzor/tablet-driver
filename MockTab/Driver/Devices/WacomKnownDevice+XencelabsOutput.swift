@@ -226,8 +226,8 @@ extension WacomKnownDevice {
 
     /// Send the tablet-mode relink handshake ([0x02, 0xB0, 0x04] with the
     /// puck's identity appended) to the dongle's vendor interface, padded to
-    /// the declared output size. Used at first sight of the puck and again
-    /// after its ~5 s wake window (see the relink block in `handleReport`).
+    /// the declared output size. Sent each time the receiver reports the puck
+    /// online (see the relink block in `handleReport`).
     @discardableResult
     func sendXencelabsRelink(identity: [UInt8]) -> IOReturn {
         let target = secondaryDevice ?? device
