@@ -7,27 +7,15 @@ import CoreGraphics
 import os
 import TabletKit
 
-// The CGEvent posting layer, split out of InputInjector.swift: modifier
-// reconciliation, the mouse/tablet/proximity event constructors, button-
-// binding execution, and scroll/ring dispatch. The synthetic-modifier state
-// these read and the shared event source live on the main class body (Swift
-// class extensions can't hold stored properties) and stay HIDThread-confined
-// exactly as documented there.
+// The CGEvent layer: modifier reconciliation, event constructors, button
+// actions, and scroll and ring dispatch. State lives on the main class body.
 extension InputInjector {
 
     // MARK: - Mouse event helpers
 
-    /// Full modifier flags for state-change events (down/up/click/scroll/flagsChanged).
-    ///
-    /// Combines physical modifier state with synthetic modifiers from tablet button bindings.
-    /// For managed bits (⌘⌥⇧⌃), uses `tapLastPhysicalFlags` rather than reading
-    /// `hidSystemState` directly.  `hidSystemState` does not update atomically after posting
-    /// events (see OTD PR #4014) — it can lag by one or more run-loop cycles, causing stale
-    /// managed bits to re-appear in the next outbound event.  `tapLastPhysicalFlags` is set
-    /// inside the flagsChanged session tap, at the exact moment the OS delivers the change to
-    /// apps, making it the freshest available physical-state source for managed bits.
-    /// Non-managed bits (capslock, numlock, fn …) continue to come from `hidSystemState`.
-    /// Logs every transition in managed bits for diagnostics.
+    /// Modifier flags for state-change events: physical plus synthetic. Managed
+    /// bits (⌘⌥⇧⌃) come from `tapLastPhysicalFlags`, since `hidSystemState` lags
+    /// our own posts (OTD PR #4014). Other bits come from `hidSystemState`.
     var currentEventFlags: CGEventFlags {
         let result = CGEventFlags(rawValue: ModifierMath.currentEventFlags(
             systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
@@ -44,16 +32,9 @@ extension InputInjector {
         return result
     }
 
-    /// Modifier flags for high-frequency move/drag events (mouseMoved, leftMouseDragged, etc.).
-    ///
-    /// Carries physical modifiers so Illustrator and Keynote can read ⇧/⌘/⌥/⌃ from
-    /// drag events for constraint-snapping — but only when the cache is current for
-    /// this report.
-    ///
-    /// Scheduling the tap on HIDThread (`8298334`) fixed the *data* race on
-    /// `tapLastPhysicalFlags`, not the *ordering* gap `34cdf46` described: same-thread
-    /// makes delivery order deterministic, not fresh. `physicalCacheIsCurrent` closes
-    /// it by comparing stamps rather than assuming.
+    /// Modifier flags for move and drag events. Physical modifiers ride along
+    /// for constraint snapping (Illustrator, Keynote), but only while the cache
+    /// is current for this report; see `physicalCacheIsCurrent`.
     var moveSafeEventFlags: CGEventFlags {
         let synthetic = groundTruthSyntheticFlags.rawValue
             | SharedAuxModifierState.shared.groundTruthFlags.rawValue
@@ -73,15 +54,10 @@ extension InputInjector {
             physicalCacheIsCurrent: current && !Self.forceDropPhysicalMoveFlags))
     }
 
-    /// The union of modifier flags justified by currently-held pen barrel buttons.
-    /// Used by `reconcileSyntheticFlags` to identify orphaned bits after a tool change.
-    /// Express-key modifiers are excluded — they arrive via `injectAux` with their own
-    /// settings context and are handled by the DispatchWorkItem / time-based watchdogs.
+    /// Modifiers justified by held pen buttons. ExpressKey modifiers are
+    /// excluded; the watchdogs handle those.
     private func expectedSyntheticFlagsForHeldPenButtons() -> CGEventFlags {
-        // Pen-button bindings live on the active tool's snapshot (refreshed on every
-        // ToolSettings change). When no snapshot has been seeded yet — e.g. during
-        // the brief window before DeviceContext.observeInjectionSnapshot() runs —
-        // there are no held pen buttons either, so an empty result is correct.
+        // No snapshot yet means no held buttons either.
         guard let snap = injectionSnapshot else { return [] }
         var flags = CGEventFlags()
         if lastButton1Down {
@@ -96,11 +72,8 @@ extension InputInjector {
         return flags
     }
 
-    /// Called whenever `activeToolSettings` changes. Releases any synthetic modifier bits
-    /// that are no longer justified by the current pen button bindings. This handles the
-    /// eraser-flip / tool-switch scenario: if the user held a barrel button mapped to ⌥
-    /// and the tool identity changed mid-hold, the up-edge fires against the new binding
-    /// and ⌥ would otherwise be orphaned in `groundTruthSyntheticFlags` forever.
+    /// Release synthetic modifiers the current pen bindings no longer justify,
+    /// e.g. a barrel button held for ⌥ across an eraser flip.
     func reconcileSyntheticFlags() {
         guard !groundTruthSyntheticFlags.isEmpty else { return }
         let expected = expectedSyntheticFlagsForHeldPenButtons()
@@ -119,10 +92,8 @@ extension InputInjector {
         }
         lastSyntheticFlagChangeAt = Date()
 
-        // Build explicit release flags: managed bits come from remaining-held synthetic
-        // bits (excess already cleared above); non-managed bits from system. Same
-        // rationale as releaseAllSyntheticModifiers — hidSystemState is contaminated
-        // with our earlier synthetic posts; don't let it re-assert the bits.
+        // Managed bits come from what's still held, not hidSystemState, which
+        // our own posts pollute.
         let reconcileFlags = CGEventFlags(rawValue: ModifierMath.releaseEventFlags(
             systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
             remainingSyntheticFlags: groundTruthSyntheticFlags.rawValue))
@@ -136,11 +107,8 @@ extension InputInjector {
         }
     }
 
-    /// Releases any synthetic modifier keys currently held by an aux/express-key
-    /// binding on ANY device (see `SharedAuxModifierState`). Mirrors
-    /// `releaseAllSyntheticModifiers` but clears the shared store instead of this
-    /// instance's own ground truth. Safe to call from any instance — the shared
-    /// state, and hidSystemState, don't belong to a particular device.
+    /// Release modifiers held by any device's aux binding (see
+    /// `SharedAuxModifierState`). Safe from any instance.
     func releaseSharedAuxModifiers() {
         let shared = SharedAuxModifierState.shared
         guard !shared.groundTruthFlags.isEmpty else { return }
@@ -177,17 +145,9 @@ extension InputInjector {
         for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
         lastSyntheticFlagChangeAt = Date()
 
-        // Build the explicit release flags: non-managed system bits unchanged;
-        // managed bits = 0 for everything being released, 0 for all remaining synthetic
-        // bits (ground truth is already cleared).  We do NOT read hidSystemState for
-        // managed bits because hidSystemState is polluted by our own earlier synthetic
-        // flagsChanged events posted via cghidEventTap — it would re-assert the very
-        // bit we are trying to release.  tapLastPhysicalFlags has the same contamination,
-        // so we also exclude it for managed bits and start from a clean managed=0 base.
-        // If the user is simultaneously holding the same modifier physically on the
-        // keyboard, the OS will re-assert it via its own flagsChanged as the key stays
-        // held — we don't need to preserve it in this event.
-        // Managed bits all clear; non-managed bits preserved from system.
+        // Managed bits all clear: hidSystemState and tapLastPhysicalFlags both
+        // reflect our own earlier posts and would re-assert the bit. A key the user
+        // still holds is re-asserted by the OS.
         let releaseFlags = CGEventFlags(rawValue: ModifierMath.releaseEventFlags(
             systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
             remainingSyntheticFlags: 0))
@@ -203,10 +163,7 @@ extension InputInjector {
             e.post(tap: .cghidEventTap)
         }
 
-        // Audit: re-read hidSystemState shortly after, log if any "released" bit is
-        // still set there. Captures the case where the release events were posted but
-        // the OS still reports the modifier as held — points to event-tap interference
-        // or a state-source mismatch. Async so we sample after WindowServer settles.
+        // Audit: log any released bit the OS still reports as held.
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(50)) { [weak self] in
             guard self != nil else { return }
             let systemAfter = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
@@ -237,22 +194,13 @@ extension InputInjector {
         }
     }
 
-    /// Called when the frontmost application changes. Releases any synthetic modifier
-    /// keys so the new app receives a clean keyboard state.
-    ///
-    /// To disable this behavior, remove the call in AppWatcher.appDidActivate — the
-    /// proximity-exit safety valve (which calls releaseAllSyntheticModifiers) is
-    /// unaffected and continues to operate independently.
+    /// The front app changed: release synthetic modifiers so it starts clean.
     func releaseOnAppSwitch() {
         // groundTruthSyntheticFlags / modifierRefCounts are HIDThread-owned.
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
             self?.releaseAllSyntheticModifiers()
             self?.releaseAllHeldKeyComboKeys()
-            // The app that was receiving a momentum tail is no longer
-            // frontmost. Pre-27 an abandoned tail just idled harmlessly in
-            // it; macOS 27's stuck-gesture auto-cancel timer can now
-            // force-cancel a non-terminal one instead, so post the terminal
-            // event explicitly rather than leaving the switch to do it.
+            // End momentum tails explicitly: macOS 27 force-cancels a gesture left open.
             if let self, self.panMomentumTail.isRunning || self.touchMomentumTail.isRunning {
                 TouchPipelineProbe.note { $0.momentumTailsStoppedOnAppSwitch += 1 }
             }
@@ -271,14 +219,9 @@ extension InputInjector {
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
     }
 
-    /// Post a completed CGEvent.
-    ///
-    /// The caller is responsible for setting `event.flags` before calling:
-    /// use `currentEventFlags` for state-change events (mouseDown/Up, click,
-    /// scroll, flagsChanged) and `moveSafeEventFlags` for high-frequency
-    /// movement events (mouseMoved, leftMouseDragged, tabletPointer).
-    /// Keeping the flags decision at the call site avoids invoking
-    /// `CGEventSource.flagsState` — a kernel round-trip — on every pen report.
+    /// Post a finished event. Callers set flags: `currentEventFlags` for state
+    /// changes, `moveSafeEventFlags` for movement, which avoids a kernel
+    /// round-trip per pen report.
     func finalizeAndPost(_ event: CGEvent) {
         #if DEBUG
         assert(
@@ -287,10 +230,8 @@ extension InputInjector {
             "groundTruthSyntheticFlags contains bits outside ModifierMath.managedMask"
         )
         #endif
-        // Stamp with the kernel receipt time of the driving HID report so
-        // inter-event timing reflects the pen's actual motion, not our
-        // scheduling jitter — brush engines derive stroke velocity from
-        // event timestamps. Timer-fired posts carry 0 and keep the default.
+        // Stamp with the report's receipt time: brush engines derive stroke
+        // velocity from event timestamps. Timer-fired posts keep the default.
         if Self.currentReportTimestampNs != 0 {
             event.timestamp = Self.currentReportTimestampNs
         }
@@ -361,13 +302,8 @@ extension InputInjector {
             callback: { _, _, event, userInfo -> Unmanaged<CGEvent>? in
                 guard let userInfo else { return Unmanaged.passRetained(event) }
                 let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
-                // Only update tapLastPhysicalFlags for hardware keyboard events.
-                // Our own injected flagsChanged events use .privateState source and DO
-                // write into hidSystemState — reading hidSystemState here would reflect
-                // them and corrupt tapLastPhysicalFlags with phantom physical key state.
-                // Filter by sourceStateID: hardware events have .hidSystemState (raw=1);
-                // our events have a private state ID.  Read event.flags directly to get
-                // the exact post-event modifier state without hidSystemState lag/pollution.
+                // Hardware keyboard events only (sourceStateID == hidSystemState). Ours
+                // use a private state and would corrupt the cache with phantom keys.
                 let stateID = Int32(truncatingIfNeeded:
                     event.getIntegerValueField(.eventSourceStateID))
                 guard ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) else {
@@ -380,19 +316,10 @@ extension InputInjector {
                 }
                 injector.tapLastPhysicalFlags =
                     event.flags.rawValue & ModifierMath.managedMask
-                // The event's own stamp, not our delivery time. Both this and
-                // `currentReportTimestampNs` are then kernel-origin, so comparing
-                // them measures event order rather than our scheduling.
-                //
-                // Wall clock would bias the comparison: it carries the tap's
-                // delivery latency, which the report stamp does not, so a stale
-                // cache could vouch for reports that arrived during a tap stall.
-                // Measured 2026-09-22 (Cyzor/tablet-driver#18): CGEvent.timestamp
-                // is already nanoseconds on this clock — no timebase scaling, unlike
-                // the raw HID timestamp — and ran 0.8–2.8ms ahead of delivery on an
-                // idle machine. The same run showed each event arriving three times,
-                // ~90µs apart; the event stamp makes those duplicates idempotent
-                // where wall clock ratcheted the cache forward on each one.
+                // The event's own stamp, on the same kernel clock as
+                // `currentReportTimestampNs`, so comparing them measures event order.
+                // Wall clock carried tap latency and ratcheted on duplicate deliveries
+                // (Cyzor/tablet-driver#18).
                 injector.tapLastPhysicalFlagsAtNs = UInt64(event.timestamp)
                 return Unmanaged.passRetained(event)
             },
@@ -410,19 +337,15 @@ extension InputInjector {
         flagsChangedTapSource = runLoopSource
         // Warm the cache before enabling so the first tap callback has a valid baseline.
         tapLastPhysicalFlags = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
-        // Seed the stamp too, or the cache reads as never-written and every move
-        // event before the first keypress drops physical bits needlessly. Wall
-        // clock here, unlike the callback's event stamp: this reading has no event
-        // behind it, and "now" is the honest answer for a state we just read.
+        // Seed the stamp too, or every move before the first keypress drops
+        // physical bits. Wall clock is honest here: no event is behind it.
         tapLastPhysicalFlagsAtNs =
             UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)
         CGEvent.tapEnable(tap: tap, enable: true)
     }
 
-    /// Resolves effective pen pose for CGEvent stamping.
-    /// With the no-UI `useRotationAsTilt` key set, real tilt is suppressed and
-    /// barrel rotation is sent as synthetic tilt instead. Obsolete Photoshop
-    /// workaround: Art Pens now advertise rotation, which Photoshop reads directly.
+    /// Pen pose for stamping. The hidden `useRotationAsTilt` key sends rotation
+    /// as tilt: an obsolete Photoshop workaround.
     func resolveEffectivePose(
         point: TabletPoint,
         snapshot: InjectionSnapshot
@@ -430,17 +353,9 @@ extension InputInjector {
         let tool = snapshot.activeTool
 
         var tiltX = point.tiltX
-        // A blanket negation of whatever each decoder emits for tiltY, tuned
-        // once against real vendor drivers rather than derived per family from
-        // spec documents — decoders don't agree among themselves on a native
-        // sign (confirmed 2026-09-05: Intuos3Decoder's raw tiltY is actually
-        // inverted from Wacom's own documented native convention, "+ toward
-        // the user"), so trying to reconcile each one's native polarity first
-        // and then correct for the platform would be two guesses instead of
-        // one. Verified at the application 2026-09-05 — Rebelle's flat brush
-        // leans the right way for Xencelabs and Wacom pens and matches the
-        // vendor drivers (OpenTabletDriver: PTZ-631W away = -Y, toward = +Y,
-        // matched exactly); without this every brand pointed backward on Y.
+        // One blanket flip, matched to the vendor drivers at the app (Rebelle's flat
+        // brush, 2026-09-05). Decoders disagree on native sign, so correcting each
+        // first would mean two guesses instead of one.
         var tiltY = -point.tiltY
         let rotation = point.rotation
 
@@ -572,10 +487,8 @@ extension InputInjector {
             e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
             e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         }
-        // Synthetic CGEvents default to zero deltas, breaking AppKit controls (e.g.
-        // Xcode's minimap) that read event.deltaX/Y rather than diffing absolute
-        // positions themselves. CG Y=0 is top; NSEvent deltaY is positive-upward,
-        // so negate the Y component.
+        // Synthetic events default to zero deltas, which breaks controls that read
+        // deltaX/Y (Xcode's minimap). NSEvent's deltaY is positive-up, so negate.
         e.setIntegerValueField(
             .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
         e.setIntegerValueField(
@@ -772,14 +685,9 @@ extension InputInjector {
                 mouseEventSource: sessionSource, mouseType: type,
                 mouseCursorPosition: location, mouseButton: .left)
             {
-                // Same tablet stamping as `.rightClick`/`.middleClick` below.
-                // This case used to post a bare mouse event while its three
-                // siblings stamped subtype/devID/ptBtns, which made a binding's
-                // down and a pen tip's up (which always stamps, via
-                // `postMouseUp`) look like two different input streams — enough
-                // for AppKit's gesture recognizer to reject the up as
-                // `receivedEventMidStream`. Pressure stays 0: this is a button
-                // press, not a tip contact.
+                // Stamped like the other click actions. A bare event made the down and the
+                // tip's up look like two streams, and AppKit rejected the up as
+                // `receivedEventMidStream`. Pressure 0: a button, not a tip.
                 e.setIntegerValueField(.mouseEventSubtype, value: 1)
                 e.setIntegerValueField(.tabletEventDeviceID, value: tabletDeviceID)
                 e.setIntegerValueField(.tabletEventPointButtons, value: down ? 1 : 0)
@@ -845,10 +753,8 @@ extension InputInjector {
             let bindingFlags = CGEventFlags(rawValue: binding.modifierFlags)
             let modBits: [CGEventFlags] = [.maskCommand, .maskShift, .maskAlternate, .maskControl]
 
-            // Build the CGEvent BEFORE mutating state. If construction fails (rare, but
-            // can happen under memory pressure or CoreGraphics saturation), we bail without
-            // touching groundTruthSyntheticFlags or modifierRefCounts. The old code mutated
-            // state first, leaving orphaned modifier bits when the event never reached the OS.
+            // Build the event before changing state, so a failed build leaves no
+            // orphaned modifier bits.
             let isModifierOnly = binding.keyLabel.isEmpty && binding.modifierFlags != 0
             let event: CGEvent?
             if isModifierOnly {
@@ -868,32 +774,17 @@ extension InputInjector {
             }
             guard let e = event else { break }
 
-            // Real keyboards bracket a modified keystroke with flagsChanged
-            // events (⌘ down → Space down → Space up → ⌘ up); apps that track
-            // modifier state from flagsChanged transitions alone (Rebelle)
-            // never saw a modifier release when we only stamped flags on the
-            // keyDown/keyUp pair. Post in hardware order: modifiers assert
-            // before the keyDown; the keyUp still carries the held modifiers
-            // (so it goes out before the state decrement below); the release
-            // flagsChanged comes last.
+            // Bracket with flagsChanged in hardware order (⌘ down, key down, key up,
+            // ⌘ up). Rebelle tracks modifiers from flagsChanged alone.
             let bracketModifiers = !isModifierOnly && binding.modifierFlags != 0
             if bracketModifiers && !down {
                 e.flags = currentEventFlags
                 finalizeAndPost(e)
             }
 
-            // Event created successfully — now commit the state delta.
-            //
-            // Aux-sourced bindings (express keys, touch-ring center click) go to the
-            // process-wide shared store instead of this instance's own ground truth.
-            // An aux-only accessory (Xencelabs QuickKeys) is its own physical device
-            // with its own InputInjector — a Shift it asserts must still show up in
-            // the flags on drag events posted by whichever InputInjector is actually
-            // driving the pointer (the pen tablet's), which never sees this instance's
-            // local groundTruthSyntheticFlags. Pen-button bindings (barrel buttons)
-            // keep using local state because they're reconciled against this device's
-            // own active tool (see reconcileSyntheticFlags) — sharing them globally
-            // would let an unrelated device's tool change strip them.
+            // Aux bindings (ExpressKeys, ring center) use the shared store: a Quick
+            // Keys Shift must reach drags posted by the pen tablet's injector. Pen
+            // buttons stay local, reconciled against this device's tool.
             if isAux {
                 let shared = SharedAuxModifierState.shared
                 let flagsBefore = shared.groundTruthFlags
@@ -951,12 +842,8 @@ extension InputInjector {
                 }
                 lastKeyComboChangeAt = Date()
             }
-            // State is committed — post the flagsChanged bracket(s) with the
-            // post-commit flags: on DOWN they assert the modifiers ahead of the
-            // keyDown; on UP they carry the released state after the keyUp that
-            // already went out above. One event per modifier bit with its
-            // canonical left-hand keycode (keycode-0 events are ignored by
-            // many apps — see modifierKeyCodes).
+            // Post the flagsChanged brackets with the committed flags, one per bit,
+            // each with its left-hand keycode (apps ignore keycode 0).
             if bracketModifiers {
                 for (bit, keyCode) in Self.modifierKeyCodes where bindingFlags.contains(bit) {
                     guard let fc = CGEvent(source: sessionSource) else { continue }
@@ -975,11 +862,7 @@ extension InputInjector {
             // Span mode maps to every selected display simultaneously — there's
             // nothing to cycle, so a bound toggle button is inert here.
             guard snapshot.targetDisplayIndex != TabletSettings.displayModeSpan else { break }
-            // Aux-only accessories (Xencelabs Quick Keys) move no pointer of
-            // their own, so cycling this injector's mapping would do nothing
-            // visible — TabletManager wires a forwarder that steers the
-            // tablet actually driving the cursor. Never set on pen-bearing
-            // devices, so their toggle path below is unchanged.
+            // Quick Keys move no pointer, so forward to the tablet driving the cursor.
             if let forward = displayToggleForwarder {
                 forward()
                 break
@@ -992,11 +875,7 @@ extension InputInjector {
             }
         case .ringCycle, .ringCycle2:
             guard down else { break }
-            // Close any open .zoom/.rotate envelope before the mode changes
-            // out from under it — synchronous, on HIDThread, before the
-            // async index update below. Mechanical-dial hardware: the
-            // coaster; capacitive rings: the direct envelope flags. Correct
-            // for either mechanism regardless of which one this device uses.
+            // End any open zoom or rotate gesture before the mode changes.
             closeRingGestureEnvelopes()
             if let s = settings {
                 let control: RotaryIndex = binding.kind == .ringCycle2 ? .second : .first
@@ -1050,10 +929,7 @@ extension InputInjector {
             }
         case .relativeModeToggle:
             guard down else { break }
-            // Aux-only accessories (Xencelabs Quick Keys) have no cursor of
-            // their own — see displayToggleForwarder above for the identical
-            // reasoning. Forward to whichever tablet is actually driving the
-            // pointer instead of flipping this injector's own inert setting.
+            // Quick Keys have no cursor; forward, as with displayToggleForwarder.
             if let forward = relativeModeToggleForwarder {
                 forward()
                 break
@@ -1063,14 +939,9 @@ extension InputInjector {
                 Task { @MainActor in s.relativeCursorMovement.toggle() }
             }
         case .scrollDrag:
-            // Hold-to-pan: while engaged, inject()'s movement path converts
-            // pen motion into phased pixel scroll events (see postPanScroll).
-            // The binding may live on a different device than the one moving
-            // the pointer (e.g. a Quick Keys puck button while the pen pans),
-            // so the gesture is driven on whichever injector is currently
-            // moving the pointer — resolved via SharedPanScrollState. The
-            // engage/disengage intents fire immediately so apps see the
-            // gesture's began/ended brackets even if the pen never moves.
+            // Hold to pan: pen motion becomes scroll events. The button can live on
+            // another device (a Quick Keys key while the pen pans), so the gesture runs
+            // on whichever injector moves the pointer. Begin and end fire at once.
             let driver = Self.resolvePanScrollDriver(preferring: self)
             if down {
                 SharedPanScrollState.shared.driver = driver
@@ -1084,10 +955,8 @@ extension InputInjector {
             } else {
                 let active = SharedPanScrollState.shared.driver ?? driver
                 active.cancelPanScrollSafetyNet()
-                // The backdate is read from `self` — the injector whose button
-                // debounce deferred this release — not from `active`, which may
-                // be a different injector hosting the gesture (puck button, pen
-                // pans). Zero unless a debounced release is committing now.
+                // The backdate comes from `self`, whose debounce deferred the release, not
+                // from `active`.
                 active.postPanScroll(
                     active.panScroll.disengage(backdate: pendingButtonUpBackdate))
                 if active.panScrollUsePhases {
@@ -1116,60 +985,28 @@ extension InputInjector {
         rawDelta unflippedDelta: Int, slot: ControlSlot, accum: inout Double,
         at location: CGPoint, snapshot: InjectionSnapshot, settings: TabletSettings?
     ) {
-        // User-facing direction preference, applied once here rather than at
-        // each of the six call sites (two rings, two strips, two wheels) so
-        // every mechanism and every slot action gets it identically. Distinct
-        // from `ringDeltaIsInverted`, which has already normalized the raw
-        // hardware convention by the time deltas reach this point.
+        // The user's direction setting, applied once for every ring, strip, and
+        // dial. `ringDeltaIsInverted` already normalized the hardware.
         let rawDelta = snapshot.reverseRingDirection ? -unflippedDelta : unflippedDelta
-        // Scrolling on any ring, strip, or dial goes through a direct-drive
-        // glide (`RingScrollGlide`): exact distance per tick, spread over a
-        // few frames, no stored velocity. Key-press and off/skip slots are
-        // untouched.
-        // Modifier-held dial scrolling is not scrolling: apps read ⌥/⌘+wheel as
-        // zoom, and zoom is a stepped operation, one notch per detent. A 60 Hz
-        // continuous stream hands those apps dozens of zoom steps per second —
-        // confirmed unusable in Adobe on hardware. Keep the old discrete
-        // one-event-per-click path whenever a modifier is down, which is also
-        // the behaviour that was already known good for zoom.
+        // Scrolling glides through `RingScrollGlide`: exact distance per tick,
+        // spread over a few frames. With a modifier held, apps read the wheel as
+        // stepped zoom, and a 60 Hz stream was unusable in Adobe, so modifier-held
+        // scrolling keeps one event per click.
         let zoomModifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
         let modifierHeld = !moveSafeEventFlags.intersection(zoomModifiers).isEmpty
-        // Posts .ended if a .zoom/.rotate gesture is currently open on
-        // mechanical-dial hardware — a modifier held mid-spin must not
-        // leave the app stuck mid-pinch/-rotate. No-op for scroll, which
-        // never opens one, and for capacitive hardware, whose envelope is
-        // owned by injectAux's touchRingActive edge instead.
+        // A modifier held mid-spin must not leave a dial gesture open.
         if modifierHeld { closeMechanicalDialGesture() }
         if hasMechanicalDial, !modifierHeld, case .scroll = slot.action {
-            // The dial's Speed slider was given a 20x ceiling (44e22ad) purely
-            // so one click's line count could cross the chunk threshold that
-            // works around AppKit's per-event clamp. Pixel-unit output has no
-            // such clamp to work around, so that headroom is now dead — and a
-            // saved 20 would make a single click jump 600 points.
-            // The slider is back to the normal 0-3x range, so this clamp only
-            // catches values saved while the taller one was live.
+            // Clamps Speed values saved under the old 20x ceiling, which would make
+            // one click jump 600 points.
             let lines = Double(rawDelta) * min(slot.speed, 3.0)
             dialGlide.impulse(lines: Self.naturalScrollingEnabled ? lines : -lines)
             return
         }
         if slot.action == .zoom || slot.action == .rotate {
-            // One post per raw tick, linearly scaled — no accumulator, no
-            // physics, on *either* mechanism. This branch used to be
-            // capacitive-ring-only, with mechanical-dial hardware routed
-            // through an inertial coaster instead; that was
-            // wrong (see `closeMechanicalDialGesture`'s doc comment) — a
-            // dial click is a discrete, already-quantized ±1 tick (confirmed
-            // for the Xencelabs dial: `XencelabsDecoder`'s "Dial clicks
-            // arrive as discrete events, not a counter"), and feeding a
-            // single already-final click through inertial buildup for
-            // "smoothness" was solving a problem that didn't exist while
-            // creating one that did — nonlinear compounding zoom/rotation
-            // per click, a confirmed hardware finding on the Xencelabs puck.
-            // Note: unlike the mechanical branch this replaced,
-            // `naturalScrollingEnabled` is deliberately NOT applied here —
-            // it is a scroll-direction preference, and this ring/dial
-            // gesture path never applied it even for the capacitive ring,
-            // which is the case already validated as feeling right.
+            // One post per tick, linearly scaled, on rings and dials alike. Dial clicks
+            // are already discrete; an inertial coaster compounded zoom per click on the
+            // Xencelabs puck. No natural-scrolling flip: it's a scroll setting.
             let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
             // Scale matches this control's steps/revolution: ring 72, Wacom
             // dial 24, Xencelabs dial 13.
@@ -1184,12 +1021,8 @@ extension InputInjector {
             }
             let delta = Double(rawDelta) * slot.speed * scale
             if hasMechanicalDial {
-                // No finger-presence signal exists to bracket .began/.ended
-                // the way injectAux's touchRingActive edge does for the
-                // capacitive ring — a bare rotary encoder only ever reports
-                // "a click happened". Envelope open/close is instead owned
-                // by an idle timer: rearmed on every tick, closes the
-                // gesture once clicks actually stop arriving.
+                // A dial has no touch to bracket the gesture, so an idle timer ends it
+                // once clicks stop.
                 if !mechanicalDialGestureOpen {
                     mechanicalDialGestureOpen = true
                     mechanicalDialGestureKind = kind
@@ -1211,27 +1044,12 @@ extension InputInjector {
         accum -= Double(lines)
         switch slot.action {
         case .scroll:
-            // Nominal convention is the vendor/classic one: clockwise (positive
-            // `lines`) scrolls down. macOS applies its natural-scrolling flip
-            // below the CGEvent layer, so injected scroll events never receive
-            // it — apply it here instead, from the mirrored system setting.
+            // Clockwise scrolls down. macOS doesn't apply natural scrolling to injected
+            // events, so apply it here.
             let signedLines = Self.naturalScrollingEnabled ? lines : -lines
-            // A single .line-unit CGEvent with a large magnitude gets clamped
-            // by AppKit/NSScrollView well below its literal value (confirmed
-            // by hardware test 2026-08-06 on the Xencelabs dial: raising the
-            // per-tick multiplier well past this chunk size produced no
-            // further visible scroll). Split only bursts above the chunk
-            // size — normal-speed single ticks stay exactly one event, so a
-            // continuously-reporting device like a Wacom ring still feels
-            // smooth rather than jittery; only a genuinely fast spin, which
-            // would have been clamped anyway, gets broken into a few chunks
-            // so the intended distance actually lands.
-            //
-            // Wacom rings and strips only: the Xencelabs dial returns above
-            // into its inertial coaster, whose pixel-unit output never
-            // approaches the clamp this works around. Retiring the chunking
-            // entirely would mean moving rings to pixel units too — the open
-            // .pixel redesign, which needs its own hardware pass on a ring.
+            // AppKit clamps a large .line delta well below its value (Xencelabs dial,
+            // 2026-08-06), so split fast bursts. Single ticks stay one event. Wacom
+            // rings and strips only; moving them to pixel units needs a hardware pass.
             let scrollChunk = 10
             if abs(signedLines) <= scrollChunk {
                 postScrollWheelEvent(delta: signedLines, at: location)
@@ -1253,20 +1071,15 @@ extension InputInjector {
         case .off, .skip:
             break
         case .zoom, .rotate:
-            // Unreachable: both branches above return before this switch is
-            // ever reached for a .zoom/.rotate slot. Kept exhaustive rather
-            // than `default:` so a future Action case is caught by the
-            // compiler here too.
+            // Unreachable; kept exhaustive so a new Action case gets caught here.
             break
         }
     }
 
     func postScrollWheelEvent(delta: Int, at location: CGPoint) {
-        // Continuous pixel events, like `postDialScroll`: scroll smoothers such
-        // as Mac Mouse Fix and MOS re-accelerate non-continuous wheel events
-        // from any sender whose path lacks "wacom", and pass continuous ones
-        // through. With a modifier held, apps read the wheel as stepped zoom,
-        // so keep real `.line` detents there.
+        // Continuous pixel events, like `postDialScroll`: Mac Mouse Fix and MOS
+        // re-accelerate non-continuous wheel events from non-Wacom senders. With a
+        // modifier held, apps read stepped zoom, so keep `.line` detents there.
         let zoomModifiers: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
         if currentEventFlags.intersection(zoomModifiers).isEmpty {
             // Same 3 lines per detent, at the ~10 px/line scale
@@ -1295,21 +1108,10 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Event-construction site for ring, strip, and dial scrolling; the
-    /// smoothing lives in `ringGlide`/`dialGlide` (see MomentumTail.swift).
-    ///
-    /// Pixel units rather than the `.line` units `postScrollWheelEvent` uses,
-    /// for two reasons. A 60 Hz emitter needs sub-line granularity — in line
-    /// units the smallest event it can post is a whole line, which would
-    /// reintroduce as quantization exactly the steppiness the coast exists to
-    /// remove. And small per-tick pixel deltas never approach AppKit's
-    /// per-event clamp, so the dial no longer needs the `scrollChunk` split
-    /// that works around it on the line path.
-    ///
-    /// No phase fields: a dial has no touch-down or lift to bracket, and the
-    /// stream is already continuous, so there is no gesture envelope to
-    /// describe. `isContinuous` plus the trackpad delta fields is what makes
-    /// apps read it as smooth scrolling rather than discrete detents.
+    /// Builds ring, strip, and dial scroll events; the smoothing lives in
+    /// `ringGlide`/`dialGlide`. Pixel units: a 60 Hz glide needs sub-line steps,
+    /// and small deltas never hit AppKit's clamp. No phases: a dial has no touch
+    /// to bracket.
     func postDialScroll(dy: Double) {
         guard
             let e = CGEvent(
@@ -1321,34 +1123,15 @@ extension InputInjector {
         e.location = currentCursorPosition()
         e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
         applyTrackpadDeltaFields(e, dx: 0, dy: dy)
-        // Ground-truth flags, like the two momentum tails and unlike
-        // `postScrollWheelEvent`: those post synchronously inside the click's
-        // own callback, whereas the coast keeps posting from a timer for
-        // seconds afterwards, by which time a held modifier may be long gone.
+        // Ground-truth flags: the glide keeps posting after the click, when a held
+        // modifier may be gone.
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)
     }
 
-    /// Per-tick magnification-fraction scale, applied to `dispatchRingDelta`'s
-    /// raw ±1 (or larger) ring/dial tick before it reaches `postTouchMagnify`.
-    /// `magnify.value` in touch's own pinch path is a relative-growth
-    /// fraction (e.g. 0.02 = "2% bigger this frame"), not points — this
-    /// constant is the conversion factor. Empirically tuned, not derived —
-    /// zoom has no natural "one revolution = X%" mapping the way rotate has
-    /// "one revolution = 360°" — confirmed "about right" on the PTH-860
-    /// (2026-09).
-    ///
-    /// **Ring only.** Originally shared with the mechanical dial on the
-    /// reasoning that both deliver an already-final, discrete tick — true,
-    /// but irrelevant here: `magnify.value` *compounds* multiplicatively
-    /// per tick (`(1 + scale·speed)` per event), so the same scale produces
-    /// wildly different totals per revolution depending on how many ticks
-    /// that revolution contains. At max speed the ring's 72 ticks/revolution
-    /// gives ≈6.65x; the dial's 13 (see `dialGestureRotateScaleMechanical`'s
-    /// doc comment for how that count was measured) gives only ≈1.41x under
-    /// this same constant — confirmed on hardware (2026-09) as "even maximum
-    /// feels more like 1x." See `dialGestureZoomScaleMechanical` for the
-    /// dial's own, tick-count-corrected constant.
+    /// Zoom per ring tick, as a magnification fraction. Tuned on the PTH-860
+    /// (2026-09). Ring only: zoom compounds per tick, so a dial's fewer ticks
+    /// need their own constant (`dialGestureZoomScaleMechanical`).
     static let dialGestureZoomScale = 1.0 / 300.0
 
     /// **Mechanical dial only.** `dialGestureZoomScale` scaled by ring 72 :
@@ -1358,23 +1141,9 @@ extension InputInjector {
         dialGestureZoomScale * 72.0 / steps
     }
 
-    /// Rotation scale — radians per raw ring/dial tick, at 1x speed.
-    ///
-    /// Calibrated, not a guess, for the **capacitive ring**: the ring
-    /// reports 72 fixed steps per physical revolution (see
-    /// `InputInjector+AuxInput.swift`'s "72 steps (0-71, ~5° each)" comment),
-    /// so `π/36` radians/step (5°/step) makes one full physical revolution
-    /// of the ring equal exactly one full 360° canvas rotation at 1x speed —
-    /// the anchor a user reaches for turning a ring, confirmed by hardware
-    /// feedback (PTH-860) that the previous value (`π/900`, ≈14.4°/rev at
-    /// 1x) needed ~25x speed to reach 1:1, an unreasonably tall slider range
-    /// for what should be the natural default.
-    ///
-    /// **Ring only** — do not apply to mechanical-dial hardware. The
-    /// Xencelabs dial has a different, measured steps/revolution (13, not
-    /// 72 — see `dialGestureRotateScaleMechanical` just below); reusing
-    /// this constant for the dial was tried and produced ~330°/revolution
-    /// instead of 360°/revolution, confirmed on hardware (2026-09).
+    /// Radians per ring tick at 1x: 72 steps make one turn equal one full
+    /// canvas rotation. Ring only; the dial has its own step count
+    /// (`dialGestureRotateScaleMechanical`).
     static let dialGestureRotateScale = Double.pi / 36.0
 
     /// **Mechanical dial only.** One revolution rotates 360° at 1x speed.
@@ -1393,12 +1162,8 @@ extension InputInjector {
     /// no finer magnitude. Fast turns drop steps in hardware.
     static let xencelabsDialStepsPerRevolution = 13.0
 
-    /// Mechanism-neutral gesture post: both the mechanical-dial and
-    /// capacitive-ring paths in `dispatchRingDelta`, plus `injectAux`'s
-    /// capacitive envelope open/close, funnel through here. `delta` is
-    /// expected pre-scaled by the caller. `.began`/`.ended` should always be
-    /// called with `delta: 0` — this function applies no phase-based
-    /// zeroing itself, callers own that convention.
+    /// Posts a ring or dial gesture event. Callers pre-scale `delta` and pass 0
+    /// for `.began` and `.ended`.
     func postRingGesture(delta: Double, phase: TouchStateTracker.ScrollPhase, kind: RingGestureKind) {
         switch kind {
         case .zoom: postTouchMagnify(magnification: delta, phase: phase)
@@ -1408,13 +1173,8 @@ extension InputInjector {
 
     // MARK: - Scroll Drag (pan)
 
-    /// Resolve which injector should host a Scroll Drag gesture. The pen
-    /// tablet that's actively moving the pointer (active context, pen in
-    /// proximity) is the natural driver; if none qualifies (e.g. the pen is
-    /// out of range at the moment the button fires), fall back to the injector
-    /// that received the binding, so a barrel binding on the pen itself always
-    /// works and a puck binding degrades gracefully rather than dropping the
-    /// gesture entirely.
+    /// Which injector hosts a Pan View gesture: the tablet moving the pointer
+    /// with the pen in range, else the one that got the binding.
     static func resolvePanScrollDriver(preferring fallback: InputInjector) -> InputInjector {
         for injector in allLiveInjectors where injector.isActive && injector.lastProximity {
             return injector
@@ -1427,18 +1187,11 @@ extension InputInjector {
         return fallback
     }
 
-    /// Sole event-construction site for Pan View gestures. Pixel units + the
-    /// continuous flag makes apps treat the stream as a trackpad pan (smooth,
-    /// rubber-banded) rather than discrete wheel ticks.
-    ///
     /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
-    /// See `postPanScroll` for what the two modes emit.
+    /// See `postPanScroll`.
 
-    /// Kept as one small function on purpose: it is the backend seam. If the
-    /// parked IOHIDUserDevice virtual-trackpad spike ever ships, this becomes
-    /// "report contacts to the virtual device" (which buys genuine system
-    /// gesture + momentum streams, unavailable to CGEvent-posted scrolls),
-    /// and nothing else in the gesture path changes.
+    /// Builds Pan View events: pixel units plus the continuous flag read as a
+    /// trackpad pan. Kept small as the seam for a future virtual-trackpad backend.
     func postPanScroll(_ intent: PanScrollTracker.Intent) {
         guard case .scroll(let dx, let dy, let phase) = intent else { return }
         if !panScrollUsePhases {
@@ -1489,24 +1242,13 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Populates the delta fields a real trackpad driver emits alongside the
-    /// raw wheel values, which `CGEvent(scrollWheelEvent2Source:)` leaves at
-    /// zero. `NSEvent.scrollingDeltaX/Y` for a continuous stream derives from
-    /// the point/fixed-point delta fields, and `deltaX/Y` from the line-delta
-    /// fields — so consumers that read NSEvent directly (Calendar's paged
-    /// Month/Year recognizer, WebKit/Chromium gesture-scroll incl.
-    /// overscroll-behavior sites, Adobe's line-delta palettes) saw a
-    /// well-phased gesture with zero deltas and ignored it. NSScrollView
-    /// tolerates the wheel-only shape, which is why the gap was app-specific.
+    /// Fills the delta fields a trackpad sends, which
+    /// `CGEvent(scrollWheelEvent2Source:)` leaves at zero. Apps that read NSEvent
+    /// deltas (Calendar, WebKit, Chromium, Adobe palettes) ignored pans without them.
     func applyTrackpadDeltaFields(_ e: CGEvent, dx: Double, dy: Double) {
-        // Order matters: writing a line delta makes CoreGraphics recompute the
-        // point (lines × 8) and fixed-point (whole lines) fields, so lines go
-        // first. Writing them last quantized every pan to 8 pt steps and
-        // dropped sub-line motion entirely (event-probe, 2026-09-30).
-        //
-        // Line deltas (~10 px/line, the scale real trackpads report); keep a
-        // minimum of 1 so slow pans don't quantize to nothing on the legacy
-        // line-delta path.
+        // Lines first: writing them recomputes the point and fixed-point fields,
+        // and writing them last quantized pans to 8 pt (event-probe, 2026-09-30).
+        // At least 1 line, so slow pans aren't lost on the line-delta path.
         let ix = Int64(dx), iy = Int64(dy)
         e.setIntegerValueField(
             .scrollWheelEventDeltaAxis1,
@@ -1523,12 +1265,9 @@ extension InputInjector {
 
     // MARK: - Scroll Drag momentum tail (Natural mode)
 
-    /// Sole event-construction site for the Scroll Drag momentum tail; the
-    /// decay itself lives in `panMomentumTail` (see MomentumTail.swift).
-    ///
-    /// During the tail `scrollWheelEventScrollPhase` is held at 0 and
-    /// `scrollWheelEventMomentumPhase` carries the sequence instead — setting
-    /// both nonzero on the same event makes AppKit/WebKit misread the stream.
+    /// Builds the Pan View momentum tail; the decay lives in `panMomentumTail`.
+    /// Scroll phase stays 0 while momentum phase runs: both nonzero confuses
+    /// AppKit and WebKit.
     func postPanScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
         guard
             let e = CGEvent(

@@ -7,18 +7,14 @@ import CoreGraphics
 import os
 import TabletKit
 
-// Non-pen input paths — express keys, bezel buttons, touch ring/strip, and
-// rotary side wheels — split out of InputInjector.swift. The button/ring
-// tracking state and fractional-delta accumulators these read live on the
-// main class body (Swift class extensions can't hold stored properties) and
-// stay HIDThread-confined exactly as documented there.
+// Non-pen input: ExpressKeys, bezel buttons, touch rings and strips, and
+// dials. Their state lives on the main class body, HIDThread-confined.
 extension InputInjector {
 
     // MARK: - Express key injection
 
-    /// Ring/strip rotations are discrete pulses, not holds. Pairing down+up in a
-    /// single call prevents modifier bits in the binding from leaking into
-    /// `groundTruthSyntheticFlags` across rotation samples.
+    /// Ring and strip steps are taps, not holds. Pairing down and up keeps a
+    /// binding's modifiers from leaking across steps.
     func fireKeyTap(_ binding: ButtonBinding,
                             at loc: CGPoint,
                             snapshot: InjectionSnapshot,
@@ -38,30 +34,24 @@ extension InputInjector {
             let down = buttons[i]
             let hasMechanicalPulse = i < 8 && (buttons.mechanicalMask >> i) & 1 != 0
             if down != lastAuxButtons[i] {
-                // Update tracking state first so the quiescent check inside
-                // fireButtonAction sees the current button state, not the pre-transition state.
+                // Update first so fireButtonAction's quiescent check sees the new state.
                 lastAuxButtons[i] = down
                 fireButtonAction(bindings[i], down: down, at: cursorPos,
                                  snapshot: snap, settings: settings, isAux: true)
             } else if down && hasMechanicalPulse && bindings[i].kind != .clickLock {
-                // Click Lock skips this: a forced re-press would toggle it,
-                // and some decoders flag every held frame as a new press.
-                // Button is already tracked as down, but a new mechanical pulse arrived —
-                // the user re-pressed before the release event was seen. Force a complete
-                // up→down cycle so the key fires correctly without getting swallowed.
+                // A re-press arrived before its release: force up then down so
+                // it isn't swallowed. Click Lock skips this, since some decoders
+                // flag every held frame as a new press and each would toggle it.
                 fireButtonAction(bindings[i], down: false, at: cursorPos,
                                  snapshot: snap, settings: settings, isAux: true)
                 fireButtonAction(bindings[i], down: true, at: cursorPos,
                                  snapshot: snap, settings: settings, isAux: true)
-                // lastAuxButtons[i] stays true — the button is still down after this cycle
             }
         }
 
-        // ── Bezel buttons (device's own onboard capacitive buttons; e.g. the
-        // Cintiq DTK-2400's OSD keys) — decoded into `buttons[16..18]` by the
-        // relevant decoder but routed through their own binding set rather
-        // than `expressKeyBindings`, since some devices already use all 16
-        // express-key slots. ─────────────────────────────────────────────────
+        // ── Bezel buttons (e.g. DTK-2400 OSD keys) ─────────────────────────────
+        // `buttons[16..18]`, with their own bindings: some devices use all 16
+        // ExpressKey slots.
         let bezelBindings = snap.bezelButtonBindings
         for i in 0..<3 {
             let auxIndex = 16 + i
@@ -98,9 +88,7 @@ extension InputInjector {
                              at: cursorPos, snapshot: snap, settings: settings, isAux: true)
         }
 
-        // ── Second dial's own toggle key (PTK-670/870's right cluster
-        // center) — same edge-tracking pattern as the touch ring center
-        // button above, targeting the independent touchRingButtonBinding2. ──
+        // ── Second dial's toggle key (PTK-670/870) ────────────────────────────
         let ring2ButtonDown = buttons.touchRing2ButtonDown
         if ring2ButtonDown != lastRing2ButtonDown {
             lastRing2ButtonDown = ring2ButtonDown
@@ -109,19 +97,12 @@ extension InputInjector {
         }
 
         // ── Touch ring ─────────────────────────────────────────────────────────
-        // Position 0x7F means no contact.  Compute a wrap-aware delta when a
-        // finger is actively moving (both current and previous positions valid).
-        // The ring has 72 steps (0–71, ~5° each); wrap threshold is 36.
+        // 72 steps (0–71); 0x7F means no contact. Deltas wrap at 36.
         let activeSlot: ControlSlot? = snap.rotary(.first).activeSlot
 
-        // Capacitive `.zoom`/`.rotate` envelope: opens on the false→true
-        // contact edge (before this report's delta dispatch, so the very
-        // first delta lands as `.changed` after a real `.began`), closes on
-        // true→false (posting `.ended`). No-op for hardware where
-        // `hasMechanicalDial` is true — that path's envelope lives in
-        // `mechanicalDialGestureIdleTimer` instead (see `dispatchRingDelta`). Keyed on
-        // `touchRingActive` alone; see `ring1GestureOpen`'s doc comment for
-        // why `lastRingButtonDown` must not be used here.
+        // Zoom/rotate gesture on a touch ring: begins on contact, before this
+        // report's delta, and ends on lift. Dials use an idle timer instead.
+        // Keyed on `touchRingActive` alone; see `ring1GestureOpen`.
         if !hasMechanicalDial, let slot = activeSlot, slot.action == .zoom || slot.action == .rotate {
             let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
             if buttons.touchRingActive, !ring1GestureOpen {
@@ -133,8 +114,7 @@ extension InputInjector {
                 postRingGesture(delta: 0, phase: .ended, kind: ring1GestureKind)
             }
         } else if ring1GestureOpen {
-            // Slot changed away from .zoom/.rotate (or dial mechanism) while
-            // open — close explicitly rather than leaving it dangling.
+            // The mode changed mid-gesture; end it.
             ring1GestureOpen = false
             postRingGesture(delta: 0, phase: .ended, kind: ring1GestureKind)
         }
@@ -163,9 +143,7 @@ extension InputInjector {
             var delta = Int(ringPos) - Int(fromPos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
-            // Normalize to the touch strip's "increasing = up" convention.
-            // Which way the raw byte counts depends on the hardware family —
-            // see `ringDeltaIsInverted`.
+            // Normalize to "increasing = up"; see `ringDeltaIsInverted`.
             if ringDeltaIsInverted { delta = -delta }
             if delta != 0, let slot = activeSlot {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ringAccum,
@@ -237,21 +215,9 @@ extension InputInjector {
 
     // MARK: - Relative wheel (IntuosV3 PTK-x70 side scroll wheels)
 
-    /// Closes any open `.zoom`/`.rotate` gesture envelope on either ring,
-    /// regardless of which mechanism (mechanical dial or capacitive ring)
-    /// this device uses — safe to call unconditionally, a no-op when nothing
-    /// is open. Called from the ring-mode-cycle and ring-select-slot binding
-    /// paths (+CGEvents.swift) before the active slot changes out from under
-    /// a live gesture.
-    ///
-    /// Deliberately NOT hooked to live in-place slot edits in the settings
-    /// UI (a different case from the mode-cycle binding above): the
-    /// mechanical-dial idle timer closes its envelope within
-    /// `mechanicalDialGestureIdleTimeout` regardless — a live edit produces
-    /// at most a fraction of a second of stale `.changed` events, not a
-    /// leaked-open gesture, so no separate hook earns its complexity. The
-    /// capacitive case is already covered per-report by `injectAux`'s own
-    /// `else if ring{1,2}GestureOpen` fallback above.
+    /// Ends any open zoom/rotate gesture on any ring or dial. Called before a
+    /// mode change. Settings edits don't call it: the idle timer and
+    /// `injectAux`'s per-report check already end those within a moment.
     func closeRingGestureEnvelopes() {
         closeMechanicalDialGesture()
         if ring1GestureOpen {
@@ -264,14 +230,8 @@ extension InputInjector {
         }
     }
 
-    /// Rearms the idle-close timer for a mechanical-dial `.zoom`/`.rotate`
-    /// gesture — called on every dispatched tick, same "invalidate then
-    /// recreate" pattern as `rearmWatchdog()`. `kind` is passed through so
-    /// the eventual close posts `.ended` for whichever gesture was actually
-    /// open, even if it's not the caller's own — the timer always fires
-    /// against whatever `mechanicalDialGestureKind` holds at fire time via
-    /// `closeMechanicalDialGesture()`, not a captured value, so a slot
-    /// change between ticks can't cause it to close the wrong kind.
+    /// Rearms the idle timer that ends a dial's zoom/rotate gesture. Called on
+    /// every tick. The close reads the current gesture kind when it fires.
     func rearmMechanicalDialGestureIdleTimer(kind: RingGestureKind) {
         if let t = mechanicalDialGestureIdleTimer { CFRunLoopTimerInvalidate(t) }
         let timer = CFRunLoopTimerCreateWithHandler(
@@ -285,12 +245,7 @@ extension InputInjector {
         if let timer { CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes) }
     }
 
-    /// Closes the mechanical-dial `.zoom`/`.rotate` envelope, if one is
-    /// open: invalidates the idle timer and posts `.ended`. Safe to call
-    /// unconditionally — a no-op when nothing is open (scroll, or capacitive
-    /// hardware, which never sets `mechanicalDialGestureOpen`). Called by
-    /// the idle timer itself, `closeRingGestureEnvelopes()`, and the
-    /// modifier-held branch in `dispatchRingDelta`.
+    /// Ends a dial's open zoom/rotate gesture. No-op when none is open.
     func closeMechanicalDialGesture() {
         mechanicalDialGestureIdleTimer.map { CFRunLoopTimerInvalidate($0) }
         mechanicalDialGestureIdleTimer = nil
@@ -299,29 +254,14 @@ extension InputInjector {
         postRingGesture(delta: 0, phase: .ended, kind: mechanicalDialGestureKind)
     }
 
-    /// Called on HIDThread for each non-zero wheel step from a device with
-    /// physical rotary encoders (e.g. PTK-470/670/870).  Routes through
-    /// `touchRingSlots[index]` so the user can configure scroll vs. key-press
-    /// behaviour through the ring settings UI.  Falls back to a direct scroll
-    /// event if no slot is defined for that index.
+    /// One dial step (PTK-470/670/870, Quick Keys). Plays the dial's active
+    /// mode, or scrolls if none is set.
     func injectWheel(index: Int, delta: Int, settings: TabletSettings?) {
         rearmWatchdog()
         guard let snap = injectionSnapshot else { return }
         let cursorPos = currentCursorPosition()
-        // Xencelabs Quick Keys has a single dial reusing the Wacom touch-ring
-        // mode-cycling model (4 selectable modes via a mode-cycle key).
-        // IntuosV3 PTK-x70 hardware has up to two independent physical
-        // dials — each hardware wheel `index` is a distinct dial, each with
-        // its own live active-slot index (`touchRingActiveSlotIndex` for
-        // index 0, `touchRingActiveSlotIndex2` for index 1), not a fixed
-        // slot pinned to the hardware index. Previously index was used
-        // directly as the slot index, which meant `.ringCycle`/
-        // `.ringSelectSlot` bindings had no effect at all on this hardware —
-        // dial 1 always played `touchRingSlots[0]` and dial 2 always played
-        // `touchRingSlots[1]`, regardless of the selected mode. Fixed
-        // 2026-09-16 on a real PTK-870 report.
-        // The Xencelabs Quick Keys' single dial is hardware wheel index 1 on
-        // some transports, so it must not be read as a second control.
+        // Each PTK dial has its own active mode. The Quick Keys' single dial
+        // reports as index 1 on some transports, so it stays the first control.
         let control: RotaryIndex =
             (deviceVendorID == 0x28BD || index == 0) ? .first : .second
         let slot: ControlSlot? = snap.rotary(control).activeSlot
@@ -334,10 +274,8 @@ extension InputInjector {
                                   at: cursorPos, snapshot: snap, settings: settings)
             }
         } else {
-            // No slot configured — fall back to a direct scroll, applying the
-            // same nominal-CW-scrolls-down + natural-scrolling convention as
-            // dispatchRingDelta's `.scroll` case, plus the user's direction
-            // preference, which that path applies on entry.
+            // No mode set: scroll, with the same direction rules as
+            // dispatchRingDelta's `.scroll` case.
             let d = snap.reverseRingDirection ? -delta : delta
             postScrollWheelEvent(delta: Self.naturalScrollingEnabled ? d : -d, at: cursorPos)
         }

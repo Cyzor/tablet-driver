@@ -7,11 +7,8 @@ import CoreGraphics
 import os
 import TabletKit
 
-// The pen hot path — inject(), its proximity-exit cleanup, and the
-// Xencelabs barrel-button debounce — split out of InputInjector.swift. All
-// per-report tracking state it reads and writes lives on the main class body
-// (Swift class extensions can't hold stored properties) and stays
-// HIDThread-confined exactly as documented there.
+// The pen hot path: inject(), proximity-exit cleanup, and the Xencelabs
+// barrel-button debounce. State lives on the main class body, HIDThread-confined.
 extension InputInjector {
 
     // MARK: - Pen injection
@@ -20,8 +17,7 @@ extension InputInjector {
         rearmWatchdog()
         lastPenInjectCallAt = Date()
         TouchPipelineProbe.note { $0.framesPenDelivered += 1 }
-        // The snapshot is seeded synchronously in DeviceContext.observeInjectionSnapshot()
-        // before any HID report can arrive, so this guard is defense-in-depth.
+        // Seeded before any report arrives; the guard is a backstop.
         guard let snap = injectionSnapshot else { return }
         let tool = snap.activeTool
         var point = point
@@ -35,25 +31,15 @@ extension InputInjector {
                     point, snapshot: snap, currentCursorPosition: currentCursorPosition(),
                     deviceProductID: deviceProductID)
             } else {
-                // Don't let an out-of-proximity report (a Xencelabs blip mid-debounce,
-                // or any vendor's genuine exit) touch the relative anchor — its position
-                // data is exactly the kind of near-edge-of-range reading likely to be
-                // noisy or clamped, and poisoning lastRelativeNorm with it corrupts the
-                // next real report's delta into a spurious jump. The cursor is already
-                // sitting wherever the last real move put it; reuse that.
+                // An out-of-range report's position is unreliable and would
+                // corrupt the relative anchor into a jump. Keep the cursor put.
                 rawPoint = currentCursorPosition()
             }
         } else if let absPoint = displayMapper.mapToScreen(
             point, snapshot: snap, deviceProductID: deviceProductID)
         {
-            // `mapToScreen` clamps a pen tip beyond the mapped active area
-            // to the boundary rather than rejecting it — the cursor is
-            // already sitting at the edge of where it can appear onscreen,
-            // exactly like a mouse cursor pinned at a monitor's edge while
-            // the mouse keeps moving past it, so no separate out-of-area
-            // handling is needed here. `nil` is only a defensive
-            // possibility (e.g. a zero-size active area), not a real
-            // "pen out of range" signal.
+            // Points past the active area clamp to its edge. `nil` only means
+            // a degenerate area, not "pen out of range".
             rawPoint = displayMapper.pinNearEdges(absPoint, snapshot: snap)
         } else {
             displayMapper.clearRelativeAnchor()
@@ -61,10 +47,8 @@ extension InputInjector {
         }
         let rawPressure = InputInjector.curvedPressure(
             point.normalizedPressure, lut: tool.pressureLUT)
-        // Mouse tools have no tip pressure — button1 is the primary click trigger.
-        // For KC-100 over USB, the left button arrives via the separate 0x01 mouse interface
-        // and injectMouseButtons() has already fired leftMouseDown/Up.  Keep tipDown false
-        // so inject() doesn't re-fire the click; usbMouseLeftHeld drives drag vs hover below.
+        // Mouse tools click with button1. Over USB the KC-100's left button
+        // arrives separately via injectMouseButtons(), so don't fire it again.
         let rawTipDown =
             activeToolIsMouse
             ? (usbMouseLeftHeld ? false : point.penButton1)
@@ -76,11 +60,8 @@ extension InputInjector {
         lastSmoothingFrameTime = smoothingNow
 
         // ── Pressure smoothing (contact only) ──────────────────────────────────
-        // Damps sensor noise near the low-pressure/activation-threshold band
-        // (visible as splotchy line-width variation on slow, light strokes).
-        // Uses raw pressure for tipDown detection above so contact latency is
-        // unaffected; only the transmitted line-width value is smoothed, and
-        // a stroke's first sample always adopts the raw value verbatim.
+        // Damps noise near the activation threshold (splotchy light strokes).
+        // Contact detection above uses raw pressure, so latency is unchanged.
         let pressure: Double
         if rawTipDown {
             pressure = pressureSmoother.applySmoothing(
@@ -91,12 +72,8 @@ extension InputInjector {
         }
 
         // ── Xencelabs proximity-dropout debounce ────────────────────────────────
-        // See proximityExitDebounceTimer's declaration for why. A lone
-        // out-of-range report defers the exit cleanup instead of running it
-        // immediately; a real report reappearing before the timer fires
-        // cancels the deferral and this frame is processed as a normal
-        // in-proximity sample (lastProximity never flipped, so nothing else
-        // downstream notices the blip).
+        // A lone out-of-range report defers the exit; a report back in range
+        // before the timer fires cancels it. See proximityExitDebounceTimer.
         if deviceVendorID == 0x28BD {
             if point.inProximity {
                 if let timer = proximityExitDebounceTimer {
@@ -104,20 +81,15 @@ extension InputInjector {
                     proximityExitDebounceTimer = nil
                 }
             } else if lastProximity && proximityExitDebounceTimer == nil {
-                // A held tip/barrel/mouse button gets the long safety-net delay
-                // instead of the short blip debounce — see the property's doc.
+                // A held button gets the long safety-net delay instead.
                 let anyButtonHeld =
                     lastTipDown || lastButton1Down || lastButton2Down || lastButton3Down
                     || lastMiddleDown || usbMouseLeftHeld || lastUSBMouseMask != 0
                 let delay = anyButtonHeld
                     ? proximityExitHeldButtonSafetyInterval : proximityExitDebounceInterval
                 if anyButtonHeld {
-                    // A held button's own up-debounce (handleXencelabsBarrelButton)
-                    // runs on its own short timer; a hover-blip up-edge just before
-                    // crossing fully out of range could have armed it, and it would
-                    // otherwise fire mid-wait and release the button behind this
-                    // longer deferral's back. Once full proximity loss is the thing
-                    // being waited on, it alone decides — cancel the pending release.
+                    // Cancel any pending barrel-button release so it can't fire
+                    // during this longer wait; the exit alone decides now.
                     button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
                     button1UpDebounceTimer = nil
                     button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
@@ -159,17 +131,13 @@ extension InputInjector {
                 lastProximity = true
                 proximityConfirmStartTime = CFAbsoluteTimeGetCurrent()
             } else {
-                // `commitProximityExit` now does the `penProximityExits` tally
-                // itself (guarded on `lastProximity`), so every exit path is
-                // counted, not just this report-driven one.
                 commitProximityExit(snap: snap)
             }
         }
 
         // ── Touch-arbitration confirmation gate ────────────────────────────
-        // See `touchPenConfirmedBusy`'s declaration. Runs every call, not just
-        // on transition, so a session that started below the hold-off gets
-        // confirmed once it's persisted long enough.
+        // See `touchPenConfirmedBusy`. Checked every report, so a hover that
+        // outlasts the hold-off is confirmed then.
         if point.inProximity, !touchPenConfirmedBusy,
             rawTipDown || CFAbsoluteTimeGetCurrent() - proximityConfirmStartTime >= Self.touchBusyHoldOff
         {
@@ -177,18 +145,14 @@ extension InputInjector {
             touchPenBusyConfirmedAt = CFAbsoluteTimeGetCurrent()
             touchPenBusyHadTipSinceConfirmed = rawTipDown
         }
-        // See `staleBusyTimeout`'s declaration — any real tip contact during
-        // an already-confirmed busy episode marks it as genuine pen use, not
-        // idle ambiguous proximity, regardless of how it started.
+        // Any tip contact marks the episode as real pen use; see `staleBusyTimeout`.
         if touchPenConfirmedBusy, rawTipDown {
             touchPenBusyHadTipSinceConfirmed = true
         }
 
         // ── Eraser/tip flip (while in proximity) ───────────────────────────────
         if eraserFlipped {
-            // Pen was flipped between tip and eraser while in proximity.
-            // Post synthetic proximity exit/enter so apps re-register the tool identity.
-            // This ensures distinct pointerType (1=pen, 3=eraser) and serial registration.
+            // Re-announce proximity so apps pick up the new pointer type.
             postProximityEvent(entering: false, at: rawPoint, eraser: !point.eraser)
             activeToolIsEraser = point.eraser
             lastEraserMode = point.eraser
@@ -202,21 +166,15 @@ extension InputInjector {
             rawPoint: rawPoint, enteringProximity: enteringProximity, dt: smoothingDt)
 
         // ── Scroll Drag: convert this frame's motion to a scroll delta ──────
-        // Runs before the movement/delta-gate path below, which consults
-        // panScroll.isActive to post scrolls in place of cursor motion. dt
-        // feeds the tracker's release-velocity estimate and its anchor
-        // damping; deltas themselves are displacement, not rate. The
-        // damping is calibrated in real seconds, so this must stay a true
-        // inter-report delta. The smoother keeps tracking normally while
-        // panned, so cursor re-entry on disengage doesn't jump.
+        // Runs before the movement code, which skips cursor motion while
+        // panning. dt must be real seconds: the damping is tuned in them.
         let panNow = CFAbsoluteTimeGetCurrent()
         let panDt = lastPanScrollFrameTime > 0 ? panNow - lastPanScrollFrameTime : 0
         lastPanScrollFrameTime = panNow
         if panScroll.isActive {
             postPanScroll(panScroll.process(screen: screenPoint, dt: panDt))
         }
-        // Pose is per-report constant; computed once here and passed to every
-        // post call below instead of each recomputing it.
+        // Computed once per report for every post below.
         let pose = resolveEffectivePose(point: point, snapshot: snap)
         shimLastPoint = point
         shimLastScreen = screenPoint
@@ -229,9 +187,7 @@ extension InputInjector {
             smoother.endHover()
         }
 
-        // Chatter debounce sits upstream: a release is held briefly before
-        // `lastTipDown` is allowed to flip, so tipUpAssistDelay below only
-        // ever sees a debounce-confirmed release. No-op at Steadiness 0.
+        // Holds a release briefly to absorb chatter. No-op at Steadiness 0.
         let tipDown = resolveDebouncedTipDown(rawTipDown: rawTipDown, tool: tool)
 
         // ── Tip press transitions (always immediate) ───────────────────────────
@@ -243,16 +199,10 @@ extension InputInjector {
             }
             let tipKind = (activeToolIsEraser ? tool.eraserBinding : tool.tipBinding).kind
             if tipDown {
-                // Cancel any pending deferred mouseUp — tip is back down.
                 cancelPendingMouseUp()
                 didEmitDragSinceDown = false
                 if panScroll.isActive {
-                    // Scroll Drag is holding the pointer as a pan surface:
-                    // the tip contact is a grab, not a click. Swallow the
-                    // mouseDown so a touch doesn't start a selection or fire
-                    // the tip binding; the matching mouseUp below is
-                    // swallowed symmetrically (lastTipDown still tracks the
-                    // physical tip).
+                    // Pan View: contact grabs the canvas, so no click.
                 } else if tipKind == .clickLock && clickLocked {
                     // Tip set to Click Lock: the next contact ends the lock.
                     releaseClickLock(at: screenPoint, snapshot: snap)
@@ -278,9 +228,7 @@ extension InputInjector {
                 }
             } else {
                 if panScroll.isActive {
-                    // Symmetric to the swallowed mouseDown above: no click
-                    // ever fired, so no mouseUp either. The pen lift is just
-                    // the end of a grab.
+                    // No click fired, so no release either.
                 } else {
                     releaseTip(at: screenPoint, pressure: pressure, point: point, snap: snap)
                 }
@@ -292,12 +240,7 @@ extension InputInjector {
 
         } else if panScroll.isActive {
             // ── Scroll Drag: ungated movement ──────────────────────────────
-            // Scroll motion is independent of the cursor delta gate (which is
-            // tuned to suppress stationary-pen duplicates, not to meter a
-            // gesture). The tip's click was swallowed on the way down, so the
-            // pen reads as a pure pan surface here — no drag, no hover move,
-            // just position bookkeeping for the next frame's delta and the
-            // velocity window.
+            // Scrolling skips the delta gate. Only bookkeeping happens here.
             if hasPostedPoint {
                 let delta = hypot(
                     screenPoint.x - lastPostedPoint.x,
@@ -311,11 +254,9 @@ extension InputInjector {
 
         } else {
             // ── Continuous movement: delta gate ────────────────────────────────
-            // Pressure-only changes count as movement so drawing apps receive
-            // pressure updates from a stationary pen (airbrush buildup).
-            // Twist counts as movement for the same reason pressure does: a
-            // pen rotated in place moves neither. Not gated on `tipDown` —
-            // Rebelle and Krita orient the brush while hovering.
+            // Pressure and twist count as movement, so a still pen still
+            // updates apps (airbrush buildup; Rebelle and Krita orient the
+            // brush while hovering).
             let rotated =
                 rotationDelta(pose.rotation, lastPostedRotation) > Self.rotationEpsilon
 
@@ -327,17 +268,11 @@ extension InputInjector {
                 || (tipDown
                     && (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon)
 
-            // USB mouse left button held (KC-100): injectMouseButtons() already sent
-            // leftMouseDown; use leftMouseDragged so apps receive proper drag events.
+            // A KC-100's USB left button already posted its own mouseDown.
             let dragging = (tipDown && !tipClickSwallowed) || (activeToolIsMouse && usbMouseLeftHeld)
 
-            // Stale-backlog suppression covers both cursor-moving post
-            // streams, not just the plain hover move below — a report this
-            // old is backlog regardless of which stream carries it.
-            // Computed once so both gates see the same answer for this
-            // report. Never suppressed while dragging: tip-down stroke data
-            // (pressure/tilt/rotation history) stays untouched even if the
-            // pen's screen position momentarily reads as backlog.
+            // Backlogged hover reports are dropped from both post streams.
+            // Never while dragging: stroke data stays intact.
             let isStale = !dragging && isStaleHoverMove()
 
             if moved {
@@ -353,12 +288,8 @@ extension InputInjector {
                         at: screenPoint, pressure: pressure, point: point, pose: pose,
                         snapshot: snap)
                 }
-                // Drag threshold: while the tip is down and no drag has been
-                // emitted yet, hold off posting leftMouseDragged until the pen
-                // has traveled snap.dragThreshold points from where it went
-                // down. Absorbs tremor/pressure jitter that would otherwise
-                // turn a tap into a spurious drag (e.g. canceling a Finder
-                // rename-edit or starting an unwanted text selection).
+                // Drag threshold: no drag until the pen travels dragThreshold
+                // from touchdown, so a shaky tap stays a click.
                 let withinDragThreshold =
                     tipDown && !didEmitDragSinceDown
                     && snap.dragThreshold > 0
@@ -373,26 +304,17 @@ extension InputInjector {
                         didEmitDragSinceDown = true
                     }
                 } else if panScroll.isActive {
-                    // Scroll Drag held: pen motion became scroll deltas above;
-                    // the cursor stays put. Skip the drag/move posting entirely.
+                    // Panning: motion became scrolling above; the cursor stays put.
                 } else if let dragBtn = hoverDragButton {
-                    // Barrel button held while hovering — send otherMouseDragged /
-                    // rightMouseDragged so apps like SketchUp receive a proper drag stream.
+                    // A button binding (or Click Lock) holds a mouse button while
+                    // hovering; send drags, as SketchUp expects.
                     postMouseDrag(
                         button: dragBtn, at: screenPoint, pressure: 0, point: point,
                         pose: pose, snapshot: snap)
                 } else if isStale {
-                    // Backlogged report, suppressed outright — see the
-                    // `isStale` doc comment above and `isStaleHoverMove`'s.
-                    // `lastPostedPoint` still advances below so the delta
-                    // gate and jitter tracking stay correct; only the
-                    // CGEventPost itself is skipped, and it stays skipped for
-                    // every report in the backlog, not just rate-limited —
-                    // the cursor freezes and jumps once when live data
-                    // resumes, instead of crawling through stale history at a
-                    // reduced rate.
-                    // Logged because nothing else sees this path, and it
-                    // freezes the cursor without a proximity change.
+                    // Backlog: skip the post, so the cursor jumps once when live
+                    // data resumes instead of replaying history. Logged because it
+                    // freezes the cursor with nothing else to show for it.
                     staleHoverSuppressCount += 1
                     let now = Date()
                     if now.timeIntervalSince(lastStaleHoverLogAt) > 1.0 {
@@ -430,13 +352,7 @@ extension InputInjector {
                 handleXencelabsBarrelButton(
                     slot: .one, down: point.penButton1, binding: btn1,
                     at: screenPoint, snap: snap, settings: settings)
-                // barrelLowBit (3-button pen's dedicated lower button, see
-                // XencelabsDecoder) arrives in the same digitizer stream as
-                // button1/2 but previously wasn't dispatched here — it only
-                // reached TabletManager's live UI display, never
-                // fireButtonAction, so a binding assigned to it had no
-                // effect anywhere else on the system. Same debounce as the
-                // others since it rides the same short button-sensing range.
+                // The 3-button pen's lower button, with the same debounce.
                 handleXencelabsBarrelButton(
                     slot: .three, down: point.penButton3, binding: btn3,
                     at: screenPoint, snap: snap, settings: settings)
@@ -448,11 +364,9 @@ extension InputInjector {
                 at: screenPoint, snap: snap, settings: settings)
         } else {
             if point.penButton1 != lastButton1Down {
-                // Update tracking state first so the quiescent check inside
-                // fireButtonAction sees the current button state, not the pre-transition state.
+                // Update first so fireButtonAction's quiescent check sees the new state.
                 lastButton1Down = point.penButton1
-                // For mouse tools button1 drives the primary click (tipDown above);
-                // dispatching it again as a button action would double-fire.
+                // A mouse tool's button1 already clicked as the tip.
                 if !activeToolIsMouse {
                     fireButtonAction(btn1, down: point.penButton1, at: screenPoint,
                                      snapshot: snap, settings: settings)
@@ -489,24 +403,9 @@ extension InputInjector {
         }
     }
 
-    /// True when the current report is stale backlog (see
-    /// `staleReportThresholdMs`'s doc comment), meaning the plain hover-move
-    /// post for this report should be skipped outright. A live report — the
-    /// overwhelming majority of the time — always returns false, so the
-    /// common case is unaffected.
-    ///
-    /// No rate limiting: an earlier version posted a throttled sample of the
-    /// backlog instead of suppressing it outright, on the theory that some
-    /// visible motion during a stall beats none. In practice that still
-    /// visibly played through old, stale intermediate positions on the way
-    /// to the real one — thinner, but still history, still "spooled events
-    /// long since stale" (hardware-tested, unconvincing). Suppressing
-    /// entirely while stale freezes the cursor at its last good position and
-    /// jumps once, directly to wherever the pen actually is, the moment a
-    /// report comes in under the threshold again — no intermediate history
-    /// gets shown at all. `lastPostedPoint`/`lastPostedPressure` keep
-    /// updating regardless (unconditionally, below), so the delta gate and
-    /// jitter tracking never see a gap.
+    /// The current report is stale backlog (see `staleReportThresholdMs`), so
+    /// its hover move should be skipped. Skipped outright, not throttled: a
+    /// throttled sample still visibly replayed old positions.
     private func isStaleHoverMove() -> Bool {
         guard InputInjector.currentReportTimestampNs != 0 else { return false }
         let nowNs = UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)
@@ -515,34 +414,11 @@ extension InputInjector {
         return staleMs > Self.staleReportThresholdMs
     }
 
-    /// Runs the proximity-exit cleanup: releases the tip, any held USB/middle
-    /// mouse buttons, and synthetic modifiers, then resets per-proximity
-    /// state. Called immediately from `inject()` for every device, or from
-    /// `proximityExitDebounceTimer`'s handler for Xencelabs once a real exit
-    /// has been confirmed (see that property's declaration).
-    /// Release every pointer button this injector is holding, posting the
-    /// matching mouse-up so the *system* button comes up too — clearing our
-    /// own tracking alone would leave the click stuck everywhere.
-    ///
-    /// Extracted from `commitProximityExit` (2026-08-27), which used to be the
-    /// only caller and used to run constantly: on an intuosV1 tablet the pen
-    /// decoder fabricated a proximity exit every few frames, so this ran ~13×/s
-    /// and swept up any lost button release for free. `c5219a5` fixed the
-    /// fabricated exits, which also removed that accidental sweep — leaving a
-    /// held button with no release path but a genuine proximity exit. Hence the
-    /// tool-change caller in `TabletManager.onToolEnter`.
-    ///
-    /// Deliberately *not* covered by the idle watchdog: `tabletIsQuiescent`
-    /// counts `lastUSBMouseMask != 0` as "not quiescent" on purpose, because a
-    /// held button is normally legitimate state. That is the right call for a
-    /// button genuinely down, and the reason this needs event-driven callers
-    /// rather than a timeout.
-    ///
-    /// HIDThread-confined, like the state it touches.
+    /// Release every held USB mouse or middle button, posting the ups so the
+    /// system's buttons come up too. Called on proximity exit and tool change.
+    /// The idle watchdog can't do this: a held button is normally legitimate.
     func releaseHeldPointerButtons(at location: CGPoint, snapshot: InjectionSnapshot) {
-        // USB HID mouse buttons held when the tool left the tablet (e.g. the
-        // user yanked the KC-100 off the surface mid-drag, or swapped to the
-        // pen with the wheel button still logically down).
+        // E.g. a KC-100 lifted mid-drag.
         if lastUSBMouseMask != 0 {
             if usbMouseLeftHeld {
                 postMouseUp(
@@ -589,19 +465,9 @@ extension InputInjector {
         postMouseUp(button: .left, at: location, clickCount: 1, snapshot: snapshot)
     }
 
-    /// Release a button held by a click binding (`.leftClick`/`.rightClick`/
-    /// `.middleClick`), posting the matching up.
-    ///
-    /// Separate from `releaseHeldPointerButtons` and deliberately **not** called
-    /// from `commitProximityExit`: a barrel or puck button held across a
-    /// proximity blip is legitimate — the gesture is owned by the button, not by
-    /// proximity (see the Scroll Drag note in `commitProximityExit`), and
-    /// releasing it there would break "hold the button, lift the pen, carry on".
-    ///
-    /// Two transitions are unambiguous and call this explicitly: a **tool
-    /// change** (the previous tool is off the tablet — this is what stranded a
-    /// middle click when App Exposé swallowed the up, 2026-08-27, PTH-850 +
-    /// KC-100 puck) and a **disconnect** (no release edge will ever arrive).
+    /// Release a button held by a click binding or Click Lock, posting the up.
+    /// Called on tool change and disconnect, not proximity exit: holding a
+    /// button, lifting the pen, and carrying on is legitimate.
     func releaseBindingHeldButton(at location: CGPoint, snapshot: InjectionSnapshot) {
         clickLocked = false
         guard let held = hoverDragButton else { return }
@@ -625,21 +491,15 @@ extension InputInjector {
         injectLog.notice("released a binding-held pointer button")
     }
 
-    /// Called when the active tool changes. The previous tool is off the tablet,
-    /// so anything it was holding must be released — see
-    /// `releaseBindingHeldButton` for why proximity exit is not the place for
-    /// this and a tool change is.
+    /// The previous tool is off the tablet, so release what it held.
     func releaseHeldStateForToolChange() {
         guard let snap = injectionSnapshot else { return }
         let loc = currentCursorPosition()
         releaseHeldPointerButtons(at: loc, snapshot: snap)
         releaseBindingHeldButton(at: loc, snapshot: snap)
         releaseTouchDrag(snapshot: snap)
-        // macOS 27 auto-cancels a gesture recognizer left non-terminal a few
-        // seconds after input stops (AppKit's new stuck-gesture timer) — a
-        // tail merely `cancel()`-ed here would idle harmlessly pre-27 but can
-        // now be force-cancelled mid-stream by the receiving app. The active
-        // tool is unambiguously gone, so post the terminal event.
+        // End momentum tails explicitly: macOS 27 force-cancels a gesture
+        // left open after input stops.
         if panMomentumTail.isRunning || touchMomentumTail.isRunning {
             TouchPipelineProbe.note { $0.momentumTailsStoppedOnToolChange += 1 }
         }
@@ -647,23 +507,13 @@ extension InputInjector {
         touchMomentumTail.stop()
     }
 
-    /// Called when the device itself disconnects. Unlike a tool change, the
-    /// pen unambiguously left proximity, so this runs the full
-    /// `commitProximityExit` rather than just the button release — otherwise
-    /// `lastProximity` stays latched true until the leak watchdog's timeout
-    /// catches it.
-    ///
-    /// `releaseBindingHeldButton` must run *first*: `commitProximityExit`
-    /// clears `hoverDragButton` without posting the up, which is right for a
-    /// proximity blip (the release edge is still coming) but not for a
-    /// disconnect, where it never will.
+    /// The device disconnected: run the full proximity exit. Binding-held
+    /// buttons go first, since the exit clears them without posting an up.
     func releaseHeldStateForDisconnect() {
         guard let snap = injectionSnapshot else { return }
         releaseBindingHeldButton(at: currentCursorPosition(), snapshot: snap)
         commitProximityExit(snap: snap)
-        // See releaseHeldStateForToolChange: the device is gone, so any
-        // in-flight momentum tail must be terminated explicitly rather than
-        // left for macOS 27's stuck-gesture timer to force-cancel.
+        // See releaseHeldStateForToolChange.
         if panMomentumTail.isRunning || touchMomentumTail.isRunning {
             TouchPipelineProbe.note { $0.momentumTailsStoppedOnDisconnect += 1 }
         }
@@ -671,10 +521,13 @@ extension InputInjector {
         touchMomentumTail.stop()
     }
 
+    /// Proximity-exit cleanup: release the tip, held buttons, and modifiers,
+    /// then reset per-proximity state. Xencelabs reaches this through
+    /// `proximityExitDebounceTimer`.
     func commitProximityExit(snap: InjectionSnapshot) {
         activeToolIsEraser = false
         lastEraserMode = false
-        // Superseded by the force-release below — the timer must not also fire.
+        // The release below supersedes it.
         tipUpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         tipUpDebounceTimer = nil
         let exitPoint = smoother.smoothedPoint
@@ -691,37 +544,20 @@ extension InputInjector {
             lastTipDown = false
         }
         releaseHeldPointerButtons(at: exitPoint, snapshot: snap)
-        // Safety valve: release any modifier keys stranded by a missed decoder
-        // release event (e.g. BT packet drop leaving lastBTPadKeys non-zero).
-        // Per-transport fixes (Defect A/B) prevent accumulation; this ensures
-        // proximity exit is always a clean slate regardless.
+        // Safety valve for modifiers stranded by a lost release report.
         releaseAllSyntheticModifiers()
         releaseAllHeldKeyComboKeys()
 
-        // Do NOT post proximity-exit flagsChanged events for physical modifiers.
-        // flagsChanged events posted via cghidEventTap update the system keyboard
-        // state (Keyboard Viewer, hidSystemState), so posting one with a modifier
-        // bit SET because tapLastPhysicalFlags still reflects a held key causes the
-        // Keyboard Viewer to show it as stuck.  The physical keyboard's own
-        // flagsChanged events are the authoritative source for physical modifier
-        // state; apps receive them independently of our event stream.
-        // The race this sync tried to fix (our last move event arriving after the
-        // physical key-up, leaving apps with stale modifier state) is now handled
-        // by moveSafeEventFlags including tapLastPhysicalFlags, so the last move
-        // event already carries the correct physical state.
-        lastLoggedManagedFlags = 0  // reset for clean logging on next proximity entry
+        // Don't post flagsChanged for physical modifiers here: it would show a
+        // held key as stuck in Keyboard Viewer. moveSafeEventFlags already
+        // carries the physical state on the last move.
+        lastLoggedManagedFlags = 0
 
         // Reset aux state so the next injectAux fires fresh transitions.
         cancelPendingMouseUp()
         hoverDragButton = nil
-        // Scroll Drag: a confirmed exit does NOT close the gesture. The
-        // gesture is owned by its button (puck or barrel), not by proximity —
-        // the user's model is "while the button is held, pen contact pans."
-        // The pen leaving range mid-hold (a Xencelabs 0xC0 blip, or a genuine
-        // lift-and-return) must not end the pan or the next tap would read as
-        // a click/selection. `suspend()` drops the anchor so re-entry doesn't
-        // jump; the gesture closes on the button's release edge (or the
-        // safety-net timeout below if the release is genuinely lost).
+        // Pan View survives the exit: its button owns the gesture. Suspend so
+        // re-entry doesn't jump; the release (or the safety net) ends it.
         if panScroll.isActive {
             panScroll.suspend()
             schedulePanScrollSafetyNet(snap: snap)
@@ -730,12 +566,7 @@ extension InputInjector {
         lastRingButtonDown = false
         hasPostedPoint = false
         displayMapper.clearRelativeAnchor()
-        // See releaseHeldStateForToolChange: the pen has left proximity, so
-        // a momentum tail it was driving (Pan View's, or a two-finger touch
-        // coast) must be given a terminal event rather than left for macOS
-        // 27's stuck-gesture timer to force-cancel. Scroll Drag itself
-        // survives proximity blips (suspend() above) — this is unrelated,
-        // narrower cleanup of the decay tail only.
+        // End momentum tails; see releaseHeldStateForToolChange.
         if panMomentumTail.isRunning || touchMomentumTail.isRunning {
             TouchPipelineProbe.note { $0.momentumTailsStoppedOnProximityExit += 1 }
         }
@@ -746,32 +577,21 @@ extension InputInjector {
         smoother.resetOnProximityExit()
         pressureSmoother.reset()
 
-        // Record the moment the pen leaves proximity so finger-touch can
-        // apply a short grace window (touchArbitrationGrace) before
-        // accepting contacts again — prevents the palm rejection failure
-        // pattern where lifting the pen drops a stray finger on the
-        // tablet and the touch path races the pen-up.
+        // Starts touch's grace window (touchArbitrationGrace), so a stray
+        // finger as the pen lifts isn't taken as touch input.
         if touchPenConfirmedBusy {
             penProximityExitTime = CFAbsoluteTimeGetCurrent()
         }
         touchPenConfirmedBusy = false
         touchPenBusyConfirmedAt = 0
         touchPenBusyHadTipSinceConfirmed = false
-        // Count the exit here, not only on the report-driven transition — the
-        // leak-watchdog and Xencelabs debounce also land here, and a capture
-        // that saw `penProximityEnters` with zero `penProximityExits` (real,
-        // on a BT PTH-660 whose clean exit reports don't arrive) misread as a
-        // stuck latch when it was actually the watchdog silently recovering.
-        // Guard on `lastProximity` so a redundant call can't double-count.
+        // Counted here so every exit path is included, once.
         if lastProximity {
             TouchPipelineProbe.note { $0.penProximityExits += 1 }
         }
         lastProximity = false
 
-        // Release any barrel buttons still down at exit, finalizing any
-        // pending up-debounce timer immediately — a full commit is happening
-        // anyway, so there's no benefit to waiting the window out, and a
-        // live timer must not fire after cleanup.
+        // Release barrel buttons now, cancelling pending debounce timers.
         let exitScreenPoint = smoother.smoothedPoint
         button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button1UpDebounceTimer = nil
@@ -801,15 +621,9 @@ extension InputInjector {
                     snapshot: snap, settings: nil)
             }
         }
-        // NOTE: no pan-scroll disengage here. The gesture survives proximity
-        // exit (suspended, not closed — see the top of this function); it ends
-        // on the button's release edge or the safety-net timer, whichever
-        // comes first.
     }
 
-    /// Force-close an active pan gesture whose owning button's release was
-    /// genuinely lost (pen set down out of range; no release report). Fires on
-    /// HIDThread. Resets both the gesture and the shared routing pointer.
+    /// Force-close a pan whose button release was lost.
     private func panScrollSafetyNetFired() {
         panScrollSafetyNetTimer = nil
         postPanScroll(panScroll.disengage())
@@ -818,9 +632,7 @@ extension InputInjector {
         }
     }
 
-    /// Schedule the lost-release backstop when proximity exits with a pan
-    /// still open. Rearmed on each call (each confirmed exit restarts the
-    /// window).
+    /// Arm the lost-release backstop for a pan open at proximity exit.
     func schedulePanScrollSafetyNet(snap: InjectionSnapshot) {
         panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
         let timer = CFRunLoopTimerCreateWithHandler(
@@ -834,8 +646,7 @@ extension InputInjector {
         panScrollSafetyNetTimer = timer
     }
 
-    /// Cancel the backstop on the normal release path — a button edge arrived,
-    /// so the gesture is closing cleanly and no force-close is needed.
+    /// The release arrived; no backstop needed.
     func cancelPanScrollSafetyNet() {
         panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
         panScrollSafetyNetTimer = nil
@@ -846,9 +657,8 @@ extension InputInjector {
         tool.smoothingStrength * buttonUpDebounceInterval
     }
 
-    /// Mirrors `handleXencelabsBarrelButton`'s wasDown/pendingTimer shape,
-    /// tip state in place of button state: press is immediate, release is
-    /// held until the window elapses with no reassertion.
+    /// Press is immediate; release waits out the window. Same shape as
+    /// `handleXencelabsBarrelButton`.
     private func resolveDebouncedTipDown(rawTipDown: Bool, tool: InjectionSnapshot.Tool) -> Bool {
         if rawTipDown {
             if let t = tipUpDebounceTimer {
@@ -881,9 +691,8 @@ extension InputInjector {
         return true
     }
 
-    /// Shared tip-up commit (immediate `postMouseUp`, or a `tipUpAssistDelay`
-    /// defer for a fast stroke). Callers post their own proximity-gated
-    /// pointer event first, if needed — this only handles the click.
+    /// Tip-up: posts the release, or defers it for a fast stroke
+    /// (`tipUpAssistDelay`). Callers post their own pointer event.
     private func releaseTip(
         at screenPoint: CGPoint, pressure: Double, point: TabletPoint, snap: InjectionSnapshot
     ) {
@@ -901,15 +710,9 @@ extension InputInjector {
 
         if snap.tipUpAssistDelay > 0
             && smoother.recentVelocity > Self.tipUpAssistVelocityThreshold {
-            // Defer the mouseUp briefly so fast strokes aren't cut short.
-            // The deferred mouseUp captures `snap` so it has all the values it
-            // needs; the live snapshot may have rolled over by the time it fires.
+            // Defer the release so fast strokes aren't cut short. HIDThread
+            // timer: on time under main-thread load, and no race on cancel.
             let capturedSnap = snap
-            // One-shot timer on HIDThread's run loop: the delay stays
-            // honest under main-thread congestion, and the handler runs
-            // on the same thread that owns all per-report state — no hop,
-            // no cancellation race (invalidation on this thread guarantees
-            // the handler never fires afterwards).
             let timer = CFRunLoopTimerCreateWithHandler(
                 kCFAllocatorDefault,
                 CFAbsoluteTimeGetCurrent() + snap.tipUpAssistDelay / 1000.0,
@@ -918,8 +721,7 @@ extension InputInjector {
             ) { [weak self] _ in
                 guard let self, self.pendingMouseUp != nil else { return }
                 self.pendingMouseUp = nil
-                // Fire at lastPostedPoint, not at the tip-lift position — see
-                // the timer's own reasoning at its other call site.
+                // Release where the stroke ended, not where the tip lifted.
                 self.postMouseUp(
                     button: btn, at: self.lastPostedPoint, clickCount: count,
                     point: point, snapshot: capturedSnap)
@@ -937,8 +739,7 @@ extension InputInjector {
         hasPostedPoint = true
     }
 
-    /// Timer-fired commit of a debounce-confirmed release, replayed against
-    /// the last-known point/pressure since no report is driving this call.
+    /// Timer-fired debounced release, at the last known point.
     private func commitDebouncedTipUp(snap: InjectionSnapshot) {
         lastTipDown = false
         guard let pt = shimLastPoint else { return }
@@ -948,23 +749,17 @@ extension InputInjector {
                 pose: resolveEffectivePose(point: pt, snapshot: snap), snapshot: snap)
         }
         if panScroll.isActive {
-            // Symmetric to the swallowed mouseDown on the way down — see inject()'s
-            // own panScroll.isActive branch in the tip-transition block.
+            // Panning swallowed the press, so no release.
             return
         }
         releaseTip(at: lastPostedPoint, pressure: lastPostedPressure, point: pt, snap: snap)
     }
 
-    /// Which barrel button a debounced-release timer handler is resolving —
-    /// used instead of `inout` state (escaping closures can't capture `inout`
-    /// parameters), so the handler branches on this to reach the right
-    /// stored properties.
+    /// Names a barrel button for timer handlers, which can't capture `inout`.
     private enum BarrelButtonSlot { case one, two, three }
 
-    /// Xencelabs-only barrel-button dispatch: presses fire immediately;
-    /// releases are held for `buttonUpDebounceInterval` (see its declaration)
-    /// so a button re-asserting within that small window never produces a
-    /// release/press pair. A flat window, no tilt or history heuristics.
+    /// Xencelabs barrel buttons: presses fire at once; releases wait
+    /// `buttonUpDebounceInterval` so a flicker never reads as a re-press.
     private func handleXencelabsBarrelButton(
         slot: BarrelButtonSlot, down: Bool,
         binding: ButtonBinding, at location: CGPoint,
@@ -979,8 +774,7 @@ extension InputInjector {
         }
 
         if down {
-            // Reasserted (or still down) — cancel any pending release; if it
-            // hadn't already committed, nothing downstream ever saw a release.
+            // Still down: cancel any pending release.
             if let t = pendingTimer {
                 CFRunLoopTimerInvalidate(t)
                 setBarrelButtonTimer(slot, nil)
@@ -992,9 +786,8 @@ extension InputInjector {
             return
         }
         guard wasDown, pendingTimer == nil else { return }
-        // Right-click / eraser bindings get the longer menu window so a
-        // held contextual menu survives a pen lift (see
-        // buttonUpDebounceMenuInterval). Everything else stays crisp.
+        // Right-click and eraser get a longer window, so a held context menu
+        // survives a pen lift.
         let window: TimeInterval
         switch binding.kind {
         case .rightClick, .eraser: window = buttonUpDebounceMenuInterval
@@ -1016,10 +809,7 @@ extension InputInjector {
             }
             guard stillDown else { return }
             self.setBarrelButtonDown(slot, false)
-            // Publish how stale this release is so velocity-sensitive bindings
-            // (Scroll Drag's momentum seed) can judge it as of the physical
-            // edge rather than this deferred commit. Cleared immediately after
-            // so no later, undeferred action inherits it.
+            // Tell Pan View's momentum how late this release is.
             self.pendingButtonUpBackdate = CFAbsoluteTimeGetCurrent() - physicalReleaseTime
             self.fireButtonAction(binding, down: false, at: location, snapshot: snap, settings: settings)
             self.pendingButtonUpBackdate = 0

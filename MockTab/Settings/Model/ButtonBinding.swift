@@ -82,11 +82,8 @@ struct ButtonBinding: Codable, Equatable {
         self.keyLabel = keyLabel
     }
 
-    /// Build a modifier-only binding (no base key).
-    /// `keyLabel` is left empty — InputInjector uses this as the signal to post a
-    /// `.flagsChanged` CGEvent rather than a `keyDown/Up`.
-    /// `keyCode` is set to the canonical left-side virtualKey of the primary modifier
-    /// so the flagsChanged event carries a sensible keycode (55 ⌘, 56 ⇧, 58 ⌥, 59 ⌃).
+    /// Modifier-only binding. The empty `keyLabel` tells InputInjector to post
+    /// `.flagsChanged`; `keyCode` is the primary modifier's left-side key.
     init(modifierOnly flags: NSEvent.ModifierFlags) {
         kind = .keyCombo
         keyLabel = ""
@@ -217,13 +214,8 @@ struct ButtonBinding: Codable, Equatable {
         return try? JSONDecoder().decode(ButtonBinding.self, from: data)
     }
 
-    /// Reconstructs a ButtonBinding from a human-readable display label produced
-    /// by `displayLabel`.  Used by the profile importer to reverse the export encoding.
-    ///
-    /// Simple cases ("Right Click", "Toggle Display", etc.) are decoded exactly.
-    /// Key combos ("⌘Z", "⌃⇧F5", etc.) are parsed by stripping modifier prefixes
-    /// and then scanning the `charLabel` reverse-table for a matching keyCode.
-    /// Unknown labels fall back to `.none` so a bad value doesn't hard-fail an import.
+    /// Reverses `displayLabel` for the profile importer. Key combos ("⌘Z") are
+    /// parsed; unknown labels become `.none` so one bad value can't fail an import.
     static func fromDisplayLabel(_ label: String) -> ButtonBinding {
         switch label {
         case "None": return .none
@@ -321,14 +313,8 @@ struct ButtonBinding: Codable, Equatable {
 
     // MARK: Key label lookup
 
-    /// Returns the display label for a keyCode + full modifier state.
-    ///
-    /// Uses `UCKeyTranslate` with the live keyboard layout so that layout-switching
-    /// modifiers work correctly.  The notable case is Dvorak Qwerty-Command: holding
-    /// ⌘ switches the layout to QWERTY, so ⌘C should display as "C" not "J".
-    /// `UCKeyTranslate` handles this automatically because it consults the layout's
-    /// own modifier table, which for that layout maps Command-held keycodes to the
-    /// QWERTY character set.
+    /// Display label for a keyCode and modifier state. Uses the live layout via
+    /// `UCKeyTranslate`, so Dvorak Qwerty-Command shows ⌘C as "C", not "J".
     private static func charLabel(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> String {
         // Non-printing / navigation keys don't go through UCKeyTranslate.
         switch Int(keyCode) {

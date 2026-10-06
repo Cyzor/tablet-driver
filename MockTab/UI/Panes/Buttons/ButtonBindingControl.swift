@@ -14,21 +14,11 @@ struct ButtonBindingControl: View, Equatable {
     @Binding var binding: ButtonBinding
     var compact: Bool = false
     var ringSlotCount: Int = 4
-    /// Whether to offer "Dial 2: Cycle"/"Dial 2: Mode N" actions in the mode
-    /// submenu, alongside the existing (dial-1) actions. Only meaningful on
-    /// hardware with two independent mechanical dials (PTK-670/870) and only
-    /// where assigning "cycle dial 2" makes sense — express keys, not pen
-    /// buttons or bezel buttons. Distinct from `isMechanicalDialHardware`:
-    /// this row could be on dial hardware (so the submenu should still say
-    /// "Dial Mode") without itself being a sensible place to offer the
-    /// second dial's own actions.
+    /// Offer the second dial's actions in the mode submenu. Only for
+    /// ExpressKeys on two-dial hardware (PTK-670/870), not pen or bezel buttons.
     var offersSecondDial: Bool = false
-    /// Whether this row lives on hardware whose ring/dial mechanism is a
-    /// mechanical rotate-only dial rather than a capacitive touch ring —
-    /// drives the submenu's label ("Dial Mode" vs. "Touch Ring Mode") and
-    /// its non-second-dial entries' wording ("Dial: Cycle" vs.
-    /// "Ring: Cycle"), independent of whether this specific row also offers
-    /// second-dial actions. See `ButtonMappingView.hasMechanicalDial`.
+    /// The hardware has a mechanical dial, not a touch ring. Picks "Dial"
+    /// or "Ring" wording. See `ButtonMappingView.hasMechanicalDial`.
     var isMechanicalDialHardware: Bool = false
     /// Set on a PTK dial's own toggle key. The mode submenu then collapses to
     /// one flat Cycle item aimed at this dial — jumping to a mode was carried
@@ -213,12 +203,8 @@ struct ButtonBindingControl: View, Equatable {
                 localized: "Record Shortcut",
                 comment: "Placeholder in shortcut recorder field when empty")
         }
-        // On mechanical-dial hardware, "Ring: Cycle"/"Ring: Mode N" read
-        // oddly next to a section already labeled "Dial."
-        // binding.displayLabel stays device-unaware (shared by presets/undo
-        // text/every other caller), so the rename lives here, display-only,
-        // rather than in the model.
-        // A toggle key cycling its own dial just says "Dial: Cycle".
+        // Say "Dial" on dial hardware. Display-only: `displayLabel` stays
+        // device-unaware because presets and undo text share it.
         if dialToggleControl == .second, binding.kind == .ringCycle2 {
             return String(localized: "Dial: Cycle", comment: "Button action: cycle a mechanical dial's mode")
         }
@@ -290,10 +276,8 @@ struct ButtonBindingControl: View, Equatable {
         stoppedByMouseDown = false
         isRecording = true
         pendingModifiers = []
-        // Monitor keyDown and flagsChanged (keyboard input) plus leftMouseDown.
-        // leftMouseDown is passed through (return event) so the click reaches its
-        // target — which may be another field that then starts its own recording,
-        // naturally enforcing single-field mutual exclusion without coordination.
+        // leftMouseDown passes through, so clicking another field starts its
+        // recording and ends this one without extra coordination.
         monitor = NSEvent.addLocalMonitorForEvents(
             matching: [.keyDown, .flagsChanged, .leftMouseDown]
         ) { event in

@@ -10,21 +10,10 @@ import TabletKit
 let modLog = Logger(subsystem: "com.cyzor.mocktab", category: "modifiers")
 let injectLog = Logger(subsystem: "com.cyzor.mocktab", category: "inject")
 
-/// Synthetic-modifier ground truth contributed by aux/express-key bindings
-/// (Wacom pad Express Keys, touch-ring center click, and standalone accessories
-/// like Xencelabs's QuickKeys puck), shared across every `InputInjector` instance.
-///
-/// Each physical device gets its own `InputInjector` (see `DeviceContext`), but
-/// an aux-only accessory such as QuickKeys is its own device — a Shift it holds
-/// has to be visible to whichever *other* InputInjector is actually posting the
-/// pointer-drag events (the pen tablet's). Pen-barrel-button modifiers stay on
-/// each instance's own `groundTruthSyntheticFlags` instead of here because
-/// they're reconciled against that device's own active tool
-/// (`InputInjector.reconcileSyntheticFlags`); sharing them globally would let an
-/// unrelated device's tool change strip them.
-///
-/// HIDThread-confined, like the per-instance state it mirrors — all devices'
-/// hot paths run on the one shared `HIDThread.shared` run loop.
+/// Synthetic modifiers held by aux bindings (ExpressKeys, ring center,
+/// Quick Keys), shared by every injector: a Quick Keys Shift must reach drags
+/// posted by the pen tablet's injector. Pen-button modifiers stay per
+/// instance, reconciled against that device's tool. HIDThread-confined.
 final class SharedAuxModifierState {
     static let shared = SharedAuxModifierState()
     private init() {}
@@ -33,19 +22,9 @@ final class SharedAuxModifierState {
     var lastChangeAt: Date = .distantPast
 }
 
-/// Process-wide Scroll Drag gesture routing.
-///
-/// Each physical device has its own `InputInjector` (see `DeviceContext`), but
-/// a Scroll Drag binding can live on a *different* device than the one moving
-/// the pointer — e.g. assigned to a Quick Keys puck button while the pen does
-/// the panning. The puck's injector sees the button edge; the pen's injector
-/// sees the motion. This shared object lets the edge-firing injector engage
-/// the gesture on whichever injector is currently driving the pointer (the
-/// active pen tablet), so the binding works regardless of which device it's
-/// physically on. Barrel-button bindings on the pen itself resolve to the
-/// same single instance, so this is a no-op for the common case.
-///
-/// HIDThread-confined, like the per-injector `panScroll` state it coordinates.
+/// Routes a Pan View gesture to the injector moving the pointer, since its
+/// button can live on another device (a Quick Keys key while the pen pans).
+/// A no-op for a pen's own barrel button. HIDThread-confined.
 final class SharedPanScrollState {
     static let shared = SharedPanScrollState()
     private init() {}
@@ -63,63 +42,38 @@ final class SharedPanScrollState {
     }
 }
 
-/// Converts raw TabletPoint reports into CGEvents and posts them to the HID event tap.
+/// Converts TabletPoint reports into CGEvents and posts them.
 ///
-/// Event sequence per report:
-///   • Proximity change  → tabletProximity event (immediate)
-///   • Every in-proximity report:
-///       1. tabletPointer  — raw pressure/tilt for Qt/GTK (Krita, GIMP)
-///       2. mouse event    — leftMouseDown / leftMouseDragged / leftMouseUp / mouseMoved
-///          with .mouseEventPressure + .mouseEventSubtype=tabletPoint + .mouseEventClickState
+/// Per report: a tabletProximity event on proximity change; otherwise a
+/// tabletPointer event (for Qt/GTK apps such as Krita and GIMP) and a mouse
+/// event. A delta gate skips reports that don't change position or pressure,
+/// so a still pen costs nothing. Transitions always post at once.
 ///
-/// Throughput strategy:
-///   Posts CGEvents only when position or pressure changes meaningfully (delta gate).
-///   When the pen is stationary the tablet still sends 133 Hz reports with identical
-///   coordinates; the gate suppresses all of them — zero Mach IPC, zero wakeups.
-///   Tip/button/proximity transitions always post immediately regardless of delta.
+/// Threading: `init`, `deinit`, the flags tap install, and `recompute…` run
+/// on main; `inject`, `injectAux`, `injectMouseButtons`, and everything they
+/// call run on HIDThread. Settings reach HIDThread as snapshots via
+/// CFRunLoopPerformBlock. `@unchecked Sendable` rests on that confinement.
 ///
-/// Hot-path state owned by HIDThread; configuration writes from main are documented
-/// per-property below. `init`, `deinit`, `installFlagsChangedTap`, and the
-/// `recompute…` helpers run on main; `inject`, `injectAux`, `injectMouseButtons`,
-/// and everything they transitively call run on HIDThread (the dedicated CFRunLoop
-/// thread declared in HIDThread.swift). Snapshot updates from the @MainActor
-/// `TabletSettings` are pushed via CFRunLoopPerformBlock onto HIDThread so the
-/// hot path never needs to read @Published storage directly.
-///
-/// `@unchecked Sendable`: cross-thread access is synchronized manually per the
-/// scheme above (HIDThread confinement for hot-path state, locks elsewhere).
-///
-/// The class spans five files: this one holds every stored property (Swift
-/// extensions can't) plus init/teardown and the cross-cutting helpers, while
-/// the sibling `InputInjector+*.swift` extensions hold the pen hot path
-/// (+PenInjection), finger touch (+Touch), express keys/rings/wheels
-/// (+AuxInput), and the CGEvent posting layer (+CGEvents). The threading rules
-/// above apply unchanged across all of them.
+/// This file holds the stored properties and setup; the `InputInjector+*`
+/// extensions hold the pen path, touch, aux input, and the CGEvent layer.
 ///
 /// ## Latched state and its release paths
 ///
-/// Every entry below is state that, once armed, keeps something held down or
-/// suppressed until an explicit release runs. Five separate "accidental
-/// watchdog" leaks have been found and fixed here over the project's history —
-/// the last because a full disconnect had no release path at all — so the table
-/// exists to make the arm/release pairing enumerable rather than rediscovered.
-/// It is documentation only; rows marked `⚠ VERIFY` are flagged for human
-/// review, not known bugs.
+/// Each row is state that holds something down until a release runs. Five
+/// leaks have been fixed here, so the pairings are listed, not rediscovered.
 ///
-/// The three cross-cutting release funnels referenced below:
-/// - **proximity exit** — `commitProximityExit` (+PenInjection), on confirmed
-///   pen-out-of-range.
-/// - **tool change / disconnect** — `releaseHeldStateForToolChange`
-///   (+PenInjection), called on tool swap and from `TabletManager`'s
-///   full-disconnect path.
-/// - **deinit** — invalidates every timer listed here.
+/// Release funnels: **proximity exit** (`commitProximityExit`), **tool change
+/// and disconnect** (`releaseHeldStateForToolChange`), and **deinit**, which
+/// invalidates every timer.
 ///
 /// | State | Armed by | Released by | Leaks if stuck |
 /// |---|---|---|---|
 /// | `groundTruthSyntheticFlags` | aux/barrel binding posting a modifier | `releaseAllSyntheticModifiers` via proximity exit, 0.4s idle `watchdogTimer`, 1Hz `leakWatchdogTimer`, app switch (`releaseOnAppSwitch`) | Modifier stuck down system-wide |
 /// | `heldKeyComboRefCounts` | aux/barrel binding posting a plain (non-modifier) `.keyCombo` key | `releaseAllHeldKeyComboKeys` via the same four paths as `groundTruthSyntheticFlags` above | Letter/number key stuck down system-wide until the app quits |
 /// | `lastTipDown` | curved pressure ≥ `tipPressureThreshold`, subject to `tipUpDebounceTimer` on release | tip-up in `inject` (debounce-confirmed), proximity exit (incl. the 1Hz watchdog's forced exit — the only release on an unplug with the tip down) | Stroke never ends; button reads held |
-/// | `hoverDragButton` | barrel-button click binding down | binding up edge, proximity exit, `releaseBindingHeldButton` on tool change/disconnect | Movement posts drags instead of hover |
+/// | `hoverDragButton` | click binding down, or Click Lock | binding up edge, proximity exit, `releaseBindingHeldButton` on tool change/disconnect | Movement posts drags instead of hover |
+/// | `clickLocked` | Click Lock press, or a Click Lock tip's first contact | next press or tip contact, proximity exit (`releaseClickLock`), tool change/disconnect | Left button stuck down |
+/// | `tipClickSwallowed` | tip contact with the tip set to None, or while Click Lock holds | tip lift, proximity exit | Next lift posts no mouseUp |
 /// | `lastMiddleDown`, `lastUSBMouseMask` / `usbMouseLeftHeld` | puck/KC-100 mouse button down | `releaseHeldPointerButtons` — proximity exit and tool change/disconnect | Mouse button stuck down |
 /// | `pendingMouseUp` (timer) | tip-up while still moving, tip-up assist enabled | tip re-down (`cancelPendingMouseUp`), proximity exit, deinit | mouseUp never posted — stroke stays open |
 /// | `panScroll` (PanScrollTracker) | `.scrollDrag` binding engaged | binding release edge; deliberately **survives** proximity blips (`suspend()`), `cancelPanScrollSafetyNet` + `panScrollSafetyNetTimer` backstop | Pen motion scrolls instead of moving cursor |
@@ -130,56 +84,26 @@ final class SharedPanScrollState {
 /// | `leakWatchdogTimer` (1Hz) | `init`, runs continuously | deinit only — by design, it must outlive quiescence | Backstop absent for the rows above |
 /// | `lastProximity` | pen in range | proximity exit; 1Hz watchdog forces exit after `stuckProximityTimeout` | Touch gated off as "pen busy" |
 /// | `lastAuxButtons`, `lastRingButtonDown` | express key / ring center down | matching up edge in `injectAux`; 0.4s `watchdogTimer` for modifier flags | Express-key binding stuck held |
-/// | `panMomentumTail`, `touchMomentumTail` | flick release with velocity | decay to zero, new gesture start (`cancel()` — the new gesture's own `.began` phase is itself a valid terminal signal), tool change / disconnect / proximity exit / app switch / sleep / quit (all `stop()` — posts a terminal event; added for macOS 27's stuck-gesture auto-cancel timer, which can now force-cancel a tail an app never received a terminal event for), `cancel()` in deinit | Scrolling continues after release pre-27; force-cancelled mid-stream by the receiving app on 27+ if left non-terminal |
+/// | `panMomentumTail`, `touchMomentumTail` | flick release with velocity | decay to zero; new gesture (`cancel()`, its `.began` ends the tail); tool change, disconnect, proximity exit, app switch, sleep, quit (`stop()` posts a terminal event, for macOS 27's stuck-gesture timer); `cancel()` in deinit | Scrolling continues; on 27+ the app force-cancels it |
 /// | `touchDragPosition` | three-finger tap, then the next touch | `releaseTouchDrag` via lift (`.dragUp`), pen-busy wind-down, touch turned off, tool change/disconnect, 1Hz `leakWatchdogTimer` after 1s without touch frames | Left button stuck down |
 /// | `mechanicalDialGestureOpen`, `ring1/2GestureOpen` | `.zoom`/`.rotate` ring slot engaged (dial click or ring contact) | 0.4s `mechanicalDialGestureIdleTimer` after the last click (dial) or ring contact lift (capacitive); explicit `closeRingGestureEnvelopes()` on ring-mode-cycle/select-slot bindings and the modifier-held zoom fallback; **`deinit` closes silently** (timer invalidated, no `.ended` posted — see below) | Frontmost app stuck mid-pinch/-rotate |
 ///
-/// On disconnect: `releaseHeldStateForToolChange` releases held buttons but
-/// invalidates no timers, so a `pendingMouseUp`, `button*UpDebounceTimer`, or
-/// `proximityExitDebounceTimer` armed at the moment a tablet is unplugged still
-/// fires afterwards. That is survivable by construction rather than by luck, and
-/// the reasoning is worth keeping because it is what makes adding a *new* timer
-/// here safe or unsafe:
+/// Disconnect releases held buttons but invalidates no timers, so a timer
+/// armed at unplug still fires. That is safe by design:
 ///
-/// - Every timer above is one-shot (`CFRunLoopTimerCreateWithHandler` with
-///   interval 0) and none re-arms, so the pending window is bounded by that
-///   timer's own delay — at most `proximityExitHeldButtonSafetyInterval` (4s).
-/// - The handlers *post the release* rather than stranding it: the debounce
-///   commits the button up, `commitProximityExit` posts mouseUp for a held tip
-///   and releases pointer buttons and synthetic modifiers. Firing after unplug
-///   completes cleanup the disconnect path skipped.
-/// - The injector outliving the device is what allows that. `TabletManager`
-///   field-resets the `DeviceContext` on full disconnect but keeps it in
-///   `deviceContexts`, so a known-but-unplugged tablet retains settings and a
-///   window — and `injectionSnapshot`, which the handlers post through, is never
-///   nilled.
-/// - A tip held down at unplug is the one case no debounce covers, since
-///   `releaseHeldStateForToolChange` does not clear `lastTipDown`. The 1 Hz
-///   `leakWatchdogTimer` is the backstop: it forces `commitProximityExit` after
-///   `stuckProximityTimeout` (2s), gated only on `lastProximity` and pen-report
-///   idleness — both injector-internal — so it stays reachable with the device
-///   gone.
+/// - Every timer is one-shot, so the window is bounded (at most 4 s).
+/// - Handlers post the release, finishing the cleanup the disconnect skipped.
+/// - The injector outlives the device: `TabletManager` keeps the context and
+///   its `injectionSnapshot`, which the handlers post through.
+/// - A tip held at unplug is the one gap; the 1 Hz `leakWatchdogTimer`
+///   forces `commitProximityExit` after `stuckProximityTimeout`.
 ///
-/// A new timer here inherits none of that automatically. It must be one-shot,
-/// short, and safe to fire against a departed device, or the disconnect path
-/// needs to invalidate it explicitly.
+/// A new timer must be one-shot, short, and safe after unplug, or the
+/// disconnect path must invalidate it.
 ///
-/// `mechanicalDialGestureIdleTimer` above follows this reasoning exactly for
-/// a device unplugged mid-spin: the timer is still armed, still fires on
-/// HIDThread, and closes the envelope (`.ended` posted) the same as if the
-/// device were still connected — no special-casing needed. **`deinit` is
-/// the one path that does NOT follow this pattern and closes silently
-/// instead** (invalidating the timer with no `.ended` posted): by the time
-/// `deinit` runs the object is being destroyed, so there is no thread-safe
-/// way to hop onto HIDThread and post an event from there, unlike every
-/// timer-fire handler above which runs while the object is still alive.
-/// This mirrors why `panMomentumTail.cancel()` and `touchMomentumTail.cancel()`
-/// are also the silent variant in `deinit`, not `stop()`. A stale open
-/// gesture at `deinit` time is not a live leak in practice — `deinit` only
-/// runs once nothing else references the injector, which for a connected
-/// device means the app is quitting (every gesture ends when the OS
-/// reclaims the process) or the device was already long-idle (the idle
-/// timer closed the envelope on its own well before `deinit` could run).
+/// `deinit` alone ends gestures silently (no `.ended`): it can't post from
+/// HIDThread while the object is being destroyed. That's harmless, since it
+/// only runs at quit or long after the idle timer closed everything.
 final class InputInjector: @unchecked Sendable {
 
     // MARK: - Device identity
@@ -187,35 +111,16 @@ final class InputInjector: @unchecked Sendable {
     var deviceVendorID: Int
     var deviceProductID: Int
 
-    /// Whether this device's raw touch-ring position counts opposite the
-    /// normalized convention (positive delta = physically clockwise).
-    ///
-    /// This flag only normalizes raw hardware polarity — it says nothing about
-    /// which way clockwise should scroll. That's applied once, uniformly,
-    /// downstream in `dispatchRingDelta` from `InputInjector.naturalScrollingEnabled`.
-    ///
-    /// Ring polarity is a per-firmware-family hardware fact, not a universal
-    /// one. Hardware-observed so far: `.cintiqV1` (DTK-2400, both bezel rings)
-    /// counts clockwise; `.intuosV1` (PTH-850) counts counter-clockwise, so it
-    /// needs the flip. `.intuosV2` (PTH-660/860) is assumed clockwise (grouped
-    /// with `.cintiqV1`) but is untested — the only family resting on that
-    /// assumption. Resolved once at init rather than per report. If a third
-    /// polarity convention ever appears, promote this to a registry field next
-    /// to the other per-device hardware facts.
+    /// The raw ring position counts opposite "positive = clockwise". Hardware
+    /// polarity only; scroll direction is applied in `dispatchRingDelta`.
+    /// Observed: `.cintiqV1` counts clockwise, `.intuosV1` (PTH-850) counter-
+    /// clockwise. `.intuosV2` is assumed clockwise, untested. If a third
+    /// convention appears, make this a registry field.
     let ringDeltaIsInverted: Bool
 
-    /// True if this device's ring/dial control is a bare mechanical rotary
-    /// encoder rather than a capacitive touch ring — see
-    /// `WacomDeviceSpec.hasMechanicalDial`'s doc comment for the mechanism
-    /// distinction and why it doesn't track vendor. Resolved once at init,
-    /// same pattern as `ringDeltaIsInverted`: `WacomDeviceRegistry` covers
-    /// Wacom hardware (PTK-670/870 gen-3 dials); Xencelabs isn't in that
-    /// registry, so this reaches `VendorDeviceRegistry` directly for that
-    /// case rather than depending on `TabletManager.vendorDeviceSpec`
-    /// (which synthesizes a `WacomDeviceSpec` for the UI/connect path) —
-    /// keeps this a `TabletKit`-internal lookup, not a reach into `Devices`.
-    /// Only the aux-only Quick Keys puck/dongle has a dial; the Xencelabs
-    /// pen tablets/display have neither express keys nor a dial of their own.
+    /// The ring control is a mechanical dial, not a touch ring; see
+    /// `WacomDeviceSpec.hasMechanicalDial`. Xencelabs isn't in the Wacom
+    /// registry, so its Quick Keys dial comes from `VendorDeviceRegistry`.
     let hasMechanicalDial: Bool
 
     /// Detents per revolution of this device's mechanical dial; sets how far
@@ -245,38 +150,25 @@ final class InputInjector: @unchecked Sendable {
     /// saving one WindowServer IPC round-trip per inject() call.
     var activeAppNeedsTabletPointerEvents: Bool = false
 
-    /// Click bookkeeping stamped onto every button event by `stampClickSequence`,
-    /// matching what hardware (and Wacom's driver) sends: each press gets a new
-    /// event number that its drags and release share, and the release repeats
-    /// the press's click state, or 0 if the pointer strayed. HIDThread-confined.
+    /// Click bookkeeping for `stampClickSequence`, matching hardware: each press
+    /// gets an event number its drags and release share, and the release
+    /// repeats the click state, or 0 if the pointer strayed.
     var clickEventNumber: Int64 = 0
     var pressClickState: Int64 = 0
     var pressLocation: CGPoint = .zero
     var pressStrayed = false
 
-    /// True when this device is the active context (TabletManager.activeContext === me).
-    /// Set from main when active changes; read from HIDThread to gate the inline
-    /// inject path. Backed by `OSAllocatedUnfairLock` so cross-thread reads/writes
-    /// don't rely on incidental Bool atomicity, which the Swift language model
-    /// does not guarantee even on Apple Silicon.
+    /// This device is the active context. Written on main, read on HIDThread,
+    /// behind a lock: Swift doesn't guarantee Bool atomicity.
     private let _isActive = OSAllocatedUnfairLock<Bool>(initialState: false)
     var isActive: Bool {
         get { _isActive.withLock { $0 } }
         set { _isActive.withLock { $0 = newValue } }
     }
 
-    /// Every live `InputInjector` (weakly held), so the shared-aux-modifier leak
-    /// watchdog can ask "is any device anywhere still holding an aux button?"
-    /// before releasing a bit contributed by a *different* device's aux binding.
-    /// `add()` happens on main (init); the read happens on HIDThread (leak
-    /// watchdog) — `NSHashTable` itself isn't synchronized across that, so both
-    /// sides go through this lock. (Per-instance fields it reads, like
-    /// `lastAuxButtons`, are safe to read unlocked here because every device's
-    /// hot path is confined to the one shared `HIDThread.shared` run loop, so
-    /// the reader and the writer of those fields are always the same thread.)
-    ///
-    /// `NSHashTable` isn't `Sendable`; the wrapper vouches for it because
-    /// every access goes through the lock.
+    /// Every live injector, weakly held, so the shared aux-modifier watchdog can
+    /// check all devices before releasing a bit. Locked: `add()` runs on main,
+    /// reads on HIDThread. Per-instance fields read here are all HIDThread's.
     private struct LiveInjectors: @unchecked Sendable {
         let table: NSHashTable<InputInjector> = .weakObjects()
     }
@@ -288,11 +180,8 @@ final class InputInjector: @unchecked Sendable {
         liveInjectorsLock.withLock { $0.table.allObjects }
     }
 
-    /// True while any registered device still shows an aux button, touch-ring
-    /// center click, or touch-ring/strip contact held — the shared aux-modifier
-    /// release check must not fire while this is true, even if the specific
-    /// device that raised the modifier has gone idle (QuickKeys-style accessories
-    /// only report on state change, so idle IS the normal shape of a long hold).
+    /// Any device still holds an aux control. The shared release must wait:
+    /// Quick Keys only report changes, so a long hold looks idle.
     fileprivate static var anyAuxControlHeld: Bool {
         liveInjectorsLock.withLock { live in
             for injector in live.table.allObjects {
@@ -308,37 +197,17 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Natural scrolling (system-wide, not per-device)
 
-    /// Mirrors `com.apple.swipescrolldirection`: true when System Settings ›
-    /// Mouse/Trackpad › "Natural Scrolling" is on. This is a machine-wide fact,
-    /// not a per-tablet one, so it's `static` rather than threaded through
-    /// `InjectionSnapshot`.
-    ///
-    /// Read fresh from `UserDefaults` on every call rather than cached —
-    /// `UserDefaults` is documented thread-safe, so this is safe to call from
-    /// HIDThread inside `dispatchRingDelta` without extra locking. Confirmed by
-    /// direct observation (2026-08-06) that this reflects the system value
-    /// within about a second of the switch being toggled, with no distributed-
-    /// notification plumbing needed: `SwipeScrollDirectionDidChangeNotification`
-    /// exists but distributed-notification delivery to a background utility
-    /// app was seen to be unreliable (macOS suspends/coalesces delivery while
-    /// the app isn't frontmost), so don't reintroduce a cached+notified flag
-    /// here without re-verifying delivery is reliable for a backgrounded app.
-    ///
-    /// Ring/dial scroll injection posts `CGEvent` scroll-wheel events directly,
-    /// which bypass the OS's own natural-scrolling flip (that inversion happens
-    /// below CGEvent, for real HID devices) — so `dispatchRingDelta` applies it
-    /// itself, using this flag, to reproduce what a real device's driver does.
+    /// Mirrors System Settings' Natural Scrolling. Read fresh each call
+    /// (UserDefaults is thread-safe, and updates within a second); the change
+    /// notification proved unreliable for a background app. Injected scroll
+    /// events skip the OS's own flip, so `dispatchRingDelta` applies it.
     static var naturalScrollingEnabled: Bool {
         UserDefaults.standard.bool(forKey: "com.apple.swipescrolldirection")
     }
 
-    /// Escape hatch restoring `34cdf46`: drop physical modifier bits from *every*
-    /// move event, not just stale-cache ones. For a machine the staleness gate
-    /// doesn't fix, so they have something to try without waiting on a build.
-    ///
-    /// Off by default because it costs constraint-snapping in Illustrator,
-    /// Keynote, and Pages. Read once at launch to keep `UserDefaults` off the
-    /// hot path, so it applies on relaunch.
+    /// Escape hatch: drop physical modifiers from every move event, for a
+    /// machine the staleness gate doesn't fix. Costs constraint snapping in
+    /// Illustrator, Keynote, and Pages. Read at launch.
     ///
     ///     defaults write com.cyzor.mocktab dropPhysicalModifiersFromMoveEvents -bool YES
     static let forceDropPhysicalMoveFlags: Bool =
@@ -398,14 +267,8 @@ final class InputInjector: @unchecked Sendable {
         ) { [weak self] _ in self?.checkLeakWatchdog() }
         installFlagsChangedTap()
 
-        // macOS 27's new stuck-gesture auto-cancel timer (AppKit) can force-
-        // cancel a momentum tail left non-terminal a few seconds after input
-        // stops — pre-27 an abandoned tail just idled harmlessly in the
-        // receiving app. A tail can't survive sleep to resume, so give it a
-        // terminal event before the machine goes down rather than leaving it
-        // for the timer. Quit is handled the same way while this plumbing is
-        // already being added — deinit's own reasoning (see the class doc
-        // comment) still holds for the case neither of these catches.
+        // End momentum tails before sleep and at quit: macOS 27 force-cancels a
+        // gesture left open, and a tail can't resume after sleep.
         willSleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.willSleepNotification,
             object: nil, queue: .main
@@ -463,12 +326,8 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - State
     //
-    // Several fields below are `internal` (no `private`) rather than truly
-    // private: the injection paths were split across InputInjector+*.swift
-    // extension files, and Swift's `private` is file-scoped, so state shared
-    // with those extensions has to be visible module-wide. It's still
-    // conceptually owned here and HIDThread-confined exactly as each comment
-    // describes — the access level widened, the ownership contract did not.
+    // Fields shared with the `InputInjector+*` extensions are internal, since
+    // `private` is file-scoped. Ownership and HIDThread confinement are unchanged.
 
     var lastProximity = false
     var lastTipDown = false
@@ -485,10 +344,7 @@ final class InputInjector: @unchecked Sendable {
     /// threshold gate — see `TabletSettings.dragThreshold`.
     var tipDownOrigin: CGPoint = .zero
     var lastEraserMode = false  // Track eraser/tip flip while in proximity
-    // Named per-button fields rather than an array/dictionary, deliberately:
-    // this runs at 133 Hz on the HID hot path, where a direct field read beats
-    // a collection's bounds-check/hash overhead, and named fields stay readable
-    // in a debugger during real-hardware sessions.
+    // Named fields, not a collection: cheaper at 133 Hz and readable in a debugger.
     var lastButton1Down = false
     var lastButton2Down = false
     var lastButton3Down = false
@@ -497,32 +353,21 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - USB mouse button state
     //
-    // For KC-100 cordless mouse over USB: buttons arrive on a separate standard
-    // HID mouse interface (Report ID 0x01) rather than in the digitizer 0x10 stream.
-    // injectMouseButtons() is called from that interface's device driver; inject()
-    // reads usbMouseLeftHeld to decide drag vs hover when emitting movement events.
+    // The KC-100's buttons arrive on a separate mouse interface (report 0x01),
+    // handled by injectMouseButtons(). inject() reads usbMouseLeftHeld.
     var lastUSBMouseMask: UInt8 = 0
     var usbMouseLeftHeld: Bool = false
 
     // MARK: - Report timestamp carrier
     //
-    // Kernel receipt time of the HID report currently being handled, already
-    // converted to CGEventTimestamp nanoseconds; 0 when the current post is
-    // not driven by a timestamped report (timer-fired deferred mouseUps,
-    // debounce releases, proximity-exit commits — those correctly keep the
-    // default now-timestamp, and clearing on report exit guarantees a stale
-    // stamp is never replayed after fresher events have posted).
-    //
-    // Static and HIDThread-confined: one HIDThread serves every device
-    // context, set by WacomKnownDevice.handleReport around each report and
-    // read only in finalizeAndPost on the same thread.
+    // Kernel receipt time of the report being handled, in CGEvent nanoseconds;
+    // 0 for timer-fired posts, which keep the default. Cleared after each report,
+    // so a stale stamp never replays. Static: one HIDThread serves every device.
     static var currentReportTimestampNs: UInt64 = 0
 
     // MARK: - Cursor smoothing, jitter, velocity
     //
-    // Per-report position smoothing (EMA), rolling jitter window, and short-window
-    // velocity for tip-up assist. State and math live in CursorSmoother.swift;
-    // InputInjector holds the instance and forwards reads where needed.
+    // State and math live in CursorSmoother.swift.
 
     var smoother = CursorSmoother()
 
@@ -546,9 +391,8 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Delta gate
     //
-    // Skip posting to the Window Server when position and pressure haven't changed
-    // meaningfully. The tablet sends identical coordinates at 133 Hz while stationary;
-    // suppressing those drops Mach IPC to zero and eliminates idle wakeups entirely.
+    // Skip reports that don't change position or pressure: a still pen sends
+    // identical coordinates at 133 Hz.
 
     static let positionEpsilon: CGFloat = 0.5  // sub-pixel, not worth posting
     static let pressureEpsilon: Double = 0.002
@@ -559,28 +403,11 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Stale-report suppression
     //
-    // Under severe system-wide scheduling starvation (observed with a local
-    // LLM saturating GPU/unified memory), HID reports back up somewhere
-    // upstream of HIDThread and arrive in a rapid burst once the OS resumes
-    // scheduling us. Each report is still decoded and cheap to post
-    // individually (LatencyProbe's stage-2 − stage-1 delta stays under a
-    // millisecond even during a multi-second backlog — posting was never the
-    // bottleneck), but faithfully posting every backlogged point makes the
-    // cursor visibly animate through several seconds of stale history before
-    // catching up to the pen's real position — a "ghost cursor" trailing
-    // behind. This only suppresses the *plain hover-move* post
-    // (`postMouseMoved` in the final `else` branch of the movement gate in
-    // `inject()`) — drag/pan/tablet-pointer-event posts are untouched, so
-    // clicks, drags, and stroke data are never suppressed or delayed.
-    //
-    // A rate-limited "post a throttled sample of the backlog" version was
-    // tried first and was hardware-tested unconvincing — it still visibly
-    // played through old intermediate positions, just fewer of them. Full
-    // suppression while stale (`isStaleHoverMove` in
-    // InputInjector+PenInjection.swift) freezes the cursor and jumps once,
-    // directly to the real position, when live data resumes — no
-    // intermediate history shown at all, hence no per-flush state needed
-    // here beyond the threshold itself.
+    // Under heavy system load (a local LLM saturating unified memory), reports
+    // back up and arrive in a burst. Posting each one animated the cursor through
+    // seconds of old positions. Only plain hover moves are dropped; clicks, drags,
+    // and stroke data are untouched. Throttling still replayed history, so stale
+    // reports are skipped outright (`isStaleHoverMove`).
 
     /// A report whose kernel timestamp is older than this by the time it's
     /// decoded is backlog, not a live sample — see the section doc above.
@@ -591,27 +418,15 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Tip-down pressure threshold
     //
-    // Curve-mapped pressure above which a report counts as tip contact (drives
-    // tipDown detection, the tabletEventPointButtons tip bit, and the Info
-    // pane's button readout). ~4 raw counts on a 10-bit/1023 sensor.
-    //
-    // Deliberately left where it has always been. A GD-0608-U (Intuos 6×8,
-    // 1024-level EMR pressure) field report showed hover-only sensor noise at
-    // 3-4 raw counts spiking to ~7 — right on top of this threshold, producing
-    // phantom tip-down clicks and hairline strokes while the pen never touched
-    // the surface. Raising this constant would fix that tablet by firming up
-    // contact onset on every device, including 8191-level sensors where the
-    // same fraction is a far larger absolute step, and none of those can be
-    // re-verified here. `ToolSettings.pressureThreshold` is the scoped fix: a
-    // per-tool dead zone that covers a noisy baseline without moving this
-    // shared floor. Revisit only if bug reports show the dial is insufficient.
+    // Curved pressure above which a report counts as contact; about 4 counts on a
+    // 1024-level sensor. Kept as is: a noisy GD-0608-U hovered at 3–7 counts, but
+    // raising this would firm up contact on every tablet, unverifiable here.
+    // `ToolSettings.pressureThreshold` is the per-tool fix.
     static let tipPressureThreshold: Double = 0.004
 
-    /// Applies a tool's pressure LUT (dead zone + response curve) to a raw
-    /// normalized sensor reading. Shared by the injection path and the Info
-    /// pane so the pane's tip indicator can't disagree with what gets injected.
-    /// Interpolates between entries: indexing alone cut 8192-level sensors
-    /// down to 256 output steps (event-probe capture, 2026-09-30).
+    /// Applies a tool's pressure curve. Shared with the Info pane so its tip
+    /// readout matches what's injected. Interpolates: plain indexing cut
+    /// 8192-level sensors to 256 steps (event-probe, 2026-09-30).
     static func curvedPressure(_ normalized: Double, lut: [Double]) -> Double {
         let pos = Swift.min(Swift.max(normalized, 0), 1) * Double(lut.count - 1)
         let i = Int(pos)
@@ -622,10 +437,8 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Tip-up assist
     //
-    // When the delay (TabletSettings.tipUpAssistDelay, ms) is above zero, delays the
-    // mouseUp briefly after the tip lifts if the pen is still in motion. This prevents
-    // accidental stroke termination from light tip-release during fast strokes. The
-    // pending mouseUp is cancelled if the tip comes back down.
+    // Above zero, delays the release briefly when the pen lifts mid-motion, so a
+    // light lift doesn't end a fast stroke. Cancelled if the tip comes back down.
 
     static let tipUpAssistVelocityThreshold: CGFloat = 2.0  // pts/sample
     /// One-shot CFRunLoopTimer scheduled on HIDThread (NOT the main queue —
@@ -654,44 +467,27 @@ final class InputInjector: @unchecked Sendable {
     /// 0 = unknown (first frame after launch); dt is skipped that frame.
     var lastPanScrollFrameTime: CFAbsoluteTime = 0
 
-    /// One-shot HIDThread timer that force-closes a pan gesture whose owning
-    /// button's release was genuinely lost (pen set down out of range and the
-    /// release report never arrived). Scheduled when proximity exits with a
-    /// pan active; cancelled on the normal release edge. Without it a lost
-    /// release would leave the gesture — and its held button state — on
-    /// forever, since the gesture now (correctly) survives proximity exit.
+    /// Force-closes a pan whose button release was lost. Armed at proximity
+    /// exit with a pan open; cancelled by the release.
     var panScrollSafetyNetTimer: CFRunLoopTimer?
     /// How long a pan may sit suspended (pen out of range, no release seen)
     /// before it's force-closed as a presumed-lost gesture. Matches the
     /// proximity-exit held-button safety interval.
     let panScrollSafetyNetInterval: TimeInterval = 4.0
 
-    /// Synthetic momentum decay tail posted after a Scroll Drag release in
-    /// Natural mode. See MomentumTail.swift for the decay model.
-    ///
-    /// `[weak self]` is load-bearing: this object owns the tail, so a strong
-    /// capture in the post closure would be a retain cycle.
+    /// Momentum tail after a Pan View release in Momentum mode; see
+    /// MomentumTail.swift. `[weak self]` avoids a retain cycle.
     lazy var panMomentumTail = MomentumTail { [weak self] dx, dy, phase in
         self?.postPanScrollMomentum(dx: dx, dy: dy, phase: phase)
     }
 
-    /// Same mechanism, deliberately a *separate instance* so a touch scroll's
-    /// tail can't cancel or blend with an in-flight Scroll Drag tail. Only
-    /// matters on non-`NSScrollView` apps — `NSScrollView` already synthesizes
-    /// its own coast from the phased began/changed/ended stream
-    /// `postTouchScroll` posts either way.
+    /// A separate instance, so a touch scroll's tail can't cancel or blend with
+    /// a Pan View tail.
     lazy var touchMomentumTail = MomentumTail { [weak self] dx, dy, phase in
         self?.postTouchScrollMomentum(dx: dx, dy: dy, phase: phase)
     }
 
-    /// Which analog gesture a `.zoom`/`.rotate` ring-slot action drives.
-    /// Mechanism-neutral — shared by the mechanical-dial idle-timer envelope
-    /// (`mechanicalDialGestureOpen`, below) and the capacitive-ring path
-    /// (`injectAux`'s `touchRingActive` envelope, +AuxInput.swift). Naming
-    /// this after "dial" specifically would misdescribe the ring case; see
-    /// `WacomDeviceSpec.hasMechanicalDial`'s doc comment for why the two
-    /// mechanisms need separate envelope logic but the same gesture-kind
-    /// vocabulary.
+    /// Which gesture a zoom or rotate ring mode drives, on rings and dials alike.
     enum RingGestureKind { case zoom, rotate }
 
     /// Direct-drive glide for capacitive ring/strip scrolling; see
@@ -707,51 +503,22 @@ final class InputInjector: @unchecked Sendable {
         self?.postDialScroll(dy: dy)
     }
 
-    /// True while a `.zoom`/`.rotate` gesture envelope is open on
-    /// mechanical-dial hardware. Unlike the capacitive ring (whose envelope
-    /// is bracketed by `touchRingActive`'s finger-presence edge) a bare
-    /// rotary encoder has no such signal — it only ever reports "a click
-    /// happened" — so this is opened on the first tick after being closed
-    /// and closed by `mechanicalDialGestureIdleTimer` once ticks actually
-    /// stop arriving. See `closeMechanicalDialGesture`.
+    /// A zoom or rotate gesture is open on a dial. A dial has no touch to
+    /// bracket it, so the first tick opens it and an idle timer closes it.
     var mechanicalDialGestureOpen = false
-    /// Which gesture is open — set when `mechanicalDialGestureOpen` goes
-    /// true, read back by the idle timer and every release path when
-    /// closing. The slot may have changed away from `.zoom`/`.rotate` by
-    /// the time the envelope closes, so this can't be re-derived from the
-    /// current slot at close time.
+    /// The open gesture's kind, kept because the mode may change before it closes.
     var mechanicalDialGestureKind: RingGestureKind = .zoom
-    /// One-shot idle-close timer for the mechanical-dial gesture envelope —
-    /// same pattern as `watchdogTimer` (`rearmWatchdog()`): rearmed on every
-    /// tick, invalidated and recreated rather than rescheduled in place.
-    /// Fires `closeMechanicalDialGesture()` after `mechanicalDialGestureIdleTimeout`
-    /// of no further ticks.
+    /// Idle timer that closes a dial gesture; rearmed on every tick.
     var mechanicalDialGestureIdleTimer: CFRunLoopTimer?
-    /// How long to wait after the last dial click before treating a
-    /// `.zoom`/`.rotate` gesture as finished. Must comfortably exceed the
-    /// inter-click gap of a slow, deliberate turn — too short and a
-    /// deliberate turn stutters into several began/changed/ended gestures
-    /// instead of one continuous one. Too long only costs a nominally-open
-    /// gesture with no `.changed` flowing during idle, which is harmless.
+    /// Wait after the last dial click before ending a gesture. Longer than the
+    /// gap in a slow, deliberate turn, or one turn splits into several gestures.
     static let mechanicalDialGestureIdleTimeout: TimeInterval = 0.4
 
     /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
-    /// `true` (Momentum, default): the stream carries the phased began/changed/
-    /// ended envelope plus a synthetic momentum tail. NSScrollView-based apps
-    /// (Finder, Xcode) read that as a real trackpad flick — rubber-banding and
-    /// coasting. Gesture-keyed recognizers (Calendar Month/Year, WebKit
-    /// gesture-scroll / overscroll-behavior, Adobe palettes) ignore it — turn
-    /// momentum off for those.
-    ///
-    /// `false` (Compatible): the pan stream is deliberately phase-FREE
-    /// (`scrollWheelEventScrollPhase = 0`, no began/changed/ended envelope, no
-    /// momentum tail). A real trackpad wraps its continuous deltas in a phase
-    /// lifecycle plus a companion gesture-event stream; we assume that backing
-    /// is what the recognizers named above miss, though a field-by-field
-    /// comparison with a trackpad has never been done. Captured
-    /// third-party scroll tools (Smooze) that pan those apps smoothly emit
-    /// exactly this phase-free shape. Per-app opt-out where momentum isn't
-    /// honored.
+    /// `true` (Momentum): phased events plus a momentum tail, which scroll views
+    /// (Finder, Xcode) read as a trackpad flick. `false` (Compatible): no phases
+    /// and no tail, the shape tools like Smooze use, for apps that ignore
+    /// momentum.
     var panScrollUsePhases = true
 
     var lastPostedPoint: CGPoint = .zero
@@ -795,19 +562,13 @@ final class InputInjector: @unchecked Sendable {
     /// Carry sub-integer remainders across pulses so speed < 1.0 fires evenly.
     var ringAccum: Double = 0
     var ring2Accum: Double = 0
-    /// True while a `.zoom`/`.rotate` gesture envelope is open on a
-    /// capacitive ring — set on `touchRingActive`'s false→true edge, cleared
-    /// (posting `.ended`) on the true→false edge. See `injectAux`. Keyed on
-    /// `touchRingActive` only, never `lastRingButtonDown` — proximity exit
-    /// clears the latter but not the former, so a proximity blip mid-gesture
-    /// must not read as a finger-lift.
+    /// A zoom or rotate gesture is open on a touch ring, from contact to lift.
+    /// Keyed on `touchRingActive`, never `lastRingButtonDown`: proximity exit
+    /// clears the latter, and a blip must not read as a lift.
     var ring1GestureOpen = false
     var ring2GestureOpen = false
-    /// Which gesture is open on each ring — set when `ring1/2GestureOpen`
-    /// goes true, read back when closing. Needed because the slot that
-    /// opened the envelope may no longer be `.zoom`/`.rotate` (or may have
-    /// changed which of the two) by the time it closes — re-deriving "which
-    /// kind" from the current slot at close time would read the wrong one.
+    /// The open gesture's kind on each ring, kept because the mode may change
+    /// before it closes.
     var ring1GestureKind: RingGestureKind = .zoom
     var ring2GestureKind: RingGestureKind = .zoom
     var strip1Accum: Double = 0
@@ -818,128 +579,61 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Synthetic-modifier safety valves
 
-    /// Idle watchdog. If the driver thinks a modifier is held but no tablet
-    /// activity arrives for `watchdogInterval`, release all synthetic flags.
-    /// Rearmed on every inject/injectAux/injectMouseButtons/fireButtonAction.
-    /// At 133 Hz pen reporting this never expires during legitimate holds —
-    /// the pen leaving the tablet is what stops the stream, at which point
-    /// any still-held synthetic flag is by definition a leak.
-    /// CFRunLoopTimer scheduled on HIDThread. The handler reads/writes
-    /// HIDThread-owned modifier state without crossing a thread boundary.
+    /// Idle watchdog: if a modifier is held and no tablet activity arrives for
+    /// `watchdogInterval`, release synthetic flags. The pen streams at 133 Hz,
+    /// so silence means it left. Runs on HIDThread.
     private var watchdogTimer: CFRunLoopTimer?
     private let watchdogInterval: TimeInterval = 0.4
 
-    /// How long the tablet may sit idle while `lastProximity` is still true
-    /// before the 1Hz leak watchdog forces a proximity exit. See that
-    /// watchdog's stuck-proximity block for the decoder-side asymmetry this
-    /// backstops. A pen genuinely in proximity reports continuously at
-    /// 100+ Hz, so this never fires during real use.
+    /// Idle time with `lastProximity` still true before the 1 Hz watchdog forces
+    /// an exit. A pen in range streams at 100+ Hz, so this never fires in use.
     private static let stuckProximityTimeout: TimeInterval = 2.0
 
-    /// Xencelabs-only: holds off the proximity-exit cleanup below so range
-    /// loss doesn't cut a held barrel-button click/modifier short. This
-    /// hardware's out-of-range tag (`XencelabsDecoder.tagOutOfRange`) trips
-    /// at a noticeably shorter distance than Wacom's, so ordinary tilt/lift
-    /// during a gesture crosses it far more readily; confirmed against
-    /// Xencelabs's own driver, which visibly keeps a barrel-button click
-    /// (e.g. a context menu opened via right-click) held through range loss
-    /// and only releases it once the pen returns and reports the button
-    /// actually up. Wacom tablets don't need this — gated to vendorID
-    /// 0x28BD to avoid adding mouse-up latency to every pen lift elsewhere.
-    ///
-    /// Two regimes, chosen when the exit is scheduled (see the scheduling
-    /// site): if no tip/barrel/mouse button is held, a short fixed debounce
-    /// just absorbs a stray hover blip. If one *is* held, cleanup is deferred
-    /// for much longer — genuinely indefinitely, in spirit — because the
-    /// correct resolution is "wait for the pen to come back and tell us
-    /// the real button state," not "guess after some safe delay." The long
-    /// interval is purely a safety net (disconnect, pen set down and
-    /// forgotten) so a click can't get stuck forever.
+    /// Xencelabs only: defers proximity-exit cleanup so range loss doesn't cut
+    /// a held button short. Its range tag trips sooner than Wacom's, and its own
+    /// driver keeps a held button through range loss. With nothing held, a short
+    /// debounce absorbs a blip. With a button held, cleanup waits for the pen to
+    /// return; the long interval is only a safety net.
     var proximityExitDebounceTimer: CFRunLoopTimer?
     let proximityExitDebounceInterval: TimeInterval = 0.15
     let proximityExitHeldButtonSafetyInterval: TimeInterval = 4.0
 
-    /// Xencelabs-only: a *small* debounce on the barrel-button up edge, and
-    /// deliberately nothing more. This hardware's button-contact sensing
-    /// range is shorter than its position range, so a held button chatters
-    /// off/on for a frame or two while the pen rides that boundary even with
-    /// proximity fully maintained — the proximity-exit path above never sees
-    /// these because proximity never drops. Left raw, each blip is a real
-    /// release+re-press: a held right-click menu flickers, a held pan
-    /// hiccups. No hand can release and re-press a button in ~15 ms, so
-    /// bridging only that sub-perceptual window reads the hardware's intent
-    /// more faithfully than a naive frame-by-frame reading — it doesn't
-    /// fight the hardware, it declines to believe the physically impossible.
-    ///
-    /// Only the up edge is deferred (a press always fires instantly); a
-    /// reassert within the window cancels the pending release so nothing
-    /// downstream saw it. The window is small on purpose: chatter clusters
-    /// under ~30 ms, but its tail overlaps the fastest deliberate
-    /// double-tap (~120 ms), so a wider window can't separate the two
-    /// without merging a real double-click into one hold. It sits at the
-    /// bottom of the deliberate range — long dropouts (a real pen lift
-    /// mid-flick) pass through as honest re-clicks rather than being glued
-    /// shut, which is the sticky feel an earlier 0.15–0.25 s window was
-    /// rejected for. Override live for tuning without a rebuild:
+    /// Xencelabs only: a small debounce on the barrel-button release. Its
+    /// button range is shorter than its position range, so a held button
+    /// flickers for a frame or two at the edge. No hand can release and re-press
+    /// in ~15 ms, so bridging that window reads intent. Kept small so a real
+    /// double-tap (~120 ms) stays two clicks; a 0.15–0.25 s window felt sticky.
+    /// Tune live:
     ///   defaults write <bundle-id> MockTabXencelabsButtonDebounceMS 60
     var button1UpDebounceTimer: CFRunLoopTimer?
     var button2UpDebounceTimer: CFRunLoopTimer?
     var button3UpDebounceTimer: CFRunLoopTimer?
 
-    /// How long ago the physical button-up happened, for a release currently
-    /// being committed out of the debounce above. Nonzero only for the
-    /// duration of that deferred `fireButtonAction` call; 0 for every
-    /// immediate (Wacom, and all non-barrel) release. Read by `.scrollDrag`
-    /// so a flick's momentum is judged as of the real release edge — see
-    /// `PanScrollTracker.disengage(backdate:)`.
+    /// How long ago the physical release happened, while a debounced release
+    /// is committing; 0 otherwise. Pan View reads it to judge momentum from the
+    /// real release (`PanScrollTracker.disengage(backdate:)`).
     var pendingButtonUpBackdate: TimeInterval = 0
     let buttonUpDebounceInterval: TimeInterval = {
         let ms = UserDefaults.standard.integer(forKey: "MockTabXencelabsButtonDebounceMS")
         return ms > 0 ? Double(ms) / 1000.0 : 0.05
     }()
 
-    /// Tip-switch chatter debounce, modeled on the Xencelabs barrel-button
-    /// debounce above but generic — mechanical switch bounce on tip release
-    /// isn't vendor-specific, so this applies to any device (gated only on
-    /// `tool.smoothingStrength > 0`, the "Steadiness" setting). Same shape:
-    /// press is always immediate, only the up edge is deferred, and a
-    /// reassert within the window cancels the pending release. Window scales
-    /// linearly with `smoothingStrength` (0 → 0ms, 1 → `buttonUpDebounceInterval`'s
-    /// 50ms default) — reusing that empirically-tuned ceiling rather than a
-    /// theoretical report-period number with no hardware backing.
+    /// Tip chatter debounce for any device, gated on Steadiness. Press is
+    /// immediate; a release waits, and a re-press cancels it. Scales from 0 to
+    /// `buttonUpDebounceInterval`'s tuned 50 ms.
     var tipUpDebounceTimer: CFRunLoopTimer?
 
-    /// Longer up-debounce used *only* for right-click / eraser bindings, so a
-    /// contextual menu opened with the barrel button stays engaged when the
-    /// pen is lifted out of proximity while the button is physically held.
-    ///
-    /// The mechanism: this hardware's button-sensing range is shorter than
-    /// its proximity range, so on a lift the button *bit* drops a beat
-    /// (~55–130 ms observed) before full proximity loss. The held-through-
-    /// lift behavior relies on the proximity-exit deferral cancelling the
-    /// pending release once proximity drops — which only happens if the
-    /// release hasn't already committed. So the window must outlast that
-    /// travel gap; 0.05 s (the pan/flick value) is far too short and would
-    /// fire rightMouseUp mid-lift, activating the highlighted menu item.
-    ///
-    /// Keyed on binding *kind*, not inferred intent: the user declared this
-    /// button a right-click, and menu release-latency is imperceptible (the
-    /// menu opens on button-down; a late up just delays committing the
-    /// highlighted item), so erring long is free. 0.25 s clears every
-    /// travel gap in the captures with margin. Left/middle/drag bindings
-    /// stay on the short window — they're latency-sensitive (tap, pan) and
-    /// were never part of the hold-through-lift behavior.
-    ///
-    /// Residual limit: a lift slower than 0.25 s reopens the same physics
-    /// hole (release commits before proximity drops). Rare, not impossible.
+    /// Longer release debounce for right-click and eraser bindings, so a context
+    /// menu survives lifting the pen with the button held. The button bit drops
+    /// 55–130 ms before proximity does; the release must not commit before then,
+    /// or it picks the highlighted item. A late release is harmless for menus.
+    /// A lift slower than 0.25 s can still slip through.
     let buttonUpDebounceMenuInterval: TimeInterval = 0.25
 
     // MARK: - Time-based leak watchdog
     //
-    // Second safety net that fires even when lastAuxButtons is stuck (e.g. USB
-    // disconnect mid-press). Unlike the DispatchWorkItem watchdog above, which
-    // is only armed while tablet activity is flowing, this 1 Hz timer runs
-    // continuously and does not depend on quiescence flags being correct.
+    // A 1 Hz backstop that runs regardless of activity, for when
+    // `lastAuxButtons` is stuck (e.g. unplugged mid-press).
 
     private var leakWatchdogTimer: Timer?
     /// Timestamp of the last groundTruthSyntheticFlags mutation.
@@ -947,27 +641,15 @@ final class InputInjector: @unchecked Sendable {
     /// Timestamp of the last tablet HID report (inject / injectAux / injectMouseButtons).
     /// Stamped inside rearmWatchdog(), which every entry point calls.
     private var lastInjectCallAt: Date = .distantPast
-    /// Timestamp of the last *pen* HID report specifically. Stamped only from
-    /// `inject(point:settings:)`, the pen path — unlike `lastInjectCallAt`,
-    /// touch traffic never refreshes this. `checkLeakWatchdog`'s stuck-proximity
-    /// backstop needs it: a two-finger gesture on Bluetooth streams touch
-    /// reports continuously, which kept `lastInjectCallAt` fresh and left the
-    /// watchdog blind to a pen stream that had actually gone silent — the
-    /// exact case (touch active, pen stuck busy) it exists to catch.
+    /// Time of the last pen report. Touch traffic doesn't refresh it, so a
+    /// streaming two-finger gesture can't hide a silent, stuck pen.
     var lastPenInjectCallAt: Date = .distantPast
 
     // MARK: - Physical modifier state tap
     //
-    // Passive CGEvent tap that watches for flagsChanged events at the session level,
-    // filtered to hardware-originated events only (sourceStateID == hidSystemState).
-    // Keeps tapLastPhysicalFlags current so currentEventFlags can combine physical
-    // and synthetic modifier state for state-change events (mouseDown/mouseUp).
-    //
-    // IMPORTANT: our own injected flagsChanged events (posted via .cghidEventTap from
-    // sessionSource = .privateState) DO write into hidSystemState — the earlier comment
-    // claiming otherwise was wrong.  Reading hidSystemState inside the callback would
-    // therefore reflect our own synthetic presses, poisoning tapLastPhysicalFlags.
-    // Filtering by sourceStateID and reading event.flags directly avoids this entirely.
+    // Passive tap on hardware flagsChanged events (sourceStateID ==
+    // hidSystemState), keeping tapLastPhysicalFlags current. Our own posts write
+    // into hidSystemState too, so filter by source and read event.flags.
 
     var flagsChangedTap: CFMachPort?
     var flagsChangedTapSource: CFRunLoopSource?
@@ -976,10 +658,8 @@ final class InputInjector: @unchecked Sendable {
     /// synthetic flagsChanged posts.
     var tapLastPhysicalFlags: UInt64 = 0
 
-    /// When `tapLastPhysicalFlags` was last written, in mach-absolute ns on the
-    /// same clock as `currentReportTimestampNs`. Lets `moveSafeEventFlags` tell a
-    /// cache that reflects this report from one a queued `flagsChanged` already
-    /// invalidated. HIDThread-owned, like the cache it stamps.
+    /// When `tapLastPhysicalFlags` was written, on `currentReportTimestampNs`'s
+    /// clock, so `moveSafeEventFlags` can tell a current cache from a stale one.
     var tapLastPhysicalFlagsAtNs: UInt64 = 0
 
     /// Move events that dropped physical bits for a stale cache. Reported in
@@ -1015,14 +695,9 @@ final class InputInjector: @unchecked Sendable {
             guard let self,
                 !self.groundTruthSyntheticFlags.isEmpty || !self.heldKeyComboRefCounts.isEmpty
             else { return }
-            // Wacom pads stream reports continuously while a key is held (~133 Hz),
-            // so reaching this timeout there unambiguously means the stream stopped
-            // (proximity loss, disconnect). Xencelabs's QuickKeys puck instead sends
-            // one report per state change and nothing while a button sits held — the
-            // same idle gap is the *normal* shape of a long hold, not a stall. Trust
-            // the last known button state instead of pure idle time; a genuine leak
-            // (state stuck with nothing actually down) still gets caught here, and a
-            // stuck-but-"held" leak is caught later by the 1 Hz leak watchdog.
+            // Wacom pads stream while a key is held, so a timeout means the stream
+            // stopped. Quick Keys report only changes, so trust the last known state;
+            // the 1 Hz watchdog catches a stuck "held".
             guard self.tabletIsQuiescent else { return }
             self.releaseAllSyntheticModifiers()
             self.releaseAllHeldKeyComboKeys()
@@ -1031,49 +706,20 @@ final class InputInjector: @unchecked Sendable {
         if let timer { CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes) }
     }
 
-    /// 1 Hz time-based leak detection. Fires even when `lastAuxButtons` is corrupt
-    /// (e.g. USB disconnect mid-press), a scenario where the DispatchWorkItem watchdog
-    /// above is never rearmed and therefore never fires.
-    ///
-    /// Condition: synthetic flags have been stuck in the same state for > 3 s, the
-    /// tablet has been completely idle for > 3 s, AND `tabletIsQuiescent` — i.e. no
-    /// known button/aux state is still down. That last check matters for devices like
-    /// Xencelabs's QuickKeys puck that only report on state change: a long legitimate
-    /// hold looks idle by elapsed time alone, but `lastAuxButtons` still shows it down.
-    /// Called from main (Timer fires on the runloop the timer was scheduled on).
-    /// Hops to HIDThread to read/mutate modifier state without races.
+    /// 1 Hz leak check, which works even if `lastAuxButtons` is corrupt. Fires
+    /// after 3 s with flags unchanged, the tablet idle, and nothing held. Runs
+    /// from main and hops to HIDThread.
     private func checkLeakWatchdog() {
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
             guard let self else { return }
             let idleInterval = Date().timeIntervalSince(self.lastInjectCallAt)
             let penIdleInterval = Date().timeIntervalSince(self.lastPenInjectCallAt)
 
-            // Stuck-pen-proximity backstop. Confirmed on hardware
-            // (2026-08-22, raw HID capture against a live BT session): a
-            // Bluetooth Intuos Pro 2's proximity signal genuinely — not as
-            // decoder noise — cycles true/false in bursts as short as 5ms
-            // while the pen is merely held near the tablet, e.g. during
-            // two-finger touch scrolling with the same hand. `lastProximity`
-            // itself is expected to track that real signal faithfully; the
-            // actual fix for the touch-arbitration symptom this used to
-            // chase is `touchPenConfirmedBusy` (see its declaration below),
-            // which requires proximity to persist past `touchBusyHoldOff`
-            // before treating the pen as "in use" for touch-blocking
-            // purposes. This watchdog stays as pure defense-in-depth: if
-            // `lastProximity` ever does latch true with nothing correcting
-            // it (a dropped exit report, a reconnect edge case), idling this
-            // long while it's still true is unambiguous — a pen genuinely in
-            // proximity streams at 100+ Hz — so force the exit rather than
-            // leave the injector stuck until the process restarts.
-            //
-            // Gated on `penIdleInterval`, not the generic `idleInterval`
-            // (2026-08-24, found from a BT capture where touch frames were
-            // 85-90% blocked by a stuck `lastProximity` for the whole
-            // session): a two-finger gesture keeps touch reports streaming
-            // continuously, which keeps `lastInjectCallAt` fresh and this
-            // watchdog blind, even though the pen stream itself — the thing
-            // whose silence actually proves proximity is stuck — has gone
-            // quiet. Touch traffic must never mask a stuck pen.
+            // Stuck-proximity backstop. If `lastProximity` latches true (a lost exit
+            // report), this much pen silence is proof, so force the exit. Gated on pen
+            // idleness, not general idleness: touch frames kept the general timer fresh
+            // and once hid a stuck pen for a whole session. Touch arbitration itself uses
+            // `touchPenConfirmedBusy`.
             if self.lastProximity, penIdleInterval > Self.stuckProximityTimeout,
                 let snap = self.injectionSnapshot
             {
@@ -1102,10 +748,7 @@ final class InputInjector: @unchecked Sendable {
                 }
             }
 
-            // Same leak check for a stuck plain key from a `.keyCombo` binding
-            // (see `heldKeyComboRefCounts`) — the exact class of bug this
-            // watchdog exists to catch, just for a letter/number key instead
-            // of a modifier bit.
+            // Same check for a plain key held by a `.keyCombo` binding.
             if !self.heldKeyComboRefCounts.isEmpty {
                 let heldInterval = Date().timeIntervalSince(self.lastKeyComboChangeAt)
                 if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
@@ -1114,10 +757,7 @@ final class InputInjector: @unchecked Sendable {
                 }
             }
 
-            // Same leak check for the shared aux-modifier store, but the "is anything
-            // still held" question has to look across every device, not just this one —
-            // the accessory that raised the bit (e.g. QuickKeys) may be a different
-            // InputInjector than the one whose timer happens to be ticking right now.
+            // Same check for the shared store, looking across every device.
             let shared = SharedAuxModifierState.shared
             if !shared.groundTruthFlags.isEmpty {
                 let sharedHeldInterval = Date().timeIntervalSince(shared.lastChangeAt)
@@ -1141,31 +781,24 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Settings snapshot
     //
-    // The hot path's only view of settings/tool configuration. Rebuilt by
-    // DeviceContext.observeInjectionSnapshot() on every settings/tool change
-    // and published onto HIDThread via CFRunLoopPerformBlock, so inject()
-    // reads it inline on the same thread that wrote it — no @MainActor hop.
+    // The hot path's only view of settings, rebuilt on every change and handed
+    // to HIDThread, so inject() never hops to the main actor.
 
     var injectionSnapshot: InjectionSnapshot?
 
     // MARK: - Display mapping
 
-    /// Display selection, orientation/crop, calibration, and relative-mode
-    /// mapping. See `DisplayMapper.swift`. Caching/threading contract is
-    /// unchanged from when this state lived directly on InputInjector: reads
-    /// and writes happen on HIDThread except `recomputeVirtualScreenBounds()`,
-    /// which callers must invoke on main.
+    /// Display selection, orientation, calibration, and relative mapping; see
+    /// DisplayMapper.swift. HIDThread, except `recomputeVirtualScreenBounds()`
+    /// on main.
     var displayMapper = DisplayMapper()
 
     /// Cached touch coordinate maximums, invalidated when `deviceProductID`
     /// changes.  Saves a per-frame linear scan over `WacomDeviceRegistry`.
     var cachedTouchMaxX: Int = 1
     var cachedTouchMaxY: Int = 1
-    /// Physical active-surface size, mm. From `WacomDeviceSpec.activeWidthMM`/
-    /// `activeHeightMM` — those describe the *pen* active area; treating them
-    /// as the touch surface's physical size is an approximation, not a
-    /// verified equivalence, but it's what's available. Falls back to the
-    /// raw coordinate maximums (i.e. no correction) when the spec has none.
+    /// Active-surface size in mm, from the spec's pen area. Using it for touch is
+    /// an approximation. Falls back to raw maximums when the spec has none.
     var cachedTouchWidthMM: Double = 1
     var cachedTouchHeightMM: Double = 1
     /// Touch on a pen display is a touchscreen: the finger drives the cursor
@@ -1216,10 +849,8 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - USB HID mouse button injection (KC-100 cordless mouse)
     //
-    // Called by WacomKnownDevice when a 4-byte Report ID 0x01 arrives from the
-    // standard mouse interface (usagePage=0x01).  Fires left/right/middle down/up
-    // CGEvents at the current cursor location; sets usbMouseLeftHeld so inject()
-    // promotes subsequent mouseMoved events to leftMouseDragged while left is held.
+    // Called for each report 0x01 from the mouse interface. Posts button events
+    // at the cursor and sets usbMouseLeftHeld, so movement becomes drags.
 
     func injectMouseButtons(mask: UInt8, settings: TabletSettings?) {
         rearmWatchdog()
@@ -1286,16 +917,12 @@ final class InputInjector: @unchecked Sendable {
     /// Per-contact palm classification. HIDThread-owned alongside the
     /// tracker, so a palm can never enter its gesture state.
     var touchPalmRejector = TouchPalmRejector()
-    /// Whether the touch sequence currently in progress has had 2+ contacts
-    /// at some point, and whether it has committed to a gesture (pan/pinch/
-    /// rotate) yet. Purely for `DiscoveryTouchPipeline.twoFingerResolved*` —
-    /// see `injectTouch`'s use of these. Reset on every sequence teardown.
+    /// The current touch sequence has had 2+ contacts, and whether it committed
+    /// to a gesture. For `DiscoveryTouchPipeline` diagnostics only.
     var touchSequenceSawTwoFingers = false
     var touchSequenceCommitted = false
-    /// Which gesture components have opened an envelope during the sequence
-    /// in progress, and whether it has already been tallied as running both.
-    /// Separate from the frame-local view because a component can now join
-    /// partway through — see `noteGestureComponentBegan`.
+    /// Gesture components opened during this sequence; a component can join
+    /// partway through (see `noteGestureComponentBegan`).
     var touchSequenceSawPinch = false
     var touchSequenceSawRotate = false
     var touchSequenceBothCounted = false
@@ -1303,10 +930,8 @@ final class InputInjector: @unchecked Sendable {
     /// `postTouchPointerMove`. `nil` between sequences; seeded from the OS on
     /// the first move of a sequence.
     var touchOwnedPointerPosition: CGPoint?
-    /// Wall-clock time `injectTouch` last ran with contacts, for the
-    /// sub-millisecond-gap diagnostic (`DiscoveryTouchPipeline.subMillisecondDtFrames`)
-    /// that flags a batched-Bluetooth burst delivering frames faster than the
-    /// device really samples. 0 until the first touch frame.
+    /// When `injectTouch` last ran with contacts, for the sub-millisecond-gap
+    /// diagnostic that flags batched Bluetooth bursts.
     var lastTouchFrameTime: CFAbsoluteTime = 0
     /// Whether the previous touch frame was already in the "palm rejection
     /// dropped a ≥2-contact frame below two" condition, so
@@ -1320,20 +945,15 @@ final class InputInjector: @unchecked Sendable {
     /// `.idle` → `.pending` transitions (onset windows) without the tracker
     /// having to report them. `.idle` initially.
     var prevTouchMode: TouchStateTracker.Mode = .idle
-    /// Wall-clock time the last touch sequence tore down (tracker returned to
-    /// `.idle`). A new onset window opening within
-    /// `DiscoveryTouchPipeline.reArmWindow` of this is one interrupted drag
-    /// re-paying the onset delay, not a fresh deliberate touch. 0 until the
-    /// first teardown.
+    /// When the last touch sequence ended. A new touch within
+    /// `DiscoveryTouchPipeline.reArmWindow` is one interrupted drag, not a new touch.
     var lastTouchTeardownTime: CFAbsoluteTime = 0
     /// Wall-clock time the current single-contact pointer drag began, for
     /// `DiscoveryTouchPipeline.longestSingleContactDragMs`. 0 when not in a
     /// single-contact drag.
     var singleContactDragStart: CFAbsoluteTime = 0
-    /// CFAbsoluteTime when the pen last left proximity.  Touch is suppressed
-    /// while the pen is in proximity and for a brief grace window after exit
-    /// so palm-rejection bounces (finger contact arriving 1–2 frames after
-    /// pen-up) don't slip through as cursor jumps.
+    /// When the pen last left range. Touch waits a brief grace window after,
+    /// so a finger landing as the pen lifts isn't taken as input.
     var penProximityExitTime: CFAbsoluteTime = 0
     /// Per-Wacom-driver convention; tunable if reports show false positives.
     static let touchArbitrationGrace: CFAbsoluteTime = 0.08
@@ -1354,80 +974,39 @@ final class InputInjector: @unchecked Sendable {
     /// Where a three-finger drag holds the left button; nil when none is
     /// held. See the `touchDragPosition` row in the latch table above.
     var touchDragPosition: CGPoint?
-    /// Touch while typing is a resting hand: for this long after a key
-    /// press, touch can scroll, zoom, or rotate, but not click or move the
-    /// cursor. Same idea as a Mac trackpad's typing guard. Reasoned, not
-    /// measured.
+    /// For this long after a keypress, touch can scroll, zoom, or rotate, but not
+    /// click or move the cursor: a resting hand, like a trackpad's typing guard.
+    /// Reasoned, not measured.
     static let typingHoldOff: CFAbsoluteTime = 0.5
-    /// True once the current proximity session has either produced tip
-    /// contact or persisted past `touchBusyHoldOff` — the confirmed signal
-    /// `injectTouch`'s pen-priority arbitration gates on, instead of raw
-    /// `lastProximity`. Needed because a BT digitizer's proximity signal can
-    /// flap true/false in bursts of 5-45ms — far shorter than any real
-    /// stroke — while the pen is merely held near the tablet during
-    /// two-finger touch scrolling with the same hand (confirmed on hardware
-    /// 2026-08-22: raw HID capture showed genuine, fully-confirmed
-    /// prox+inRange frames arriving in repeated short bursts, not decoder
-    /// noise). Gating `penBusy` on raw `lastProximity` left touch blocked
-    /// almost continuously in that scenario, since `lastProximity` spent
-    /// far more time true than false across the whole session.
-    /// `lastProximity` itself keeps its existing semantics for every other
-    /// consumer (proximity events, relative-anchor logic, eraser flip).
+    /// The pen touched down or stayed in range past `touchBusyHoldOff`. Touch
+    /// arbitration gates on this, not raw `lastProximity`: Bluetooth proximity
+    /// flaps in 5–45 ms bursts while the pen is just held near the tablet
+    /// (capture, 2026-08-22), which blocked touch almost constantly.
     var touchPenConfirmedBusy: Bool = false
     /// Wall-clock time the current proximity session began, for measuring
     /// `touchBusyHoldOff` against.
     var proximityConfirmStartTime: CFAbsoluteTime = 0
-    /// How long proximity must persist, uninterrupted, before touch treats
-    /// the pen as actually in use. Comfortably longer than the ~100ms flap
-    /// bursts measured on hardware; short enough to be imperceptible before
-    /// a genuine stroke. Bypassed entirely by tip contact — see `inject()`.
+    /// How long proximity must last before touch treats the pen as in use:
+    /// longer than the measured flap bursts, too short to notice. Tip contact
+    /// skips it.
     static let touchBusyHoldOff: CFAbsoluteTime = 0.15
 
     /// Wall-clock time `touchPenConfirmedBusy` most recently flipped true.
     var touchPenBusyConfirmedAt: CFAbsoluteTime = 0
-    /// Whether the pen has actually made tip contact since this busy episode
-    /// was confirmed. See `staleBusyTimeout`'s doc comment — a busy episode
-    /// with no tip contact for that long is a pen sitting idle in ambiguous
-    /// range, not one about to draw.
+    /// The pen has touched down since this busy episode began; see
+    /// `staleBusyTimeout`.
     var touchPenBusyHadTipSinceConfirmed: Bool = false
-    /// How long `touchPenConfirmedBusy` may stay true with no tip contact at
-    /// all before touch arbitration treats it as stale and lets touch
-    /// through again, even though the pen technically remains "confirmed
-    /// busy" underneath.
-    ///
-    /// Exists for Bluetooth's wireless proximity signal, which — unlike
-    /// USB's electrically solid on/off transition — can sit in an ambiguous,
-    /// neither-clearly-in-nor-out state for many seconds at a stretch (a
-    /// PTH-860 BT capture measured only 1.1% of reports carrying a clean
-    /// "definitely gone" flag during such a stretch, vs. 74% empty or
-    /// boundary-noise; confirmed 2026-08-25). The decoder deliberately does
-    /// not exit proximity during that ambiguity — an earlier, stricter
-    /// design that did could permanently kill proximity when the pen's
-    /// later recovery didn't produce a clean re-entry signal, which was
-    /// worse. So on Bluetooth, a hand's natural motion during a two-finger
-    /// touch gesture can hold the pen in this ambiguous zone — genuinely
-    /// reported as "in proximity" the whole time — for far longer than the
-    /// 150ms `touchBusyHoldOff` was ever meant to bridge, leaving touch
-    /// blocked for the duration even though the user has no intention of
-    /// drawing. `touchBusyHoldOff` alone can't distinguish "about to draw"
-    /// from "ambiguously near, doing nothing," because both look identical
-    /// for the first 150ms; this timeout is the distinguishing signal for
-    /// everything past that point. Chosen well above any reasonable
-    /// hover-before-a-stroke pause, so a user who is genuinely about to draw
-    /// is never interrupted — this only fires for a pen that has done
-    /// nothing at all for multiple seconds. A single real tip-down at any
-    /// point resets it instantly (see `touchPenBusyHadTipSinceConfirmed`),
-    /// so the moment the user actually starts drawing, touch is blocked
-    /// again with no perceptible delay.
+    /// How long the pen may count as busy with no tip contact before touch is
+    /// let through again. Bluetooth proximity can sit in an ambiguous state for
+    /// seconds (PTH-860 capture, 2026-08-25), and the decoder deliberately stays
+    /// in range then: exiting early once killed proximity for good. So a hand
+    /// moving during a touch gesture could block touch indefinitely. Well above
+    /// any pause before a stroke; one tip contact resets it.
     static let staleBusyTimeout: CFAbsoluteTime = 3.0
 
     func currentCursorPosition() -> CGPoint {
-        // CGEvent(source: nil).location is the cursor in CG global (top-left
-        // origin) coordinates and is safe off the main thread — unlike
-        // NSEvent.mouseLocation (AppKit, main-thread) which this previously
-        // used with a manual Y-flip against the main display's height (wrong
-        // on multi-display layouts where a secondary screen extends above or
-        // below the primary).
+        // Cursor in CG global coordinates, safe off main. NSEvent.mouseLocation
+        // needed main and a Y-flip that broke on stacked displays.
         CGEvent(source: nil)?.location ?? .zero
     }
 
@@ -1449,16 +1028,9 @@ final class InputInjector: @unchecked Sendable {
 
         if withinTime && withinDist { clickCount += 1 } else { clickCount = 1 }
 
-        // Always report the actual pen position. The position snap (returning
-        // lastClickPosition when within threshold) was intended to land both clicks
-        // of a double-click at exactly the same pixel, but it causes a visible cursor
-        // teleport whenever two presses fall within snapThreshold of each other:
-        // postMouseDown moves the cursor to lastClickPosition while lastPostedPoint
-        // remains at screenPoint, so the delta gate fires drag events on every
-        // micro-movement of the pen, bouncing the cursor between the old click
-        // position and the pen's actual position until mouseUp corrects it.
-        // Double-click count detection works correctly without position snapping —
-        // apps use time + proximity for double-click, not exact pixel identity.
+        // Report the real pen position. Snapping the second click to the first
+        // teleported the cursor and triggered drags; apps match double-clicks by
+        // time and distance, not exact pixels.
         lastClickPosition = candidate
         lastClickTime = now
         return (candidate, clickCount)
@@ -1477,20 +1049,15 @@ final class InputInjector: @unchecked Sendable {
         CGEventFlags.maskControl.rawValue: 0,
     ]
 
-    /// Ref-counted virtual keycodes currently held down by a plain (non-modifier-only)
-    /// `.keyCombo` binding — e.g. a barrel button mapped to the "d" key. Unlike
-    /// `groundTruthSyntheticFlags`, nothing tracked this before, so a lost up-transition
-    /// (dropped BT report, disconnect mid-press) left the key stuck system-wide until
-    /// the app quit. Mirrors the modifier ref-count pattern so the same watchdog/
-    /// app-switch/proximity-exit release paths can catch it too.
+    /// Keys held by plain `.keyCombo` bindings, ref-counted like modifiers so
+    /// the same watchdog, app-switch, and proximity-exit releases catch a lost
+    /// key-up.
     var heldKeyComboRefCounts: [CGKeyCode: Int] = [:]
     /// Timestamp of the last `heldKeyComboRefCounts` mutation, for the leak watchdog.
     var lastKeyComboChangeAt: Date = .distantPast
 
-    /// Left-hand canonical keycodes for each managed modifier bit.
-    /// Electron and AppKit text input only update their internal modifier state when
-    /// a flagsChanged event carries a keycode that matches the actual modifier key —
-    /// keycode 0 is silently ignored by many apps.
+    /// Left-hand keycodes for each modifier: AppKit and Electron ignore
+    /// flagsChanged with keycode 0.
     static let modifierKeyCodes: [(CGEventFlags, CGKeyCode)] = [
         (.maskCommand,   55),  // left ⌘
         (.maskShift,     56),  // left ⇧
@@ -1501,33 +1068,22 @@ final class InputInjector: @unchecked Sendable {
     /// Last managed-bit result returned by currentEventFlags — used to suppress duplicate log lines.
     var lastLoggedManagedFlags: UInt64 = 0
 
-    /// CGEventSource backed by privateState.  Note: despite documentation implications,
-    /// events posted via .cghidEventTap from this source DO write into hidSystemState —
-    /// so we filter our own events out of the flagsChangedTap by sourceStateID rather
-    /// than relying on hidSystemState to reflect only physical keyboard state.
-    ///
-    /// Stored once at init — NOT a computed property.  Creating a new CGEventSource on
-    /// every event (400+/s at 133 Hz) allocates a private-state slab in the WindowServer
-    /// on each call, causing the memory leak observed when a pen is in proximity.
+    /// Private-state source. Our posts still write into hidSystemState, so the
+    /// flags tap filters by sourceStateID. Created once: a new source per event
+    /// leaked WindowServer memory.
     let sessionSource: CGEventSource? = CGEventSource(stateID: .privateState)
 
     // MARK: - Screen mapping
     //
-    // Display selection, orientation/crop, calibration, and relative-mode
-    // mapping live in DisplayMapper.swift. These forward to it for the
-    // handful of call sites outside inject()/injectTouch (button actions,
-    // settings/calibration edits from main).
+    // Forwards to DisplayMapper for callers outside inject() and injectTouch.
 
     /// When set, `.displayToggle` presses are forwarded here instead of
     /// cycling this injector's own display mapping. Assigned once at connect
     /// by TabletManager for aux-only accessory devices; called on HIDThread.
     var displayToggleForwarder: (() -> Void)?
 
-    /// When set, `.relativeModeToggle` presses are forwarded here instead of
-    /// flipping this injector's own (inert, for an aux-only accessory)
-    /// `relativeCursorMovement` setting. Assigned once at connect by
-    /// TabletManager for aux-only accessory devices, mirroring
-    /// `displayToggleForwarder` above; called on HIDThread.
+    /// When set, `.relativeModeToggle` forwards here, like
+    /// `displayToggleForwarder`, for aux-only accessories. Called on HIDThread.
     var relativeModeToggleForwarder: (() -> Void)?
 
     /// `.spanDisplaysToggle` counterpart of `displayToggleForwarder`.
