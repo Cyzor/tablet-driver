@@ -18,8 +18,8 @@ Pen data arrives as the 10-byte format on report `0x02` or `0x10`. Seen on
 a Cintiq 24HD (DTK-2400) and the Cintiq 27QHD Touch (DTH-2700).
 
 **Tip switch, report `0x01`.** A mouse-style collection reports the tip
-switch separately from the pen report, and the OS treats it as a left click
-unless the device is seized. With some Grip Pens the pen report's pressure
+switch separately from the pen report, and the OS treats it as a left click.
+Seizing the device should stop that, but no capture has confirmed it. With some Grip Pens the pen report's pressure
 reads zero at the moment the tip goes down, so the tip switch is the only
 sign of contact. (observed)
 
@@ -53,6 +53,19 @@ bits; the kernel's approach of OR-ing whole regions misfires during swipes.
 on the display's own panel. Bytes 5, 7, and 9 drift slowly whether or not a
 button is pressed, possibly an ambient light sensor. (observed, DTH-2700)
 
+## Cintiq Pro 16 (DTH-167)
+
+Pen data is the gen 2 report `0x10`, with tilt at ±64°. The pen display has a
+single HID interface, and its first collection is a generic desktop
+(page `0x01`) one; the pen collection follows on the same interface. Don't
+wait for a separate vendor interface, as on the Intuos Pro; there isn't one.
+The descriptor declares feature reports `0x02`, `0x07`, `0x0D`, and `0x14`.
+After writes to `0x0D` and `0x02` (DATAMODE), pen reports arrive. (observed)
+
+The DTH-1620 (2017) carries the same name and panel size, so use the touch
+range to tell the two apart: 13824 × 7776 on the DTH-1620, 13768 × 7744 on
+the DTH-167. (observed on the DTH-167, unverified on the DTH-1620)
+
 ## Cintiq touch
 
 On every Cintiq with touch, the touch sensor is a separate USB device with
@@ -67,6 +80,10 @@ sends. (observed)
 **Cintiq Pro 24 (DTH-2420).** Also report `0x88`, but its descriptor
 declares a tip switch and no contact identifier, so use the slot position
 as the contact ID. (observed, descriptor)
+
+**Cintiq Pro 16 (DTH-167, pen `0x03B2`, touch `0x03B3`).** Touch is a
+standard HID Digitizer touch-screen collection with five contacts, at
+13768 × 7744. Parse it from the descriptor. (observed)
 
 **Cintiq 13HD, 22HD, and 24HD Touch.** The kernel's `wacom_24hdt_irq()`:
 report `0x01`, four 14-byte contact records, and a frame-wide contact count
@@ -95,7 +112,9 @@ but can't set it. (observed)
 
 Report `0x10`, the receiver's pairing table: five 6-byte slots, with slot
 `i`'s remote serial at `[i*6 + 4]` to `[i*6 + 6]`. A slot is in use exactly
-when its serial is non-zero; the kernel reads nothing else from it. (kernel)
+when its serial is non-zero; the kernel reads nothing else from it. The
+table arrives about every 600 ms whether or not a remote is active.
+(observed)
 
 ## Formats known only from the kernel
 
@@ -114,7 +133,6 @@ the named function in `drivers/hid/wacom_wac.c`.
 
 - Touch on the DTH-2400 and DTH-2200: separate interface, format unknown.
 - Which ExpressKey Remote bit belongs to which physical key.
-- Cintiq Pro 16 (DTH-167) touch sensor: wired up, no capture yet.
 
 ## Tests
 
