@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Rebuild corpus.json from local captures (Notes/Scratch, untracked).
+"""Rebuild corpus.json from local captures (Notes/Scratch, untracked) and
+public recordings cloned under Notes/Scratch/upstream: bentiss/hid-devices
+and the kernel's HID selftests.
 
 Keeps only what routing reads: each interface's top-level collections, per
 product ID and transport. No reports, serials, or submitter details.
@@ -86,7 +88,7 @@ for d in captures():
         continue
     pid, transport = info.get("productID"), info.get("transport", "USB")
     # Whole-desk diagnostics list other devices too; keep this one's own.
-    own = {pid, PAIRED.get(pid)}
+    own = {pid, PAIRED.get(pid)} - {None}
     ifs = [i for i in d.get("interfaces") or [] if i.get("productID") in own]
     if not ifs and d.get("hidReportDescriptor"):
         ifs = [{"hidReportDescriptor": d["hidReportDescriptor"], "productID": pid}]
@@ -95,6 +97,37 @@ for d in captures():
         tops = top_level_collections(raw) if raw else []
         if tops:
             key = (i.get("productID", pid), transport)
+            devices.setdefault(key, set()).add(json.dumps(tops))
+
+# hid-recorder files: "D:n" starts a device, "I: bus vid pid", "R: len bytes".
+BUS = {"3": "USB", "5": "Bluetooth"}
+for p in (SCRATCH / "upstream" / "hid-devices").rglob("*.hid"):
+    dev = {}
+    for line in p.read_text(errors="replace").splitlines():
+        if line.startswith("D:"):
+            dev = {}
+        elif line.startswith("I:"):
+            bus, vid, pid = line[2:].split()[:3]
+            dev.update(vid="0x" + vid.upper().zfill(4), pid="0x" + pid.upper().zfill(4),
+                       transport=BUS.get(bus.lstrip("0") or "0", "other"))
+        elif line.startswith("R:"):
+            dev["raw"] = "".join(line[2:].split()[1:])
+        if {"vid", "raw"} <= dev.keys() and dev["vid"] in WACOM_VIDS:
+            tops = top_level_collections(dev.pop("raw"))
+            if tops:
+                devices.setdefault((dev["pid"], dev["transport"]), set()).add(json.dumps(tops))
+
+# Kernel selftests: {"rdesc": name, "info": (bus, vid, pid)} plus rdesc strings.
+selftest = SCRATCH / "upstream" / "linux-hid-selftests" / "test_wacom_generic.py"
+if selftest.exists():
+    import re
+    src = selftest.read_text()
+    named = dict(re.findall(r'^(\w+) = \(?\s*"([0-9a-fA-F ]+)"', src, re.M))
+    for name, bus, vid, pid in re.findall(
+            r'"rdesc": (\w+), "info": \((0x\w+), (0x\w+), (0x\w+)\)', src):
+        if name in named and vid.upper() == "0X056A":
+            tops = top_level_collections(named[name].replace(" ", ""))
+            key = ("0x" + pid[2:].upper().zfill(4), BUS.get(str(int(bus, 16)), "other"))
             devices.setdefault(key, set()).add(json.dumps(tops))
 
 corpus = [

@@ -6,11 +6,9 @@ enum InterfaceRouting {
 
     typealias UsagePair = (page: Int, usage: Int)
 
-    /// True if any top-level collection is a digitizer pen (0x0D/0x02), or
-    /// with `vendorPage`, Wacom's vendor pen collection (0xFF0D/0x01).
-    static func isPenCollection(in pairs: [UsagePair], vendorPage: Bool = false) -> Bool {
-        let pen = vendorPage ? (page: 0xFF0D, usage: 0x01) : (page: 0x0D, usage: 0x02)
-        return pairs.contains { $0.page == pen.page && $0.usage == pen.usage }
+    /// True if any top-level collection is a digitizer pen (0x0D/0x02).
+    static func isPenCollection(in pairs: [UsagePair]) -> Bool {
+        pairs.contains { $0.page == 0x0D && $0.usage == 0x02 }
     }
 
     /// Whether a registered device's interface waits for a sibling to create
@@ -27,15 +25,20 @@ enum InterfaceRouting {
     static func shouldDefer(
         spec: WacomDeviceSpec, usagePage: Int, isBLE: Bool, pairs: [UsagePair]
     ) -> Bool {
-        let isCintiqV1 = spec.parser == .cintiqV1
-        let deferrablePage = isCintiqV1 ? 0xFF00 : 0x01
-        // Pen displays like the DTH-167 have no 0xFF00 sibling: their one
-        // interface leads with page 0x01 but also declares the pen
-        // collection. Deferring it waited for a sibling that never comes.
-        // The Cintiq 13HD Touch does the same with Wacom's vendor pen
-        // page; the PTH-860 carries that page on 0x01 too but must defer.
-        let isPenInterface = !isCintiqV1 && (isPenCollection(in: pairs)
-            || (spec.parser == .intuosV1 && isPenCollection(in: pairs, vendorPage: true)))
-        return !isBLE && spec.seizeUSB && usagePage == deferrablePage && !isPenInterface
+        guard !isBLE, spec.seizeUSB else { return false }
+        switch spec.parser {
+        case .cintiqV1:
+            return usagePage == 0xFF00
+        case .intuosV2:
+            // Pen displays like the DTH-167 have no 0xFF00 sibling: their one
+            // interface leads with page 0x01 but also declares the pen
+            // collection. Deferring it waited for a sibling that never comes.
+            return usagePage == 0x01 && !isPenCollection(in: pairs)
+        default:
+            // Only the families above have a sibling to wait for. Deferring
+            // any other family stranded single-interface devices such as the
+            // DTU-1031, DTU-2231, and Cintiq 13HD Touch.
+            return false
+        }
     }
 }
