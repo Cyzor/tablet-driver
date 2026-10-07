@@ -855,20 +855,17 @@ struct AppOverrideBar: View {
 
             Text(
                 String(
-                    localized: "Editing \(override.appName) settings",
-                    comment: "Label showing which app's settings are being edited"
+                    localized: "Settings for \(override.appName)",
+                    comment: "Override banner label — which app's settings are being edited"
                 )
             )
             .appFont(.settingsLabel)
-
-            Text(
+            .help(
                 String(
-                    localized: "· changes apply only when \(override.appName) is active",
-                    comment: "Note that per-app overrides only apply to the specific app"
+                    localized: "Changes apply only when \(override.appName) is active",
+                    comment: "Tooltip on the override banner — per-app overrides only apply to that app"
                 )
             )
-            .appFont(.settingsLabel)
-            .foregroundStyle(.secondary)
 
             Spacer()
 

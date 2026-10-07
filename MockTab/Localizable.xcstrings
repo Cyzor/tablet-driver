@@ -226,6 +226,52 @@
         }
       }
     },
+    "Changes apply only when %@ is active" : {
+      "comment" : "Tooltip on the override banner — per-app overrides only apply to that app",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Änderungen gelten nur, wenn %@ aktiv ist"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los cambios se aplican solo cuando %@ está activo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "変更は %@ がアクティブなときのみ有効"
+          }
+        }
+      }
+    },
+    "Settings for %@" : {
+      "comment" : "Override banner label — which app's settings are being edited",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellungen für %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuración de %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ の設定"
+          }
+        }
+      }
+    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -279,29 +325,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : ", "
-          }
-        }
-      }
-    },
-    "· changes apply only when %@ is active" : {
-      "comment" : "Note that per-app overrides only apply to the specific app",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "· Änderungen gelten nur, wenn %@ aktiv ist"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "· los cambios se aplican solo cuando %@ está activo"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "· 変更は %@ がアクティブなときのみ有効"
           }
         }
       }
@@ -7100,35 +7123,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "プロファイル名を編集"
-          }
-        }
-      }
-    },
-    "Editing %@ settings" : {
-      "comment" : "Label showing which app's settings are being edited",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einstellungen von %@ bearbeiten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Editing %@ settings"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Editando la configuración de %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ の設定を編集中"
           }
         }
       }
