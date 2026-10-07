@@ -226,414 +226,6 @@
         }
       }
     },
-    "Blank rows are fine. Everything is saved." : {
-      "comment" : "Footnote under the data collection checklist explaining that unticked rows are not a failure",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leere Zeilen sind okay. Alles wird gespeichert."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Las filas vacías no son un problema. Todo se guarda."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "空欄の行があっても大丈夫です。すべて保存されます。"
-          }
-        }
-      }
-    },
-    "Drag out to save. Drag in to restore." : {
-      "comment" : "Description of export/import drag-and-drop functionality",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zum Sichern herausziehen, zum Wiederherstellen hineinziehen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arrastra fuera para guardar. Arrastra dentro para restaurar."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "外へドラッグで保存、中へドラッグで復元。"
-          }
-        }
-      }
-    },
-    "Full support needs a recording." : {
-      "comment" : "Body of the unknown-device banner",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Für vollen Support ist eine Aufnahme nötig."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Para la compatibilidad completa hace falta una grabación."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "完全に対応するには記録が必要です。"
-          }
-        }
-      }
-    },
-    "Limit touch to part of the surface." : {
-      "comment" : "Description of a section in the TouchView that explains that the touch area can only be set on certain devices.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touch auf einen Teil der Fläche beschränken."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Limita el toque a una parte de la superficie."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タッチ操作を面の一部に限定します。"
-          }
-        }
-      }
-    },
-    "MockTab can't read some of this yet. The file helps." : {
-      "comment" : "Shown during collection when reports arrived that no decoder could read",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab versteht einiges davon noch nicht. Die Datei hilft."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab aún no entiende parte de esto. El archivo ayuda."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTabがまだ読み取れないデータがあります。このファイルが役立ちます。"
-          }
-        }
-      }
-    },
-    "Movement before a tap becomes a drag." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weg, bevor aus Tippen Ziehen wird."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Movimiento antes de que un toque se convierta en arrastre."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タップがドラッグになるまでの移動量。"
-          }
-        }
-      }
-    },
-    "Press %@ to restore the previous setting" : {
-      "comment" : "Label naming the buttons that end a temporary span; %@ is an or-list of button names",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ drücken, um die vorherige Einstellung wiederherzustellen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pulsa %@ para volver al ajuste anterior"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ を押すと前の設定に戻ります"
-          }
-        }
-      }
-    },
-    "Rotated display. Check where the pen lands." : {
-      "comment" : "Warning message for rotated display",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Display gedreht. Prüf, wo der Stift landet."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pantalla girada. Comprueba dónde cae el lápiz."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ディスプレイが回転しています。ペンの位置を確認してください。"
-          }
-        }
-      }
-    },
-    "Show in New Window" : {
-      "comment" : "Devices pane context menu: open a settings window for this device, or another one if it has one",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In neuem Fenster zeigen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar en una ventana nueva"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新規ウインドウで表示"
-          }
-        }
-      }
-    },
-    "Span Displays" : {
-      "comment" : "Button action: span the selected displays, press again to restore the previous display mode",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf Displays verteilen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Distribuir en pantallas"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ディスプレイに広げる"
-          }
-        }
-      }
-    },
-    "Spanned until the button is pressed again" : {
-      "comment" : "Label while a temporary span is active and its button can't be named",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verteilt, bis die Taste erneut gedrückt wird"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Distribuido hasta que se vuelva a pulsar el botón"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ボタンをもう一度押すまで広がったままです"
-          }
-        }
-      }
-    },
-    "Spread the tablet across the displays selected in the Display pane. Press again to return to the previous display setting." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verteilt das Grafiktablett auf die im Bereich „Display“ ausgewählten Displays. Erneut drücken, um zur vorherigen Einstellung zurückzukehren."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Distribuye la tableta en las pantallas seleccionadas en el panel Pantalla. Pulsa de nuevo para volver al ajuste anterior."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「ディスプレイ」パネルで選択したディスプレイにタブレットを広げます。もう一度押すと前の設定に戻ります。"
-          }
-        }
-      }
-    },
-    "Three fingers landing together hold the mouse button down. Move them to drag, and lift to let go." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drei gleichzeitig aufgesetzte Finger halten die Maustaste gedrückt. Bewegen, um zu ziehen, abheben zum Loslassen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tres dedos que se apoyan a la vez mantienen pulsado el botón del ratón. Muévelos para arrastrar y levántalos para soltar."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "3本の指を同時に置くとマウスボタンを押したままにします。動かしてドラッグし、離すと放します。"
-          }
-        }
-      }
-    },
-    "Briefly touch with two fingers to right-click." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kurz mit zwei Fingern tippen für einen Rechtsklick."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Toca brevemente con dos dedos para hacer clic derecho."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2本指で軽くタップすると右クリックします。"
-          }
-        }
-      }
-    },
-    "Move three fingers together to drag." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drei Finger gemeinsam bewegen, um zu ziehen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mueve tres dedos juntos para arrastrar."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "3本指を一緒に動かすとドラッグします。"
-          }
-        }
-      }
-    },
-    "Three-Finger Drag" : {
-      "comment" : "Undo action name: three-finger drag toggle in the Touch pane",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit drei Fingern ziehen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arrastrar con tres dedos"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "3本指でドラッグ"
-          }
-        }
-      }
-    },
-    "Two fingers landing together, a fingertip's width apart, and lifting without moving post a right click. Fingers that move scroll, zoom, or rotate instead." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zwei Finger, die gleichzeitig etwa eine Fingerbreite auseinander aufsetzen und ohne Bewegung abheben, lösen einen Rechtsklick aus. Bewegte Finger scrollen, zoomen oder drehen stattdessen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dos dedos que se apoyan a la vez, separados el ancho de una yema, y se levantan sin moverse hacen clic derecho. Si se mueven, desplazan, hacen zoom o giran."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2本の指を指先1本分ほど離して同時に置き、動かさずに離すと右クリックします。指を動かすとスクロール、ズーム、回転になります。"
-          }
-        }
-      }
-    },
-    "Two-Finger Right-Click" : {
-      "comment" : "Undo action name: two-finger right-click toggle in the Touch pane",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rechtsklick mit zwei Fingern"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clic derecho con dos dedos"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2本指で右クリック"
-          }
-        }
-      }
-    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -3244,6 +2836,29 @@
         }
       }
     },
+    "Blank rows are fine. Everything is saved." : {
+      "comment" : "Footnote under the data collection checklist explaining that unticked rows are not a failure",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leere Zeilen sind okay. Alles wird gespeichert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las filas vacías no son un problema. Todo se guarda."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空欄の行があっても大丈夫です。すべて保存されます。"
+          }
+        }
+      }
+    },
     "Blue" : {
       "comment" : "LED swatch name",
       "localizations" : {
@@ -3360,6 +2975,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タブレットの表面を軽くタップするとクリックします。"
+          }
+        }
+      }
+    },
+    "Briefly touch with two fingers to right-click." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurz mit zwei Fingern tippen für einen Rechtsklick."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca brevemente con dos dedos para hacer clic derecho."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2本指で軽くタップすると右クリックします。"
           }
         }
       }
@@ -4340,6 +3977,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "クリック動作"
+          }
+        }
+      }
+    },
+    "Click Lock" : {
+      "comment" : "Button action: press once to hold the left mouse button, press again to release",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klick-Verriegelung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloqueo de clic"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "クリックロック"
           }
         }
       }
@@ -7138,6 +6798,29 @@
         }
       }
     },
+    "Drag out to save. Drag in to restore." : {
+      "comment" : "Description of export/import drag-and-drop functionality",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Sichern herausziehen, zum Wiederherstellen hineinziehen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra fuera para guardar. Arrastra dentro para restaurar."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "外へドラッグで保存、中へドラッグで復元。"
+          }
+        }
+      }
+    },
     "Drag the arrow to set where the cursor appears relative to the pen tip." : {
       "comment" : "Tooltip on the cursor offset pad.",
       "localizations" : {
@@ -8655,6 +8338,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "フルスクリーン"
+          }
+        }
+      }
+    },
+    "Full support needs a recording." : {
+      "comment" : "Body of the unknown-device banner",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für vollen Support ist eine Aufnahme nötig."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para la compatibilidad completa hace falta una grabación."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完全に対応するには記録が必要です。"
           }
         }
       }
@@ -10722,6 +10428,29 @@
         }
       }
     },
+    "Limit touch to part of the surface." : {
+      "comment" : "Description of a section in the TouchView that explains that the touch area can only be set on certain devices.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touch auf einen Teil der Fläche beschränken."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limita el toque a una parte de la superficie."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タッチ操作を面の一部に限定します。"
+          }
+        }
+      }
+    },
     "Linear" : {
       "comment" : "Pressure curve preset button — linear response",
       "localizations" : {
@@ -11601,6 +11330,29 @@
         }
       }
     },
+    "MockTab can't read some of this yet. The file helps." : {
+      "comment" : "Shown during collection when reports arrived that no decoder could read",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab versteht einiges davon noch nicht. Die Datei hilft."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab aún no entiende parte de esto. El archivo ayuda."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTabがまだ読み取れないデータがあります。このファイルが役立ちます。"
+          }
+        }
+      }
+    },
     "MockTab couldn't write to your Desktop. Choose where to save the collected device data." : {
       "comment" : "Explanation in the capture save panel after a Desktop write failure",
       "localizations" : {
@@ -11926,6 +11678,28 @@
         }
       }
     },
+    "Move three fingers together to drag." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drei Finger gemeinsam bewegen, um zu ziehen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mueve tres dedos juntos para arrastrar."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3本指を一緒に動かすとドラッグします。"
+          }
+        }
+      }
+    },
     "Move wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet." : {
       "comment" : "Remedy line for an RF-interference finding in the conflict alert",
       "localizations" : {
@@ -11974,6 +11748,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "動作モード"
+          }
+        }
+      }
+    },
+    "Movement before a tap becomes a drag." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weg, bevor aus Tippen Ziehen wird."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento antes de que un toque se convierta en arrastre."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タップがドラッグになるまでの移動量。"
           }
         }
       }
@@ -13822,6 +13618,29 @@
         }
       }
     },
+    "Press %@ to restore the previous setting" : {
+      "comment" : "Label naming the buttons that end a temporary span; %@ is an or-list of button names",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ drücken, um die vorherige Einstellung wiederherzustellen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsa %@ para volver al ajuste anterior"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ を押すと前の設定に戻ります"
+          }
+        }
+      }
+    },
     "Press %@ to switch displays" : {
       "comment" : "Label naming the buttons that switch the display toggle; %@ is an or-list of button names",
       "localizations" : {
@@ -13870,6 +13689,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タブレットの各ボタンを押します"
+          }
+        }
+      }
+    },
+    "Press once to hold the left button, press again or lift the pen away to release" : {
+      "comment" : "Tooltip for the Click Lock button action",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einmal drücken hält die linke Taste. Erneut drücken oder Stift abheben, um sie loszulassen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsa una vez para mantener el botón izquierdo; pulsa de nuevo o aleja el lápiz para soltarlo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1回押すと左ボタンを押したままにします。もう一度押すか、ペンを離すと解除されます。"
           }
         }
       }
@@ -16818,6 +16660,29 @@
         }
       }
     },
+    "Rotated display. Check where the pen lands." : {
+      "comment" : "Warning message for rotated display",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Display gedreht. Prüf, wo der Stift landet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantalla girada. Comprueba dónde cae el lápiz."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイが回転しています。ペンの位置を確認してください。"
+          }
+        }
+      }
+    },
     "Rotation" : {
       "comment" : "Live Input table row label — pen rotation in degrees\nQuick Keys rotation row label",
       "localizations" : {
@@ -17573,6 +17438,29 @@
         }
       }
     },
+    "Show in New Window" : {
+      "comment" : "Devices pane context menu: open a settings window for this device, or another one if it has one",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In neuem Fenster zeigen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar en una ventana nueva"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新規ウインドウで表示"
+          }
+        }
+      }
+    },
     "Show Saved Configurations…" : {
       "comment" : "Menu item: open the Profiles tab",
       "localizations" : {
@@ -18118,6 +18006,29 @@
         }
       }
     },
+    "Span Displays" : {
+      "comment" : "Button action: span the selected displays, press again to restore the previous display mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Displays verteilen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distribuir en pantallas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ディスプレイに広げる"
+          }
+        }
+      }
+    },
     "Span selected displays" : {
       "comment" : "Display mapping option: treat only the selected displays as one continuous surface",
       "localizations" : {
@@ -18143,6 +18054,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "選択したディスプレイに広がる"
+          }
+        }
+      }
+    },
+    "Spanned until the button is pressed again" : {
+      "comment" : "Label while a temporary span is active and its button can't be named",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verteilt, bis die Taste erneut gedrückt wird"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distribuido hasta que se vuelva a pulsar el botón"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ボタンをもう一度押すまで広がったままです"
           }
         }
       }
@@ -18195,6 +18129,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "速度 : %@"
+          }
+        }
+      }
+    },
+    "Spread the tablet across the displays selected in the Display pane. Press again to return to the previous display setting." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verteilt das Grafiktablett auf die im Bereich „Display“ ausgewählten Displays. Erneut drücken, um zur vorherigen Einstellung zurückzukehren."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distribuye la tableta en las pantallas seleccionadas en el panel Pantalla. Pulsa de nuevo para volver al ajuste anterior."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「ディスプレイ」パネルで選択したディスプレイにタブレットを広げます。もう一度押すと前の設定に戻ります。"
           }
         }
       }
@@ -19206,6 +19162,51 @@
         }
       }
     },
+    "Three fingers landing together hold the mouse button down. Move them to drag, and lift to let go." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drei gleichzeitig aufgesetzte Finger halten die Maustaste gedrückt. Bewegen, um zu ziehen, abheben zum Loslassen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tres dedos que se apoyan a la vez mantienen pulsado el botón del ratón. Muévelos para arrastrar y levántalos para soltar."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3本の指を同時に置くとマウスボタンを押したままにします。動かしてドラッグし、離すと放します。"
+          }
+        }
+      }
+    },
+    "Three-Finger Drag" : {
+      "comment" : "Undo action name: three-finger drag toggle in the Touch pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit drei Fingern ziehen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastrar con tres dedos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "3本指でドラッグ"
+          }
+        }
+      }
+    },
     "Tilt" : {
       "comment" : "Live Input table row label — pen tilt X/Y",
       "localizations" : {
@@ -20047,6 +20048,28 @@
         }
       }
     },
+    "Two fingers landing together, a fingertip's width apart, and lifting without moving post a right click. Fingers that move scroll, zoom, or rotate instead." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwei Finger, die gleichzeitig etwa eine Fingerbreite auseinander aufsetzen und ohne Bewegung abheben, lösen einen Rechtsklick aus. Bewegte Finger scrollen, zoomen oder drehen stattdessen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dos dedos que se apoyan a la vez, separados el ancho de una yema, y se levantan sin moverse hacen clic derecho. Si se mueven, desplazan, hacen zoom o giran."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2本の指を指先1本分ほど離して同時に置き、動かさずに離すと右クリックします。指を動かすとスクロール、ズーム、回転になります。"
+          }
+        }
+      }
+    },
     "Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview." : {
       "comment" : "Help text for the \"Two-finger scroll\" toggle in the TouchView.",
       "isCommentAutoGenerated" : true,
@@ -20120,6 +20143,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "素早く2回クリック"
+          }
+        }
+      }
+    },
+    "Two-Finger Right-Click" : {
+      "comment" : "Undo action name: two-finger right-click toggle in the Touch pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechtsklick mit zwei Fingern"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clic derecho con dos dedos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2本指で右クリック"
           }
         }
       }
