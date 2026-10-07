@@ -98,6 +98,7 @@
 		AA000200 /* NormalizedAreaEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000200 /* NormalizedAreaEditor.swift */; };
 		AA00DK01 /* DeviceInstanceClaims.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DK01 /* DeviceInstanceClaims.swift */; };
 		AA00DR01 /* DeviceRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DR01 /* DeviceRouter.swift */; };
+		AA00IR01 /* InterfaceRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00IR01 /* InterfaceRouting.swift */; };
 		AA00GD01 /* GenericHIDDigitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00GD01 /* GenericHIDDigitizer.swift */; };
 		AA00HD01 /* LiveHIDDescriptorInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HD01 /* LiveHIDDescriptorInspector.swift */; };
 		AA00HH01 /* HIDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HH01 /* HIDHelpers.swift */; };
@@ -234,6 +235,7 @@
 		AB002018 /* ja.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ja.md; sourceTree = "<group>"; };
 		AB00DK01 /* DeviceInstanceClaims.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInstanceClaims.swift; sourceTree = "<group>"; };
 		AB00DR01 /* DeviceRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRouter.swift; sourceTree = "<group>"; };
+		AB00IR01 /* InterfaceRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterfaceRouting.swift; sourceTree = "<group>"; };
 		AB00GD01 /* GenericHIDDigitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenericHIDDigitizer.swift; sourceTree = "<group>"; };
 		AB00HD01 /* LiveHIDDescriptorInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveHIDDescriptorInspector.swift; sourceTree = "<group>"; };
 		AB00HH01 /* HIDHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDHelpers.swift; sourceTree = "<group>"; };
@@ -339,6 +341,7 @@
 				AB00DK01 /* DeviceInstanceClaims.swift */,
 				AB000039 /* DeviceRegistry.swift */,
 				AB00DR01 /* DeviceRouter.swift */,
+				AB00IR01 /* InterfaceRouting.swift */,
 				AB00GD01 /* GenericHIDDigitizer.swift */,
 				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
 				AB000045 /* WacomFallbackDevice.swift */,
@@ -738,6 +741,7 @@
 				05D7EB7B2F79E6E30086E03F /* AboutView.swift in Sources */,
 				AA000045 /* WacomFallbackDevice.swift in Sources */,
 				AA00DR01 /* DeviceRouter.swift in Sources */,
+				AA00IR01 /* InterfaceRouting.swift in Sources */,
 				AA00DK01 /* DeviceInstanceClaims.swift in Sources */,
 				AA00GD01 /* GenericHIDDigitizer.swift in Sources */,
 				AA000070 /* HIDCapture.swift in Sources */,
