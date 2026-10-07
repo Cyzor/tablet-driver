@@ -435,7 +435,14 @@ struct CaptureGuideView: View {
             tipUpAssistDelay: s.tipUpAssistDelay,
             doubleClickDistance: s.doubleClickDistance,
             relativeCursorMovement: s.relativeCursorMovement,
-            invertRotation: s.invertRotation)
+            invertRotation: s.invertRotation,
+            penBindings: [
+                "tip": s.activeTool.tipBinding.kind.rawValue,
+                "eraser": s.activeTool.eraserBinding.kind.rawValue,
+                "button1": s.activeTool.penButton1Binding.kind.rawValue,
+                "button2": s.activeTool.penButton2Binding.kind.rawValue,
+                "button3": s.activeTool.penButton3Binding.kind.rawValue,
+            ])
     }
 
     /// Every tool the registry has ever recorded for this tablet, newest

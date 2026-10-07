@@ -368,17 +368,20 @@ extension InputInjector {
                 lastButton1Down = point.penButton1
                 // A mouse tool's button1 already clicked as the tip.
                 if !activeToolIsMouse {
+                    noteButtonForCapture(1, down: point.penButton1, binding: btn1)
                     fireButtonAction(btn1, down: point.penButton1, at: screenPoint,
                                      snapshot: snap, settings: settings)
                 }
             }
             if point.penButton2 != lastButton2Down {
                 lastButton2Down = point.penButton2
+                noteButtonForCapture(2, down: point.penButton2, binding: btn2)
                 fireButtonAction(btn2, down: point.penButton2, at: screenPoint,
                                  snapshot: snap, settings: settings)
             }
             if point.penButton3 != lastButton3Down {
                 lastButton3Down = point.penButton3
+                noteButtonForCapture(3, down: point.penButton3, binding: btn3)
                 fireButtonAction(btn3, down: point.penButton3, at: screenPoint,
                                  snapshot: snap, settings: settings)
             }
@@ -406,6 +409,15 @@ extension InputInjector {
     /// The current report is stale backlog (see `staleReportThresholdMs`), so
     /// its hover move should be skipped. Skipped outright, not throttled: a
     /// throttled sample still visibly replayed old positions.
+    /// Names the action a pen-button change fired in the capture log, so a
+    /// button that decodes but does nothing shows where it stopped.
+    private func noteButtonForCapture(_ n: Int, down: Bool, binding: ButtonBinding) {
+        guard HIDCapture.shared.isCapturing else { return }
+        HIDCapture.shared.recordNote(
+            tag: "MockTab",
+            "pen button \(n) \(down ? "down" : "up") → \(binding.kind.rawValue), tool 0x\(String(format: "%04X", activeToolCode))")
+    }
+
     private func isStaleHoverMove() -> Bool {
         guard InputInjector.currentReportTimestampNs != 0 else { return false }
         let nowNs = UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)

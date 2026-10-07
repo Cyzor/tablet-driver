@@ -70,6 +70,8 @@ final class HIDCapture {
         /// Cheap-to-compare summary of `decoded`, so condensing can detect
         /// "did anything change" without re-parsing `hex`/`decoded`.
         var signature: Signature
+        /// App-side event text in place of a report, from `recordNote`.
+        var note: String? = nil
     }
 
     /// The fields that decide "same steady state" vs. "transition worth
@@ -357,6 +359,21 @@ final class HIDCapture {
                 summary.firstDecoded = decodedSummary
             }
             $0.summaries[id0] = summary
+        }
+    }
+
+    /// Appends one line of app-side context, such as the action a pen
+    /// button fired, between the reports around it. Never folds into a run.
+    func recordNote(tag: String, _ text: String) {
+        let captureStart: Date? = state.withLock { $0.isCapturing ? $0.startTime : nil }
+        guard let start = captureStart else { return }
+        let elapsed = Date().timeIntervalSince(start)
+        state.withLock {
+            guard $0.isCapturing else { return }
+            $0.samples.append(
+                Sample(
+                    elapsed: elapsed, tag: tag, reportID: 0, length: 0, hex: "",
+                    decoded: nil, signature: Signature(hasOneShotEvent: true), note: text))
         }
     }
 
@@ -652,6 +669,7 @@ final class HIDCapture {
     private static func renderVerbatim(_ sample: Sample) -> String {
         let ts = RunAccumulator.formatElapsed(sample.elapsed)
         let padded = RunAccumulator.pad(sample.tag)
+        if let note = sample.note { return "[\(ts)] \(padded) \(note)" }
         let idHex = String(format: "%02X", sample.reportID)
         let decodedSummary = sample.decoded.flatMap(summarize)
         return "[\(ts)] \(padded) ID=\(idHex) len=\(String(format: "%-4d", sample.length))  \(sample.hex)"

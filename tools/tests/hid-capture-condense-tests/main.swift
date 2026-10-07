@@ -480,6 +480,27 @@ do {
         "a run with no rotation at all must omit the bucket tally entirely: \(run ?? "<none>")")
 }
 
+do {
+    // A note from `recordNote` lands verbatim, in time order, and leaves the
+    // pen run around it intact.
+    var samples = (0..<6).map { i in sample(at: 7.0 + Double(i) * 0.01, x: 1100 + i, y: 1200) }
+    samples.insert(
+        HIDCapture.Sample(
+            elapsed: 7.025, tag: "MockTab", reportID: 0, length: 0, hex: "", decoded: nil,
+            signature: HIDCapture.Signature(hasOneShotEvent: true),
+            note: "pen button 2 down → leftClick, tool 0x0862"),
+        at: 3)
+    let lines = condenseAll(samples)
+    let noteIndex = lines.firstIndex { $0.contains("pen button 2 down → leftClick") }
+    expect(noteIndex != nil, "the note must appear in the output: \(lines)")
+    expect(
+        lines.filter { $0.contains("steady-state") }.count == 1,
+        "the pen run must not split around a note: \(lines)")
+    expect(
+        lines.first?.contains("steady-state") == true && noteIndex == 1,
+        "the note must follow the run that started before it: \(lines)")
+}
+
 if failures > 0 {
     FileHandle.standardError.write(Data("hid-capture-condense-tests: \(failures)/\(checks) checks FAILED\n".utf8))
     exit(1)

@@ -184,7 +184,11 @@ struct DiscoveryResult: Codable {
     /// v23 adds `ddcReadProbes` to each display: one brightness read at each
     /// read offset, with where it failed and the raw reply. Optional, so v22
     /// readers and files still decode.
-    var captureVersion: Int = 23
+    ///
+    /// v24 adds `appSettings.penBindings`, and the raw log gains a line for
+    /// each pen-button change naming the action it fired. Optional, so v23
+    /// readers and files still decode.
+    var captureVersion: Int = 24
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -731,6 +735,11 @@ struct DiscoveryAppSettings: Codable {
     var doubleClickDistance: Double?
     var relativeCursorMovement: Bool?
     var invertRotation: Bool?
+
+    // Buttons — explains "a pen button does nothing".
+    /// The active pen's actions as the injector reads them, by kind only, so
+    /// no key combo is recorded. Keys: tip, eraser, button1 through button3.
+    var penBindings: [String: String]?
 }
 
 /// The user's touch configuration at capture time.
