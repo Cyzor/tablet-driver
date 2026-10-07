@@ -116,6 +116,39 @@ when its serial is non-zero; the kernel reads nothing else from it. The
 table arrives about every 600 ms whether or not a remote is active.
 (observed)
 
+## Business and signature displays
+
+Wacom's business line (signature pads and annotation displays) shares
+product-ID space with the Cintiq, but MockTab doesn't target it. These
+models stay recognized and decode where a format is known; nothing more
+is planned.
+
+| Model | Pen PID | Touch PID | Format |
+| --- | --- | --- | --- |
+| DTU-1031, DTU-1031X, DTU-1141, DTK-1651 | `0x00FB`, `0x032F`, `0x0336`, `0x0343` | — | `wacom_dtus_irq()` |
+| DTU-1631, DTU-2231 | `0x00F0`, `0x00CE` | — | `wacom_dtu_irq()` |
+| DTI-520 | `0x003A` | — | `wacom_dtu_irq()` |
+| DTU-710, DTU-1931 | `0x0039`, `0x00C7` | — | `wacom_pl_irq()` |
+| DTU-1141B | `0x0359` | — | generic HID |
+| DTH-1152 | `0x035A` | `0x0368` | generic HID |
+| DTH-2452 | `0x037D` | `0x037E` | generic HID |
+| DTK-2451 | `0x0382` | — | generic HID; not in the registry |
+
+Public recordings of a DTU-1031 and a DTU-2231 decode correctly through
+TabletKit's DTUS and DTU decoders. (**observed**)
+
+The last four have no fixed-format parser in the Linux driver: they fall
+through to its generic path, which decodes whatever the report descriptor
+declares. A "DTUS2" format for the DTU-1141B was proposed on the
+linuxwacom mailing list but never merged. (**kernel**)
+
+The DTH-2452 and DTK-2451 descriptors claim tilt, hover distance, tool
+serials, and extra tools the hardware doesn't have. The kernel strips
+them in `wacom_setup_device_quirks()`, because waiting for a serial that
+never comes breaks proximity. Don't trust those fields on these two
+models. The DTH-2452's touch sensor declares 17568 × 9882, five contacts
+per report. (**kernel**; touch descriptor from the kernel's HID selftests)
+
 ## Formats known only from the kernel
 
 No captures of these exist, so their layouts are left to the source. Read
