@@ -899,17 +899,31 @@ extension InputInjector {
             }
         case .doubleClick:
             guard down else { break }
-            for clickState in [1, 2] {
-                for isDown in [true, false] {
-                    let type: CGEventType = isDown ? .leftMouseDown : .leftMouseUp
+            // Spaced like a hand's double-click. Finder icon view on macOS 27
+            // ignored all four events posted in the same instant.
+            let steps: [(delay: CFTimeInterval, clickState: Int64, isDown: Bool)] = [
+                (0, 1, true), (0.04, 1, false), (0.10, 2, true), (0.14, 2, false),
+            ]
+            for step in steps {
+                let post = { [weak self] in
+                    guard let self else { return }
+                    let type: CGEventType = step.isDown ? .leftMouseDown : .leftMouseUp
                     if let e = CGEvent(
-                        mouseEventSource: sessionSource, mouseType: type,
+                        mouseEventSource: self.sessionSource, mouseType: type,
                         mouseCursorPosition: location, mouseButton: .left)
                     {
-                        e.flags = currentEventFlags
-                        e.setIntegerValueField(.mouseEventClickState, value: Int64(clickState))
-                        finalizeAndPost(e)
+                        e.flags = self.currentEventFlags
+                        e.setIntegerValueField(.mouseEventClickState, value: step.clickState)
+                        self.finalizeAndPost(e)
                     }
+                }
+                if step.delay == 0 {
+                    post()
+                } else {
+                    let timer = CFRunLoopTimerCreateWithHandler(
+                        kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + step.delay, 0, 0, 0
+                    ) { _ in post() }
+                    CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
                 }
             }
         case .spacebar:
