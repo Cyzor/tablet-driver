@@ -14,8 +14,9 @@ struct Device: Decodable {
 @main
 enum InterfaceRoutingTests {
     static func main() throws {
-        let here = URL(fileURLWithPath: CommandLine.arguments[1])
-        let corpus = try JSONDecoder().decode([Device].self, from: Data(contentsOf: here))
+        let corpus = try CommandLine.arguments.dropFirst().flatMap {
+            try JSONDecoder().decode([Device].self, from: Data(contentsOf: URL(fileURLWithPath: $0)))
+        }
 
         // Interfaces that must defer: seizing 0x01 on these stops pen reports.
         let mustDefer: Set<String> = ["0x0357 USB 0x1", "0x0358 USB 0x1"]

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Rebuild corpus.json from local captures (Notes/Scratch, untracked) and
 public recordings cloned under Notes/Scratch/upstream: bentiss/hid-devices
-and the kernel's HID selftests.
+and the kernel's HID selftests. Descriptors from linuxwacom/wacom-hid-descriptors
+go to corpus-linuxwacom.json, which keeps that database's ODbL license.
 
 Keeps only what routing reads: each interface's top-level collections, per
 product ID and transport. No reports, serials, or submitter details.
@@ -130,10 +131,28 @@ if selftest.exists():
             key = ("0x" + pid[2:].upper().zfill(4), BUS.get(str(int(bus, 16)), "other"))
             devices.setdefault(key, set()).add(json.dumps(tops))
 
-corpus = [
-    {"productID": pid, "transport": t,
-     "interfaces": sorted(json.loads(x) for x in ifs)}
-    for (pid, t), ifs in sorted(devices.items())
-]
-OUT.write_text(json.dumps(corpus, indent=1) + "\n")
-print(f"Wrote {len(corpus)} devices to {OUT.name}")
+def write(devs, out):
+    corpus = [
+        {"productID": pid, "transport": t,
+         "interfaces": sorted(json.loads(x) for x in ifs)}
+        for (pid, t), ifs in sorted(devs.items())
+    ]
+    out.write_text(json.dumps(corpus, indent=1) + "\n")
+    print(f"Wrote {len(corpus)} devices to {out.name}")
+
+
+write(devices, OUT)
+
+# linuxwacom sysinfo dumps: one "bus:vid:pid.instance.hid.bin" per interface.
+import re
+LW = SCRATCH / "upstream" / "wacom-hid-descriptors"
+lw = {}
+for p in LW.rglob("*.hid.bin"):
+    m = re.fullmatch(r"([0-9A-Fa-f]{4}):([0-9A-Fa-f]{4}):([0-9A-Fa-f]{4})\.[0-9A-Fa-f]+\.hid\.bin", p.name)
+    if not m or "0x" + m.group(2).upper() not in WACOM_VIDS:
+        continue
+    tops = top_level_collections(p.read_bytes().hex())
+    if tops:
+        key = ("0x" + m.group(3).upper(), BUS.get(m.group(1).lstrip("0"), "other"))
+        lw.setdefault(key, set()).add(json.dumps(tops))
+write(lw, OUT.with_name("corpus-linuxwacom.json"))
