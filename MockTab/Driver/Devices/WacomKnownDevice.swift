@@ -78,7 +78,7 @@ final class WacomKnownDevice: TabletDevice {
     private let onBattery: ((Int, Bool) -> Void)?
     private let onWheel: ((Int, Int) -> Void)?
     /// Called once when the wireless dongle's 0x80 status report reveals the
-    /// paired tablet's PID (e.g. 0x0316 for PTH-651). Fires once per RF link
+    /// paired tablet's PID (e.g. 0x0315 for PTH-651). Fires once per RF link
     /// session on HIDThread.
     private let onPairedPID: ((Int) -> Void)?
     /// Called once per touch frame for devices that report capacitive finger
@@ -387,8 +387,7 @@ final class WacomKnownDevice: TabletDevice {
         0x0029,  // Intuos5 S (PTK-450)
         0x002A,  // Intuos5 M (PTK-650)
         0x0314,  // Intuos Pro S (PTH-451)
-        0x0315,  // Intuos Pro M (PTH-651, variant)
-        0x0316,  // Intuos Pro M (PTH-651)
+        0x0315,  // Intuos Pro M (PTH-651)
         0x0317,  // Intuos Pro L (PTH-851)
     ]
 
