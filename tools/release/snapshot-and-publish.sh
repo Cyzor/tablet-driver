@@ -75,6 +75,14 @@ BUILT_AT=$(date -u +'%Y-%m-%d %H:%M UTC')
 if gh release view snapshot &>/dev/null; then
     gh release delete snapshot --yes
 fi
+# Untracked notes, so rewording needs no commit. update-latest.sh reads the
+# Notes line back; without it, the website uses CHANGELOG.md's Unreleased line.
+NOTES_FILE=Notes/Scratch/snapshot-notes.md
+NOTES_LINE=""
+if [[ -s "$NOTES_FILE" ]]; then
+    NOTES_LINE="
+Notes: $(grep -v '^[[:space:]]*$' "$NOTES_FILE" | tr '\n' ' ' | sed -E 's/ +$//')"
+fi
 gh release create snapshot "$DMG_PATH" \
     --title "MockTab snapshot" \
     --prerelease \
@@ -82,7 +90,7 @@ gh release create snapshot "$DMG_PATH" \
     --notes "Rolling pre-release build of main, replaced on each snapshot run — not a numbered version.
 
 Commit: ${SHA_SHORT}
-Built: ${BUILT_AT}"
+Built: ${BUILT_AT}${NOTES_LINE}"
 
 # ─── 5. Open the draft for review ─────────────────────────────────────────────
 
