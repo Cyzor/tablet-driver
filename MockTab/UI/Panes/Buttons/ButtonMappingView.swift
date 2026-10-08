@@ -31,9 +31,18 @@ struct ButtonMappingView: View {
     /// window-geometry invalidations that already occur every resize frame.
     private var liveButtons: LiveButtonState {
         guard controlActiveState == .key, !isLiveResizing else { return LiveButtonState() }
-        let context = tabletManager.context(forKey: instanceKey)
-            ?? tabletManager.activeContext
-        return context?.liveButtons ?? LiveButtonState()
+        return liveSource?.liveButtons ?? LiveButtonState()
+    }
+
+    /// This window's tablet when connected, else the active one, shown
+    /// muffled so it doesn't read as this tablet working.
+    private var liveSource: DeviceContext? {
+        if let own = tabletManager.context(forKey: instanceKey), own.isConnected { return own }
+        return tabletManager.activeContext
+    }
+
+    private var liveInputMuffled: Bool {
+        instanceKey != nil && liveSource !== tabletManager.context(forKey: instanceKey)
     }
 
     // Not private: read from the ButtonMappingView extension in
@@ -140,13 +149,15 @@ struct ButtonMappingView: View {
 
     // MARK: - Body
 
-    @ViewBuilder
     var body: some View {
-        if isEmbeddedRemote {
-            singleSidedSection(lb: liveButtons)
-        } else {
-            pane
+        Group {
+            if isEmbeddedRemote {
+                singleSidedSection(lb: liveButtons)
+            } else {
+                pane
+            }
         }
+        .environment(\.liveInputMuffled, liveInputMuffled)
     }
 
     private var pane: some View {

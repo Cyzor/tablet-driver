@@ -34,9 +34,10 @@ struct PenDiagramView: View {
     /// AppKit button; dragging off the part cancels, matching button
     /// semantics.
     @State private var pressedPart: Part? = nil
+    @Environment(\.liveInputMuffled) private var muffled
 
     var body: some View {
-        PenDiagramCore(liveButtons: liveButtons, pressedPart: pressedPart)
+        PenDiagramCore(liveButtons: liveButtons, pressedPart: pressedPart, muffled: muffled)
             .equatable()
             .overlay {
                 if onPartTap != nil {
@@ -103,6 +104,8 @@ struct PenDiagramView: View {
 private struct PenDiagramCore: View, Equatable {
     let liveButtons: LiveButtonState
     let pressedPart: PenDiagramView.Part?
+    /// Outline-only highlights; see `EnvironmentValues.liveInputMuffled`.
+    let muffled: Bool
 
     // SVG viewBox origin and dimensions (tablet-generic-stylus.svg: 0 0 44.6 344.8)
     fileprivate static let svgW = 44.6
@@ -170,24 +173,24 @@ private struct PenDiagramCore: View, Equatable {
             draw(Self.outlinePath, fill: bodyFill, stroke: strokeDim)
             draw(Self.bodyPath, fill: bodyFill, stroke: strokeDim)
             draw(
-                Self.eraserPath, fill: liveButtons.eraserDown ? accent : passive,
-                stroke: liveButtons.eraserDown ? accent : strokeDim,
+                Self.eraserPath, fill: liveButtons.eraserDown && !muffled ? accent : passive,
+                stroke: liveButtons.eraserDown ? (muffled ? Color.primary : accent) : strokeDim,
                 pressed: pressedPart == .eraser)
             draw(
-                Self.btn2Path, fill: liveButtons.button2Down ? accent : passive,
-                stroke: liveButtons.button2Down ? accent : strokeDim,
+                Self.btn2Path, fill: liveButtons.button2Down && !muffled ? accent : passive,
+                stroke: liveButtons.button2Down ? (muffled ? Color.primary : accent) : strokeDim,
                 pressed: pressedPart == .button2)
             draw(
-                Self.btn1Path, fill: liveButtons.button1Down ? accent : passive,
-                stroke: liveButtons.button1Down ? accent : strokeDim,
+                Self.btn1Path, fill: liveButtons.button1Down && !muffled ? accent : passive,
+                stroke: liveButtons.button1Down ? (muffled ? Color.primary : accent) : strokeDim,
                 pressed: pressedPart == .button1)
             draw(
-                Self.btn3Path, fill: liveButtons.button3Down ? accent : passive,
-                stroke: liveButtons.button3Down ? accent : strokeDim,
+                Self.btn3Path, fill: liveButtons.button3Down && !muffled ? accent : passive,
+                stroke: liveButtons.button3Down ? (muffled ? Color.primary : accent) : strokeDim,
                 pressed: pressedPart == .button3)
             draw(
-                Self.tipPath, fill: liveButtons.tipDown ? accent : passive,
-                stroke: liveButtons.tipDown ? accent : strokeDim,
+                Self.tipPath, fill: liveButtons.tipDown && !muffled ? accent : passive,
+                stroke: liveButtons.tipDown ? (muffled ? Color.primary : accent) : strokeDim,
                 pressed: pressedPart == .tip)
         }
     }

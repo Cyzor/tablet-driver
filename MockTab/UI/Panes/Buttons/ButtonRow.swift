@@ -58,24 +58,51 @@ private struct RecordFlash: View {
     }
 }
 
+extension EnvironmentValues {
+    /// Live input shown belongs to another tablet, since this window's isn't
+    /// connected. Highlights go neutral so they read as "arriving, not here."
+    @Entry var liveInputMuffled = false
+}
+
 /// Green checkmark when a hardware button is currently held; invisible
 /// when idle so the label column stays stable without a ghost shape.
 func activeIndicator(_ isActive: Bool) -> some View {
-    Image(systemName: "checkmark.circle.fill")
-        .foregroundStyle(Color.green)
-        .imageScale(.small)
-        .opacity(isActive ? 1 : 0)
-        .accessibilityHidden(true)
+    ActiveIndicator(isActive: isActive)
+}
+
+private struct ActiveIndicator: View {
+    let isActive: Bool
+    @Environment(\.liveInputMuffled) private var muffled
+
+    var body: some View {
+        Image(systemName: muffled ? "circle" : "checkmark.circle.fill")
+            .foregroundStyle(muffled ? Color.secondary : Color.green)
+            .imageScale(.small)
+            .opacity(isActive ? (muffled ? 0.5 : 1) : 0)
+            .accessibilityHidden(true)
+    }
 }
 
 func labelText(_ label: String, isActive: Bool) -> some View {
-    Text(label)
-        .foregroundStyle(Color.primary)
-        .fontWeight(isActive ? .semibold : .regular)
-        .padding(.horizontal, 5)
-        .padding(.vertical, 2)
-        .background(
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(Color.accentColor.opacity(isActive ? 0.12 : 0))
-        )
+    LabelText(label: label, isActive: isActive)
+}
+
+private struct LabelText: View {
+    let label: String
+    let isActive: Bool
+    @Environment(\.liveInputMuffled) private var muffled
+
+    var body: some View {
+        Text(label)
+            .foregroundStyle(Color.primary)
+            .fontWeight(isActive && !muffled ? .semibold : .regular)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(
+                        (muffled ? Color.secondary : Color.accentColor)
+                            .opacity(isActive ? (muffled ? 0.10 : 0.12) : 0))
+            )
+    }
 }
