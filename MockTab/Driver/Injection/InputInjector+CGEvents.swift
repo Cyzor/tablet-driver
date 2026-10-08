@@ -242,7 +242,9 @@ extension InputInjector {
         // Diagnostic: `event.post` is synchronous IPC into WindowServer and
         // the only stage no other stall probe covers.
         let postStart = mach_absolute_time()
+        let signpost = PipelineSignposts.begin("Post")
         event.post(tap: .cghidEventTap)
+        PipelineSignposts.end("Post", signpost)
         let postMs =
             Double(mach_absolute_time() &- postStart) * LatencyProbe.timebaseFactor / 1_000_000.0
         if postMs > Self.eventPostWarnThresholdMs {

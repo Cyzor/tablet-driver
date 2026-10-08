@@ -1091,10 +1091,12 @@ final class WacomKnownDevice: TabletDevice {
         // Kernel-receipt → here. Spikes mean the scheduler starved HIDThread.
         LatencyProbe.shared.record(kernelTimestamp: timestamp)
         let senderDevice = sender.map { Unmanaged<IOHIDDevice>.fromOpaque($0).takeUnretainedValue() }
+        let signpost = PipelineSignposts.begin("Report")
         Unmanaged<WacomKnownDevice>.fromOpaque(ctx).takeUnretainedValue()
             .handleReport(
                 reportID: reportID, report: report, length: length, sender: senderDevice,
                 kernelTimestamp: timestamp)
+        PipelineSignposts.end("Report", signpost)
     }
 
     // MARK: - Report dispatch

@@ -14,6 +14,8 @@ extension InputInjector {
     // MARK: - Pen injection
 
     func inject(point: TabletPoint, settings: TabletSettings?) {
+        let signpost = PipelineSignposts.begin("Inject")
+        defer { PipelineSignposts.end("Inject", signpost) }
         rearmWatchdog()
         lastPenInjectCallAt = Date()
         TouchPipelineProbe.note { $0.framesPenDelivered += 1 }
