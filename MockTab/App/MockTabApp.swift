@@ -87,6 +87,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // appearing stuck system-wide after a force-quit or crash-then-relaunch cycle.
         for ctx in TabletManager.shared.deviceContexts.values {
             ctx.injector.releaseOnAppSwitch()
+            // Hand touch sensors back in the mode macOS found them in.
+            (ctx.tabletDevice as? WacomKnownDevice)?.restoreTouchModes()
         }
         HelpWindowController.shared.saveState()
     }

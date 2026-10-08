@@ -808,6 +808,7 @@ final class WacomKnownDevice: TabletDevice {
         {
             let steps = deviceSpec.touchCompanionInitSteps
             if declaresInitFeatureReports(device, for: steps) {
+                saveTouchModes(of: device, before: steps)
                 executeInitSteps(on: device, steps: steps)
             } else {
                 // Same check the PTK-870 taught: a write to an interface that
@@ -819,7 +820,40 @@ final class WacomKnownDevice: TabletDevice {
         }
     }
 
+    /// Mode reports a touch companion held before our init changed them.
+    /// The sensor keeps a mode until it loses power, so leaving ours behind
+    /// handed macOS a report it mishandles: on Sequoia a hand on a 27QHD
+    /// held the left button after MockTab quit.
+    private var savedTouchModes: [(device: IOHIDDevice, bytes: [UInt8])] = []
+
+    private func saveTouchModes(of device: IOHIDDevice, before steps: [InitStep]) {
+        for case .featureReport(let bytes) in steps {
+            var current = [UInt8](repeating: 0, count: bytes.count)
+            current[0] = bytes[0]
+            var size = CFIndex(current.count)
+            let ret = IOHIDDeviceGetReport(
+                device, kIOHIDReportTypeFeature, CFIndex(bytes[0]), &current, &size)
+            guard ret == kIOReturnSuccess, size == current.count, current[0] == bytes[0],
+                current != bytes
+            else { continue }
+            savedTouchModes.append((device, current))
+        }
+    }
+
+    /// Writes back what `saveTouchModes` read. Main thread, like every
+    /// feature-report write here.
+    func restoreTouchModes() {
+        for saved in savedTouchModes {
+            var bytes = saved.bytes
+            hidSetReport(
+                saved.device, reportID: CFIndex(bytes[0]), bytes: &bytes,
+                tag: "\(deviceSpec.name) restore touch mode", severity: .bestEffort, log: logger)
+        }
+        savedTouchModes.removeAll()
+    }
+
     func close() {
+        restoreTouchModes()
         xencelabsBatteryPollTimer?.cancel()
         xencelabsBatteryPollTimer = nil
         IOHIDDeviceUnscheduleFromRunLoop(
