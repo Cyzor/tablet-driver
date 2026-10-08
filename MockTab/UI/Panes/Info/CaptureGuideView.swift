@@ -483,6 +483,11 @@ struct CaptureGuideView: View {
         else { return nil }
         return registry.allKnownTools.map { tool in
             let kind = tool.kind.isEmpty ? tool.nickname : tool.kind
+            // Stand-in, matching the raw log; captures go to public issues.
+            if let serial = tool.serial, serial != 0 {
+                let shown = CaptureSerialRedaction.standIn(forPenSerial: serial)
+                return "\(kind) (0x\(String(format: "%08X", shown)))"
+            }
             return "\(kind) (\(tool.displayID))"
         }
     }

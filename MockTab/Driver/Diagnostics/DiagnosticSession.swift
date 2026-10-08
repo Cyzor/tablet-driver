@@ -121,6 +121,14 @@ final class DiagnosticSession {
         }
         Self.rawCaptureOwner = self
         ownsRawCapture = true
+        // A pen already in range sends its serial before any tool-enter the
+        // capture sees, so seed every serial the app knows.
+        for tool in DeviceRegistry.shared.allKnownTools {
+            CaptureSerialRedaction.noteToolEnter(serial: tool.serial ?? 0)
+        }
+        for context in TabletManager.shared.deviceContexts.values {
+            CaptureSerialRedaction.noteToolEnter(serial: context.activeToolSerial)
+        }
         HIDCapture.shared.start()
         return true
     }
