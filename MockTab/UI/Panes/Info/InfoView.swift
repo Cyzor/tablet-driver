@@ -307,7 +307,7 @@ struct InfoView: View {
                 ok: inputMonitoringGranted,
                 action: inputMonitoringGranted
                     ? { openSettingsPane(Self.inputMonitoringAnchor) }
-                    : requestInputMonitoring,
+                    : { requestInputMonitoring() },
                 actionLabel: inputMonitoringGranted
                     ? String(localized: "Open System Settings", comment: "Button on a granted permission row, opens the matching Privacy & Security pane")
                     : String(localized: "Grant…", comment: "Button that requests a system permission from the Info tab"),
@@ -324,7 +324,7 @@ struct InfoView: View {
                 ok: accessibilityGranted,
                 action: accessibilityGranted
                     ? { openSettingsPane(Self.accessibilityAnchor) }
-                    : requestAccessibility,
+                    : { requestAccessibility() },
                 actionLabel: accessibilityGranted
                     ? String(localized: "Open System Settings", comment: "Button on a granted permission row, opens the matching Privacy & Security pane")
                     : String(localized: "Grant…", comment: "Button that requests a system permission from the Info tab"),
@@ -352,7 +352,7 @@ struct InfoView: View {
                     : String(localized: "Disabled", comment: "Launch at Login status value"),
                 ok: launchAtLogin ? true : nil,
                 // Not a fault — label the action for what it does, not "Fix".
-                action: launchAtLogin ? disableLaunchAtLogin : enableLaunchAtLogin,
+                action: launchAtLogin ? { disableLaunchAtLogin() } : { enableLaunchAtLogin() },
                 actionLabel: launchAtLogin
                     ? String(localized: "Disable", comment: "Button that turns off Launch at Login from the Info tab")
                     : String(localized: "Enable", comment: "Button that turns on Launch at Login from the Info tab"),
@@ -366,7 +366,7 @@ struct InfoView: View {
                     ? String(localized: "None detected", comment: "Conflicts status value — no conflicts")
                     : String(localized: "\(conflicts.count) detected", comment: "Conflicts status value when conflicts are found, showing count"),
                 ok: conflicts.isEmpty ? true : false,
-                action: conflicts.isEmpty ? nil : showConflictAlert,
+                action: conflicts.isEmpty ? nil : { showConflictAlert() },
                 // Ellipsis: opens an alert rather than fixing anything directly.
                 actionLabel: String(localized: "Fix…", comment: "Button on the Conflicts row that opens an alert describing the detected conflicts"),
                 actionHelp: String(localized: "Show details about detected conflicts with other tablet drivers and how to resolve them.", comment: "Tooltip on Fix button for Conflicts row")
