@@ -48,6 +48,7 @@ enum TouchPipelineProbe {
     /// its own call site rather than growing an enum of event kinds that has
     /// to be kept in sync with the struct.
     static func note(_ body: (inout DiscoveryTouchPipeline) -> Void) {
-        state.withLock(body)
+        // Runs synchronously under the lock, so the closure needn't be Sendable.
+        state.withLockUnchecked(body)
     }
 }

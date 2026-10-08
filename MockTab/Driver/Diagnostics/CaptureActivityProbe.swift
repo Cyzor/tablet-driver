@@ -74,8 +74,8 @@ enum CaptureActivityProbe {
                 }
             case .toolEnter(let identity):
                 state.withLock {
-                    if identity.isEraser { $0.decoded.insert(.eraser) }
-                    else { $0.decoded.insert(.penTip) }
+                    if identity.isEraser { _ = $0.decoded.insert(.eraser) }
+                    else { _ = $0.decoded.insert(.penTip) }
                 }
             case .aux(let aux):
                 state.withLock {

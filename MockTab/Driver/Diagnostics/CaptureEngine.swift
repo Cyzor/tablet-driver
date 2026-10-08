@@ -156,7 +156,7 @@ final class CaptureEngine: ObservableObject {
     ) {
         guard TabletManager.knownVendorIDs.contains(vendorID) else { return }
         excludedDevices.withLock {
-            $0.insert(ExcludedDevice(
+            _ = $0.insert(ExcludedDevice(
                 vendorID: vendorID, productID: productID,
                 usagePage: usagePage, usage: usage))
         }
@@ -307,12 +307,10 @@ final class CaptureEngine: ObservableObject {
         // Keyed to the session start so a slow survey can't land in the next.
         capturedHardwareSurvey = nil
         let sessionStart = discoveryStartTime
-        Task.detached(priority: .utility) { [weak self] in
-            let survey = HardwareSurveyProbe.run()
-            await MainActor.run {
-                guard let self, self.discoveryStartTime == sessionStart else { return }
-                self.capturedHardwareSurvey = survey
-            }
+        Task { [weak self] in
+            let survey = await Task.detached(priority: .utility) { HardwareSurveyProbe.run() }.value
+            guard let self, self.discoveryStartTime == sessionStart else { return }
+            self.capturedHardwareSurvey = survey
         }
         bluetoothLinkMonitor = bluetoothAddressCandidate.flatMap {
             BluetoothLinkMonitor(addressCandidate: $0)
