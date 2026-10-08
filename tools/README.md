@@ -17,6 +17,7 @@ Builds, signs, notarizes, and packages the app.
 - `update-latest.sh` records a published build in mocktab-web so the website's update page lists it. GitHub runs it after you publish.
 - `size-watch.sh` warns when the app grows or links something new. `arch-check.sh` fails the build unless the app runs on both Apple silicon and Intel. The release scripts run both.
 - `idle-check.sh` compares the running app's idle CPU and memory against a budget.
+- `floor-check.sh` opens a build in a macOS 13 or 14 virtual machine. Go through `floor-check.md` there before a release.
 
 Publishing creates a draft. Nothing goes public until you click Publish on GitHub.
 
