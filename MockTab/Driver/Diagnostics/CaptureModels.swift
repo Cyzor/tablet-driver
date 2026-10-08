@@ -188,7 +188,12 @@ struct DiscoveryResult: Codable {
     /// v24 adds `appSettings.penBindings`, and the raw log gains a line for
     /// each pen-button change naming the action it fired. Optional, so v23
     /// readers and files still decode.
-    var captureVersion: Int = 24
+    ///
+    /// v25 takes the settings blocks from the recorded tablet rather than
+    /// the window that opened the sheet, and adds
+    /// `settingsIdentity.windowProductID` when the two differ, and
+    /// `knownTablets`. Optional, so v24 readers and files still decode.
+    var captureVersion: Int = 25
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -250,6 +255,10 @@ struct DiscoveryResult: Codable {
     var appSettings: DiscoveryAppSettings?
     /// Where this tablet's settings are stored — see `DiscoverySettingsIdentity`.
     var settingsIdentity: DiscoverySettingsIdentity?
+    /// Every tablet the app remembers, connected or not. A capture otherwise
+    /// lists only what's attached, so a window left open on a tablet that
+    /// isn't connected left no trace of that tablet in the file.
+    var knownTablets: [DiscoveryKnownTablet]?
     /// Permissions and install location — see `DiscoveryAppEnvironment`.
     var appEnvironment: DiscoveryAppEnvironment?
     /// Per-stage tallies of what the touch injection pipeline did with the
@@ -580,6 +589,15 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
                     + "settings split across namespaces."))
     }
 
+    if let window = result.settingsIdentity?.windowProductID {
+        found.append(
+            DiscoveryFinding(
+                kind: "collectedFromOtherWindow",
+                productID: pid,
+                detail: "Collected from the settings window of \(window), not this tablet's. "
+                    + "Settings changed in that window don't apply to this tablet."))
+    }
+
     if let env = result.appEnvironment {
         var missing: [String] = []
         if !env.accessibilityGranted { missing.append("Accessibility") }
@@ -692,6 +710,19 @@ struct DiscoverySettingsIdentity: Codable {
     let knownUnitsOfModel: Int
     /// Stored values under this tablet's namespace, per-pen ones included.
     let storedSettingCount: Int
+    /// The model of the window that collected this, when it isn't the
+    /// recorded tablet. Edits made in that window never reach this tablet.
+    var windowProductID: String?
+}
+
+/// One remembered tablet, by model only: nicknames are user text and
+/// serials identify the owner.
+struct DiscoveryKnownTablet: Codable {
+    let productID: String
+    let model: String
+    let connected: Bool
+    /// The tablet whose window collected this capture.
+    let isWindowTablet: Bool
 }
 
 /// What macOS granted the app and where it runs from. An app copied over an

@@ -406,8 +406,8 @@ struct CaptureGuideView: View {
     /// Mapping and pen-feel settings for the capture file. Unconditional,
     /// unlike `touchSettingsSnapshot()` — gating these the same way left
     /// non-Wacom captures with no app-side configuration at all.
-    private func appSettingsSnapshot() -> DiscoveryAppSettings? {
-        guard let s = tabletManager.contexts[productID]?.settings else { return nil }
+    private func appSettingsSnapshot(_ source: DeviceContext?) -> DiscoveryAppSettings? {
+        guard let s = source?.settings else { return nil }
         return DiscoveryAppSettings(
             activeAreaX: s.activeAreaX,
             activeAreaY: s.activeAreaY,
@@ -449,9 +449,37 @@ struct CaptureGuideView: View {
     /// naming first. Nil rather than an empty array when the registry has no
     /// entry for the device at all — "never asked" and "asked, none" are
     /// different answers and the file should not blur them.
-    private func everSeenToolsSnapshot() -> [String]? {
+    /// The tablet whose settings belong in the file: the one recorded, not
+    /// necessarily the one whose window opened this sheet. A window whose
+    /// tablet isn't connected sweeps the bus, and its own settings would
+    /// then be filed under whatever tablet the sweep found.
+    private func settingsSource(
+        recording primary: IOHIDDevice, ownInterfaces: [IOHIDDevice]
+    ) -> DeviceContext? {
+        if !ownInterfaces.isEmpty { return tabletManager.contexts[productID] }
+        guard let id = DiagnosticSession.registryID(of: primary) else { return nil }
+        return tabletManager.deviceContexts.values.first { context in
+            let devices = context.captureInterfaces.compactMap(\.device) + [context.hidDevice].compactMap { $0 }
+            return devices.contains { DiagnosticSession.registryID(of: $0) == id }
+        }
+    }
+
+    private func knownTabletsSnapshot() -> [DiscoveryKnownTablet]? {
+        let tablets = DeviceRegistry.shared.knownTablets
+        guard !tablets.isEmpty else { return nil }
+        return tablets.map { row in
+            DiscoveryKnownTablet(
+                productID: String(format: "0x%04X", row.productID),
+                model: row.modelName,
+                connected: tabletManager.context(for: row)?.isConnected == true,
+                isWindowTablet: row.productID == productID)
+        }
+    }
+
+    private func everSeenToolsSnapshot(_ source: DeviceContext?) -> [String]? {
         let registry = DeviceRegistry.shared
-        guard registry.knownTablets.contains(where: { $0.productID == productID })
+        guard let source,
+            registry.knownTablets.contains(where: { $0.productID == source.productID })
         else { return nil }
         return registry.allKnownTools.map { tool in
             let kind = tool.kind.isEmpty ? tool.nickname : tool.kind
@@ -459,8 +487,8 @@ struct CaptureGuideView: View {
         }
     }
 
-    private func settingsIdentitySnapshot() -> DiscoverySettingsIdentity? {
-        guard let context = tabletManager.contexts[productID] else { return nil }
+    private func settingsIdentitySnapshot(_ source: DeviceContext?) -> DiscoverySettingsIdentity? {
+        guard let context = source else { return nil }
         let registry = DeviceRegistry.shared
         let prefix = context.settings.devicePrefix
         let key = registry.normalizedKey(context.instanceKey)
@@ -468,9 +496,11 @@ struct CaptureGuideView: View {
         return DiscoverySettingsIdentity(
             usbSerialReported: row.map { !($0.usbSerial ?? "").isEmpty },
             sharedNamespace: !prefix.contains("#"),
-            knownUnitsOfModel: registry.knownTablets.filter { $0.productID == productID }.count,
+            knownUnitsOfModel: registry.knownTablets.filter { $0.productID == context.productID }.count,
             storedSettingCount: UserDefaults.standard.dictionaryRepresentation().keys
-                .filter { $0.hasPrefix(prefix) }.count)
+                .filter { $0.hasPrefix(prefix) }.count,
+            windowProductID: context.productID == productID || productID == 0
+                ? nil : String(format: "0x%04X", productID))
     }
 
     private func appEnvironmentSnapshot() -> DiscoveryAppEnvironment {
@@ -485,15 +515,16 @@ struct CaptureGuideView: View {
             installLocation: location)
     }
 
-    private func touchSettingsSnapshot() -> DiscoveryTouchSettings? {
-        guard let settings = tabletManager.contexts[productID]?.settings else { return nil }
+    private func touchSettingsSnapshot(_ source: DeviceContext?) -> DiscoveryTouchSettings? {
+        guard let source else { return nil }
+        let settings = source.settings
         // Omitted only when a spec positively says the device has no finger
         // touch — there the settings are inert and a `false` would read as a
         // cause. A device with *no* spec is a different case: we can't rule
         // touch out, and dropping the block left every non-Wacom capture with
         // no touch configuration at all (an Xencelabs session recorded none,
         // which is how this was found).
-        if let spec = WacomDeviceRegistry.spec(for: productID), !spec.hasFingerTouch {
+        if let spec = WacomDeviceRegistry.spec(for: source.productID), !spec.hasFingerTouch {
             return nil
         }
         return DiscoveryTouchSettings(
@@ -1114,13 +1145,15 @@ struct CaptureGuideView: View {
         let companions = targets.map(\.0).filter { candidate in
             !ownInterfaces.contains { $0 === candidate }
         }
+        let source = settingsSource(recording: primary.0, ownInterfaces: ownInterfaces)
         engine.startDiscovery(
-            devices: targets, duration: 3600, touchSettings: touchSettingsSnapshot(),
-            appSettings: appSettingsSnapshot(),
-            everSeenTools: everSeenToolsSnapshot(),
-            settingsIdentity: settingsIdentitySnapshot(),
+            devices: targets, duration: 3600, touchSettings: touchSettingsSnapshot(source),
+            appSettings: appSettingsSnapshot(source),
+            everSeenTools: everSeenToolsSnapshot(source),
+            settingsIdentity: settingsIdentitySnapshot(source),
+            knownTablets: knownTabletsSnapshot(),
             appEnvironment: appEnvironmentSnapshot(),
-            bluetoothAddressCandidate: tabletManager.contexts[productID]?.bluetoothAddressCandidate,
+            bluetoothAddressCandidate: source?.bluetoothAddressCandidate,
             tapped: companions)
 
         // Picks up hardware powered on or plugged in mid-session. Slow on

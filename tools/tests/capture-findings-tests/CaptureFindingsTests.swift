@@ -264,6 +264,13 @@ do {
     ] {
         check(kinds.contains(kind), "\(kind) is surfaced")
     }
+    check(!kinds.contains("collectedFromOtherWindow"), "own window is not flagged")
+    result.settingsIdentity?.windowProductID = "0x0357"
+    check(
+        discoveryFindings(for: result).contains {
+            $0.kind == "collectedFromOtherWindow" && $0.detail.contains("0x0357")
+        },
+        "another tablet's window is flagged")
 }
 
 do {

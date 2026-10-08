@@ -71,6 +71,7 @@ final class CaptureEngine: ObservableObject {
     /// main-actor registry so the standalone harnesses can build a result.
     private var capturedEverSeenTools: [String]?
     private var capturedSettingsIdentity: DiscoverySettingsIdentity?
+    private var capturedKnownTablets: [DiscoveryKnownTablet]?
     private var capturedAppEnvironment: DiscoveryAppEnvironment?
     /// Filled a second or two into the session; see `HardwareSurveyProbe`.
     private var capturedHardwareSurvey: DiscoveryHardwareSurvey?
@@ -283,6 +284,7 @@ final class CaptureEngine: ObservableObject {
         appSettings: DiscoveryAppSettings? = nil,
         everSeenTools: [String]? = nil,
         settingsIdentity: DiscoverySettingsIdentity? = nil,
+        knownTablets: [DiscoveryKnownTablet]? = nil,
         appEnvironment: DiscoveryAppEnvironment? = nil,
         bluetoothAddressCandidate: String? = nil,
         tapped: [IOHIDDevice] = []
@@ -302,6 +304,7 @@ final class CaptureEngine: ObservableObject {
         capturedAppSettings = appSettings
         capturedEverSeenTools = everSeenTools
         capturedSettingsIdentity = settingsIdentity
+        capturedKnownTablets = knownTablets
         capturedAppEnvironment = appEnvironment
         // Off the main thread: each DDC request waits ~50 ms on the panel.
         // Keyed to the session start so a slow survey can't land in the next.
@@ -931,6 +934,7 @@ final class CaptureEngine: ObservableObject {
             notes: notes,
             submitterContact: nil
         )
+        result.knownTablets = capturedKnownTablets
         let found = discoveryFindings(for: result) + Self.excludedDeviceFindings()
         result.findings = found.isEmpty ? nil : found
         return result
