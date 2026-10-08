@@ -104,6 +104,7 @@ final class PresetExporter {
         d["doubleClickDistance"] = s.doubleClickDistance
         d["invertRotation"] = s.invertRotation
         d["relativeCursorMovement"] = s.relativeCursorMovement
+        d["hoverClick"] = s.hoverClick
         d["penButton1"] = s.penButton1Binding.displayLabel
         d["penButton1Key"] = s.penButton1Binding.encoded
         d["penButton2"] = s.penButton2Binding.displayLabel
@@ -227,7 +228,8 @@ final class PresetExporter {
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (roundFrac(ud.double(forKey: prefix + key)), nil)
 
-        case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection":
+        case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection",
+             "hoverClick":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (ud.bool(forKey: prefix + key), nil)
 

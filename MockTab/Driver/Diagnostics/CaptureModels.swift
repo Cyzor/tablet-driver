@@ -763,6 +763,7 @@ struct DiscoveryAppSettings: Codable {
     var pressureSmoothingStrength: Double?
     var dragThreshold: Double?
     var tipUpAssistDelay: Double?
+    var hoverClick: Bool?
     var doubleClickDistance: Double?
     var relativeCursorMovement: Bool?
     var invertRotation: Bool?

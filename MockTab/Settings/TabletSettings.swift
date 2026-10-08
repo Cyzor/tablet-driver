@@ -521,6 +521,11 @@ final class TabletSettings: ObservableObject {
     @Published var dragThreshold: Double = 0.0 {
         didSet { persist("dragThreshold", dragThreshold) }
     }
+    /// On: barrel-button clicks and Pan View act while hovering. Off: they
+    /// wait for tip contact and end when the tip lifts, as Wacom's Click & Tap.
+    @Published var hoverClick: Bool = true {
+        didSet { persist("hoverClick", hoverClick) }
+    }
 
     // MARK: - Capacitive finger touch
     //

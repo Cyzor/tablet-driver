@@ -203,7 +203,11 @@ extension InputInjector {
             if tipDown {
                 cancelPendingMouseUp()
                 didEmitDragSinceDown = false
-                if panScroll.isActive {
+                if fireContactDeferredButtons(at: screenPoint, snap: snap, settings: settings) {
+                    // Hover Click off: contact performs the held button's
+                    // action in place of the tip's click.
+                    tipClickSwallowed = true
+                } else if panScroll.isActive {
                     // Pan View: contact grabs the canvas, so no click.
                 } else if tipKind == .clickLock && clickLocked {
                     // Tip set to Click Lock: the next contact ends the lock.
@@ -229,6 +233,7 @@ extension InputInjector {
                         snapshot: snap)
                 }
             } else {
+                releaseContactFiredButtons(at: screenPoint, snap: snap, settings: settings)
                 if panScroll.isActive {
                     // No click fired, so no release either.
                 } else {
@@ -371,21 +376,21 @@ extension InputInjector {
                 // A mouse tool's button1 already clicked as the tip.
                 if !activeToolIsMouse {
                     noteButtonForCapture(1, down: point.penButton1, binding: btn1)
-                    fireButtonAction(btn1, down: point.penButton1, at: screenPoint,
-                                     snapshot: snap, settings: settings)
+                    dispatchBarrelButton(.one, btn1, down: point.penButton1, at: screenPoint,
+                                     snap: snap, settings: settings)
                 }
             }
             if point.penButton2 != lastButton2Down {
                 lastButton2Down = point.penButton2
                 noteButtonForCapture(2, down: point.penButton2, binding: btn2)
-                fireButtonAction(btn2, down: point.penButton2, at: screenPoint,
-                                 snapshot: snap, settings: settings)
+                dispatchBarrelButton(.two, btn2, down: point.penButton2, at: screenPoint,
+                                 snap: snap, settings: settings)
             }
             if point.penButton3 != lastButton3Down {
                 lastButton3Down = point.penButton3
                 noteButtonForCapture(3, down: point.penButton3, binding: btn3)
-                fireButtonAction(btn3, down: point.penButton3, at: screenPoint,
-                                 snapshot: snap, settings: settings)
+                dispatchBarrelButton(.three, btn3, down: point.penButton3, at: screenPoint,
+                                 snap: snap, settings: settings)
             }
         }
 
@@ -510,6 +515,8 @@ extension InputInjector {
         guard let snap = injectionSnapshot else { return }
         let loc = currentCursorPosition()
         releaseHeldPointerButtons(at: loc, snapshot: snap)
+        // Before the binding release, so a contact-fired click posts one up.
+        releaseContactFiredButtons(at: loc, snap: snap, settings: nil)
         releaseBindingHeldButton(at: loc, snapshot: snap)
         releaseTouchDrag(snapshot: snap)
         // End momentum tails explicitly: macOS 27 force-cancels a gesture
@@ -612,29 +619,31 @@ extension InputInjector {
         if lastButton1Down {
             lastButton1Down = false
             if !activeToolIsMouse {
-                fireButtonAction(
-                    snap.activeTool.penButton1Binding, down: false, at: exitScreenPoint,
-                    snapshot: snap, settings: nil)
+                dispatchBarrelButton(
+                    .one, snap.activeTool.penButton1Binding, down: false, at: exitScreenPoint,
+                    snap: snap, settings: nil)
             }
         }
         button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button2UpDebounceTimer = nil
         if lastButton2Down {
             lastButton2Down = false
-            fireButtonAction(
-                snap.activeTool.penButton2Binding, down: false, at: exitScreenPoint,
-                snapshot: snap, settings: nil)
+            dispatchBarrelButton(
+                .two, snap.activeTool.penButton2Binding, down: false, at: exitScreenPoint,
+                snap: snap, settings: nil)
         }
         button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button3UpDebounceTimer = nil
         if lastButton3Down {
             lastButton3Down = false
             if !activeToolIsMouse {
-                fireButtonAction(
-                    snap.activeTool.penButton3Binding, down: false, at: exitScreenPoint,
-                    snapshot: snap, settings: nil)
+                dispatchBarrelButton(
+                    .three, snap.activeTool.penButton3Binding, down: false, at: exitScreenPoint,
+                    snap: snap, settings: nil)
             }
         }
+        contactDeferredButtons = 0
+        contactFiredButtons = 0
     }
 
     /// Force-close a pan whose button release was lost.
@@ -762,6 +771,7 @@ extension InputInjector {
                 at: lastPostedPoint, pressure: lastPostedPressure, point: pt,
                 pose: resolveEffectivePose(point: pt, snapshot: snap), snapshot: snap)
         }
+        releaseContactFiredButtons(at: lastPostedPoint, snap: snap, settings: nil)
         if panScroll.isActive {
             // Panning swallowed the press, so no release.
             return
@@ -770,7 +780,25 @@ extension InputInjector {
     }
 
     /// Names a barrel button for timer handlers, which can't capture `inout`.
-    private enum BarrelButtonSlot { case one, two, three }
+    private enum BarrelButtonSlot: CaseIterable {
+        case one, two, three
+
+        var bit: UInt8 {
+            switch self {
+            case .one: 1
+            case .two: 2
+            case .three: 4
+            }
+        }
+
+        func binding(in snap: InjectionSnapshot) -> ButtonBinding {
+            switch self {
+            case .one: snap.activeTool.penButton1Binding
+            case .two: snap.activeTool.penButton2Binding
+            case .three: snap.activeTool.penButton3Binding
+            }
+        }
+    }
 
     /// Xencelabs barrel buttons: presses fire at once; releases wait
     /// `buttonUpDebounceInterval` so a flicker never reads as a re-press.
@@ -795,7 +823,7 @@ extension InputInjector {
             }
             if !wasDown {
                 setBarrelButtonDown(slot, true)
-                fireButtonAction(binding, down: true, at: location, snapshot: snap, settings: settings)
+                dispatchBarrelButton(slot, binding, down: true, at: location, snap: snap, settings: settings)
             }
             return
         }
@@ -825,7 +853,7 @@ extension InputInjector {
             self.setBarrelButtonDown(slot, false)
             // Tell Pan View's momentum how late this release is.
             self.pendingButtonUpBackdate = CFAbsoluteTimeGetCurrent() - physicalReleaseTime
-            self.fireButtonAction(binding, down: false, at: location, snapshot: snap, settings: settings)
+            self.dispatchBarrelButton(slot, binding, down: false, at: location, snap: snap, settings: settings)
             self.pendingButtonUpBackdate = 0
         }
         CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
@@ -845,6 +873,74 @@ extension InputInjector {
         case .one: button1UpDebounceTimer = timer
         case .two: button2UpDebounceTimer = timer
         case .three: button3UpDebounceTimer = timer
+        }
+    }
+
+    // MARK: - Hover Click
+
+    /// Fires a barrel-button edge. With Hover Click off, a click or Pan View
+    /// pressed while hovering waits for tip contact; its release fires only
+    /// if contact fired the press.
+    private func dispatchBarrelButton(
+        _ slot: BarrelButtonSlot, _ binding: ButtonBinding, down: Bool,
+        at location: CGPoint, snap: InjectionSnapshot, settings: TabletSettings?
+    ) {
+        if down {
+            if !snap.hoverClick, !lastTipDown, !activeToolIsMouse,
+                Self.waitsForContact(binding.kind)
+            {
+                contactDeferredButtons |= slot.bit
+                return
+            }
+        } else if contactDeferredButtons & slot.bit != 0 {
+            contactDeferredButtons &= ~slot.bit
+            guard contactFiredButtons & slot.bit != 0 else { return }
+            contactFiredButtons &= ~slot.bit
+        }
+        fireButtonAction(binding, down: down, at: location, snapshot: snap, settings: settings)
+    }
+
+    /// Tip contact fires every deferred button still held. True if any fired.
+    private func fireContactDeferredButtons(
+        at location: CGPoint, snap: InjectionSnapshot, settings: TabletSettings?
+    ) -> Bool {
+        let pending = contactDeferredButtons & ~contactFiredButtons
+        guard pending != 0 else { return false }
+        for slot in BarrelButtonSlot.allCases where pending & slot.bit != 0 {
+            contactFiredButtons |= slot.bit
+            fireButtonAction(
+                slot.binding(in: snap), down: true, at: location, snapshot: snap,
+                settings: settings)
+        }
+        return true
+    }
+
+    /// Tip lift ends what contact fired. The buttons stay deferred, so the
+    /// next contact fires them again.
+    private func releaseContactFiredButtons(
+        at location: CGPoint, snap: InjectionSnapshot, settings: TabletSettings?
+    ) {
+        guard contactFiredButtons != 0 else { return }
+        let fired = contactFiredButtons
+        contactFiredButtons = 0
+        for slot in BarrelButtonSlot.allCases where fired & slot.bit != 0 {
+            fireButtonAction(
+                slot.binding(in: snap), down: false, at: location, snapshot: snap,
+                settings: settings)
+        }
+    }
+
+    /// Actions tied to where the pen is. Keys and modifiers fire on press, so
+    /// a held modifier still works while hovering.
+    private static func waitsForContact(_ kind: ButtonBinding.Kind) -> Bool {
+        switch kind {
+        case .leftClick, .rightClick, .eraser, .middleClick, .middleClickWithTip,
+            .doubleClick, .scrollDrag:
+            return true
+        case .none, .clickLock, .keyCombo, .displayToggle, .spacebar, .ringCycle,
+            .ringSelectSlot, .relativeModeToggle, .spanDisplaysToggle, .ringCycle2,
+            .ringSelectSlot2:
+            return false
         }
     }
 

@@ -433,6 +433,7 @@ struct CaptureGuideView: View {
             pressureSmoothingStrength: s.pressureSmoothingStrength,
             dragThreshold: s.dragThreshold,
             tipUpAssistDelay: s.tipUpAssistDelay,
+            hoverClick: s.hoverClick,
             doubleClickDistance: s.doubleClickDistance,
             relativeCursorMovement: s.relativeCursorMovement,
             invertRotation: s.invertRotation,

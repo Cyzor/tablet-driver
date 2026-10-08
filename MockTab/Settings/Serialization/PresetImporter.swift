@@ -144,6 +144,7 @@ struct PresetImporter {
         if let v = s["doubleClickDistance"] as? Double, v.isFinite, v > 0, v <= 200 { values["doubleClickDistance"] = v }
         if let v = s["invertRotation"] as? Bool { values["invertRotation"] = v }
         if let v = s["relativeCursorMovement"] as? Bool { values["relativeCursorMovement"] = v }
+        if let v = s["hoverClick"] as? Bool { values["hoverClick"] = v }
         if let v = s["penButton1Key"] as? String, !v.isEmpty {
             values["penButton1Binding"] = (ButtonBinding.decode(v) ?? .none).encoded
         } else if let v = s["penButton1"] as? String, !v.isEmpty {
@@ -217,7 +218,8 @@ struct PresetImporter {
                  "smoothingStrength", "doubleClickDistance":
                 if let v = rawValue as? Double, v.isFinite { values[key] = v }
 
-            case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection":
+            case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection",
+                 "hoverClick":
                 if let v = rawValue as? Bool { values[key] = v }
 
             case "targetDisplayIndex":

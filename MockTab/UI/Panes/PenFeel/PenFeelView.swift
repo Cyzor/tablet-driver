@@ -118,6 +118,21 @@ struct PenFeelView: View {
             }
 
             Section("Click Behavior") {
+                DescribedToggle("Hover Click", isOn: hoverClickBinding) {
+                    Text("Current: ")
+                        + Text(
+                            Image(
+                                systemName: settings.hoverClick
+                                    ? "pencil"
+                                    : "pencil.line"))
+                        + Text(
+                            settings.hoverClick
+                                ? " Buttons trigger while hovering."
+                                : " Buttons trigger upon contact.")
+                }
+                .help(
+                    "On: a button's click or Pan View starts as soon as you press it. Off: it waits for the tip to touch the tablet and ends when the tip lifts. Keystrokes and modifiers always act on press.")
+
                 SettingSliderRow(
                     "Tip-up Assist",
                     value: tipUpAssistBinding,
@@ -225,7 +240,7 @@ struct PenFeelView: View {
     )
     private typealias SettingsResetState = (
         doubleClick: Double, invertRotation: Bool, relativeCursor: Bool,
-        tipUpAssist: Double, dragThreshold: Double
+        tipUpAssist: Double, dragThreshold: Double, hoverClick: Bool
     )
 
     private func resetToDefaults() {
@@ -235,10 +250,10 @@ struct PenFeelView: View {
         )
         let settingsOld: SettingsResetState = (
             settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
-            settings.tipUpAssistDelay, settings.dragThreshold
+            settings.tipUpAssistDelay, settings.dragThreshold, settings.hoverClick
         )
         let toolDefaults: ToolResetState = (.linear, 0, 0, 0, 1.0, true)
-        let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, 0.0)
+        let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, 0.0, true)
 
         settings.undoManager?.beginUndoGrouping()
         applyToolReset(toolDefaults, undoTo: toolOld)
@@ -258,7 +273,7 @@ struct PenFeelView: View {
     /// Self-recursive so "Reset to Defaults" also redoes the settings-owned half.
     private func applySettingsReset(_ new: SettingsResetState, undoTo old: SettingsResetState) {
         (settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
-         settings.tipUpAssistDelay, settings.dragThreshold) = new
+         settings.tipUpAssistDelay, settings.dragThreshold, settings.hoverClick) = new
         settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applySettingsReset(old, undoTo: new)
         }
@@ -327,6 +342,13 @@ struct PenFeelView: View {
             String(localized: "Tip-up Assist"),
             get: { settings.tipUpAssistDelay },
             set: { settings.tipUpAssistDelay = $0 })
+    }
+
+    private var hoverClickBinding: Binding<Bool> {
+        settings.recordingBinding(
+            String(localized: "Hover Click", comment: "Undo action name: whether pen-button clicks act while hovering, in the Pen Feel pane"),
+            get: { settings.hoverClick },
+            set: { settings.hoverClick = $0 })
     }
 
     private var dragThresholdBinding: Binding<Double> {
