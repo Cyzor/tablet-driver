@@ -60,6 +60,8 @@ Pan View läuft nach dem Loslassen kurz nach, wenn die zugehörige Trägheitsein
 
 ## Klickverhalten
 
+**Schwebeklick** – Standardmäßig an, sodass Stifttasten schon beim Schweben auslösen. Schalte es aus, damit Klicks und Pan View erst bei Berührung der Spitze greifen.
+
 **Aufhebehilfe** – Hält den Stiftklick nach dem Abheben der Spitze noch kurz offen, wenn du dich weiterhin schnell bewegst, damit schnelle Zeichenzüge nicht unbeabsichtigt unterbrochen werden. Ziehe den Regler auf Off, um die Funktion auszuschalten.
 
 **Ziehschwelle** – Verlangt, dass sich der Stift erst eine Mindeststrecke bewegt, bevor aus einem Tippen ein Ziehen wird. Das fängt Zittern beim Aufsetzen ab, damit leichte Tipper nicht versehentlich zu Drag-Aktionen werden. Ziehe den Regler auf Off, um die Funktion auszuschalten.

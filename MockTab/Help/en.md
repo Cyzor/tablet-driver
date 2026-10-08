@@ -60,6 +60,8 @@ Pan View coasts briefly after release when its momentum setting (in Pen Feel) is
 
 ## Click Behavior
 
+**Hover Click** – on by default, so pen buttons trigger while hovering. Turn it off to make clicks and Pan View wait for the tip to touch the tablet.
+
 **Tip-up Assist** – holds the pen click open briefly after the tip lifts, if you're still moving quickly, to prevent unintended stroke breaks during fast drawing. Drag to Off to disable.
 
 **Drag Threshold** – requires the pen to move a minimum distance before a tap becomes a drag, absorbing tremor at tip-down so light taps don't turn into accidental drags. Drag to Off to disable.

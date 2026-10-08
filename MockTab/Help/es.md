@@ -58,6 +58,8 @@ Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado
 
 ## Comportamiento del clic
 
+**Clic sin contacto** – Activado por defecto, así que los botones del lápiz actúan sin tocar. Desactívalo para que los clics y Pan View esperen a que la punta toque la tableta.
+
 **Asistencia de levantamiento** – Mantiene el clic del lápiz activo durante un instante después de levantar la punta, si todavía te estás moviendo rápido, para evitar cortes involuntarios del trazo al dibujar deprisa. Arrástralo hasta Off para desactivarlo.
 
 **Umbral de arrastre** – Exige que el lápiz recorra una distancia mínima antes de que un toque pase a ser un arrastre, lo que absorbe el temblor al apoyar la punta y evita que un toque ligero se convierta en un arrastre accidental. Arrástralo hasta Off para desactivarlo.
