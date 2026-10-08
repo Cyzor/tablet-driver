@@ -1,108 +1,43 @@
 # tools/
 
-Scripts for maintaining the registry, triaging submitted captures, capturing
-tablet traffic, and releasing the app. None run as part of the build. Run them
-by hand from the repo root.
+Scripts for testing, releasing, measuring, and maintaining the app. None run as part of the build. Run them by hand from the repo root. Each file's header explains what it does and how to run it.
 
-```
-tools/
-  tests/     standalone test harnesses (no XCTest target); see Contributing.md
-  release/   build, sign, notarize, publish
-  capture/   capture probes and unused app source
-  latency/   latency measurement
-  registry/  upstream cross-checks and dimension backfill
-```
+Registry and capture-triage scripts live in [`TabletKit/tools/`](../TabletKit/tools/), next to the data they check, so TabletKit contributors don't need this repo.
 
-The registry lives at `TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift`.
-Most scripts read it. A few edit it in place or print Swift to paste in.
+## tests/
 
-**Registry parsing, import, and audit scripts live in
-[`TabletKit/tools/`](../TabletKit/tools/)**, next to the data they check, so
-TabletKit contributors don't need this repo: `registry_lib.py`,
-`import_otd_configs.py`, `audit_wacom_hid_descriptors.py`, `audit_registry.py`,
-`audit_kernel_registry.py`, `verify_registry.py`, and `triage_discovery.py`.
-This folder keeps the app-only tools.
+Standalone test harnesses for app code. `tests/run-all-tests.sh` runs them all, as CI does. See [`Contributing.md`](../Contributing.md).
 
-## Registry
+## release/
 
-### `backfill_libwacom_dimensions.py`
-**Fills `activeWidthMM` / `activeHeightMM` from libwacom.**
+Builds, signs, notarizes, and packages the app.
 
-Reads a [libwacom](https://github.com/linuxwacom/libwacom) data directory and
-fills in missing dimensions in `WacomDeviceRegistry.swift`. It leaves
-hand-measured `.verified` entries alone, and skips any match whose implied
-resolution differs by more than 8% between axes, a sign of a stale libwacom
-row or two products sharing an ID.
+- `release.sh` builds a numbered release. `release-and-publish.sh` also tags it and creates a draft GitHub release.
+- `build-snapshot.sh` and `snapshot-and-publish.sh` do the same for the rolling snapshot between releases. `.github/workflows/snapshot.yml` can also build one. Pick one path per snapshot.
+- `update-latest.sh` records a published build in mocktab-web so the website's update page lists it. GitHub runs it after you publish.
+- `idle-check.sh` compares the running app's idle CPU and memory against a budget.
 
-```
-python3 tools/registry/backfill_libwacom_dimensions.py \
-    --libwacom-data /path/to/libwacom/data \
-    --registry TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift \
-    --dry-run
-```
+Publishing creates a draft. Nothing goes public until you click Publish on GitHub.
 
-### `import_vendor_configs.py`
-**Turns OpenTabletDriver configs into `VendorDeviceProfile` entries** for other
-makers' tablets that MockTab recognizes but doesn't decode yet.
+## registry/
 
-```
-python3 tools/registry/import_vendor_configs.py \
-    /path/to/OTD/Configurations \
-    --vendors Huion Xencelabs XP-Pen
-```
+Keeps the Wacom registry (`TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift`) in step with outside sources.
 
-## Unused app source
+- `backfill_libwacom_dimensions.py` fills in missing tablet sizes from [libwacom](https://github.com/linuxwacom/libwacom). It leaves hand-measured entries alone. Try it with `--dry-run` first.
+- `import_vendor_configs.py` turns OpenTabletDriver configs into entries for other brands' tablets.
+- `upstream-sweep.sh` fetches libwacom, input-wacom, and OpenTabletDriver and reports what changed since the last review.
 
-### `OTDImporter.swift`
-A Swift version of `import_otd_configs.py`. Nothing calls it, and it was never
-in the Xcode project. It depends only on Foundation and TabletKit, so it's easy
-to revive.
+## capture/
 
-## Submitted captures
+Small tools for watching what a tablet sends and what the system does with it. Most are C files with build steps in their header.
 
-`triage_discovery.py` lives in [`TabletKit/tools/`](../TabletKit/tools/).
+- The `.d` scripts log the commands any driver sends a tablet. They need System Integrity Protection off.
+- `check-report-zip.py` vets an emailed diagnostics file before you open it.
+- `WacomProbeDevice.swift` only builds when copied into the app. It reports the highest coordinates and pressure an unknown tablet sends, so you can write a registry entry.
+- `OTDImporter.swift` is unused, but it's easy to bring back.
 
-Current builds leave the device serial number out of capture files. Older files
-may still have a `serialNumber`, which the triage tool flags. Remove it before
-committing a capture, since captures end up in public issues.
+Older capture files may contain a device serial number. `triage_discovery.py` flags it. Remove the serial before committing, since captures end up in public issues.
 
-## Capture (developer only)
+## latency/ and event-probe/
 
-### `hid_traffic_capture.d`, `hid_connect_capture.d`
-DTrace scripts that log the setup commands any driver sends a tablet, during
-use and on connect. They need System Integrity Protection off. In-app capture
-covers most other needs.
-
-### `usb_string_probe.c`
-Reads USB string descriptors from any device through the USB device plugin,
-without opening it, so it works while MockTab or another driver has the
-tablet open. Built to check whether MockTab can read the self-descriptions
-Huion (string 200) and XP-Pen or Xencelabs (string 100) tablets give. Build
-and run instructions are in the file header.
-
-### `touch_capture.c`
-A small C tool that opens a HID device and prints its reports. Written for the
-PTH-860 touch work.
-
-### `WacomProbeDevice.swift`
-A stand-in driver for an unknown Wacom tablet that uses the 10-byte IntuosV1
-format. Copy it into `MockTab/Driver/Devices/` and hook it into
-`TabletManager.deviceConnected(_:)`. It logs the highest coordinates and
-pressure it sees, so you can read off real ranges before writing a registry
-entry. The file header has the steps. It only builds once copied into the app.
-
-## Release
-
-### `ExportOptions.plist`
-Archive export settings for `release-and-publish.sh`.
-
-### `release.sh`, `release-and-publish.sh`
-`release.sh` builds, signs, notarizes, and packages a numbered release.
-`release-and-publish.sh` adds the tag and a draft GitHub release.
-
-### `build-snapshot.sh`, `snapshot-and-publish.sh`
-The same, for the rolling, unnumbered snapshot (`dist/MockTab-snapshot.dmg`),
-which shares `main` between releases. `snapshot-and-publish.sh` replaces the
-`snapshot` pre-release as a **draft**. Nothing goes public until you click
-Publish on GitHub. `.github/workflows/snapshot.yml` does the same on manual
-dispatch. Use one path per snapshot.
+`latency/` measures the time from a tablet report to the cursor moving, and compares MockTab with another driver. `event-probe/` records the events a driver posts so you can find fields MockTab leaves out.

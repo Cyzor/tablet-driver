@@ -2,7 +2,7 @@
 
 Mac driver for Wacom drawing tablets that no longer have official support.
 
-One self-contained app. Pen input runs at top priority, so it stays responsive.
+One self-contained app. Responsive pen input is its top priority.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue) ![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue)
 
@@ -24,7 +24,7 @@ MockTab supports these Wacom families:
 
 Full list: [mocktab.org/hardware](https://mocktab.org/hardware.html)
 
-Other tablets may not work yet. To request one, file an issue with the data from **Help › Collect Device Data…**
+Other tablets may not work yet.  For support, file an issue with the data from **Help › Collect Device Data…**
 
 ***
 
@@ -99,7 +99,7 @@ If you cloned without `--recurse-submodules`, run `git submodule update --init`.
 
 ## TabletKit
 
-[TabletKit](https://github.com/Cyzor/TabletKit) is the Swift package that turns a tablet's raw reports into pen position, pressure, tilt, rotation, and touch. It has no AppKit dependencies, so it works in any Swift project. See its [README](https://github.com/Cyzor/TabletKit#adding-to-your-project) to add it to yours.
+[TabletKit](https://github.com/Cyzor/TabletKit) is the Swift package that turns a tablet's raw reports into pen position, pressure, tilt, rotation, and touch. It has no AppKit dependencies, so it works in any Swift project. See its [README](https://github.com/Cyzor/TabletKit#add-it-to-your-project) to add it to yours.
 
 It lives here as a git submodule at `TabletKit/`.
 
