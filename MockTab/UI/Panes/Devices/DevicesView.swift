@@ -34,6 +34,9 @@ struct DevicesView: View {
     /// starting a rename in one section put both rows into edit mode.
     @State private var editingToolInAllSection = false
     @State private var editingName = ""
+    /// Longest tablet or tool nickname accepted. Displays truncate anyway;
+    /// this keeps stored names tidy.
+    static let maxNicknameLength = 60
     @FocusState private var editFieldFocused: Bool
 
     @State private var pendingForgetTool: DeviceRegistry.KnownTool? = nil
@@ -94,6 +97,11 @@ struct DevicesView: View {
             tabletsSection
             toolsSection
             allToolsSection
+        }
+        .onChange(of: editingName) { name in
+            if name.count > Self.maxNicknameLength {
+                editingName = String(name.prefix(Self.maxNicknameLength))
+            }
         }
         // Finder-style: a single click outside the field confirms any rename
         // in progress (an empty name reverts to the old one). Deliberately not
@@ -631,7 +639,8 @@ struct DevicesView: View {
         editingTabletID = nil
         guard let tablet = registry.knownTablets.first(where: { $0.id == id })
         else { return }
-        let trimmed = editingName.trimmingCharacters(in: .whitespaces)
+        let trimmed = String(editingName.prefix(Self.maxNicknameLength))
+            .trimmingCharacters(in: .whitespaces)
         // Empty or unchanged names end the edit and keep the old name.
         guard !trimmed.isEmpty, trimmed != tablet.nickname else { return }
         let oldName = tablet.nickname
@@ -648,7 +657,8 @@ struct DevicesView: View {
         // leave the row stuck in edit mode (click-away used to do exactly
         // that for all-tablets tools, which aren't in `knownTools`).
         editingToolID = nil
-        let trimmed = editingName.trimmingCharacters(in: .whitespaces)
+        let trimmed = String(editingName.prefix(Self.maxNicknameLength))
+            .trimmingCharacters(in: .whitespaces)
 
         if editingToolInAllSection {
             // The all-tablets list can hold tools belonging to any tablet,
