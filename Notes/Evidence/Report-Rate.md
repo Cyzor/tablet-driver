@@ -1,10 +1,10 @@
-# Report rate: Xencelabs Pen Display 24 and Cintiq 24HD
+# Report Rate: Xencelabs Pen Display 24 and Cintiq 24HD
 
 Supports [Xencelabs protocol](../Xencelabs-Protocol.md) and
 [Intuos 10-byte format](../Wacom-Intuos-10-Byte-Protocol.md).
 
 **Capture:** slow strokes on each pen display over USB, logging the time
-each report arrived. The Cintiq was tested with an ordinary pen and with an
+each report arrived. The Cintiq test used an ordinary pen and an
 Art Pen.
 
 **What to look for:** the gap between reports, in milliseconds.

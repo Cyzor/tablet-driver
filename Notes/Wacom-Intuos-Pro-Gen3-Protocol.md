@@ -1,9 +1,9 @@
-# Wacom Intuos Pro gen 3 protocol (PTK-x70)
+# Wacom Intuos Pro Gen 3 Protocol (PTK-x70)
 
 The Intuos Pro released in 2025: PTK-470, PTK-670, and PTK-870 (USB PIDs
 `0x03F5`, `0x03F7`, `0x03F9`), over USB and Bluetooth LE. The Movink 13
 (DTH-135) shares the USB pen report. TabletKit decodes it in
-`IntuosV3Decoder`. The Linux driver we checked (input-wacom 4.18) has no
+`IntuosV3Decoder`. The Linux driver, as of input-wacom 4.18, has no
 entry for these tablets, so almost everything here comes from PTK-870
 captures.
 
@@ -37,7 +37,7 @@ declares feature report `0x02`. (observed)
 | `0x06` | both | Idle, before setup | observed |
 | `0x1F` | USB | Pen, 16-bit coordinates | unverified |
 
-## USB pen report `0x1E`
+## USB Pen Report `0x1E`
 
 | Offset | Field |
 | --- | --- |
@@ -52,15 +52,15 @@ declares feature report `0x02`. (observed)
 | 20–23 | Tool serial; 0 out of proximity |
 | 24–25 | Tool code; 0 out of proximity |
 
-All observed. Serial and tool code were checked against an Art Pen of known
-identity (tool code `0x0804`). Byte 26 is the top byte of a 32-bit tool-code
+All observed. An Art Pen of known identity confirmed the serial and tool code
+(tool code `0x0804`). Byte 26 is the top byte of a 32-bit tool-code
 field and carries something else.
 
 Status bits: `0x80` proximity, `0x20` eraser, `0x08`/`0x04`/`0x02` barrel
 buttons 3/2/1 (all three pressed in a Movink 13 capture), `0x01` tracks the
 tip. `0x40` is set on every frame with measured tilt and hover. TabletKit
-reads it as the tip switch; Wacom's Cintiq Pro 2022 layout calls the same
-bit "range". Which reading is right is open.
+reads it as the tip switch; the kernel's Cintiq Pro 2022 layout calls the
+same bit "range". Which reading is right is open.
 
 **Stub frames.** The tablet interleaves position-only frames among full
 ones. Stubs have status `0x80`, tilt and rotation zero, and hover 255; full
@@ -72,7 +72,7 @@ frame", not an angle. It appears in under 1% of Art Pen frames, and in
 nearly all frames for pens without a rotation sensor. Replay the last real
 value.
 
-## USB ExpressKey report `0x11`
+## USB ExpressKey Report `0x11`
 
 | Offset | Field |
 | --- | --- |
@@ -87,7 +87,7 @@ detents. The dials only turn: they have no push switch, and the center key
 between each cluster is an ordinary key.
 [Evidence: one turn, frame by frame](Evidence/PTK-870-Dial-Steps.md).
 
-## Bluetooth LE report `0x1A`
+## Bluetooth LE Report `0x1A`
 
 One HID interface carries everything. The pen layout is the gen 2 Bluetooth
 frame with both coordinates widened to 20 bits and packed, which pushes every
@@ -129,7 +129,7 @@ kernel's gen 2 and Pro 2022 layouts)
   position yields a fixed phantom point with the tip down. Six different
   class-1 patterns turned up, one per pen, so match on the class, not the
   bytes.
-- Class 1 is sent once on approach and is often missed: a session that
+- The tablet sends class 1 once on approach, and a driver often misses it: a session that
   starts with the pen already in range may never see one. Nothing else
   identifies the pen.
 
@@ -138,20 +138,20 @@ bit 2 left dial step, bit 3 left dial counterclockwise, bit 4 right dial
 step, bit 5 right dial counterclockwise. One frame per detent, so each
 flagged frame is exactly one step.
 
-## Bluetooth LE battery `0x1B`
+## Bluetooth LE Battery `0x1B`
 
 `[1]`: bit 7 charging, bits 0–6 percent. The rest of the 20 bytes is zero.
 Charging readings of `0xCC` and `0xE4` (76% and 100%) settle the bit split.
 (observed)
 
-## Edge behavior
+## Edge Behavior
 
 These tablets keep reporting after the tip leaves the drawable area. Both
 transports do it, so it is the digitizer, not the link. (observed, PTK-870;
 [evidence](Evidence/PTK-870-Edge-and-Groove.md))
 
-- **Groove fold-back.** A pen in the molded groove past an edge is reported
-  about 600–900 units *inside* the edge, so no inset or clamp can catch it.
+- **Groove fold-back.** The tablet reports a pen in the molded groove past an
+  edge about 600–900 units *inside* the edge, so no inset or clamp can catch it.
   The tablet does flag it: the close-tip-fix bit is set on 99% or more of
   samples along the real border and on 0–4% in the groove. Combine that bit, or a
   railed hover reading, with a band near the edge; high hover mid-tablet

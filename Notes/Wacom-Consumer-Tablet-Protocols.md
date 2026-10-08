@@ -1,4 +1,4 @@
-# Wacom consumer tablet protocols (Graphire, Bamboo, Intuos 2013–2018)
+# Wacom Consumer Tablet Protocols (Graphire, Bamboo, Intuos 2013–2018)
 
 Wacom's consumer line changed pen formats several times while keeping a
 shared 64-byte container for touch and ExpressKeys. This page covers the
@@ -10,7 +10,7 @@ Confidence labels: **observed** · **kernel** · **unverified**, as in
 [the gen 2 page](Wacom-Intuos-Pro-Gen2-Protocol.md). Offsets include the
 report ID at `[0]`.
 
-## Which format each generation uses
+## Which Format Each Generation Uses
 
 | Generation | Models | Pen report | Touch and keys |
 | --- | --- | --- | --- |
@@ -24,7 +24,7 @@ report ID at `[0]`.
 sending 4-byte packets on report `0x01`. Feature report `[0x02, 0x02]`
 switches them to the formats below. (observed, CTL-460)
 
-## Graphire and Bamboo Fun: report `0x02`, 8 bytes
+## Graphire and Bamboo Fun: Report `0x02`, 8 Bytes
 
 | Offset | Field |
 | --- | --- |
@@ -37,14 +37,14 @@ switches them to the formats below. (observed, CTL-460)
 
 Bamboo Fun (CTE-450/650, MTE-450) pad: `[7]` `0x08` back, `0x10`
 forward, `0x20`/`0x40` the lower function keys; `[8]` bit 7 finger on the
-ring, bits 0–6 position 0–71. The pad is sent whether or not the pen is in
+ring, bits 0–6 position 0–71. The tablet sends the pad whether or not the pen is in
 range. Graphire 4: `[7]` bits 6 and 7 are its two buttons, bits 3–5 a
 relative wheel.
 
-The pen path and the Bamboo Fun pad bits are observed on a CTE-650. Which
+A CTE-650 confirms the pen path and the Bamboo Fun pad bits. Which
 pad bit belongs to which key, and everything for other models, is kernel.
 
-## Bamboo: report `0x02`, 9 bytes
+## Bamboo: Report `0x02`, 9 Bytes
 
 | Offset | Field |
 | --- | --- |
@@ -59,14 +59,14 @@ contact, both buttons, the eraser, and exit. Bit `0x10` also toggles; its
 meaning is unknown. The CTL-460 has no ExpressKeys. Its descriptor declares
 480 × 320, which is not the pen's coordinate range.
 
-## Intuos (2013): report `0x02`, 10 bytes
+## Intuos (2013): Report `0x02`, 10 Bytes
 
 The same fields as the 9-byte Bamboo report, one byte longer. Read as
 big-endian, coordinates come out near 130,600 on every model; read as
 little-endian, they reach each model's maximum exactly. (observed, CTH-480
 family)
 
-## The 64-byte container (report `0x02`)
+## The 64-Byte Container (Report `0x02`)
 
 Shared unchanged by the 2013 and 2015–2018 Intuos and some Bamboos, and
 also used by the Intuos5 and Intuos Pro gen 1 for touch on their second USB
@@ -84,14 +84,14 @@ reports.
 | `0x81` | Lift mask: `[3]–[4]` are a 16-bit mask of the fingers still down |
 
 Ignore the `0x81` mask and a lifted finger can stay down for the rest of
-the session. Which key sets which pad bit has not been mapped.
+the session. Nobody has mapped which key sets which pad bit.
 
 **Don't drop touch while the pen is in range.** The kernel does, but a pen
 resting in low-confidence hover (half the hover reports from a PTH-850 Grip
 Pen) then kills touch for as long as a hand is near the tablet. Arbitrate
 using sustained pen activity rather than raw proximity. (observed)
 
-## Bamboo touch: report `0x02`, 20 bytes (CTH-460/461)
+## Bamboo Touch: Report `0x02`, 20 Bytes (CTH-460/461)
 
 A separate USB interface with two fixed finger slots, big-endian 11-bit
 coordinates in a 480 × 320 space, and the four ExpressKeys in `[1]`

@@ -1,4 +1,4 @@
-# PTK-870 tilt: range and direction
+# PTK-870 Tilt: Range and Direction
 
 Supports [Intuos Pro gen 3: Bluetooth LE report `0x1A`](../Wacom-Intuos-Pro-Gen3-Protocol.md#bluetooth-le-report-0x1a).
 

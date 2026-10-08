@@ -1,4 +1,4 @@
-# PTH-850 pressure: no jump at first touch
+# PTH-850 Pressure: No Jump at First Touch
 
 Supports [Intuos 10-byte format: pen data packet](../Wacom-Intuos-10-Byte-Protocol.md#pen-data-packet-types-0x000x03).
 

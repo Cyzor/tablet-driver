@@ -1,4 +1,4 @@
-# Xencelabs: telling the two pens apart
+# Xencelabs: Telling the Two Pens Apart
 
 Supports [Xencelabs: pen bits](../Xencelabs-Protocol.md#input-byte-1-decides-the-frame).
 

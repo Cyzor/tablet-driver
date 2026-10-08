@@ -1,6 +1,6 @@
 # Developer Notes
 
-A few things about MockTab that the code doesn't make obvious: one easy-to-miss setup rule, how settings are stored, the hidden tuning settings, and how the app is built.
+A few things about MockTab that the code doesn't make obvious: one easy-to-miss setup rule, how MockTab stores settings, the hidden tuning settings, and how to build the app.
 
 For the rest, start here:
 
@@ -22,7 +22,7 @@ The reason: while you drag something, AppKit switches to a tracking mode, and de
 
 `TabletSettings` reads and writes `UserDefaults.standard` itself, rather than through `@AppStorage`.
 
-A setting can be stored at several levels, and the most specific one wins:
+MockTab can store a setting at several levels, and the most specific one wins:
 
 1. For one app on one tablet, while that app is in front
 2. For a saved profile
@@ -49,7 +49,7 @@ This sets the plain key, so a value saved for a particular tablet, profile, or a
 | `touchOnsetDelayMs` | Number, 0–500 | `40` | How long, in milliseconds, a finger rests before the cursor responds. Lower it for a quicker start. Raise it if a resting palm nudges the cursor. Even `0` waits about two reports. |
 | `touchTapStabilizationPt` | Number, 0–4 | `1.5` | How far, in points, a finger can drift before the cursor follows. It soaks up the wobble when you lift from a tap and the first bit of a slow drag, without a jump when tracking starts. Above about 2 it feels sticky. `0` turns it off. Relative touch mode only. |
 | `dropPhysicalModifiersFromMoveEvents` | Yes/No | `NO` | Leaves held keys (⇧ ⌘ ⌥ ⌃) off every pen movement, not just when MockTab's record of the keyboard may be out of date. A last resort if held keys stop registering. It costs Shift-to-constrain in Illustrator, Keynote, and Pages. Applies to all tablets. Relaunch after changing it. |
-| `useRotationAsTilt` | Yes/No | `NO` | An old Photoshop workaround that sends an Art Pen's barrel rotation as tilt, in place of real tilt. Photoshop now reads rotation directly, so this should no longer be needed. Plain key only. Relaunch after changing it. |
+| `useRotationAsTilt` | Yes/No | `NO` | An old Photoshop workaround that sends an Art Pen's barrel rotation as tilt, in place of real tilt. Photoshop now reads rotation directly, so you shouldn't need it anymore. Plain key only. Relaunch after changing it. |
 | `rotationTiltOffsetDegrees` | Number | `0` | With `useRotationAsTilt`, degrees added to the rotation first. |
 | `rotationTiltMagnitude` | Number, 0.1–1 | `0.8` | With `useRotationAsTilt`, how strong the resulting tilt is. |
 

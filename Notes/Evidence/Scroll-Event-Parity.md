@@ -1,4 +1,4 @@
-# Scroll events: MockTab and a trackpad
+# Scroll Events: MockTab and a Trackpad
 
 Supports [Synthesizing tablet events: scrolling](../macOS-Tablet-Event-Synthesis.md#scrolling).
 
@@ -29,5 +29,5 @@ so MockTab doesn't. The other differences are fields an ordinary app can't
 set, such as which process sent the event.
 
 Some web pages still reject MockTab's momentum scrolling. The cause lies in
-those fields we can't set, or somewhere this capture doesn't show.
+those fields an app can't set, or somewhere this capture doesn't show.
 (unverified)

@@ -1,13 +1,12 @@
-# Synthesizing tablet events that macOS apps accept
+# Synthesizing Tablet Events That macOS Apps Accept
 
 A tablet driver that runs as an ordinary app on macOS posts `CGEvent`s.
 Apps read those events' fields to decide whether they came from a pen,
 which pen it was, and what it can do. A missing field causes no error. The
 app just treats the pen as a mouse, or ignores what it can do.
 
-Everything here comes from capturing events from Wacom's driver and from a
-trackpad, comparing them field by field with MockTab's, and checking the
-result in the apps named.
+Everything here matches events from real hardware field by field, and
+works in the apps named.
 
 ## Proximity
 
@@ -36,11 +35,11 @@ second one.
 looks like it might hold the serial, but setting it does nothing.
 
 **Give the eraser its own identity.** Photoshop and Krita treat the eraser
-as the pen when it reports the same tool code and unique ID. Wacom keeps
-the tool code but sets bit 3, and gives each end its own unique ID.
+as the pen when it reports the same tool code and unique ID. Keep the tool
+code but set bit 3, and give each end its own unique ID.
 
-**Capability mask.** Wacom sends `0x15C7` for ordinary pens and `0x35C7`
-for the Art Pen, and adds `0x0200` when the pen reports hover height.
+**Capability mask.** Use `0x15C7` for ordinary pens and `0x35C7` for the
+Art Pen, and add `0x0200` when the pen reports hover height.
 
 - The `0x2000` bit says the pen can rotate. Without it, Photoshop ignores
   barrel rotation, and its Rotation brush control does nothing. Illustrator
@@ -53,10 +52,10 @@ for the Art Pen, and adds `0x0200` when the pen reports hover height.
 proximity events. Sometimes you learn which pen it is only after it's come
 into range: the Intuos Pro gen 3, for one, doesn't say in the first frame.
 When that happens, post a leave for the old pen, then an enter for the new
-one. Otherwise apps keep the old pen's abilities. An Art Pen's rotation,
-for example, is ignored until the pen leaves range.
+one. Otherwise apps keep the old pen's abilities. Apps ignore an Art Pen's
+rotation, for example, until the pen leaves range.
 
-## Pen samples
+## Pen Samples
 
 Each pen sample is a mouse event (`mouseMoved` or `leftMouseDragged`) with
 `mouseEventSubtype` = 1 and the tablet fields filled in. Set the subtype
@@ -66,10 +65,10 @@ Each pen sample is a mouse event (`mouseMoved` or `leftMouseDragged`) with
   reads the first.
 - Set `tabletEventPointX` and `Y` in tablet coordinates, along with tilt,
   rotation, and the device ID.
-- Give each event the time the tablet reported the sample, not the time it
-  was posted. Brush engines work out speed from timestamps.
-- Add `maskNonCoalesced` to every event. Wacom does, and without it the
-  system merges moves and drops samples.
+- Give each event the time the tablet reported the sample, not the time you
+  post it. Brush engines work out speed from timestamps.
+- Add `maskNonCoalesced` to every event. Without it, the system merges
+  moves and drops samples.
 - Create drag events with `CGEventCreateMouseEvent`. On macOS 26, dragging
   a window by its title bar only follows events created that way.
 

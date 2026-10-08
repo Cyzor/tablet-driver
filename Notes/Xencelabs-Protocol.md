@@ -1,4 +1,4 @@
-# Xencelabs protocol (Pen Tablet, Pen Display, Quick Keys)
+# Xencelabs Protocol (Pen Tablet, Pen Display, Quick Keys)
 
 Xencelabs hardware uses UGEE's vendor ID, `0x28BD`, and names itself
 "HANVON UGEE". TabletKit decodes it in `XencelabsDecoder` and builds writes
@@ -17,7 +17,7 @@ Everything below comes from a Pen Display 24 and a Quick Keys, wired and
 through the dongle, except what's under Unverified. [The README](README.md)
 explains the labels. No Linux kernel driver exists to check against.
 
-## The vendor tunnel, report `0x02`
+## The Vendor Tunnel, Report `0x02`
 
 All live data, in both directions, travels in report `0x02` on a vendor
 collection (usage page `0xFF0A`): input from the device and **output** from
@@ -29,7 +29,7 @@ report size.
 **Setup:** send output report `[0x02, 0xB0, 0x04]`, zero-padded. Until
 then the device acts as a mouse.
 
-## Input: byte `[1]` decides the frame
+## Input: Byte `[1]` Decides the Frame
 
 | `[1]` | Frame |
 | --- | --- |
@@ -48,7 +48,7 @@ that never release.
 range, `0x80` set for the 3 Button Pen and clear for the Thin Pen (`0xA0`
 vs. `0x20` hovering).
 
-## Pen frame
+## Pen Frame
 
 | Offset | Field |
 | --- | --- |
@@ -66,7 +66,7 @@ nothing else. The out-of-range tag `0xC0` sets the bit for both pens, so
 carry the last pen through it.
 [Evidence](Evidence/Xencelabs-Pen-Bit.md).
 
-## Quick Keys frame (`[1]` = `0xF0`)
+## Quick Keys Frame (`[1]` = `0xF0`)
 
 | Offset | Field |
 | --- | --- |
@@ -79,7 +79,7 @@ top row and 5–8 the bottom, left to right. Single presses confirm it (key 1
 gives `0x01`, key 8 `0x80`). A sweep across all keys can't tell the two
 orders apart.
 
-## Host writes
+## Host Writes
 
 Output reports on `0x02`. Bytes 10–15 hold a 6-byte device address. The
 dongle serves up to two paired devices and ignores a write with an all-zero
@@ -101,8 +101,8 @@ the sleep-timer and OLED-brightness frames, byte 3 `0x01` sets the value and
 `0x00` reads it back.
 
 The dial LED color frame also sets the Pen Display's bezel-button
-backlight. The vendor driver folds brightness into the RGB values and tunes
-its palette to the LEDs (its "white" is warm, not `FFFFFF`).
+backlight. There's no separate brightness byte, so scale the RGB values
+to dim it.
 
 ## Unverified
 

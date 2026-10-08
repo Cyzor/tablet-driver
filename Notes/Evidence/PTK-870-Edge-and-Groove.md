@@ -1,4 +1,4 @@
-# PTK-870 edge and groove
+# PTK-870 Edge and Groove
 
 Supports [Intuos Pro gen 3: edge behavior](../Wacom-Intuos-Pro-Gen3-Protocol.md#edge-behavior).
 

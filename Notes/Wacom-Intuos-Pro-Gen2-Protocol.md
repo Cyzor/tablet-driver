@@ -1,4 +1,4 @@
-# Wacom Intuos Pro gen 2 protocol (PTH-x60, CTL-x100)
+# Wacom Intuos Pro Gen 2 Protocol (PTH-x60, CTL-x100)
 
 The 192-byte pen report introduced with the Intuos Pro gen 2, also used by the
 2018 Intuos (CTL-4100/6100) and by many pen displays (Cintiq 16/22/24, Cintiq
@@ -12,7 +12,7 @@ descriptor · **kernel** — from the Linux driver (`wacom_wac.c`) only ·
 All multi-byte values are little-endian. Byte offsets include the report ID
 at `[0]`.
 
-## Reports by transport
+## Reports by Transport
 
 | Report | Transport | Size | Carries |
 | --- | --- | --- | --- |
@@ -24,7 +24,7 @@ at `[0]`.
 | `0x81` | Bluetooth | ≥ 46 | Packed pen frames, CTL-x100WL |
 | `0x01` | USB | ≤ 8 | Mouse buttons from a separate mouse interface |
 
-## USB pen report `0x10`
+## USB Pen Report `0x10`
 
 | Offset | Field | Notes | Confidence |
 | --- | --- | --- | --- |
@@ -72,7 +72,7 @@ mouse interface as report `0x01` (4 bytes, `[1]` bit 0 left, 1 right, 2
 middle). The wheel is an 8-bit counter in `[16]`; take the signed difference
 from the previous report. (observed)
 
-## USB pen report `0x1E` (pen displays)
+## USB Pen Report `0x1E` (Pen Displays)
 
 A second layout, seen on the Cintiq Pro 22 (DTH-227) and shared by the Cintiq
 Pro 17 and 27, whose pen descriptors differ only in coordinate maxima. The
@@ -96,7 +96,7 @@ device sends 192 bytes; only the first 34 carry data. `[1]` is a constant
 OpenTabletDriver's `IntuosV2OffsetReport` reads tilt as single bytes at 11 and
 12 and hover at 11. All three are wrong: byte 12 is the high byte of X tilt.
 
-## USB ExpressKey report `0x11` (PTH-x60)
+## USB ExpressKey Report `0x11` (PTH-x60)
 
 | Offset | Field |
 | --- | --- |
@@ -105,9 +105,9 @@ OpenTabletDriver's `IntuosV2OffsetReport` reads tilt as single bytes at 11 and
 | 3 | Touch-ring center button, non-zero while pressed |
 | 4 | Touch-ring position 0–71 (5° steps); `0x7F` = no finger |
 
-Observed. Ring contact is signaled by `[4] != 0x7F`, not by `[3]`.
+Observed. `[4] != 0x7F` signals ring contact, not `[3]`.
 
-## USB finger touch `0x21` (PTH-660, PTH-860)
+## USB Finger Touch `0x21` (PTH-660, PTH-860)
 
 `[1]` is the contact count, followed by five fixed 8-byte slots starting at
 `[2]`:
@@ -131,8 +131,9 @@ These tablets pair as `BT IntuosPro …` over Bluetooth Classic. The
 `LE IntuosPro …` identity serves Wacom's paper-notes mode and does not act as
 a tablet. (kernel)
 
-Report `0x80` is also the ACK-40401 wireless status report when `[1]` is
-`0x02`, `0x05`, or `0x06`. Otherwise, length decides the shape: 99 bytes is
+Report `0x80` is also the ACK-40401 dongle's status report; see
+[wireless](Wacom-Wireless-and-Battery.md#ack-40401-dongle-status-report-0x80).
+For pen data, length decides the shape: 99 bytes is
 pen only; 361 bytes adds touch, pad, and battery. Either tablet can send either
 form.
 
@@ -207,10 +208,10 @@ misses were the opening reports, which have no earlier position to hold.
 ## Unverified
 
 - **BLE pen report `0x01`** (23 bytes, tilt possibly scaled as a sine):
-  documented from earlier research notes only. No capture exists.
+  no capture exists.
 - **Pad data in the 99-byte container**: offset unknown.
 - **Touch report range on the PTH-860**: observed values reach
-  12439 × 8639; the descriptor has not been read.
+  12439 × 8639; nobody has read the descriptor yet.
 
 ## Tests
 

@@ -1,4 +1,4 @@
-# Wacom Intuos 10-byte protocol (Intuos 1/2/4/5, Intuos Pro gen 1)
+# Wacom Intuos 10-Byte Protocol (Intuos 1/2/4/5, Intuos Pro Gen 1)
 
 The 10-byte pen report the Linux driver handles in `wacom_intuos_irq()`. It is
 used by the Intuos and Intuos2 (GD/XD), Intuos4 (PTK-x40), Intuos5 (PTH/PTK-x50),
@@ -8,8 +8,8 @@ older Cintiqs. TabletKit decodes it in `IntuosV1Decoder`; device
 coverage lives in `TabletKit/registry.json` (`"parser": "intuosV1"`).
 
 Hardware evidence comes from the Intuos5 L (PTH-850), Intuos Pro L (PTH-851),
-and a first-generation Intuos 6×8 (GD-0608-U). Other models are mapped from
-the kernel and OpenTabletDriver, which agree.
+and a first-generation Intuos 6×8 (GD-0608-U). Mappings for other models
+come from the kernel and OpenTabletDriver, which agree.
 
 Confidence labels: **observed** · **kernel** · **unverified**, as in
 [the gen 2 page](Wacom-Intuos-Pro-Gen2-Protocol.md). Offsets include the
@@ -37,7 +37,7 @@ page `0xFF00`) carries finger touch in the [64-byte container](Wacom-Consumer-Ta
 | `0x03`, `0x04` | 22, 32 | PTK-540WL over Bluetooth: 2 or 3 packed frames |
 | `0x80` | 32 | ACK-40401 dongle link status; see [wireless](Wacom-Wireless-and-Battery.md) |
 
-## Pen report: status byte `[1]`
+## Pen Report: Status Byte `[1]`
 
 Byte 1 decides the packet's kind:
 
@@ -73,7 +73,7 @@ so it is not an exit for an ordinary pen. (observed)
 `0xA0` (proximity set, confidence clear) is an ordinary hover with real
 pressure on the GD-0608-U, not boundary noise. (observed)
 
-## Pen data packet (types `0x00`–`0x03`)
+## Pen Data Packet (Types `0x00`–`0x03`)
 
 | Offset | Field | Confidence |
 | --- | --- | --- |
@@ -104,7 +104,7 @@ OpenTabletDriver keep the bit, which makes the range 40640 × 32480 (203.2 ×
 maxima maps only the top-left quarter of the tablet. Intuos3 and later keep
 the bit in the kernel too. (observed + kernel)
 
-## Tool enter packet
+## Tool Enter Packet
 
 ```
 serial  = ([3] & 0x0F) << 28 | [4] << 20 | [5] << 12 | [6] << 4 | [7] >> 4
@@ -119,7 +119,7 @@ TabletKit packs the same nibbles into 16 bits differently from the kernel:
 `([7] & 0x0F) << 12` and `([8] & 0xF0) << 4`. The two agree only when the
 high nibble of `[8]` is zero, as it is in every capture so far.
 
-## Other packets
+## Other Packets
 
 **Mouse, type `0x06`.** `[6]` buttons: `0x01` left, `0x02` middle, `0x04`
 right, `0x08`/`0x10` side. Wheel: `([7] & 0x80) >> 7` minus
@@ -130,8 +130,8 @@ left, `0x08` middle, `0x10` right. Lens cursors use a different button map.
 (kernel)
 
 **Airbrush, type `0x0A`.** Wheel `[6] << 2 | ([7] >> 6) & 3`; tilt as in the
-pen packet. It arrives between pen packets and has no pressure, so it must not
-be read as a tip release. (kernel)
+pen packet. It arrives between pen packets and has no pressure, so don't read it
+as a tip release. (kernel)
 
 **Rotation, type `0x05`.** 11-bit value `t = [6] << 3 | ([7] >> 5) & 7`, with
 `[7] & 0x20` selecting the half-turn. The kernel maps it to −900…899 for one
@@ -144,7 +144,7 @@ type, not a barrel button, and bytes 6–7 hold the angle, not pressure. A
 decoder that reads it as a pen packet presses button 1 and jumps pressure on
 every other report. (observed, PTH-850 with an Intuos4/5 Art Pen)
 
-## ExpressKeys and touch ring
+## ExpressKeys and Touch Ring
 
 **Intuos5 and Intuos Pro gen 1, report `0x03`.** The same layout arrives over
 USB and through the ACK-40401 dongle. (observed, PTH-850)

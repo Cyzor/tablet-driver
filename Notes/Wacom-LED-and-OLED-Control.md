@@ -1,14 +1,13 @@
-# Wacom ring LEDs and ExpressKey OLEDs
+# Wacom Ring LEDs and ExpressKey OLEDs
 
 Host-to-tablet feature reports that light the touch-ring mode LEDs, and the
 Intuos4's per-key OLED displays. All are HID **feature** reports
 (SET_REPORT). Confidence labels: **observed** · **kernel** · **unverified**.
-"Observed" here means seen in the traffic Wacom's own driver sends, or
-confirmed by the LEDs responding on our hardware.
+"Observed" here means the LEDs responded on real hardware.
 
-## Intuos Pro gen 2 (PTH-x60)
+## Intuos Pro Gen 2 (PTH-x60)
 
-**USB:** two reports, sent as a pair on every mode change:
+**USB:** send two reports as a pair on every mode change:
 
 ```
 0x31  [0x31, 0x46, 0x46, 0x46, 0x46, 0x46]   brightness, all channels (0x46 = 70)
@@ -34,13 +33,13 @@ the tablet's serial at `[11]`–`[18]`; clear those bytes before writing.
 
 **Ruled out on USB** (tested on a live PTH-660/860):
 
-- `0x3B`: not declared in the descriptor; writes are silently ignored.
+- `0x3B`: not declared in the descriptor; the tablet silently ignores writes.
 - `0xCC`: declared (usage page `0xFF0D`, usage `0x10CC`), but the Linux
   generic-device layout `[0xCC, brightness, slot, …]` doesn't move the ring.
 - Report 35 (usage `0x0055`, 1 byte, on the second interface): no visible
   effect; purpose unknown.
 
-## Intuos5 and Intuos Pro gen 1
+## Intuos5 and Intuos Pro Gen 1
 
 **Wired:** report `0x20`, 9 bytes, with everything packed into `[1]`:
 
@@ -58,7 +57,7 @@ and makes mode changes toggle the corner marks instead. (observed, PTH-850)
 **Through the ACK-40401 dongle:** report `0x03`, 13 bytes, with the same
 packed value at `[4]`. (kernel)
 
-## Intuos4 and earlier
+## Intuos4 and Earlier
 
 Report `0x20`, 9 bytes: `[1]` = luminance (bits 0–4) | LED (bits 5–7);
 `[2]` = high luminance (bits 0–4). (kernel)
@@ -74,14 +73,14 @@ Report `0x20`, 9 bytes, driving both rings:
 [2]–[8] = 0
 ```
 
-Wacom's driver sends no brightness bytes. On the DTK-2400 this report is
-declared on the digitizer interface itself, with no separate LED device on
-the bus. (observed, DTK-2400)
+The report carries no brightness bytes. On the DTK-2400, the digitizer
+interface itself declares this report, and no separate LED device appears
+on the bus. (observed, DTK-2400)
 
 ## Intuos4 ExpressKey OLEDs
 
-Eight 64 × 32 displays, one beside each key, written as images over feature
-reports (`wacom_led_putimage()` in `wacom_sys.c`):
+Eight 64 × 32 displays, one beside each key. The host writes images to
+them over feature reports (`wacom_led_putimage()` in `wacom_sys.c`):
 
 ```
 0x21  [0x21, 0x01]                         begin transfer
@@ -95,7 +94,7 @@ bit-scrambled encoding. (kernel; no Intuos4 on hand)
 
 Intuos5 and Intuos Pro have no key displays.
 
-## Devices the host can't set
+## Devices the Host Can't Set
 
 The ExpressKey Remote lights its own ring-mode LEDs; the host can only read
 which mode is active (see [pen displays](Wacom-Pen-Display-Protocols.md#expresskey-remote-ekr-100)). (observed)

@@ -1,4 +1,4 @@
-# Tablet protocol notes
+# Tablet Protocol Notes
 
 What MockTab has learned about how drawing tablets talk to a computer, and
 how macOS expects a driver to talk to apps. The pages favor what has been
@@ -7,19 +7,18 @@ pointer to its source rather than a copy.
 
 Each claim carries one of three labels:
 
-- **observed**: seen on hardware, in the device's own HID descriptor, or
-  in observations of the behavior of the vendor's driver;
+- **observed**: seen on hardware or in the device's own HID descriptor;
 - **kernel**: from the Linux driver (`drivers/hid/wacom_wac.c`,
   `wacom_sys.c`) only;
 - **unverified**: neither, kept because it's the best lead available.
 
 TabletKit, the decoder library in `TabletKit/`, implements these
-formats; its decoder for each is named on the page, and each protocol
+formats; each page names its decoder, and each protocol
 page ends with links to the tests that check it.
-[Measurement methods](Measurement-Methods.md) describes how the observations
-are made.
+[Measurement methods](Measurement-Methods.md) explains how to
+repeat each observation.
 
-## Wacom pen protocols
+## Wacom Pen Protocols
 
 | Page | Tablets |
 | --- | --- |
@@ -27,9 +26,9 @@ are made.
 | [Intuos Pro gen 2](Wacom-Intuos-Pro-Gen2-Protocol.md) | PTH-460/660/860, CTL-4100/6100, and many pen displays; USB and Bluetooth |
 | [Intuos 10-byte format](Wacom-Intuos-10-Byte-Protocol.md) | Intuos 1–5, Intuos Pro gen 1, Intuos3, CTL/CTH-x90, and x72 |
 | [Consumer tablets](Wacom-Consumer-Tablet-Protocols.md) | Graphire, Bamboo, Intuos 2013; the shared touch and key container |
-| [Pen displays](Wacom-Pen-Display-Protocols.md) | Cintiq, DTU, PL; Cintiq touch; ExpressKey Remote |
+| [Pen displays](Wacom-Pen-Display-Protocols.md) | Cintiq and PL; Cintiq touch; ExpressKey Remote |
 
-## Across Wacom tablets
+## Across Wacom Tablets
 
 | Page | Covers |
 | --- | --- |

@@ -1,4 +1,4 @@
-# UC-Logic protocol (Huion, Gaomon, XP-Pen, UGEE)
+# UC-Logic Protocol (Huion, Gaomon, XP-Pen, UGEE)
 
 Many tablets from Huion, Gaomon, XP-Pen, UGEE, and Parblo run on chips from
 one family, named UC-Logic after the company that started it. TabletKit
@@ -8,10 +8,10 @@ they say about themselves in `UCLogicTabletInfo`.
 Labels work as in [the README](README.md), with **kernel** meaning Linux's
 `hid-uclogic` driver. **Observed** covers a Xencelabs Pen Display 24, which
 speaks UGEE v2, and public recordings of Huion tablets in the
-[DIGImend tablet collection](https://github.com/DIGImend/tablets). No
-Huion tablet has been tried under macOS.
+[DIGImend tablet collection](https://github.com/DIGImend/tablets). Nobody
+has tried a Huion tablet under macOS yet.
 
-## Two protocols
+## Two Protocols
 
 | | Huion v2 | UGEE v2 |
 | --- | --- | --- |
@@ -48,7 +48,7 @@ through IOKit's USB device interface can, without opening the device and
 while a HID connection is open. A Wacom tablet answers unknown descriptors
 with a USB stall, which is harmless. (observed)
 
-## Self-description
+## Self-Description
 
 Offsets count from the start of the raw descriptor, including its two-byte
 USB header. Values are little-endian.
@@ -78,7 +78,7 @@ The Xencelabs Pen Display 24 answers string descriptor 100 with 105000 ×
 59000, pressure 8191, 3 buttons, and 5080 lines per inch, matching its
 known specs. (observed)
 
-## Pen report
+## Pen Report
 
 | Field | Huion v2, report `0x08` | UGEE v2, report `0x02` |
 | --- | --- | --- |
@@ -117,7 +117,7 @@ kernel does. (kernel, observed in recordings)
 These pens have no serial number or tool code, so a driver can't tell one
 pen from another of the same kind.
 
-## Tablet buttons
+## Tablet Buttons
 
 With bit 4 of the status byte set, a report carries the tablet's own
 controls instead of pen data. (kernel, observed)
@@ -146,4 +146,3 @@ TabletKit doesn't decode them yet. (observed)
 
 - [`UCLogicTabletInfoTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/UCLogicTabletInfoTests.swift)
 - [`UCLogicDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/UCLogicDecoderTests.swift)
-- [`UCLogicRecordedTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/UCLogicRecordedTests.swift)

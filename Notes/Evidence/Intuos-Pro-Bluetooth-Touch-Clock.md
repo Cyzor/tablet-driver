@@ -1,4 +1,4 @@
-# Intuos Pro Bluetooth touch clock: 0.1 ms per count
+# Intuos Pro Bluetooth Touch Clock: 0.1 ms per Count
 
 Supports [Intuos Pro gen 2: the Bluetooth touch frame](../Wacom-Intuos-Pro-Gen2-Protocol.md).
 
@@ -34,5 +34,5 @@ Over the longest unbroken run in this session, 1,274 frames and 127,300
 counts took 12,757.5 ms: 0.1002 ms per count. A second session gave the
 same rate. At that rate the 16-bit clock wraps every 6.55 s.
 
-Only the frame header and clock bytes are shown. The rest of each report,
-including the pen's serial number, is left out.
+This excerpt shows only the frame header and clock bytes. It leaves out the
+rest of each report, including the pen's serial number.

@@ -1,4 +1,4 @@
-# Wacom wireless links and battery reporting
+# Wacom Wireless Links and Battery Reporting
 
 How each wireless Wacom tablet connects, and where its battery level
 appears. Byte layouts for the pen data itself are on the protocol pages.
@@ -37,7 +37,7 @@ On the gen 3, raw values with bit 7 set (`0xCC`, `0xE4`) only appear while
 charging, and the remaining bits never exceed 100. That is what settles the
 split. (observed)
 
-## ACK-40401 dongle status, report `0x80`
+## ACK-40401 Dongle Status, Report `0x80`
 
 32 bytes. `[1]` bit 0 set means a tablet is linked. While linked, `[5]`
 carries the battery level (above) and `[6]`–`[7]` the linked tablet's

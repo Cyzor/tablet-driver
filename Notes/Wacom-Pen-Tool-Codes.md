@@ -1,4 +1,4 @@
-# Wacom pen tool codes
+# Wacom Pen Tool Codes
 
 Every Wacom pen reports a tool code (what kind of pen) and a serial (which
 pen). Where each sits in a report depends on the protocol; see the protocol
@@ -6,7 +6,7 @@ pages. This page lists only codes seen on hardware and the rules that hold
 across them. For the full list of pens, see libwacom's stylus database
 (`data/wacom-stylus.tablet` in the libwacom repository).
 
-## Codes seen on hardware
+## Codes Seen on Hardware
 
 | Code | Pen | Seen on |
 | --- | --- | --- |
@@ -36,7 +36,7 @@ wherever a protocol provides them. (observed)
 
 **Rotation.** Only the Art Pen family reports barrel rotation. Other pens
 leave the rotation field at a constant or at noise, so gate on the tool
-code. Where the tool code can be missed (Bluetooth on the [PTK-x70](Wacom-Intuos-Pro-Gen3-Protocol.md)), use the protocol's "no reading" value instead. (observed)
+code. Where a driver can miss the tool code (Bluetooth on the [PTK-x70](Wacom-Intuos-Pro-Gen3-Protocol.md)), use the protocol's "no reading" value instead. (observed)
 
 **Pro Pen 3** has no eraser end and three side-switch positions.
 
@@ -44,7 +44,7 @@ code. Where the tool code can be missed (Bluetooth on the [PTK-x70](Wacom-Intuos
 ends. Both fields read 0 out of proximity on the Intuos Pro gen 3.
 (observed)
 
-## Art Pen generations
+## Art Pen Generations
 
 | Full ID | Pen | libwacom group |
 | --- | --- | --- |
@@ -66,12 +66,6 @@ spreads the ID across nibbles in its own way (see the [Intuos 10-byte page](Waco
 and a decoder that stores 16 bits has to fold the high bits down. TabletKit
 folds `0x16802` to `0x1E02`, which is no longer the same number as libwacom's.
 Compare codes only within one convention. (kernel)
-
-## Old notes this replaces
-
-Earlier tables in these notes listed `0x0804` as the Pro Pen 3 and
-`0x0812` as an Art Pen. On hardware, `0x0804` is the Art Pen and the Pro
-Pen 3 is `0x0200`; the Linux driver lists `0x812` as the Inking Pen.
 
 ## Tests
 

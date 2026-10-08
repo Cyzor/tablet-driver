@@ -1,4 +1,4 @@
-# PTK-870 dial: 24 steps per turn
+# PTK-870 Dial: 24 Steps per Turn
 
 Supports [Intuos Pro gen 3: USB ExpressKey report `0x11`](../Wacom-Intuos-Pro-Gen3-Protocol.md#usb-expresskey-report-0x11).
 
