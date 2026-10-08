@@ -419,7 +419,10 @@ struct InfoView: View {
                 } else {
                     statusIcon(ok)
                 }
+                // One line: the form sized the grid for a wrapped value but
+                // drew it truncated, leaving a blank line under the table.
                 Text(value)
+                    .lineLimit(1)
             }
             .gridColumnAlignment(.leading)
 
