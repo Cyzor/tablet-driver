@@ -256,6 +256,33 @@ final class SettingsWindowManager: ObservableObject {
 
     // MARK: - Multi-window
 
+    /// Connected tablets the Tablet menu lists with a checkmark, minus
+    /// companions and the dongle, which fold into another window.
+    ///
+    /// Static, and so is `hasConnectedTablet`: views read them while
+    /// `shared` may still be initializing (restored windows build their views
+    /// inside its init), and touching `shared` there re-enters it and traps.
+    static var connectedTabletKeys: [DeviceInstanceKey] {
+        let tm = TabletManager.shared
+        return DeviceRegistry.shared.knownTablets.compactMap { tablet in
+            guard tm.connectedProductIDs.contains(tablet.productID),
+                !DeviceCompanions.isConnectedCompanion(
+                    productID: tablet.productID, connectedProductIDs: tm.connectedProductIDs),
+                !tm.isDongleRawProductID(tablet.productID)
+            else { return nil }
+            return tablet.instanceKey
+        }
+    }
+
+    /// True when any tablet is connected. Its window may exist but sit
+    /// behind others or in another tab group, so showing it still helps.
+    static var hasConnectedTablet: Bool { !connectedTabletKeys.isEmpty }
+
+    /// Same as choosing each checked tablet in the Tablet menu.
+    func showAllConnectedTablets() {
+        for key in Self.connectedTabletKeys { openWindow(forInstanceKey: key) }
+    }
+
     @discardableResult
     func openWindow(forInstanceKey key: DeviceInstanceKey) -> SettingsWindowController? {
         // A companion peripheral (Xencelabs Quick Keys puck/dongle) never

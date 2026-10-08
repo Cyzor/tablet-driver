@@ -371,6 +371,15 @@ struct InfoView: View {
                 actionLabel: String(localized: "Fix…", comment: "Button on the Conflicts row that opens an alert describing the detected conflicts"),
                 actionHelp: String(localized: "Show details about detected conflicts with other tablet drivers and how to resolve them.", comment: "Tooltip on Fix button for Conflicts row")
             )
+
+            row(
+                String(localized: "Tablets", comment: "Row label in Info tab status table — tablets the app remembers"),
+                value: String(localized: "\(DeviceRegistry.shared.knownTablets.count) known", comment: "Tablets status value: how many tablets the app remembers"),
+                ok: tabletManager.connectedProductIDs.isEmpty ? nil : true,
+                action: { SettingsWindowManager.shared.showAllConnectedTablets() },
+                actionLabel: String(localized: "Show All Connected Tablets", comment: "Button on the Tablets row: open a settings window for every connected tablet"),
+                actionHelp: String(localized: "Brings every connected tablet's window to the front, opening any that are closed.", comment: "Tooltip on Show All Connected Tablets button"),
+                actionDisabled: !SettingsWindowManager.hasConnectedTablet)
         }
     }
 
@@ -391,7 +400,8 @@ struct InfoView: View {
         symbolColor: Color? = nil,
         action: (() -> Void)? = nil,
         actionLabel: String? = nil,
-        actionHelp: String? = nil
+        actionHelp: String? = nil,
+        actionDisabled: Bool = false
     ) -> some View {
         GridRow {
             Text(label)
@@ -423,6 +433,7 @@ struct InfoView: View {
                     Button(actionLabel, action: action)
                         .buttonStyle(.bordered)
                         .controlSize(.small)
+                        .disabled(actionDisabled)
                         .help(actionHelp ?? "")
                         // Sized to its own label — equal widths would stretch
                         // "Enable" to "Open System Settings"'s width.
