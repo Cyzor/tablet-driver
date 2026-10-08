@@ -194,10 +194,25 @@ struct DeviceStatusBar: View {
 
     private var tabletName: String {
         guard let context = context, context.isConnected else {
-            return String(localized: "No device", comment: "Device name in status bar when no tablet is connected")
+            // Name the window's own tablet even while it's away, so the bar
+            // says whose window this is.
+            guard let key = instanceKey else {
+                return String(localized: "No device", comment: "Device name in status bar when no tablet is connected")
+            }
+            if let t = registry.row(forKey: key) { return t.nickname }
+            return TabletManager.deviceName(forProductID: key.productID)
         }
         if let t = registry.row(forKey: context.instanceKey) { return t.nickname }
         return TabletManager.deviceName(forProductID: context.productID)
+    }
+
+    /// Another connected tablet, while this window's isn't. Its input
+    /// doesn't reach this window's settings.
+    private var otherTabletInUse: DeviceContext? {
+        guard instanceKey != nil, context?.isConnected != true,
+            let active = tabletManager.activeContext, active.isConnected, active !== context
+        else { return nil }
+        return active
     }
 
     private var connectionSymbol: String {
@@ -209,7 +224,7 @@ struct DeviceStatusBar: View {
 
     private var connectionLabel: String {
         guard let context = context, context.isConnected else {
-            return String(localized: "Off", comment: "Connection status when device is disconnected")
+            return String(localized: "Not connected", comment: "Connection status when this window's tablet is disconnected")
         }
         return context.transport
     }
@@ -266,6 +281,11 @@ struct DeviceStatusBar: View {
     }
 
     private var toolName: String {
+        if let other = otherTabletInUse {
+            let name = registry.row(forKey: other.instanceKey)?.nickname
+                ?? TabletManager.deviceName(forProductID: other.productID)
+            return String(localized: "\(name) in use", comment: "Status bar tool slot when another tablet, not this window's, is connected and in use")
+        }
         if let context = context, let toolID = context.activeToolID {
             if let t = registry.knownTools.first(where: { $0.id == toolID }) { return t.nickname }
             return toolID
