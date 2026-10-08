@@ -28,3 +28,13 @@ jobs:
             build
       - name: Run standalone checks
         run: sh tools/tests/run-all-tests.sh
+      # Debug builds only the runner's own architecture, so this is the first
+      # place an Intel-only compile error would show up before a release.
+      - name: Build universal release
+        run: |
+          xcodebuild -project MockTab.xcodeproj -scheme MockTab \
+            -configuration Release -derivedDataPath build/universal \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            build
+          tools/release/arch-check.sh build/universal/Build/Products/Release/MockTab.app

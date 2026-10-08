@@ -69,6 +69,7 @@ if [[ ! -d "$APP_PATH" ]]; then
 fi
 
 tools/release/size-watch.sh "$APP_PATH"
+tools/release/arch-check.sh "$APP_PATH"
 
 # Build stamp for the snapshot tag message; the update page matches on it.
 STAMP_PATH="$DIST_DIR/MockTab-snapshot.stamp"

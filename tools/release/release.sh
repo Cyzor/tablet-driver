@@ -78,6 +78,7 @@ if [[ ! -d "$APP_PATH" ]]; then
 fi
 
 tools/release/size-watch.sh "$APP_PATH"
+tools/release/arch-check.sh "$APP_PATH"
 
 echo "==> Notarizing .app"
 # Notarize and staple the .app *before* packaging it. A ticket stapled to

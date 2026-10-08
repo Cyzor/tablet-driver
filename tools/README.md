@@ -15,6 +15,7 @@ Builds, signs, notarizes, and packages the app.
 - `release.sh` builds a numbered release. `release-and-publish.sh` also tags it and creates a draft GitHub release.
 - `build-snapshot.sh` and `snapshot-and-publish.sh` do the same for the rolling snapshot between releases. `.github/workflows/snapshot.yml` can also build one. Pick one path per snapshot.
 - `update-latest.sh` records a published build in mocktab-web so the website's update page lists it. GitHub runs it after you publish.
+- `size-watch.sh` warns when the app grows or links something new. `arch-check.sh` fails the build unless the app runs on both Apple silicon and Intel. The release scripts run both.
 - `idle-check.sh` compares the running app's idle CPU and memory against a budget.
 
 Publishing creates a draft. Nothing goes public until you click Publish on GitHub.
