@@ -20,16 +20,21 @@ struct ButtonBinding: Codable, Equatable {
             ringCycle2, ringSelectSlot2
     }
 
-    var kind: Kind = .none
+    var kind: Kind = .none {
+        didSet { unrecognizedKind = nil }
+    }
     var keyCode: UInt16 = 0
     var modifierFlags: UInt64 = 0  // CGEventFlags raw value
     var keyLabel: String = ""  // display string for the key (e.g. "Z", "↩", "Space")
 
     /// Fields a future app version added that this build doesn't know about.
     /// Preserved verbatim on re-encode — see TabletSettings.Profile.unknownFields.
-    /// Note: this only helps with *added fields*; an unrecognized `kind` raw
-    /// value still fails to decode, since Kind has no "unknown case" slot.
     private var unknownFields: [String: JSONValue] = [:]
+
+    /// A kind from a newer build. It acts as `.none` here but is written back
+    /// unchanged, so one new action can't fail a whole saved array of
+    /// bindings. Cleared when the user picks another kind.
+    private var unrecognizedKind: String?
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
         case kind, keyCode, modifierFlags, keyLabel
@@ -37,7 +42,9 @@ struct ButtonBinding: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        kind = try c.decode(Kind.self, forKey: .kind)
+        let rawKind = try c.decode(String.self, forKey: .kind)
+        kind = Kind(rawValue: rawKind) ?? .none
+        unrecognizedKind = Kind(rawValue: rawKind) == nil ? rawKind : nil
         keyCode = try c.decode(UInt16.self, forKey: .keyCode)
         modifierFlags = try c.decode(UInt64.self, forKey: .modifierFlags)
         keyLabel = try c.decode(String.self, forKey: .keyLabel)
@@ -47,7 +54,7 @@ struct ButtonBinding: Codable, Equatable {
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(kind, forKey: .kind)
+        try c.encode(unrecognizedKind ?? kind.rawValue, forKey: .kind)
         try c.encode(keyCode, forKey: .keyCode)
         try c.encode(modifierFlags, forKey: .modifierFlags)
         try c.encode(keyLabel, forKey: .keyLabel)
@@ -55,7 +62,8 @@ struct ButtonBinding: Codable, Equatable {
     }
 
     static func == (lhs: ButtonBinding, rhs: ButtonBinding) -> Bool {
-        lhs.kind == rhs.kind && lhs.keyCode == rhs.keyCode
+        lhs.kind == rhs.kind && lhs.unrecognizedKind == rhs.unrecognizedKind
+            && lhs.keyCode == rhs.keyCode
             && lhs.modifierFlags == rhs.modifierFlags && lhs.keyLabel == rhs.keyLabel
     }
 

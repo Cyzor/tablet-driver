@@ -11,7 +11,10 @@
 //   1. Round-trip: a struct decoded from JSON containing an unrecognized
 //      field (simulating a newer app version's format) must re-emit that
 //      field unchanged when re-encoded by this build.
-//   2. Decode-failure detection: JSONDecoder throws (rather than silently
+//   2. Unknown enum values: a binding kind or slot action this build doesn't
+//      know acts as none/off, is written back unchanged, and doesn't fail
+//      the array it sits in.
+//   3. Decode-failure detection: JSONDecoder throws (rather than silently
 //      degrading) when a required field is missing, which is the signal
 //      TabletSettings uses to block a save that would clobber unparseable
 //      newer-format data. See TabletSettings+Persistence.swift,
@@ -104,6 +107,63 @@ do {
     expect(
         (roundTripped?["hapticStrength"] as? Int) == 7,
         "ButtonBinding preserves unknown field 'hapticStrength' on re-encode")
+}
+
+// MARK: - Unrecognized enum values from a newer build
+
+do {
+    // One binding with a kind this build doesn't know, inside the same array
+    // shape the express keys are stored in. A single unknown entry must not
+    // fail the whole array.
+    let futureJSON = """
+        [{"kind":"leftClick","keyCode":0,"modifierFlags":0,"keyLabel":""},
+         {"kind":"futureAction","keyCode":3,"modifierFlags":0,"keyLabel":""}]
+        """
+    let bindings = try JSONDecoder().decode([ButtonBinding].self, from: Data(futureJSON.utf8))
+    expect(bindings.count == 2, "Array with an unknown binding kind still decodes")
+    expect(bindings[0].kind == .leftClick, "Known binding beside an unknown one is intact")
+    expect(bindings[1].kind == .none, "Unknown binding kind acts as none")
+    expect(bindings[1] != .none, "Unknown binding kind isn't equal to a real none")
+
+    let reEncoded = try JSONEncoder().encode(bindings)
+    let roundTripped = try JSONSerialization.jsonObject(with: reEncoded) as? [[String: Any]]
+    expect(
+        (roundTripped?[1]["kind"] as? String) == "futureAction",
+        "Unknown binding kind is written back unchanged")
+    expect(
+        (roundTripped?[1]["keyCode"] as? Int) == 3,
+        "Fields of an unknown binding kind are written back unchanged")
+
+    var reassigned = bindings[1]
+    reassigned.kind = .rightClick
+    let reassignedJSON = try JSONSerialization.jsonObject(
+        with: JSONEncoder().encode(reassigned)) as? [String: Any]
+    expect(
+        (reassignedJSON?["kind"] as? String) == "rightClick",
+        "Picking a new kind replaces the unknown one")
+}
+
+do {
+    let bindingJSON = try String(data: JSONEncoder().encode(ButtonBinding.none), encoding: .utf8)!
+    let futureJSON = """
+        {"id":"9E5A1B2C-1234-4321-ABCD-000000000002","label":"Brush","action":"futureAction",
+         "cwBinding":\(bindingJSON),"ccwBinding":\(bindingJSON),"speed":2.0}
+        """
+    var slot = try JSONDecoder().decode(ControlSlot.self, from: Data(futureJSON.utf8))
+    expect(slot.action == .off, "Unknown slot action acts as off")
+
+    let roundTripped = try JSONSerialization.jsonObject(
+        with: JSONEncoder().encode(slot)) as? [String: Any]
+    expect(
+        (roundTripped?["action"] as? String) == "futureAction",
+        "Unknown slot action is written back unchanged")
+
+    slot.setAction(.off)
+    let cleared = try JSONSerialization.jsonObject(
+        with: JSONEncoder().encode(slot)) as? [String: Any]
+    expect(
+        (cleared?["action"] as? String) == "off",
+        "Choosing Off explicitly replaces the unknown action")
 }
 
 // MARK: - ControlSlot.LEDColor additive-field precedent (a already exists)

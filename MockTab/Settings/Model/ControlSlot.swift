@@ -32,7 +32,9 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     /// Human-readable label shown in the UI (e.g. "Scroll", "Zoom", "Brush Size").
     var label: String = ""
     /// What the ring/strip does when rotated.
-    var action: Action = .scroll
+    var action: Action = .scroll {
+        didSet { unrecognizedAction = nil }
+    }
     /// Key binding for clockwise rotation (used when action == .keyPress).
     var cwBinding: ButtonBinding = .none
     /// Key binding for counter-clockwise rotation (used when action == .keyPress).
@@ -50,6 +52,11 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     /// Fields a future app version added that this build doesn't know about.
     /// Preserved verbatim on re-encode — see TabletSettings.Profile.unknownFields.
     private var unknownFields: [String: JSONValue] = [:]
+
+    /// An action from a newer build. It acts as `.off` here but is written
+    /// back unchanged, so the slot keeps it for the newer build. Cleared when
+    /// the user picks another action.
+    private var unrecognizedAction: String?
 
     init(
         id: UUID = UUID(), label: String = "", action: Action = .scroll,
@@ -73,7 +80,9 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
         label = try c.decode(String.self, forKey: .label)
-        action = try c.decode(Action.self, forKey: .action)
+        let rawAction = try c.decode(String.self, forKey: .action)
+        action = Action(rawValue: rawAction) ?? .off
+        unrecognizedAction = Action(rawValue: rawAction) == nil ? rawAction : nil
         cwBinding = try c.decode(ButtonBinding.self, forKey: .cwBinding)
         ccwBinding = try c.decode(ButtonBinding.self, forKey: .ccwBinding)
         speed = try c.decode(Double.self, forKey: .speed)
@@ -86,7 +95,7 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
         try c.encode(label, forKey: .label)
-        try c.encode(action, forKey: .action)
+        try c.encode(unrecognizedAction ?? action.rawValue, forKey: .action)
         try c.encode(cwBinding, forKey: .cwBinding)
         try c.encode(ccwBinding, forKey: .ccwBinding)
         try c.encode(speed, forKey: .speed)
@@ -121,7 +130,7 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     /// different ranges (e.g. Zoom's 0...8 into Rotate's 0...1), or a
     /// stale label.
     mutating func setAction(_ newAction: Action) {
-        guard newAction != action else { return }
+        guard newAction != action || unrecognizedAction != nil else { return }
         action = newAction
         label = newAction.displayLabel
         if let defaultSpeed = newAction.defaultSpeedOnSwitch {
@@ -131,6 +140,7 @@ struct ControlSlot: Codable, Equatable, Identifiable {
 
     static func == (lhs: ControlSlot, rhs: ControlSlot) -> Bool {
         lhs.id == rhs.id && lhs.label == rhs.label && lhs.action == rhs.action
+            && lhs.unrecognizedAction == rhs.unrecognizedAction
             && lhs.cwBinding == rhs.cwBinding && lhs.ccwBinding == rhs.ccwBinding
             && lhs.speed == rhs.speed && lhs.ledColor == rhs.ledColor
     }
