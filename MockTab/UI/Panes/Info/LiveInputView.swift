@@ -256,6 +256,7 @@ private struct LiveInputView: View {
                 .gridColumnAlignment(.trailing)
             Text(value)
                 .monospacedDigit()
+                .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

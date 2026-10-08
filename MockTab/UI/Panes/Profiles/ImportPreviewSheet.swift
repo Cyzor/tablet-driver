@@ -155,6 +155,7 @@ struct ImportPreviewSheet: View {
                 HStack(spacing: 6) {
                     Text(entry.nickname).fontWeight(.medium)
                         .foregroundStyle(isExcluded ? Color.secondary : Color.primary)
+                        .lineLimit(1)
                     Text(entry.modelName).appFont(.settingsBadge)
                         .foregroundStyle(.secondary)
                 }

@@ -410,12 +410,14 @@ struct DevicesView: View {
             // Header shows which tablet's tools are listed
             HStack(spacing: 0) {
                 Text("Tools").appFont(.headline)
+                    .fixedSize()
                 if let id = effectiveTabletID,
                     let tablet = registry.knownTablets.first(where: { $0.id == id })
                 {
                     Text(" — \(tablet.nickname)")
                         .appFont(.headline)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
         }

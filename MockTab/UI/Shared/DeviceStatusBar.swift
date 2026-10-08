@@ -22,6 +22,7 @@ private struct StatusCaptionLabel: View {
             Text(name)
                 .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
     }
 
@@ -119,7 +120,7 @@ struct DeviceStatusBar: View {
                 Divider()
             }
             HStack(spacing: 0) {
-                statusItem(symbol: "rectangle",              text: tabletName)
+                statusItem(symbol: "rectangle",              text: tabletName, isName: true)
                 Divider().frame(height: 12)
                 statusItem(symbol: connectionSymbol,         text: connectionLabel)
                 if let (sym, label) = batteryItem {
@@ -138,7 +139,7 @@ struct DeviceStatusBar: View {
                     statusItem(symbol: sym, text: label, tint: companionBatteryTint)
                 }
                 Divider().frame(height: 12)
-                statusItem(symbol: "pencil.tip.crop.circle", text: toolName)
+                statusItem(symbol: "pencil.tip.crop.circle", text: toolName, isName: true)
                 if let appName = activeAppName {
                     Divider().frame(height: 12)
                     statusItem(symbol: "app.badge.checkmark", text: appName)
@@ -173,7 +174,11 @@ struct DeviceStatusBar: View {
     }
 
     @ViewBuilder
-    private func statusItem(symbol: String, text: String, tint: Color = .secondary) -> some View {
+    /// Names are user-typed and can be any length: they truncate first, so
+    /// connection and battery stay readable.
+    private func statusItem(
+        symbol: String, text: String, tint: Color = .secondary, isName: Bool = false
+    ) -> some View {
         HStack(spacing: 4) {
             Image(systemName: symbol)
                 .appFont(.settingsBadge)
@@ -182,8 +187,10 @@ struct DeviceStatusBar: View {
             Text(text)
                 .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
         .padding(.horizontal, 8)
+        .layoutPriority(isName ? 0 : 1)
     }
 
     // MARK: - Computed values

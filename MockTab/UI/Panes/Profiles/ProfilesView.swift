@@ -695,6 +695,7 @@ private struct ConfigurationSummaryView: View {
                 Text(tablet.nickname)
                     .appFont(.settingsLabel)
                     .fontWeight(.medium)
+                    .lineLimit(1)
                 Text(tablet.modelName)
                     .appFont(.settingsBadge)
                     .foregroundStyle(.secondary)
@@ -750,6 +751,7 @@ private struct ConfigurationSummaryView: View {
             Text(tool.nickname.isEmpty ? tool.displayID : tool.nickname)
                 .appFont(.settingsBadge)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
             if !nonDefault.isEmpty {
                 Text(
                     "(\(nonDefault.joined(separator: String(localized: ", ", comment: "List separator"))))"
