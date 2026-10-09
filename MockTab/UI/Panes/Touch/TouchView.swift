@@ -385,7 +385,7 @@ struct TouchView: View {
             settings.touchAreaX, settings.touchAreaY,
             settings.touchAreaWidth, settings.touchAreaHeight
         )
-        let defaults: TouchState = (false, false, false, false, 1.0, true, false, true, false, false, 0, 0, 1, 1)
+        let defaults: TouchState = (false, false, false, false, 1.25, true, false, false, false, false, 0, 0, 1, 1)
         applyTouchState(defaults, undoTo: old)
     }
 
