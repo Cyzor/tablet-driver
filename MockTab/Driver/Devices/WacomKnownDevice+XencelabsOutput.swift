@@ -279,26 +279,27 @@ extension WacomKnownDevice {
     /// Starts (or restarts) the repeating battery-level poll once a dongle
     /// relink is confirmed live. 60 s cadence: battery drains slowly enough
     /// that this is purely a "keep the status bar honest" refresh, not a
-    /// latency-sensitive read. Runs on a background queue rather than main
-    /// since `sendXencelabsOutput` can block for a few ms on write pacing.
+    /// latency-sensitive read. On HIDThread, which owns the write pacing and
+    /// caches `sendXencelabsOutput` touches.
     func startXencelabsBatteryPolling() {
-        xencelabsBatteryPollTimer?.cancel()
-        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "xencelabs.battery.poll"))
-        timer.schedule(deadline: .now() + 60, repeating: 60)
-        timer.setEventHandler { [weak self] in
+        xencelabsBatteryPollTimer.map { CFRunLoopTimerInvalidate($0) }
+        let timer = CFRunLoopTimerCreateWithHandler(
+            kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 60, 60, 0, 0
+        ) { [weak self] _ in
             guard let self, let identity = self.xencelabsDongleIdentity else { return }
             // Stage 1 staleness watchdog (log-only): silence past 2 poll
             // intervals may mean the link dropped without an explicit
-            // `.wireless(.lost)`. No recovery action yet.
+            // `.wireless(.lost)`. Logged once per silence, on the first poll
+            // past the threshold: a sleeping puck is silent for hours.
             if let lastReportAt = self.xencelabsLastReportAt {
                 let idleNanos = DispatchTime.now().uptimeNanoseconds - lastReportAt
-                if idleNanos > 120 * NSEC_PER_SEC {
+                if idleNanos > 120 * NSEC_PER_SEC, idleNanos <= 180 * NSEC_PER_SEC {
                     logger.warning("\(self.deviceSpec.name, privacy: .public): no Xencelabs reports for \(idleNanos / NSEC_PER_SEC, privacy: .public)s — possible silent dongle link loss")
                 }
             }
             self.sendXencelabsOutput([0x02, 0xB4, 0x10, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "battery poll")
         }
-        timer.resume()
+        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
         xencelabsBatteryPollTimer = timer
     }
 

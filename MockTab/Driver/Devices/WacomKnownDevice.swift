@@ -352,7 +352,7 @@ final class WacomKnownDevice: TabletDevice {
     /// XencelabsDecoder) is unsolicited-looking but is actually only ever
     /// sent in response to this poll — there's no push update on this
     /// hardware.
-    var xencelabsBatteryPollTimer: DispatchSourceTimer?
+    var xencelabsBatteryPollTimer: CFRunLoopTimer?
 
     /// Devices whose report-2 tunnel can relay a wireless Quick Keys puck and
     /// therefore need the relink/re-arm/resync handling: the standalone USB
@@ -854,7 +854,7 @@ final class WacomKnownDevice: TabletDevice {
 
     func close() {
         restoreTouchModes()
-        xencelabsBatteryPollTimer?.cancel()
+        xencelabsBatteryPollTimer.map { CFRunLoopTimerInvalidate($0) }
         xencelabsBatteryPollTimer = nil
         IOHIDDeviceUnscheduleFromRunLoop(
             device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
@@ -1297,10 +1297,14 @@ final class WacomKnownDevice: TabletDevice {
                 if ret == kIOReturnSuccess, !xencelabsPostRelinkResynced {
                     xencelabsPostRelinkResynced = true
                     let generation = xencelabsRelinkGeneration
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                    // On HIDThread, like every other display write.
+                    let timer = CFRunLoopTimerCreateWithHandler(
+                        kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 1.0, 0, 0, 0
+                    ) { [weak self] _ in
                         guard let self, self.xencelabsRelinkGeneration == generation else { return }
                         self.resyncXencelabsOutputsAfterRelink()
                     }
+                    CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
                 }
             }
         }
