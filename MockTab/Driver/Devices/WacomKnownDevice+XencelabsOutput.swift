@@ -34,6 +34,7 @@ extension WacomKnownDevice {
     /// Show the active dial mode's name on the Quick Keys OLED mode line.
     func setRingModeLabel(_ label: String) {
         guard deviceSpec.parser == .xencelabs else { return }
+        xencelabsRequestedText["mode"] = label
         guard xencelabsSentText["mode"] != label else { return }
         xencelabsSentText["mode"] = label
         for payload in XencelabsOutputProtocol.textPayloads(
@@ -47,6 +48,7 @@ extension WacomKnownDevice {
     func setAuxKeyLabels(_ labels: [String]) {
         if deviceSpec.parser == .xencelabs {
             let joined = labels.joined(separator: "\u{1F}")
+            xencelabsRequestedText["keys"] = joined
             guard xencelabsSentText["keys"] != joined else { return }
             xencelabsSentText["keys"] = joined
             for payload in XencelabsOutputProtocol.keyLabelPayloads(labels, address: xencelabsDongleIdentity ?? []) {
@@ -246,6 +248,8 @@ extension WacomKnownDevice {
     /// live. `setRingLED` has no dedup, so it's safe to call as-is; the OLED
     /// label setters dedup against `xencelabsSentText`, so that cache is
     /// cleared first to force the resend of whatever was last requested.
+    /// The labels come from `xencelabsRequestedText`, which re-registration
+    /// doesn't clear.
     func resyncXencelabsOutputsAfterRelink() {
         // What captures showed as a "reset labels" write here (0xB1 0x01)
         // is really the screen orientation command set to upright —
@@ -263,9 +267,10 @@ extension WacomKnownDevice {
             sendXencelabsOutput([0x02, 0xB1, 0x0A, 0, 0, 0, 0, 0, 0, 0] + identity, tag: "OLED brightness poll")
         }
         let ledIndex = pendingLEDIndex
-        let modeLabel = xencelabsSentText["mode"]
-        let keysJoined = xencelabsSentText["keys"]
+        let modeLabel = xencelabsRequestedText["mode"]
+        let keysJoined = xencelabsRequestedText["keys"]
         xencelabsSentText.removeAll()
+        logger.info("\(self.deviceSpec.name, privacy: .public): display resync, mode label \(modeLabel != nil, privacy: .public), key labels \(keysJoined != nil, privacy: .public)")
         setRingLED(index: ledIndex)
         if let modeLabel { setRingModeLabel(modeLabel) }
         if let keysJoined { setAuxKeyLabels(keysJoined.components(separatedBy: "\u{1F}")) }

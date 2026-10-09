@@ -902,6 +902,9 @@ final class WacomKnownDevice: TabletDevice {
     /// the settings pipeline re-fires on every settings change, and the OLED
     /// only needs traffic when something it shows actually changed.
     var xencelabsSentText: [String: String] = [:]
+    /// Last text requested per OLED field, kept when `xencelabsSentText` is
+    /// cleared so a relink can always put the labels back.
+    var xencelabsRequestedText: [String: String] = [:]
     /// Last label pushed per Intuos4 key index, to suppress redundant writes.
     /// Kept separate from `xencelabsSentText`: a full key-OLED image sync is
     /// ~1KB per key (versus a short text-protocol write for Xencelabs), so
@@ -1276,7 +1279,8 @@ final class WacomKnownDevice: TabletDevice {
         let xencelabsIdentityOffset = xencelabsStatus == true ? 10 : 12
         if deviceSpec.parser == .xencelabs, Self.xencelabsRelayProductIDs.contains(deviceSpec.productID),
             xencelabsStatus != false, !xencelabsDongleRelinked, length >= xencelabsIdentityOffset + Self.xencelabsIdentityLength,
-            report[0] == 0x02  // XencelabsDecoder.penReportID (internal, not visible here)
+            report[0] == 0x02,  // XencelabsDecoder.penReportID (internal, not visible here)
+            report[1] & 0xF0 == 0xF0  // puck tags only; the Pen Display's pen frames share report 2
         {
             let identity = (0..<Self.xencelabsIdentityLength).map {
                 report[xencelabsIdentityOffset + $0]
