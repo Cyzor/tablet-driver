@@ -22,7 +22,7 @@ Each piece of state belongs to one thread, and only that thread changes it. The 
 | State | Belongs to | How the other thread reaches it |
 |---|---|---|
 | Decoding: decoder state, the report buffer, and Bluetooth batch pacing | Pen thread | It doesn't |
-| `InputInjector`: the pen, buttons, modifiers, touch, gestures, and their timers | Pen thread | Main sends a block, as tool changes and app switches do |
+| `InputInjector`: the pen, buttons, modifiers, touch, gestures, and their timers | Pen thread | Main sends a block, as tool changes and app switches do, or reads through `HIDThread.performAndWait`, as the Info pane does |
 | `InjectionSnapshot` | Built on main, read on the pen thread | Main installs each new one with a block, in `observeInjectionSnapshot()` |
 | Messages to a tablet: lights, small screens, display controls, and the record of what was last sent | Pen thread | `DeviceContext.onHIDThread(_:)` |
 | `TabletManager`, `DeviceContext`, `TabletSettings`, and `DeviceRegistry` | Main | The pen thread hops with `Task { @MainActor in … }` |
