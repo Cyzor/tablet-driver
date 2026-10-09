@@ -787,8 +787,13 @@ struct InfoView: View {
             }
         }
 
-        if let ctx = tabletManager.activeContext {
-            let jitterHist = ctx.injector.jitterHistogram
+        // Copied on the pen thread, which updates these with every report.
+        let pen = HIDThread.shared.performAndWait {
+            [injector = tabletManager.activeContext?.injector] in
+            PenThreadReadings(injector: injector, probe: .shared)
+        }
+
+        if let jitterHist = pen.jitterHistogram {
             let jitterTotal = jitterHist.reduce(0, +)
             if jitterTotal > 0 {
                 // Cumulative since this tool came into proximity, unlike
@@ -804,13 +809,13 @@ struct InfoView: View {
 
             // Non-zero means this machine hits the stale-cache window; zero on a
             // machine still losing modifiers rules that mechanism out.
-            let drops = ctx.injector.staleModifierCacheDrops
+            let drops = pen.staleModifierCacheDrops
             if drops > 0 {
                 lines += [String(localized: "Modifier resync: \(drops) move events deferred to the keyboard", comment: "Diagnostic: count of move events that omitted physical modifier bits because the cached keyboard state was older than the report being stamped")]
             }
         }
 
-        let probe = LatencyProbe.shared
+        let probe = pen.probe
         if probe.reportCount > 0 {
             let avg = String(format: "%.2f", probe.averageMs)
             let worst = String(format: "%.1f", probe.worstMs)
@@ -945,8 +950,12 @@ struct InfoView: View {
                 remedy: driverRemedy))
         }
 
-        if let ctx = tabletManager.activeContext, ctx.injector.isJittery {
-            let level = String(format: "%.1f", ctx.injector.jitterLevel)
+        let jitter = HIDThread.shared.performAndWait {
+            [injector = tabletManager.activeContext?.injector] in
+            injector.map { (isJittery: $0.isJittery, level: $0.jitterLevel) }
+        }
+        if let jitter, jitter.isJittery {
+            let level = String(format: "%.1f", jitter.level)
             found.append(ConflictFinding(
                 description: String(localized: "RF interference: \(level) pt/sample", comment: "Conflict detection: RF interference jitter"),
                 remedy: String(localized: "Move wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet.", comment: "Remedy line for an RF-interference finding in the conflict alert")))
@@ -997,5 +1006,36 @@ struct InfoView: View {
         NSWorkspace.shared.open(
             URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!
         )
+    }
+}
+
+/// Pen-thread values the diagnostics text shows, copied on the pen thread so
+/// none is read halfway through an update.
+private struct PenThreadReadings {
+    struct Probe {
+        let reportCount: UInt64
+        let averageMs: Double
+        let worstMs: Double
+        let stallCount: UInt64
+        let totalAverageMs: Double
+        let totalWorstMs: Double
+        let connectStallCount: UInt64
+        let connectWorstMs: Double
+        let gapHistogramMs: [UInt64]
+    }
+
+    /// Nil with no active tablet.
+    let jitterHistogram: [UInt64]?
+    let staleModifierCacheDrops: UInt64
+    let probe: Probe
+
+    init(injector: InputInjector?, probe p: LatencyProbe) {
+        jitterHistogram = injector?.jitterHistogram
+        staleModifierCacheDrops = injector?.staleModifierCacheDrops ?? 0
+        probe = Probe(
+            reportCount: p.reportCount, averageMs: p.averageMs, worstMs: p.worstMs,
+            stallCount: p.stallCount, totalAverageMs: p.totalAverageMs,
+            totalWorstMs: p.totalWorstMs, connectStallCount: p.connectStallCount,
+            connectWorstMs: p.connectWorstMs, gapHistogramMs: p.gapHistogramMs)
     }
 }
