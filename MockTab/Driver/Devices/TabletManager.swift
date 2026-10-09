@@ -21,10 +21,12 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "manager")
 final class LiveTouchPublisher: ObservableObject {
     @MainActor @Published var contacts: [TouchContact] = []
 
-    /// HID-thread reads, main-thread writes.  Bool reads/writes are atomic on
-    /// aarch64; a brief disagreement during a state transition just costs one
-    /// or two redundant frames, which is harmless.
-    nonisolated(unsafe) var isPublishingEnabled: Bool = false
+    /// HID-thread reads, main-thread writes, behind a lock.
+    var isPublishingEnabled: Bool {
+        get { _isPublishingEnabled.withLock { $0 } }
+        set { _isPublishingEnabled.withLock { $0 = newValue } }
+    }
+    private let _isPublishingEnabled = OSAllocatedUnfairLock(initialState: false)
 
     /// HID-thread-only.  Last time the throttle let a publish through.
     /// Lives here (rather than on `TabletManager`, which is `@MainActor`)
@@ -276,17 +278,25 @@ final class TabletManager: ObservableObject {
     /// True when MockTab is the frontmost application. Set by AppDelegate on
     /// didBecomeActive/willResignActive. Combined with infoViewVisible to gate updates.
     ///
-    /// Plain `Bool`, not `@Published`: this is read on the HID thread at ~200 Hz
+    /// Lock-backed, not `@Published`: this is read on the HID thread at ~200 Hz
     /// inside the `onTablet` gate. `@Published`'s Combine-wrapped getter showed up
     /// as ~13% of HID-thread time when this was published. No SwiftUI view binds
-    /// to this directly — only same-thread gate code and main-thread setters touch it.
-    var appIsFrontmost: Bool = false
+    /// to this directly — only the HID-thread gates and main-thread setters touch it.
+    nonisolated var appIsFrontmost: Bool {
+        get { _appIsFrontmost.withLock { $0 } }
+        set { _appIsFrontmost.withLock { $0 = newValue } }
+    }
+    private nonisolated let _appIsFrontmost = OSAllocatedUnfairLock(initialState: false)
 
     /// Set true by SettingsWindowController when the Info or Buttons tab is frontmost
     /// in the active window. Combined with appIsFrontmost: both must be true to update
     /// livePoint/liveButtons, eliminating all SwiftUI overhead when MockTab is in the
-    /// background or a different tab is active.
-    var infoViewVisible: Bool = false
+    /// background or a different tab is active. Lock-backed like `appIsFrontmost`.
+    nonisolated var infoViewVisible: Bool {
+        get { _infoViewVisible.withLock { $0 } }
+        set { _infoViewVisible.withLock { $0 = newValue } }
+    }
+    private nonisolated let _infoViewVisible = OSAllocatedUnfairLock(initialState: false)
 
     /// Call when `infoViewVisible` turns true (Info/Buttons tab becomes
     /// visible and frontmost again) to reconcile any proximity-exit that
@@ -311,14 +321,14 @@ final class TabletManager: ObservableObject {
     /// gate `calibrationActive` stays in sync.
     private(set) var calibrationPointHandler: ((TabletPoint) -> Void)?
 
-    /// Single-word mirror of `calibrationPointHandler != nil`, safe to read from
-    /// HID thread. Reading the optional closure itself across threads is unsafe
-    /// (two-word load can tear); this Bool is the cheap gate used in `onTablet`.
-    private(set) var calibrationActive: Bool = false
+    /// Mirror of `calibrationPointHandler != nil` for the HID-thread gate in
+    /// `onTablet`. Reading the optional closure itself across threads is unsafe.
+    nonisolated var calibrationActive: Bool { _calibrationActive.withLock { $0 } }
+    private nonisolated let _calibrationActive = OSAllocatedUnfairLock(initialState: false)
 
     func setCalibrationPointHandler(_ handler: ((TabletPoint) -> Void)?) {
         calibrationPointHandler = handler
-        calibrationActive = handler != nil
+        _calibrationActive.withLock { $0 = handler != nil }
     }
 
     private var uiUpdateCounter = 0
@@ -739,7 +749,11 @@ final class TabletManager: ObservableObject {
     private func deviceConnected(_ device: IOHIDDevice, holdTouchCompanion: Bool = true) {
         // Connect-phase work (handshakes, paced writes) stalls report
         // delivery; keep those episodes out of the steady-state latency stats.
-        LatencyProbe.shared.noteDeviceConnected()
+        // The probe belongs to the pen thread.
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            LatencyProbe.shared.noteDeviceConnected()
+        }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
         let rawProductID = hidIntProperty(device, kIOHIDProductIDKey)
         Self.lastSeenVendorID[rawProductID] = vendorID
