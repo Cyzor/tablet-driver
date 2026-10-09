@@ -26,7 +26,6 @@ import TabletKit
 /// `addressLikelyWrong` in the summary instead of silently trusted.
 final class BluetoothLinkMonitor {
     struct Summary {
-        let addressCandidate: String
         let sampleCount: Int
         let disconnectedSampleCount: Int
         let addressLikelyWrong: Bool
@@ -120,7 +119,6 @@ final class BluetoothLinkMonitor {
         timer = nil
         return queue.sync {
             Summary(
-                addressCandidate: addressCandidate,
                 sampleCount: rssiSamples.count,
                 disconnectedSampleCount: disconnectedSampleCount,
                 addressLikelyWrong: sawDisagreement,

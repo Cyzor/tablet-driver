@@ -885,7 +885,6 @@ final class CaptureEngine: ObservableObject {
         let discoveryBluetoothLink = bluetoothLink.flatMap { summary -> DiscoveryBluetoothLink? in
             guard summary.sampleCount > 0 else { return nil }
             return DiscoveryBluetoothLink(
-                addressCandidate: summary.addressCandidate,
                 sampleCount: summary.sampleCount,
                 disconnectedSampleCount: summary.disconnectedSampleCount,
                 addressLikelyWrong: summary.addressLikelyWrong,
@@ -935,9 +934,42 @@ final class CaptureEngine: ObservableObject {
             submitterContact: nil
         )
         result.knownTablets = capturedKnownTablets
+        result.coverage = Self.featureCoverage(
+            vendorID: deviceInfo.vendorID, productID: deviceInfo.productID, transport: deviceInfo.transport,
+            touchDecoded: touchPipeline.contactsDecoded > 0)
         let found = discoveryFindings(for: result) + Self.excludedDeviceFindings()
         result.findings = found.isEmpty ? nil : found
         return result
+    }
+
+    /// The recorded model's claimed features, weakest evidence first, so the
+    /// least-proven ones lead.
+    private static func featureCoverage(
+        vendorID: Int, productID: Int, transport: String?, touchDecoded: Bool
+    ) -> [DiscoveryFeatureCoverage]? {
+        guard WacomDeviceRegistry.vendorIDs.contains(vendorID) else { return nil }
+        let canonical = WacomDeviceRegistry.canonicalProductID(for: productID)
+        guard let spec = WacomDeviceRegistry.spec(for: canonical) else { return nil }
+        var seen = CaptureActivityProbe.snapshot().features
+        // A dial reports through the ring fields.
+        if spec.hasMechanicalDial, !spec.hasTouchRing, seen.remove(.ring) != nil {
+            seen.insert(.dial)
+        }
+        if touchDecoded { seen.insert(.touch) }
+        if transport?.localizedCaseInsensitiveContains("bluetooth") == true {
+            seen.insert(.bluetooth)
+        }
+        // Receivers, key displays, and panel controls need more than a session
+        // records to show they work.
+        let unshowable: Set<TabletFeature> = [.wirelessReceiver, .keyDisplays, .displayControls]
+        return spec.evidence
+            .sorted { ($0.value.level, $0.key.rawValue) < ($1.value.level, $1.key.rawValue) }
+            .map { feature, evidence in
+                DiscoveryFeatureCoverage(
+                    feature: feature.rawValue,
+                    level: "\(evidence.level)",
+                    exercised: unshowable.contains(feature) ? nil : seen.contains(feature))
+            }
     }
 
     /// Summarize one interface's accumulated reports.

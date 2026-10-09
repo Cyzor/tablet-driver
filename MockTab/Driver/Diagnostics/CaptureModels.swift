@@ -193,7 +193,10 @@ struct DiscoveryResult: Codable {
     /// the window that opened the sheet, and adds
     /// `settingsIdentity.windowProductID` when the two differ, and
     /// `knownTablets`. Optional, so v24 readers and files still decode.
-    var captureVersion: Int = 25
+    ///
+    /// v26 adds `coverage`, and `bluetoothLink` loses the tablet's address.
+    /// Optional, so v25 readers and files still decode.
+    var captureVersion: Int = 26
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -275,6 +278,9 @@ struct DiscoveryResult: Codable {
     /// when nothing notable was found, so a clean capture doesn't carry an
     /// empty block.
     var findings: [DiscoveryFinding]?
+    /// Each feature the registry claims for this model, how well it's
+    /// proven, and whether this session exercised it. Nil for unknown models.
+    var coverage: [DiscoveryFeatureCoverage]?
     var notes: String?
     var submitterContact: String?
 }
@@ -348,10 +354,8 @@ struct DiscoveryUSBDevice: Codable {
 /// `BluetoothLinkMonitor` for how it's gathered and the address-match
 /// caveat this block exists to carry along with the numbers.
 struct DiscoveryBluetoothLink: Codable {
-    /// The candidate BD_ADDR string used to find the device. Not proof it's
-    /// correct — kept so a reader can spot-check it against `ioreg` or
-    /// System Settings if the numbers look implausible.
-    let addressCandidate: String
+    // The address used to find the device is left out: it identifies the
+    // tablet, like a serial.
     let sampleCount: Int
     let disconnectedSampleCount: Int
     /// True if the resolved device's own `isConnected` state ever disagreed
@@ -365,6 +369,15 @@ struct DiscoveryBluetoothLink: Codable {
     let rawRSSIMin: Int?
     let rawRSSIMax: Int?
     let rawRSSIAvg: Double?
+}
+
+/// One claimed feature of the recorded model.
+struct DiscoveryFeatureCoverage: Codable {
+    let feature: String
+    /// The registry's evidence level: claimed, sourced, recorded, or hardware.
+    let level: String
+    /// Nil for features a session can't show, such as key displays.
+    var exercised: Bool?
 }
 
 /// One precomputed observation, for whoever triages the file.

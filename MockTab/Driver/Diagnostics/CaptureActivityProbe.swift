@@ -28,6 +28,9 @@ enum CaptureActivityProbe {
     struct Seen: Equatable, Sendable {
         var decoded: Set<Row> = []
         var rawReports = 0
+        /// Features this session exercised, for the file's coverage list.
+        /// Finer than the rows: tilt, and rings apart from strips.
+        var features: Set<TabletFeature> = []
 
         /// Rows a decoder has positively confirmed.
         func confirmed() -> Set<Row> { decoded }
@@ -62,10 +65,16 @@ enum CaptureActivityProbe {
             switch result {
             case .pen(let point):
                 state.withLock {
-                    // Proximity, not just contact — a hover still reached us.
-                    if point.inProximity || point.pressure > 0 {
+                    // Contact, not hover: the rows ask for a touch, and only
+                    // contact records pressure.
+                    if point.pressure > 0 {
                         if point.eraser { $0.decoded.insert(.eraser) }
                         else { $0.decoded.insert(.penTip) }
+                        $0.features.formUnion([.penPosition, .pressure])
+                        if point.eraser { $0.features.insert(.eraser) }
+                    }
+                    if point.inProximity, point.tiltX != 0 || point.tiltY != 0 {
+                        $0.features.insert(.tilt)
                     }
                     if point.penButton1 || point.penButton2 || point.penButton3
                         || point.penButton4 || point.penButton5 {
@@ -73,18 +82,23 @@ enum CaptureActivityProbe {
                     }
                 }
             case .toolEnter(let identity):
-                state.withLock {
-                    if identity.isEraser { _ = $0.decoded.insert(.eraser) }
-                    else { _ = $0.decoded.insert(.penTip) }
+                // A puck has no pressure, so arriving is all it can show.
+                if identity.isMouse {
+                    state.withLock { _ = $0.decoded.insert(.penTip) }
                 }
             case .aux(let aux):
                 state.withLock {
-                    if aux.buttons.contains(true) { $0.decoded.insert(.tabletButtons) }
-                    if aux.touchRingActive || aux.touchRing2Active
-                        || aux.touchRingButtonDown || aux.touchRing2ButtonDown
-                        || aux.touchStrip1Active || aux.touchStrip2Active {
-                        $0.decoded.insert(.ringOrStrip)
+                    if aux.buttons.contains(true) {
+                        $0.decoded.insert(.tabletButtons)
+                        $0.features.insert(.tabletButtons)
                     }
+                    let ring = aux.touchRingActive || aux.touchRing2Active
+                        || aux.touchRingButtonDown || aux.touchRing2ButtonDown
+                    let strip = aux.touchStrip1Active || aux.touchStrip2Active
+                    if ring || strip { $0.decoded.insert(.ringOrStrip) }
+                    // A dial reports as a ring; the engine tells them apart.
+                    if ring { $0.features.insert(.ring) }
+                    if strip { $0.features.insert(.strips) }
                 }
             default:
                 break
