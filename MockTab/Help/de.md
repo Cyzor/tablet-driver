@@ -99,7 +99,7 @@ Einige Geräte haben konfigurierbare Beleuchtung. Bei Hardware mit beleuchtetem 
 
 ## Radierer
 
-Die Radiererspitze hat eine eigene Belegung, die im Stiftbereich konfiguriert wird. Manche Zeichenprogramme wechseln automatisch zum Radiergummi-Werkzeug, wenn sie Radierer-Proximity-Ereignisse empfangen.
+Die Radiererspitze hat eine eigene Belegung, die im Stiftbereich konfiguriert wird. Manche Zeichenprogramme wechseln automatisch zum Radiergummi-Werkzeug, wenn sie Radierer-Proximity-Ereignisse empfangen. Belege einen Seitenknopf mit Radierer, damit der Stift beim Gedrückthalten wie seine Radiererspitze wirkt – praktisch für Stifte ohne Radierer.
 
 ## App-spezifische Overrides
 

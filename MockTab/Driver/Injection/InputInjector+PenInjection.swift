@@ -155,6 +155,7 @@ extension InputInjector {
             postProximityEvent(entering: false, at: rawPoint, eraser: !point.eraser)
             activeToolIsEraser = point.eraser
             lastEraserMode = point.eraser
+            barrelEraserActive = false
             postProximityEvent(entering: true, at: rawPoint, eraser: point.eraser)
         }
 
@@ -344,6 +345,7 @@ extension InputInjector {
             }
         }
         lastTipDown = tipDown
+        if !tipDown { syncBarrelEraser(at: screenPoint) }
 
         // ── Pen button transitions (always immediate) ───────────────────────────
         let btn1 = tool.penButton1Binding
@@ -574,6 +576,7 @@ extension InputInjector {
         }
         activeToolIsEraser = false
         lastEraserMode = false
+        barrelEraserActive = false
         // The release below supersedes it.
         tipUpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         tipUpDebounceTimer = nil
@@ -670,6 +673,7 @@ extension InputInjector {
         }
         contactDeferredButtons = 0
         contactFiredButtons = 0
+        barrelEraserButtons = 0
     }
 
     /// Force-close a pan whose button release was lost.
@@ -904,13 +908,21 @@ extension InputInjector {
 
     // MARK: - Require Contact
 
-    /// Fires a barrel-button edge. An action checked under Require Contact,
-    /// pressed while hovering, waits for tip contact; its release fires only
-    /// if contact fired the press.
+    /// Fires a barrel-button edge. Eraser switches the pen to its eraser end
+    /// instead of clicking. An action checked under Require Contact, pressed
+    /// while hovering, waits for tip contact; its release fires only if
+    /// contact fired the press.
     private func dispatchBarrelButton(
         _ slot: BarrelButtonSlot, _ binding: ButtonBinding, down: Bool,
         at location: CGPoint, snap: InjectionSnapshot, settings: TabletSettings?
     ) {
+        if !activeToolIsMouse,
+            down ? binding.kind == .eraser : barrelEraserButtons & slot.bit != 0
+        {
+            if down { barrelEraserButtons |= slot.bit } else { barrelEraserButtons &= ~slot.bit }
+            syncBarrelEraser(at: location)
+            return
+        }
         if down {
             if !lastTipDown, !activeToolIsMouse, snap.requireContact.includes(binding.kind) {
                 contactDeferredButtons |= slot.bit
@@ -956,6 +968,20 @@ extension InputInjector {
                 Self.contactAction(slot.binding(in: snap)), down: false, at: location,
                 snapshot: snap, settings: settings)
         }
+    }
+
+    /// Announces the pen as its eraser end while a barrel button set to Eraser
+    /// is held, and as the pen again once none is. Waits out a stroke so it
+    /// keeps its tool. Runs every hovering report, so a late tool identity
+    /// that resets the pen is switched back.
+    private func syncBarrelEraser(at location: CGPoint) {
+        let toEraser = barrelEraserButtons != 0 && !activeToolIsEraser
+        let toPen = barrelEraserButtons == 0 && barrelEraserActive
+        guard lastProximity, !lastTipDown, toEraser || toPen else { return }
+        postProximityEvent(entering: false, at: location, eraser: activeToolIsEraser)
+        barrelEraserActive = toEraser
+        activeToolIsEraser = toEraser
+        postProximityEvent(entering: true, at: location, eraser: toEraser)
     }
 
     /// A middle click that tip contact fires reports the contact, so apps

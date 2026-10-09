@@ -14,6 +14,7 @@ func buttonRow(
     binding: Binding<ButtonBinding>,
     ringSlotCount: Int = 4,
     offersSecondDial: Bool = false,
+    offersEraser: Bool = false,
     isMechanicalDialHardware: Bool = false,
     dialToggleControl: RotaryIndex? = nil,
     recordRequestToken: Int = 0
@@ -27,6 +28,7 @@ func buttonRow(
         ButtonBindingControl(
             binding: binding, ringSlotCount: ringSlotCount,
             offersSecondDial: offersSecondDial,
+            offersEraser: offersEraser,
             isMechanicalDialHardware: isMechanicalDialHardware,
             dialToggleControl: dialToggleControl,
             recordRequestToken: recordRequestToken)

@@ -546,10 +546,12 @@ extension InputInjector {
         e.setDoubleValueField(.tabletEventTiltX, value: pose.tiltX)
         e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
         e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
+        // A barrel button set to Eraser stands in for the eraser end, which
+        // reports no barrel buttons.
         let buttons: Int64 =
             (pressure > InputInjector.tipPressureThreshold ? 1 : 0)
-            | (point.penButton1 ? 2 : 0)
-            | (point.penButton2 ? 4 : 0)
+            | (point.penButton1 && barrelEraserButtons & 1 == 0 ? 2 : 0)
+            | (point.penButton2 && barrelEraserButtons & 2 == 0 ? 4 : 0)
             | (activeToolIsEraser && pressure > InputInjector.tipPressureThreshold ? 8 : 0)
         e.setIntegerValueField(.tabletEventPointButtons, value: buttons)
         e.flags = moveSafeEventFlags

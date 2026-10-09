@@ -99,7 +99,7 @@ Some devices have configurable lights. On hardware with a lit dial ring, each mo
 
 ## Eraser
 
-The eraser tip has its own binding, configured in the pen section. Some drawing apps switch to their eraser tool automatically when they receive eraser proximity events.
+The eraser tip has its own binding, configured in the pen section. Some drawing apps switch to their eraser tool automatically when they receive eraser proximity events. Set a side button to Eraser to use the pen as its eraser end while you hold the button, which suits pens without an eraser.
 
 ## Per-App Overrides
 

@@ -97,7 +97,7 @@ Algunos dispositivos tienen luces configurables. En el hardware con un anillo il
 
 ## Borrador
 
-La punta del borrador tiene su propia asignación y se configura en la sección del lápiz. Algunas aplicaciones de dibujo cambian automáticamente a la herramienta de borrado cuando reciben eventos de proximidad del borrador.
+La punta del borrador tiene su propia asignación y se configura en la sección del lápiz. Algunas aplicaciones de dibujo cambian automáticamente a la herramienta de borrado cuando reciben eventos de proximidad del borrador. Asigna Borrador a un botón lateral para que el lápiz actúe como su punta de borrador mientras lo mantienes pulsado, útil en lápices sin borrador.
 
 ## Overrides por app
 

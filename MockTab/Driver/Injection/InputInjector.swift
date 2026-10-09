@@ -75,6 +75,7 @@ final class SharedPanScrollState {
 /// | `clickLocked` | Click Lock press, or a Click Lock tip's first contact | next press or tip contact, proximity exit (`releaseClickLock`), tool change/disconnect | Left button stuck down |
 /// | `tipClickSwallowed` | tip contact with the tip set to None, while Click Lock holds, or firing a contact-deferred button | tip lift, proximity exit | Next lift posts no mouseUp |
 /// | `contactDeferredButtons` / `contactFiredButtons` | Require Contact: barrel button with a checked action pressed while hovering / its tip contact | button release, proximity exit; the fired bits also tip lift and tool change | Button's action held, or a later release posts an up nothing pressed |
+/// | `barrelEraserButtons` / `barrelEraserActive` | barrel button set to Eraser pressed / the switch to the eraser it causes | button release (the switch back waits for tip lift), proximity exit | Pen stays the eraser |
 /// | `lastMiddleDown`, `lastUSBMouseMask` / `usbMouseLeftHeld` | puck/KC-100 mouse button down | `releaseHeldPointerButtons` — proximity exit and tool change/disconnect | Mouse button stuck down |
 /// | `pendingMouseUp` (timer) | tip-up while still moving, tip-up assist enabled | tip re-down (`cancelPendingMouseUp`), proximity exit, deinit | mouseUp never posted — stroke stays open |
 /// | `panScroll` (PanScrollTracker) | `.scrollDrag` binding engaged | binding release edge; deliberately **survives** proximity blips (`suspend()`), `cancelPanScrollSafetyNet` + `panScrollSafetyNetTimer` backstop | Pen motion scrolls instead of moving cursor |
@@ -355,6 +356,10 @@ final class InputInjector: @unchecked Sendable {
     /// The deferred buttons whose action fired on contact; the tip's lift
     /// releases them.
     var contactFiredButtons: UInt8 = 0
+    /// Barrel buttons set to Eraser, held. Bit 0 is button 1.
+    var barrelEraserButtons: UInt8 = 0
+    /// True while those buttons have the pen announced as its eraser end.
+    var barrelEraserActive = false
     var lastMiddleDown = false
     var activeButton: CGMouseButton = .left
 

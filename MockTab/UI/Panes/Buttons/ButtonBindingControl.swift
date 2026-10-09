@@ -17,6 +17,9 @@ struct ButtonBindingControl: View, Equatable {
     /// Offer the second dial's actions in the mode submenu. Only for
     /// ExpressKeys on two-dial hardware (PTK-670/870), not pen or bezel buttons.
     var offersSecondDial: Bool = false
+    /// Offer Eraser. Only the eraser end and side buttons can act as the
+    /// eraser; anywhere else it would click.
+    var offersEraser: Bool = false
     /// The hardware has a mechanical dial, not a touch ring. Picks "Dial"
     /// or "Ring" wording. See `ButtonMappingView.hasMechanicalDial`.
     var isMechanicalDialHardware: Bool = false
@@ -41,6 +44,7 @@ struct ButtonBindingControl: View, Equatable {
             && lhs.compact == rhs.compact
             && lhs.ringSlotCount == rhs.ringSlotCount
             && lhs.offersSecondDial == rhs.offersSecondDial
+            && lhs.offersEraser == rhs.offersEraser
             && lhs.isMechanicalDialHardware == rhs.isMechanicalDialHardware
             && lhs.dialToggleControl == rhs.dialToggleControl
             && lhs.recordRequestToken == rhs.recordRequestToken
@@ -111,8 +115,10 @@ struct ButtonBindingControl: View, Equatable {
                 .help("Two rapid clicks in succession")
             Button("Click Lock") { binding = ButtonBinding(kind: .clickLock) }
                 .help("Press once to hold the left button, press again or lift the pen away to release")
-            Button("Eraser") { binding = ButtonBinding(kind: .eraser) }
-                .help("Eraser tool (pressure-sensitive in drawing apps)")
+            if offersEraser {
+                Button("Eraser") { binding = ButtonBinding(kind: .eraser) }
+                    .help("Eraser tool (pressure-sensitive in drawing apps)")
+            }
             Divider()
             Button("Spacebar") { binding = ButtonBinding(kind: .spacebar) }
                 .help("Spacebar key (hand-tool in many design apps)")

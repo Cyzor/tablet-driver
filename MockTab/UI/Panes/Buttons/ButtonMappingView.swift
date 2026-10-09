@@ -333,6 +333,7 @@ struct ButtonMappingView: View {
                     String(localized: "Eraser", comment: "Eraser button row label in Buttons tab"),
                     isActive: lb.eraserDown,
                     binding: eraserBinding,
+                    offersEraser: true,
                     isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[1])
             }
@@ -343,6 +344,7 @@ struct ButtonMappingView: View {
                     Self.penButtonLabel(1, count: btnCount, isMouse: isMouse),
                     isActive: lb.button1Down,
                     binding: pen1Binding,
+                    offersEraser: !isMouse,
                     isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[2])
             }
@@ -352,6 +354,7 @@ struct ButtonMappingView: View {
                     Self.penButtonLabel(2, count: btnCount, isMouse: isMouse),
                     isActive: lb.button2Down,
                     binding: pen2Binding,
+                    offersEraser: !isMouse,
                     isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[3])
             }
@@ -361,6 +364,7 @@ struct ButtonMappingView: View {
                     Self.penButtonLabel(3, count: btnCount, isMouse: isMouse),
                     isActive: lb.button3Down,
                     binding: pen3Binding,
+                    offersEraser: !isMouse,
                     isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[4])
             }
