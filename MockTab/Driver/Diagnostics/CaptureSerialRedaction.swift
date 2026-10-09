@@ -59,8 +59,8 @@ enum CaptureSerialRedaction {
                 out[idx] = UInt8(truncatingIfNeeded: decoy >> (i * 8))
             }
         }
-        for serial in seen.withLock({ $0.penSerials }) {
-            replacePenSerial(serial, in: &out)
+        for (serial, decoy) in seen.withLock({ $0.penSerials }) {
+            replacePenSerial(serial, with: decoy, in: &out)
         }
         return out
     }
@@ -69,27 +69,30 @@ enum CaptureSerialRedaction {
     /// protocol, so it's matched by value: 4-byte LE, or big-endian at any
     /// bit offset.
     static func noteToolEnter(serial: UInt32) {
-        guard serial != 0 else { return }
-        seen.withLock { _ = $0.penSerials.insert(serial) }
+        guard serial != 0, seen.withLock({ $0.penSerials[serial] }) == nil else { return }
+        let decoy = standIn(for: serial, bits: 32)
+        seen.withLock { $0.penSerials[serial] = decoy }
     }
 
     /// The stand-in a decoded log line prints for a pen serial.
     static func standIn(forPenSerial serial: UInt32) -> UInt32 {
-        serial == 0 ? 0 : standIn(for: serial, bits: 32)
+        guard serial != 0 else { return 0 }
+        return seen.withLock { $0.penSerials[serial] } ?? standIn(for: serial, bits: 32)
     }
 
-    private static func replacePenSerial(_ serial: UInt32, in bytes: inout [UInt8]) {
-        let decoy = standIn(for: serial, bits: 32)
-        if bytes.count >= 5 {
-            for start in 1...(bytes.count - 4) {
-                let value = (0..<4).reduce(UInt32(0)) {
-                    $0 | UInt32(bytes[start + $1]) << ($1 * 8)
-                }
-                guard value == serial else { continue }
-                for i in 0..<4 {
-                    bytes[start + i] = UInt8(truncatingIfNeeded: decoy >> (i * 8))
-                }
+    /// Runs on every captured report, so it reads whole bytes rather than
+    /// single bits.
+    private static func replacePenSerial(
+        _ serial: UInt32, with decoy: UInt32, in bytes: inout [UInt8]
+    ) {
+        var start = 1
+        while start + 4 <= bytes.count {
+            let value = UInt32(bytes[start]) | UInt32(bytes[start + 1]) << 8
+                | UInt32(bytes[start + 2]) << 16 | UInt32(bytes[start + 3]) << 24
+            if value == serial {
+                for i in 0..<4 { bytes[start + i] = UInt8(truncatingIfNeeded: decoy >> (i * 8)) }
             }
+            start += 1
         }
         let bitCount = bytes.count * 8
         var bit = 8
@@ -103,12 +106,17 @@ enum CaptureSerialRedaction {
         }
     }
 
+    /// The 32 bits starting at `bit`, big-endian.
     private static func readBits(_ bytes: [UInt8], at bit: Int) -> UInt32 {
-        var value: UInt32 = 0
-        for b in bit..<bit + 32 {
-            value = value << 1 | UInt32(bytes[b / 8] >> (7 - b % 8) & 1)
+        let first = bit / 8
+        var window: UInt64 = 0
+        var i = 0
+        while i < 5 {
+            let index = first + i
+            window = window << 8 | UInt64(index < bytes.count ? bytes[index] : 0)
+            i += 1
         }
-        return value
+        return UInt32(truncatingIfNeeded: window >> (8 - bit % 8))
     }
 
     private static func writeBits(_ bytes: inout [UInt8], _ value: UInt32, at bit: Int) {
@@ -130,16 +138,17 @@ enum CaptureSerialRedaction {
     }
 
     /// Created on first use.
-    private static var installSalt: Data {
+    private static let installSalt: Data = {
         let key = "_captureFingerprintSalt"
         if let salt = UserDefaults.standard.data(forKey: key) { return salt }
         let salt = Data((0..<16).map { _ in UInt8.random(in: 0...255) })
         UserDefaults.standard.set(salt, forKey: key)
         return salt
-    }
+    }()
 
     private struct Seen {
-        var penSerials: Set<UInt32> = []
+        /// Each serial with its stand-in, hashed once.
+        var penSerials: [UInt32: UInt32] = [:]
     }
 
     private static let seen = Locked(Seen())
