@@ -733,16 +733,22 @@ final class WacomKnownDevice: TabletDevice {
         // Xencelabs: only the vendor-tunnel interface should ever become
         // secondaryDevice, since that's the one hidSetReport (OLED/dial LED)
         // needs to target. Non-vendor interfaces are tracked for cleanup only.
+        // Message state belongs to the pen thread, so the writes below that
+        // touch it go there, in order; init steps stay on main.
         if deviceSpec.parser == .xencelabs {
             if acceptsReports(from: device) {
-                secondaryDevice = device
-                flushPendingVendorWrites()
+                onPenThread {
+                    self.secondaryDevice = device
+                    self.flushPendingVendorWrites()
+                }
             }
-        } else if secondaryDevice == nil {
+        } else {
             // Do NOT seize here — seizing 0x01 causes the PTH-660/860 firmware to stop
             // sending pen reports entirely. The IOHIDManager already holds the device open
             // for input delivery; that same open is sufficient for IOHIDDeviceSetReport.
-            secondaryDevice = device
+            onPenThread {
+                if self.secondaryDevice == nil { self.secondaryDevice = device }
+            }
         }
         // InputMode may live on either interface; try each, harmless if absent.
         // Gate on this interface's transport, not the driver's: PTH-660/860 use
@@ -756,7 +762,7 @@ final class WacomKnownDevice: TabletDevice {
             // Driver-level `isBluetooth` on purpose — setRingLED picks its
             // report format from it.
             if !isBluetooth {
-                setRingLED(index: pendingLEDIndex)
+                onPenThread { self.setRingLED(index: self.pendingLEDIndex) }
             }
         }
 
@@ -774,7 +780,7 @@ final class WacomKnownDevice: TabletDevice {
         {
             capableInterfaceDevice = device
             executeInitSteps(on: device)
-            setRingLED(index: pendingLEDIndex)
+            onPenThread { self.setRingLED(index: self.pendingLEDIndex) }
         }
 
         // Xencelabs re-enumerates shortly after the initial connect (observed
@@ -788,12 +794,15 @@ final class WacomKnownDevice: TabletDevice {
             // The fresh firmware state lost any OLED text and dial color the
             // superseded handle received. Re-apply the LED now; dropping the
             // text cache lets the next display push actually resend.
-            xencelabsSentText.removeAll()
-            setRingLED(index: pendingLEDIndex)
-            // Ask the receiver to report its paired pucks now rather than
-            // waiting for it to announce them, as the vendor driver does.
-            if Self.xencelabsRelayProductIDs.contains(deviceSpec.productID) {
-                sendXencelabsOutput([0x02, 0xB8, 0x01], tag: "dongle scan")
+            let isRelay = Self.xencelabsRelayProductIDs.contains(deviceSpec.productID)
+            onPenThread {
+                self.xencelabsSentText.removeAll()
+                self.setRingLED(index: self.pendingLEDIndex)
+                // Ask the receiver to report its paired pucks now rather than
+                // waiting for it to announce them, as the vendor driver does.
+                if isRelay {
+                    self.sendXencelabsOutput([0x02, 0xB8, 0x01], tag: "dongle scan")
+                }
             }
         }
 
@@ -959,10 +968,19 @@ final class WacomKnownDevice: TabletDevice {
     /// to this device via `WacomDeviceSpec.ledCompanionPID`.
     func registerLEDDevice(_ device: IOHIDDevice) {
         let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
-        ledDevice = device
         logger.info("\(self.deviceSpec.name, privacy: .public): LED companion interface registered (open ret=\(ret, privacy: .public))")
         // Apply any pending LED index that was requested before this interface arrived.
-        setRingLED(index: pendingLEDIndex)
+        onPenThread {
+            self.ledDevice = device
+            self.setRingLED(index: self.pendingLEDIndex)
+        }
+    }
+
+    /// Runs `body` on the pen thread, which owns the message state
+    /// `registerDevice` and `registerLEDDevice` touch.
+    private func onPenThread(_ body: @escaping () -> Void) {
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue, body)
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
     }
 
     /// Re-runs the device's init sequence on demand — see the `TabletDevice`

@@ -35,10 +35,9 @@ Debug builds check the table. `ThreadContract.expectPenThread()` and `expectMain
 /usr/bin/log stream --predicate 'subsystem == "com.cyzor.mocktab" AND category == "threading"'
 ```
 
-Three known exceptions remain. Debug builds report the first two:
+Two known exceptions remain. Debug builds report the first:
 
 - `WacomFallbackDevice` and `GenericHIDDigitizer` still receive reports on main.
-- `WacomKnownDevice.registerDevice` still sends a few connect-time messages from main.
 - Messages to a tablet wait for the tablet on the pen thread. A full set of Quick Keys labels can hold up reports from every tablet for tens of milliseconds.
 
 ## Following a Pen Report
