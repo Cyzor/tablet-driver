@@ -60,7 +60,7 @@ Pan View coasts briefly after release when its momentum setting (in Pen Feel) is
 
 ## Click Behavior
 
-**Hover Click** – on by default, so pen buttons trigger while hovering. Turn it off to make clicks and Pan View wait for the tip to touch the tablet.
+**Require Contact** – check Right Click, Middle Click, Double Click, or Pan View to make side buttons with that action engage only while the pen touches the surface. Unchecked actions work while hovering.
 
 **Tip-up Assist** – holds the pen click open briefly after the tip lifts, if you're still moving quickly, to prevent unintended stroke breaks during fast drawing. Drag to Off to disable.
 

@@ -200,7 +200,7 @@ extension InputInjector {
                 cancelPendingMouseUp()
                 didEmitDragSinceDown = false
                 if fireContactDeferredButtons(at: screenPoint, snap: snap, settings: settings) {
-                    // Hover Click off: contact performs the held button's
+                    // Require Contact: contact performs the held button's
                     // action in place of the tip's click.
                     tipClickSwallowed = true
                 } else if panScroll.isActive {
@@ -902,19 +902,17 @@ extension InputInjector {
         }
     }
 
-    // MARK: - Hover Click
+    // MARK: - Require Contact
 
-    /// Fires a barrel-button edge. With Hover Click off, a click or Pan View
-    /// pressed while hovering waits for tip contact; its release fires only
+    /// Fires a barrel-button edge. An action checked under Require Contact,
+    /// pressed while hovering, waits for tip contact; its release fires only
     /// if contact fired the press.
     private func dispatchBarrelButton(
         _ slot: BarrelButtonSlot, _ binding: ButtonBinding, down: Bool,
         at location: CGPoint, snap: InjectionSnapshot, settings: TabletSettings?
     ) {
         if down {
-            if !snap.hoverClick, !lastTipDown, !activeToolIsMouse,
-                Self.waitsForContact(binding.kind)
-            {
+            if !lastTipDown, !activeToolIsMouse, snap.requireContact.includes(binding.kind) {
                 contactDeferredButtons |= slot.bit
                 return
             }
@@ -922,6 +920,10 @@ extension InputInjector {
             contactDeferredButtons &= ~slot.bit
             guard contactFiredButtons & slot.bit != 0 else { return }
             contactFiredButtons &= ~slot.bit
+            fireButtonAction(
+                Self.contactAction(binding), down: false, at: location, snapshot: snap,
+                settings: settings)
+            return
         }
         fireButtonAction(binding, down: down, at: location, snapshot: snap, settings: settings)
     }
@@ -935,8 +937,8 @@ extension InputInjector {
         for slot in BarrelButtonSlot.allCases where pending & slot.bit != 0 {
             contactFiredButtons |= slot.bit
             fireButtonAction(
-                slot.binding(in: snap), down: true, at: location, snapshot: snap,
-                settings: settings)
+                Self.contactAction(slot.binding(in: snap)), down: true, at: location,
+                snapshot: snap, settings: settings)
         }
         return true
     }
@@ -951,23 +953,15 @@ extension InputInjector {
         contactFiredButtons = 0
         for slot in BarrelButtonSlot.allCases where fired & slot.bit != 0 {
             fireButtonAction(
-                slot.binding(in: snap), down: false, at: location, snapshot: snap,
-                settings: settings)
+                Self.contactAction(slot.binding(in: snap)), down: false, at: location,
+                snapshot: snap, settings: settings)
         }
     }
 
-    /// Actions tied to where the pen is. Keys and modifiers fire on press, so
-    /// a held modifier still works while hovering.
-    private static func waitsForContact(_ kind: ButtonBinding.Kind) -> Bool {
-        switch kind {
-        case .leftClick, .rightClick, .eraser, .middleClick, .middleClickWithTip,
-            .doubleClick, .scrollDrag:
-            return true
-        case .none, .clickLock, .keyCombo, .displayToggle, .spacebar, .ringCycle,
-            .ringSelectSlot, .relativeModeToggle, .spanDisplaysToggle, .ringCycle2,
-            .ringSelectSlot2:
-            return false
-        }
+    /// A middle click that tip contact fires reports the contact, so apps
+    /// that want the tip down for a middle drag (SketchUp) accept it.
+    private static func contactAction(_ binding: ButtonBinding) -> ButtonBinding {
+        binding.kind == .middleClick ? ButtonBinding(kind: .middleClickWithTip) : binding
     }
 
     /// Shortest angular distance between two barrel angles, in degrees.

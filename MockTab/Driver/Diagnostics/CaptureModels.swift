@@ -776,7 +776,8 @@ struct DiscoveryAppSettings: Codable {
     var pressureSmoothingStrength: Double?
     var dragThreshold: Double?
     var tipUpAssistDelay: Double?
-    var hoverClick: Bool?
+    /// Side-button actions that wait for the tip, by kind.
+    var requireContact: [String]?
     var doubleClickDistance: Double?
     var relativeCursorMovement: Bool?
     var invertRotation: Bool?

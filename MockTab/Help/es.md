@@ -58,7 +58,7 @@ Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado
 
 ## Comportamiento del clic
 
-**Clic sin contacto** – Activado por defecto, así que los botones del lápiz actúan sin tocar. Desactívalo para que los clics y Pan View esperen a que la punta toque la tableta.
+**Requerir contacto** – Marca Clic derecho, Clic central, Doble clic o Desplazar vista para que los botones laterales con esa acción solo actúen con el lápiz apoyado. Las acciones sin marcar funcionan sin tocar.
 
 **Asistencia de levantamiento** – Mantiene el clic del lápiz activo durante un instante después de levantar la punta, si todavía te estás moviendo rápido, para evitar cortes involuntarios del trazo al dibujar deprisa. Arrástralo hasta Off para desactivarlo.
 

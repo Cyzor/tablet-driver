@@ -23,7 +23,6 @@ let sampleBindings: [ButtonBinding] = [
     .leftClick,
     .rightClick,
     .middleClick,
-    ButtonBinding(kind: .middleClickWithTip),
     .eraser,
     ButtonBinding(kind: .displayToggle),
     ButtonBinding(kind: .doubleClick),
@@ -42,6 +41,16 @@ for binding in sampleBindings {
     let decoded = ButtonBinding.decode(encoded)
     check(decoded == binding, "round-trip mismatch: \(binding) -> \(encoded) -> \(String(describing: decoded))")
 }
+
+// MARK: - Retired Middle Click + Tip loads as Middle Click
+
+let legacyMiddleWithTip = #"{"kind":"middleClickWithTip","keyCode":0,"modifierFlags":0,"keyLabel":""}"#
+check(
+    ButtonBinding.decode(legacyMiddleWithTip) == .middleClick,
+    "a saved middleClickWithTip binding should load as .middleClick")
+check(
+    ButtonBinding.fromDisplayLabel("Middle Click + Tip") == .middleClick,
+    "an exported \"Middle Click + Tip\" label should import as .middleClick")
 
 // MARK: - The actual bug this guards against: a foreign-language label must
 // not silently decode when a machine key is present (import prefers the key).

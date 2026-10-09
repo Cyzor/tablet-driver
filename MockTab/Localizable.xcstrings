@@ -111,52 +111,6 @@
         }
       }
     },
-    " Buttons trigger upon contact." : {
-      "comment" : "Hover Click description when off, appended after an SF Symbol glyph — keep the leading space",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " Tasten lösen bei Berührung aus."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " Los botones actúan al tocar."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " ペン先が触れるとボタンが反応します。"
-          }
-        }
-      }
-    },
-    " Buttons trigger while hovering." : {
-      "comment" : "Hover Click description when on, appended after an SF Symbol glyph — keep the leading space",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " Tasten lösen beim Schweben aus."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " Los botones actúan sin tocar."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " ホバー中にボタンが反応します。"
-          }
-        }
-      }
-    },
     " Clockwise." : {
       "comment" : "Rotation direction label appended after an SF Symbol glyph — keep the leading space",
       "localizations" : {
@@ -657,6 +611,52 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 変換、最大誤差 %.1f px"
+          }
+        }
+      }
+    },
+    "%@ use this action." : {
+      "comment" : "Tooltip on a Require Contact checkbox: two or more side buttons set to this action, e.g. 'Side button 1 and Side button 3'",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sind damit belegt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ tienen asignada esta acción."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@にこの操作が割り当てられています。"
+          }
+        }
+      }
+    },
+    "%@ uses this action." : {
+      "comment" : "Tooltip on a Require Contact checkbox: one side button set to this action, e.g. 'Side button 2'",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ist damit belegt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ tiene asignada esta acción."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@にこの操作が割り当てられています。"
           }
         }
       }
@@ -1650,6 +1650,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "大きな動きを伴わない短い接触で左クリックを送信します。既定でオフです。指をタブレットに置いたままだと意図しないクリックが発生する傾向があります。"
+          }
+        }
+      }
+    },
+    "A side button with a checked action does nothing while hovering. Touching the tip starts the action, and lifting the tip ends it. Unchecked actions start as soon as you press the button. Other actions, such as keystrokes and modifiers, always act on press." : {
+      "comment" : "Tooltip for Require Contact in the Pen Feel pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Seitenknopf mit markierter Aktion bleibt beim Schweben wirkungslos. Aufsetzen der Spitze startet die Aktion, Abheben beendet sie. Nicht markierte Aktionen starten sofort beim Drücken. Andere Aktionen wie Tastenkürzel und Sondertasten wirken immer sofort."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un botón lateral con una acción marcada no hace nada mientras el lápiz flota. Al tocar con la punta empieza la acción y al levantarla termina. Las acciones sin marcar empiezan en cuanto pulsas el botón. Las demás acciones, como los atajos y las teclas modificadoras, siempre actúan al pulsar."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "チェックした操作のサイドボタンは、ホバー中は何もしません。ペン先が触れると操作が始まり、離すと終わります。チェックしていない操作は、ボタンを押した瞬間に始まります。キー操作や修飾キーなどその他の操作は、常に押した瞬間に動作します。"
           }
         }
       }
@@ -3849,6 +3872,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "アップデートを確認…"
+          }
+        }
+      }
+    },
+    "Checked side-button actions engage only while the pen touches the surface." : {
+      "comment" : "Caption under the Require Contact checkboxes in the Pen Feel pane; keep it to one line",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markierte Seitenknopf-Aktionen greifen nur, solange der Stift aufgesetzt ist."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las acciones marcadas de botón lateral solo actúan con el lápiz apoyado."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "チェックしたサイドボタンの操作は、ペンが表面に触れている間だけ動作します。"
           }
         }
       }
@@ -9334,29 +9380,6 @@
         }
       }
     },
-    "Hover Click" : {
-      "comment" : "Undo action name: whether pen-button clicks act while hovering, in the Pen Feel pane",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schwebeklick"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clic sin contacto"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ホバークリック"
-          }
-        }
-      }
-    },
     "How close a second tap must land to the first to count as a double-click. Drag to Off to disable position snapping." : {
       "comment" : "A description of the slider that determines how close a second tap must be to the first to be counted as a double-click.",
       "isCommentAutoGenerated" : true,
@@ -11265,65 +11288,6 @@
         }
       }
     },
-    "Middle Click + Tip" : {
-      "comment" : "Button action: middle click with simulated tip pressure, for apps like SketchUp",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mittelklick + Spitze"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Middle Click + Tip"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clic central + punta"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "中央クリック＋ペン先"
-          }
-        }
-      }
-    },
-    "Middle click only when pen tip is in contact" : {
-      "comment" : "A button action that assigns a middle-click gesture to a button.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mittelklick nur bei Stiftkontakt"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Middle click only when pen tip is in contact"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clic medio solo al contacto con la punta"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペン先が接触しているときのみ中クリック"
-          }
-        }
-      }
-    },
     "Middle mouse button (panning in many apps)" : {
       "comment" : "A description of the \"Middle Click\" button in the ButtonBindingControl menu.",
       "isCommentAutoGenerated" : true,
@@ -12247,6 +12211,29 @@
         }
       }
     },
+    "No side button on this pen uses this action." : {
+      "comment" : "Tooltip on a Require Contact checkbox in the Pen Feel pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Seitenknopf dieses Stifts ist damit belegt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ningún botón lateral de este lápiz tiene asignada esta acción."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このペンのサイドボタンには、この操作が割り当てられていません。"
+          }
+        }
+      }
+    },
     "No tablet data found in this file." : {
       "comment" : "Import error — backup file has no tablet entries",
       "localizations" : {
@@ -12885,29 +12872,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "GitHubではファイルをフォームにドラッグしてください。"
-          }
-        }
-      }
-    },
-    "On: a button's click or Pan View starts as soon as you press it. Off: it waits for the tip to touch the tablet and ends when the tip lifts. Keystrokes and modifiers always act on press." : {
-      "comment" : "Tooltip for the Hover Click toggle in the Pen Feel pane",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein: Klick oder „Ansicht schwenken“ einer Taste startet sofort beim Drücken. Aus: Die Aktion wartet, bis die Spitze das Tablett berührt, und endet beim Abheben. Tastenkürzel und Sondertasten wirken immer sofort."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activado: el clic o Desplazar vista de un botón empieza en cuanto lo pulsas. Desactivado: espera a que la punta toque la tableta y termina al levantarla. Los atajos y las teclas modificadoras siempre actúan al pulsar."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オン：ボタンのクリックや「ビューをパン」は押した瞬間に始まります。オフ：ペン先がタブレットに触れるまで待ち、離すと終わります。キー操作と修飾キーは常に押した瞬間に動作します。"
           }
         }
       }
@@ -15535,6 +15499,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "レポート間隔   : %@"
+          }
+        }
+      }
+    },
+    "Require Contact" : {
+      "comment" : "Setting label and undo action name: which side-button actions engage only while the pen touches the surface, in the Pen Feel pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oberflächenkontakt erforderlich"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requerir contacto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表面への接触が必要"
           }
         }
       }

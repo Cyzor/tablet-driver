@@ -74,7 +74,7 @@ final class SharedPanScrollState {
 /// | `hoverDragButton` | click binding down, or Click Lock | binding up edge, proximity exit, `releaseBindingHeldButton` on tool change/disconnect | Movement posts drags instead of hover |
 /// | `clickLocked` | Click Lock press, or a Click Lock tip's first contact | next press or tip contact, proximity exit (`releaseClickLock`), tool change/disconnect | Left button stuck down |
 /// | `tipClickSwallowed` | tip contact with the tip set to None, while Click Lock holds, or firing a contact-deferred button | tip lift, proximity exit | Next lift posts no mouseUp |
-/// | `contactDeferredButtons` / `contactFiredButtons` | Hover Click off: click or Pan View barrel button pressed while hovering / its tip contact | button release, proximity exit; the fired bits also tip lift and tool change | Button's action held, or a later release posts an up nothing pressed |
+/// | `contactDeferredButtons` / `contactFiredButtons` | Require Contact: barrel button with a checked action pressed while hovering / its tip contact | button release, proximity exit; the fired bits also tip lift and tool change | Button's action held, or a later release posts an up nothing pressed |
 /// | `lastMiddleDown`, `lastUSBMouseMask` / `usbMouseLeftHeld` | puck/KC-100 mouse button down | `releaseHeldPointerButtons` — proximity exit and tool change/disconnect | Mouse button stuck down |
 /// | `pendingMouseUp` (timer) | tip-up while still moving, tip-up assist enabled | tip re-down (`cancelPendingMouseUp`), proximity exit, deinit | mouseUp never posted — stroke stays open |
 /// | `panScroll` (PanScrollTracker) | `.scrollDrag` binding engaged | binding release edge; deliberately **survives** proximity blips (`suspend()`), `cancelPanScrollSafetyNet` + `panScrollSafetyNetTimer` backstop | Pen motion scrolls instead of moving cursor |
@@ -349,7 +349,7 @@ final class InputInjector: @unchecked Sendable {
     var lastButton1Down = false
     var lastButton2Down = false
     var lastButton3Down = false
-    /// Hover Click off: barrel buttons held with their action deferred until
+    /// Require Contact: barrel buttons held with their action deferred until
     /// tip contact. Bit 0 is button 1.
     var contactDeferredButtons: UInt8 = 0
     /// The deferred buttons whose action fired on contact; the tip's lift

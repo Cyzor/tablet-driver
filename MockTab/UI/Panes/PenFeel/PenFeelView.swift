@@ -118,20 +118,9 @@ struct PenFeelView: View {
             }
 
             Section("Click Behavior") {
-                DescribedToggle("Hover Click", isOn: hoverClickBinding) {
-                    Text("Current: ")
-                        + Text(
-                            Image(
-                                systemName: settings.hoverClick
-                                    ? "pencil"
-                                    : "pencil.line"))
-                        + Text(
-                            settings.hoverClick
-                                ? " Buttons trigger while hovering."
-                                : " Buttons trigger upon contact.")
-                }
-                .help(
-                    "On: a button's click or Pan View starts as soon as you press it. Off: it waits for the tip to touch the tablet and ends when the tip lifts. Keystrokes and modifiers always act on press.")
+                requireContactRow
+                    .help(
+                        "A side button with a checked action does nothing while hovering. Touching the tip starts the action, and lifting the tip ends it. Unchecked actions start as soon as you press the button. Other actions, such as keystrokes and modifiers, always act on press.")
 
                 SettingSliderRow(
                     "Tip-up Assist",
@@ -171,6 +160,74 @@ struct PenFeelView: View {
                 .help(
                     "Prevents a light tap from turning into an accidental drag due to hand tremor or pressure jitter right when the tip touches down. Drag to Off to disable.")
             }
+        }
+    }
+
+    // MARK: - Require Contact row
+
+    /// Laid out like `SettingSliderRow`: label, then the checkboxes spread
+    /// edge to edge, then the caption. Stacks when they don't fit.
+    private var requireContactRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Require Contact")
+                .appFont(.subheadline)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 0) {
+                    ForEach(Array(RequireContactActions.choices.enumerated()), id: \.element.action.rawValue) { i, choice in
+                        if i > 0 { Spacer(minLength: 16) }
+                        requireContactCheckbox(choice)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(RequireContactActions.choices, id: \.action.rawValue) { requireContactCheckbox($0) }
+                }
+            }
+            .padding(.vertical, 6)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Require Contact")
+            Text("Checked side-button actions engage only while the pen touches the surface.")
+                .appFont(.settingsLabel)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func requireContactCheckbox(
+        _ choice: (action: RequireContactActions, kind: ButtonBinding.Kind)
+    ) -> some View {
+        Toggle(ButtonBinding(kind: choice.kind).displayLabel, isOn: requireContactBinding(choice.action))
+            .toggleStyle(.checkbox)
+            .appFont(.settingsLabel)
+            .fixedSize()
+            .help(sideButtonsUsing(choice.kind))
+    }
+
+    /// Names the current pen's side buttons set to `kind`, as the Buttons
+    /// pane labels them, so a checkbox shows which buttons it reaches.
+    private func sideButtonsUsing(_ kind: ButtonBinding.Kind) -> String {
+        let ctx = tabletManager.context(forKey: instanceKey)
+        let toolSpec = ctx.flatMap { WacomToolCatalog.spec(forToolCode: $0.lastKnownToolCode) }
+        let device = productID.flatMap { ButtonMappingView.layoutSpec(productID: $0, context: ctx) }
+        let count = toolSpec?.toolType == .mouse
+            ? 0 : min(ButtonMappingView.penButtonCount(tool: toolSpec, device: device), 3)
+        let bindings = [tool.penButton1Binding, tool.penButton2Binding, tool.penButton3Binding]
+        let names = (0..<count).filter { bindings[$0].kind == kind }
+            .map { ButtonMappingView.penButtonLabel($0 + 1, count: count, isMouse: false) }
+        let lists = ListFormatter()
+        lists.locale = Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en")
+        switch names.count {
+        case 0:
+            return String(
+                localized: "No side button on this pen uses this action.",
+                comment: "Tooltip on a Require Contact checkbox in the Pen Feel pane")
+        case 1:
+            return String(
+                localized: "\(names[0]) uses this action.",
+                comment: "Tooltip on a Require Contact checkbox: one side button set to this action, e.g. 'Side button 2'")
+        default:
+            let list = lists.string(from: names) ?? names.joined(separator: ", ")
+            return String(
+                localized: "\(list) use this action.",
+                comment: "Tooltip on a Require Contact checkbox: two or more side buttons set to this action, e.g. 'Side button 1 and Side button 3'")
         }
     }
 
@@ -240,7 +297,7 @@ struct PenFeelView: View {
     )
     private typealias SettingsResetState = (
         doubleClick: Double, invertRotation: Bool, relativeCursor: Bool,
-        tipUpAssist: Double, dragThreshold: Double, hoverClick: Bool
+        tipUpAssist: Double, dragThreshold: Double, requireContact: RequireContactActions
     )
 
     private func resetToDefaults() {
@@ -250,10 +307,10 @@ struct PenFeelView: View {
         )
         let settingsOld: SettingsResetState = (
             settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
-            settings.tipUpAssistDelay, settings.dragThreshold, settings.hoverClick
+            settings.tipUpAssistDelay, settings.dragThreshold, settings.requireContact
         )
         let toolDefaults: ToolResetState = (.linear, 0, 0, 0, 1.0, true)
-        let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, 0.0, true)
+        let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, 0.0, [])
 
         settings.undoManager?.beginUndoGrouping()
         applyToolReset(toolDefaults, undoTo: toolOld)
@@ -273,7 +330,7 @@ struct PenFeelView: View {
     /// Self-recursive so "Reset to Defaults" also redoes the settings-owned half.
     private func applySettingsReset(_ new: SettingsResetState, undoTo old: SettingsResetState) {
         (settings.doubleClickDistance, settings.invertRotation, settings.relativeCursorMovement,
-         settings.tipUpAssistDelay, settings.dragThreshold, settings.hoverClick) = new
+         settings.tipUpAssistDelay, settings.dragThreshold, settings.requireContact) = new
         settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
             self.applySettingsReset(old, undoTo: new)
         }
@@ -344,11 +401,13 @@ struct PenFeelView: View {
             set: { settings.tipUpAssistDelay = $0 })
     }
 
-    private var hoverClickBinding: Binding<Bool> {
+    private func requireContactBinding(_ action: RequireContactActions) -> Binding<Bool> {
         settings.recordingBinding(
-            String(localized: "Hover Click", comment: "Undo action name: whether pen-button clicks act while hovering, in the Pen Feel pane"),
-            get: { settings.hoverClick },
-            set: { settings.hoverClick = $0 })
+            String(localized: "Require Contact", comment: "Setting label and undo action name: which side-button actions engage only while the pen touches the surface, in the Pen Feel pane"),
+            get: { settings.requireContact.contains(action) },
+            set: { on in
+                if on { settings.requireContact.insert(action) } else { settings.requireContact.remove(action) }
+            })
     }
 
     private var dragThresholdBinding: Binding<Double> {

@@ -12,6 +12,8 @@ import Foundation
 struct ButtonBinding: Codable, Equatable {
 
     enum Kind: String, Codable {
+        // `middleClickWithTip` is the middle click a tip contact fires under
+        // Require Contact. It left the menu; saved ones load as `middleClick`.
         case none, leftClick, clickLock, rightClick, middleClick, middleClickWithTip, eraser, keyCombo,
             displayToggle, doubleClick, spacebar, ringCycle, ringSelectSlot, scrollDrag,
             relativeModeToggle, spanDisplaysToggle,
@@ -43,7 +45,8 @@ struct ButtonBinding: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let rawKind = try c.decode(String.self, forKey: .kind)
-        kind = Kind(rawValue: rawKind) ?? .none
+        kind = rawKind == Kind.middleClickWithTip.rawValue
+            ? .middleClick : Kind(rawValue: rawKind) ?? .none
         unrecognizedKind = Kind(rawValue: rawKind) == nil ? rawKind : nil
         keyCode = try c.decode(UInt16.self, forKey: .keyCode)
         modifierFlags = try c.decode(UInt64.self, forKey: .modifierFlags)
@@ -161,13 +164,8 @@ struct ButtonBinding: Codable, Equatable {
                 comment: "Button action: press once to hold the left mouse button, press again to release")
         case .rightClick:
             return String(localized: "Right Click", comment: "Button action: right mouse click")
-        case .middleClick:
+        case .middleClick, .middleClickWithTip:
             return String(localized: "Middle Click", comment: "Button action: middle mouse click")
-        case .middleClickWithTip:
-            return String(
-                localized: "Middle Click + Tip",
-                comment: "Button action: middle click with simulated tip pressure, for apps like SketchUp"
-            )
         case .eraser:
             return String(localized: "Eraser", comment: "Button action: switch to eraser tool")
         case .displayToggle:
@@ -231,7 +229,7 @@ struct ButtonBinding: Codable, Equatable {
         case "Click Lock": return ButtonBinding(kind: .clickLock)
         case "Right Click": return .rightClick
         case "Middle Click": return .middleClick
-        case "Middle Click + Tip": return ButtonBinding(kind: .middleClickWithTip)
+        case "Middle Click + Tip": return .middleClick  // retired action; keeps older exported profiles importable
         case "Eraser": return .eraser
         case "Pan View": return .scrollDrag
         case "Scroll Drag": return .scrollDrag  // pre-rename label; keeps older exported profiles importable
@@ -416,5 +414,36 @@ struct ButtonBinding: Codable, Equatable {
         // when Command is not in their modifier table).
         guard str.unicodeScalars.allSatisfy({ $0.value >= 0x20 }) else { return nil }
         return str.uppercased()
+    }
+}
+
+// MARK: - Require Contact
+
+/// Side-button actions that wait for tip contact and end when the tip lifts,
+/// as Wacom's Click & Tap. The rest act while hovering. Left Click isn't
+/// offered: waiting would only repeat the tip's own click.
+struct RequireContactActions: OptionSet, Equatable {
+    let rawValue: Int
+
+    static let rightClick = RequireContactActions(rawValue: 1 << 0)
+    static let middleClick = RequireContactActions(rawValue: 1 << 1)
+    static let panView = RequireContactActions(rawValue: 1 << 2)
+    static let doubleClick = RequireContactActions(rawValue: 1 << 3)
+
+    /// The offered actions, in display order.
+    static let choices: [(action: RequireContactActions, kind: ButtonBinding.Kind)] = [
+        (.rightClick, .rightClick), (.middleClick, .middleClick), (.doubleClick, .doubleClick),
+        (.panView, .scrollDrag),
+    ]
+
+    /// Whether a side button bound to `kind` waits for the tip.
+    func includes(_ kind: ButtonBinding.Kind) -> Bool {
+        let kind = kind == .middleClickWithTip ? .middleClick : kind
+        return Self.choices.contains { $0.kind == kind && contains($0.action) }
+    }
+
+    /// Kind names of the checked actions, for diagnostics.
+    var kindNames: [String] {
+        Self.choices.filter { contains($0.action) }.map(\.kind.rawValue)
     }
 }

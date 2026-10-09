@@ -60,7 +60,7 @@ Pan View läuft nach dem Loslassen kurz nach, wenn die zugehörige Trägheitsein
 
 ## Klickverhalten
 
-**Schwebeklick** – Standardmäßig an, sodass Stifttasten schon beim Schweben auslösen. Schalte es aus, damit Klicks und Pan View erst bei Berührung der Spitze greifen.
+**Oberflächenkontakt erforderlich** – Hake Rechtsklick, Mittelklick, Doppelklick oder Ansicht schwenken an, damit Seitenknöpfe mit dieser Aktion nur greifen, solange der Stift aufgesetzt ist. Nicht markierte Aktionen wirken schon beim Schweben.
 
 **Aufhebehilfe** – Hält den Stiftklick nach dem Abheben der Spitze noch kurz offen, wenn du dich weiterhin schnell bewegst, damit schnelle Zeichenzüge nicht unbeabsichtigt unterbrochen werden. Ziehe den Regler auf Off, um die Funktion auszuschalten.
 

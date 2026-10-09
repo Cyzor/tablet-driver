@@ -105,8 +105,6 @@ struct ButtonBindingControl: View, Equatable {
                 .help("Secondary mouse button (context menus)")
             Button("Middle Click") { binding = ButtonBinding(kind: .middleClick) }
                 .help("Middle mouse button (panning in many apps)")
-            Button("Middle Click + Tip") { binding = ButtonBinding(kind: .middleClickWithTip) }
-                .help("Middle click only when pen tip is in contact")
             Button("Pan View") { binding = ButtonBinding(kind: .scrollDrag) }
                 .help("Hold to pan/scroll with pen motion (Hand-tool style)")
             Button("Double Click") { binding = ButtonBinding(kind: .doubleClick) }

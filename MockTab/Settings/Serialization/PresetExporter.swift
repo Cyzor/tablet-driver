@@ -104,7 +104,7 @@ final class PresetExporter {
         d["doubleClickDistance"] = s.doubleClickDistance
         d["invertRotation"] = s.invertRotation
         d["relativeCursorMovement"] = s.relativeCursorMovement
-        d["hoverClick"] = s.hoverClick
+        d["requireContact"] = s.requireContact.rawValue
         d["penButton1"] = s.penButton1Binding.displayLabel
         d["penButton1Key"] = s.penButton1Binding.encoded
         d["penButton2"] = s.penButton2Binding.displayLabel
@@ -228,8 +228,7 @@ final class PresetExporter {
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (roundFrac(ud.double(forKey: prefix + key)), nil)
 
-        case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection",
-             "hoverClick":
+        case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (ud.bool(forKey: prefix + key), nil)
 
@@ -284,7 +283,7 @@ final class PresetExporter {
             guard let raw = ud.string(forKey: prefix + key) else { return nil }
             return (raw, nil)
 
-        case "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2":
+        case "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2", "requireContact":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (ud.integer(forKey: prefix + key), nil)
 
