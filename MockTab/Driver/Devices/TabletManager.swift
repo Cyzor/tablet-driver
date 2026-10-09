@@ -306,9 +306,9 @@ final class TabletManager: ObservableObject {
     /// runs or the next real report arrives. No-op if the pen is genuinely
     /// still in proximity.
     func resyncLiveStateForVisibility() {
-        guard let context = activeContext, !context.injector.lastProximity,
-            context.livePoint != nil
-        else { return }
+        guard let context = activeContext, context.livePoint != nil else { return }
+        let injector = context.injector
+        guard !HIDThread.shared.performAndWait({ injector.lastProximity }) else { return }
         context.activeToolID = nil
         context.activeToolCode = 0
         context.liveButtons = LiveButtonState()
@@ -1852,11 +1852,17 @@ final class TabletManager: ObservableObject {
             reason: "Pen in proximity — latency-critical input injection")
     }
 
+    /// Whether any connected tablet has a pen in range, read on the pen
+    /// thread, which owns that state.
+    private func anyPenInProximity() -> Bool {
+        let injectors = deviceContexts.values.filter(\.isConnected).map(\.injector)
+        return HIDThread.shared.performAndWait { injectors.contains { $0.lastProximity } }
+    }
+
     /// Schedules assertion drop after `proximityIdleDelay` seconds, unless another
     /// connected device still has a pen in proximity.
     private func penExitedProximity() {
-        let anyStillDown = deviceContexts.values.contains { $0.isConnected && $0.injector.lastProximity }
-        guard !anyStillDown else { return }
+        guard !anyPenInProximity() else { return }
         proximityIdleTimer?.invalidate()
         proximityIdleTimer = Timer.scheduledTimer(
             withTimeInterval: Self.proximityIdleDelay, repeats: false
@@ -1864,8 +1870,7 @@ final class TabletManager: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.proximityIdleTimer = nil
-                let anyDown = self.deviceContexts.values.contains { $0.isConnected && $0.injector.lastProximity }
-                guard !anyDown, let token = self.latencyActivityToken else { return }
+                guard !self.anyPenInProximity(), let token = self.latencyActivityToken else { return }
                 ProcessInfo.processInfo.endActivity(token)
                 self.latencyActivityToken = nil
             }
