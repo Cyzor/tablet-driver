@@ -538,6 +538,24 @@ extension InputInjector {
         touchMomentumTail.stop()
     }
 
+    /// The app is quitting: release everything held and tell apps the pen
+    /// left. Nothing runs afterward, so no timer or watchdog can finish the
+    /// job, and anything left down stays down system-wide.
+    func releaseHeldStateForQuit() {
+        guard let snap = injectionSnapshot else { return }
+        let loc = currentCursorPosition()
+        releaseContactFiredButtons(at: loc, snap: snap, settings: nil)
+        releaseHeldStateForDisconnect()
+        releaseTouchDrag(snapshot: snap)
+        // The exit suspended a pan to survive a blip; end it for good.
+        if panScroll.isActive {
+            cancelPanScrollSafetyNet()
+            panScrollSafetyNetFired()
+        }
+        closeRingGestureEnvelopes()
+        releaseSharedAuxModifiers()
+    }
+
     /// Proximity-exit cleanup: release the tip, held buttons, and modifiers,
     /// then reset per-proximity state. Xencelabs reaches this through
     /// `proximityExitDebounceTimer`.

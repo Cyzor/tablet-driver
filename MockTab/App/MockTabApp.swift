@@ -83,10 +83,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        // Release any held synthetic modifiers before exit. Prevents Shift/Cmd/Opt/Ctrl
-        // appearing stuck system-wide after a force-quit or crash-then-relaunch cycle.
+        // Release every held button, key, and modifier, and tell apps the pen
+        // left, before exit; Click Lock would otherwise leave the left button
+        // down system-wide. The process ends when this returns, so wait for
+        // HIDThread, which owns that state, briefly.
+        let injectors = TabletManager.shared.deviceContexts.values.map(\.injector)
+        let released = DispatchSemaphore(value: 0)
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            for injector in injectors { injector.releaseHeldStateForQuit() }
+            released.signal()
+        }
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+        _ = released.wait(timeout: .now() + .milliseconds(250))
         for ctx in TabletManager.shared.deviceContexts.values {
-            ctx.injector.releaseOnAppSwitch()
             // Hand touch sensors back in the mode macOS found them in.
             (ctx.tabletDevice as? WacomKnownDevice)?.restoreTouchModes()
         }
