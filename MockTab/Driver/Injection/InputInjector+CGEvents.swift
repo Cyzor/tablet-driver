@@ -964,7 +964,8 @@ extension InputInjector {
                 driver.panScrollUsePhases = snapshot.activeTool.panScrollMomentum
                 // A fresh grab halts any coasting tail from the previous
                 // gesture, same as touching a real trackpad mid-momentum.
-                driver.panMomentumTail.cancel()
+                // `stop`, not `cancel`: no `.began` follows until the pen moves.
+                driver.panMomentumTail.stop()
                 driver.postPanScroll(driver.panScroll.engage(
                     reverse: snapshot.reverseScrollDirection,
                     speed: snapshot.activeTool.panScrollSpeed))

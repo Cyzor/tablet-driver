@@ -142,9 +142,54 @@ private func testOversizedBackdateIsClamped() {
            "an absurd backdate must clamp, not resurrect a stale flick")
 }
 
+/// AppKit hands a gesture to the nested scroll view matching the `.began`
+/// delta's dominant axis, so `.began` must wait for motion and carry it. A
+/// zero-delta `.began` reads as vertical and strands horizontal pans in
+/// Finder's column view.
+private func testBeganCarriesFirstMotion() {
+    var t = PanScrollTracker()
+    expect(t.engage(reverse: false, speed: 1.0) == .none, "engage must post nothing")
+    var x = 0.0
+    var intents: [PanScrollTracker.Intent] = []
+    _ = t.process(screen: CGPoint(x: x, y: 0), dt: frameDt)
+    for _ in 0..<10 {
+        x += 6
+        let intent = t.process(screen: CGPoint(x: x, y: 0), dt: frameDt)
+        if intent != .none { intents.append(intent) }
+    }
+    guard case .scroll(let dx, let dy, let phase)? = intents.first else {
+        expect(false, "a horizontal pan must emit scroll intents")
+        return
+    }
+    expect(phase == .began, "the first motion must be .began, got \(phase)")
+    expect(abs(dx) > abs(dy), "the .began delta must be horizontal, got (\(dx), \(dy))")
+    expect(intents.dropFirst().allSatisfy {
+        if case .scroll(_, _, .changed) = $0 { return true }
+        return false
+    }, "motion after .began must be .changed")
+    expect(t.disengage() == .scroll(dx: 0, dy: 0, phase: .ended),
+           "release after motion must end the gesture")
+}
+
+/// A press and release without motion opened no gesture, so nothing closes
+/// and nothing coasts.
+private func testReleaseWithoutMotionPostsNothing() {
+    var t = PanScrollTracker()
+    _ = t.engage(reverse: false, speed: 1.0)
+    // Sub-pixel jitter: raw velocity, but no whole-pixel delta.
+    for i in 0..<10 {
+        let intent = t.process(screen: CGPoint(x: Double(i % 2) * 0.2, y: 0), dt: frameDt)
+        expect(intent == .none, "sub-pixel jitter must not open a gesture")
+    }
+    expect(t.disengage() == .none, "release without a .began must post nothing")
+    expect(speed(t.releaseVelocity) == 0, "release without a .began must not coast")
+}
+
 @main
 enum PanScrollTrackerTestRunner {
     static func main() {
+        testBeganCarriesFirstMotion()
+        testReleaseWithoutMotionPostsNothing()
         testImmediateReleaseKeepsMomentum()
         testDeadStopLosesMomentumWithoutBackdate()
         testDeadStopRecoveredByBackdate()

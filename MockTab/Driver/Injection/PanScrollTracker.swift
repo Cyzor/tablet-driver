@@ -44,6 +44,9 @@ struct PanScrollTracker {
 
     private(set) var isActive = false
 
+    /// Whether this gesture's `.began` has gone out (see `engage`).
+    private var hasBegun = false
+
     /// Screen position from the previous frame while active; the scroll delta
     /// is `current - last`. Nil on the first frame after engage/resume so a
     /// resume never replays the distance traveled while the pen was away.
@@ -159,12 +162,16 @@ struct PanScrollTracker {
 
     // MARK: - Edges
 
-    /// Begin the gesture. Emits `.began` with zero delta; the first real
-    /// motion arrives as `.changed` on the next frame. `reverse` selects
-    /// classic (wheel) rather than natural (content-follows) direction.
-    /// `speed` multiplies deltas (0.25 slow – 3.0 fast, 1.0 = 1:1).
+    /// Begin the gesture. Emits nothing: `.began` waits for the first motion
+    /// and carries it, as a trackpad's does. AppKit gives a gesture to the
+    /// nested scroll view that matches the `.began` delta's dominant axis, so
+    /// a zero-delta `.began` reads as vertical and strands horizontal pans
+    /// (Finder column view). `reverse` selects classic (wheel) rather than
+    /// natural (content-follows) direction. `speed` multiplies deltas
+    /// (0.25 slow – 3.0 fast, 1.0 = 1:1).
     mutating func engage(reverse: Bool, speed: Double = 1.0) -> Intent {
         isActive = true
+        hasBegun = false
         sign = reverse ? -1.0 : 1.0
         self.speed = max(0.05, speed)
         smoother.strength = Self.smoothingStrength
@@ -180,7 +187,7 @@ struct PanScrollTracker {
         axisLock = nil
         preLockAccumX = 0
         preLockAccumY = 0
-        return .scroll(dx: 0, dy: 0, phase: .began)
+        return .none
     }
 
     /// End the gesture (real button release, or a confirmed proximity exit).
@@ -227,6 +234,11 @@ struct PanScrollTracker {
         isActive = false
         last = nil
         lastRaw = nil
+        // No `.began` went out, so there is no gesture to end or coast.
+        guard hasBegun else {
+            releaseVelocity = .zero
+            return .none
+        }
         return .scroll(dx: 0, dy: 0, phase: .ended)
     }
 
@@ -314,6 +326,8 @@ struct PanScrollTracker {
         guard ix != 0 || iy != 0 else { return .none }
         accumX -= Double(ix)
         accumY -= Double(iy)
-        return .scroll(dx: Double(ix), dy: Double(iy), phase: .changed)
+        let phase: ScrollPhase = hasBegun ? .changed : .began
+        hasBegun = true
+        return .scroll(dx: Double(ix), dy: Double(iy), phase: phase)
     }
 }
