@@ -278,6 +278,14 @@ struct TouchStateTracker {
     /// phases separately — see `pinchPhase`/`rotatePhase`.
     private var lastScrollPhase: ScrollPhase = .ended
 
+    /// Motion held before a committed pan's `.began`. AppKit gives a gesture
+    /// to the nested scroll view matching the `.began` delta's dominant axis,
+    /// judged on whole points, so `.began` waits until an axis reaches 1 pt
+    /// and carries it all. A zero-delta `.began` reads as vertical and
+    /// strands horizontal scrolls (Finder column view).
+    private var pendingBeganDx = 0.0
+    private var pendingBeganDy = 0.0
+
     /// When a committed `.pan` scroll first dropped below two contacts, or 0
     /// while two are present. Drives `scrollSingleContactGrace`.
     private var scrollDroppedToOneContactAt: CFAbsoluteTime = 0
@@ -1050,9 +1058,11 @@ struct TouchStateTracker {
                 }
                 // Only reachable with twoFingerScroll on and every other
                 // two-finger action off — the one case where pan is decided
-                // immediately rather than discriminated.
-                lastScrollPhase = .began
-                return .scrollDelta(dx: 0, dy: 0, phase: .began)
+                // immediately rather than discriminated. `.began` waits for
+                // motion (see `pendingBeganDx`).
+                pendingBeganDx = 0
+                pendingBeganDy = 0
+                return .none
             } else if mode == .pointer {
                 // No two-finger gesture enabled at all: ignore the second
                 // contact, keep pointer-tracking the first.
@@ -1349,9 +1359,10 @@ struct TouchStateTracker {
                     // clearer pinch/rotate signal later in the same sequence
                     // can still win.
                     guard twoFingerScroll else { return .none }
-                    lastScrollPhase = .began
                     twoFingerKind = .pan
-                    return .scrollDelta(dx: 0, dy: 0, phase: .began)
+                    pendingBeganDx = 0
+                    pendingBeganDy = 0
+                    return .none
                 }
                 if twoFingerKind == .gesture {
                     // Angle tracking runs for the whole sequence, not just while
@@ -1561,6 +1572,15 @@ struct TouchStateTracker {
             // on-axis component zeroed) — correct: a phase-free stream must
             // not emit that at all, not even as a zero.
             if outDx == 0 && outDy == 0 { return .none }
+            if lastScrollPhase == .ended {
+                // Nothing posted yet: open with `.began` carrying the motion.
+                pendingBeganDx += outDx
+                pendingBeganDy += outDy
+                guard Swift.max(abs(pendingBeganDx), abs(pendingBeganDy)) >= 1 else { return .none }
+                defer { pendingBeganDx = 0; pendingBeganDy = 0 }
+                lastScrollPhase = .began
+                return .scrollDelta(dx: pendingBeganDx, dy: pendingBeganDy, phase: .began)
+            }
             lastScrollPhase = .changed
             return .scrollDelta(dx: outDx, dy: outDy, phase: .changed)
 
@@ -1682,6 +1702,8 @@ struct TouchStateTracker {
         tapStart = 0
         tapMaxDelta = 0
         lastScrollPhase = .ended
+        pendingBeganDx = 0
+        pendingBeganDy = 0
         scrollDroppedToOneContactAt = 0
         scrollVelocityAtDrop = .zero
         suppressedByRecencyAtDrop = false

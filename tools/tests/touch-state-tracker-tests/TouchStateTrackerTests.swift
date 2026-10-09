@@ -666,6 +666,22 @@ private func testConcurrentPinchAndRotate() {
         "lifting fingers must close both envelopes at once")
 }
 
+/// A pan commits silently; its `.began` rides on the next motion, since
+/// AppKit picks the nested scroll view from that delta. Checks the commit
+/// frame posted nothing and the next frame opened a pan with real motion.
+private func expectPanBegins(
+    commit: TouchStateTracker.Intent, next: TouchStateTracker.Intent, _ message: String,
+    line: UInt = #line
+) {
+    checks += 1
+    var ok = commit == .none
+    if case let .scrollDelta(dx, dy, .began) = next { ok = ok && (dx != 0 || dy != 0) } else { ok = false }
+    guard !ok else { return }
+    failures += 1
+    FileHandle.standardError.write(
+        Data("FAIL (line \(line)): \(message) — commit \(commit), next \(next)\n".utf8))
+}
+
 /// A wide, diagonally-held pair translating together (the thumb-and-index
 /// posture people actually scroll with) must still resolve pan, even though
 /// it's geometrically rotate-eligible — orientation alone isn't the gate,
@@ -680,9 +696,9 @@ private func testRotateEnabledDoesNotRegressDiagonalPan() {
     }
     _ = rprocess(&tracker, [(id: 1, screen: .zero)], rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0)
     _ = rprocess(&tracker, diagonalPair(offset: .zero), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.01)
-    expectEqual(
-        rprocess(&tracker, diagonalPair(offset: CGPoint(x: 20, y: 20)), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.02),
-        .scrollDelta(dx: 0, dy: 0, phase: .began),
+    expectPanBegins(
+        commit: rprocess(&tracker, diagonalPair(offset: CGPoint(x: 20, y: 20)), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.02),
+        next: rprocess(&tracker, diagonalPair(offset: CGPoint(x: 30, y: 30)), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.03),
         "a wide diagonal pair translating together must resolve pan, not rotate")
 }
 
@@ -697,9 +713,9 @@ private func testRotateCloseTogetherSweepResolvesPan() {
     }
     _ = rprocess(&tracker, [(id: 1, screen: .zero)], rawPositions: narrow, touchDiagonal: testTouchDiagonal, at: 0)
     _ = rprocess(&tracker, sweep(offset: 0), rawPositions: narrow, touchDiagonal: testTouchDiagonal, at: 0.01)
-    expectEqual(
-        rprocess(&tracker, sweep(offset: 20), rawPositions: narrow, touchDiagonal: testTouchDiagonal, at: 0.03),
-        .scrollDelta(dx: 0, dy: 0, phase: .began),
+    expectPanBegins(
+        commit: rprocess(&tracker, sweep(offset: 20), rawPositions: narrow, touchDiagonal: testTouchDiagonal, at: 0.03),
+        next: rprocess(&tracker, sweep(offset: 30), rawPositions: narrow, touchDiagonal: testTouchDiagonal, at: 0.04),
         "a close-together sweep below the separation gate must resolve pan, never rotate")
 }
 
@@ -715,9 +731,9 @@ private func testRotateAnchoredArcResolvesPan() {
     _ = rprocess(&tracker, anchoredArcContacts(anchor: anchor, radius: 40, angle: 0), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.01)
     // Past the dwell window (elapsed 0.09s) so the outcome tests the
     // dominance math, not the dwell gate.
-    expectEqual(
-        rprocess(&tracker, anchoredArcContacts(anchor: anchor, radius: 40, angle: 0.5), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.10),
-        .scrollDelta(dx: 0, dy: 0, phase: .began),
+    expectPanBegins(
+        commit: rprocess(&tracker, anchoredArcContacts(anchor: anchor, radius: 40, angle: 0.5), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.10),
+        next: rprocess(&tracker, anchoredArcContacts(anchor: anchor, radius: 40, angle: 0.7), rawPositions: wide, touchDiagonal: testTouchDiagonal, at: 0.11),
         "an anchored-finger arc must resolve pan — translation and rotation are too close to call")
 }
 
@@ -734,6 +750,49 @@ private func panProcess(
     tracker.process(
         contacts: contacts, tapToClick: false, twoFingerScroll: true,
         reverseScrollDirection: false, sensitivity: 1, now: time)
+}
+
+/// AppKit gives a gesture to the nested scroll view matching the `.began`
+/// delta's dominant axis, judged on whole points. A slow horizontal start must
+/// open with a horizontal `.began` of at least 1 pt, built from the sub-point
+/// frames before it rather than dropping them.
+private func testPanBeganCarriesHorizontalMotion() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    var intents: [TouchStateTracker.Intent] = []
+    var offset = 0.0
+    for i in 0..<40 {
+        intents.append(panProcess(&tracker, sweepPan(offset: offset), at: 0.01 + Double(i) * 0.01))
+        offset += 0.4
+    }
+    let scrolls = intents.filter { if case .scrollDelta = $0 { return true }; return false }
+    checks += 1
+    guard case let .scrollDelta(dx, dy, phase)? = scrolls.first, phase == .began,
+          abs(dx) >= 1, abs(dx) > abs(dy)
+    else {
+        failures += 1
+        FileHandle.standardError.write(Data("FAIL: a slow horizontal pan must open with a horizontal .began of at least 1 pt, got \(String(describing: scrolls.first))\n".utf8))
+        return
+    }
+    expectEqual(
+        scrolls.filter { if case .scrollDelta(_, _, .began) = $0 { return true }; return false }.count, 1,
+        "a pan must post exactly one .began")
+    expectEqual(
+        panProcess(&tracker, [], at: 0.5), .scrollDelta(dx: 0, dy: 0, phase: .ended),
+        "lifting after motion must close the pan")
+}
+
+/// Two fingers that commit to pan but never move posted no `.began`, so the
+/// lift must not post a stray `.ended`.
+private func testStillPanLiftPostsNothing() {
+    var tracker = TouchStateTracker()
+    _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
+    for i in 0..<10 {
+        expectEqual(
+            panProcess(&tracker, sweepPan(offset: 0), at: 0.01 + Double(i) * 0.01), .none,
+            "resting fingers must post nothing")
+    }
+    expectEqual(panProcess(&tracker, [], at: 0.5), .none, "a lift with no .began must post nothing")
 }
 
 private func testPanDropToOneContactWindsDownAfterGrace() {
@@ -1237,12 +1296,16 @@ private func testSecondFingerAfterOnsetStillEscalatesWithBoundedDrift() {
         FileHandle.standardError.write(
             Data("FAIL: second finger after onset did not escalate — got \(escalated)\n".utf8))
     }
-    // Translate both fingers far enough to commit the pan; the first committed
-    // frame is a `.began`, subsequent ones `.changed`.
+    // Translate both fingers far enough to commit the pan; the next motion
+    // posts `.began`, later motion `.changed`.
     _ = process(
         &tracker,
         [(id: 1, screen: CGPoint(x: 15, y: 40)), (id: 2, screen: CGPoint(x: 55, y: 40))],
         at: 0.14)
+    _ = process(
+        &tracker,
+        [(id: 1, screen: CGPoint(x: 15, y: 60)), (id: 2, screen: CGPoint(x: 55, y: 60))],
+        at: 0.15)
     if case .scrollDelta(_, _, .changed) = process(
         &tracker,
         [(id: 1, screen: CGPoint(x: 15, y: 80)), (id: 2, screen: CGPoint(x: 55, y: 80))],
@@ -1788,6 +1851,8 @@ private func testAbsoluteTouchIgnoresContactAfterPrimaryLifts() {
 enum TouchStateTrackerTestRunner {
     static func main() {
         testPinchMagnifyEnvelope()
+        testPanBeganCarriesHorizontalMotion()
+        testStillPanLiftPostsNothing()
         testPanDropToOneContactWindsDownAfterGrace()
         testPanBriefOneContactFrameDoesNotWindDown()
         testNearVerticalScrollLocksOutHorizontalDrift()
