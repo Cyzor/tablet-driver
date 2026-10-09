@@ -119,12 +119,8 @@ extension InputInjector {
 
         // ── Proximity transitions (always immediate) ───────────────────────────
         if point.inProximity != lastProximity {
-            // Exit reports carry no tool, so a leaving eraser takes the
-            // identity it entered with; otherwise apps saw the pen leave.
-            postProximityEvent(
-                entering: point.inProximity, at: rawPoint,
-                eraser: point.inProximity ? point.eraser : activeToolIsEraser)
             if point.inProximity {
+                postProximityEvent(entering: true, at: rawPoint, eraser: point.eraser)
                 TouchPipelineProbe.note { $0.penProximityEnters += 1 }
                 activeToolIsEraser = point.eraser
                 lastEraserMode = point.eraser
@@ -546,6 +542,14 @@ extension InputInjector {
     /// then reset per-proximity state. Xencelabs reaches this through
     /// `proximityExitDebounceTimer`.
     func commitProximityExit(snap: InjectionSnapshot) {
+        // Posted here, not by the caller, so every exit tells apps: the
+        // Xencelabs debounce, the stuck-proximity watchdog, and disconnect
+        // used to skip it. Exit reports carry no tool, so a leaving eraser
+        // takes the identity it entered with.
+        if lastProximity {
+            postProximityEvent(
+                entering: false, at: smoother.smoothedPoint, eraser: activeToolIsEraser)
+        }
         activeToolIsEraser = false
         lastEraserMode = false
         // The release below supersedes it.
