@@ -337,6 +337,7 @@ extension WacomKnownDevice {
     /// declared MaxOutputReportSize (short writes return success but are
     /// silently ignored by this firmware — same rule as the init path).
     func sendXencelabsOutput(_ bytes: [UInt8], tag: String) {
+        ThreadContract.expectPenThread()
         // `device` is fixed at construction to whichever interface arrived
         // first — for Quick Keys that's usually the decorative digitizer
         // interface, not the vendor tunnel (0xFF0A). `secondaryDevice` is

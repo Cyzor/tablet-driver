@@ -14,6 +14,7 @@ extension InputInjector {
     // MARK: - Pen injection
 
     func inject(point: TabletPoint, settings: TabletSettings?) {
+        ThreadContract.expectPenThread()
         let signpost = PipelineSignposts.begin("Inject")
         defer { PipelineSignposts.end("Inject", signpost) }
         rearmWatchdog()
@@ -507,6 +508,7 @@ extension InputInjector {
 
     /// The previous tool is off the tablet, so release what it held.
     func releaseHeldStateForToolChange() {
+        ThreadContract.expectPenThread()
         guard let snap = injectionSnapshot else { return }
         let loc = currentCursorPosition()
         releaseHeldPointerButtons(at: loc, snapshot: snap)
@@ -526,6 +528,7 @@ extension InputInjector {
     /// The device disconnected: run the full proximity exit. Binding-held
     /// buttons go first, since the exit clears them without posting an up.
     func releaseHeldStateForDisconnect() {
+        ThreadContract.expectPenThread()
         guard let snap = injectionSnapshot else { return }
         releaseBindingHeldButton(at: currentCursorPosition(), snapshot: snap)
         commitProximityExit(snap: snap)
@@ -541,6 +544,7 @@ extension InputInjector {
     /// left. Nothing runs afterward, so no timer or watchdog can finish the
     /// job, and anything left down stays down system-wide.
     func releaseHeldStateForQuit() {
+        ThreadContract.expectPenThread()
         guard let snap = injectionSnapshot else { return }
         let loc = currentCursorPosition()
         releaseContactFiredButtons(at: loc, snap: snap, settings: nil)
@@ -559,6 +563,7 @@ extension InputInjector {
     /// then reset per-proximity state. Xencelabs reaches this through
     /// `proximityExitDebounceTimer`.
     func commitProximityExit(snap: InjectionSnapshot) {
+        ThreadContract.expectPenThread()
         // Posted here, not by the caller, so every exit tells apps: the
         // Xencelabs debounce, the stuck-proximity watchdog, and disconnect
         // used to skip it. Exit reports carry no tool, so a leaving eraser

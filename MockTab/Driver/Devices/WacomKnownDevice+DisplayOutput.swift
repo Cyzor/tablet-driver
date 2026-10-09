@@ -22,6 +22,7 @@ extension WacomKnownDevice {
     /// Update the ring LED to reflect the active slot index.
     /// IntuosV2 (USB) and CintiqV1 families only — other families are no-ops.
     func setRingLED(index: Int) {
+        ThreadContract.expectPenThread()
         pendingLEDIndex = index
         let name = deviceSpec.name
         // `hidSetReport` only logs on failure, so a silent log can't tell a

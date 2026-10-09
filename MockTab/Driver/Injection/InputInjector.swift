@@ -829,6 +829,7 @@ final class InputInjector: @unchecked Sendable {
     // at the cursor and sets usbMouseLeftHeld, so movement becomes drags.
 
     func injectMouseButtons(mask: UInt8, settings: TabletSettings?) {
+        ThreadContract.expectPenThread()
         rearmWatchdog()
         guard mask != lastUSBMouseMask else { return }
         guard let snap = injectionSnapshot else { return }

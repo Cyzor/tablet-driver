@@ -24,6 +24,7 @@ extension InputInjector {
     }
 
     func injectAux(buttons: AuxButtons, settings: TabletSettings?) {
+        ThreadContract.expectPenThread()
         rearmWatchdog()
         guard let snap = injectionSnapshot else { return }
         let bindings = snap.expressKeyBindings
@@ -257,6 +258,7 @@ extension InputInjector {
     /// One dial step (PTK-470/670/870, Quick Keys). Plays the dial's active
     /// mode, or scrolls if none is set.
     func injectWheel(index: Int, delta: Int, settings: TabletSettings?) {
+        ThreadContract.expectPenThread()
         rearmWatchdog()
         guard let snap = injectionSnapshot else { return }
         let cursorPos = currentCursorPosition()

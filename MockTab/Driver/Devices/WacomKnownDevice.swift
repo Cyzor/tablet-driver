@@ -987,7 +987,7 @@ final class WacomKnownDevice: TabletDevice {
     ///
     /// Runs synchronously until a `.delay` step is encountered; at that point the
     /// remaining steps are scheduled on the main queue and this call returns.
-    /// Callers must be on the main thread — `IOHIDDeviceSetReport` is not thread-safe.
+    /// Runs on main, like the rest of connect-time setup; Debug builds check.
     ///
     /// `steps` defaults to `deviceSpec.initSteps`. A caller passes its own only
     /// for an interface with a different sequence than the tablet's own — today
@@ -996,6 +996,7 @@ final class WacomKnownDevice: TabletDevice {
     private func executeInitSteps(
         from index: Int = 0, on target: IOHIDDevice? = nil, steps: [InitStep]? = nil
     ) {
+        ThreadContract.expectMainThread()
         // Prefer the interface that declares the init feature reports.
         //
         // `capableInterfaceDevice` was assigned and then never read, so every
@@ -1143,6 +1144,7 @@ final class WacomKnownDevice: TabletDevice {
         report: UnsafePointer<UInt8>, length: CFIndex, sender: IOHIDDevice? = nil,
         kernelTimestamp: UInt64 = 0
     ) {
+        ThreadContract.expectPenThread()
         // Publish this report's kernel receipt time (mach ticks → ns) for
         // finalizeAndPost, and clear it on every exit path so timer-fired
         // posts after this frame never inherit a stale stamp.

@@ -32,6 +32,7 @@ extension InputInjector {
     ///                               both may post in the same frame
     ///       - `.tapClick`         → left-click at the current cursor position
     func injectTouch(contacts: [TouchContact], settings: TabletSettings?) {
+        ThreadContract.expectPenThread()
         rearmWatchdog()
         guard let snap = injectionSnapshot else {
             TouchPipelineProbe.note { $0.framesNoSnapshot += 1 }
