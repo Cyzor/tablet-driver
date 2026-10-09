@@ -116,6 +116,10 @@ struct SettingsPane<Content: View>: View {
                     settings: settings, domainKeys: overrideKeys,
                     productID: instanceKey?.productID,
                     onResetToDefaults: onResetToDefaults)
+            } else {
+                // Keeps the form from scrolling under the toolbar, so every
+                // pane's toolbar stays solid.
+                Divider()
             }
             Form { content() }
                 .formStyle(.grouped)
