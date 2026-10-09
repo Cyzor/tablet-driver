@@ -196,6 +196,21 @@ final class WacomKnownDevice: TabletDevice {
     /// interval. 0 until the first such report is seen.
     private var lastBatchReportTimestampNs: UInt64 = 0
 
+    // ── Bluetooth LE pen window pacing ─────────────────────────────────────
+    // The PTK-870 over Bluetooth LE sends one sample per report but several
+    // reports per radio window: four Pro Pen 3 samples within 3 ms, then
+    // nothing for 15 ms (2026-10-09 captures). `dispatchBatch` spreads them.
+    /// Arrival of the current window's first pen sample; 0 when none is open.
+    private var penWindowStartNs: UInt64 = 0
+    /// Arrival of the most recent single-sample pen report.
+    private var lastPenReportNs: UInt64 = 0
+    /// Gap between the last two window starts.
+    private var penWindowIntervalNs: UInt64 = 0
+    /// Samples posted or queued in the current window.
+    private var penWindowCount = 0
+    /// Sample counts of recently closed windows; their maximum sets the spacing.
+    private var recentPenWindowCounts: [Int] = []
+
     /// Whether the most recent report *on a given interface* decoded to at
     /// least one touch contact. Handed to `CaptureEngine.recordRaw` on that
     /// interface's next report so a discovery capture can tell a mid-gesture
@@ -1662,6 +1677,11 @@ final class WacomKnownDevice: TabletDevice {
         _ frames: [BatchedFrame], reportTimestampNs: UInt64,
         touchFrameStamps: [Int: UInt16] = [:]
     ) -> Bool {
+        // A later sample in an open Bluetooth LE window queues behind the
+        // earlier ones instead of flushing them; see `pacePenWindowSample`.
+        if pacePenWindowSample(frames, reportTimestampNs: reportTimestampNs) {
+            return true
+        }
         // Flush unconditionally, before anything else in this function runs —
         // including the single-frame and bypass paths below, which post
         // synchronously. A still-queued frame from an earlier report is
@@ -1680,7 +1700,9 @@ final class WacomKnownDevice: TabletDevice {
         // exactly the reported symptom: touch registers contacts but
         // produces no cursor movement or gesture, and only after a few
         // lifts happened to line up this way. Confirmed 2026-08-22.
-        let flushed = batchFramePacer.flush()
+        // A report with no frames delivers nothing, so it has nothing to order
+        // against; flushing for it would burst a paced window.
+        let flushed = frames.isEmpty ? 0 : batchFramePacer.flush()
 
         if !frames.isEmpty {
             TouchPipelineProbe.note { $0.noteBatch(frameCount: frames.count) }
@@ -1790,6 +1812,54 @@ final class WacomKnownDevice: TabletDevice {
                 return (frame, reportTimestampNs - nsBehind)
             }
         batchFramePacer.schedule(scheduled, interval: TimeInterval(perFrameDelayNs) / 1_000_000_000.0)
+        return true
+    }
+
+    /// Reports closer together than this share one radio window. Measured
+    /// on a PTK-870 over Bluetooth LE: samples within a window land at most
+    /// 3.8 ms apart, windows at least 13 ms apart.
+    private static let penWindowGapNs: UInt64 = 5_000_000
+
+    /// Paces Bluetooth pen samples that arrive as separate reports within one
+    /// radio window. Returns `true` if it queued this report's sample, `false`
+    /// to send the report down the normal path.
+    ///
+    /// The first sample of a window posts at once, as before. Later ones queue
+    /// at `windowStart + k × interval ÷ samplesPerWindow`, so a four-sample
+    /// window plays out across its 15 ms instead of landing as one jump. Like
+    /// Wacom's driver, this assumes a pen samples evenly and ignores the
+    /// device clock in bytes 16–17, whose rate differs by pen.
+    private func pacePenWindowSample(
+        _ frames: [BatchedFrame], reportTimestampNs now: UInt64
+    ) -> Bool {
+        guard isBluetooth, now != 0, frames.count == 1, case .pen = frames[0] else {
+            // A multi-sample report paces itself; a later single sample starts fresh.
+            if frames.count > 1 { penWindowStartNs = 0 }
+            return false
+        }
+        let sinceLast = lastPenReportNs != 0 && now > lastPenReportNs ? now - lastPenReportNs : .max
+        lastPenReportNs = now
+
+        guard penWindowStartNs != 0, sinceLast < Self.penWindowGapNs else {
+            // First sample of a new window.
+            if penWindowStartNs != 0 {
+                recentPenWindowCounts.append(penWindowCount)
+                if recentPenWindowCounts.count > 8 { recentPenWindowCounts.removeFirst() }
+                penWindowIntervalNs = now - penWindowStartNs
+            }
+            penWindowStartNs = now
+            penWindowCount = 1
+            return false
+        }
+
+        let index = penWindowCount
+        penWindowCount += 1
+        let perWindow = max(recentPenWindowCounts.max() ?? 0, penWindowCount)
+        // No steady rhythm yet (first window after a gap): post now, in order.
+        guard (6_000_000...40_000_000).contains(penWindowIntervalNs) else { return false }
+        let targetNs = penWindowStartNs + penWindowIntervalNs * UInt64(index) / UInt64(perWindow)
+        let delay = targetNs > now ? Double(targetNs - now) / 1_000_000_000.0 : 0
+        batchFramePacer.append(frames[0], timestampNs: targetNs, delay: delay)
         return true
     }
 
