@@ -176,7 +176,6 @@ extension InputInjector {
         let pose = resolveEffectivePose(point: point, snapshot: snap)
         shimLastPoint = point
         shimLastScreen = screenPoint
-        shimLastPressure = pressure
 
         // ── Jitter tracking (hover only, every report) ─────────────────────────
         if !rawTipDown {

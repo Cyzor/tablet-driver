@@ -233,7 +233,6 @@ final class TabletManager: ObservableObject {
     /// moves a dongle's driver slot onto its tablet's context; this tracks
     /// where it went so late interfaces, re-pairing and teardown can follow.
     private var dongleTransports: [DeviceInstanceKey: DongleTransport] = [:]
-    private var shimObservers: [NSObjectProtocol] = []
     /// Interfaces deferred because they arrived before the control interface (0xFF00) for their PID.
     /// Drained into registerDevice() once a WacomKnownDevice is created for that raw PID.
     /// Keyed by raw PID, not canonical PID — two transports that fold onto
@@ -453,7 +452,6 @@ final class TabletManager: ObservableObject {
                 Task { @MainActor in mgr.deviceDisconnected(device) }
             }, ctx)
 
-        setupShimBridge()
         // Schedule on the dedicated HID thread so report delivery is not gated
         // on main-thread availability (e.g. during SwiftUI rendering passes).
         IOHIDManagerScheduleWithRunLoop(
@@ -491,31 +489,7 @@ final class TabletManager: ObservableObject {
         return hidManagerOpen
     }
 
-    // MARK: - Adobe shim bridge
-
-    /// Subscribe to distributed notifications posted by WacomShim when Adobe apps
-    /// send eSendTabletEvent Apple Events requesting a replay of the last tablet event.
-    private func setupShimBridge() {
-        let dn = DistributedNotificationCenter.default()
-        let pointer = dn.addObserver(
-            forName: NSNotification.Name("com.cyzor.mocktab.shim.replayPointer"),
-            object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.activeContext?.injector.replayPointerEvent() }
-        }
-        let proximity = dn.addObserver(
-            forName: NSNotification.Name("com.cyzor.mocktab.shim.replayProximity"),
-            object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.activeContext?.injector.replayProximityEvent() }
-        }
-        shimObservers = [pointer, proximity]
-    }
-
     func stop() {
-        let dn = DistributedNotificationCenter.default()
-        for obs in shimObservers { dn.removeObserver(obs) }
-        shimObservers.removeAll()
         IOHIDManagerUnscheduleFromRunLoop(
             manager, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
         IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
