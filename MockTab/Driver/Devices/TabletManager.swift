@@ -49,11 +49,9 @@ final class LiveTouchPublisher: ObservableObject {
 /// main-thread work: IOHIDManager runs on HIDThread, and the active injector's
 /// `inject()` is called inline there, reading only `injectionSnapshot`. Main
 /// owns device lifecycle and UI, reached via a gated `Task { @MainActor }` so
-/// ordinary in-proximity reports allocate none.
-///
-/// Exception: the context-switch branch calls `inject()` from `@MainActor`
-/// (outgoing proximity-exit, incoming report). That is the one seam where
-/// injector state is touched off HIDThread — don't add more.
+/// ordinary in-proximity reports allocate none. When main needs an injector
+/// to act, as on a context switch, it sends the work to HIDThread. See "Two
+/// Threads" in `Architecture.md`.
 @MainActor
 final class TabletManager: ObservableObject {
 

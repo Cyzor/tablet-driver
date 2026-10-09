@@ -17,7 +17,29 @@ If a change is about what the bytes mean, it goes in TabletKit. If it's about wh
 
 Pen input never waits on the user interface. Each report goes through `HIDThread`, which runs at the highest priority macOS gives an app and handles the report from start to finish. The main thread runs the settings window and everything else.
 
-Neither thread changes the other's data. The pen thread sends window updates to the main thread. When a setting changes, the main thread sends the pen thread a fresh copy of the settings, called a snapshot.
+Each piece of state belongs to one thread, and only that thread changes it. The other thread sends the work over instead. The pen thread hops to main with `Task { @MainActor in … }`. Main hands work to the pen thread with `CFRunLoopPerformBlock` on `HIDThread.shared.runLoop`, as `DeviceContext.onHIDThread(_:)` does.
+
+| State | Belongs to | How the other thread reaches it |
+|---|---|---|
+| Decoding: decoder state, the report buffer, and Bluetooth batch pacing | Pen thread | It doesn't |
+| `InputInjector`: the pen, buttons, modifiers, touch, gestures, and their timers | Pen thread | Main sends a block, as tool changes and app switches do |
+| `InjectionSnapshot` | Built on main, read on the pen thread | Main installs each new one with a block, in `observeInjectionSnapshot()` |
+| Messages to a tablet: lights, small screens, display controls, and the record of what was last sent | Pen thread | `DeviceContext.onHIDThread(_:)` |
+| `TabletManager`, `DeviceContext`, `TabletSettings`, and `DeviceRegistry` | Main | The pen thread hops with `Task { @MainActor in … }` |
+| Connecting and closing devices, init steps, and the hardware serial read | Main | The pen thread hops to main, as it does to resend init steps |
+| Collect Device Data's recorders and probes | Either, behind a lock | Both read and write under the lock |
+
+Debug builds check the table. `ThreadContract.expectPenThread()` and `expectMainThread()` sit at the start of code that has an owner. A call from the wrong thread logs a fault once per call site, and the app carries on. To watch for them:
+
+```
+/usr/bin/log stream --predicate 'subsystem == "com.cyzor.mocktab" AND category == "threading"'
+```
+
+Three known exceptions remain. Debug builds report the first two:
+
+- `WacomFallbackDevice` and `GenericHIDDigitizer` still receive reports on main.
+- `WacomKnownDevice.registerDevice` still sends a few connect-time messages from main.
+- Messages to a tablet wait for the tablet on the pen thread. A full set of Quick Keys labels can hold up reports from every tablet for tens of milliseconds.
 
 ## Following a Pen Report
 
@@ -102,8 +124,8 @@ CI runs both.
 ## Rules to Keep
 
 - **TabletKit reads nothing from the outside world.** No files, clocks, or shared state. The app passes in everything a decoder needs.
-- **Neither thread touches the other's data.** The pen thread hands work to the main thread, and the main thread sends a new snapshot.
-- **Messages to a tablet go out on the pen thread,** through `DeviceContext.onHIDThread(_:)`. The macOS calls that talk to a tablet aren't safe from two threads at once.
+- **Each piece of state belongs to one thread.** The other thread sends work over instead of touching it. See the table in [Two Threads](#two-threads).
+- **Messages to a tablet go out on the pen thread,** through `DeviceContext.onHIDThread(_:)`, which owns the record of what was last sent. Init steps at connect are the exception: they run on main.
 - **Events post from the pen thread.** macOS allows it, and it saves a delay.
 
 ## Where to Start
@@ -123,5 +145,6 @@ CI runs both.
 | Add a setting | `TabletSettings.swift`, `InjectionSnapshot.swift`, and the pane |
 | Add a settings tab | `UI/Panes/` and `SettingsWindowController.Tab` |
 | Record something new in diagnostics | `CaptureModels.swift` |
+| Find which thread owns something | [Two Threads](#two-threads), above |
 
 User documentation lives in `README.md`. Protocol notes live in `Notes/`.

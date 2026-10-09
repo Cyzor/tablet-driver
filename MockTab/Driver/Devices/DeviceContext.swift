@@ -325,18 +325,14 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// fire every hardware write twice.
     var hasWiredDriverLifecycle = false
 
-    /// Runs `body` on `HIDThread`, the sole thread `TabletDevice` control
-    /// writes are confined to.
+    /// Runs `body` on `HIDThread`, the thread `TabletDevice` control writes
+    /// belong to.
     ///
-    /// `DeviceContext` is `@MainActor`, but every one of these settings sinks
-    /// used to call straight into the driver from the main thread — at the
-    /// same time `registerDevice()`/`flushPendingVendorWrites()` mutate the
-    /// same unsynchronized "last-sent" cache vars from HIDThread on a
-    /// reconnect/relink. A brightness-slider drag landing mid-relink was a
-    /// live, reachable data race, not a theoretical one. Every write here and
-    /// in `pushDeviceDisplayState`/`resyncActiveDriverDisplayState` now goes
-    /// through this same hop, matching the existing `CFRunLoopPerformBlock`
-    /// convention `observeInjectionSnapshot` already uses for the same reason.
+    /// `DeviceContext` is `@MainActor`, but the driver's records of what it
+    /// last sent are written on HIDThread too (a Quick Keys relink, for one).
+    /// Settings sinks that called the driver from main raced those writes, so
+    /// every write here and in `pushDeviceDisplayState`/
+    /// `resyncActiveDriverDisplayState` hops first.
     private func onHIDThread(_ body: @escaping () -> Void) {
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue, body)
         CFRunLoopWakeUp(HIDThread.shared.runLoop)

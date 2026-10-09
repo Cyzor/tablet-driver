@@ -1085,7 +1085,7 @@ final class WacomKnownDevice: TabletDevice {
     ///   Bytes 1-3: Firmware version (typically ASCII)
     ///   Bytes 4-7: Device serial (LE uint32, hardware-burned)
     ///
-    /// Runs on the main thread (IOHIDDeviceGetReport is synchronous, not thread-safe).
+    /// Runs on main at connect, like the init steps. The read is synchronous.
     /// Assumes device is already opened. Called from open() on USB/dongle only (never BT).
     private func queryHardwareSerial() {
         var buf = [UInt8](repeating: 0, count: 64)
