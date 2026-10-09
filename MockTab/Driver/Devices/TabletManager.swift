@@ -969,16 +969,16 @@ final class TabletManager: ObservableObject {
             context.settings.activeTool = toolSets
             // Settings must resolve here — the lookup needs the registry and
             // settings store, neither reachable from HIDThread. Arriving late
-            // affects only tuning, not tool recognition.
-            context.injector.activeToolSettings = toolSets
-            // Re-asserted for paths that reach this Task without running the
-            // synchronous block above; a no-op when they don't. Not the eraser
-            // flag: the first pen frame sets it from the report, and arriving
-            // ~6 ms later this reset a PTH-860 eraser (tool code says pen) to
-            // the pen, so the eraser left proximity as the pen.
-            context.injector.activeToolIsMouse = identity.isMouse
-            context.injector.activeToolSerial = identity.serial
-            context.injector.activeToolCode = identity.toolCode
+            // affects only tuning, not tool recognition. Handed over on
+            // HIDThread: its `didSet` reconciles modifier state owned there.
+            // The identity fields aren't re-set here; the synchronous block
+            // above always sets them, and a late copy could overwrite a newer
+            // pen's.
+            let injector = context.injector
+            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+                injector.activeToolSettings = toolSets
+            }
+            CFRunLoopWakeUp(HIDThread.shared.runLoop)
             context.activeToolID = toolID
             } // end Task @MainActor
         }
@@ -1018,8 +1018,13 @@ final class TabletManager: ObservableObject {
                     || self?.appIsFrontmost == true && self?.infoViewVisible == true  // UI update
                     || self?.calibrationActive == true  // calibration sample
             } else {
+                // A device that isn't driving the cursor still owes apps the
+                // exit for a pen it brought into range. Here, not on main:
+                // the injector's state belongs to this thread.
+                if !point.inProximity && injector.lastProximity {
+                    injector.inject(point: point, settings: context.settings)
+                }
                 needsHop = point.inProximity  // proximity-enter → context switch
-                    || injector.lastProximity  // dangling-proximity cleanup
             }
             guard needsHop else { return }
 
@@ -1032,30 +1037,32 @@ final class TabletManager: ObservableObject {
             // Note: `activeContext`'s `didSet` flips `injector.isActive` for both
             // the outgoing and incoming contexts, so we don't touch it here.
             if point.inProximity && self.activeContext !== context {
-                if let old = self.activeContext, old.injector.lastProximity {
-                    let exitPoint = TabletPoint(
-                        x: 0, y: 0, maxX: 1, maxY: 1,
-                        pressure: 0, maxPressure: 1,
-                        tiltX: 0, tiltY: 0,
-                        penButton1: false, penButton2: false,
-                        eraser: false, inProximity: false, hoverDistance: 0)
-                    // The outgoing exit must be injected *before* the active-context
-                    // change flips `old.injector.isActive` off (didSet hasn't fired yet
-                    // because we're still on the prior assignment). Inject still works
-                    // because it doesn't gate on isActive — only the HIDThread fast
-                    // path does.
-                    old.injector.inject(point: exitPoint, settings: old.settings)
-                }
+                let outgoing = self.activeContext
                 self.activeContext = context
                 self.penEnteredProximity()
-                // Inject this report from main (slow, one-time per switch). Cheap.
-                injector.inject(point: point, settings: context.settings)
-            }
-            // Proximity-exit from a non-active device: still post so apps
-            // don't get stuck with a dangling proximity state.
-            else if !point.inProximity && injector.lastProximity && self.activeContext !== context {
-                injector.inject(point: point, settings: context.settings)
-                return
+                // Both injects run on HIDThread, which owns injector state:
+                // from main they raced that thread's own injects of the same
+                // injectors. The outgoing pen leaves first.
+                let outgoingInjector = outgoing?.injector
+                let outgoingSettings = outgoing?.settings
+                let settings = context.settings
+                CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+                    if let outgoingInjector, outgoingInjector.lastProximity {
+                        let exitPoint = TabletPoint(
+                            x: 0, y: 0, maxX: 1, maxY: 1,
+                            pressure: 0, maxPressure: 1,
+                            tiltX: 0, tiltY: 0,
+                            penButton1: false, penButton2: false,
+                            eraser: false, inProximity: false, hoverDistance: 0)
+                        outgoingInjector.inject(point: exitPoint, settings: outgoingSettings)
+                    }
+                    // The report that asked for the switch, unless a newer one
+                    // already arrived through the fast path.
+                    if !injector.lastProximity {
+                        injector.inject(point: point, settings: settings)
+                    }
+                }
+                CFRunLoopWakeUp(HIDThread.shared.runLoop)
             }
 
             // Only the active context updates UI.
@@ -1356,7 +1363,10 @@ final class TabletManager: ObservableObject {
                     $0.stallY = stall.y
                 }
             }
-            guard let context = contextHandle.context, context.settings.touchEnabled else {
+            // The snapshot, not `settings`: this runs on HIDThread.
+            guard let context = contextHandle.context,
+                context.injector.injectionSnapshot?.touchEnabled == true
+            else {
                 TouchPipelineProbe.note { $0.framesTouchDisabled += 1 }
                 return
             }

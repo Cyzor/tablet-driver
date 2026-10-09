@@ -484,12 +484,9 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// every path that edits calibration — calibrate, clear, undo/redo, preset
     /// switch, import, reset — picks up the change without its own invalidate call.
     func observeInjectionSnapshot() {
-        // Seed synchronously so the first inject() always sees a snapshot.
-        // Both the main-side property and the HIDThread-visible read path are written
-        // here; on the inject path, HIDThread reads what was last written via
-        // CFRunLoopPerformBlock.
+        // Seed at once. Only on HIDThread: reports may already be arriving,
+        // and a write from main could tear the snapshot mid-read.
         let initial = settings.makeInjectionSnapshot(pairedProductID: pairedProductID)
-        injector.injectionSnapshot = initial
         let injectorRef = injector
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
             injectorRef.injectionSnapshot = initial
