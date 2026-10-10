@@ -469,6 +469,20 @@ final class TabletManager: ObservableObject {
         if !hidManagerOpen {
             logger.error("TabletManager: failed to open HID manager (\(ret, privacy: .public)). Check Input Monitoring permission or uninstall any existing tablet driver.")
         }
+
+        // A tablet that stays connected through sleep may lose its mode, and
+        // the Linux driver resends the mode switch on resume. The writes are
+        // idempotent, so resend them a second after every wake.
+        _ = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard let self else { return }
+                logger.info("TabletManager: woke from sleep, resending init to \(self.contexts.count, privacy: .public) device(s)")
+                for context in self.contexts.values { context.tabletDevice?.reawaken() }
+            }
+        }
     }
 
     /// Re-attempt the manager open after an Input Monitoring grant.
