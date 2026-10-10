@@ -2,9 +2,10 @@
 # Measure MockTab's pen latency under system strain, against a baseline.
 #
 # Runs driver_latency_probe for a fixed window under each condition: idle,
-# every core busy, GPU memory traffic, memory pressure, and Quick Keys display
-# writes. Prints p50, p95, p99, and maximum per condition, and warns when one
-# grew past baseline.txt. It never fails; run it by hand before a release.
+# every core busy, GPU memory traffic, and memory pressure. Quick Keys display
+# writes are a fifth condition, left out by default since few people own one.
+# Prints p50, p95, p99, and maximum per condition, and warns when one grew
+# past baseline.txt. It never fails; run it by hand before a release.
 #
 # - Run it from Terminal, which needs Input Monitoring.
 # - Use a Release build of MockTab; Debug builds are slower and not comparable.
@@ -15,14 +16,14 @@
 # Usage:
 #   tools/latency/strain-bench.sh <vid-hex> <pid-hex>            # compare
 #   tools/latency/strain-bench.sh <vid-hex> <pid-hex> --update   # accept as new baseline
-#   STRAIN_SECONDS=30 STRAIN_CONDITIONS="idle cpu" tools/latency/strain-bench.sh ...
+#   STRAIN_SECONDS=30 STRAIN_CONDITIONS="idle quickkeys" tools/latency/strain-bench.sh ...
 set -euo pipefail
 
 VID="${1:?usage: strain-bench.sh <vid-hex> <pid-hex> [--update]}"
 PID="${2:?usage: strain-bench.sh <vid-hex> <pid-hex> [--update]}"
 UPDATE="${3:-}"
 WINDOW="${STRAIN_SECONDS:-20}"
-CONDITIONS="${STRAIN_CONDITIONS:-idle cpu gpu memory quickkeys}"
+CONDITIONS="${STRAIN_CONDITIONS:-idle cpu gpu memory}"
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 LOG_DIR="/tmp/mocktab-strain-$(date +%Y%m%d-%H%M%S)"
