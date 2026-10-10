@@ -292,8 +292,8 @@ extension InputInjector {
 
     @MainActor
     func installFlagsChangedTap() {
-        // Listen-only tap at the session level for .flagsChanged events only.
-        // Passive: we never modify events, just observe them.
+        // Listen-only tap at the session level for modifier changes and key
+        // presses. It never modifies events, just observes them.
         let selfPtr = Unmanaged.passUnretained(self)
         let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -301,20 +301,22 @@ extension InputInjector {
             options: .listenOnly,
             eventsOfInterest: CGEventMask(1 << CGEventType.flagsChanged.rawValue)
                 | CGEventMask(1 << CGEventType.keyDown.rawValue),
+            // A listen-only tap ignores the returned event, so returning it
+            // retained would leak every keystroke.
             callback: { _, _, event, userInfo -> Unmanaged<CGEvent>? in
-                guard let userInfo else { return Unmanaged.passRetained(event) }
+                guard let userInfo else { return Unmanaged.passUnretained(event) }
                 let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
                 // Hardware keyboard events only (sourceStateID == hidSystemState). Ours
                 // use a private state and would corrupt the cache with phantom keys.
                 let stateID = Int32(truncatingIfNeeded:
                     event.getIntegerValueField(.eventSourceStateID))
                 guard ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) else {
-                    return Unmanaged.passRetained(event)
+                    return Unmanaged.passUnretained(event)
                 }
                 // A real keystroke, for touch's typing hold-off.
                 if event.type == .keyDown {
                     injector.lastPhysicalKeyDownTime = CFAbsoluteTimeGetCurrent()
-                    return Unmanaged.passRetained(event)
+                    return Unmanaged.passUnretained(event)
                 }
                 injector.tapLastPhysicalFlags =
                     event.flags.rawValue & ModifierMath.managedMask
@@ -323,7 +325,7 @@ extension InputInjector {
                 // Wall clock carried tap latency and ratcheted on duplicate deliveries
                 // (Cyzor/tablet-driver#18).
                 injector.tapLastPhysicalFlagsAtNs = UInt64(event.timestamp)
-                return Unmanaged.passRetained(event)
+                return Unmanaged.passUnretained(event)
             },
             userInfo: selfPtr.toOpaque()
         )
