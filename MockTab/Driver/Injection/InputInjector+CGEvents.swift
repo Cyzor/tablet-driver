@@ -303,9 +303,16 @@ extension InputInjector {
                 | CGEventMask(1 << CGEventType.keyDown.rawValue),
             // A listen-only tap ignores the returned event, so returning it
             // retained would leak every keystroke.
-            callback: { _, _, event, userInfo -> Unmanaged<CGEvent>? in
+            callback: { _, type, event, userInfo -> Unmanaged<CGEvent>? in
                 guard let userInfo else { return Unmanaged.passUnretained(event) }
                 let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
+                // macOS can switch a tap off, on a timeout or for user input.
+                // If it stays off, the modifier cache and the typing hold-off
+                // go stale for the rest of the session.
+                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                    if let tap = injector.flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: true) }
+                    return Unmanaged.passUnretained(event)
+                }
                 // Hardware keyboard events only (sourceStateID == hidSystemState). Ours
                 // use a private state and would corrupt the cache with phantom keys.
                 let stateID = Int32(truncatingIfNeeded:
