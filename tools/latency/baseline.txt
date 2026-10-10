@@ -1,0 +1,6 @@
+# strain-bench baseline; record a new one with --update.
+# 2026-10-09, Wacom Intuos Pro L (PTH-860) over USB, macOS 27.2, Mac17,6, MockTab 0.5.1 (13) Release at fc35ff9. Quick Keys not yet measured.
+idle n 2108 p50 0.44 p95 3.88 p99 6.38 max 29.11
+cpu n 3709 p50 0.25 p95 2.82 p99 4.00 max 7.86
+gpu n 1686 p50 1.96 p95 7.83 p99 19.34 max 34.36
+memory n 3410 p50 0.34 p95 3.64 p99 8.27 max 34.09

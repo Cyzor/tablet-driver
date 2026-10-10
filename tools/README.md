@@ -18,6 +18,7 @@ Builds, signs, notarizes, and packages the app.
 - `size-watch.sh` warns when the app grows or links something new. `arch-check.sh` fails the build unless the app runs on both Apple silicon and Intel. The release scripts run both.
 - `idle-check.sh` compares the running app's idle CPU and memory against a budget.
 - `floor-check.sh` opens a build in a macOS 13 or 14 virtual machine. Go through `floor-check.md` there before a release.
+- `../latency/strain-bench.sh` measures pen latency while the Mac is busy and compares it with a recorded baseline. Run it before a release with a wired tablet.
 
 Publishing creates a draft. Nothing goes public until you click Publish on GitHub.
 
@@ -42,4 +43,4 @@ Older capture files may contain a device serial number. `triage_discovery.py` fl
 
 ## latency/ and event-probe/
 
-`latency/` measures the time from a tablet report to the cursor moving, and compares MockTab with another driver. `event-probe/` records the events a driver posts so you can find fields MockTab leaves out.
+`latency/` measures the time from a tablet report to the cursor moving. `latency_ab.sh` compares MockTab with another driver, and `strain-bench.sh` measures MockTab with the CPU, GPU, or memory under load. `event-probe/` records the events a driver posts so you can find fields MockTab leaves out.

@@ -30,6 +30,9 @@ func physicalMemoryBytes() -> UInt64 {
     return size
 }
 
+// Line-buffered, so tools/latency/strain-bench.sh can wait for "Committed."
+setvbuf(stdout, nil, _IOLBF, 0)
+
 let args = CommandLine.arguments
 let seconds: Double = args.count > 1 ? (Double(args[1]) ?? 30.0) : 30.0
 
