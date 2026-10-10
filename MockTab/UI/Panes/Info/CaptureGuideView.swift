@@ -329,7 +329,12 @@ struct CaptureGuideView: View {
         // matches vendors we already know, so it can't answer "is the tablet
         // even visible to the OS." If nothing shows up here either, that's
         // itself the diagnosis (unpowered hub, cable fault, wrong port).
+        // Likeliest tablet first, since the first device names the hardware
+        // in the file and the issue text; IOKit's set has no order.
         return Self.allConnectedHIDDevices()
+            .map { ($0, DiagnosticSession.tabletLikeness(of: $0), DiagnosticSession.registryID(of: $0) ?? .max) }
+            .sorted { (-$0.1, $0.2) < (-$1.1, $1.2) }
+            .map(\.0)
     }
 
     /// Every other known-vendor device, so one run covers the whole desk.

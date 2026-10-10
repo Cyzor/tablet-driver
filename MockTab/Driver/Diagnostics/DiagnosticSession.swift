@@ -95,6 +95,31 @@ final class DiagnosticSession {
         }
     }
 
+    /// How much a device looks like a pen tablet, highest first: 4 for a known
+    /// tablet vendor, 3 for a pen digitizer, 2 for another digitizer, 1 for
+    /// anything else with a vendor. Apple's devices score 0, since their
+    /// trackpads are digitizers too, and so do the Mac's vendorless internals.
+    /// Some tablets declare no digitizer at all, only a mouse.
+    static func tabletLikeness(of device: IOHIDDevice) -> Int {
+        let vendor = IOHIDDeviceGetProperty(device, kIOHIDVendorIDKey as CFString) as? Int ?? 0
+        guard vendor != 0, !appleVendorIDs.contains(vendor) else { return 0 }
+        if TabletManager.knownVendorIDs.contains(vendor) { return 4 }
+        let digitizers = DeviceRouter.usagePairs(device).filter { $0.page == kHIDPage_Digitizer }
+        if digitizers.contains(where: { $0.usage == kHIDUsage_Dig_Digitizer || $0.usage == kHIDUsage_Dig_Pen }) {
+            return 3
+        }
+        return digitizers.isEmpty ? 1 : 2
+    }
+
+    /// Whether a device's unread reports could be a tablet's: a known tablet
+    /// vendor's, or a digitizer's. A mouse or the Mac's trackpad doesn't count.
+    static func mayBeTablet(_ device: IOHIDDevice) -> Bool {
+        tabletLikeness(of: device) >= 2
+    }
+
+    /// USB and Bluetooth.
+    private static let appleVendorIDs: Set<Int> = [0x05AC, 0x004C]
+
     /// Stable per-interface identity that survives re-enumeration.
     ///
     /// `IOHIDManagerCopyDevices` hands back a fresh CF wrapper each call, so

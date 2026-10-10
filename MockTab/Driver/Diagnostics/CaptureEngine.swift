@@ -495,17 +495,21 @@ final class CaptureEngine: ObservableObject {
         let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: Self.tapBufferSize)
         buffer.initialize(repeating: 0, count: Self.tapBufferSize)
         tapBuffers[ObjectIdentifier(device)] = buffer
+        // A non-nil context marks a device that may be a tablet. Only those
+        // light the sheet's "can't read some of this yet" line; a mouse or the
+        // Mac's trackpad would claim a problem that isn't there.
+        let mayBeTablet = DiagnosticSession.mayBeTablet(device) ? UnsafeMutableRawPointer(bitPattern: 1) : nil
         IOHIDDeviceRegisterInputReportCallback(
             device, buffer, Self.tapBufferSize,
-            { _, _, sender, _, reportID, report, length in
+            { mayBeTablet, _, sender, _, reportID, report, length in
                 guard let sender else { return }
                 // Straight into the accumulator table, the same path a
                 // driver's `recordRaw` takes — no decode, no ownership.
                 let device = Unmanaged<IOHIDDevice>.fromOpaque(sender).takeUnretainedValue()
                 CaptureEngine.recordRaw(
                     device: device, reportID: reportID, pointer: report, length: length)
-                CaptureActivityProbe.noteUndecoded()
-            }, nil)
+                if mayBeTablet != nil { CaptureActivityProbe.noteUndecoded() }
+            }, mayBeTablet)
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
         tappedDevices.append(device)
