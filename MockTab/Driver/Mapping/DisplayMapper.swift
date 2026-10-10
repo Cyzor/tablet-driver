@@ -520,7 +520,7 @@ struct DisplayMapper {
         )
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
-            displayMapperLog.error("displayUnion: CGGetActiveDisplayList(count) failed or zero displays — falling back to main display")
+            displayMapperLog.info("displayUnion: CGGetActiveDisplayList(count) failed or zero displays — falling back to main display")
             return (fallback, mainID, [])
         }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
