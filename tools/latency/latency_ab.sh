@@ -30,7 +30,7 @@ LABEL="$3"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/$LABEL-$(date +%Y%m%d-%H%M%S).log"
 
-if [ ! -x "$BIN" ]; then
+if [ ! -x "$BIN" ] || [ "$SCRIPT_DIR/driver_latency_probe.c" -nt "$BIN" ]; then
     echo "Building probe..."
     clang -framework IOKit -framework CoreFoundation -framework ApplicationServices \
         "$SCRIPT_DIR/driver_latency_probe.c" -o "$BIN"

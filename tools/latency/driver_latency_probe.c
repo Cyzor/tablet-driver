@@ -11,24 +11,36 @@
  *      device non-exclusively, same as tools/capture/hid_input_capture.c, so it can
  *      listen alongside Wacom Desktop Center or Xencelabs Driver Hub without
  *      taking the device away from them.
- *   2. A CGEventTap on mouse-moved/dragged events timestamps the first
- *      system-visible pointer event that lands after each report, using the
- *      same mach_absolute_time domain CGEventGetTimestamp reports in.
+ *   2. A CGEventTap on mouse-moved/dragged events notes when each pointer
+ *      event reaches the session, on the same clock.
  *
- * The delta between (1) and the next (2) is everything the running driver's
- * pipeline cost: decode, event injection, and whatever queuing happens in
- * between. It does NOT include the device's own USB/BT polling interval
- * (that's baked into how often (1) fires at all) or anything downstream of
- * event injection (compositor, app redraw, display refresh) — this measures
- * the one segment that's actually under a driver's control.
+ * The event's own timestamp can't stand in for (2): MockTab stamps each event
+ * with its report's receipt time, so apps see when the pen moved, and Wacom's
+ * driver stamps a nominal clock. Arrival is what the driver can't fake.
+ *
+ * Each pointer event yields up to two numbers:
+ *   - latency: the first event after a report, against that report. Works for
+ *     any driver; use it for A/B comparisons.
+ *   - exact: the event's stamp matches a report this tool also saw, so the
+ *     pairing is certain. Only drivers that stamp receipt time produce it
+ *     (MockTab, except Bluetooth samples it paces, which carry their
+ *     scheduled time).
+ *
+ * Either one is everything the running driver's pipeline cost: decode, event
+ * injection, and whatever queuing happens in between. It does NOT include the
+ * device's own USB/BT polling interval (that's baked into how often (1) fires
+ * at all) or anything downstream of the session (compositor, app redraw,
+ * display refresh) — this measures the one segment that's actually under a
+ * driver's control. Logs from before arrival timing (2026-10-09) measured the
+ * stamp instead, and read near zero for MockTab.
  *
  * Build:
  *   clang -framework IOKit -framework CoreFoundation -framework ApplicationServices \
- *         tools/capture/driver_latency_probe.c -o /tmp/driver_latency_probe
+ *         tools/latency/driver_latency_probe.c -o /tmp/driver_latency_probe
  *
  * Run (needs Accessibility/Input Monitoring granted to the terminal, same as
  * any CGEventTap consumer):
- *   /tmp/driver_latency_probe <vid-hex> <pid-hex>
+ *   /tmp/driver_latency_probe <vid-hex> <pid-hex> [seconds]
  *   e.g. /tmp/driver_latency_probe 28bd 0914
  *
  * Procedure for an A/B comparison:
@@ -46,20 +58,43 @@
 
 #include <IOKit/hid/IOHIDLib.h>
 #include <ApplicationServices/ApplicationServices.h>
+#include <mach/mach.h>
 #include <mach/mach_time.h>
+#include <mach/thread_policy.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 static mach_timebase_info_data_t g_timebase;
-static uint64_t g_last_report_ts = 0;
+static uint64_t g_last_report_ns = 0;
 static int g_have_pending_report = 0;
 static uint64_t g_report_count = 0;
 static uint64_t g_matched_count = 0;
+static uint64_t g_exact_count = 0;
 
-static double mach_to_ms(uint64_t ticks)
+/* Receipt times of recent reports, for matching an event's stamp. Reports
+   arrive milliseconds apart, so 50 µs of slack can't match the wrong one;
+   it absorbs MockTab's floating-point tick conversion. */
+#define RECENT_REPORTS 64
+#define STAMP_SLACK_NS 50000
+static uint64_t g_recent_ns[RECENT_REPORTS];
+static unsigned g_recent_next = 0;
+
+static uint64_t ticks_to_ns(uint64_t ticks)
 {
-    return (double)ticks * g_timebase.numer / g_timebase.denom / 1e6;
+    return ticks * g_timebase.numer / g_timebase.denom;
+}
+
+static uint64_t receipt_matching(uint64_t stamp_ns)
+{
+    for (unsigned i = 0; i < RECENT_REPORTS; i++) {
+        uint64_t r = g_recent_ns[i];
+        if (r == 0) continue;
+        uint64_t d = r > stamp_ns ? r - stamp_ns : stamp_ns - r;
+        if (d <= STAMP_SLACK_NS) return r;
+    }
+    return 0;
 }
 
 static void report_cb(void *ctx, IOReturn result, void *sender,
@@ -67,7 +102,8 @@ static void report_cb(void *ctx, IOReturn result, void *sender,
                        uint8_t *report, CFIndex length, uint64_t timestamp)
 {
     if (type != kIOHIDReportTypeInput) return;
-    g_last_report_ts = timestamp;
+    g_last_report_ns = ticks_to_ns(timestamp);
+    g_recent_ns[g_recent_next++ % RECENT_REPORTS] = g_last_report_ns;
     g_have_pending_report = 1;
     g_report_count++;
 }
@@ -108,27 +144,28 @@ static void device_matched(void *ctx, IOReturn result, void *sender,
 static CGEventRef tap_cb(CGEventTapProxy proxy, CGEventType type,
                           CGEventRef event, void *ctx)
 {
-    if (g_have_pending_report &&
-        (type == kCGEventMouseMoved || type == kCGEventLeftMouseDragged)) {
-        /* CGEventGetTimestamp DOES return real nanoseconds (confirmed via a
-         * 2026-09-07 debug probe reading both raw values side by side:
-         * CGEventGetTimestamp's value was exactly mach_absolute_time() * 125/3,
-         * i.e. it had already had the timebase conversion applied). The raw
-         * HID report timestamp from
-         * IOHIDDeviceRegisterInputReportWithTimeStampCallback is the one
-         * still in raw mach ticks and needs mach_to_ms(). An earlier version
-         * of this fix ran CGEventGetTimestamp's value through mach_to_ms() a
-         * second time, shrinking it ~41.67x (this Mac's timebase, 125/3) and
-         * producing a bogus ~198-day "latency". Do not apply mach_to_ms to
-         * CGEventGetTimestamp's return value — only divide by 1e6 for ns->ms.
-         */
-        double event_ts_ms = (double)CGEventGetTimestamp(event) / 1e6;
-        double report_ts_ms = mach_to_ms(g_last_report_ts);
-        double delta_ms = event_ts_ms > report_ts_ms ? event_ts_ms - report_ts_ms : 0;
-        printf("report->pointer-event latency: %.2f ms\n", delta_ms);
-        fflush(stdout);
+    if (type != kCGEventMouseMoved && type != kCGEventLeftMouseDragged) return event;
+    /* CGEventGetTimestamp is nanoseconds on mach_absolute_time's clock, which
+     * CLOCK_UPTIME_RAW also reads. Only the HID report stamp is in raw ticks. */
+    uint64_t arrival_ns = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+    uint64_t receipt_ns = receipt_matching(CGEventGetTimestamp(event));
+
+    char line[128];
+    int n = 0;
+    if (g_have_pending_report && arrival_ns > g_last_report_ns) {
+        n += snprintf(line + n, sizeof(line) - n, "report->pointer-event latency: %.2f ms",
+                      (arrival_ns - g_last_report_ns) / 1e6);
         g_have_pending_report = 0;
         g_matched_count++;
+    }
+    if (receipt_ns && arrival_ns > receipt_ns) {
+        n += snprintf(line + n, sizeof(line) - n, "%sexact: %.2f ms",
+                      n ? "  " : "", (arrival_ns - receipt_ns) / 1e6);
+        g_exact_count++;
+    }
+    if (n) {
+        puts(line);
+        fflush(stdout);
     }
     return event;
 }
@@ -136,24 +173,46 @@ static CGEventRef tap_cb(CGEventTapProxy proxy, CGEventType type,
 static void heartbeat_cb(CFRunLoopTimerRef timer, void *ctx)
 {
     fprintf(stderr,
-        "[heartbeat] %llu HID reports seen, %llu matched to a pointer event so far. "
-        "If reports stays at 0, the device match (VID/PID) is wrong or the driver "
-        "isn't running. If reports grows but matched stays 0, this process cannot "
-        "see system pointer events — check Input Monitoring / Accessibility for "
+        "[heartbeat] %llu HID reports seen, %llu matched to a pointer event so far "
+        "(%llu exact). If reports stays at 0, the device match (VID/PID) is wrong or "
+        "the driver isn't running. If reports grows but matched stays 0, this process "
+        "cannot see system pointer events — check Input Monitoring / Accessibility for "
         "this exact terminal app in System Settings.\n",
-        (unsigned long long)g_report_count, (unsigned long long)g_matched_count);
+        (unsigned long long)g_report_count, (unsigned long long)g_matched_count,
+        (unsigned long long)g_exact_count);
+}
+
+/* Same real-time policy as MockTab's input thread, so under CPU load the
+   numbers measure the driver, not this tool waiting for a core. */
+static void promote_to_time_constraint(void)
+{
+    double ticks_per_ms = 1e6 * g_timebase.denom / g_timebase.numer;
+    thread_time_constraint_policy_data_t policy = {
+        .period = (uint32_t)(7.5 * ticks_per_ms),
+        .computation = (uint32_t)(0.5 * ticks_per_ms),
+        .constraint = (uint32_t)(2.0 * ticks_per_ms),
+        .preemptible = 1,
+    };
+    kern_return_t kr = thread_policy_set(
+        mach_thread_self(), THREAD_TIME_CONSTRAINT_POLICY,
+        (thread_policy_t)&policy, THREAD_TIME_CONSTRAINT_POLICY_COUNT);
+    if (kr != KERN_SUCCESS)
+        fprintf(stderr, "[warn] time-constraint policy refused (%d); numbers under load "
+                        "include this tool's own scheduling\n", kr);
 }
 
 int main(int argc, char **argv)
 {
     if (argc < 3) {
-        fprintf(stderr, "usage: %s <vid-hex> <pid-hex>\n", argv[0]);
+        fprintf(stderr, "usage: %s <vid-hex> <pid-hex> [seconds]\n", argv[0]);
         return 1;
     }
     mach_timebase_info(&g_timebase);
+    promote_to_time_constraint();
 
     int vid = (int)strtol(argv[1], NULL, 16);
     int pid = (int)strtol(argv[2], NULL, 16);
+    double seconds = argc > 3 ? atof(argv[3]) : 0;
 
     IOHIDManagerRef mgr = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
     CFMutableDictionaryRef match = CFDictionaryCreateMutable(
@@ -201,8 +260,12 @@ int main(int argc, char **argv)
 
     printf("Listening on VID=0x%04x PID=0x%04x. Draw with the pen now, whichever "
            "driver is currently running owns the numbers you'll see. Status lines "
-           "print every 5s on stderr. Ctrl-C to stop.\n",
-           vid, pid);
-    CFRunLoopRun();
+           "print every 5s on stderr. %s\n",
+           vid, pid, seconds > 0 ? "Stops by itself." : "Ctrl-C to stop.");
+    fflush(stdout);
+    if (seconds > 0)
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, seconds, false);
+    else
+        CFRunLoopRun();
     return 0;
 }
