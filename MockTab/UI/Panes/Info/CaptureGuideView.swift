@@ -73,6 +73,7 @@ struct CaptureGuideView: View {
     /// Rows satisfied this session. Latching — the row records what was
     /// captured, so lifting the pen must not un-tick "tap the pen's tip".
     @State private var satisfied: Set<CaptureChecklistItem> = []
+    @State private var checklistOrder = CaptureChecklistItem.allCases
     /// Traffic arrived that no decoder could read. Surfaced because it's the
     /// opposite of bad news — on an unsupported device it's the most valuable
     /// thing in the file, yet leaves every row above blank.
@@ -195,12 +196,9 @@ struct CaptureGuideView: View {
                         .padding(.bottom, 12)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        instruction("pencil.tip",  String(localized: "Tap the pen’s tip to the tablet, then lift", comment: "Device data collection instruction: pen tip"), .penTip)
-                        instruction("button.horizontal",      String(localized: "Hold down each button on the pen", comment: "Device data collection instruction: pen buttons"), .penButtons)
-                        instruction("eraser.line.dashed", String(localized: "Touch the pen's eraser end to the tablet", comment: "Device data collection instruction: eraser"), .eraser)
-                        instruction("rectangle.grid.2x2",    String(localized: "Press each button on the tablet", comment: "Device data collection instruction: tablet buttons"), .tabletButtons)
-                        instruction("circle.dashed",          String(localized: "Slide a finger around any ring or strip", comment: "Device data collection instruction: touch ring/strip"), .ringOrStrip)
-                        instruction("hand.draw",              String(localized: "Drag one finger, then pinch with two", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"), .fingerTouch)
+                        ForEach(checklistOrder, id: \.self) { item in
+                            instruction(for: item)
+                        }
                     }
                     .padding(.horizontal, 20)
 
@@ -810,8 +808,58 @@ struct CaptureGuideView: View {
     /// sees the pen row still blank and retries while the tablet is in their
     /// hands; on issue #14 no session ever caught the pen, and nothing said
     /// so.
-    enum CaptureChecklistItem: Hashable {
+    enum CaptureChecklistItem: Hashable, CaseIterable {
         case penTip, penButtons, eraser, tabletButtons, ringOrStrip, fingerTouch
+
+        /// The registry features the row shows. Pen buttons have none.
+        var features: [TabletFeature] {
+            switch self {
+            case .penTip: return [.penPosition, .pressure]
+            case .penButtons: return []
+            case .eraser: return [.eraser]
+            case .tabletButtons: return [.tabletButtons]
+            case .ringOrStrip: return [.ring, .strips, .dial]
+            case .fingerTouch: return [.touch]
+            }
+        }
+    }
+
+    /// Rows for features no recording or hardware has shown on this model
+    /// come first, and rows for features it lacks come last. Unknown tablets
+    /// keep the default order. Set once per session, so rows never move while
+    /// they tick.
+    private static func checklistOrder(vendorID: Int, productID: Int) -> [CaptureChecklistItem] {
+        let all = CaptureChecklistItem.allCases
+        guard WacomDeviceRegistry.vendorIDs.contains(vendorID),
+            let spec = WacomDeviceRegistry.spec(for: WacomDeviceRegistry.canonicalProductID(for: productID))
+        else { return all }
+        let evidence = spec.evidence
+        func rank(_ item: CaptureChecklistItem) -> Int {
+            // Pen buttons have no evidence of their own; they go where the pen goes.
+            if item == .penButtons { return evidence[.penPosition] == nil ? 2 : 1 }
+            guard let weakest = item.features.compactMap({ evidence[$0]?.level }).min() else { return 2 }
+            return weakest < .recorded ? 0 : 1
+        }
+        return all.enumerated()
+            .sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }
+            .map(\.element)
+    }
+
+    private func instruction(for item: CaptureChecklistItem) -> some View {
+        switch item {
+        case .penTip:
+            return instruction("pencil.tip", String(localized: "Tap the pen’s tip to the tablet, then lift", comment: "Device data collection instruction: pen tip"), item)
+        case .penButtons:
+            return instruction("button.horizontal", String(localized: "Hold down each button on the pen", comment: "Device data collection instruction: pen buttons"), item)
+        case .eraser:
+            return instruction("eraser.line.dashed", String(localized: "Touch the pen's eraser end to the tablet", comment: "Device data collection instruction: eraser"), item)
+        case .tabletButtons:
+            return instruction("rectangle.grid.2x2", String(localized: "Press each button on the tablet", comment: "Device data collection instruction: tablet buttons"), item)
+        case .ringOrStrip:
+            return instruction("circle.dashed", String(localized: "Slide a finger around any ring or strip", comment: "Device data collection instruction: touch ring/strip"), item)
+        case .fingerTouch:
+            return instruction("hand.draw", String(localized: "Drag one finger, then pinch with two", comment: "Device data collection instruction: capacitive finger touch (only meaningful on touch-capable tablets)"), item)
+        }
     }
 
     /// Fold probe state into `satisfied`. Only ever inserts — see
@@ -1119,6 +1167,7 @@ struct CaptureGuideView: View {
             return
         }
         resolvedInfo = primary.1
+        checklistOrder = Self.checklistOrder(vendorID: primary.1.vendorID, productID: primary.1.productID)
         // Cleared first: a device that reconnected without the interface that
         // declared the report must not leave the previous one's ID pre-filled.
         startupError = nil
