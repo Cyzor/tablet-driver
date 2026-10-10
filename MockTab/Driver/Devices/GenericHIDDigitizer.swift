@@ -83,7 +83,9 @@ final class GenericHIDDigitizer: TabletDevice {
         spec = DigitizerSpec(maxX: probed.maxX, maxY: probed.maxY, maxPressure: probed.maxPressure)
 
         let maxReportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
-        reportBuffer = [UInt8](repeating: 0, count: Swift.max(maxReportSize, 64))
+        reportBufferSize = Swift.max(maxReportSize, 64)
+        reportBuffer = .allocate(capacity: reportBufferSize)
+        reportBuffer.initialize(repeating: 0, count: reportBufferSize)
 
         // Scan elements once to learn which optional usages exist. This decides
         // proximity semantics (in-range vs. tip) and whether we synthesize a
@@ -114,8 +116,12 @@ final class GenericHIDDigitizer: TabletDevice {
 
     /// Backing store for the raw input-report callback. Decoding never reads
     /// it — see `reportCallback` — but IOKit needs somewhere to put reports,
-    /// and the buffer must outlive registration.
-    private var reportBuffer: [UInt8]
+    /// and the buffer must outlive registration. An array's inout pointer
+    /// lasts only for the call, so the driver owns this one.
+    private let reportBuffer: UnsafeMutablePointer<UInt8>
+    private let reportBufferSize: Int
+
+    deinit { reportBuffer.deallocate() }
 
     func open() {
         let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -144,7 +150,7 @@ final class GenericHIDDigitizer: TabletDevice {
         // nothing at all. Input-value matching set above does not filter this
         // path, so vendor reports the decoder ignores still reach the capture.
         IOHIDDeviceRegisterInputReportCallback(
-            device, &reportBuffer, reportBuffer.count,
+            device, reportBuffer, reportBufferSize,
             GenericHIDDigitizer.reportCallback, retain.toOpaque())
 
         IOHIDDeviceScheduleWithRunLoop(
@@ -163,7 +169,7 @@ final class GenericHIDDigitizer: TabletDevice {
         IOHIDDeviceUnscheduleFromRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputValueCallback(device, nil, nil)
-        IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
+        IOHIDDeviceRegisterInputReportCallback(device, reportBuffer, reportBufferSize, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
         selfRetain?.release()
         selfRetain = nil

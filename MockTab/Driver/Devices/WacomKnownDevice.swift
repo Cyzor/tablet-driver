@@ -128,7 +128,10 @@ final class WacomKnownDevice: TabletDevice {
 
     private var decoder: any TabletReportDecoder
     private var state = DecoderState()
-    private var reportBuffer: [UInt8]
+    /// IOKit keeps writing here after registration, and an array's inout
+    /// pointer lasts only for the call, so the driver owns this buffer.
+    private let reportBuffer: UnsafeMutablePointer<UInt8>
+    private let reportBufferSize: Int
     var isBluetooth = false
 
     /// Last accepted pen point, for the wireless outlier check below. Reset
@@ -453,13 +456,17 @@ final class WacomKnownDevice: TabletDevice {
         // Use at least 192 bytes so both IntuosV1 (10-byte pen, 64-byte BLE)
         // and IntuosV2 (192-byte) reports always fit.
         let maxSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
-        reportBuffer = [UInt8](repeating: 0, count: Swift.max(maxSize, 192))
+        reportBufferSize = Swift.max(maxSize, 192)
+        reportBuffer = .allocate(capacity: reportBufferSize)
+        reportBuffer.initialize(repeating: 0, count: reportBufferSize)
 
         deriveTouchDecoders(from: device)
         deriveFixedTouchDecoder(from: device)
     }
 
     // MARK: - Open / Close
+
+    deinit { reportBuffer.deallocate() }
 
     func open() {
         let transport =
@@ -543,7 +550,7 @@ final class WacomKnownDevice: TabletDevice {
 
         if acceptsReports(from: device) {
             IOHIDDeviceRegisterInputReportWithTimeStampCallback(
-                device, &reportBuffer, reportBuffer.count,
+                device, reportBuffer, reportBufferSize,
                 WacomKnownDevice.reportCallback, callbackContext())
         } else {
             logger.info("\(name, privacy: .public): primary interface is not the vendor tunnel — decode disabled on it, waiting for the real interface via registerDevice()")
@@ -736,7 +743,7 @@ final class WacomKnownDevice: TabletDevice {
         deriveFixedTouchDecoder(from: device)
         if acceptsReports(from: device) {
             IOHIDDeviceRegisterInputReportWithTimeStampCallback(
-                device, &reportBuffer, reportBuffer.count,
+                device, reportBuffer, reportBufferSize,
                 WacomKnownDevice.reportCallback, callbackContext())
         }
         IOHIDDeviceScheduleWithRunLoop(
@@ -883,7 +890,7 @@ final class WacomKnownDevice: TabletDevice {
         IOHIDDeviceUnscheduleFromRunLoop(
             device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportWithTimeStampCallback(
-            device, &reportBuffer, reportBuffer.count, nil, nil)
+            device, reportBuffer, reportBufferSize, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
         if let led = ledDevice {
             IOHIDDeviceClose(led, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -893,7 +900,7 @@ final class WacomKnownDevice: TabletDevice {
         // called more than once for multi-interface devices).
         for sec in registeredInterfaces {
             IOHIDDeviceUnscheduleFromRunLoop(sec, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
-            IOHIDDeviceRegisterInputReportWithTimeStampCallback(sec, &reportBuffer, reportBuffer.count, nil, nil)
+            IOHIDDeviceRegisterInputReportWithTimeStampCallback(sec, reportBuffer, reportBufferSize, nil, nil)
         }
         registeredInterfaces.removeAll()
         if let sec = secondaryDevice {

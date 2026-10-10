@@ -52,7 +52,10 @@ final class WacomFallbackDevice: TabletDevice {
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((AuxButtons) -> Void)?
     private let onToolEnter: ((ToolIdentity) -> Void)?
-    private var reportBuffer: [UInt8]
+    /// IOKit keeps writing here after registration, and an array's inout
+    /// pointer lasts only for the call, so the driver owns this buffer.
+    private let reportBuffer: UnsafeMutablePointer<UInt8>
+    private let reportBufferSize: Int
     private let maxReportSize: Int
 
     /// Which report family this device uses — the guess `penDecoders` exists
@@ -144,7 +147,9 @@ final class WacomFallbackDevice: TabletDevice {
         // Detect report family from max input report size.
         maxReportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
         family = maxReportSize > 64 ? .intuosV2 : .intuosV1
-        reportBuffer = [UInt8](repeating: 0, count: Swift.max(maxReportSize, 10))
+        reportBufferSize = Swift.max(maxReportSize, 10)
+        reportBuffer = .allocate(capacity: reportBufferSize)
+        reportBuffer.initialize(repeating: 0, count: reportBufferSize)
 
         // Query HID descriptor for coordinate and pressure ranges.
         spec = Self.querySpec(device: device, family: family)
@@ -288,6 +293,8 @@ final class WacomFallbackDevice: TabletDevice {
         sendFeatureInit()
     }
 
+    deinit { reportBuffer.deallocate() }
+
     func open() {
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
@@ -313,7 +320,7 @@ final class WacomFallbackDevice: TabletDevice {
         let retain = Unmanaged.passRetained(self)
         selfRetain = retain
         IOHIDDeviceRegisterInputReportCallback(
-            device, &reportBuffer, reportBuffer.count,
+            device, reportBuffer, reportBufferSize,
             WacomFallbackDevice.reportCallback, retain.toOpaque())
         IOHIDDeviceScheduleWithRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
@@ -329,7 +336,7 @@ final class WacomFallbackDevice: TabletDevice {
     func close() {
         IOHIDDeviceUnscheduleFromRunLoop(
             device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
-        IOHIDDeviceRegisterInputReportCallback(device, &reportBuffer, reportBuffer.count, nil, nil)
+        IOHIDDeviceRegisterInputReportCallback(device, reportBuffer, reportBufferSize, nil, nil)
         IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
         selfRetain?.release()
         selfRetain = nil
