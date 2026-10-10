@@ -1585,6 +1585,11 @@ final class TabletManager: ObservableObject {
         for (pid, held) in pendingTouchCompanions where held.contains(where: { $0 === device }) {
             pendingTouchCompanions[pid] = held.filter { $0 !== device }
         }
+        // Drop deferred interfaces that leave before their driver exists, or
+        // the next connect registers them dead.
+        for (pid, held) in pendingInterfaces where held.contains(where: { $0 === device }) {
+            pendingInterfaces[pid] = held.filter { $0 !== device }
+        }
         guard let context = hidDeviceMap.removeValue(forKey: device) else { return }
         // Only clear hidDevice when the disconnecting interface is the one it
         // actually points to (the primary digitizer interface). A secondary
