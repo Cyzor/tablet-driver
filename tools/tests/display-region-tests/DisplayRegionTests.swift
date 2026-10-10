@@ -13,6 +13,7 @@
 
 import CoreGraphics
 import Foundation
+import TabletKit
 
 private var failures = 0
 private var checks = 0
@@ -228,7 +229,33 @@ enum DisplayRegionTestRunner {
         }
     }
 
+    /// A zero range maps nowhere instead of to NaN, which traps when posted,
+    /// and leaves relative mode working once a real range arrives.
+    static func testZeroRangeMapsNowhere() {
+        func point(x: Int, max: Int) -> TabletPoint {
+            TabletPoint(
+                x: x, y: 0, maxX: max, maxY: max, pressure: 0, maxPressure: 1,
+                tiltX: 0, tiltY: 0, penButton1: false, penButton2: false,
+                eraser: false, inProximity: true, hoverDistance: 0)
+        }
+        var mapper = DisplayMapper()
+        let snapshot = InjectionSnapshot.fixture()
+        expect(mapper.mapToScreen(point(x: 0, max: 0), snapshot: snapshot, deviceProductID: 0) == nil,
+               "zero range: no absolute position")
+
+        let start = CGPoint(x: 100, y: 100)
+        func relative(_ p: TabletPoint) -> CGPoint {
+            mapper.resolveRelativePoint(
+                p, snapshot: snapshot, currentCursorPosition: start, deviceProductID: 0)
+        }
+        _ = relative(point(x: 0, max: 0))
+        expect(relative(point(x: 0, max: 0)) == start, "zero range: relative cursor stays put")
+        let moved = relative(point(x: 1000, max: 10000))
+        expect(moved.x.isFinite && moved.x > start.x, "real range afterward: relative cursor moves")
+    }
+
     static func main() {
+        testZeroRangeMapsNowhere()
         testDefaultRegionIsWholeDisplay()
         testPartialRegionNarrowsIntoSubRect()
         testOffsetRegionTranslatesOrigin()

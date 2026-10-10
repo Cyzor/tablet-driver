@@ -320,9 +320,15 @@ struct DisplayMapper {
         let surfaceMM = relativeSurfaceMM(deviceProductID: deviceProductID)
         let widthMM: Double = orientation.swapsAxes ? surfaceMM.h : surfaceMM.w
         let heightMM: Double = orientation.swapsAxes ? surfaceMM.w : surfaceMM.h
+        let dxMM = dox / effMaxX * widthMM
+        let dyMM = doy / effMaxY * heightMM
+        // A zero range makes these NaN, which would stick in the ballistics
+        // and the owned position. Keep the cursor put.
+        guard dxMM.isFinite, dyMM.isFinite, pointsX.isFinite, pointsY.isFinite else {
+            return ownedRelativePosition ?? currentCursorPosition
+        }
         let (dx, dy) = relativeBallistics.cursorDelta(
-            dxMM: dox / effMaxX * widthMM, dyMM: doy / effMaxY * heightMM,
-            dxPoints: pointsX, dyPoints: pointsY, dt: dt)
+            dxMM: dxMM, dyMM: dyMM, dxPoints: pointsX, dyPoints: pointsY, dt: dt)
 
         // Accumulate on the owned float — never on a value read back from the
         // OS. The float itself carries sub-point precision across reports, so
@@ -360,7 +366,7 @@ struct DisplayMapper {
     }
 
     /// Maps a tablet point to screen coordinates, accounting for orientation and active area cropping.
-    /// Returns nil if the pen is outside the active area (deadzone).
+    /// Returns nil when the point can't be mapped, such as from a zero range.
     mutating func mapToScreen(
         _ point: TabletPoint, snapshot: InjectionSnapshot, deviceProductID: Int
     ) -> CGPoint? {
@@ -416,6 +422,8 @@ struct DisplayMapper {
         sx += snapshot.parallaxOffsetX
         sy += snapshot.parallaxOffsetY
 
+        // Clamping keeps NaN, and posting it traps.
+        guard sx.isFinite, sy.isFinite else { return nil }
         sx = Swift.min(Swift.max(sx, displayBounds.minX), displayBounds.maxX)
         sy = Swift.min(Swift.max(sy, displayBounds.minY), displayBounds.maxY)
         return CGPoint(x: sx, y: sy)
