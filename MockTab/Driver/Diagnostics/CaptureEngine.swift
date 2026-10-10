@@ -952,7 +952,7 @@ final class CaptureEngine: ObservableObject {
         guard let spec = WacomDeviceRegistry.spec(for: canonical) else { return nil }
         var seen = CaptureActivityProbe.snapshot().features
         // A dial reports through the ring fields.
-        if spec.hasMechanicalDial, !spec.hasTouchRing, seen.remove(.ring) != nil {
+        if spec.hasMechanicalDial, seen.remove(.ring) != nil {
             seen.insert(.dial)
         }
         if touchDecoded { seen.insert(.touch) }
