@@ -292,9 +292,10 @@ final class HIDCapture {
     /// Appends one report to the buffer. Called from IOHIDReportCallback on
     /// HIDThread — must stay allocation-light. `decoded` is the caller's
     /// own already-computed result, passed after its own decode call.
-    /// `productID` locates the ExpressKey Remote's serial.
+    /// `productID` locates the ExpressKey Remote's serial. `tag` evaluates
+    /// only while capturing.
     func record(
-        tag: String, report: UnsafePointer<UInt8>, length: Int,
+        tag: @autoclosure () -> String, report: UnsafePointer<UInt8>, length: Int,
         decoded: [DecodeResult]? = nil, productID: Int? = nil
     ) {
         guard length > 0 else { return }
@@ -303,6 +304,7 @@ final class HIDCapture {
             $0.isCapturing ? $0.startTime : nil
         }
         guard let start = captureStart else { return }
+        let tagText = tag()
 
         let elapsed = Date().timeIntervalSince(start)
 
@@ -346,7 +348,7 @@ final class HIDCapture {
             guard $0.isCapturing else { return }
             $0.samples.append(
                 Sample(
-                    elapsed: elapsed, tag: tag, reportID: id0, length: length, hex: hex,
+                    elapsed: elapsed, tag: tagText, reportID: id0, length: length, hex: hex,
                     decoded: decoded, signature: signature))
             $0.reportCount += 1
             $0.lastSample = LiveSample(

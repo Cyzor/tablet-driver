@@ -180,6 +180,8 @@ final class WacomKnownDevice: TabletDevice {
     /// re-send DATAMODE" shape.
     private var firstUSBIdleReportAt: Date?
     private static let usbIdleRecoveryTimeout: TimeInterval = 5.0
+    /// Wacom One S and M, whose report 0x06 is real pen data; see `handleReport`.
+    private static let usbIdleWatchdogExemptPIDs: Set<Int> = [0x0100, 0x0102, 0x0104]
     private var lastUSBIdleRecoveryAttemptAt = Date.distantPast
 
     // ── Bluetooth batch pacing ──────────────────────────────────────────────
@@ -1226,9 +1228,8 @@ final class WacomKnownDevice: TabletDevice {
         // for longer than `usbIdleRecoveryTimeout`, during perfectly normal
         // use. Gated on product ID rather than parser, since `.intuosV3` is
         // shared across devices where 0x06 means opposite things.
-        let usbIdleWatchdogExemptPIDs: Set<Int> = [0x0100, 0x0102, 0x0104]
         if deviceSpec.parser == .intuosV3, !isBluetooth,
-            !usbIdleWatchdogExemptPIDs.contains(deviceSpec.productID)
+            !Self.usbIdleWatchdogExemptPIDs.contains(deviceSpec.productID)
         {
             if length > 0, report[0] == 0x06 {
                 let now = Date()
@@ -1474,11 +1475,10 @@ final class WacomKnownDevice: TabletDevice {
         // registered — otherwise two interfaces' independent report streams
         // land under one tag and read as duplicates. Matches
         // `CaptureEngine`'s `captureInterface` keying above.
-        let captureTag =
-            registeredInterfaces.count > 1
-            ? "\(name) [\(ObjectIdentifier(captureInterface).hashValue & 0xFFFF)]" : name
         HIDCapture.shared.record(
-            tag: captureTag, report: report, length: length, decoded: results,
+            tag: registeredInterfaces.count > 1
+                ? "\(name) [\(ObjectIdentifier(captureInterface).hashValue & 0xFFFF)]" : name,
+            report: report, length: length, decoded: results,
             productID: deviceSpec.productID)
         // An empty decode on a device we otherwise know is exactly the
         // interesting case — the Xencelabs dongle's report 0x02 delivered 627
@@ -1542,12 +1542,18 @@ final class WacomKnownDevice: TabletDevice {
                 // guessed at. Dropped to .debug (2026-07-14) — useful again
                 // for future Xencelabs aux work, but too noisy at .notice
                 // for routine use once the original investigation closed.
+                // OSLog builds these strings only when debug logging is on.
                 if deviceSpec.parser == .xencelabs {
-                    let hex = (0..<length).map { String(format: "%02x", report[$0]) }.joined(separator: " ")
-                    let mask = (0..<16).map { buttons[$0] ? "1" : "0" }.joined()
-                    let pidHex = String(deviceSpec.productID, radix: 16, uppercase: true)
-                    let usagePage = sender.map { String(hidIntProperty($0, kIOHIDPrimaryUsagePageKey), radix: 16) } ?? "?"
-                    logger.debug("\(name, privacy: .public) (0x\(pidHex, privacy: .public)) usagePage=0x\(usagePage, privacy: .public): aux decode — bytes=[\(hex, privacy: .public)] mask=\(mask, privacy: .public) mech=0x\(String(buttons.mechanicalMask, radix: 16), privacy: .public)")
+                    let pid = deviceSpec.productID
+                    let aux = buttons
+                    logger.debug("""
+                        \(name, privacy: .public) \
+                        (0x\(String(pid, radix: 16, uppercase: true), privacy: .public)) \
+                        usagePage=0x\(sender.map { String(hidIntProperty($0, kIOHIDPrimaryUsagePageKey), radix: 16) } ?? "?", privacy: .public): \
+                        aux decode — bytes=[\((0..<length).map { String(format: "%02x", report[$0]) }.joined(separator: " "), privacy: .public)] \
+                        mask=\((0..<16).map { aux[$0] ? "1" : "0" }.joined(), privacy: .public) \
+                        mech=0x\(String(aux.mechanicalMask, radix: 16), privacy: .public)
+                        """)
                 }
                 // The pen display's own 3 onboard bezel buttons ride the same
                 // aux frame format as the Quick Keys puck's express keys —
