@@ -23,8 +23,8 @@ final class AppWatcher {
         "org.gimp.gimp",
     ]
 
-    private var observerToken: (any NSObjectProtocol)?
-    private var releaseTokens: [any NSObjectProtocol] = []
+    nonisolated(unsafe) private var observerToken: (any NSObjectProtocol)?  // set in init, read in deinit
+    nonisolated(unsafe) private var releaseTokens: [any NSObjectProtocol] = []  // same
 
     /// Called once at launch to force the lazy singleton to initialize,
     /// register the NSWorkspace notification observer, and seed the initial
@@ -48,9 +48,15 @@ final class AppWatcher {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            // Explicit @MainActor hop in the closure for clarity and Swift 6 compatibility
+            // Only the strings cross into the task; the notification isn't Sendable.
+            guard
+                let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                    as? NSRunningApplication,
+                let bundleID = app.bundleIdentifier
+            else { return }
+            let name = app.localizedName ?? bundleID
             Task { @MainActor [weak self] in
-                self?.appDidActivate(notification)
+                self?.appDidActivate(bundleID: bundleID, name: name)
             }
         }
 
@@ -89,13 +95,7 @@ final class AppWatcher {
         }
     }
 
-    private func appDidActivate(_ notification: Notification) {
-        guard
-            let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
-                as? NSRunningApplication,
-            let bundleID = app.bundleIdentifier
-        else { return }
-        let name = app.localizedName ?? bundleID
+    private func appDidActivate(bundleID: String, name: String) {
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
         for ctx in TabletManager.shared.deviceContexts.values {
             ctx.settings.handleAppActivation(bundleID: bundleID, appName: name)

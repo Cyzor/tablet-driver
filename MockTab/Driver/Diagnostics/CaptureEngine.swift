@@ -5,7 +5,7 @@
 import AppKit
 import Combine
 import Foundation
-import IOKit.hid
+@preconcurrency import IOKit.hid
 import OSLog
 @_spi(TabletKitInternals) import TabletKit
 import UniformTypeIdentifiers
@@ -204,7 +204,8 @@ final class CaptureEngine: ObservableObject {
         device: IOHIDDevice, reportID: UInt32, pointer: UnsafePointer<UInt8>, length: CFIndex,
         contactDown: Bool? = nil
     ) {
-        guard let accumulator = activeAccumulators.withLock({ $0[ObjectIdentifier(device)] })
+        let key = ObjectIdentifier(device)
+        guard let accumulator = activeAccumulators.withLock({ $0[key] })
         else { return }
         accumulator.record(
             reportID: UInt8(truncatingIfNeeded: reportID), pointer: pointer, length: Int(length),
@@ -582,7 +583,8 @@ final class CaptureEngine: ObservableObject {
     /// - Parameter device: the device the tool event came from, so it's
     ///   folded into the right session's accumulator (see `recordRaw`).
     nonisolated static func updateToolCode(_ toolCode: UInt16, device: IOHIDDevice) {
-        activeAccumulators.withLock { $0[ObjectIdentifier(device)] }?.noteToolCode(toolCode)
+        let key = ObjectIdentifier(device)
+        activeAccumulators.withLock { $0[key] }?.noteToolCode(toolCode)
     }
 
     /// Finish collection and build the result. Also invokes
@@ -1171,7 +1173,7 @@ final class CaptureEngine: ObservableObject {
     /// still auto-finishes) while a menu is tracking or the window is being
     /// resized, both of which stall the default run-loop mode.
     private func scheduledTimer(
-        interval: TimeInterval, repeats: Bool, _ body: @escaping @MainActor () -> Void
+        interval: TimeInterval, repeats: Bool, _ body: @escaping @MainActor @Sendable () -> Void
     ) -> Timer {
         let timer = Timer(timeInterval: interval, repeats: repeats) { _ in
             Task { @MainActor in body() }
