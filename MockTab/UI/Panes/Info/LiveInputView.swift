@@ -4,7 +4,6 @@
 
 import AppKit
 import Combine
-import IOKit.hid
 import ServiceManagement
 import SwiftUI
 import TabletKit
