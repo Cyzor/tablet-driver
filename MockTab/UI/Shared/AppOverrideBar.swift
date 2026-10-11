@@ -5,6 +5,7 @@
 // Requires macOS 13+ for .draggable / .dropDestination.
 
 import AppKit
+import os
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -714,20 +715,22 @@ struct AppOverrideBar: View {
     // MARK: - Drop handling
 
     private func handleDrop(providers: [NSItemProvider]) -> Bool {
-        var urls: [URL] = []
+        // Item providers call back on arbitrary threads, possibly at once.
+        let loaded = OSAllocatedUnfairLock(initialState: [URL]())
         let group = DispatchGroup()
 
         for provider in providers where provider.canLoadObject(ofClass: URL.self) {
             group.enter()
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
                 if let url {
-                    urls.append(url)
+                    loaded.withLock { $0.append(url) }
                 }
                 group.leave()
             }
         }
 
         group.notify(queue: .main) {
+            let urls = loaded.withLock { $0 }
             let validApps = urls.compactMap { self.bundleInfo(fromAppURL: $0) }
             guard !validApps.isEmpty else { return }
 
